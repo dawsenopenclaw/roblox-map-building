@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import Stripe from 'stripe'
 
 const PLATFORM_FEE_PERCENT = 0.30 // 30% platform fee, 70% to creator
 
@@ -80,7 +81,7 @@ export async function POST(
 
   const creatorStripeAccountId = template.creator.creatorAccount?.stripeAccountId
 
-  const sessionParams: Parameters<typeof stripe.checkout.sessions.create>[0] = {
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: stripeCustomerId,
     mode: 'payment',
     payment_method_types: ['card'],

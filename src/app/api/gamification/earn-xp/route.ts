@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
-import { XPEventType, XPTier } from '@prisma/client'
+import { Prisma, XPEventType, XPTier } from '@prisma/client'
 
 const DAILY_CAP = 500
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
         create: {
           type: xpEventType,
           amount: baseXp,
-          metadata: metadata || null,
+          metadata: metadata ? (metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
         },
       },
     },
