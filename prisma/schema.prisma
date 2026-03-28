@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Auth / Identity ───────────────────────────────────────────────────────
+
+model User {
+  id                    String    @id @default(cuid())
+  clerkId               String    @unique
+  email                 String    @unique
+  username              String?   @unique
+  displayName           String?
+  avatarUrl             String?
+  dateOfBirth           DateTime?
+  isUnder13             Boolean   @default(false)
+  parentEmail           String?
+  parentConsentAt       DateTime?
+  parentConsentToken    String?   @unique
+  parentConsentTokenExp DateTime?
+  role                  UserRole  @default(USER)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  subscription  Subscription?
+  tokenBalance  TokenBalance?
+  charityChoice String?
+  donations     CharityDonation[]
+  auditLogs     AuditLog[]
+  apiUsage      ApiUsageRecord[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  CREATOR
+}
+
+// ─── Subscriptions & Billing ───────────────────────────────────────────────
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String             @unique
+  stripeSubscriptionId String?            @unique
+  stripePriceId        String?
+  tier                 SubscriptionTier   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  trialEnd             DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([stripeCustomerId])
+  @@index([userId])
+}
+
+enum SubscriptionTier {
+  FREE
+  HOBBY
+  CREATOR
+  STUDIO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  INCOMPLETE
+  PAUSED
+}
+
+// ─── Token Economy ─────────────────────────────────────────────────────────
+
+model TokenBalance {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance        Int      @default(0)
+  lifetimeEarned Int      @default(0)
+  lifetimeSpent  Int      @default(0)
+  rolloverTokens Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  transactions TokenTransaction[]
+}
+
+model TokenTransaction {
+  id          String               @id @default(cuid())
+  balanceId   String
+  balance     TokenBalance         @relation(fields: [balanceId], references: [id])
+  type        TokenTransactionType
+  amount      Int
+  description String
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+
+  @@index([balanceId])
+  @@index([createdAt])
+}
+
+enum TokenTransactionType {
+  PURCHASE
+  SPEND
+  REFUND
+  BONUS
+  ROLLOVER
+  SUBSCRIPTION_GRANT
+}
+
+// ─── Charity ───────────────────────────────────────────────────────────────
+
+model CharityDonation {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  stripeTransferId String?        @unique
+  charitySlug      String
+  charityName      String
+  amountCents      Int
+  sourcePurchaseId String?
+  status           DonationStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  processedAt      DateTime?
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum DonationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Audit Logging ─────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  resource   String
+  resourceId String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@index([resource, resourceId])
+}
+
+// ─── API Usage Tracking ────────────────────────────────────────────────────
+
+model ApiUsageRecord {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  provider   String
+  operation  String
+  tokensUsed Int      @default(0)
+  costUsd    Float    @default(0)
+  durationMs Int?
+  success    Boolean  @default(true)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([provider])
+  @@index([createdAt])
+}
+
+// ─── Cost Tracking (aggregated daily) ──────────────────────────────────────
+
+model DailyCostSnapshot {
+  id            String   @id @default(cuid())
+  date          DateTime @unique @db.Date
+  providerCosts Json
+  totalCostUsd  Float
+  totalRevenue  Float
+  margin        Float
+  createdAt     DateTime @default(now())
+
+  @@index([date])
+}
