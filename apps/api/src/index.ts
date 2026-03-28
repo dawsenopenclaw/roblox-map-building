@@ -15,6 +15,9 @@ import { voiceRoutes } from './routes/ai/voice'
 import { imageRoutes } from './routes/ai/image'
 import { generateRoutes } from './routes/ai/generate'
 import { studioRoutes } from './routes/studio'
+import { dnaRoutes } from './routes/dna/scan'
+import { teamRoutes } from './routes/teams'
+import { versionRoutes } from './routes/versions'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 
 const app = new Hono()
@@ -34,6 +37,9 @@ app.route('/api/ai/voice-to-game', voiceRoutes)
 app.route('/api/ai/image-to-map', imageRoutes)
 app.route('/api/ai/generate', generateRoutes)
 app.route('/api/studio', studioRoutes)
+app.route('/api/dna', dnaRoutes)
+app.route('/api/teams', teamRoutes)
+app.route('/api/projects', versionRoutes)
 
 app.onError((err, c) => {
   console.error(err)
