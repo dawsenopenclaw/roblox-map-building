@@ -14,6 +14,7 @@ import { costTrackerRoutes } from './routes/cost-tracker'
 import { voiceRoutes } from './routes/ai/voice'
 import { imageRoutes } from './routes/ai/image'
 import { generateRoutes } from './routes/ai/generate'
+import { studioRoutes } from './routes/studio'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 
 const app = new Hono()
@@ -32,6 +33,7 @@ app.route('/api/costs', costTrackerRoutes)
 app.route('/api/ai/voice-to-game', voiceRoutes)
 app.route('/api/ai/image-to-map', imageRoutes)
 app.route('/api/ai/generate', generateRoutes)
+app.route('/api/studio', studioRoutes)
 
 app.onError((err, c) => {
   console.error(err)
