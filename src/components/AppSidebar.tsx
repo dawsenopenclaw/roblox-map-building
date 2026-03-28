@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: '/voice', label: 'Voice Build', icon: '🎙️' },
   { href: '/image-to-map', label: 'Image to Map', icon: '🗺️' },
   { href: '/marketplace', label: 'Marketplace', icon: '🛒' },
+  { href: '/achievements', label: 'Achievements', icon: '🏆' },
   { href: '/game-dna', label: 'Game DNA', icon: '🧬' },
   { href: '/team', label: 'Team', icon: '👥' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },

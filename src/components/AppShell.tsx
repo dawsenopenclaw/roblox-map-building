@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppTopNav } from '@/components/AppTopNav'
+import { AchievementToastProvider } from '@/components/AchievementToast'
 
 /**
  * Client shell for the app layout.
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AppTopNav onMenuOpen={() => setSidebarOpen(true)} />
         <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
+      <AchievementToastProvider />
     </div>
   )
 }
