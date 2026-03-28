@@ -155,19 +155,81 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 through FOUND-10 | Phase 1 | Pending |
-| AI-01 through AI-07 | Phase 2 | Pending |
-| WEB-01 through WEB-10 | Phase 3 | Pending |
-| MCP-01 through MCP-03 | Phase 4 | Pending |
-| PLUG-01 through PLUG-04 | Phase 5 | Pending |
-| LEGAL-01 through LEGAL-08 | Phase 3 | Pending |
-| MON-01 through MON-04, SEC-01 through SEC-03 | Phase 1 | Pending |
-| MARKET-01 through MARKET-05 | Phase 6 | Pending |
-| DNA-01 through DNA-04 | Phase 7 | Pending |
-| TEAM-01 through TEAM-04 | Phase 8 | Pending |
-| API-01 through API-04 | Phase 8 | Pending |
-| GAME-01 through GAME-04 | Phase 6 | Pending |
-| GROW-01 through GROW-05 | Phase 7 | Pending |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 1 | Pending |
+| FOUND-06 | Phase 1 | Pending |
+| FOUND-07 | Phase 1 | Pending |
+| FOUND-08 | Phase 1 | Pending |
+| FOUND-09 | Phase 1 | Pending |
+| FOUND-10 | Phase 1 | Pending |
+| MON-01 | Phase 1 | Pending |
+| MON-02 | Phase 1 | Pending |
+| MON-03 | Phase 1 | Pending |
+| MON-04 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Pending |
+| SEC-03 | Phase 1 | Pending |
+| LEGAL-01 | Phase 2 | Pending |
+| LEGAL-02 | Phase 2 | Pending |
+| LEGAL-03 | Phase 2 | Pending |
+| LEGAL-04 | Phase 2 | Pending |
+| LEGAL-05 | Phase 2 | Pending |
+| LEGAL-06 | Phase 2 | Pending |
+| LEGAL-07 | Phase 2 | Pending |
+| LEGAL-08 | Phase 2 | Pending |
+| AI-01 | Phase 3 | Pending |
+| AI-02 | Phase 3 | Pending |
+| AI-03 | Phase 3 | Pending |
+| AI-04 | Phase 3 | Pending |
+| AI-05 | Phase 3 | Pending |
+| AI-06 | Phase 3 | Pending |
+| AI-07 | Phase 3 | Pending |
+| WEB-01 | Phase 4 | Pending |
+| WEB-02 | Phase 4 | Pending |
+| WEB-03 | Phase 4 | Pending |
+| WEB-04 | Phase 4 | Pending |
+| WEB-05 | Phase 4 | Pending |
+| WEB-06 | Phase 4 | Pending |
+| WEB-07 | Phase 4 | Pending |
+| WEB-08 | Phase 4 | Pending |
+| WEB-09 | Phase 4 | Pending |
+| WEB-10 | Phase 4 | Pending |
+| MCP-01 | Phase 5 | Pending |
+| MCP-02 | Phase 5 | Pending |
+| MCP-03 | Phase 5 | Pending |
+| PLUG-01 | Phase 5 | Pending |
+| PLUG-02 | Phase 5 | Pending |
+| PLUG-03 | Phase 5 | Pending |
+| PLUG-04 | Phase 5 | Pending |
+| MARKET-01 | Phase 6 | Pending |
+| MARKET-02 | Phase 6 | Pending |
+| MARKET-03 | Phase 6 | Pending |
+| MARKET-04 | Phase 6 | Pending |
+| MARKET-05 | Phase 6 | Pending |
+| GAME-01 | Phase 6 | Pending |
+| GAME-02 | Phase 6 | Pending |
+| GAME-03 | Phase 6 | Pending |
+| GAME-04 | Phase 6 | Pending |
+| DNA-01 | Phase 7 | Pending |
+| DNA-02 | Phase 7 | Pending |
+| DNA-03 | Phase 7 | Pending |
+| DNA-04 | Phase 7 | Pending |
+| TEAM-01 | Phase 7 | Pending |
+| TEAM-02 | Phase 7 | Pending |
+| TEAM-03 | Phase 7 | Pending |
+| TEAM-04 | Phase 7 | Pending |
+| API-01 | Phase 8 | Pending |
+| API-02 | Phase 8 | Pending |
+| API-03 | Phase 8 | Pending |
+| API-04 | Phase 8 | Pending |
+| GROW-01 | Phase 8 | Pending |
+| GROW-02 | Phase 8 | Pending |
+| GROW-03 | Phase 8 | Pending |
+| GROW-04 | Phase 8 | Pending |
+| GROW-05 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 67 total
@@ -176,4 +238,4 @@
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after initial definition*
+*Last updated: 2026-03-28 — traceability updated after roadmap creation*
