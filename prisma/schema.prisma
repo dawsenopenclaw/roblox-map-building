@@ -45,6 +45,18 @@ model User {
   userAchievements UserAchievement[]
   streak           Streak?
 
+  // API Keys & Webhooks
+  apiKeys          ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
+
+  // Referrals
+  referralsMade    Referral[]        @relation("ReferrerReferrals")
+  referralReceived Referral[]        @relation("ReferredReferrals")
+
+  // Notifications & Earnings
+  notifications    Notification[]
+  creatorEarnings  CreatorEarning[]
+
   @@index([clerkId])
   @@index([email])
 }
@@ -632,4 +644,144 @@ model VersionDiff {
 
   @@index([fromVersionId])
   @@index([toVersionId])
+}
+
+// ─── API Keys ───────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String     @unique
+  prefix     String
+  scopes     String[]
+  tier       ApiKeyTier @default(FREE)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([prefix])
+}
+
+enum ApiKeyTier {
+  FREE
+  HOBBY
+  CREATOR
+  STUDIO
+}
+
+// ─── Webhooks ───────────────────────────────────────────────────────────────
+
+model WebhookEndpoint {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  secret    String
+  events    String[]
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([userId])
+}
+
+model WebhookDelivery {
+  id           String          @id @default(cuid())
+  endpointId   String
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  event        String
+  payload      Json
+  statusCode   Int?
+  responseBody String?
+  attempt      Int             @default(1)
+  success      Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+
+  @@index([endpointId])
+  @@index([createdAt])
+}
+
+// ─── Referrals ──────────────────────────────────────────────────────────────
+
+model Referral {
+  id          String         @id @default(cuid())
+  referrerId  String
+  referrer    User           @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  referredId  String?
+  referred    User?          @relation("ReferredReferrals", fields: [referredId], references: [id])
+  code        String         @unique
+  status      ReferralStatus @default(PENDING)
+  commission  Float          @default(0)
+  createdAt   DateTime       @default(now())
+  convertedAt DateTime?
+
+  @@index([referrerId])
+  @@index([code])
+}
+
+enum ReferralStatus {
+  PENDING
+  CONVERTED
+  PAID
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  BUILD_COMPLETE
+  BUILD_FAILED
+  TOKEN_LOW
+  SALE
+  REFERRAL_EARNED
+  SYSTEM
+  WEEKLY_DIGEST
+}
+
+// ─── Creator Earnings ────────────────────────────────────────────────────────
+
+model CreatorEarning {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  templateId   String?
+  templateName String?
+  amountCents  Int
+  netCents     Int
+  buyerId      String?
+  status       EarningStatus @default(PENDING)
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, status])
+}
+
+enum EarningStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
 }
