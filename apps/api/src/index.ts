@@ -18,6 +18,11 @@ import { studioRoutes } from './routes/studio'
 import { dnaRoutes } from './routes/dna/scan'
 import { teamRoutes } from './routes/teams'
 import { versionRoutes } from './routes/versions'
+import { apiKeyRoutes } from './routes/api-keys'
+import { webhookRoutes } from './routes/webhooks'
+import { referralRoutes } from './routes/referrals'
+import { notificationRoutes } from './routes/notifications'
+import { earningsRoutes } from './routes/earnings'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 
 const app = new Hono()
@@ -40,6 +45,11 @@ app.route('/api/studio', studioRoutes)
 app.route('/api/dna', dnaRoutes)
 app.route('/api/teams', teamRoutes)
 app.route('/api/projects', versionRoutes)
+app.route('/api/keys', apiKeyRoutes)
+app.route('/api/webhooks', webhookRoutes)
+app.route('/api/referrals', referralRoutes)
+app.route('/api/notifications', notificationRoutes)
+app.route('/api/earnings', earningsRoutes)
 
 app.onError((err, c) => {
   console.error(err)
