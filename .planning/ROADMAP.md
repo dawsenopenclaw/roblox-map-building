@@ -33,7 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Token balance is displayed in the UI, tracks usage, and the 10% charity auto-donation fires on every payment
   4. Deployments to staging and production are automated via GitHub Actions with no manual steps
   5. Errors surface in Sentry, user behavior is captured in PostHog, and daily API spend is visible in the cost dashboard
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 01-PLAN-A.md — Monorepo scaffold + Next.js 15 shell + Prisma schema + Hono backend + GitHub Actions CI/CD
+- [ ] 01-PLAN-B.md — Clerk auth integration + COPPA age gate + parental consent flow + user sync webhook
+- [ ] 01-PLAN-C.md — Stripe Billing + subscription tiers + token packs + token balance system + 10% charity donation
+- [ ] 01-PLAN-D.md — Sentry + PostHog + cost tracking dashboard + CORS + rate limiting + audit logging + Deno sandbox
 **UI hint**: yes
 
 ### Phase 2: Legal & Compliance
@@ -131,7 +136,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/4 | Planned | - |
 | 2. Legal & Compliance | 0/TBD | Not started | - |
 | 3. AI Engine | 0/TBD | Not started | - |
 | 4. Web Platform | 0/TBD | Not started | - |
