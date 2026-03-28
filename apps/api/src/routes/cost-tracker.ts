@@ -1,7 +1,10 @@
 import { Hono } from 'hono'
+import { requireAuth } from '../middleware/auth'
 import { db } from '../lib/db'
 
 export const costTrackerRoutes = new Hono()
+
+costTrackerRoutes.use('*', requireAuth)
 
 // Get daily snapshots for the last 30 days
 costTrackerRoutes.get('/snapshots', async (c) => {

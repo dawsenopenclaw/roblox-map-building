@@ -19,12 +19,14 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
 
   const { token, expires } = generateConsentToken()
+  const { hashToken } = await import('@/lib/tokens')
+  const tokenHash = hashToken(token)
 
   await db.user.update({
     where: { clerkId },
     data: {
       parentEmail: parsed.data.parentEmail,
-      parentConsentToken: token,
+      parentConsentToken: tokenHash,
       parentConsentTokenExp: expires,
     },
   })
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
   await sendParentalConsentEmail({
     parentEmail: parsed.data.parentEmail,
     childName: user.displayName || user.email,
-    token,
+    token, // raw token goes in the email link, never stored
   })
 
   return NextResponse.json({

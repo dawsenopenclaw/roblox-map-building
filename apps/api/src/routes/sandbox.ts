@@ -17,13 +17,16 @@ export const sandboxRoutes: AnyHono = new Hono()
 
 sandboxRoutes.post(
   '/execute',
+  async (c, next) => {
+    const { requireAuth } = await import('../middleware/auth')
+    return requireAuth(c, next)
+  },
   aiRateLimit,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   zValidator('json', schema as any),
   async (c) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { code, timeoutMs } = (c.req as any).valid('json') as z.infer<typeof schema>
-    // clerkId may not be present during early Phase 1 (no auth middleware applied yet)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const clerkId = ((c as any).get('clerkId') as string | undefined) || null
 

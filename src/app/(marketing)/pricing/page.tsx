@@ -139,10 +139,15 @@ export default function PricingPage() {
         </p>
 
         {/* Annual toggle */}
-        <div className="inline-flex items-center gap-3 bg-[#0D1231] border border-white/10 rounded-full p-1.5">
+        <div
+          className="inline-flex items-center gap-3 bg-[#0D1231] border border-white/10 rounded-full p-1.5"
+          role="group"
+          aria-label="Billing frequency"
+        >
           <button
             onClick={() => setAnnual(false)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            aria-pressed={!annual}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] ${
               !annual ? 'bg-[#FFB81C] text-black' : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -150,7 +155,8 @@ export default function PricingPage() {
           </button>
           <button
             onClick={() => setAnnual(true)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+            aria-pressed={annual}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] ${
               annual ? 'bg-[#FFB81C] text-black' : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -243,12 +249,12 @@ export default function PricingPage() {
       <section className="mb-20">
         <h2 className="text-2xl font-bold text-white text-center mb-8">Full Feature Comparison</h2>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse" role="table" aria-label="Feature comparison across plans">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-sm text-gray-400 font-medium w-40">Feature</th>
+                <th scope="col" className="text-left py-3 px-4 text-sm text-gray-400 font-medium w-40">Feature</th>
                 {TIERS.map((t) => (
-                  <th key={t.key} className={`py-3 px-4 text-center text-sm font-semibold ${
+                  <th key={t.key} scope="col" className={`py-3 px-4 text-center text-sm font-semibold ${
                     t.highlight ? 'text-[#FFB81C]' : 'text-white'
                   }`}>
                     {t.name}
@@ -258,15 +264,21 @@ export default function PricingPage() {
             </thead>
             <tbody>
               {FEATURE_MATRIX.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-white/5 ${i % 2 === 0 ? 'bg-white/2' : ''}`}>
-                  <td className="py-3 px-4 text-sm text-gray-300">{row.feature}</td>
+                <tr key={row.feature} className={`border-b border-white/5 ${i % 2 === 0 ? 'bg-white/[0.02]' : ''}`}>
+                  <th scope="row" className="py-3 px-4 text-sm text-gray-300 font-normal text-left">{row.feature}</th>
                   {[row.free, row.hobby, row.creator, row.studio].map((val, j) => (
                     <td key={j} className={`py-3 px-4 text-center text-sm ${
                       val === '✓' || val?.includes('✓') ? 'text-green-400' :
                       val === '✗' ? 'text-gray-600' :
                       val === '—' ? 'text-gray-600' : 'text-gray-300'
                     }`}>
-                      {val}
+                      <span aria-label={
+                        val === '✓' ? 'Included' :
+                        val === '✗' ? 'Not included' :
+                        val === '—' ? 'Not applicable' : val ?? ''
+                      }>
+                        {val}
+                      </span>
                     </td>
                   ))}
                 </tr>
@@ -286,7 +298,11 @@ export default function PricingPage() {
             Drag to estimate your monthly usage
           </p>
 
+          <label htmlFor="token-estimator" className="sr-only">
+            Monthly token usage estimate: {calcTokens.toLocaleString()} tokens
+          </label>
           <input
+            id="token-estimator"
             type="range"
             min={100}
             max={20000}
@@ -294,6 +310,10 @@ export default function PricingPage() {
             value={calcTokens}
             onChange={(e) => setCalcTokens(Number(e.target.value))}
             className="w-full accent-[#FFB81C] mb-4"
+            aria-valuemin={100}
+            aria-valuemax={20000}
+            aria-valuenow={calcTokens}
+            aria-valuetext={`${calcTokens.toLocaleString()} tokens per month`}
           />
           <div className="flex justify-between text-xs text-gray-500 mb-8">
             <span>100</span>

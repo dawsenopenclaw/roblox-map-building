@@ -24,6 +24,7 @@ model User {
   parentConsentToken    String?   @unique
   parentConsentTokenExp DateTime?
   role                  UserRole  @default(USER)
+  deletedAt             DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -57,14 +58,25 @@ model User {
   notifications    Notification[]
   creatorEarnings  CreatorEarning[]
 
+  // Game DNA Scanner
+  gameScans        GameScan[]
+
+  // Team Collaboration
+  teamMemberships  TeamMember[]
+  sentInvites      TeamInvite[]       @relation("SentInvites")
+  teamActivities   TeamActivity[]     @relation("TeamActivities")
+  projectVersions  ProjectVersion[]   @relation("ProjectVersions")
+
   @@index([clerkId])
   @@index([email])
+  @@index([deletedAt])
 }
 
 enum UserRole {
   USER
   ADMIN
   CREATOR
+  MODERATOR
 }
 
 // ─── Subscriptions & Billing ───────────────────────────────────────────────
@@ -87,6 +99,7 @@ model Subscription {
 
   @@index([stripeCustomerId])
   @@index([userId])
+  @@index([status])
 }
 
 enum SubscriptionTier {
@@ -102,7 +115,9 @@ enum SubscriptionStatus {
   CANCELED
   TRIALING
   INCOMPLETE
+  INCOMPLETE_EXPIRED
   PAUSED
+  UNPAID
 }
 
 // ─── Token Economy ─────────────────────────────────────────────────────────
@@ -115,6 +130,7 @@ model TokenBalance {
   lifetimeEarned Int      @default(0)
   lifetimeSpent  Int      @default(0)
   rolloverTokens Int      @default(0)
+  createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   transactions TokenTransaction[]
@@ -123,7 +139,7 @@ model TokenBalance {
 model TokenTransaction {
   id          String               @id @default(cuid())
   balanceId   String
-  balance     TokenBalance         @relation(fields: [balanceId], references: [id])
+  balance     TokenBalance         @relation(fields: [balanceId], references: [id], onDelete: Cascade)
   type        TokenTransactionType
   amount      Int
   description String
@@ -132,6 +148,7 @@ model TokenTransaction {
 
   @@index([balanceId])
   @@index([createdAt])
+  @@index([type])
 }
 
 enum TokenTransactionType {
@@ -141,6 +158,7 @@ enum TokenTransactionType {
   BONUS
   ROLLOVER
   SUBSCRIPTION_GRANT
+  EXPIRY
 }
 
 // ─── Charity ───────────────────────────────────────────────────────────────
@@ -148,7 +166,7 @@ enum TokenTransactionType {
 model CharityDonation {
   id               String         @id @default(cuid())
   userId           String
-  user             User           @relation(fields: [userId], references: [id])
+  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
   stripeTransferId String?        @unique
   charitySlug      String
   charityName      String
@@ -160,6 +178,7 @@ model CharityDonation {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([status])
 }
 
 enum DonationStatus {
@@ -167,6 +186,7 @@ enum DonationStatus {
   PROCESSING
   COMPLETED
   FAILED
+  REFUNDED
 }
 
 // ─── Audit Logging ─────────────────────────────────────────────────────────
@@ -174,7 +194,7 @@ enum DonationStatus {
 model AuditLog {
   id         String   @id @default(cuid())
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action     String
   resource   String
   resourceId String?
@@ -194,11 +214,12 @@ model AuditLog {
 model ApiUsageRecord {
   id         String   @id @default(cuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider   String
   operation  String
   tokensUsed Int      @default(0)
-  costUsd    Float    @default(0)
+  // Stored as micro-dollars (Int) to avoid float precision issues
+  costUsdMicro Int    @default(0)
   durationMs Int?
   success    Boolean  @default(true)
   metadata   Json?
@@ -207,6 +228,7 @@ model ApiUsageRecord {
   @@index([userId])
   @@index([provider])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 // ─── Cost Tracking (aggregated daily) ──────────────────────────────────────
@@ -215,10 +237,12 @@ model DailyCostSnapshot {
   id            String   @id @default(cuid())
   date          DateTime @unique @db.Date
   providerCosts Json
-  totalCostUsd  Float
-  totalRevenue  Float
-  margin        Float
+  // Stored as micro-dollars (Int) to avoid float precision issues
+  totalCostUsdMicro  Int
+  totalRevenueMicro  Int
+  marginMicro        Int
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([date])
 }
@@ -232,6 +256,7 @@ enum TemplateCategory {
   SCRIPT
   ASSET
   SOUND
+  PLUGIN
 }
 
 enum TemplateStatus {
@@ -240,13 +265,15 @@ enum TemplateStatus {
   PUBLISHED
   REJECTED
   ARCHIVED
+  TAKEDOWN
 }
 
 model Template {
   id              String           @id @default(cuid())
   creatorId       String
-  creator         User             @relation("CreatedTemplates", fields: [creatorId], references: [id])
+  creator         User             @relation("CreatedTemplates", fields: [creatorId], references: [id], onDelete: Restrict)
   title           String
+  slug            String           @unique
   description     String           @db.Text
   category        TemplateCategory
   status          TemplateStatus   @default(DRAFT)
@@ -257,8 +284,10 @@ model Template {
   downloads       Int              @default(0)
   averageRating   Float            @default(0)
   reviewCount     Int              @default(0)
-  stripeProductId String?
-  stripePriceId   String?
+  stripeProductId String?          @unique
+  stripePriceId   String?          @unique
+  featuredAt      DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -272,6 +301,9 @@ model Template {
   @@index([createdAt])
   @@index([averageRating])
   @@index([downloads])
+  @@index([slug])
+  @@index([deletedAt])
+  @@index([status, category])
 }
 
 model TemplateScreenshot {
@@ -287,66 +319,73 @@ model TemplateScreenshot {
 }
 
 model TemplateReview {
-  id              String    @id @default(cuid())
+  id              String           @id @default(cuid())
   templateId      String
-  template        Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  template        Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
   reviewerId      String
-  reviewer        User      @relation("AuthoredReviews", fields: [reviewerId], references: [id])
-  purchaseId      String    @unique
-  purchase        TemplatePurchase @relation(fields: [purchaseId], references: [id])
+  reviewer        User             @relation("AuthoredReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  purchaseId      String           @unique
+  purchase        TemplatePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   rating          Int
-  body            String?   @db.Text
-  creatorResponse String?   @db.Text
+  body            String?          @db.Text
+  creatorResponse String?          @db.Text
   respondedAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([templateId])
   @@index([reviewerId])
+  @@index([rating])
 }
 
 model TemplatePurchase {
-  id                    String   @id @default(cuid())
+  id                    String       @id @default(cuid())
   templateId            String
-  template              Template @relation(fields: [templateId], references: [id])
+  template              Template     @relation(fields: [templateId], references: [id], onDelete: Restrict)
   buyerId               String
-  buyer                 User     @relation("BoughtTemplates", fields: [buyerId], references: [id])
-  stripePaymentIntentId String?  @unique
+  buyer                 User         @relation("BoughtTemplates", fields: [buyerId], references: [id], onDelete: Restrict)
+  stripePaymentIntentId String?      @unique
   amountCents           Int
   platformFeeCents      Int
   creatorPayoutCents    Int
-  stripeTransferId      String?  @unique
+  stripeTransferId      String?      @unique
   payoutStatus          PayoutStatus @default(PENDING)
-  createdAt             DateTime @default(now())
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
 
   review TemplateReview?
 
+  @@unique([templateId, buyerId])
   @@index([templateId])
   @@index([buyerId])
   @@index([createdAt])
+  @@index([payoutStatus])
 }
 
 enum PayoutStatus {
   PENDING
+  PROCESSING
   PAID
   FAILED
+  REFUNDED
 }
 
 model CreatorAccount {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stripeAccountId       String   @unique
-  chargesEnabled        Boolean  @default(false)
-  payoutsEnabled        Boolean  @default(false)
-  detailsSubmitted      Boolean  @default(false)
-  pendingBalanceCents   Int      @default(0)
-  totalEarnedCents      Int      @default(0)
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeAccountId       String    @unique
+  chargesEnabled        Boolean   @default(false)
+  payoutsEnabled        Boolean   @default(false)
+  detailsSubmitted      Boolean   @default(false)
+  pendingBalanceCents   Int       @default(0)
+  totalEarnedCents      Int       @default(0)
   lastPayoutAt          DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([userId])
+  @@index([stripeAccountId])
 }
 
 // ─── Gamification ───────────────────────────────────────────────────────────
@@ -366,6 +405,7 @@ model UserXP {
 
   @@index([userId])
   @@index([totalXp])
+  @@index([tier])
 }
 
 enum XPTier {
@@ -385,6 +425,8 @@ enum XPEventType {
   ACHIEVEMENT
   STREAK_BONUS
   DAILY_LOGIN
+  REVIEW_GIVEN
+  PURCHASE
 }
 
 model XPEvent {
@@ -398,6 +440,7 @@ model XPEvent {
 
   @@index([userXpId])
   @@index([createdAt])
+  @@index([type])
 }
 
 model Achievement {
@@ -410,6 +453,7 @@ model Achievement {
   xpReward    Int                 @default(0)
   condition   Json
   createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 
   userAchievements UserAchievement[]
 }
@@ -421,6 +465,7 @@ enum AchievementCategory {
   COMMUNITY
   QUALITY
   EXPLORATION
+  SOCIAL
 }
 
 model UserAchievement {
@@ -428,11 +473,12 @@ model UserAchievement {
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievementId String
-  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
   unlockedAt    DateTime    @default(now())
 
   @@unique([userId, achievementId])
   @@index([userId])
+  @@index([achievementId])
 }
 
 model Streak {
@@ -458,6 +504,7 @@ model Streak {
 model GameScan {
   id            String     @id @default(cuid())
   userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   robloxUrl     String
   robloxPlaceId String?
   gameName      String?
@@ -471,6 +518,7 @@ model GameScan {
   @@index([userId])
   @@index([createdAt])
   @@index([robloxPlaceId])
+  @@index([status])
 }
 
 enum ScanStatus {
@@ -478,6 +526,7 @@ enum ScanStatus {
   PROCESSING
   COMPLETE
   FAILED
+  CANCELLED
 }
 
 model GameGenome {
@@ -524,6 +573,7 @@ model Team {
   description String?
   slug        String   @unique
   ownerId     String
+  deletedAt   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -534,6 +584,7 @@ model Team {
 
   @@index([ownerId])
   @@index([slug])
+  @@index([deletedAt])
 }
 
 model TeamMember {
@@ -541,6 +592,7 @@ model TeamMember {
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   role      TeamRole @default(VIEWER)
   joinedAt  DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -564,6 +616,7 @@ model TeamInvite {
   teamId     String
   team       Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   invitedBy  String
+  inviter    User         @relation("SentInvites", fields: [invitedBy], references: [id], onDelete: Cascade)
   email      String?
   token      String       @unique @default(cuid())
   role       TeamRole     @default(EDITOR)
@@ -575,6 +628,7 @@ model TeamInvite {
   @@index([teamId])
   @@index([token])
   @@index([email])
+  @@index([status])
 }
 
 enum InviteStatus {
@@ -589,6 +643,7 @@ model TeamActivity {
   teamId      String
   team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   userId      String
+  actor       User     @relation("TeamActivities", fields: [userId], references: [id], onDelete: Cascade)
   action      String
   description String
   metadata    Json?
@@ -603,14 +658,13 @@ model ZoneLock {
   id           String     @id @default(cuid())
   teamMemberId String
   member       TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
-  zoneId       String
+  zoneId       String     @unique
   zoneName     String?
   lockedAt     DateTime   @default(now())
   expiresAt    DateTime
 
-  @@unique([zoneId])
   @@index([teamMemberId])
-  @@index([zoneId])
+  @@index([expiresAt])
 }
 
 model ProjectVersion {
@@ -619,6 +673,7 @@ model ProjectVersion {
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   projectId String
   userId    String
+  author    User     @relation("ProjectVersions", fields: [userId], references: [id], onDelete: Cascade)
   version   Int
   message   String?
   snapshot  Json
@@ -627,6 +682,7 @@ model ProjectVersion {
   diffs   VersionDiff[] @relation("FromVersion")
   diffsTo VersionDiff[] @relation("ToVersion")
 
+  @@unique([teamId, projectId, version])
   @@index([teamId])
   @@index([projectId])
   @@index([createdAt])
@@ -635,9 +691,9 @@ model ProjectVersion {
 model VersionDiff {
   id            String         @id @default(cuid())
   fromVersionId String
-  fromVersion   ProjectVersion @relation("FromVersion", fields: [fromVersionId], references: [id])
+  fromVersion   ProjectVersion @relation("FromVersion", fields: [fromVersionId], references: [id], onDelete: Cascade)
   toVersionId   String
-  toVersion     ProjectVersion @relation("ToVersion", fields: [toVersionId], references: [id])
+  toVersion     ProjectVersion @relation("ToVersion", fields: [toVersionId], references: [id], onDelete: Cascade)
   diff          Json
   summary       String?
   createdAt     DateTime       @default(now())
@@ -657,6 +713,7 @@ model ApiKey {
   prefix     String
   scopes     String[]
   tier       ApiKeyTier @default(FREE)
+  revokedAt  DateTime?
   lastUsedAt DateTime?
   expiresAt  DateTime?
   createdAt  DateTime   @default(now())
@@ -664,6 +721,7 @@ model ApiKey {
 
   @@index([userId])
   @@index([prefix])
+  @@index([revokedAt])
 }
 
 enum ApiKeyTier {
@@ -689,6 +747,7 @@ model WebhookEndpoint {
   deliveries WebhookDelivery[]
 
   @@index([userId])
+  @@index([active])
 }
 
 model WebhookDelivery {
@@ -701,10 +760,12 @@ model WebhookDelivery {
   responseBody String?
   attempt      Int             @default(1)
   success      Boolean         @default(false)
+  nextRetryAt  DateTime?
   createdAt    DateTime        @default(now())
 
   @@index([endpointId])
   @@index([createdAt])
+  @@index([success, nextRetryAt])
 }
 
 // ─── Referrals ──────────────────────────────────────────────────────────────
@@ -712,23 +773,27 @@ model WebhookDelivery {
 model Referral {
   id          String         @id @default(cuid())
   referrerId  String
-  referrer    User           @relation("ReferrerReferrals", fields: [referrerId], references: [id])
+  referrer    User           @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
   referredId  String?
-  referred    User?          @relation("ReferredReferrals", fields: [referredId], references: [id])
+  referred    User?          @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: SetNull)
   code        String         @unique
   status      ReferralStatus @default(PENDING)
-  commission  Float          @default(0)
+  // Stored as cents (Int) to avoid float precision issues
+  commissionCents Int        @default(0)
   createdAt   DateTime       @default(now())
   convertedAt DateTime?
 
   @@index([referrerId])
   @@index([code])
+  @@index([referredId])
 }
 
 enum ReferralStatus {
   PENDING
   CONVERTED
   PAID
+  EXPIRED
+  INVALID
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────
@@ -741,6 +806,7 @@ model Notification {
   title     String
   body      String
   read      Boolean          @default(false)
+  readAt    DateTime?
   actionUrl String?
   createdAt DateTime         @default(now())
 
@@ -753,8 +819,11 @@ enum NotificationType {
   BUILD_COMPLETE
   BUILD_FAILED
   TOKEN_LOW
+  TOKEN_DEPLETED
   SALE
   REFERRAL_EARNED
+  TEAM_INVITE
+  ACHIEVEMENT_UNLOCKED
   SYSTEM
   WEEKLY_DIGEST
 }
@@ -764,7 +833,7 @@ enum NotificationType {
 model CreatorEarning {
   id           String        @id @default(cuid())
   userId       String
-  user         User          @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   templateId   String?
   templateName String?
   amountCents  Int
@@ -773,10 +842,12 @@ model CreatorEarning {
   status       EarningStatus @default(PENDING)
   paidAt       DateTime?
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   @@index([userId])
   @@index([createdAt])
   @@index([userId, status])
+  @@index([status])
 }
 
 enum EarningStatus {
@@ -784,4 +855,5 @@ enum EarningStatus {
   PROCESSING
   PAID
   FAILED
+  REFUNDED
 }

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { hashToken } from '@/lib/tokens'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return NextResponse.redirect(new URL('/error?reason=missing-token', req.url))
 
-  const user = await db.user.findUnique({ where: { parentConsentToken: token } })
+  const tokenHash = hashToken(token)
+  const user = await db.user.findUnique({ where: { parentConsentToken: tokenHash } })
 
   if (!user || !user.parentConsentTokenExp) {
     return NextResponse.redirect(new URL('/error?reason=invalid-token', req.url))

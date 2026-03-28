@@ -161,13 +161,17 @@ export default function LandingPage() {
           </div>
 
           {/* Demo video placeholder */}
-          <div id="demo" className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 bg-[#0D1231] aspect-video flex items-center justify-center">
+          <div id="demo" className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 bg-[#0D1231] aspect-video flex items-center justify-center" role="region" aria-label="Product demo video">
             <div className="text-center">
-              <div className="w-20 h-20 rounded-full bg-[#FFB81C]/20 border-2 border-[#FFB81C] flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-[#FFB81C]/30 transition-colors">
-                <svg className="w-8 h-8 text-[#FFB81C] ml-1" fill="currentColor" viewBox="0 0 20 20">
+              <button
+                className="w-20 h-20 rounded-full bg-[#FFB81C]/20 border-2 border-[#FFB81C] flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-[#FFB81C]/30 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
+                aria-label="Play demo video (coming soon)"
+                disabled
+              >
+                <svg className="w-8 h-8 text-[#FFB81C] ml-1" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                 </svg>
-              </div>
+              </button>
               <p className="text-gray-400 text-sm">Demo video — coming soon</p>
               <p className="text-gray-600 text-xs mt-1">See voice-to-game in under 60 seconds</p>
             </div>
@@ -380,28 +384,38 @@ export default function LandingPage() {
             </h2>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3" role="list">
             {FAQS.map((faq, i) => (
               <div
                 key={i}
                 className="bg-[#0A0E27] border border-white/10 rounded-xl overflow-hidden"
+                role="listitem"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full text-left px-6 py-5 flex items-center justify-between gap-4"
+                  className="w-full text-left px-6 py-5 flex items-center justify-between gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C]"
+                  aria-expanded={openFaq === i}
+                  aria-controls={`faq-answer-${i}`}
+                  id={`faq-question-${i}`}
                 >
                   <span className="text-white font-medium">{faq.q}</span>
                   <svg
-                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}
+                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${openFaq === i ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
+                    aria-hidden="true"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {openFaq === i && (
-                  <div className="px-6 pb-5 text-gray-400 text-sm leading-relaxed border-t border-white/5">
+                  <div
+                    id={`faq-answer-${i}`}
+                    role="region"
+                    aria-labelledby={`faq-question-${i}`}
+                    className="px-6 pb-5 text-gray-400 text-sm leading-relaxed border-t border-white/5"
+                  >
                     <div className="pt-4">{faq.a}</div>
                   </div>
                 )}
