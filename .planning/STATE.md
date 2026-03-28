@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Simple input → professional output. Speak or upload → get a playable Roblox game element in seconds.
-**Current focus:** Phase 1 — Foundation
+**Current focus:** Phase 1 complete — Ready for Phase 2
 
 ## Current Position
 
 Phase: 1 of 8 (Foundation)
-Plan: B completed (2 of 4 in Phase 1)
-Status: Executing Phase 1
-Last activity: 2026-03-28 — Plan B executed: Clerk auth middleware, COPPA age gate, parental consent flow, Clerk webhook user sync, Hono requireAuth middleware
+Plan: D completed (4 of 4 in Phase 1)
+Status: Phase 1 COMPLETE — all 4 plans executed
+Last activity: 2026-03-28 — Plan D executed: Sentry, PostHog, security middleware, Deno sandbox, cost tracking
 
-Progress: [##░░░░░░░░] 6%
+Progress: [##░░░░░░░░] 12%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: ~22 minutes
-- Total execution time: 0.7 hours
+- Total plans completed: 4 (Phase 1: A, B, C, D)
+- Average duration: ~23 minutes
+- Total execution time: ~1.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 1 (Foundation) | 2 complete | ~43 min | ~22 min |
+| Phase 1 (Foundation) | 4 complete | ~90 min | ~23 min |
 
 **Recent Trend:**
-- Last 5 plans: [01-A: 18min, 01-B: 25min]
-- Trend: On track
+- Last 5 plans: [01-A: 18min, 01-B: 25min, 01-C: ~22min, 01-D: ~25min]
+- Trend: Consistent, on track for April 8 deadline
 
 *Updated after each plan completion*
 
@@ -56,12 +56,20 @@ Recent decisions affecting current work:
 - [01-B]: Consent token stored plaintext (not hashed) — 256-bit random + unique constraint + 48hr TTL sufficient
 - [01-B]: Soft delete on user.deleted — preserves audit trail for COPPA 5-year retention
 - [01-B]: Under-13 dashboard blocking deferred — middleware can't do DB lookups at edge; guard enforced at API layer
+- [01-D]: SENTRY_DSN (backend) separate from NEXT_PUBLIC_SENTRY_DSN (frontend) — allows different Sentry projects or shared DSN
+- [01-D]: Deno sandbox uses spawn() not worker_threads — OS-level process isolation, not just V8
+- [01-D]: Vercel cron secured by x-cron-secret header — simpler than IP range validation
+- [01-D]: costTrackerRoutes are public (no auth) for Phase 1 — locked in Phase 8 admin panel
+- [01-D]: zValidator + Zod 3.x requires (schema as any) cast — typed at c.req.valid() instead
 
 ### Pending Todos
 
 - Wire CLERK_WEBHOOK_SECRET in .env.local and register webhook at dashboard.clerk.com
 - Wire RESEND_API_KEY in .env.local for parental consent emails
 - Add Clerk publicMetadata sync (isUnder13, parentConsented) for edge-compatible dashboard guard
+- Set NEXT_PUBLIC_SENTRY_DSN and SENTRY_DSN in .env.local to enable error tracking
+- Set NEXT_PUBLIC_POSTHOG_KEY in .env.local to enable analytics
+- Set CRON_SECRET in .env.local; register Vercel cron for cost-snapshot endpoint
 
 ### Blockers/Concerns
 
@@ -71,9 +79,11 @@ Recent decisions affecting current work:
 - [General]: Break-even at ~50 Starter users ($450 revenue after charity) — monitor closely at Phase 4 launch
 - [Phase 1 stubs]: `scripts/backup.sh` requires AWS infra not yet provisioned
 - [Phase 1 stubs]: Under-13 users can access /dashboard without parentConsentAt — full guard needs Clerk publicMetadata sync
+- [Phase 1 stubs]: `cost-snapshot/route.ts` totalRevenue stubbed at 0 — wire to Stripe in Phase 3
+- [Phase 3]: recordApiUsage() pattern established — must be called after every AI API call in Phase 3
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Phase 1 Plan B complete. 3 commits: ea07009, 2096945, d7f3521. Summary at .planning/phases/01-foundation/01-B-SUMMARY.md
+Stopped at: Phase 1 Plan D complete. 3 commits: 779575f, c7727dc, 6d8ce19. Summary at .planning/phases/01-foundation/01-D-SUMMARY.md
 Resume file: None
