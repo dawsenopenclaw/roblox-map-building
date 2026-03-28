@@ -440,3 +440,196 @@ model Streak {
 
   @@index([userId])
 }
+
+// ─── Game DNA Scanner ──────────────────────────────────────────────────────
+
+model GameScan {
+  id            String     @id @default(cuid())
+  userId        String
+  robloxUrl     String
+  robloxPlaceId String?
+  gameName      String?
+  status        ScanStatus @default(PENDING)
+  errorMsg      String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  genome GameGenome?
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([robloxPlaceId])
+}
+
+enum ScanStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+model GameGenome {
+  id                String   @id @default(cuid())
+  scanId            String   @unique
+  scan              GameScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  // 12-variable genome
+  gameType          String
+  targetAge         String
+  sessionLength     String
+  monetizationModel String
+  progressionPace   String
+  zoneDensity       String
+  artStyle          String
+  retentionDriver   String
+  estimatedDau      String
+  engagementLoop    String
+  updateCadence     String
+  communitySize     String
+
+  // Raw scores 0-100 for radar chart
+  scores            Json
+
+  // Genre averages for comparison
+  genreAverages     Json?
+
+  // Analysis metadata
+  rawRobloxData     Json?
+  visionAnalysis    Json?
+  recommendations   Json
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([scanId])
+}
+
+// ─── Team Collaboration ────────────────────────────────────────────────────
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  slug        String   @unique
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members    TeamMember[]
+  invites    TeamInvite[]
+  versions   ProjectVersion[]
+  activities TeamActivity[]
+
+  @@index([ownerId])
+  @@index([slug])
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  role      TeamRole @default(VIEWER)
+  joinedAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lockedZones ZoneLock[]
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model TeamInvite {
+  id         String       @id @default(cuid())
+  teamId     String
+  team       Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy  String
+  email      String?
+  token      String       @unique @default(cuid())
+  role       TeamRole     @default(EDITOR)
+  status     InviteStatus @default(PENDING)
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([teamId])
+  @@index([token])
+  @@index([email])
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model TeamActivity {
+  id          String   @id @default(cuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId      String
+  action      String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([teamId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ZoneLock {
+  id           String     @id @default(cuid())
+  teamMemberId String
+  member       TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  zoneId       String
+  zoneName     String?
+  lockedAt     DateTime   @default(now())
+  expiresAt    DateTime
+
+  @@unique([zoneId])
+  @@index([teamMemberId])
+  @@index([zoneId])
+}
+
+model ProjectVersion {
+  id        String   @id @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  projectId String
+  userId    String
+  version   Int
+  message   String?
+  snapshot  Json
+  createdAt DateTime @default(now())
+
+  diffs   VersionDiff[] @relation("FromVersion")
+  diffsTo VersionDiff[] @relation("ToVersion")
+
+  @@index([teamId])
+  @@index([projectId])
+  @@index([createdAt])
+}
+
+model VersionDiff {
+  id            String         @id @default(cuid())
+  fromVersionId String
+  fromVersion   ProjectVersion @relation("FromVersion", fields: [fromVersionId], references: [id])
+  toVersionId   String
+  toVersion     ProjectVersion @relation("ToVersion", fields: [toVersionId], references: [id])
+  diff          Json
+  summary       String?
+  createdAt     DateTime       @default(now())
+
+  @@index([fromVersionId])
+  @@index([toVersionId])
+}
