@@ -5,7 +5,8 @@ import { db } from '../lib/db'
 export const tokenRoutes = new Hono()
 
 tokenRoutes.get('/balance', requireAuth, async (c) => {
-  const clerkId = c.get('clerkId')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const clerkId = (c as any).get('clerkId') as string
   const user = await db.user.findUnique({
     where: { clerkId },
     include: {
