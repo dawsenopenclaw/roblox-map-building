@@ -7,6 +7,8 @@ import { serve } from '@hono/node-server'
 import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
 import { healthRoute } from './routes/health'
+import { tokenRoutes } from './routes/tokens'
+import { sandboxRoutes } from './routes/sandbox'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 
 const app = new Hono()
@@ -18,6 +20,8 @@ app.use('/api/*', apiRateLimit)
 app.use('/api/*', auditMiddleware)
 
 app.route('/health', healthRoute)
+app.route('/api/tokens', tokenRoutes)
+app.route('/api/sandbox', sandboxRoutes)
 
 app.onError((err, c) => {
   console.error(err)
