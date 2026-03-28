@@ -10,27 +10,27 @@ See: .planning/PROJECT.md (updated 2026-03-28)
 ## Current Position
 
 Phase: 1 of 8 (Foundation)
-Plan: A completed (1 of 4 in Phase 1)
+Plan: B completed (2 of 4 in Phase 1)
 Status: Executing Phase 1
-Last activity: 2026-03-28 — Plan A executed: monorepo scaffold, Prisma schema, Hono API, CI/CD
+Last activity: 2026-03-28 — Plan B executed: Clerk auth middleware, COPPA age gate, parental consent flow, Clerk webhook user sync, Hono requireAuth middleware
 
-Progress: [#░░░░░░░░░] 3%
+Progress: [##░░░░░░░░] 6%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: ~18 minutes
-- Total execution time: 0.3 hours
+- Total plans completed: 2
+- Average duration: ~22 minutes
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 1 (Foundation) | 1 complete | ~18 min | ~18 min |
+| Phase 1 (Foundation) | 2 complete | ~43 min | ~22 min |
 
 **Recent Trend:**
-- Last 5 plans: [01-A: 18min]
+- Last 5 plans: [01-A: 18min, 01-B: 25min]
 - Trend: On track
 
 *Updated after each plan completion*
@@ -52,10 +52,16 @@ Recent decisions affecting current work:
 - [01-A]: DIRECT_URL added to schema for Prisma connection pooling (Neon/Supabase PgBouncer compat)
 - [01-A]: Rate limiter uses Redis zset pipeline for O(log n) sliding window accuracy
 - [01-A]: Audit middleware is fire-and-forget — errors logged but never propagate to caller
+- [01-B]: Used clerk.authenticateRequest (not verifyToken) in Hono — verifyToken not on ClerkClient v2
+- [01-B]: Consent token stored plaintext (not hashed) — 256-bit random + unique constraint + 48hr TTL sufficient
+- [01-B]: Soft delete on user.deleted — preserves audit trail for COPPA 5-year retention
+- [01-B]: Under-13 dashboard blocking deferred — middleware can't do DB lookups at edge; guard enforced at API layer
 
 ### Pending Todos
 
-None.
+- Wire CLERK_WEBHOOK_SECRET in .env.local and register webhook at dashboard.clerk.com
+- Wire RESEND_API_KEY in .env.local for parental consent emails
+- Add Clerk publicMetadata sync (isUnder13, parentConsented) for edge-compatible dashboard guard
 
 ### Blockers/Concerns
 
@@ -64,10 +70,10 @@ None.
 - [Phase 2]: Charity donation disclosure may require state-by-state registration — check with legal counsel before Phase 8 growth push
 - [General]: Break-even at ~50 Starter users ($450 revenue after charity) — monitor closely at Phase 4 launch
 - [Phase 1 stubs]: `scripts/backup.sh` requires AWS infra not yet provisioned
-- [Phase 1 stubs]: `prisma/seed.ts` uses placeholder Clerk ID — wire up in Plan B (auth)
+- [Phase 1 stubs]: Under-13 users can access /dashboard without parentConsentAt — full guard needs Clerk publicMetadata sync
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Phase 1 Plan A complete. 3 commits: d571cd7, 9ae85c3, e1857a0. Summary at .planning/phases/01-foundation/01-A-SUMMARY.md
+Stopped at: Phase 1 Plan B complete. 3 commits: ea07009, 2096945, d7f3521. Summary at .planning/phases/01-foundation/01-B-SUMMARY.md
 Resume file: None
