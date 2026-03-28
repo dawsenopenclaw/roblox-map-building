@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-28)
 
 **Core value:** Simple input → professional output. Speak or upload → get a playable Roblox game element in seconds.
-**Current focus:** Phase 1 complete — Ready for Phase 2
+**Current focus:** Phase 3 AI Engine complete — Ready for Phase 4
 
 ## Current Position
 
-Phase: 1 of 8 (Foundation)
-Plan: D completed (4 of 4 in Phase 1)
-Status: Phase 1 COMPLETE — all 4 plans executed
-Last activity: 2026-03-28 — Plan D executed: Sentry, PostHog, security middleware, Deno sandbox, cost tracking
+Phase: 3 of 8 (AI Engine)
+Plan: 03 completed (1 of 1 in Phase 3)
+Status: Phase 3 COMPLETE — AI engine fully implemented
+Last activity: 2026-03-28 — Plan 03 executed: AI providers, circuit breakers, caching, voice/image/generate routes
 
-Progress: [##░░░░░░░░] 12%
+Progress: [###░░░░░░░] 37%
 
 ## Performance Metrics
 
@@ -28,9 +28,10 @@ Progress: [##░░░░░░░░] 12%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | Phase 1 (Foundation) | 4 complete | ~90 min | ~23 min |
+| Phase 3 (AI Engine) | 1 complete | ~25 min | ~25 min |
 
 **Recent Trend:**
-- Last 5 plans: [01-A: 18min, 01-B: 25min, 01-C: ~22min, 01-D: ~25min]
+- Last 5 plans: [01-A: 18min, 01-B: 25min, 01-C: ~22min, 01-D: ~25min, 03: ~25min]
 - Trend: Consistent, on track for April 8 deadline
 
 *Updated after each plan completion*
@@ -81,9 +82,12 @@ Recent decisions affecting current work:
 - [Phase 1 stubs]: Under-13 users can access /dashboard without parentConsentAt — full guard needs Clerk publicMetadata sync
 - [Phase 1 stubs]: `cost-snapshot/route.ts` totalRevenue stubbed at 0 — wire to Stripe in Phase 3
 - [Phase 3]: recordApiUsage() pattern established — must be called after every AI API call in Phase 3
+- [03]: Two-phase generate endpoint (estimate→confirm) prevents accidental token spend on expensive pipelines
+- [03]: Circuit breakers are in-process singletons — state resets on deploy; acceptable tradeoff vs Redis-backed state
+- [03]: spendTokens re-implemented inline in routes — avoids cross-package TS path resolution complexity
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Phase 1 Plan D complete. 3 commits: 779575f, c7727dc, 6d8ce19. Summary at .planning/phases/01-foundation/01-D-SUMMARY.md
+Stopped at: Phase 3 Plan 03 complete. 2 commits: 71db71a, 2b18d7e. Summary at .planning/phases/03-ai-engine/03-SUMMARY.md
 Resume file: None
