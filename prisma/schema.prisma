@@ -34,6 +34,17 @@ model User {
   auditLogs     AuditLog[]
   apiUsage      ApiUsageRecord[]
 
+  // Marketplace
+  createdTemplates  Template[]           @relation("CreatedTemplates")
+  boughtTemplates   TemplatePurchase[]   @relation("BoughtTemplates")
+  authoredReviews   TemplateReview[]     @relation("AuthoredReviews")
+  creatorAccount    CreatorAccount?
+
+  // Gamification
+  userXp           UserXP?
+  userAchievements UserAchievement[]
+  streak           Streak?
+
   @@index([clerkId])
   @@index([email])
 }
@@ -198,4 +209,234 @@ model DailyCostSnapshot {
   createdAt     DateTime @default(now())
 
   @@index([date])
+}
+
+// ─── Marketplace ────────────────────────────────────────────────────────────
+
+enum TemplateCategory {
+  GAME_TEMPLATE
+  MAP_TEMPLATE
+  UI_KIT
+  SCRIPT
+  ASSET
+  SOUND
+}
+
+enum TemplateStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+model Template {
+  id              String           @id @default(cuid())
+  creatorId       String
+  creator         User             @relation("CreatedTemplates", fields: [creatorId], references: [id])
+  title           String
+  description     String           @db.Text
+  category        TemplateCategory
+  status          TemplateStatus   @default(DRAFT)
+  priceCents      Int              @default(0)
+  rbxmFileUrl     String?
+  thumbnailUrl    String?
+  tags            String[]
+  downloads       Int              @default(0)
+  averageRating   Float            @default(0)
+  reviewCount     Int              @default(0)
+  stripeProductId String?
+  stripePriceId   String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  screenshots TemplateScreenshot[]
+  reviews     TemplateReview[]
+  purchases   TemplatePurchase[]
+
+  @@index([creatorId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+  @@index([averageRating])
+  @@index([downloads])
+}
+
+model TemplateScreenshot {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  url        String
+  altText    String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([templateId])
+}
+
+model TemplateReview {
+  id              String    @id @default(cuid())
+  templateId      String
+  template        Template  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  reviewerId      String
+  reviewer        User      @relation("AuthoredReviews", fields: [reviewerId], references: [id])
+  purchaseId      String    @unique
+  purchase        TemplatePurchase @relation(fields: [purchaseId], references: [id])
+  rating          Int
+  body            String?   @db.Text
+  creatorResponse String?   @db.Text
+  respondedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([templateId])
+  @@index([reviewerId])
+}
+
+model TemplatePurchase {
+  id                    String   @id @default(cuid())
+  templateId            String
+  template              Template @relation(fields: [templateId], references: [id])
+  buyerId               String
+  buyer                 User     @relation("BoughtTemplates", fields: [buyerId], references: [id])
+  stripePaymentIntentId String?  @unique
+  amountCents           Int
+  platformFeeCents      Int
+  creatorPayoutCents    Int
+  stripeTransferId      String?  @unique
+  payoutStatus          PayoutStatus @default(PENDING)
+  createdAt             DateTime @default(now())
+
+  review TemplateReview?
+
+  @@index([templateId])
+  @@index([buyerId])
+  @@index([createdAt])
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model CreatorAccount {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeAccountId       String   @unique
+  chargesEnabled        Boolean  @default(false)
+  payoutsEnabled        Boolean  @default(false)
+  detailsSubmitted      Boolean  @default(false)
+  pendingBalanceCents   Int      @default(0)
+  totalEarnedCents      Int      @default(0)
+  lastPayoutAt          DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Gamification ───────────────────────────────────────────────────────────
+
+model UserXP {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalXp       Int      @default(0)
+  tier          XPTier   @default(NOVICE)
+  dailyXpToday  Int      @default(0)
+  dailyXpDate   DateTime @default(now()) @db.Date
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  xpEvents XPEvent[]
+
+  @@index([userId])
+  @@index([totalXp])
+}
+
+enum XPTier {
+  NOVICE
+  APPRENTICE
+  BUILDER
+  MASTER
+  LEGEND
+  MYTHIC
+}
+
+enum XPEventType {
+  BUILD
+  PUBLISH
+  SALE
+  REFERRAL
+  ACHIEVEMENT
+  STREAK_BONUS
+  DAILY_LOGIN
+}
+
+model XPEvent {
+  id        String      @id @default(cuid())
+  userXpId  String
+  userXp    UserXP      @relation(fields: [userXpId], references: [id], onDelete: Cascade)
+  type      XPEventType
+  amount    Int
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  @@index([userXpId])
+  @@index([createdAt])
+}
+
+model Achievement {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  name        String
+  description String
+  icon        String
+  category    AchievementCategory
+  xpReward    Int                 @default(0)
+  condition   Json
+  createdAt   DateTime            @default(now())
+
+  userAchievements UserAchievement[]
+}
+
+enum AchievementCategory {
+  FIRST_STEPS
+  VELOCITY
+  MARKETPLACE
+  COMMUNITY
+  QUALITY
+  EXPLORATION
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+}
+
+model Streak {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginStreak         Int      @default(0)
+  buildStreak         Int      @default(0)
+  longestLoginStreak  Int      @default(0)
+  longestBuildStreak  Int      @default(0)
+  lastLoginDate       DateTime @default(now()) @db.Date
+  lastBuildDate       DateTime @default(now()) @db.Date
+  totalLogins         Int      @default(0)
+  totalBuilds         Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
 }
