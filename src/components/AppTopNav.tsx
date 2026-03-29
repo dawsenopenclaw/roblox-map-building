@@ -2,10 +2,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { ShortcutHint } from '@/components/ShortcutHint'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
-export function AppTopNav({ onMenuOpen }: { onMenuOpen: () => void }) {
+interface AppTopNavProps {
+  onMenuOpen: () => void
+  /** Opens the command palette (Cmd+K) */
+  onCommandPalette?: () => void
+}
+
+export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const { data } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -23,21 +30,34 @@ export function AppTopNav({ onMenuOpen }: { onMenuOpen: () => void }) {
         </svg>
       </button>
 
-      {/* Search */}
+      {/* Search — clicking opens command palette */}
       <div className="flex-1 max-w-sm hidden sm:block">
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button
+          onClick={onCommandPalette}
+          className="w-full flex items-center gap-2 bg-[#0D1231] border border-white/10 rounded-xl pl-3 pr-3 py-2 text-sm text-gray-500 hover:border-[#FFB81C]/40 hover:text-gray-400 transition-colors text-left"
+          aria-label="Open command palette"
+        >
+          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <input
-            type="search"
-            placeholder="Search projects..."
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
-          />
-        </div>
+          <span className="flex-1">Search everything…</span>
+          <ShortcutHint keys="⌘+K" />
+        </button>
       </div>
 
       <div className="flex-1 sm:hidden" />
+
+      {/* New Project button (desktop) */}
+      <Link
+        href="/projects"
+        className="hidden sm:inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#FFB81C]/90 text-[#0A0E27] text-sm font-semibold rounded-xl px-3 py-2 transition-colors flex-shrink-0"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        New
+        <ShortcutHint keys="⌘+N" className="opacity-70" />
+      </Link>
 
       {/* Token balance */}
       <div className="flex items-center gap-2 bg-[#0D1231] border border-white/10 rounded-xl px-3 py-2">
