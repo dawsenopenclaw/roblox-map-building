@@ -18,7 +18,7 @@
  */
 
 import { createContext, useEffect, useRef } from 'react'
-import type { UserContext } from '@/lib/analytics'
+import type { UserContext } from '@/lib/analytics-client'
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
