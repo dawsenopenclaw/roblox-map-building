@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { TrendingUp, TrendingDown, Users, DollarSign } from 'lucide-react'
 
 interface AnalyticsData {
-  mrrTrend: { date: string; mrrCents: number }[]
+  mrrCents: number
   churnRate: number
   ltv: number
   arpu: number
@@ -27,12 +27,35 @@ interface AnalyticsData {
     week4: number
     week8: number
   }[]
-  costVsRevenue: {
-    date: string
-    costMicro: number
-    revenueMicro: number
-    marginMicro: number
-  }[]
+  mrrHistory: { month: string; mrrCents: number }[]
+}
+
+const DEMO_DATA: AnalyticsData = {
+  mrrCents: 489500,
+  churnRate: 2.4,
+  ltv: 312,
+  arpu: 18.5,
+  funnel: { visits: 48200, signups: 3840, activated: 2100, paying: 312 },
+  topTemplates: [
+    { id: '1', title: 'Modern City Block', revenueCents: 124800, downloads: 412 },
+    { id: '2', title: 'Tropical Island Pack', revenueCents: 87300, downloads: 291 },
+    { id: '3', title: 'Medieval Castle Walls', revenueCents: 63500, downloads: 890 },
+    { id: '4', title: 'Sci-Fi Space Station', revenueCents: 44200, downloads: 148 },
+    { id: '5', title: 'Forest Terrain Bundle', revenueCents: 31000, downloads: 207 },
+  ],
+  cohortRetention: [
+    { cohort: 'Jan 2026', week1: 82, week2: 68, week4: 55, week8: 42 },
+    { cohort: 'Feb 2026', week1: 79, week2: 65, week4: 51, week8: 0 },
+    { cohort: 'Mar 2026', week1: 85, week2: 0, week4: 0, week8: 0 },
+  ],
+  mrrHistory: [
+    { month: 'Oct 2025', mrrCents: 210000 },
+    { month: 'Nov 2025', mrrCents: 268000 },
+    { month: 'Dec 2025', mrrCents: 315000 },
+    { month: 'Jan 2026', mrrCents: 382000 },
+    { month: 'Feb 2026', mrrCents: 441000 },
+    { month: 'Mar 2026', mrrCents: 489500 },
+  ],
 }
 
 function MetricCard({
@@ -40,13 +63,13 @@ function MetricCard({
   value,
   subtitle,
   icon,
-  trend,
+  trendUp,
 }: {
   title: string
   value: string
   subtitle?: string
   icon: React.ReactNode
-  trend?: { direction: 'up' | 'down'; value: string }
+  trendUp?: boolean
 }) {
   return (
     <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-5">
@@ -55,16 +78,12 @@ function MetricCard({
           <p className="text-xs text-[#6B7280] uppercase tracking-wider">{title}</p>
           <p className="text-2xl font-bold text-white mt-1">{value}</p>
           {subtitle && <p className="text-xs text-[#6B7280] mt-1">{subtitle}</p>}
-          {trend && (
+          {trendUp !== undefined && (
             <div
-              className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.direction === 'up' ? 'text-green-400' : 'text-red-400'}`}
+              className={`flex items-center gap-1 mt-2 text-xs font-medium ${trendUp ? 'text-green-400' : 'text-red-400'}`}
             >
-              {trend.direction === 'up' ? (
-                <TrendingUp className="w-3.5 h-3.5" />
-              ) : (
-                <TrendingDown className="w-3.5 h-3.5" />
-              )}
-              {trend.value} vs last month
+              {trendUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              {trendUp ? 'Up' : 'Down'} vs last month
             </div>
           )}
         </div>
@@ -76,24 +95,14 @@ function MetricCard({
   )
 }
 
-function FunnelBar({
-  label,
-  count,
-  total,
-  color,
-}: {
-  label: string
-  count: number
-  total: number
-  color: string
-}) {
+function ProgressBar({ label, count, total, color }: { label: string; count: number; total: number; color: string }) {
   const pct = total > 0 ? (count / total) * 100 : 0
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs">
         <span className="text-[#6B7280]">{label}</span>
         <span className="text-white font-medium">
-          {count.toLocaleString()} ({pct.toFixed(1)}%)
+          {count.toLocaleString()} <span className="text-[#6B7280]">({pct.toFixed(1)}%)</span>
         </span>
       </div>
       <div className="h-2 bg-[#111640] rounded-full overflow-hidden">
@@ -107,7 +116,8 @@ function FunnelBar({
 }
 
 export default function AdminAnalyticsPage() {
-  const [data, setData] = useState<AnalyticsData | null>(null)
+  const [data, setData] = useState<AnalyticsData>(DEMO_DATA)
+  const [isDemo, setIsDemo] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -116,8 +126,27 @@ export default function AdminAnalyticsPage() {
         if (!r.ok) throw new Error(`${r.status}`)
         return r.json()
       })
-      .then(setData)
-      .catch((e) => console.error('Analytics fetch failed:', e))
+      .then((raw) => {
+        // Normalize API shape into our local shape
+        setData({
+          mrrCents: raw.mrrTrend?.at(-1)?.mrrCents ?? raw.mrrCents ?? 0,
+          churnRate: raw.churnRate ?? 0,
+          ltv: raw.ltv ?? 0,
+          arpu: raw.arpu ?? 0,
+          funnel: raw.funnel ?? DEMO_DATA.funnel,
+          topTemplates: raw.topTemplates ?? [],
+          cohortRetention: raw.cohortRetention ?? [],
+          mrrHistory: (raw.mrrTrend ?? []).map((p: { date: string; mrrCents: number }) => ({
+            month: p.date,
+            mrrCents: p.mrrCents,
+          })),
+        })
+        setIsDemo(false)
+      })
+      .catch(() => {
+        setData(DEMO_DATA)
+        setIsDemo(true)
+      })
       .finally(() => setLoading(false))
   }, [])
 
@@ -129,48 +158,43 @@ export default function AdminAnalyticsPage() {
     )
   }
 
-  if (!data) {
-    return (
-      <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Business Analytics</h1>
-          <p className="text-[#6B7280] text-sm mt-1">Revenue, growth, and retention metrics</p>
-        </div>
-        <div className="flex flex-col items-center justify-center py-24 bg-[#0D1231] border border-[#1E2451] rounded-xl">
-          <p className="text-[#6B7280] text-sm">No analytics data available</p>
-          <p className="text-[#6B7280] text-xs mt-1 opacity-60">The analytics service may be unavailable</p>
-        </div>
-      </div>
-    )
-  }
-
-  const funnelTotal = data.funnel?.visits ?? 0
+  const maxMrr = Math.max(...data.mrrHistory.map((m) => m.mrrCents), 1)
 
   return (
     <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Business Analytics</h1>
-        <p className="text-[#6B7280] text-sm mt-1">Revenue, growth, and retention metrics</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Analytics</h1>
+          <p className="text-[#6B7280] text-sm mt-1">Revenue, growth, and retention metrics</p>
+        </div>
+        {isDemo && (
+          <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+            Demo data — DB unavailable
+          </span>
+        )}
       </div>
 
       {/* Key metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           title="MRR"
-          value={`$${((data.mrrTrend?.at(-1)?.mrrCents ?? 0) / 100).toLocaleString()}`}
+          value={`$${(data.mrrCents / 100).toLocaleString()}`}
           icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
+          trendUp={true}
         />
         <MetricCard
           title="Churn Rate"
           value={`${data.churnRate.toFixed(2)}%`}
           subtitle="Monthly"
           icon={<TrendingDown className="w-5 h-5 text-[#FFB81C]" />}
+          trendUp={false}
         />
         <MetricCard
           title="LTV"
           value={`$${data.ltv.toFixed(0)}`}
           subtitle="Avg lifetime value"
           icon={<Users className="w-5 h-5 text-[#FFB81C]" />}
+          trendUp={true}
         />
         <MetricCard
           title="ARPU"
@@ -181,92 +205,82 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* MRR Trend */}
+        {/* MRR bar chart */}
         <div className="xl:col-span-2 bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
             MRR Trend
           </h2>
-          {!data.mrrTrend?.length ? (
-            <div className="h-48 flex items-center justify-center">
-              <p className="text-[#6B7280] text-sm">No revenue data available</p>
+          {data.mrrHistory.length === 0 ? (
+            <div className="h-40 flex items-center justify-center text-[#6B7280] text-sm">
+              No data available
             </div>
           ) : (
             <>
-              <div className="h-48 flex items-end gap-1">
-                {data.mrrTrend.map((point, i) => {
-                  const maxMrr = Math.max(...data.mrrTrend.map((p) => p.mrrCents), 1)
+              <div className="flex items-end gap-2 h-40">
+                {data.mrrHistory.map((point, i) => {
                   const height = (point.mrrCents / maxMrr) * 100
                   return (
                     <div
                       key={i}
-                      className="flex-1 group relative"
-                      style={{ height: '100%', display: 'flex', alignItems: 'flex-end' }}
+                      className="flex-1 flex flex-col items-center justify-end"
+                      style={{ height: '100%' }}
                     >
                       <div
-                        className="w-full bg-[#FFB81C]/20 hover:bg-[#FFB81C]/40 rounded-t transition-colors cursor-pointer"
-                        style={{ height: `${Math.max(height, 2)}%` }}
-                        title={`${point.date}: $${(point.mrrCents / 100).toFixed(0)}`}
+                        className="w-full rounded-t bg-[#FFB81C]/25 hover:bg-[#FFB81C]/50 transition-colors cursor-pointer"
+                        style={{ height: `${Math.max(height, 4)}%` }}
+                        title={`${point.month}: $${(point.mrrCents / 100).toLocaleString()}`}
                       />
                     </div>
                   )
                 })}
               </div>
-              <div className="flex justify-between mt-2 text-xs text-[#6B7280]">
-                <span>{data.mrrTrend[0]?.date}</span>
-                <span>{data.mrrTrend.at(-1)?.date}</span>
+              <div className="flex justify-between mt-3">
+                {data.mrrHistory.map((point, i) => (
+                  <span key={i} className="text-xs text-[#6B7280] text-center flex-1">
+                    {point.month.split(' ')[0]}
+                  </span>
+                ))}
               </div>
             </>
           )}
         </div>
 
-        {/* Conversion Funnel */}
+        {/* Conversion funnel */}
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
             Conversion Funnel
           </h2>
           <div className="space-y-4">
-            <FunnelBar
-              label="Visits"
-              count={data.funnel.visits}
-              total={funnelTotal}
-              color="#FFB81C"
-            />
-            <FunnelBar
-              label="Sign Ups"
-              count={data.funnel.signups}
-              total={funnelTotal}
-              color="#E6A519"
-            />
-            <FunnelBar
-              label="Activated"
-              count={data.funnel.activated}
-              total={funnelTotal}
-              color="#c88d15"
-            />
-            <FunnelBar
-              label="Paying"
-              count={data.funnel.paying}
-              total={funnelTotal}
-              color="#a87210"
-            />
+            <ProgressBar label="Visits" count={data.funnel.visits} total={data.funnel.visits} color="#FFB81C" />
+            <ProgressBar label="Sign Ups" count={data.funnel.signups} total={data.funnel.visits} color="#E6A519" />
+            <ProgressBar label="Activated" count={data.funnel.activated} total={data.funnel.visits} color="#c88d15" />
+            <ProgressBar label="Paying" count={data.funnel.paying} total={data.funnel.visits} color="#a87210" />
+          </div>
+          <div className="mt-6 pt-4 border-t border-[#1E2451]">
+            <p className="text-xs text-[#6B7280]">
+              Paid conversion:{' '}
+              <span className="text-white font-semibold">
+                {data.funnel.visits > 0 ? ((data.funnel.paying / data.funnel.visits) * 100).toFixed(2) : '0.00'}%
+              </span>
+            </p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Top Templates */}
+        {/* Top templates */}
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
             Top Templates by Revenue
           </h2>
-          <div className="space-y-3">
-            {data.topTemplates.length === 0 ? (
-              <p className="text-[#6B7280] text-sm">No template revenue data</p>
-            ) : (
-              data.topTemplates.map((template, i) => (
+          {data.topTemplates.length === 0 ? (
+            <p className="text-[#6B7280] text-sm">No template revenue data</p>
+          ) : (
+            <div className="space-y-3">
+              {data.topTemplates.map((template, i) => (
                 <div key={template.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-[#6B7280] w-4">{i + 1}</span>
+                    <span className="text-xs text-[#6B7280] w-4 flex-shrink-0">{i + 1}</span>
                     <div>
                       <p className="text-sm text-white font-medium">{template.title}</p>
                       <p className="text-xs text-[#6B7280]">
@@ -278,12 +292,12 @@ export default function AdminAnalyticsPage() {
                     ${(template.revenueCents / 100).toLocaleString()}
                   </span>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Cohort Retention */}
+        {/* Cohort retention */}
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
             Cohort Retention
@@ -292,11 +306,11 @@ export default function AdminAnalyticsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-[#6B7280] border-b border-[#1E2451]">
-                  <th className="pb-2 text-left">Cohort</th>
-                  <th className="pb-2 text-right">Wk 1</th>
-                  <th className="pb-2 text-right">Wk 2</th>
-                  <th className="pb-2 text-right">Wk 4</th>
-                  <th className="pb-2 text-right">Wk 8</th>
+                  <th className="pb-2 text-left font-medium">Cohort</th>
+                  <th className="pb-2 text-right font-medium">Wk 1</th>
+                  <th className="pb-2 text-right font-medium">Wk 2</th>
+                  <th className="pb-2 text-right font-medium">Wk 4</th>
+                  <th className="pb-2 text-right font-medium">Wk 8</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E2451]">
@@ -309,16 +323,16 @@ export default function AdminAnalyticsPage() {
                 ) : (
                   data.cohortRetention.map((row) => (
                     <tr key={row.cohort}>
-                      <td className="py-2 text-[#6B7280]">{row.cohort}</td>
+                      <td className="py-2.5 text-[#6B7280] text-xs">{row.cohort}</td>
                       {[row.week1, row.week2, row.week4, row.week8].map((pct, i) => (
                         <td
                           key={i}
-                          className="py-2 text-right font-medium"
+                          className="py-2.5 text-right text-sm font-medium"
                           style={{
-                            color: `rgba(255,184,28,${0.4 + (pct / 100) * 0.6})`,
+                            color: pct === 0 ? '#374151' : `rgba(255,184,28,${0.4 + (pct / 100) * 0.6})`,
                           }}
                         >
-                          {pct.toFixed(0)}%
+                          {pct === 0 ? '—' : `${pct.toFixed(0)}%`}
                         </td>
                       ))}
                     </tr>
@@ -327,47 +341,6 @@ export default function AdminAnalyticsPage() {
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      {/* API Cost vs Revenue */}
-      <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
-          API Cost vs Revenue Margin
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-[#6B7280] border-b border-[#1E2451]">
-                <th className="pb-2 text-left">Date</th>
-                <th className="pb-2 text-right">API Cost</th>
-                <th className="pb-2 text-right">Revenue</th>
-                <th className="pb-2 text-right">Margin</th>
-                <th className="pb-2 text-right">Margin %</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1E2451]">
-              {data.costVsRevenue.slice(-14).map((row) => {
-                const cost = row.costMicro / 1_000_000
-                const revenue = row.revenueMicro / 1_000_000
-                const margin = row.marginMicro / 1_000_000
-                const marginPct = revenue > 0 ? (margin / revenue) * 100 : 0
-                return (
-                  <tr key={row.date}>
-                    <td className="py-2 text-[#6B7280]">{row.date}</td>
-                    <td className="py-2 text-right text-red-400">${cost.toFixed(2)}</td>
-                    <td className="py-2 text-right text-green-400">${revenue.toFixed(2)}</td>
-                    <td className="py-2 text-right text-white">${margin.toFixed(2)}</td>
-                    <td
-                      className={`py-2 text-right font-medium ${marginPct >= 60 ? 'text-green-400' : marginPct >= 30 ? 'text-[#FFB81C]' : 'text-red-400'}`}
-                    >
-                      {marginPct.toFixed(1)}%
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

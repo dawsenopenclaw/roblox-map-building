@@ -25,18 +25,37 @@ interface CharityStats {
   }[]
 }
 
-const PRESET_COLORS = ['#FFB81C', '#E6A519', '#c88d15', '#a87210', '#7a5310', '#4a3208']
+const DEMO_DATA: CharityStats = {
+  totalDonatedAllTimeCents: 284750,
+  totalDonatedThisMonthCents: 18420,
+  byCharity: [
+    { charitySlug: 'save-the-children', charityName: 'Save the Children', totalCents: 112400, count: 284 },
+    { charitySlug: 'direct-relief', charityName: 'Direct Relief', totalCents: 98200, count: 196 },
+    { charitySlug: 'charity-water', charityName: 'Charity: Water', totalCents: 74150, count: 153 },
+  ],
+  monthlyHistory: [
+    { month: 'Oct 2025', totalCents: 31200, count: 78 },
+    { month: 'Nov 2025', totalCents: 44800, count: 112 },
+    { month: 'Dec 2025', totalCents: 58300, count: 146 },
+    { month: 'Jan 2026', totalCents: 62100, count: 155 },
+    { month: 'Feb 2026', totalCents: 70000, count: 175 },
+    { month: 'Mar 2026', totalCents: 18420, count: 46 },
+  ],
+  activeCharities: [
+    { slug: 'save-the-children', name: 'Save the Children', description: 'Helping children in need worldwide.', url: 'https://savethechildren.org' },
+    { slug: 'direct-relief', name: 'Direct Relief', description: 'Emergency medical aid for people in crisis.', url: 'https://directrelief.org' },
+    { slug: 'charity-water', name: 'Charity: Water', description: 'Bringing clean water to developing nations.', url: 'https://charitywater.org' },
+  ],
+}
+
+const BAR_COLORS = ['#FFB81C', '#E6A519', '#c88d15', '#a87210', '#7a5310']
 
 export default function AdminCharityPage() {
-  const [data, setData] = useState<CharityStats | null>(null)
+  const [data, setData] = useState<CharityStats>(DEMO_DATA)
+  const [isDemo, setIsDemo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
-  const [newCharity, setNewCharity] = useState({
-    slug: '',
-    name: '',
-    description: '',
-    url: '',
-  })
+  const [newCharity, setNewCharity] = useState({ slug: '', name: '', description: '', url: '' })
   const [saving, setSaving] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -45,8 +64,10 @@ export default function AdminCharityPage() {
       const res = await fetch('/api/admin/charity')
       if (!res.ok) throw new Error(`${res.status}`)
       setData(await res.json())
-    } catch (e) {
-      console.error(e)
+      setIsDemo(false)
+    } catch {
+      setData(DEMO_DATA)
+      setIsDemo(true)
     } finally {
       setLoading(false)
     }
@@ -57,6 +78,7 @@ export default function AdminCharityPage() {
   }, [fetchData])
 
   const handleAddCharity = async () => {
+    if (isDemo) return
     setSaving(true)
     try {
       await fetch('/api/admin/charity', {
@@ -73,6 +95,7 @@ export default function AdminCharityPage() {
   }
 
   const handleRemoveCharity = async (slug: string) => {
+    if (isDemo) return
     try {
       await fetch(`/api/admin/charity/${slug}`, { method: 'DELETE' })
       await fetchData()
@@ -89,27 +112,21 @@ export default function AdminCharityPage() {
     )
   }
 
-  // Provide empty-state fallback so the page renders even without DB data
-  const safeData: CharityStats = data ?? {
-    totalDonatedAllTimeCents: 0,
-    totalDonatedThisMonthCents: 0,
-    byCharity: [],
-    monthlyHistory: [],
-    activeCharities: [],
-  }
-
-  const totalByCharity = safeData.byCharity.reduce((sum, c) => sum + c.totalCents, 0) || 1
+  const totalByCharity = data.byCharity.reduce((sum, c) => sum + c.totalCents, 0) || 1
 
   return (
     <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Charity Management</h1>
-          <p className="text-[#6B7280] text-sm mt-1">
-            Donation tracking and charity rotation
-          </p>
+          <h1 className="text-2xl font-bold text-white">Charity</h1>
+          <p className="text-[#6B7280] text-sm mt-1">Donation tracking and charity rotation</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {isDemo && (
+            <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+              Demo data
+            </span>
+          )}
           <button
             onClick={fetchData}
             className="flex items-center gap-2 px-3 py-2 bg-[#0D1231] border border-[#1E2451] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
@@ -119,7 +136,8 @@ export default function AdminCharityPage() {
           </button>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-2 px-3 py-2 bg-[#FFB81C] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors"
+            disabled={isDemo}
+            className="flex items-center gap-2 px-3 py-2 bg-[#FFB81C] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             Add Charity
@@ -130,25 +148,25 @@ export default function AdminCharityPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-[#FFB81C]" />
             </div>
             <p className="text-xs text-[#6B7280] uppercase tracking-wider">Total Donated — All Time</p>
           </div>
           <p className="text-3xl font-bold text-white">
-            ${(safeData.totalDonatedAllTimeCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${(data.totalDonatedAllTimeCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-[#FFB81C]" />
             </div>
             <p className="text-xs text-[#6B7280] uppercase tracking-wider">Donated — This Month</p>
           </div>
           <p className="text-3xl font-bold text-white">
-            ${(safeData.totalDonatedThisMonthCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${(data.totalDonatedThisMonthCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -195,24 +213,24 @@ export default function AdminCharityPage() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {/* Pie chart (CSS-based) */}
+        {/* Per-charity breakdown */}
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
             Donations by Charity
           </h2>
-          {safeData.byCharity.length === 0 ? (
+          {data.byCharity.length === 0 ? (
             <p className="text-[#6B7280] text-sm">No donations yet</p>
           ) : (
-            <div className="space-y-3">
-              {safeData.byCharity.map((charity, i) => {
+            <div className="space-y-4">
+              {data.byCharity.map((charity, i) => {
                 const pct = (charity.totalCents / totalByCharity) * 100
-                const color = PRESET_COLORS[i % PRESET_COLORS.length]
+                const color = BAR_COLORS[i % BAR_COLORS.length]
                 return (
                   <div key={charity.charitySlug}>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white">{charity.charityName}</span>
+                    <div className="flex items-center justify-between text-xs mb-1.5">
+                      <span className="text-white font-medium">{charity.charityName}</span>
                       <span style={{ color }}>
-                        ${(charity.totalCents / 100).toFixed(2)} ({pct.toFixed(1)}%)
+                        ${(charity.totalCents / 100).toLocaleString()} ({pct.toFixed(1)}%)
                       </span>
                     </div>
                     <div className="h-2 bg-[#111640] rounded-full overflow-hidden">
@@ -221,6 +239,7 @@ export default function AdminCharityPage() {
                         style={{ width: `${pct}%`, background: color }}
                       />
                     </div>
+                    <p className="text-xs text-[#6B7280] mt-1">{charity.count} donations</p>
                   </div>
                 )
               })}
@@ -231,31 +250,31 @@ export default function AdminCharityPage() {
         {/* Monthly history */}
         <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
-            Monthly Donation History
+            Monthly History
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-[#6B7280] border-b border-[#1E2451]">
-                  <th className="pb-2 text-left">Month</th>
-                  <th className="pb-2 text-right">Donations</th>
-                  <th className="pb-2 text-right">Amount</th>
+                  <th className="pb-2 text-left font-medium">Month</th>
+                  <th className="pb-2 text-right font-medium">Donations</th>
+                  <th className="pb-2 text-right font-medium">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E2451]">
-                {safeData.monthlyHistory.length === 0 ? (
+                {data.monthlyHistory.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="py-4 text-center text-[#6B7280]">
                       No history
                     </td>
                   </tr>
                 ) : (
-                  safeData.monthlyHistory.map((row) => (
+                  data.monthlyHistory.map((row) => (
                     <tr key={row.month}>
                       <td className="py-2.5 text-[#6B7280]">{row.month}</td>
                       <td className="py-2.5 text-right text-white">{row.count}</td>
                       <td className="py-2.5 text-right text-[#FFB81C] font-medium">
-                        ${(row.totalCents / 100).toFixed(2)}
+                        ${(row.totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))
@@ -266,16 +285,16 @@ export default function AdminCharityPage() {
         </div>
       </div>
 
-      {/* Active charities list */}
+      {/* Active charities */}
       <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
         <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
-          Charities in Rotation ({safeData.activeCharities.length})
+          Charities in Rotation ({data.activeCharities.length})
         </h2>
-        {safeData.activeCharities.length === 0 ? (
+        {data.activeCharities.length === 0 ? (
           <p className="text-[#6B7280] text-sm">No active charities configured</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {safeData.activeCharities.map((charity) => (
+            {data.activeCharities.map((charity) => (
               <div
                 key={charity.slug}
                 className="flex items-start justify-between p-4 bg-[#111640] border border-[#1E2451] rounded-lg"
@@ -283,9 +302,7 @@ export default function AdminCharityPage() {
                 <div className="flex-1 min-w-0 mr-3">
                   <p className="text-white text-sm font-medium truncate">{charity.name}</p>
                   {charity.description && (
-                    <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-2">
-                      {charity.description}
-                    </p>
+                    <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-2">{charity.description}</p>
                   )}
                   {charity.url && (
                     <a
@@ -294,13 +311,14 @@ export default function AdminCharityPage() {
                       rel="noopener noreferrer"
                       className="text-[#FFB81C] text-xs hover:text-[#E6A519] transition-colors mt-1 block truncate"
                     >
-                      {charity.url}
+                      {charity.url.replace('https://', '')}
                     </a>
                   )}
                 </div>
                 <button
                   onClick={() => handleRemoveCharity(charity.slug)}
-                  className="p-1.5 rounded-lg border border-[#1E2451] text-[#6B7280] hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0"
+                  disabled={isDemo}
+                  className="p-1.5 rounded-lg border border-[#1E2451] text-[#6B7280] hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0 disabled:opacity-40"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

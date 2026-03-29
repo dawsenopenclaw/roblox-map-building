@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, ExternalLink, Layers } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react'
 
 interface PendingTemplate {
   id: string
@@ -26,8 +26,48 @@ interface QueueResponse {
   total: number
 }
 
+const DEMO_QUEUE: PendingTemplate[] = [
+  {
+    id: 'd1',
+    title: 'Modern City Block',
+    description: 'A fully detailed city block with roads, sidewalks, and storefronts. Ready to drop into any urban map.',
+    category: 'URBAN',
+    priceCents: 499,
+    thumbnailUrl: null,
+    rbxmFileUrl: null,
+    tags: ['city', 'urban', 'roads', 'storefronts'],
+    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
+    creator: { id: 'u1', email: 'alice@example.com', displayName: 'Alice Smith', username: 'alice' },
+  },
+  {
+    id: 'd2',
+    title: 'Tropical Island Pack',
+    description: 'Palm trees, beach terrain, and ocean props. Includes 12 unique assets.',
+    category: 'NATURE',
+    priceCents: 999,
+    thumbnailUrl: null,
+    rbxmFileUrl: null,
+    tags: ['tropical', 'beach', 'island', 'nature'],
+    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
+    creator: { id: 'u2', email: 'bob@example.com', displayName: 'Bob Jones', username: 'bob99' },
+  },
+  {
+    id: 'd3',
+    title: 'Medieval Castle Walls',
+    description: 'Stone castle walls with battlements, towers, and a drawbridge. High quality, low poly.',
+    category: 'FANTASY',
+    priceCents: 0,
+    thumbnailUrl: null,
+    rbxmFileUrl: null,
+    tags: ['medieval', 'castle', 'fantasy', 'free'],
+    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
+    creator: { id: 'u3', email: 'carol@example.com', displayName: 'Carol Dev', username: 'caroldev' },
+  },
+]
+
 export default function AdminTemplatesPage() {
   const [data, setData] = useState<QueueResponse | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
   const [actingAction, setActingAction] = useState<'approve' | 'reject' | 'dmca' | null>(null)
@@ -38,8 +78,10 @@ export default function AdminTemplatesPage() {
       const res = await fetch('/api/admin/templates/queue')
       if (!res.ok) throw new Error(`${res.status}`)
       setData(await res.json())
-    } catch (e) {
-      console.error(e)
+      setIsDemo(false)
+    } catch {
+      setData({ templates: DEMO_QUEUE, total: DEMO_QUEUE.length })
+      setIsDemo(true)
     } finally {
       setLoading(false)
     }
@@ -54,6 +96,13 @@ export default function AdminTemplatesPage() {
     action: 'approve' | 'reject' | 'dmca',
     reason?: string
   ) => {
+    if (isDemo) {
+      // Optimistically remove from demo queue
+      setData((prev) =>
+        prev ? { ...prev, templates: prev.templates.filter((t) => t.id !== templateId), total: prev.total - 1 } : prev
+      )
+      return
+    }
     setActingId(templateId)
     setActingAction(action)
     try {
@@ -79,16 +128,25 @@ export default function AdminTemplatesPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">Template Moderation</h1>
           <p className="text-[#6B7280] text-sm mt-1">
-            {data ? `${data.total} template${data.total !== 1 ? 's' : ''} pending review` : '—'}
+            {data
+              ? `${data.total} template${data.total !== 1 ? 's' : ''} pending review`
+              : '—'}
           </p>
         </div>
-        <button
-          onClick={fetchQueue}
-          className="flex items-center gap-2 px-3 py-2 bg-[#0D1231] border border-[#1E2451] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          {isDemo && (
+            <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+              Demo data
+            </span>
+          )}
+          <button
+            onClick={fetchQueue}
+            className="flex items-center gap-2 px-3 py-2 bg-[#0D1231] border border-[#1E2451] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -102,23 +160,39 @@ export default function AdminTemplatesPage() {
           <p className="text-[#6B7280] text-sm mt-1">All templates have been reviewed</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {data.templates.map((template) => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-              onAction={handleAction}
-              isActing={actingId === template.id}
-              actingAction={actingId === template.id ? actingAction : null}
-            />
-          ))}
+        <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#1E2451]">
+                {['Template', 'Creator', 'Category', 'Price', 'Submitted', 'Actions'].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1E2451]">
+              {data.templates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onAction={handleAction}
+                  isActing={actingId === template.id}
+                  actingAction={actingId === template.id ? actingAction : null}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   )
 }
 
-function TemplateCard({
+function TemplateRow({
   template,
   onAction,
   isActing,
@@ -133,161 +207,114 @@ function TemplateCard({
   const [rejectReason, setRejectReason] = useState('')
 
   return (
-    <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl overflow-hidden">
-      {/* Thumbnail */}
-      <div className="h-40 bg-[#111640] relative">
-        {template.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={template.thumbnailUrl}
-            alt={template.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[#6B7280]">
-            <Layers className="w-10 h-10 opacity-30" />
-          </div>
-        )}
-        <span className="absolute top-2 left-2 text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] rounded-full border border-[#FFB81C]/20">
-          {template.category.replace(/_/g, ' ')}
-        </span>
-        {template.priceCents > 0 && (
-          <span className="absolute top-2 right-2 text-xs px-2 py-1 bg-[#0D1231]/80 text-white rounded-full">
-            ${(template.priceCents / 100).toFixed(2)}
-          </span>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        <div>
-          <h3 className="text-white font-semibold">{template.title}</h3>
-          <p className="text-[#6B7280] text-xs mt-1 line-clamp-2">{template.description}</p>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs text-[#6B7280]">
-          <span>By</span>
-          <span className="text-white">
-            {template.creator.displayName || template.creator.username || template.creator.email}
-          </span>
-          <span>·</span>
-          <span>{new Date(template.createdAt).toLocaleDateString()}</span>
-        </div>
-
+    <tr className="hover:bg-[#111640] transition-colors">
+      <td className="px-4 py-4 max-w-[280px]">
+        <p className="text-white text-sm font-medium truncate">{template.title}</p>
+        <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-2">{template.description}</p>
         {template.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {template.tags.slice(0, 5).map((tag) => (
-              <span
-                key={tag}
-                className="text-xs px-2 py-0.5 bg-[#111640] text-[#6B7280] rounded-full"
-              >
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {template.tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="text-xs px-1.5 py-0.5 bg-[#111640] text-[#6B7280] rounded">
                 {tag}
               </span>
             ))}
           </div>
         )}
-
         {template.rbxmFileUrl && (
           <a
             href={template.rbxmFileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-[#FFB81C] hover:text-[#E6A519] transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-[#FFB81C] hover:text-[#E6A519] mt-1.5"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Download .rbxm
+            <ExternalLink className="w-3 h-3" />
+            .rbxm
           </a>
         )}
-
-        {/* Reject reason input */}
-        {showRejectInput && (
-          <div className="space-y-2">
-            <input
-              type="text"
-              placeholder="Rejection reason (optional)"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="w-full px-3 py-2 bg-[#111640] border border-[#1E2451] rounded-lg text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-red-500"
-            />
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <button
-            onClick={() => onAction(template.id, 'approve')}
-            disabled={isActing}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-900/20 border border-green-700/40 text-green-400 rounded-lg text-sm font-medium hover:bg-green-900/40 transition-colors disabled:opacity-50"
-          >
-            {isActing && actingAction === 'approve' ? (
-              <div className="w-4 h-4 border-2 border-green-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <CheckCircle className="w-4 h-4" />
-            )}
-            Approve
-          </button>
-
+      </td>
+      <td className="px-4 py-4">
+        <p className="text-white text-sm">
+          {template.creator.displayName || template.creator.username || '—'}
+        </p>
+        <p className="text-[#6B7280] text-xs">{template.creator.email}</p>
+      </td>
+      <td className="px-4 py-4">
+        <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] rounded-full">
+          {template.category.replace(/_/g, ' ')}
+        </span>
+      </td>
+      <td className="px-4 py-4 text-sm text-white">
+        {template.priceCents > 0 ? `$${(template.priceCents / 100).toFixed(2)}` : 'Free'}
+      </td>
+      <td className="px-4 py-4 text-xs text-[#6B7280]">
+        {new Date(template.createdAt).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex flex-col gap-2">
           {showRejectInput ? (
-            <button
-              onClick={() => {
-                onAction(template.id, 'reject', rejectReason)
-                setShowRejectInput(false)
-              }}
-              disabled={isActing}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-900/20 border border-red-700/40 text-red-400 rounded-lg text-sm font-medium hover:bg-red-900/40 transition-colors disabled:opacity-50"
-            >
-              {isActing && actingAction === 'reject' ? (
-                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <XCircle className="w-4 h-4" />
-              )}
-              Confirm Reject
-            </button>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                placeholder="Reason (optional)"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="flex-1 min-w-0 px-2 py-1 bg-[#111640] border border-[#1E2451] rounded text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-red-500"
+              />
+              <button
+                onClick={() => {
+                  onAction(template.id, 'reject', rejectReason)
+                  setShowRejectInput(false)
+                }}
+                disabled={isActing}
+                className="px-2 py-1 bg-red-900/20 border border-red-700/40 text-red-400 rounded text-xs hover:bg-red-900/40 transition-colors disabled:opacity-50"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setShowRejectInput(false)}
+                className="px-2 py-1 bg-[#111640] border border-[#1E2451] text-[#6B7280] rounded text-xs hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => setShowRejectInput(true)}
-              disabled={isActing}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-900/20 border border-red-700/40 text-red-400 rounded-lg text-sm font-medium hover:bg-red-900/40 transition-colors disabled:opacity-50"
-            >
-              <XCircle className="w-4 h-4" />
-              Reject
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => onAction(template.id, 'approve')}
+                disabled={isActing}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-green-900/20 border border-green-700/40 text-green-400 rounded-lg text-xs font-medium hover:bg-green-900/40 transition-colors disabled:opacity-50"
+              >
+                {isActing && actingAction === 'approve' ? (
+                  <div className="w-3 h-3 border border-green-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle className="w-3.5 h-3.5" />
+                )}
+                Approve
+              </button>
+              <button
+                onClick={() => setShowRejectInput(true)}
+                disabled={isActing}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-red-900/20 border border-red-700/40 text-red-400 rounded-lg text-xs font-medium hover:bg-red-900/40 transition-colors disabled:opacity-50"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Reject
+              </button>
+              <button
+                onClick={() => onAction(template.id, 'dmca')}
+                disabled={isActing}
+                title="DMCA Takedown"
+                className="p-1.5 bg-orange-900/20 border border-orange-700/40 text-orange-400 rounded-lg text-xs hover:bg-orange-900/40 transition-colors disabled:opacity-50"
+              >
+                {isActing && actingAction === 'dmca' ? (
+                  <div className="w-3 h-3 border border-orange-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           )}
-
-          <button
-            onClick={() => onAction(template.id, 'dmca')}
-            disabled={isActing}
-            title="DMCA Takedown"
-            className="px-3 py-2 bg-orange-900/20 border border-orange-700/40 text-orange-400 rounded-lg text-sm hover:bg-orange-900/40 transition-colors disabled:opacity-50"
-          >
-            {isActing && actingAction === 'dmca' ? (
-              <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <AlertTriangle className="w-4 h-4" />
-            )}
-          </button>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function Layers({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.5}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3.75 12l8.25-4.5 8.25 4.5M3.75 16.5l8.25-4.5 8.25 4.5M3.75 7.5l8.25-4.5 8.25 4.5"
-      />
-    </svg>
+      </td>
+    </tr>
   )
 }
