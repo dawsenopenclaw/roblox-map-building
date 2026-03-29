@@ -45,6 +45,7 @@ const ROLE_COLORS: Record<UserRole, string> = {
 export default function AdminUsersPage() {
   const [data, setData] = useState<UserListResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [actionUserId, setActionUserId] = useState<string | null>(null)
@@ -52,13 +53,14 @@ export default function AdminUsersPage() {
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const params = new URLSearchParams({ page: String(page), search })
       const res = await fetch(`/api/admin/users?${params}`)
-      if (!res.ok) throw new Error(`${res.status}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       setData(await res.json())
-    } catch {
-      // non-fatal — table stays in previous state
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : 'Failed to load users')
     } finally {
       setLoading(false)
     }
@@ -156,6 +158,13 @@ export default function AdminUsersPage() {
                     <div className="flex justify-center">
                       <div className="w-6 h-6 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
                     </div>
+                  </td>
+                </tr>
+              ) : fetchError ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-[#6B7280]">
+                    No data available
+                    <span className="block text-xs mt-1 opacity-60">{fetchError}</span>
                   </td>
                 </tr>
               ) : !data?.users.length ? (

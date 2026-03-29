@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { CheckCircle, XCircle, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, RefreshCw, ExternalLink, Layers } from 'lucide-react'
 
 interface PendingTemplate {
   id: string

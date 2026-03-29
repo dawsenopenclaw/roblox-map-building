@@ -3,10 +3,14 @@
 /**
  * NotificationCenter — enhanced with real-time SSE, date grouping,
  * swipe-to-dismiss on mobile, mark-all-read, and notification preferences link.
+ *
+ * Resilience: wrapped in SilentBoundary so any internal crash renders nothing
+ * rather than breaking the nav bar.
  */
 
 import { useState, useRef, useCallback } from 'react'
 import { useNotifications, type Notification } from '../hooks/useNotifications'
+import { SilentBoundary } from './ErrorBoundary'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -180,7 +184,7 @@ function SwipeableNotification({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function NotificationCenter() {
+function NotificationCenterInner() {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -364,5 +368,15 @@ export function NotificationCenter() {
         </>
       )}
     </div>
+  )
+}
+
+// ─── Exported wrapper with silent error boundary ───────────────────────────────
+
+export function NotificationCenter() {
+  return (
+    <SilentBoundary>
+      <NotificationCenterInner />
+    </SilentBoundary>
   )
 }

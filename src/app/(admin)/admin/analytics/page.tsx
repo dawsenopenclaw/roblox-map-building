@@ -112,9 +112,12 @@ export default function AdminAnalyticsPage() {
 
   useEffect(() => {
     fetch('/api/admin/analytics')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`${r.status}`)
+        return r.json()
+      })
       .then(setData)
-      .catch(console.error)
+      .catch((e) => console.error('Analytics fetch failed:', e))
       .finally(() => setLoading(false))
   }, [])
 
@@ -128,13 +131,20 @@ export default function AdminAnalyticsPage() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-red-400">Failed to load analytics</p>
+      <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Business Analytics</h1>
+          <p className="text-[#6B7280] text-sm mt-1">Revenue, growth, and retention metrics</p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-24 bg-[#0D1231] border border-[#1E2451] rounded-xl">
+          <p className="text-[#6B7280] text-sm">No analytics data available</p>
+          <p className="text-[#6B7280] text-xs mt-1 opacity-60">The analytics service may be unavailable</p>
+        </div>
       </div>
     )
   }
 
-  const funnelTotal = data.funnel.visits
+  const funnelTotal = data.funnel?.visits ?? 0
 
   return (
     <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
@@ -147,7 +157,7 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <MetricCard
           title="MRR"
-          value={`$${(data.mrrTrend[data.mrrTrend.length - 1]?.mrrCents / 100 || 0).toLocaleString()}`}
+          value={`$${((data.mrrTrend?.at(-1)?.mrrCents ?? 0) / 100).toLocaleString()}`}
           icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
         />
         <MetricCard
@@ -176,29 +186,37 @@ export default function AdminAnalyticsPage() {
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
             MRR Trend
           </h2>
-          <div className="h-48 flex items-end gap-1">
-            {data.mrrTrend.map((point, i) => {
-              const maxMrr = Math.max(...data.mrrTrend.map((p) => p.mrrCents))
-              const height = maxMrr > 0 ? (point.mrrCents / maxMrr) * 100 : 0
-              return (
-                <div
-                  key={i}
-                  className="flex-1 group relative"
-                  style={{ height: '100%', display: 'flex', alignItems: 'flex-end' }}
-                >
-                  <div
-                    className="w-full bg-[#FFB81C]/20 hover:bg-[#FFB81C]/40 rounded-t transition-colors cursor-pointer"
-                    style={{ height: `${Math.max(height, 2)}%` }}
-                    title={`${point.date}: $${(point.mrrCents / 100).toFixed(0)}`}
-                  />
-                </div>
-              )
-            })}
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-[#6B7280]">
-            <span>{data.mrrTrend[0]?.date}</span>
-            <span>{data.mrrTrend[data.mrrTrend.length - 1]?.date}</span>
-          </div>
+          {!data.mrrTrend?.length ? (
+            <div className="h-48 flex items-center justify-center">
+              <p className="text-[#6B7280] text-sm">No revenue data available</p>
+            </div>
+          ) : (
+            <>
+              <div className="h-48 flex items-end gap-1">
+                {data.mrrTrend.map((point, i) => {
+                  const maxMrr = Math.max(...data.mrrTrend.map((p) => p.mrrCents), 1)
+                  const height = (point.mrrCents / maxMrr) * 100
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 group relative"
+                      style={{ height: '100%', display: 'flex', alignItems: 'flex-end' }}
+                    >
+                      <div
+                        className="w-full bg-[#FFB81C]/20 hover:bg-[#FFB81C]/40 rounded-t transition-colors cursor-pointer"
+                        style={{ height: `${Math.max(height, 2)}%` }}
+                        title={`${point.date}: $${(point.mrrCents / 100).toFixed(0)}`}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-[#6B7280]">
+                <span>{data.mrrTrend[0]?.date}</span>
+                <span>{data.mrrTrend.at(-1)?.date}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Conversion Funnel */}

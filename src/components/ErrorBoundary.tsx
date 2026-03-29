@@ -4,6 +4,45 @@ import { Component, type ReactNode, type ErrorInfo } from 'react'
 import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
 
+// ─── SilentBoundary ───────────────────────────────────────────────────────────
+// Use this for non-critical UI (notifications, toasts, analytics) where a crash
+// should render nothing rather than a visible error card.
+
+interface SilentBoundaryState { hasError: boolean }
+
+export class SilentBoundary extends Component<
+  { children: ReactNode; fallback?: ReactNode },
+  SilentBoundaryState
+> {
+  constructor(props: { children: ReactNode; fallback?: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(): SilentBoundaryState {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Log to console in dev so engineers can see it, but never surface to users
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[SilentBoundary] caught error:', error, info.componentStack)
+    }
+    try {
+      Sentry.captureException(error, {
+        contexts: { react: { componentStack: info.componentStack ?? '' } },
+      })
+    } catch {
+      // Sentry itself might not be configured — ignore
+    }
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback ?? null
+    return this.props.children
+  }
+}
+
 interface Props {
   children: ReactNode
   fallback?: ReactNode

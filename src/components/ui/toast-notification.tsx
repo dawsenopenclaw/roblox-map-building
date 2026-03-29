@@ -186,10 +186,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+// ─── Fallback no-op context used when provider isn't mounted ─────────────────
+
+const NOOP_CONTEXT: ToastContextValue = {
+  show: () => {},
+  dismiss: () => {},
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useToast() {
   const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>')
-  return ctx
+  // Return a no-op implementation instead of throwing so callers outside
+  // <ToastProvider> fail silently rather than crashing the component tree.
+  return ctx ?? NOOP_CONTEXT
 }

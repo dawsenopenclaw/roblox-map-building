@@ -9,10 +9,23 @@
  *  - Manages local notification list + unread count
  *  - Exposes markAsRead, markAllAsRead, dismiss
  *  - Plays a subtle sound on new notification (if user preference allows)
+ *
+ * Resilience:
+ *  - Never throws — returns empty state if Clerk / server is unavailable
+ *  - All network calls are wrapped in try/catch with silent failure
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useAuth } from '@clerk/nextjs'
+
+// Safely import Clerk — if it's not installed or provider isn't mounted this
+// must not crash the entire component tree.
+let useAuth: () => { getToken: () => Promise<string | null>; isSignedIn: boolean | undefined }
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  useAuth = require('@clerk/nextjs').useAuth
+} catch {
+  useAuth = () => ({ getToken: async () => null, isSignedIn: false })
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +66,18 @@ export function useNotifications(opts?: {
   soundEnabled?: boolean
 }): UseNotificationsReturn {
   const { soundEnabled = false } = opts ?? {}
-  const { getToken, isSignedIn } = useAuth()
+
+  // useAuth may throw if Clerk provider is not mounted — catch and fall back to
+  // an unauthenticated no-op so the rest of the app keeps working.
+  let getToken: () => Promise<string | null> = async () => null
+  let isSignedIn: boolean | undefined = false
+  try {
+    const auth = useAuth() // eslint-disable-line react-hooks/rules-of-hooks
+    getToken = auth.getToken
+    isSignedIn = auth.isSignedIn
+  } catch {
+    // Clerk provider not available — run in unauthenticated mode
+  }
 
   const [state, setState] = useState<NotificationsState>({
     notifications: [],
@@ -72,6 +96,9 @@ export function useNotifications(opts?: {
   const reconnectAttemptsRef = useRef(0)
   const lastEventIdRef = useRef<string | null>(null)
   const mountedRef = useRef(true)
+  // Stable ref to connectSSE so setTimeout callbacks always call the latest version
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const connectSSERef = useRef<() => Promise<void>>(async () => {})
 
   // ── Audio ──────────────────────────────────────────────────────────────────
 
@@ -216,7 +243,8 @@ export function useNotifications(opts?: {
         if (attempts < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current += 1
           const delay = SSE_RECONNECT_DELAY_MS * Math.pow(1.5, attempts)
-          reconnectTimeoutRef.current = setTimeout(connectSSE, delay)
+          // Use the stable ref so we always call the latest connectSSE closure
+          reconnectTimeoutRef.current = setTimeout(() => connectSSERef.current(), delay)
         } else {
           // Give up on SSE, fall back to polling
           startPolling()
@@ -226,6 +254,9 @@ export function useNotifications(opts?: {
       startPolling()
     }
   }, [API_BASE, getToken, isSignedIn, startPolling, stopPolling, playNotificationSound])
+
+  // Keep the stable ref in sync with the latest closure
+  connectSSERef.current = connectSSE
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
 

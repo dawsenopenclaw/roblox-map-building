@@ -1,6 +1,20 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { captureClientEvent } from '@/lib/analytics-client'
+import { SilentBoundary } from './ErrorBoundary'
+
+// Lazy import analytics so a missing posthog config never throws at module load
+let _captureClientEvent: ((event: string, props: Record<string, unknown>) => void) | null = null
+async function fireAnalytics(event: string, props: Record<string, unknown>) {
+  try {
+    if (!_captureClientEvent) {
+      const mod = await import('@/lib/analytics-client')
+      _captureClientEvent = mod.captureClientEvent as typeof _captureClientEvent
+    }
+    _captureClientEvent?.(event as Parameters<typeof _captureClientEvent>[0], props)
+  } catch {
+    // Analytics unavailable — never block achievement display
+  }
+}
 
 interface AchievementUnlockEvent {
   name: string
@@ -13,15 +27,15 @@ interface AchievementUnlockEvent {
 const listeners: Array<(e: AchievementUnlockEvent) => void> = []
 
 export function notifyAchievementUnlock(event: AchievementUnlockEvent) {
-  // Fire analytics immediately — before any React re-render
-  captureClientEvent('achievement_unlocked', {
+  // Fire analytics asynchronously — never throws, never blocks
+  fireAnalytics('achievement_unlocked', {
     achievementId: event.achievementId ?? event.name,
     achievementName: event.name,
   })
   listeners.forEach(l => l(event))
 }
 
-export function AchievementToastProvider() {
+function AchievementToastProviderInner() {
   const [toasts, setToasts] = useState<Array<AchievementUnlockEvent & { id: number }>>([])
 
   useEffect(() => {
@@ -67,5 +81,15 @@ export function AchievementToastProvider() {
         </div>
       ))}
     </div>
+  )
+}
+
+// ─── Exported wrapper with silent error boundary ───────────────────────────────
+
+export function AchievementToastProvider() {
+  return (
+    <SilentBoundary>
+      <AchievementToastProviderInner />
+    </SilentBoundary>
   )
 }
