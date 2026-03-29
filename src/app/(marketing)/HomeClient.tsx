@@ -501,8 +501,8 @@ export default function LandingPage() {
             >
               <MagneticButton
                 strength={6}
+                href="/sign-up"
                 className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-lg px-8 py-4 rounded-xl transition-all shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/40"
-                onClick={() => { window.location.href = '/sign-up' }}
                 aria-label="Start Building Free"
               >
                 Start Building Free

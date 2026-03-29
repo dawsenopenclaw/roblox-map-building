@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { motion, useSpring } from 'framer-motion'
+import Link from 'next/link'
 
 interface MagneticButtonProps {
   children: React.ReactNode
@@ -9,6 +10,7 @@ interface MagneticButtonProps {
   /** Max pixel displacement toward cursor. Default 5. */
   strength?: number
   onClick?: () => void
+  /** When provided the button renders as a Next.js Link instead of a <button>. */
   href?: string
   'aria-label'?: string
 }
@@ -22,6 +24,7 @@ export function MagneticButton({
   className = '',
   strength = 5,
   onClick,
+  href,
   'aria-label': ariaLabel,
 }: MagneticButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -59,6 +62,24 @@ export function MagneticButton({
     y.set(0)
     setIsNear(false)
   }, [x, y])
+
+  if (href) {
+    return (
+      <motion.div
+        ref={ref}
+        style={{ x: prefersReduced ? 0 : x, y: prefersReduced ? 0 : y }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="inline-block"
+      >
+        <motion.div whileTap={prefersReduced ? {} : { scale: 0.96 }} className="inline-block">
+          <Link href={href} aria-label={ariaLabel} className={className}>
+            {children}
+          </Link>
+        </motion.div>
+      </motion.div>
+    )
+  }
 
   return (
     <motion.div
