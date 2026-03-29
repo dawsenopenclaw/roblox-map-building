@@ -44,35 +44,54 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/onboarding(.*)',
-  // System / utility
+  // System / utility pages — must be reachable without auth
   '/blocked',
   '/maintenance(.*)',
   '/error(.*)',
+  '/offline',
+  '/rate-limited',
+  '/suspended',
+  '/verify-email',
   // Webhooks must never require auth (Stripe / Clerk)
   '/api/webhooks/(.*)',
+  // OG image generation is called by crawlers / link previewers without auth
+  '/api/og',
 ])
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
 
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
-// Routes that bypass geo-blocking (the blocked page itself must be accessible)
+// Routes that bypass geo-blocking (the blocked page itself must be accessible,
+// as must static assets and system pages that can appear during a redirect chain)
 const isGeoExempt = createRouteMatcher([
   '/blocked(.*)',
   '/maintenance(.*)',
+  '/offline',
+  '/rate-limited',
+  '/suspended',
+  '/verify-email',
   '/api/webhooks/(.*)',
+  '/api/og',
   '/_next/(.*)',
-  '/favicon.ico',
+  '/favicon(.*)',
+  '/manifest(.*)',
+  '/sw.js',
+  '/robots.txt',
+  '/sitemap(.*)',
 ])
 
-// Routes that admin users (checked via x-robloxforge-role header or env-configured
-// admin email list) are allowed to access even during maintenance mode.
-// The maintenance page itself is always accessible to everyone.
+// Routes that are always accessible during maintenance mode — the maintenance
+// page itself, webhooks (Stripe/Clerk must keep firing), and all static assets.
 const isMaintenanceExempt = createRouteMatcher([
   '/maintenance(.*)',
   '/api/webhooks/(.*)',
   '/_next/(.*)',
-  '/favicon.ico',
+  '/favicon(.*)',
+  '/manifest(.*)',
+  '/sw.js',
+  '/robots.txt',
+  '/sitemap(.*)',
 ])
 
 // ─── Admin e-mail list (comma-separated ADMIN_EMAILS env var) ────────────────
