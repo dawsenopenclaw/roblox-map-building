@@ -194,7 +194,7 @@ const body: React.CSSProperties = {
 }
 
 const container: React.CSSProperties = {
-  backgroundColor: '#1a1a1a',
+  backgroundColor: '#0a0a0a',
   borderRadius: '16px',
   border: '1px solid #1e2347',
   maxWidth: '600px',

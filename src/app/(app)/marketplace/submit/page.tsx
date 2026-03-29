@@ -98,7 +98,7 @@ export default function SubmitTemplatePage() {
       <div className="max-w-2xl mx-auto pt-20 text-center">
         <div className="text-6xl mb-4">🚀</div>
         <h2 className="text-2xl font-bold text-white mb-2">Template submitted!</h2>
-        <p className="text-gray-400">It's pending review. You'll be notified when it's approved. Redirecting...</p>
+        <p className="text-gray-300">It's pending review. You'll be notified when it's approved. Redirecting...</p>
       </div>
     )
   }
@@ -107,7 +107,7 @@ export default function SubmitTemplatePage() {
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Submit a Template</h1>
-        <p className="text-gray-400 text-sm mt-1">Share your work with the ForjeGames community</p>
+        <p className="text-gray-300 text-sm mt-1">Share your work with the ForjeGames community</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -123,7 +123,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('title', e.target.value)}
             placeholder="e.g. Medieval Castle Game Template"
             maxLength={100}
-            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 
@@ -138,7 +138,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('description', e.target.value)}
             placeholder="Describe what's included, how to use it, and what makes it special..."
             rows={5}
-            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
+            className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
           />
         </div>
 
@@ -151,7 +151,7 @@ export default function SubmitTemplatePage() {
             <select
               value={form.category}
               onChange={e => set('category', e.target.value)}
-              className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50"
+              className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50"
             >
               {CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -163,7 +163,7 @@ export default function SubmitTemplatePage() {
               Price (USD)
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
               <input
                 type="number"
                 min="0"
@@ -171,7 +171,7 @@ export default function SubmitTemplatePage() {
                 value={form.priceCents === 0 ? '' : form.priceCents}
                 onChange={e => set('priceCents', parseFloat(e.target.value) || 0)}
                 placeholder="0.00 (free)"
-                className="w-full bg-[#242424] border border-white/10 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#141414] border border-white/10 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
               />
             </div>
           </div>
@@ -187,9 +187,9 @@ export default function SubmitTemplatePage() {
             value={form.rbxmFileUrl}
             onChange={e => set('rbxmFileUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
-          <p className="text-xs text-gray-500 mt-1">Upload your .rbxm file to a CDN and paste the URL here</p>
+          <p className="text-xs text-gray-400 mt-1">Upload your .rbxm file to a CDN and paste the URL here</p>
         </div>
 
         {/* Thumbnail URL */}
@@ -202,14 +202,14 @@ export default function SubmitTemplatePage() {
             value={form.thumbnailUrl}
             onChange={e => set('thumbnailUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 
         {/* Screenshots */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">
-            Screenshots <span className="text-gray-500">(up to 5)</span>
+            Screenshots <span className="text-gray-400">(up to 5)</span>
           </label>
           <div className="flex gap-2 mb-3">
             <input
@@ -218,7 +218,7 @@ export default function SubmitTemplatePage() {
               onChange={e => setScreenshotInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
               placeholder="https://..."
-              className="flex-1 bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="flex-1 bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
             />
             <button
               type="button"
@@ -233,11 +233,11 @@ export default function SubmitTemplatePage() {
             <div className="space-y-2">
               {form.screenshots.map((url, i) => (
                 <div key={i} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                  <span className="text-xs text-gray-400 flex-1 truncate">{url}</span>
+                  <span className="text-xs text-gray-300 flex-1 truncate">{url}</span>
                   <button
                     type="button"
                     onClick={() => removeScreenshot(i)}
-                    className="text-gray-500 hover:text-red-400 transition-colors text-sm"
+                    className="text-gray-400 hover:text-red-400 transition-colors text-sm"
                   >
                     Remove
                   </button>
@@ -257,7 +257,7 @@ export default function SubmitTemplatePage() {
             value={form.tags}
             onChange={e => set('tags', e.target.value)}
             placeholder="medieval, rpg, adventure (comma-separated)"
-            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 

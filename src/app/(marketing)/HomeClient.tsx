@@ -364,7 +364,7 @@ function DNAMockup() {
           style={{ color: '#FFB81C' }}
         >
           83
-          <span className="text-xs text-gray-500 font-normal ml-0.5">/100</span>
+          <span className="text-xs text-gray-400 font-normal ml-0.5">/100</span>
         </span>
       </div>
       <div className="space-y-2.5">
@@ -481,7 +481,7 @@ function FeatureCard({
         {icon}
       </div>
       <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
-      <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
+      <p className="text-sm text-gray-300 leading-relaxed">{description}</p>
       {mockup}
     </div>
   )
@@ -538,7 +538,7 @@ function StepCard({
       </div>
 
       <h3 className="text-xl font-bold text-white mb-3">{title}</h3>
-      <p className="text-sm text-gray-400 leading-relaxed max-w-xs">{description}</p>
+      <p className="text-sm text-gray-300 leading-relaxed max-w-xs">{description}</p>
     </div>
   )
 }
@@ -644,13 +644,13 @@ export default function HomeClient() {
 
           {/* Tagline */}
           <p
-            className="text-xl sm:text-2xl md:text-3xl text-gray-200 mb-4 max-w-2xl font-semibold"
+            className="text-xl sm:text-2xl md:text-3xl text-white mb-4 max-w-2xl font-semibold"
             style={{ lineHeight: 1.4 }}
           >
             Build Roblox Games with AI —<br className="hidden sm:block" />
             From Idea to Playable in Minutes
           </p>
-          <p className="text-base text-gray-500 mb-10 max-w-lg leading-relaxed">
+          <p className="text-base text-gray-200 mb-10 max-w-lg leading-relaxed">
             Type what you want. Watch it appear. No scripting. No Studio expertise required.
           </p>
 
@@ -725,7 +725,7 @@ export default function HomeClient() {
           </div>
 
           {/* Trust line */}
-          <p className="text-sm text-gray-600 mb-10">
+          <p className="text-sm text-gray-300 mb-10">
             1,000 free tokens&nbsp;&nbsp;·&nbsp;&nbsp;No credit card&nbsp;&nbsp;·&nbsp;&nbsp;Works with Roblox Studio
           </p>
 
@@ -752,18 +752,18 @@ export default function HomeClient() {
                 >
                   {s.stat}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
               </div>
             ))}
           </div>
 
           {/* Availability strip */}
           <div className="flex flex-col items-center gap-3 mt-8">
-            <p className="text-xs text-gray-600 uppercase tracking-widest">Available as</p>
+            <p className="text-xs text-gray-500 uppercase tracking-widest">Available as</p>
             <div className="flex items-center gap-3 flex-wrap justify-center">
               <Link
                 href="/editor"
-                className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white px-5 py-2.5 rounded-xl transition-all duration-150"
+                className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-blue-400 px-5 py-2.5 rounded-xl transition-all duration-150"
                 style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLElement
@@ -785,7 +785,7 @@ export default function HomeClient() {
               </Link>
               <Link
                 href="/download"
-                className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white px-5 py-2.5 rounded-xl transition-all duration-150"
+                className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-blue-400 px-5 py-2.5 rounded-xl transition-all duration-150"
                 style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLElement
@@ -806,7 +806,7 @@ export default function HomeClient() {
                 Desktop App
               </Link>
             </div>
-            <p className="text-xs text-gray-600">Desktop connects directly to Roblox Studio.</p>
+            <p className="text-xs text-gray-500">Desktop connects directly to Roblox Studio.</p>
           </div>
 
         </div>
@@ -837,7 +837,7 @@ export default function HomeClient() {
             Everything you need to<br />
             <span style={{ color: '#FFB81C' }}>ship faster</span>
           </h2>
-          <p className="text-gray-400 text-lg max-w-xl mx-auto leading-relaxed">
+          <p className="text-gray-200 text-lg max-w-xl mx-auto leading-relaxed">
             ForjeGames handles the hard parts — scripting, terrain, assets — so you can focus on making your game fun.
           </p>
         </div>
@@ -905,7 +905,7 @@ export default function HomeClient() {
             Three steps to your<br />
             <span style={{ color: '#FFB81C' }}>first Roblox game</span>
           </h2>
-          <p className="text-gray-400 text-lg max-w-xl mx-auto leading-relaxed">
+          <p className="text-gray-200 text-lg max-w-xl mx-auto leading-relaxed">
             No experience needed. If you can describe a game, you can build one.
           </p>
         </div>
@@ -996,12 +996,12 @@ export default function HomeClient() {
           </h2>
 
           <p
-            className="text-xl sm:text-2xl text-gray-300 mb-4 font-medium leading-relaxed"
+            className="text-xl sm:text-2xl text-white mb-4 font-medium leading-relaxed"
           >
             Type <span style={{ color: '#FFB81C', fontStyle: 'italic' }}>"build a castle"</span> and watch
             <br className="hidden sm:block" /> AI do the rest.
           </p>
-          <p className="text-base text-gray-500 mb-10 max-w-md leading-relaxed">
+          <p className="text-base text-gray-200 mb-10 max-w-md leading-relaxed">
             1,000 free tokens on signup. No credit card. No scripting knowledge needed.
             Your game will be ready before you finish your coffee.
           </p>
@@ -1044,7 +1044,7 @@ export default function HomeClient() {
             </Link>
           </div>
 
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-300">
             Join 50,000+ creators already building on ForjeGames
           </p>
         </div>

@@ -89,24 +89,24 @@ function StatCard({
   return (
     <div
       className="rounded-xl border border-gray-800 p-5 flex flex-col gap-3 transition-colors hover:border-gray-700"
-      style={{ background: '#242424' }}
+      style={{ background: '#141414' }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">{label}</span>
         <span style={{ color: GOLD }} className="text-xl">{icon}</span>
       </div>
       <div>
-        <p className="text-3xl font-bold text-white leading-none">
+        <p className="text-3xl font-bold text-blue-400 leading-none">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
-        {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
       </div>
       {trend && (
         <div className="flex items-center gap-1.5">
           <span className={`text-xs font-semibold ${trendUp ? 'text-emerald-400' : 'text-red-400'}`}>
             {trendUp ? '▲' : '▼'} {trend}
           </span>
-          <span className="text-xs text-gray-600">vs last week</span>
+          <span className="text-xs text-gray-500">vs last week</span>
         </div>
       )}
     </div>
@@ -130,7 +130,7 @@ function ActionCard({
     <Link
       href={href}
       className="group rounded-xl border border-gray-800 p-5 flex flex-col gap-3 transition-all duration-200 hover:border-[#D4AF37]/50 cursor-pointer"
-      style={{ background: '#242424' }}
+      style={{ background: '#141414' }}
       // gold glow on hover via inline style + group-hover driven shadow
     >
       <div
@@ -141,9 +141,9 @@ function ActionCard({
       </div>
       <div>
         <p className="font-semibold text-white group-hover:text-[#D4AF37] transition-colors">{title}</p>
-        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{description}</p>
+        <p className="text-xs text-gray-400 mt-1 leading-relaxed">{description}</p>
       </div>
-      <div className="flex items-center gap-1 text-xs text-gray-600 group-hover:text-[#D4AF37] transition-colors mt-auto">
+      <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-[#D4AF37] transition-colors mt-auto">
         Open
         <svg className="w-3 h-3 translate-x-0 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -184,12 +184,12 @@ function CheckItem({
       </button>
       <Link
         href={item.href}
-        className={`flex-1 text-sm transition-colors ${checked ? 'text-gray-600 line-through' : 'text-gray-300 hover:text-white'}`}
+        className={`flex-1 text-sm transition-colors ${checked ? 'text-gray-500 line-through' : 'text-gray-400 hover:text-blue-400'}`}
       >
         {item.label}
       </Link>
       {!checked && (
-        <svg className="w-3.5 h-3.5 text-gray-700 group-hover:text-gray-500 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5 text-gray-700 group-hover:text-gray-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
         </svg>
       )}
@@ -238,7 +238,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               Welcome back,{' '}
               <span style={{ color: GOLD }}>{firstName}</span>
             </h1>
-            <p className="text-gray-500 text-sm mt-1.5">
+            <p className="text-gray-400 text-sm mt-1.5">
               {currentDate || <span className="opacity-0">loading</span>}
             </p>
           </div>
@@ -304,7 +304,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
             {/* Quick Actions */}
             <section>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-widest mb-4">
                 Quick Actions
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -332,19 +332,19 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             {/* Recent Activity */}
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">
+                <h2 className="text-sm font-semibold text-white uppercase tracking-widest">
                   Recent Activity
                 </h2>
                 <Link
                   href="/settings"
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   View all
                 </Link>
               </div>
               <div
                 className="rounded-xl border border-gray-800 overflow-hidden"
-                style={{ background: '#242424' }}
+                style={{ background: '#141414' }}
               >
                 {activity.map((item, idx) => (
                   <div
@@ -362,9 +362,9 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-200 leading-snug">{item.label}</p>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{item.detail}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{item.detail}</p>
                     </div>
-                    <span className="text-xs text-gray-600 flex-shrink-0 mt-0.5 tabular-nums">
+                    <span className="text-xs text-gray-500 flex-shrink-0 mt-0.5 tabular-nums">
                       {timeAgo(item.ts)}
                     </span>
                   </div>
@@ -377,10 +377,10 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
           <div className="space-y-6">
             <section>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">
+                <h2 className="text-sm font-semibold text-white uppercase tracking-widest">
                   Getting Started
                 </h2>
-                <span className="text-xs text-gray-500 tabular-nums">
+                <span className="text-xs text-gray-400 tabular-nums">
                   {completedCount}/{totalCount}
                 </span>
               </div>
@@ -391,14 +391,14 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${(completedCount / totalCount) * 100}%`,
-                    background: GOLD,
+                    background: 'linear-gradient(90deg, #60A5FA 0%, #D4AF37 100%)',
                   }}
                 />
               </div>
 
               <div
                 className="rounded-xl border border-gray-800 overflow-hidden"
-                style={{ background: '#242424' }}
+                style={{ background: '#141414' }}
               >
                 <div className="p-2">
                   {CHECKLIST.map((item) => (
@@ -420,7 +420,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
                   <p className="text-sm font-semibold" style={{ color: GOLD }}>
                     All done! You're a pro.
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     Explore advanced features in the editor.
                   </p>
                 </div>
@@ -432,13 +432,13 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               <section>
                 <div
                   className="rounded-xl border p-5"
-                  style={{ background: '#242424', borderColor: `${GOLD}30` }}
+                  style={{ background: '#141414', borderColor: `${GOLD}30` }}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span style={{ color: GOLD }}>⚡</span>
                     <p className="text-sm font-semibold text-white">Running low?</p>
                   </div>
-                  <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                  <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                     Upgrade to Pro for unlimited tokens and priority AI generation.
                   </p>
                   <Link

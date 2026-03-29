@@ -130,7 +130,7 @@ export default function WebhooksPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Webhooks</h1>
-          <p className="text-gray-400 mt-1 text-sm">
+          <p className="text-gray-300 mt-1 text-sm">
             Receive HTTP POST callbacks when events occur in your account.
           </p>
         </div>
@@ -153,12 +153,12 @@ export default function WebhooksPage() {
             <code className="text-green-300 text-sm font-mono flex-1 break-all">{newSecret.secret}</code>
             <button
               onClick={() => copySecret(newSecret.secret)}
-              className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+              className="text-xs text-gray-300 hover:text-blue-400 border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <button onClick={() => setNewSecret(null)} className="mt-3 text-gray-500 hover:text-white text-sm">
+          <button onClick={() => setNewSecret(null)} className="mt-3 text-gray-400 hover:text-blue-400 text-sm">
             Dismiss
           </button>
         </div>
@@ -167,24 +167,24 @@ export default function WebhooksPage() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
             <h2 className="text-white font-bold text-lg mb-6">Add Webhook Endpoint</h2>
 
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1.5">Endpoint URL</label>
+              <label className="block text-sm text-gray-300 mb-1.5">Endpoint URL</label>
               <input
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="https://your-server.com/webhooks/ForjeGames"
-                className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors"
                 autoFocus
               />
-              <p className="text-gray-600 text-xs mt-1">Must be HTTPS.</p>
+              <p className="text-gray-500 text-xs mt-1">Must be HTTPS.</p>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-3">Events to Subscribe</label>
+              <label className="block text-sm text-gray-300 mb-3">Events to Subscribe</label>
               <div className="space-y-3">
                 {ALL_EVENTS.map((evt) => (
                   <label key={evt.value} className="flex items-start gap-3 cursor-pointer group">
@@ -202,7 +202,7 @@ export default function WebhooksPage() {
                     </div>
                     <div>
                       <p className="text-white text-sm font-medium">{evt.label}</p>
-                      <p className="text-gray-500 text-xs">{evt.description}</p>
+                      <p className="text-gray-400 text-xs">{evt.description}</p>
                     </div>
                   </label>
                 ))}
@@ -223,7 +223,7 @@ export default function WebhooksPage() {
               </button>
               <button
                 onClick={() => { setShowCreate(false); setCreateError(null) }}
-                className="px-5 border border-white/10 hover:border-white/30 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
+                className="px-5 border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 rounded-xl text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -250,14 +250,14 @@ export default function WebhooksPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5 animate-pulse h-28" />
+            <div key={i} className="bg-[#141414] border border-white/10 rounded-2xl p-5 animate-pulse h-28" />
           ))}
         </div>
       ) : endpoints.length === 0 ? (
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-4">&#128257;</div>
           <h3 className="text-white font-semibold mb-2">No webhook endpoints</h3>
-          <p className="text-gray-400 text-sm mb-6">
+          <p className="text-gray-300 text-sm mb-6">
             Add an endpoint to start receiving real-time event notifications.
           </p>
           <button
@@ -272,7 +272,7 @@ export default function WebhooksPage() {
           {endpoints.map((ep) => {
             const lastDelivery = ep.deliveries?.[0] ?? null
             return (
-              <div key={ep.id} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
+              <div key={ep.id} className="bg-[#141414] border border-white/10 rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -283,20 +283,20 @@ export default function WebhooksPage() {
                     </div>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {ep.events.map((e) => (
-                        <span key={e} className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded-full">
+                        <span key={e} className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-0.5 rounded-full">
                           {e}
                         </span>
                       ))}
                     </div>
                     {lastDelivery ? (
-                      <p className="text-gray-600 text-xs">
+                      <p className="text-gray-500 text-xs">
                         Last delivery: {new Date(lastDelivery.createdAt).toLocaleString()} &mdash;{' '}
                         <span className={lastDelivery.success ? 'text-green-500' : 'text-red-500'}>
                           {lastDelivery.success ? 'Success' : `Failed (${lastDelivery.statusCode ?? 'no response'})`}
                         </span>
                       </p>
                     ) : (
-                      <p className="text-gray-600 text-xs">No deliveries yet</p>
+                      <p className="text-gray-500 text-xs">No deliveries yet</p>
                     )}
                   </div>
 
@@ -310,7 +310,7 @@ export default function WebhooksPage() {
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="text-xs border border-white/10 text-gray-400 px-3 py-1.5 rounded-lg transition-colors"
+                        className="text-xs border border-white/10 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -331,9 +331,9 @@ export default function WebhooksPage() {
       )}
 
       {/* Signature verification guide */}
-      <div className="mt-8 bg-[#242424] border border-white/10 rounded-2xl p-6">
+      <div className="mt-8 bg-[#141414] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-3">Verifying Signatures</h3>
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-gray-300 text-sm mb-4">
           Every request includes an <code className="text-[#FFB81C] bg-[#FFB81C]/10 px-1 rounded">X-ForjeGames-Signature</code> header
           with an HMAC-SHA256 signature. Verify it to ensure authenticity.
         </p>

@@ -23,7 +23,7 @@ export default function DmcaPage() {
           DMCA Policy
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">DMCA Copyright Policy</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-300 text-sm">
           Effective: {EFFECTIVE_DATE} &nbsp;·&nbsp; {COMPANY}
         </p>
       </div>
@@ -35,7 +35,7 @@ export default function DmcaPage() {
         </div>
         <div>
           <p className="text-sm font-semibold text-white">48-Hour Response SLA</p>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-gray-300 mt-0.5">
             We commit to acknowledging all valid DMCA takedown notices within 48 hours of receipt and
             to taking action on verified notices promptly.
           </p>
@@ -63,7 +63,7 @@ export default function DmcaPage() {
               {AGENT_EMAIL}
             </a>
           </p>
-          <p className="text-gray-500 text-xs mt-3">
+          <p className="text-gray-400 text-xs mt-3">
             * Our designated agent is registered with the U.S. Copyright Office per 17 U.S.C.
             § 512(c)(2). See our registration documentation for Form HAL filing details.
           </p>
@@ -164,7 +164,7 @@ export default function DmcaPage() {
               </div>
               <div>
                 <p className="text-white font-medium text-sm">{title}</p>
-                <p className="text-gray-400 text-sm mt-1">{desc}</p>
+                <p className="text-gray-300 text-sm mt-1">{desc}</p>
               </div>
             </div>
           ))}
@@ -218,11 +218,11 @@ export default function DmcaPage() {
 
       {/* ─── Footer ─── */}
       <div className="mt-10 pt-6 border-t border-white/10">
-        <p className="text-sm text-gray-500">
-          <strong className="text-gray-400">DMCA Agent:</strong>{' '}
+        <p className="text-sm text-gray-400">
+          <strong className="text-gray-300">DMCA Agent:</strong>{' '}
           <a href={`mailto:${AGENT_EMAIL}`} className="text-[#FFB81C] hover:underline">{AGENT_EMAIL}</a>
           &nbsp;·&nbsp;
-          <strong className="text-gray-400">Last updated:</strong> {EFFECTIVE_DATE}
+          <strong className="text-gray-300">Last updated:</strong> {EFFECTIVE_DATE}
         </p>
       </div>
     </article>

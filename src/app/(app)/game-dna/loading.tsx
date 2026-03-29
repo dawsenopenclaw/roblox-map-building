@@ -15,7 +15,7 @@ export default function GameDnaLoading() {
         </div>
 
         {/* Scan form card */}
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
           <div className="h-4 w-32 rounded-md shimmer mb-2" />
           <div className="flex gap-3">
             <div className="flex-1 h-12 rounded-xl shimmer" />
@@ -36,7 +36,7 @@ export default function GameDnaLoading() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="bg-[#242424] border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between"
+                className="bg-[#141414] border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full shimmer flex-shrink-0" />

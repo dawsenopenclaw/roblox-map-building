@@ -142,7 +142,7 @@ export function ActivityFeed({
       aria-atomic="false"
     >
       {activities.length === 0 ? (
-        <p className="text-gray-500 text-sm py-4 text-center">No activity yet</p>
+        <p className="text-gray-400 text-sm py-4 text-center">No activity yet</p>
       ) : (
         activities.map((event, idx) => {
           const icon = ACTION_ICONS[event.action] ?? ACTION_ICONS.default
@@ -161,7 +161,7 @@ export function ActivityFeed({
                 <p className="text-sm text-gray-300 leading-snug truncate">
                   {event.description}
                 </p>
-                <p className="text-xs text-gray-600 mt-0.5">
+                <p className="text-xs text-gray-500 mt-0.5">
                   <time dateTime={isoTime}>{timeAgo(time)}</time>
                 </p>
               </div>

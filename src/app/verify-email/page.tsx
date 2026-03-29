@@ -90,9 +90,9 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Animated mail icon */}
           <MailIcon animated={animating} />
@@ -101,7 +101,7 @@ function VerifyEmailContent() {
           <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
             Check your email
           </h1>
-          <p className="text-gray-400 text-sm leading-relaxed mb-2">
+          <p className="text-gray-300 text-sm leading-relaxed mb-2">
             We sent a verification link to
           </p>
           {email ? (
@@ -111,9 +111,9 @@ function VerifyEmailContent() {
           )}
 
           {/* Hint */}
-          <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-gray-400 text-left mb-8">
+          <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-gray-300 text-left mb-8">
             <p className="font-medium text-white mb-1 text-sm">Didn&apos;t get the email?</p>
-            <ul className="space-y-1 text-xs text-gray-500 list-disc list-inside">
+            <ul className="space-y-1 text-xs text-gray-400 list-disc list-inside">
               <li>Check your spam or junk folder</li>
               <li>Make sure you entered the correct email</li>
               <li>Allow a few minutes for delivery</li>
@@ -154,7 +154,7 @@ function VerifyEmailContent() {
           </button>
 
           {/* Footer */}
-          <p className="text-xs text-gray-600 mt-6">
+          <p className="text-xs text-gray-500 mt-6">
             Wrong email?{' '}
             <Link href="/sign-in" className="text-[#FFB81C] hover:underline">
               Go back to sign in
@@ -169,7 +169,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#1a1a1a]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
       <VerifyEmailContent />
     </Suspense>
   )

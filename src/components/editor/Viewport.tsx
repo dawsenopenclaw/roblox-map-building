@@ -123,30 +123,30 @@ export function Viewport({ forceDemo = false, onObjectClick: _onObjectClick, cla
         <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 select-none">
           {/* Studio icon */}
           <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
-            <svg className="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-7 h-7 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                 d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
             </svg>
           </div>
 
-          <h3 className="text-gray-300 text-sm font-semibold mb-1">
+          <h3 className="text-white text-sm font-semibold mb-1">
             Connect Roblox Studio to see live preview
           </h3>
-          <p className="text-gray-600 text-xs mb-4 max-w-xs leading-relaxed">
+          <p className="text-gray-500 text-xs mb-4 max-w-xs leading-relaxed">
             Install the ForjeGames plugin in Roblox Studio and your game will appear here in real-time.
           </p>
 
           <div className="bg-white/4 border border-white/8 rounded-lg px-4 py-3 text-left text-xs space-y-1.5 w-full max-w-xs">
-            <p className="text-gray-400 font-medium mb-2">How to connect:</p>
-            <p className="text-gray-500">
+            <p className="text-gray-300 font-medium mb-2">How to connect:</p>
+            <p className="text-gray-400">
               <span className="text-[#FFB81C] font-mono mr-1.5">1.</span>
               Open Roblox Studio
             </p>
-            <p className="text-gray-500">
+            <p className="text-gray-400">
               <span className="text-[#FFB81C] font-mono mr-1.5">2.</span>
               Install the ForjeGames plugin
             </p>
-            <p className="text-gray-500">
+            <p className="text-gray-400">
               <span className="text-[#FFB81C] font-mono mr-1.5">3.</span>
               Click "Connect" in the plugin toolbar
             </p>

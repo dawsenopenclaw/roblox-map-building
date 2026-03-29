@@ -68,7 +68,7 @@ export default function JoinTeamPage() {
         <>
           <div className="text-4xl mb-4 animate-pulse">👥</div>
           <p className="text-white font-semibold text-lg mb-2">Joining team…</p>
-          <p className="text-gray-400 text-sm">Verifying your invite link</p>
+          <p className="text-gray-300 text-sm">Verifying your invite link</p>
         </>
       )}
 
@@ -77,11 +77,11 @@ export default function JoinTeamPage() {
           <div className="text-4xl mb-4">🎉</div>
           <p className="text-white font-semibold text-lg mb-2">{result?.message || 'You joined the team!'}</p>
           {result?.team && (
-            <p className="text-gray-400 text-sm mb-4">
+            <p className="text-gray-300 text-sm mb-4">
               Welcome to <strong className="text-white">{result.team.name}</strong>
             </p>
           )}
-          <p className="text-gray-600 text-xs mb-6">Redirecting to team page…</p>
+          <p className="text-gray-500 text-xs mb-6">Redirecting to team page…</p>
           <Link href="/team" className="text-[#FFB81C] hover:underline text-sm">
             Go to team →
           </Link>

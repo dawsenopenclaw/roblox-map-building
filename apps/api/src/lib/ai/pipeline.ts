@@ -96,10 +96,21 @@ export async function terrainPipeline(params: {
   const planStep: PipelineStep = { id: 'terrain-plan', name: 'Generate terrain plan', provider: 'claude', status: 'pending' }
   steps.push(planStep)
 
-  const systemPrompt = `You are a Roblox terrain designer. Generate terrain layouts as JSON with:
-- zones: array of {name, type, x, z, width, height, elevation, biome}
-- features: array of {type, x, z, properties}
-- metadata: {totalSize, style, theme}
+  const systemPrompt = `You are a senior Roblox terrain architect producing professional-quality maps that rival top games like Adopt Me and Natural Disaster Survival.
+
+Generate a detailed terrain layout as JSON with:
+- zones: array of {name, type, x, z, width, height, elevation, biome, material, color3:{r,g,b}}
+  Materials: Grass, Mud, Sand, Rock, Sandstone, Snow, Ground, Asphalt, SmoothRock
+  Use realistic Roblox stud coordinates. Make zones large and varied (min 200x200 studs each)
+- features: array of {type, x, z, radius, elevation, material, properties}
+  Include: hills, rivers, lakes, cliffs, paths, ruins, boulders, clearings
+- atmosphere: {density, offset, color:{r,g,b}, glare, haze}
+  Tune to the biome — e.g. volcanic=dense/red, forest=light/blue-green
+- lighting: {ambientColor:{r,g,b}, brightness, timeOfDay, shadowSoftness, bloomEnabled, bloomIntensity}
+- heightmap: {resolution:64, description}
+- metadata: {totalWidth, totalHeight, style, theme, instanceEstimate}
+- buildScript: complete runnable Luau script using Terrain:FillBlock(), Terrain:FillCylinder(), Terrain:FillBall(), Terrain:FillWedge() with Enum.Material values; also configure Atmosphere and BloomEffect in Lighting
+
 Style: ${style}. Respond ONLY with valid JSON.`
 
   updateProgress('terrain-plan', 'running')
@@ -111,9 +122,9 @@ Style: ${style}. Respond ONLY with valid JSON.`
   try {
     const { result: planResult, fromCache } = await withCache(cacheKey, () =>
       anthropicBreaker.execute(() =>
-        claudeChat([{ role: 'user', content: `Design terrain for: ${prompt}` }], {
+        claudeChat([{ role: 'user', content: `Design a detailed, visually rich terrain for a Roblox game: ${prompt}` }], {
           systemPrompt,
-          maxTokens: 2000,
+          maxTokens: 6000,
         })
       )
     )
@@ -242,13 +253,26 @@ export async function cityPipeline(params: {
         claudeChat(
           [{ role: 'user', content: `Design a city layout for a Roblox game: ${prompt}` }],
           {
-            systemPrompt: `You are a Roblox city designer. Generate a JSON layout with:
-- zones: [{name, type, x, z, width, height}]
-- roads: [{from, to, width}]
-- landmarks: [{name, type, x, z, description}]
-- buildings: [{name, type, floors, style, x, z}]
+            systemPrompt: `You are a senior Roblox city architect building professional urban environments that match the quality of Brookhaven, MeepCity, and Adopt Me.
+
+Generate a detailed city layout as JSON with:
+- zones: [{name, type, x, z, width, height, theme, primaryMaterial, accentColor:{r,g,b}}]
+  Zone types: residential, commercial, industrial, park, waterfront, slum, luxury, market, port
+  Make zones 200-600 studs wide. Include at least 5 distinct zones
+- roads: [{name, fromX, fromZ, toX, toZ, width, material, hasSidewalk, hasLights}]
+  Road width: main=16 studs, side=10 studs, alley=6 studs. Include traffic lights
+- landmarks: [{name, type, x, z, height, description, style, lightColor:{r,g,b}}]
+  Include: clock tower, fountain, park, market, monument, large building, bridge
+- buildings: [{name, type, floors, footprintW, footprintD, style, x, z, material, roofStyle, hasLights}]
+  Realistic floors: shop=1-2, house=1-3, office=4-15, skyscraper=20-50
+  Materials: Brick, Concrete, SmoothPlastic, Glass, Metal
+  Roof styles: flat, peaked, dome, terrace
+- streetFurniture: [{type, x, z, material}] — benches, bins, lamp posts, trees, planters
+- atmosphere: {density, haze, color:{r,g,b}} — city haze, slightly grey
+- buildScript: complete runnable Luau script that creates the full city using Instance.new("Part"), sets realistic Color3.fromRGB() values, materials, sizes, lighting (PointLights on lamp posts, SpotLights on signs), and groups everything into labelled Models
+
 Respond ONLY with valid JSON.`,
-            maxTokens: 3000,
+            maxTokens: 6000,
           }
         )
       )

@@ -54,7 +54,7 @@ export function AnimatedTabs({
             ref={(el) => { tabRefs.current[tab.key] = el }}
             onClick={() => handleSelect(tab.key)}
             className={`px-4 py-2.5 text-sm font-medium transition-colors relative z-10 ${
-              active === tab.key ? 'text-[#FFB81C]' : 'text-gray-400 hover:text-white'
+              active === tab.key ? 'text-[#FFB81C]' : 'text-gray-300 hover:text-white'
             }`}
           >
             {tab.label}

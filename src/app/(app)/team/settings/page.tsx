@@ -35,7 +35,7 @@ const ROLE_COLORS = {
   OWNER:  'text-[#FFB81C]',
   ADMIN:  'text-blue-400',
   EDITOR: 'text-purple-400',
-  VIEWER: 'text-gray-400',
+  VIEWER: 'text-gray-300',
 }
 
 // Demo data shown when API is unreachable
@@ -193,8 +193,8 @@ export default function TeamSettingsPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
-        <div className="h-8 w-48 bg-[#242424] rounded animate-pulse" />
-        <div className="h-64 bg-[#242424] rounded-2xl animate-pulse" />
+        <div className="h-8 w-48 bg-[#141414] rounded animate-pulse" />
+        <div className="h-64 bg-[#141414] rounded-2xl animate-pulse" />
       </div>
     )
   }
@@ -203,7 +203,7 @@ export default function TeamSettingsPage() {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
         <div className="text-4xl mb-4">🔑</div>
-        <p className="text-gray-400 text-sm">You need to be an Owner or Admin to manage team settings.</p>
+        <p className="text-gray-300 text-sm">You need to be an Owner or Admin to manage team settings.</p>
         <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mt-4 inline-block">
           ← Back to editor
         </Link>
@@ -218,7 +218,7 @@ export default function TeamSettingsPage() {
           ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Team Settings</h1>
-        <p className="text-gray-400 text-sm mt-1">Manage roles and permissions</p>
+        <p className="text-gray-300 text-sm mt-1">Manage roles and permissions</p>
       </div>
 
       {/* Demo banner */}
@@ -231,11 +231,11 @@ export default function TeamSettingsPage() {
       {/* Team selector */}
       {teams.length > 1 && (
         <div>
-          <label className="block text-xs text-gray-400 mb-2 font-medium">Team</label>
+          <label className="block text-xs text-gray-300 mb-2 font-medium">Team</label>
           <select
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors w-full sm:w-auto"
+            className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors w-full sm:w-auto"
           >
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -258,9 +258,9 @@ export default function TeamSettingsPage() {
 
       {/* Role management */}
       {team && (
-        <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/5">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wide">
               Member Roles — {team.name}
             </h2>
           </div>
@@ -271,25 +271,25 @@ export default function TeamSettingsPage() {
               { role: 'OWNER', desc: 'Full control', color: 'text-[#FFB81C]' },
               { role: 'ADMIN', desc: 'Manage members', color: 'text-blue-400' },
               { role: 'EDITOR', desc: 'Edit & build', color: 'text-purple-400' },
-              { role: 'VIEWER', desc: 'View only', color: 'text-gray-400' },
+              { role: 'VIEWER', desc: 'View only', color: 'text-gray-300' },
             ].map(({ role, desc, color }) => (
-              <div key={role} className="bg-[#2e2e2e] rounded-xl p-3 text-center">
+              <div key={role} className="bg-[#1c1c1c] rounded-xl p-3 text-center">
                 <p className={`text-xs font-semibold ${color}`}>{role}</p>
-                <p className="text-gray-600 text-xs mt-0.5">{desc}</p>
+                <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
               </div>
             ))}
           </div>
 
           {team.members.length === 0 ? (
             <div className="px-5 py-8 text-center">
-              <p className="text-gray-500 text-sm">No members yet</p>
+              <p className="text-gray-400 text-sm">No members yet</p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">
               {team.members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#2e2e2e] flex items-center justify-center text-sm text-gray-400 font-medium">
+                    <div className="w-9 h-9 rounded-full bg-[#1c1c1c] flex items-center justify-center text-sm text-gray-300 font-medium">
                       {member.userId.slice(5, 7).toUpperCase()}
                     </div>
                     <div>
@@ -297,7 +297,7 @@ export default function TeamSettingsPage() {
                         {member.role}
                         {member.role === 'OWNER' && ' (You)'}
                       </p>
-                      <p className="text-gray-600 text-xs">
+                      <p className="text-gray-500 text-xs">
                         Joined {new Date(member.joinedAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -310,7 +310,7 @@ export default function TeamSettingsPage() {
                           defaultValue={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
                           disabled={updatingId === member.id}
-                          className="bg-[#2e2e2e] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
+                          className="bg-[#1c1c1c] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-400/40 transition-colors disabled:opacity-50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
@@ -325,7 +325,7 @@ export default function TeamSettingsPage() {
                       </>
                     )}
                     {member.role === 'OWNER' && (
-                      <span className="text-xs text-gray-600">Owner cannot be changed</span>
+                      <span className="text-xs text-gray-500">Owner cannot be changed</span>
                     )}
                   </div>
                 </div>
@@ -336,11 +336,11 @@ export default function TeamSettingsPage() {
       )}
 
       {/* Zone locking info */}
-      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+      <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+        <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-3">
           Zone Locking
         </h2>
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-gray-300 text-sm mb-4">
           Editors and above can lock zones to prevent simultaneous edits. Locks expire automatically.
         </p>
         <div className="grid grid-cols-3 gap-3">
@@ -349,10 +349,10 @@ export default function TeamSettingsPage() {
             { icon: '⏱', label: 'Auto-expire', desc: 'Locks clear after 30min' },
             { icon: '🔓', label: 'Manual unlock', desc: 'Owner/Admin can unlock any zone' },
           ].map((item) => (
-            <div key={item.label} className="bg-[#2e2e2e] rounded-xl p-3 text-center">
+            <div key={item.label} className="bg-[#1c1c1c] rounded-xl p-3 text-center">
               <span className="text-2xl block mb-1">{item.icon}</span>
               <p className="text-white text-xs font-medium">{item.label}</p>
-              <p className="text-gray-600 text-xs mt-0.5">{item.desc}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
             </div>
           ))}
         </div>

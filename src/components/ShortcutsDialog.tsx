@@ -55,7 +55,7 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
 
 function Key({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[1.8rem] h-7 px-2 rounded-md bg-[#2e2e2e] border border-white/20 text-xs font-mono text-gray-200 shadow-sm">
+    <kbd className="inline-flex items-center justify-center min-w-[1.8rem] h-7 px-2 rounded-md bg-[#1c1c1c] border border-white/20 text-xs font-mono text-gray-200 shadow-sm">
       {children}
     </kbd>
   )
@@ -95,7 +95,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed inset-0 z-[101] flex items-center justify-center p-4"
           >
-            <div className="bg-[#242424] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-[#141414] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                 <div className="flex items-center gap-2.5">
@@ -104,7 +104,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-gray-500 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-white transition-colors"
                   aria-label="Close shortcuts dialog"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,7 +122,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
                 {SHORTCUT_CATEGORIES.map((cat) => (
                   <div key={cat.title}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
                       {cat.title}
                     </p>
                     <ul className="space-y-2.5">
@@ -147,7 +147,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
 
               {/* Footer */}
               <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Press{' '}
                   <kbd className="inline-flex items-center justify-center h-4 px-1.5 rounded bg-white/10 border border-white/20 text-[10px] font-mono">
                     ⌘ /

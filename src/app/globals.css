@@ -5,15 +5,15 @@
 /* ─── Design Tokens ──────────────────────────────────────────────────────────── */
 
 :root {
-  /* Core backgrounds — dark grey palette */
-  --background:          #1a1a1a;   /* dark grey — page bg               */
-  --surface:             #242424;   /* medium-dark grey — card bg         */
-  --surface-2:           #2e2e2e;   /* slightly lighter card variant      */
-  --surface-elevated:    #383838;   /* elevated panels                    */
+  /* Core backgrounds — black + cool grey */
+  --background:          #0a0a0a;   /* near-black — page bg              */
+  --surface:             #141414;   /* very dark grey — card bg           */
+  --surface-2:           #1c1c1c;   /* slightly lighter variant           */
+  --surface-elevated:    #252525;   /* elevated panels                    */
 
   /* Borders */
-  --border:              #3a3a3a;   /* grey border                       */
-  --border-subtle:       #4a4a4a;   /* focus/hover borders               */
+  --border:              #2a2a2a;   /* subtle grey border                */
+  --border-subtle:       #3a3a3a;   /* focus/hover borders               */
 
   /* Gold accent */
   --gold:                #D4AF37;
@@ -21,20 +21,25 @@
   --gold-glow:           rgba(212, 175, 55, 0.3);
   --gold-glow-sm:        rgba(212, 175, 55, 0.15);
 
+  /* Light blue accent */
+  --blue:                #60A5FA;   /* light blue highlights             */
+  --blue-glow:           rgba(96, 165, 250, 0.2);
+
   /* Semantic */
   --success:             #10B981;
   --success-bg:          rgba(16, 185, 129, 0.1);
   --error:               #EF4444;
   --error-bg:            rgba(239, 68, 68, 0.1);
   --warning:             #F59E0B;
-  --info:                #3B82F6;
+  --info:                #60A5FA;
 
-  /* Text */
-  --foreground:          #F9FAFB;   /* primary text                      */
-  --muted:               #9CA3AF;   /* secondary text                    */
-  --muted-subtle:        #6B7280;   /* placeholder / disabled            */
+  /* Text — lots of white and grey */
+  --foreground:          #FFFFFF;   /* pure white — headings             */
+  --foreground-soft:     #E5E7EB;   /* soft white — body text            */
+  --muted:               #B0B0B0;   /* light grey — secondary text       */
+  --muted-subtle:        #808080;   /* medium grey — placeholders        */
 
-  /* Legacy aliases — kept for backward compat with existing components  */
+  /* Legacy aliases */
   --accent:              var(--gold-light);
   --accent-dark:         var(--gold);
   --accent-hover:        var(--gold);

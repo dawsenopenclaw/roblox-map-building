@@ -160,7 +160,7 @@ function RadarChart({ values }: { values: { axis: string; score: number }[] }) {
             cy={pt.y}
             r="4"
             fill="#FFB81C"
-            stroke="#1a1a1a"
+            stroke="#0a0a0a"
             strokeWidth="2"
           />
         )
@@ -256,7 +256,7 @@ function AnalysisSkeleton() {
               className="w-2 h-2 rounded-full bg-[#FFB81C]"
             />
           </motion.span>
-          <span className="text-gray-400">{step}</span>
+          <span className="text-gray-300">{step}</span>
         </motion.div>
       ))}
     </div>
@@ -303,7 +303,7 @@ export default function GameDnaPage() {
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-[#FFB81C]/70 uppercase tracking-widest">AI Feature</span>
           <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span className="text-xs text-gray-500">Game Intelligence</span>
+          <span className="text-xs text-gray-400">Game Intelligence</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
           Analyze Any{' '}
@@ -311,18 +311,18 @@ export default function GameDnaPage() {
             Roblox Game
           </span>
         </h1>
-        <p className="text-gray-400 text-base max-w-xl leading-relaxed">
+        <p className="text-gray-300 text-base max-w-xl leading-relaxed">
           Paste any Roblox game URL and our AI sequences its DNA — progression loops,
           monetization patterns, retention hooks, and growth opportunities.
         </p>
       </div>
 
       {/* ── URL Input Card ── */}
-      <GlowCard className="bg-[#1e1e1e] border border-white/8 p-6 space-y-4">
+      <GlowCard className="bg-[#141414] border border-white/8 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             {/* Subtle icon */}
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none">
+            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
@@ -334,17 +334,17 @@ export default function GameDnaPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleAnalyze() }}
               placeholder="Paste any Roblox game URL..."
               disabled={phase === 'loading'}
-              className="w-full bg-[#2a2a2a] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/50 focus:bg-[#2a2a2a] transition-colors disabled:opacity-50"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-400/50 focus:bg-[#1c1c1c] transition-colors disabled:opacity-50"
             />
           </div>
           <button
             onClick={phase === 'result' ? reset : handleAnalyze}
             disabled={phase === 'loading' || (!url.trim() && phase !== 'result')}
-            className="flex-shrink-0 h-11 px-6 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#1a1a1a] text-sm font-bold transition-all duration-150 flex items-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
+            className="flex-shrink-0 h-11 px-6 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#0a0a0a] text-sm font-bold transition-all duration-150 flex items-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
           >
             {phase === 'loading' ? (
               <>
-                <span className="w-4 h-4 border-2 border-[#1a1a1a]/30 border-t-[#1a1a1a] rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-[#0a0a0a]/30 border-t-[#0a0a0a] rounded-full animate-spin" />
                 Analyzing
               </>
             ) : phase === 'result' ? (
@@ -368,14 +368,14 @@ export default function GameDnaPage() {
         {/* Example URLs */}
         {phase === 'idle' && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-600">Try:</span>
+            <span className="text-xs text-gray-500">Try:</span>
             {EXAMPLE_URLS.map((u) => {
               const name = decodeURIComponent(u.split('/').at(-1) ?? u).replace(/-/g, ' ')
               return (
                 <button
                   key={u}
                   onClick={() => handleExample(u)}
-                  className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-[#FFB81C] hover:border-[#FFB81C]/30 transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-[#FFB81C] hover:border-[#FFB81C]/30 transition-colors"
                 >
                   {name}
                 </button>
@@ -393,7 +393,7 @@ export default function GameDnaPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="bg-[#1e1e1e] border border-white/8 rounded-2xl p-6"
+            className="bg-[#141414] border border-white/8 rounded-2xl p-6"
           >
             <AnalysisSkeleton />
           </motion.div>
@@ -411,23 +411,23 @@ export default function GameDnaPage() {
             className="space-y-6"
           >
             {/* Game header strip */}
-            <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#1e1e1e] border border-[#FFB81C]/15 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#141414] border border-[#FFB81C]/15 rounded-2xl">
               <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/15 border border-[#FFB81C]/25 flex items-center justify-center text-xl flex-shrink-0">
                 🎮
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="text-white font-bold text-lg leading-tight">{result.gameName}</h2>
-                <p className="text-gray-500 text-sm">{result.gameGenre}</p>
+                <p className="text-gray-400 text-sm">{result.gameGenre}</p>
               </div>
               <div className="flex gap-4">
                 <div className="text-center">
                   <p className="text-[#FFB81C] font-bold text-lg">{result.playerCount}</p>
-                  <p className="text-gray-500 text-xs">concurrent</p>
+                  <p className="text-gray-400 text-xs">concurrent</p>
                 </div>
                 <div className="w-px bg-white/8 self-stretch" />
                 <div className="text-center">
                   <p className="text-emerald-400 font-bold text-lg">{result.rating}</p>
-                  <p className="text-gray-500 text-xs">rating</p>
+                  <p className="text-gray-400 text-xs">rating</p>
                 </div>
               </div>
             </div>
@@ -436,13 +436,13 @@ export default function GameDnaPage() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
               {/* Radar chart */}
-              <AnimatedCard className="lg:col-span-2 bg-[#1e1e1e] border border-white/8 rounded-2xl p-5 flex flex-col items-center gap-4">
+              <AnimatedCard className="lg:col-span-2 bg-[#141414] border border-white/8 rounded-2xl p-5 flex flex-col items-center gap-4">
                 <div className="w-full flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">DNA Radar</span>
-                  <span className="text-xs text-gray-600">6 axes</span>
+                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">DNA Radar</span>
+                  <span className="text-xs text-gray-500">6 axes</span>
                 </div>
                 <RadarChart values={result.radarValues} />
-                <p className="text-xs text-gray-600 text-center">Hover a gene card for axis highlight</p>
+                <p className="text-xs text-gray-500 text-center">Hover a gene card for axis highlight</p>
               </AnimatedCard>
 
               {/* Gene cards */}
@@ -452,7 +452,7 @@ export default function GameDnaPage() {
                     key={gene.id}
                     index={i}
                     onClick={() => setActiveGene(activeGene === gene.id ? null : gene.id)}
-                    className={`bg-[#1e1e1e] border rounded-xl p-4 cursor-pointer transition-colors ${
+                    className={`bg-[#141414] border rounded-xl p-4 cursor-pointer transition-colors ${
                       activeGene === gene.id
                         ? 'border-[#FFB81C]/40 bg-[#FFB81C]/5'
                         : 'border-white/8 hover:border-white/15'
@@ -476,7 +476,7 @@ export default function GameDnaPage() {
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.22 }}
-                          className="text-xs text-gray-400 leading-relaxed mt-3 overflow-hidden"
+                          className="text-xs text-gray-300 leading-relaxed mt-3 overflow-hidden"
                         >
                           {gene.description}
                         </motion.p>
@@ -489,7 +489,7 @@ export default function GameDnaPage() {
 
             {/* Recommendations */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-widest px-1">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-widest px-1">
                 AI Recommendations
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -508,7 +508,7 @@ export default function GameDnaPage() {
                         </span>
                       </div>
                       <p className="text-sm font-semibold text-white">{rec.title}</p>
-                      <p className="text-xs text-gray-400 leading-relaxed">{rec.body}</p>
+                      <p className="text-xs text-gray-300 leading-relaxed">{rec.body}</p>
                     </AnimatedCard>
                   )
                 })}
@@ -519,11 +519,11 @@ export default function GameDnaPage() {
             <div className="flex flex-col sm:flex-row items-center gap-4 px-5 py-4 bg-[#FFB81C]/5 border border-[#FFB81C]/15 rounded-2xl">
               <div className="flex-1">
                 <p className="text-white font-semibold text-sm">Clone this game&apos;s DNA into your project</p>
-                <p className="text-gray-400 text-xs mt-0.5">Inject winning progression loops directly into the editor with one click.</p>
+                <p className="text-gray-300 text-xs mt-0.5">Inject winning progression loops directly into the editor with one click.</p>
               </div>
               <a
                 href="/editor"
-                className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#1a1a1a] text-sm font-bold transition-colors shadow-[0_0_16px_rgba(255,184,28,0.2)]"
+                className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#0a0a0a] text-sm font-bold transition-colors shadow-[0_0_16px_rgba(255,184,28,0.2)]"
               >
                 Open in Editor
               </a>
@@ -547,12 +547,12 @@ export default function GameDnaPage() {
             <AnimatedCard
               key={feat.title}
               index={i}
-              className="bg-[#1e1e1e] border border-white/8 rounded-xl p-5 space-y-3"
+              className="bg-[#141414] border border-white/8 rounded-xl p-5 space-y-3"
             >
               <span className="text-2xl">{feat.icon}</span>
               <div>
                 <p className="text-white font-semibold text-sm">{feat.title}</p>
-                <p className="text-gray-500 text-xs mt-1 leading-relaxed">{feat.desc}</p>
+                <p className="text-gray-400 text-xs mt-1 leading-relaxed">{feat.desc}</p>
               </div>
             </AnimatedCard>
           ))}

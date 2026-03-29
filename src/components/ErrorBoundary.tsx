@@ -109,7 +109,7 @@ function ErrorCard({
   return (
     <div className="min-h-[300px] flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-8">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-8">
           {/* Icon */}
           <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
             <svg
@@ -129,10 +129,10 @@ function ErrorCard({
 
           <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
 
-          <p className="text-gray-400 text-sm mb-1 leading-relaxed">{safeMessage}</p>
+          <p className="text-gray-300 text-sm mb-1 leading-relaxed">{safeMessage}</p>
 
           {eventId && (
-            <p className="text-gray-600 text-xs font-mono mb-5">
+            <p className="text-gray-500 text-xs font-mono mb-5">
               Report ID: {eventId}
             </p>
           )}
@@ -152,7 +152,7 @@ function ErrorCard({
             </Link>
           </div>
 
-          <p className="text-gray-600 text-xs mt-5">
+          <p className="text-gray-500 text-xs mt-5">
             Need help?{' '}
             <a
               href="mailto:support@ForjeGames.gg"

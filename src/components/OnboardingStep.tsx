@@ -83,7 +83,7 @@ export function OnboardingStep({
   hideNext = false,
 }: OnboardingStepProps) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#1a1a1a]">
+    <div className="flex flex-col min-h-screen bg-[#0a0a0a]">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">
@@ -99,14 +99,14 @@ export function OnboardingStep({
           <span className="text-white font-semibold text-sm tracking-wide">ForjeGames</span>
         </div>
 
-        <span className="text-gray-500 text-sm">
+        <span className="text-gray-400 text-sm">
           {step + 1} of {TOTAL_STEPS}
         </span>
 
         {!hideSkip && (
           <button
             onClick={onSkip}
-            className="text-gray-500 text-sm hover:text-gray-300 transition-colors"
+            className="text-gray-400 text-sm hover:text-gray-300 transition-colors"
           >
             Skip
           </button>
@@ -143,7 +143,7 @@ export function OnboardingStep({
           {!hideBack && (
             <button
               onClick={onBack}
-              className="flex-none px-5 py-3 rounded-xl text-gray-400 hover:text-white border border-white/10 hover:border-white/20 transition-all text-sm font-medium"
+              className="flex-none px-5 py-3 rounded-xl text-gray-300 hover:text-white border border-white/10 hover:border-white/20 transition-all text-sm font-medium"
             >
               Back
             </button>

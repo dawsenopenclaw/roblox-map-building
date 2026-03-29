@@ -32,9 +32,9 @@ function SuspendedContent() {
   const reason = SUSPENSION_REASONS[reasonKey] ?? null
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#242424] border border-red-500/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#141414] border border-red-500/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Icon */}
           <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -54,7 +54,7 @@ function SuspendedContent() {
 
           {/* Heading */}
           <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Account Suspended</h1>
-          <p className="text-gray-400 text-sm mb-8">
+          <p className="text-gray-300 text-sm mb-8">
             Access to your ForjeGames account has been suspended.
           </p>
 
@@ -65,11 +65,11 @@ function SuspendedContent() {
                 Reason
               </p>
               <p className="text-white font-semibold text-sm mb-1">{reason.label}</p>
-              <p className="text-gray-400 text-sm">{reason.detail}</p>
+              <p className="text-gray-300 text-sm">{reason.detail}</p>
             </div>
           ) : (
             <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-left mb-8">
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 Your account has been suspended. Please contact our support team for details.
               </p>
             </div>
@@ -77,7 +77,7 @@ function SuspendedContent() {
 
           {/* Appeal process */}
           <div className="text-left mb-8">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-medium mb-3">
+            <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-3">
               Appeal process
             </p>
             <ol className="space-y-3">
@@ -87,7 +87,7 @@ function SuspendedContent() {
                 'Submit a support ticket with "Account Appeal" as the subject.',
                 'Our team will respond within 2–3 business days.',
               ].map((step, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-gray-400">
+                <li key={i} className="flex items-start gap-3 text-sm text-gray-300">
                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-white/10 text-white text-xs font-bold flex items-center justify-center mt-0.5">
                     {i + 1}
                   </span>
@@ -121,7 +121,7 @@ function SuspendedContent() {
 
 export default function SuspendedPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#1a1a1a]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
       <SuspendedContent />
     </Suspense>
   )

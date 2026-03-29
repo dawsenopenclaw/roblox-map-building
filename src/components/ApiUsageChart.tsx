@@ -50,8 +50,8 @@ function CustomTooltip({ active, payload, label, range }: CustomTooltipProps) {
   if (!active || !payload?.length || !label) return null
   const formatter = range === '7d' ? formatDay : formatHour
   return (
-    <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-sm shadow-xl">
-      <p className="text-gray-400 mb-2">{formatter(label)}</p>
+    <div className="bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm shadow-xl">
+      <p className="text-gray-300 mb-2">{formatter(label)}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color }} className="font-medium">
           {p.name}: <span className="text-white">{p.value.toLocaleString()}</span>
@@ -80,7 +80,7 @@ export function ApiUsageChart({
   const labelFormatter = range === '7d' ? formatDay : formatHour
 
   return (
-    <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+    <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-white font-semibold">Requests Over Time</h3>
         <div className="flex gap-1 bg-white/5 rounded-lg p-1">
@@ -91,7 +91,7 @@ export function ApiUsageChart({
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 range === r
                   ? 'bg-[#FFB81C] text-black'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-gray-300 hover:text-white'
               }`}
             >
               {RANGE_LABELS[r]}
@@ -103,7 +103,7 @@ export function ApiUsageChart({
       {loading ? (
         <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
       ) : data.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+        <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
           No usage data for this period
         </div>
       ) : (
@@ -160,7 +160,7 @@ export function ApiUsageChart({
               strokeWidth={2}
               fill="url(#goldGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#FFB81C', stroke: '#1a1a1a', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#FFB81C', stroke: '#0a0a0a', strokeWidth: 2 }}
             />
             <Area
               type="monotone"
@@ -170,7 +170,7 @@ export function ApiUsageChart({
               strokeWidth={2}
               fill="url(#redGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#ef4444', stroke: '#1a1a1a', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#ef4444', stroke: '#0a0a0a', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -179,16 +179,16 @@ export function ApiUsageChart({
       <div className="flex gap-4 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-0.5 bg-[#FFB81C]" />
-          <span className="text-gray-400 text-xs">Requests</span>
+          <span className="text-gray-300 text-xs">Requests</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-0.5 bg-red-500" />
-          <span className="text-gray-400 text-xs">Errors</span>
+          <span className="text-gray-300 text-xs">Errors</span>
         </div>
         {rateLimit !== undefined && (
           <div className="flex items-center gap-2">
             <div className="w-4 border-t border-dashed border-red-500" />
-            <span className="text-gray-400 text-xs">Rate Limit</span>
+            <span className="text-gray-300 text-xs">Rate Limit</span>
           </div>
         )}
       </div>

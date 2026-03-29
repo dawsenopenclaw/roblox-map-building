@@ -49,14 +49,14 @@ export default function AgeGatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
         </div>
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-8 shadow-xl">
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-2">When were you born?</h2>
-          <p className="text-gray-400 text-sm mb-6">Required by law (COPPA). We use this to protect younger users.</p>
+          <p className="text-gray-300 text-sm mb-6">Required by law (COPPA). We use this to protect younger users.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -70,7 +70,7 @@ export default function AgeGatePage() {
                 value={dateOfBirth}
                 onChange={(e) => setDateOfBirth(e.target.value)}
                 required
-                className="w-full bg-[#1a1f3e] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#FFB81C] transition-colors"
+                className="w-full bg-[#1a1f3e] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-blue-400 transition-colors"
               />
             </div>
 

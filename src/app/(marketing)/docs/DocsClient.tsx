@@ -101,12 +101,12 @@ function CodeBlock({ code, lang }: { code: string; lang: 'curl' | 'json' }) {
   const html = lang === 'curl' ? highlightCurl(code) : highlightJson(code)
 
   return (
-    <div className="relative group rounded-xl overflow-hidden border border-white/8" style={{ background: '#242424' }}>
+    <div className="relative group rounded-xl overflow-hidden border border-white/8" style={{ background: '#141414' }}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/8">
-        <span className="text-xs text-gray-500 font-mono">{lang === 'curl' ? 'bash' : 'json'}</span>
+        <span className="text-xs text-gray-400 font-mono">{lang === 'curl' ? 'bash' : 'json'}</span>
         <button
           onClick={copy}
-          className="text-xs text-gray-500 hover:text-gray-200 transition-colors px-2 py-0.5 rounded"
+          className="text-xs text-gray-400 hover:text-gray-200 transition-colors px-2 py-0.5 rounded"
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>
@@ -131,16 +131,16 @@ function ParamTable({ params }: { params: Param[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-40">
               Parameter
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-28">
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">
               Type
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">
               Required
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Description
             </th>
           </tr>
@@ -162,10 +162,10 @@ function ParamTable({ params }: { params: Param[] }) {
                 {p.required ? (
                   <span className="text-xs text-rose-400 font-medium">Required</span>
                 ) : (
-                  <span className="text-xs text-gray-600">Optional</span>
+                  <span className="text-xs text-gray-500">Optional</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-400 text-sm">{p.description}</td>
+              <td className="px-4 py-3 text-gray-300 text-sm">{p.description}</td>
             </tr>
           ))}
         </tbody>
@@ -175,7 +175,7 @@ function ParamTable({ params }: { params: Param[] }) {
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {
-  return <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3 mt-1">{children}</h3>
+  return <h3 className="text-xs font-semibold text-white uppercase tracking-widest mb-3 mt-1">{children}</h3>
 }
 
 function SectionHeading({ children }: { id?: string; children: ReactNode }) {
@@ -215,7 +215,7 @@ function EndpointSection({
         <MethodBadge method={method} />
         <code className="text-white font-mono text-base">{path}</code>
       </div>
-      <p className="text-gray-400 text-sm mb-7 leading-relaxed">{description}</p>
+      <p className="text-gray-300 text-sm mb-7 leading-relaxed">{description}</p>
 
       {params.length > 0 && (
         <div className="mb-7">
@@ -307,7 +307,7 @@ export default function DocsClient() {
         >
           <div className="max-w-7xl mx-auto px-5 h-12 flex items-center gap-4">
             <span className="text-white font-semibold text-sm">API Reference</span>
-            <span className="text-[10px] border border-white/10 text-gray-500 px-2 py-0.5 rounded font-mono">v1</span>
+            <span className="text-[10px] border border-white/10 text-gray-400 px-2 py-0.5 rounded font-mono">v1</span>
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen((v) => !v)}
@@ -352,7 +352,7 @@ export default function DocsClient() {
             {/* ── Getting Started ─────────────────────────────────────── */}
             <section id="getting-started" className="scroll-mt-28">
               <SectionHeading id="getting-started">Getting Started</SectionHeading>
-              <p className="text-gray-400 text-sm leading-relaxed mb-7">
+              <p className="text-gray-300 text-sm leading-relaxed mb-7">
                 The ForjeGames API lets you build AI-powered Roblox experiences — convert voice commands to game
                 scripts, transform images into playable maps, and search the Roblox marketplace programmatically.
                 All endpoints are REST-based and return JSON.
@@ -368,7 +368,7 @@ export default function DocsClient() {
 
               <div className="mb-7">
                 <SectionLabel>1. Get an API key</SectionLabel>
-                <p className="text-gray-400 text-sm mb-4">
+                <p className="text-gray-300 text-sm mb-4">
                   Sign in to your dashboard and navigate to{' '}
                   <a href="/settings/api-keys" className="text-[#FFB81C] hover:underline">
                     Settings &rarr; API Keys
@@ -394,7 +394,7 @@ export default function DocsClient() {
             {/* ── Authentication ──────────────────────────────────────── */}
             <section id="authentication" className="scroll-mt-28">
               <SectionHeading id="authentication">Authentication</SectionHeading>
-              <p className="text-gray-400 text-sm leading-relaxed mb-7">
+              <p className="text-gray-300 text-sm leading-relaxed mb-7">
                 All API requests must be authenticated with a Bearer token in the{' '}
                 <code className="text-[#FFB81C] font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">
                   Authorization
@@ -425,7 +425,7 @@ export default function DocsClient() {
             {/* ── Endpoints header ────────────────────────────────────── */}
             <div className="mb-10">
               <h2 className="text-2xl font-bold text-white mb-2">Endpoints</h2>
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-300 text-sm">
                 All endpoints accept and return <code className="text-gray-300 font-mono text-xs">application/json</code>.
               </p>
             </div>
@@ -596,7 +596,7 @@ export default function DocsClient() {
             {/* ── SDKs ────────────────────────────────────────────────── */}
             <section id="sdks" className="scroll-mt-28">
               <SectionHeading id="sdks">SDKs</SectionHeading>
-              <p className="text-gray-400 text-sm leading-relaxed mb-8">
+              <p className="text-gray-300 text-sm leading-relaxed mb-8">
                 Official client libraries handle authentication, retries, and response parsing automatically.
               </p>
 
@@ -611,7 +611,7 @@ export default function DocsClient() {
                     </div>
                     <div>
                       <p className="text-white text-sm font-semibold">TypeScript / Node.js</p>
-                      <p className="text-gray-500 text-xs">Node 18+</p>
+                      <p className="text-gray-400 text-xs">Node 18+</p>
                     </div>
                   </div>
                   <div className="mb-5">
@@ -640,7 +640,7 @@ const result = await fg.ai.generate({
                     </div>
                     <div>
                       <p className="text-white text-sm font-semibold">Python</p>
-                      <p className="text-gray-500 text-xs">Python 3.9+</p>
+                      <p className="text-gray-400 text-xs">Python 3.9+</p>
                     </div>
                   </div>
                   <div className="mb-5">
@@ -666,7 +666,7 @@ result = fg.ai.generate(
             {/* ── Rate Limits ─────────────────────────────────────────── */}
             <section id="rate-limits" className="scroll-mt-28">
               <SectionHeading id="rate-limits">Rate Limits</SectionHeading>
-              <p className="text-gray-400 text-sm leading-relaxed mb-7">
+              <p className="text-gray-300 text-sm leading-relaxed mb-7">
                 Limits are enforced per API key. Current usage is exposed via response headers on every request.
               </p>
 
@@ -675,7 +675,7 @@ result = fg.ai.generate(
                   <thead>
                     <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
                       {['Plan', 'Req / min', 'Req / day', 'AI calls / day', 'Concurrent'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                           {h}
                         </th>
                       ))}
@@ -715,7 +715,7 @@ result = fg.ai.generate(
                           <td className="px-4 py-3 w-72">
                             <code className="text-[#FFB81C] font-mono text-xs">{row.header}</code>
                           </td>
-                          <td className="px-4 py-3 text-gray-400 text-sm">{row.desc}</td>
+                          <td className="px-4 py-3 text-gray-300 text-sm">{row.desc}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -729,7 +729,7 @@ result = fg.ai.generate(
             {/* ── Errors ──────────────────────────────────────────────── */}
             <section id="errors" className="scroll-mt-28">
               <SectionHeading id="errors">Errors</SectionHeading>
-              <p className="text-gray-400 text-sm leading-relaxed mb-7">
+              <p className="text-gray-300 text-sm leading-relaxed mb-7">
                 All errors return a consistent JSON body with a machine-readable{' '}
                 <code className="text-gray-300 font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">code</code> and
                 a human-readable{' '}
@@ -756,7 +756,7 @@ result = fg.ai.generate(
                   <thead>
                     <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
                       {['Status', 'Error Code', 'Description'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                           {h}
                         </th>
                       ))}
@@ -779,7 +779,7 @@ result = fg.ai.generate(
                         <td className="px-4 py-3 w-52">
                           <code className="text-purple-400 font-mono text-xs">{row.code}</code>
                         </td>
-                        <td className="px-4 py-3 text-gray-400 text-sm">{row.desc}</td>
+                        <td className="px-4 py-3 text-gray-300 text-sm">{row.desc}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -812,7 +812,7 @@ function SidebarContent({
       {groups.map((group, gi) => (
         <div key={gi}>
           {group.label && (
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-widest mb-2 px-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 px-2">
               {group.label}
             </p>
           )}
@@ -826,7 +826,7 @@ function SidebarContent({
                     className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors leading-snug font-mono ${
                       isActive
                         ? 'text-[#FFB81C] bg-[#FFB81C]/8'
-                        : 'text-gray-400 hover:text-gray-200 hover:bg-white/4'
+                        : 'text-gray-300 hover:text-gray-200 hover:bg-white/4'
                     }`}
                   >
                     {item.label}

@@ -37,7 +37,7 @@ export function ActivityFeedAdmin({ items }: { items: ActivityItem[] }) {
         const method = item.action.split(' ')[0]
         const path = item.action.split(' ').slice(1).join(' ')
         return (
-          <div key={item.id} className="flex items-start gap-3 py-2 border-b border-[#3a3a3a] last:border-0">
+          <div key={item.id} className="flex items-start gap-3 py-2 border-b border-[#1c1c1c] last:border-0">
             <span
               className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#6B7280]'}`}
             >

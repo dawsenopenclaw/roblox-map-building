@@ -22,7 +22,7 @@ export default function AcceptableUsePage() {
           Usage Policy
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">Acceptable Use Policy</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-300 text-sm">
           Effective: {EFFECTIVE_DATE} &nbsp;·&nbsp; {COMPANY}
         </p>
       </div>
@@ -225,11 +225,11 @@ export default function AcceptableUsePage() {
       </section>
 
       <div className="mt-10 pt-6 border-t border-white/10">
-        <p className="text-sm text-gray-500">
-          <strong className="text-gray-400">Report abuse:</strong>{' '}
+        <p className="text-sm text-gray-400">
+          <strong className="text-gray-300">Report abuse:</strong>{' '}
           <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">{EMAIL}</a>
           &nbsp;·&nbsp;
-          <strong className="text-gray-400">Last updated:</strong> {EFFECTIVE_DATE}
+          <strong className="text-gray-300">Last updated:</strong> {EFFECTIVE_DATE}
         </p>
       </div>
     </article>

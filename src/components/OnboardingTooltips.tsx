@@ -142,7 +142,7 @@ function TooltipBubble({ config, anchorRect, onDismiss, isLast, onDismissAll, in
         </span>
         <button
           onClick={onDismiss}
-          className="text-gray-500 hover:text-gray-300 transition-colors"
+          className="text-gray-400 hover:text-gray-300 transition-colors"
           aria-label="Dismiss tooltip"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -152,12 +152,12 @@ function TooltipBubble({ config, anchorRect, onDismiss, isLast, onDismissAll, in
       </div>
 
       <p className="text-white text-sm font-semibold mb-1">{config.title}</p>
-      <p className="text-gray-400 text-xs leading-relaxed mb-4">{config.body}</p>
+      <p className="text-gray-300 text-xs leading-relaxed mb-4">{config.body}</p>
 
       <div className="flex items-center gap-2">
         <button
           onClick={onDismissAll}
-          className="text-gray-500 text-xs hover:text-gray-300 transition-colors"
+          className="text-gray-400 text-xs hover:text-gray-300 transition-colors"
         >
           Got it, hide all
         </button>

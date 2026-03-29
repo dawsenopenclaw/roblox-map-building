@@ -6,15 +6,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /* ── Core backgrounds — dark grey ── */
-        background:        '#1a1a1a',   // dark grey
-        surface:           '#242424',   // medium-dark grey
-        'surface-2':       '#2e2e2e',   // lighter grey variant
-        'surface-elevated':'#383838',   // elevated panels
+        /* ── Core backgrounds — black + cool grey ── */
+        background:        '#0a0a0a',   // near-black
+        surface:           '#141414',   // very dark grey
+        'surface-2':       '#1c1c1c',   // slightly lighter
+        'surface-elevated':'#252525',   // elevated panels
 
         /* ── Borders ── */
-        border:            '#3a3a3a',   // grey border
-        'border-subtle':   '#4a4a4a',   // focus/hover borders
+        border:            '#2a2a2a',   // subtle grey
+        'border-subtle':   '#3a3a3a',   // focus/hover
 
         /* ── Gold accent ── */
         gold:              '#D4AF37',

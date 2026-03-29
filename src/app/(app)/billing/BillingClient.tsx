@@ -70,7 +70,7 @@ function UsageMeter({ stat }: { stat: UsageStat }) {
           <span style={{ color: stat.color }}>{stat.icon}</span>
           {stat.label}
         </div>
-        <span className="text-gray-400 text-xs tabular-nums">
+        <span className="text-gray-300 text-xs tabular-nums">
           {stat.used.toLocaleString()} / {stat.limit.toLocaleString()}
         </span>
       </div>
@@ -83,7 +83,7 @@ function UsageMeter({ stat }: { stat: UsageStat }) {
           }}
         />
       </div>
-      <p className="text-gray-600 text-xs text-right">{pct}% used</p>
+      <p className="text-gray-500 text-xs text-right">{pct}% used</p>
     </div>
   )
 }
@@ -99,14 +99,14 @@ export default function BillingClient() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Billing</h1>
-        <p className="text-gray-400 mt-1 text-sm">Manage your plan, tokens, and payment history.</p>
+        <p className="text-gray-300 mt-1 text-sm">Manage your plan, tokens, and payment history.</p>
       </div>
 
       <div className="space-y-4">
 
         {/* ── Current Plan ── */}
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Current Plan</p>
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2.5 mb-2">
@@ -117,8 +117,8 @@ export default function BillingClient() {
                   Active
                 </span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">{PLAN_DESCRIPTION}</p>
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-gray-300 text-sm leading-relaxed">{PLAN_DESCRIPTION}</p>
+              <p className="text-gray-400 text-xs mt-2">
                 <span className="text-white font-semibold">{MONTHLY_PRICE}/mo</span>
                 {' '}· Renews {RENEW_DATE}
               </p>
@@ -133,7 +133,7 @@ export default function BillingClient() {
               </Link>
               <button
                 onClick={() => window.open('/api/billing/portal', '_blank')}
-                className="text-xs text-gray-400 hover:text-white text-center transition-colors"
+                className="text-xs text-gray-300 hover:text-blue-400 text-center transition-colors"
               >
                 Manage billing →
               </button>
@@ -142,17 +142,17 @@ export default function BillingClient() {
         </div>
 
         {/* ── Token Balance ── */}
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Token Balance</p>
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
 
           {/* Big number */}
           <div className="flex items-end gap-3 mb-1">
             <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
               {tokensRemaining.toLocaleString()}
             </span>
-            <span className="text-gray-400 text-sm mb-1">remaining</span>
+            <span className="text-gray-300 text-sm mb-1">remaining</span>
           </div>
-          <p className="text-gray-500 text-xs mb-4">of {TOKEN_LIMIT.toLocaleString()} total this month</p>
+          <p className="text-gray-400 text-xs mb-4">of {TOKEN_LIMIT.toLocaleString()} total this month</p>
 
           {/* Progress bar */}
           <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
@@ -166,7 +166,7 @@ export default function BillingClient() {
               }}
             />
           </div>
-          <div className="flex justify-between text-xs text-gray-600 mb-5">
+          <div className="flex justify-between text-xs text-gray-500 mb-5">
             <span>{TOKENS_USED.toLocaleString()} used</span>
             <span>{tokenPct}%</span>
           </div>
@@ -181,8 +181,8 @@ export default function BillingClient() {
         </div>
 
         {/* ── Usage Breakdown ── */}
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Usage This Month</p>
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
           <div className="space-y-5">
             {USAGE_STATS.map(stat => (
               <UsageMeter key={stat.label} stat={stat} />
@@ -191,9 +191,9 @@ export default function BillingClient() {
         </div>
 
         {/* ── Payment History ── */}
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment History</p>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment History</p>
             <button
               onClick={() => window.open('/api/billing/portal', '_blank')}
               className="text-xs text-[#FFB81C] hover:text-[#E6A519] flex items-center gap-1 transition-colors"
@@ -204,22 +204,22 @@ export default function BillingClient() {
           </div>
 
           {PAYMENTS.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4">No payments yet.</p>
+            <p className="text-gray-400 text-sm py-4">No payments yet.</p>
           ) : (
             <div className="overflow-x-auto -mx-6 px-6">
               <table className="w-full text-sm min-w-[400px]">
                 <thead>
                   <tr className="border-b border-white/5">
-                    <th className="text-left text-xs text-gray-500 font-medium pb-3">Date</th>
-                    <th className="text-left text-xs text-gray-500 font-medium pb-3">Description</th>
-                    <th className="text-right text-xs text-gray-500 font-medium pb-3">Amount</th>
-                    <th className="text-right text-xs text-gray-500 font-medium pb-3">Status</th>
+                    <th className="text-left text-xs text-gray-400 font-medium pb-3">Date</th>
+                    <th className="text-left text-xs text-gray-400 font-medium pb-3">Description</th>
+                    <th className="text-right text-xs text-gray-400 font-medium pb-3">Amount</th>
+                    <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {PAYMENTS.map(row => (
                     <tr key={row.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3.5 text-gray-400 text-xs whitespace-nowrap">{row.date}</td>
+                      <td className="py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.date}</td>
                       <td className="py-3.5 text-white pr-4">{row.description}</td>
                       <td className="py-3.5 text-white text-right tabular-nums font-medium">{row.amount}</td>
                       <td className="py-3.5 text-right">

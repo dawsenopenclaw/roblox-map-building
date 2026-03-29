@@ -130,7 +130,7 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
       >
         <span className="text-white font-semibold text-sm pr-4">{q}</span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${
+          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -139,7 +139,7 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
         style={{ height, overflow: 'hidden', transition: 'height 220ms ease' }}
       >
         <div ref={bodyRef} className="px-5 pb-5">
-          <p className="text-gray-400 text-sm leading-relaxed">{a}</p>
+          <p className="text-gray-300 text-sm leading-relaxed">{a}</p>
         </div>
       </div>
     </div>
@@ -177,7 +177,7 @@ export default function PricingClient() {
               Simple, transparent pricing
             </span>
           </h1>
-          <p className="text-lg text-gray-400 mb-10 max-w-xl mx-auto">
+          <p className="text-lg text-gray-300 mb-10 max-w-xl mx-auto">
             Start free. No credit card required. Upgrade when you&apos;re ready.
           </p>
 
@@ -188,7 +188,7 @@ export default function PricingClient() {
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
                 !annual
                   ? 'bg-white text-black shadow'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-gray-300 hover:text-blue-400'
               }`}
             >
               Monthly
@@ -198,7 +198,7 @@ export default function PricingClient() {
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
                 annual
                   ? 'bg-white text-black shadow'
-                  : 'text-gray-400 hover:text-white'
+                  : 'text-gray-300 hover:text-blue-400'
               }`}
             >
               Annual
@@ -246,7 +246,7 @@ export default function PricingClient() {
                     className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
                       tier.highlight
                         ? 'bg-[#FFB81C]/15 text-[#FFB81C]'
-                        : 'bg-white/5 text-gray-400'
+                        : 'bg-white/5 text-gray-300'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -258,7 +258,7 @@ export default function PricingClient() {
                   >
                     {tier.name}
                   </p>
-                  <p className="text-gray-500 text-sm">{tier.tagline}</p>
+                  <p className="text-gray-400 text-sm">{tier.tagline}</p>
                 </div>
 
                 {/* Price */}
@@ -270,16 +270,16 @@ export default function PricingClient() {
                       <p className="text-5xl font-extrabold text-white">
                         ${price}
                       </p>
-                      <span className="text-gray-500 text-sm mb-2">/mo</span>
+                      <span className="text-gray-400 text-sm mb-2">/mo</span>
                     </div>
                   )}
                   {annual && price > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       Billed ${price * 12}/year
                     </p>
                   )}
                   {!annual && price > 0 && (
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-gray-500 mt-1">
                       or ${tier.priceYearly}/mo billed annually
                     </p>
                   )}
@@ -311,12 +311,12 @@ export default function PricingClient() {
                     <li key={f} className="flex items-start gap-2.5">
                       <Check
                         className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                          tier.highlight ? 'text-[#FFB81C]' : 'text-gray-500'
+                          tier.highlight ? 'text-[#FFB81C]' : 'text-gray-400'
                         }`}
                       />
                       <span
                         className={`text-sm ${
-                          tier.highlight ? 'text-gray-200' : 'text-gray-400'
+                          tier.highlight ? 'text-gray-200' : 'text-gray-300'
                         }`}
                       >
                         {f}
@@ -332,7 +332,7 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Trust bar                                                           */}
         {/* ------------------------------------------------------------------ */}
-        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mb-20 text-sm text-gray-500">
+        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mb-20 text-sm text-gray-400">
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             COPPA compliant
@@ -382,7 +382,7 @@ export default function PricingClient() {
             <Heart className="w-5 h-5 text-[#FFB81C] flex-shrink-0" />
             <div>
               <p className="text-white font-semibold">10% of revenue donated to charity</p>
-              <p className="text-gray-500 text-xs mt-0.5">
+              <p className="text-gray-400 text-xs mt-0.5">
                 Every paid plan contributes to coding &amp; STEM education nonprofits worldwide.
               </p>
             </div>

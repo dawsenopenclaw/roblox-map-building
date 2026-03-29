@@ -92,7 +92,7 @@ export default function DownloadClient() {
         <h1 className="text-4xl font-bold tracking-tight mb-3">
           <span style={{ color: '#FFB81C' }}>Forje</span>Games Desktop
         </h1>
-        <p className="text-gray-400 text-lg leading-relaxed">
+        <p className="text-gray-300 text-lg leading-relaxed">
           The desktop app isn't ready yet. Sign up and we'll email you the moment it launches.
         </p>
       </div>
@@ -102,7 +102,7 @@ export default function DownloadClient() {
         {status === 'done' || alreadySigned ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-[#FFB81C44] bg-[#FFB81C0D] px-6 py-5 text-center">
             <span className="text-[#FFB81C] font-semibold text-base">You're on the list.</span>
-            <span className="text-gray-400 text-sm">We'll notify you when the desktop app is ready.</span>
+            <span className="text-gray-300 text-sm">We'll notify you when the desktop app is ready.</span>
           </div>
         ) : (
           <form onSubmit={handleNotify} className="flex flex-col sm:flex-row gap-3">
@@ -112,7 +112,7 @@ export default function DownloadClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#FFB81C] transition-colors"
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-blue-400 transition-colors"
             />
             <button
               type="submit"
@@ -130,7 +130,7 @@ export default function DownloadClient() {
 
       {/* CTA — web editor */}
       <div className="mt-8 flex flex-col items-center gap-2">
-        <p className="text-gray-500 text-sm">Don't want to wait?</p>
+        <p className="text-gray-400 text-sm">Don't want to wait?</p>
         <Link
           href="/editor"
           className="inline-flex items-center gap-2 border border-white/15 hover:border-[#FFB81C] text-white hover:text-[#FFB81C] font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
@@ -156,7 +156,7 @@ export default function DownloadClient() {
               <span className="text-[#FFB81C] mt-0.5 shrink-0">{f.icon}</span>
               <div>
                 <p className="text-white text-sm font-medium leading-snug">{f.title}</p>
-                <p className="text-gray-500 text-xs mt-1 leading-relaxed">{f.desc}</p>
+                <p className="text-gray-400 text-xs mt-1 leading-relaxed">{f.desc}</p>
               </div>
             </div>
           ))}
@@ -168,7 +168,7 @@ export default function DownloadClient() {
 
       {/* Bottom web editor nudge */}
       <div className="text-center max-w-md">
-        <p className="text-gray-400 text-sm leading-relaxed mb-4">
+        <p className="text-gray-300 text-sm leading-relaxed mb-4">
           The web editor has all the same AI features — generate maps, write Luau scripts, and build your game right now.
         </p>
         <Link

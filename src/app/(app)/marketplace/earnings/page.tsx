@@ -66,7 +66,7 @@ export default function EarningsPage() {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Creator Earnings</h1>
-        <p className="text-gray-400 text-sm mt-1">70% of every sale goes directly to you</p>
+        <p className="text-gray-300 text-sm mt-1">70% of every sale goes directly to you</p>
       </div>
 
       {error && (
@@ -82,10 +82,10 @@ export default function EarningsPage() {
       )}
 
       {!data?.connected ? (
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-8 text-center">
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-8 text-center">
           <div className="text-5xl mb-4">&#128179;</div>
           <h2 className="text-xl font-bold text-white mb-2">Connect Stripe to receive payouts</h2>
-          <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto">
+          <p className="text-gray-300 text-sm mb-6 max-w-md mx-auto">
             Set up your Stripe Express account to start receiving 70% of your template sales.
             Payouts when balance reaches $20.
           </p>
@@ -105,7 +105,7 @@ export default function EarningsPage() {
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
               <div>
                 <p className="text-amber-400 font-medium text-sm">Stripe setup incomplete</p>
-                <p className="text-gray-400 text-xs mt-0.5">Complete your Stripe onboarding to receive payouts</p>
+                <p className="text-gray-300 text-xs mt-0.5">Complete your Stripe onboarding to receive payouts</p>
               </div>
               <button
                 onClick={handleConnectStripe}
@@ -119,21 +119,21 @@ export default function EarningsPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">Pending Balance</p>
+            <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
+              <p className="text-gray-300 text-xs uppercase tracking-wide mb-1">Pending Balance</p>
               <p className="text-2xl font-bold text-white">
                 ${((data.pendingBalanceCents ?? 0) / 100).toFixed(2)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Paid out when &ge; $20</p>
+              <p className="text-xs text-gray-400 mt-1">Paid out when &ge; $20</p>
             </div>
-            <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">Total Earned</p>
+            <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
+              <p className="text-gray-300 text-xs uppercase tracking-wide mb-1">Total Earned</p>
               <p className="text-2xl font-bold text-white">
                 ${((data.totalEarnedCents ?? 0) / 100).toFixed(2)}
               </p>
             </div>
-            <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">Last Payout</p>
+            <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
+              <p className="text-gray-300 text-xs uppercase tracking-wide mb-1">Last Payout</p>
               <p className="text-2xl font-bold text-white">
                 {data.lastPayoutAt ? new Date(data.lastPayoutAt).toLocaleDateString() : '—'}
               </p>
@@ -141,10 +141,10 @@ export default function EarningsPage() {
           </div>
 
           {/* Recent sales */}
-          <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
             <h2 className="text-base font-semibold text-white mb-4">Recent Sales (30 days)</h2>
             {!data.recentSales?.length ? (
-              <p className="text-gray-500 text-sm">No sales yet. Publish your first template!</p>
+              <p className="text-gray-400 text-sm">No sales yet. Publish your first template!</p>
             ) : (
               <div className="divide-y divide-white/5">
                 {data.recentSales.map((sale: { id: string; template?: { title: string }; creatorPayoutCents: number; createdAt: string }) => (
@@ -153,7 +153,7 @@ export default function EarningsPage() {
                       <p className="text-sm text-white font-medium">
                         {sale.template?.title || 'Unknown Template'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {new Date(sale.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -166,7 +166,7 @@ export default function EarningsPage() {
             )}
           </div>
 
-          <p className="text-xs text-gray-600 text-center">
+          <p className="text-xs text-gray-500 text-center">
             Platform takes 30% per sale. Payouts processed monthly via Stripe.
           </p>
         </div>

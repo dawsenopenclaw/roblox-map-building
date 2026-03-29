@@ -15,7 +15,7 @@ export default function MarketplaceLoading() {
         </div>
 
         {/* Search + filter bar */}
-        <div className="bg-[#242424] border border-white/10 rounded-xl p-4 mb-6">
+        <div className="bg-[#141414] border border-white/10 rounded-xl p-4 mb-6">
           <div className="flex gap-3 mb-4">
             <div className="flex-1 h-10 rounded-xl shimmer" />
             <div className="h-10 w-20 rounded-xl shimmer" />
@@ -40,7 +40,7 @@ export default function MarketplaceLoading() {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="bg-[#242424] border border-white/10 rounded-xl overflow-hidden"
+              className="bg-[#141414] border border-white/10 rounded-xl overflow-hidden"
             >
               {/* Image placeholder */}
               <div className="h-40 shimmer" />

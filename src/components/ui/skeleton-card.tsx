@@ -47,7 +47,7 @@ export function SkeletonCard({
 }: SkeletonCardProps) {
   return (
     <motion.div
-      className={`bg-[#242424] border border-white/10 rounded-xl overflow-hidden ${className}`}
+      className={`bg-[#141414] border border-white/10 rounded-xl overflow-hidden ${className}`}
       animate={{ opacity: [0.7, 1, 0.7] }}
       transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
     >

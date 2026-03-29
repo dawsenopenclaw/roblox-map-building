@@ -159,7 +159,7 @@ function SwipeableNotification({
                     e.stopPropagation()
                     onDismiss()
                   }}
-                  className="hidden sm:flex w-5 h-5 items-center justify-center rounded text-gray-600 hover:text-gray-300 hover:bg-white/10 transition-colors"
+                  className="hidden sm:flex w-5 h-5 items-center justify-center rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-colors"
                   aria-label={`Dismiss: ${n.title}`}
                 >
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -169,8 +169,8 @@ function SwipeableNotification({
                 </button>
               </div>
             </div>
-            <p className="text-gray-500 text-xs mt-0.5 line-clamp-2">{n.body}</p>
-            <p className="text-gray-600 text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-0.5 line-clamp-2">{n.body}</p>
+            <p className="text-gray-500 text-xs mt-1">
               <time dateTime={new Date(n.createdAt).toISOString()}>
                 {timeAgo(n.createdAt)}
               </time>
@@ -220,7 +220,7 @@ function NotificationCenterInner() {
       {/* Bell button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+        className="relative w-9 h-9 rounded-xl flex items-center justify-center text-gray-300 hover:text-blue-400 hover:bg-white/5 transition-colors"
         aria-label={
           unreadCount > 0
             ? `Notifications, ${unreadCount} unread`
@@ -272,7 +272,7 @@ function NotificationCenterInner() {
           />
 
           <div
-            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#242424] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#141414] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
             role="region"
             aria-label="Notifications"
             aria-live="polite"
@@ -303,7 +303,7 @@ function NotificationCenterInner() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="text-xs text-gray-400 hover:text-white transition-colors"
+                  className="text-xs text-gray-300 hover:text-blue-400 transition-colors"
                   aria-label="Mark all notifications as read"
                 >
                   Mark all read
@@ -322,14 +322,14 @@ function NotificationCenterInner() {
                   <div className="text-3xl mb-3" aria-hidden="true">
                     &#128276;
                   </div>
-                  <p className="text-gray-500 text-sm">All caught up!</p>
+                  <p className="text-gray-400 text-sm">All caught up!</p>
                 </div>
               ) : (
                 grouped.map(({ group, items }) => (
                   <div key={group}>
                     {/* Date group label */}
                     <div className="px-4 py-1.5 bg-white/3 border-b border-white/5">
-                      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                         {group}
                       </span>
                     </div>
@@ -351,7 +351,7 @@ function NotificationCenterInner() {
             <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
               <a
                 href="/settings"
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
               >
                 Notification preferences
               </a>
@@ -361,7 +361,7 @@ function NotificationCenterInner() {
                   Live
                 </span>
               ) : (
-                <span className="text-[10px] text-gray-600">Polling</span>
+                <span className="text-[10px] text-gray-500">Polling</span>
               )}
             </div>
           </div>

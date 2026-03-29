@@ -75,7 +75,7 @@ function DockItemComponent({
       className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-150 ${
         item.active
           ? 'bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/25'
-          : 'text-gray-400 hover:text-white hover:bg-white/8'
+          : 'text-gray-300 hover:text-white hover:bg-white/8'
       }`}
       title={item.label}
     >

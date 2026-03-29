@@ -43,11 +43,11 @@ export default function EarningsPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Earnings</h1>
-          <p className="text-gray-400 mt-1 text-sm">Your marketplace revenue and payout history.</p>
+          <p className="text-gray-300 mt-1 text-sm">Your marketplace revenue and payout history.</p>
         </div>
         <button
           onClick={() => window.open('/api/earnings/export', '_blank')}
-          className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/30 text-gray-400 hover:text-white px-4 py-2.5 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 px-4 py-2.5 rounded-xl transition-colors"
         >
           <Download size={14} />
           Export CSV
@@ -59,13 +59,13 @@ export default function EarningsPage() {
         {STATS.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-[#242424] border border-white/10 rounded-xl p-4">
+            <div key={stat.label} className="bg-[#141414] border border-white/10 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Icon size={14} style={{ color: stat.color }} />
-                <p className="text-gray-500 text-xs">{stat.label}</p>
+                <p className="text-gray-400 text-xs">{stat.label}</p>
               </div>
               <p className="text-white text-xl font-bold">{stat.value}</p>
-              <p className="text-gray-600 text-xs mt-0.5">{stat.sub}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{stat.sub}</p>
             </div>
           )
         })}
@@ -76,7 +76,7 @@ export default function EarningsPage() {
         <TrendingUp size={16} className="text-[#FFB81C] mt-0.5 flex-shrink-0" />
         <div>
           <p className="text-[#FFB81C] text-sm font-semibold">Payouts processed on the 1st and 15th</p>
-          <p className="text-gray-400 text-xs mt-0.5">
+          <p className="text-gray-300 text-xs mt-0.5">
             Earnings from template sales are paid out twice monthly via Stripe.{' '}
             <Link href="/billing" className="text-[#FFB81C] hover:text-[#E6A519] transition-colors">
               Manage payout settings
@@ -86,26 +86,26 @@ export default function EarningsPage() {
       </div>
 
       {/* Payout history */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Payout History</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payout History</p>
 
         {PAYOUTS.length === 0 ? (
-          <p className="text-gray-500 text-sm py-6 text-center">No payouts yet.</p>
+          <p className="text-gray-400 text-sm py-6 text-center">No payouts yet.</p>
         ) : (
           <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-sm min-w-[420px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Date</th>
-                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Description</th>
-                  <th className="text-right text-xs text-gray-500 font-medium pb-3">Amount</th>
-                  <th className="text-right text-xs text-gray-500 font-medium pb-3">Status</th>
+                  <th className="text-left text-xs text-gray-400 font-medium pb-3">Date</th>
+                  <th className="text-left text-xs text-gray-400 font-medium pb-3">Description</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Amount</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {PAYOUTS.map((row) => (
                   <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3.5 text-gray-400 text-xs whitespace-nowrap">{row.date}</td>
+                    <td className="py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.date}</td>
                     <td className="py-3.5 text-white pr-4">{row.description}</td>
                     <td className="py-3.5 text-white text-right tabular-nums font-medium">{row.amount}</td>
                     <td className="py-3.5 text-right">
@@ -122,10 +122,10 @@ export default function EarningsPage() {
       </div>
 
       {/* CTA */}
-      <div className="mt-6 bg-[#242424] border border-white/10 rounded-xl p-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="mt-6 bg-[#141414] border border-white/10 rounded-xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-white font-semibold text-sm">Sell your map templates</p>
-          <p className="text-gray-400 text-xs mt-0.5">List your maps on the marketplace and earn 80% of every sale.</p>
+          <p className="text-gray-300 text-xs mt-0.5">List your maps on the marketplace and earn 80% of every sale.</p>
         </div>
         <Link
           href="/marketplace/submit"

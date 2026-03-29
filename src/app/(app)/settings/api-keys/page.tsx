@@ -34,7 +34,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors"
+      className="text-xs text-gray-300 hover:text-blue-400 border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -139,7 +139,7 @@ export default function ApiKeysPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">API Keys</h1>
-          <p className="text-gray-400 mt-1 text-sm">
+          <p className="text-gray-300 mt-1 text-sm">
             Manage keys for programmatic access to ForjeGames.
           </p>
         </div>
@@ -167,7 +167,7 @@ export default function ApiKeysPage() {
                 <CopyButton text={newKeyData.rawKey} />
               </div>
             </div>
-            <button onClick={() => setNewKeyData(null)} className="text-gray-500 hover:text-white text-xl">
+            <button onClick={() => setNewKeyData(null)} className="text-gray-400 hover:text-blue-400 text-xl">
               &times;
             </button>
           </div>
@@ -177,24 +177,24 @@ export default function ApiKeysPage() {
       {/* Create form modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-white font-bold text-lg mb-6">Create API Key</h2>
 
             <div className="mb-4">
-              <label className="block text-sm text-gray-400 mb-1.5">Key Name</label>
+              <label className="block text-sm text-gray-300 mb-1.5">Key Name</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && createKey()}
                 placeholder="e.g. Production, My Script"
-                className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors"
                 autoFocus
               />
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm text-gray-400 mb-3">Scopes</label>
+              <label className="block text-sm text-gray-300 mb-3">Scopes</label>
               <div className="space-y-2">
                 {SCOPE_OPTIONS.map((opt) => (
                   <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
@@ -212,7 +212,7 @@ export default function ApiKeysPage() {
                     </div>
                     <div>
                       <p className="text-white text-sm font-medium">{opt.label}</p>
-                      <p className="text-gray-500 text-xs">{opt.description}</p>
+                      <p className="text-gray-400 text-xs">{opt.description}</p>
                     </div>
                   </label>
                 ))}
@@ -233,7 +233,7 @@ export default function ApiKeysPage() {
               </button>
               <button
                 onClick={() => { setShowCreate(false); setCreateError(null) }}
-                className="px-5 border border-white/10 hover:border-white/30 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
+                className="px-5 border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 rounded-xl text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -260,14 +260,14 @@ export default function ApiKeysPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5 animate-pulse h-24" />
+            <div key={i} className="bg-[#141414] border border-white/10 rounded-2xl p-5 animate-pulse h-24" />
           ))}
         </div>
       ) : keys.length === 0 ? (
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-4">&#128273;</div>
           <h3 className="text-white font-semibold mb-2">No API keys yet</h3>
-          <p className="text-gray-400 text-sm mb-6">
+          <p className="text-gray-300 text-sm mb-6">
             Create your first key to start using the ForjeGames API.
           </p>
           <button
@@ -280,14 +280,14 @@ export default function ApiKeysPage() {
       ) : (
         <div className="space-y-3">
           {keys.map((key) => (
-            <div key={key.id} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
+            <div key={key.id} className="bg-[#141414] border border-white/10 rounded-2xl p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
                     <Link href={`/settings/api-keys/${key.id}`} className="text-white font-semibold hover:text-[#FFB81C] transition-colors">
                       {key.name}
                     </Link>
-                    <span className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-0.5 rounded-full">
                       {key.tier}
                     </span>
                   </div>
@@ -305,7 +305,7 @@ export default function ApiKeysPage() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-gray-600 text-xs mt-2">
+                  <p className="text-gray-500 text-xs mt-2">
                     Created {new Date(key.createdAt).toLocaleDateString()}
                     {key.lastUsedAt && ` · Last used ${new Date(key.lastUsedAt).toLocaleDateString()}`}
                     {key.expiresAt && ` · Expires ${new Date(key.expiresAt).toLocaleDateString()}`}
@@ -322,7 +322,7 @@ export default function ApiKeysPage() {
                     </button>
                     <button
                       onClick={() => setDeleteConfirm(null)}
-                      className="text-xs border border-white/10 hover:border-white/30 text-gray-400 px-3 py-1.5 rounded-lg transition-colors"
+                      className="text-xs border border-white/10 hover:border-white/30 text-gray-300 px-3 py-1.5 rounded-lg transition-colors"
                     >
                       Cancel
                     </button>
@@ -342,12 +342,12 @@ export default function ApiKeysPage() {
       )}
 
       {/* Rate limit info */}
-      <div className="mt-8 bg-[#242424] border border-white/10 rounded-2xl p-6">
+      <div className="mt-8 bg-[#141414] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-3">Rate Limits by Tier</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-400 border-b border-white/10">
+              <tr className="text-gray-300 border-b border-white/10">
                 <th className="text-left py-2 pr-4">Tier</th>
                 <th className="text-left py-2 pr-4">Requests/min</th>
                 <th className="text-left py-2">Requests/day</th>

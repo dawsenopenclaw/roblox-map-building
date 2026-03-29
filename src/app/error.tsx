@@ -113,7 +113,7 @@ function ErrorShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div
@@ -123,7 +123,7 @@ function ErrorShell({
       </div>
 
       <div className="relative max-w-md w-full text-center">
-        <div className="bg-[#242424]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#141414]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
 
           {/* Icon */}
           <div
@@ -133,16 +133,16 @@ function ErrorShell({
           </div>
 
           <h1 className="text-2xl font-bold text-white mb-3">{heading}</h1>
-          <p className="text-gray-400 text-sm leading-relaxed mb-2">{body}</p>
+          <p className="text-gray-300 text-sm leading-relaxed mb-2">{body}</p>
 
           {digest && (
-            <p className="text-gray-600 text-xs font-mono mb-1 mt-4">
+            <p className="text-gray-500 text-xs font-mono mb-1 mt-4">
               Error ID: {digest}
             </p>
           )}
 
           {/* Inline status hint */}
-          <p className="text-gray-600 text-xs mb-6">
+          <p className="text-gray-500 text-xs mb-6">
             We&apos;ve been notified — no action needed on your end.
           </p>
 
@@ -184,7 +184,7 @@ function ErrorShell({
 
           {/* Report bug */}
           <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-gray-600 text-xs">
+            <p className="text-gray-500 text-xs">
               Still stuck?{' '}
               <a
                 href={`mailto:support@ForjeGames.gg?subject=Bug+report+[${reportType}]${digest ? `&body=Error+ID:+${digest}` : ''}`}

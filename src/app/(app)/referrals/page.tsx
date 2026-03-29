@@ -63,7 +63,7 @@ export default function ReferralsPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Referrals</h1>
-        <p className="text-gray-400 mt-1 text-sm">
+        <p className="text-gray-300 mt-1 text-sm">
           Invite friends and earn $15 credit for every paid conversion.
         </p>
       </div>
@@ -73,32 +73,32 @@ export default function ReferralsPage() {
         {STATS.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-[#242424] border border-white/10 rounded-xl p-4">
+            <div key={stat.label} className="bg-[#141414] border border-white/10 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Icon size={14} style={{ color: stat.color }} />
-                <p className="text-gray-500 text-xs">{stat.label}</p>
+                <p className="text-gray-400 text-xs">{stat.label}</p>
               </div>
               <p className="text-white text-xl font-bold">{stat.value}</p>
-              <p className="text-gray-600 text-xs mt-0.5">{stat.sub}</p>
+              <p className="text-gray-500 text-xs mt-0.5">{stat.sub}</p>
             </div>
           )
         })}
       </div>
 
       {/* Share section */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6 mb-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Your Referral Links</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6 mb-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referral Links</p>
 
         {/* Code */}
         <div className="mb-4">
-          <label className="block text-sm text-gray-400 mb-1.5">Referral Code</label>
+          <label className="block text-sm text-gray-300 mb-1.5">Referral Code</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#FFB81C] text-sm font-bold tracking-widest">
+            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#FFB81C] text-sm font-bold tracking-widest">
               {REFERRAL_CODE}
             </div>
             <button
               onClick={copyCode}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-white/30 text-gray-400 hover:text-white px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 px-3 py-3 rounded-xl transition-colors flex-shrink-0"
             >
               {codeCopied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
               {codeCopied ? 'Copied' : 'Copy'}
@@ -108,14 +108,14 @@ export default function ReferralsPage() {
 
         {/* Link */}
         <div>
-          <label className="block text-sm text-gray-400 mb-1.5">Referral Link</label>
+          <label className="block text-sm text-gray-300 mb-1.5">Referral Link</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
+            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
               {REFERRAL_LINK}
             </div>
             <button
               onClick={copyLink}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-white/30 text-gray-400 hover:text-white px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 px-3 py-3 rounded-xl transition-colors flex-shrink-0"
             >
               {linkCopied ? <Check size={14} className="text-green-400" /> : <Link2 size={14} />}
               {linkCopied ? 'Copied' : 'Copy'}
@@ -127,7 +127,7 @@ export default function ReferralsPage() {
       {/* How it works */}
       <div className="bg-[#FFB81C]/5 border border-[#FFB81C]/20 rounded-xl p-5 mb-6">
         <p className="text-[#FFB81C] font-semibold text-sm mb-3">How it works</p>
-        <div className="space-y-2 text-sm text-gray-400">
+        <div className="space-y-2 text-sm text-gray-300">
           <p>1. Share your code or link with a friend.</p>
           <p>2. They sign up and upgrade to any paid plan.</p>
           <p>3. You earn <span className="text-white font-semibold">$15 account credit</span> per paid conversion.</p>
@@ -136,28 +136,28 @@ export default function ReferralsPage() {
       </div>
 
       {/* Referrals table */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Your Referrals</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referrals</p>
 
         {REFERRALS.length === 0 ? (
-          <p className="text-gray-500 text-sm py-6 text-center">No referrals yet. Share your code to get started.</p>
+          <p className="text-gray-400 text-sm py-6 text-center">No referrals yet. Share your code to get started.</p>
         ) : (
           <div className="overflow-x-auto -mx-6 px-6">
             <table className="w-full text-sm min-w-[400px]">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left text-xs text-gray-500 font-medium pb-3">User</th>
-                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Joined</th>
-                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Plan</th>
-                  <th className="text-right text-xs text-gray-500 font-medium pb-3">Credit</th>
-                  <th className="text-right text-xs text-gray-500 font-medium pb-3">Status</th>
+                  <th className="text-left text-xs text-gray-400 font-medium pb-3">User</th>
+                  <th className="text-left text-xs text-gray-400 font-medium pb-3">Joined</th>
+                  <th className="text-left text-xs text-gray-400 font-medium pb-3">Plan</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Credit</th>
+                  <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {REFERRALS.map((row) => (
                   <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 text-white font-medium text-sm">@{row.user}</td>
-                    <td className="py-3 text-gray-400 text-xs whitespace-nowrap">{row.joinedAt}</td>
+                    <td className="py-3 text-gray-300 text-xs whitespace-nowrap">{row.joinedAt}</td>
                     <td className="py-3 text-gray-300 text-xs">{row.plan}</td>
                     <td className="py-3 text-right text-[#FFB81C] tabular-nums text-sm font-semibold">{row.credit}</td>
                     <td className="py-3 text-right">
@@ -165,7 +165,7 @@ export default function ReferralsPage() {
                         className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
                           row.status === 'Converted'
                             ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                            : 'bg-white/5 text-gray-500 border-white/10'
+                            : 'bg-white/5 text-gray-400 border-white/10'
                         }`}
                       >
                         {row.status}

@@ -246,7 +246,7 @@ export default function MarketplacePage() {
                 className="
                   w-full bg-white/5 border border-white/10 rounded-xl
                   pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30
-                  focus:outline-none focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/10
+                  focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/10
                   transition-all duration-200
                   [&::-webkit-search-cancel-button]:hidden
                 "
@@ -270,7 +270,7 @@ export default function MarketplacePage() {
                 className="
                   appearance-none bg-white/5 border border-white/10 rounded-xl
                   px-4 py-3 pr-9 text-sm text-white/80
-                  focus:outline-none focus:border-amber-500/50
+                  focus:outline-none focus:border-blue-400/50
                   cursor-pointer transition-all duration-200 min-w-[140px]
                 "
               >
@@ -291,7 +291,7 @@ export default function MarketplacePage() {
                 className="
                   appearance-none bg-white/5 border border-white/10 rounded-xl
                   px-4 py-3 pr-9 text-sm text-white/80
-                  focus:outline-none focus:border-amber-500/50
+                  focus:outline-none focus:border-blue-400/50
                   cursor-pointer transition-all duration-200 min-w-[160px]
                 "
               >
@@ -326,7 +326,7 @@ export default function MarketplacePage() {
 
         {/* ── Featured Banner ────────────────────────────────────────────── */}
         <section aria-label="Featured templates">
-          <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#242424] to-[#0d1117] shadow-[0_0_60px_rgba(245,158,11,0.08)]">
+          <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#0d1117] shadow-[0_0_60px_rgba(245,158,11,0.08)]">
             {/* Gold top border accent */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/80 to-transparent" />
             {/* Subtle glow overlay */}
@@ -514,7 +514,7 @@ function TemplateCard({ template }: { template: Template }) {
 
   return (
     <article className="
-      group flex flex-col bg-[#242424] border border-white/8 rounded-xl overflow-hidden
+      group flex flex-col bg-[#141414] border border-white/8 rounded-xl overflow-hidden
       hover:border-amber-500/25 hover:shadow-[0_0_30px_rgba(245,158,11,0.06)]
       transition-all duration-200 cursor-pointer
     ">
@@ -629,7 +629,7 @@ function TemplateCard({ template }: { template: Template }) {
 
 function SkeletonCard() {
   return (
-    <div className="flex flex-col bg-[#242424] border border-white/5 rounded-xl overflow-hidden animate-pulse">
+    <div className="flex flex-col bg-[#141414] border border-white/5 rounded-xl overflow-hidden animate-pulse">
       <div className="aspect-video bg-white/5" />
       <div className="p-4 flex flex-col gap-3">
         <div className="h-2.5 w-16 bg-white/8 rounded" />

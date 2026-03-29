@@ -103,7 +103,7 @@ const KIND_COLOR: Record<NodeKind, string> = {
   npc: 'text-purple-400',
   script: 'text-cyan-400',
   ui: 'text-pink-400',
-  other: 'text-gray-500',
+  other: 'text-gray-400',
 }
 
 // ---------------------------------------------------------------------------
@@ -224,14 +224,14 @@ function TreeNode({
         className={`w-full flex items-center gap-1.5 py-1 rounded text-xs transition-colors text-left ${
           isSelected
             ? 'bg-[#FFB81C]/15 text-white'
-            : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+            : 'text-gray-300 hover:text-gray-200 hover:bg-white/5'
         }`}
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: '8px' }}
         aria-selected={isSelected}
       >
         {/* Expand arrow */}
         {hasChildren ? (
-          <span className="text-gray-500 w-3 flex-shrink-0 text-center">
+          <span className="text-gray-400 w-3 flex-shrink-0 text-center">
             {node.expanded ? '▾' : '▸'}
           </span>
         ) : (
@@ -252,7 +252,7 @@ function TreeNode({
 
         {/* Child count */}
         {hasChildren && (
-          <span className="ml-auto text-gray-600 text-xs flex-shrink-0">
+          <span className="ml-auto text-gray-500 text-xs flex-shrink-0">
             {node.children!.length}
           </span>
         )}
@@ -338,10 +338,10 @@ export function GameTree({ onSelect, className = '' }: GameTreeProps) {
   )
 
   return (
-    <div className={`flex flex-col h-full bg-[#1e1e1e] ${className}`}>
+    <div className={`flex flex-col h-full bg-[#141414] ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/8 flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Explorer</span>
+        <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Explorer</span>
         <div className="flex items-center gap-2">
           {isLive && (
             <span className="flex items-center gap-1 text-xs text-green-500">
@@ -350,7 +350,7 @@ export function GameTree({ onSelect, className = '' }: GameTreeProps) {
             </span>
           )}
           <button
-            className="w-5 h-5 rounded flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-sm"
+            className="w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm"
             aria-label="Add element"
             title="Add new element"
           >
@@ -375,7 +375,7 @@ export function GameTree({ onSelect, className = '' }: GameTreeProps) {
 
       {/* Footer */}
       <div className="p-2 border-t border-white/8 flex-shrink-0">
-        <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors border border-dashed border-white/10 hover:border-white/20">
+        <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors border border-dashed border-white/10 hover:border-white/20">
           <span>+</span>
           <span>Add element</span>
         </button>

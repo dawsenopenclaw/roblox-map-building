@@ -37,7 +37,7 @@ export default function AchievementsLoading() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="bg-[#242424] border border-white/10 rounded-xl p-3 text-center"
+                  className="bg-[#141414] border border-white/10 rounded-xl p-3 text-center"
                 >
                   {/* Icon placeholder */}
                   <div className="w-10 h-10 rounded-xl shimmer mx-auto mb-2" />

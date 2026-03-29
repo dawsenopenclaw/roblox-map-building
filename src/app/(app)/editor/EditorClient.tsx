@@ -962,7 +962,160 @@ function AssetSkeleton() {
   )
 }
 
+// ─── Asset Generation Types ────────────────────────────────────────────────────
+
+type GenerateTab = 'marketplace' | 'generate'
+type GenerateQuality = 'draft' | 'standard' | 'premium'
+type GenerateAssetType = 'mesh' | 'texture'
+
+interface GeneratedAsset {
+  id: string
+  prompt: string
+  type: GenerateAssetType
+  quality: GenerateQuality
+  status: 'loading' | 'complete' | 'demo' | 'error'
+  meshUrl?: string | null
+  textureUrl?: string | null
+  thumbnailUrl?: string | null
+  polygonCount?: number | null
+  resolution?: string
+  createdAt: Date
+}
+
+function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
+  const isLoading = asset.status === 'loading'
+  const isDemo    = asset.status === 'demo'
+  const isError   = asset.status === 'error'
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/[0.03] p-2.5 space-y-2">
+      <div className="relative flex h-16 w-full items-center justify-center overflow-hidden rounded-md bg-white/5">
+        {isLoading && (
+          <div className="flex flex-col items-center gap-1">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#FFB81C]/30 border-t-[#FFB81C]"/>
+            <span className="text-[9px] text-gray-600">Generating...</span>
+          </div>
+        )}
+        {!isLoading && !isError && asset.thumbnailUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={asset.thumbnailUrl} alt={asset.prompt} className="h-full w-full object-contain"/>
+        )}
+        {isError && <span className="text-[10px] text-red-400">Failed</span>}
+        {isDemo && <span className="absolute right-1 top-1 rounded bg-[#FFB81C]/20 px-1 py-0.5 text-[8px] font-bold text-[#FFB81C]">DEMO</span>}
+      </div>
+      <div>
+        <p className="truncate text-[11px] font-medium leading-tight text-gray-300" title={asset.prompt}>{asset.prompt}</p>
+        <div className="mt-1 flex items-center gap-1.5">
+          <span className="text-[9px] text-gray-600">{asset.type === 'mesh' ? '3D Model' : 'Texture'}</span>
+          <span className="text-[9px] text-gray-700">·</span>
+          <span className="text-[9px] capitalize text-gray-600">{asset.quality}</span>
+          {asset.polygonCount != null && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.polygonCount.toLocaleString()} poly</span></>}
+          {asset.resolution && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.resolution}px</span></>}
+        </div>
+      </div>
+      {!isLoading && !isError && (
+        <div className="flex items-center gap-1">
+          {asset.meshUrl && <a href={asset.meshUrl} download className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 transition-colors hover:bg-white/10 hover:text-white">Download GLB</a>}
+          {asset.textureUrl && <a href={asset.textureUrl} download className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 transition-colors hover:bg-white/10 hover:text-white">Download PNG</a>}
+          {isDemo && !asset.meshUrl && !asset.textureUrl && <p className="text-[9px] italic text-gray-700">Add API key for real downloads</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function GenerateSubPanel() {
+  const [genPrompt, setGenPrompt]             = useState('')
+  const [genQuality, setGenQuality]           = useState<GenerateQuality>('standard')
+  const [genType, setGenType]                 = useState<GenerateAssetType>('mesh')
+  const [isGenerating, setIsGenerating]       = useState(false)
+  const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([])
+  const [genError, setGenError]               = useState<string | null>(null)
+
+  async function handleGenerate() {
+    if (!genPrompt.trim() || isGenerating) return
+    setGenError(null)
+    setIsGenerating(true)
+    const id = crypto.randomUUID()
+    setGeneratedAssets((prev) => [
+      { id, prompt: genPrompt.trim(), type: genType, quality: genQuality, status: 'loading', thumbnailUrl: null, createdAt: new Date() },
+      ...prev,
+    ])
+    try {
+      const endpoint = genType === 'mesh' ? '/api/ai/mesh' : '/api/ai/texture'
+      const body = genType === 'mesh'
+        ? { prompt: genPrompt.trim(), quality: genQuality }
+        : { prompt: genPrompt.trim(), resolution: '1024' }
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      if (!res.ok) throw new Error(`API error ${res.status}`)
+      if (genType === 'mesh') {
+        const data = (await res.json()) as { meshUrl?: string | null; thumbnailUrl?: string | null; polygonCount?: number | null; status: string }
+        setGeneratedAssets((prev) => prev.map((a) => a.id !== id ? a : {
+          ...a,
+          status: (data.status === 'demo' ? 'demo' : data.status === 'complete' ? 'complete' : 'loading') as GeneratedAsset['status'],
+          meshUrl: data.meshUrl, thumbnailUrl: data.thumbnailUrl ?? '/demo/mesh-preview.svg', polygonCount: data.polygonCount,
+        }))
+      } else {
+        const data = (await res.json()) as { textureUrl?: string | null; resolution?: string; status: string }
+        setGeneratedAssets((prev) => prev.map((a) => a.id !== id ? a : {
+          ...a,
+          status: (data.status === 'demo' ? 'demo' : data.status === 'complete' ? 'complete' : 'loading') as GeneratedAsset['status'],
+          textureUrl: data.textureUrl, thumbnailUrl: data.textureUrl ?? '/demo/mesh-preview.svg', resolution: data.resolution,
+        }))
+      }
+      setGenPrompt('')
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : 'Generation failed')
+      setGeneratedAssets((prev) => prev.map((a) => a.id === id ? { ...a, status: 'error' as const } : a))
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  return (
+    <div className="space-y-3 p-4">
+      <div className="flex gap-1">
+        {(['mesh', 'texture'] as const).map((t) => (
+          <button key={t} onClick={() => setGenType(t)} className={['flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-colors', genType === t ? 'border border-[#FFB81C]/40 bg-[#FFB81C]/20 text-[#FFB81C]' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>
+            {t === 'mesh' ? '3D Model' : 'Texture'}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={genPrompt}
+        onChange={(e) => setGenPrompt(e.target.value)}
+        placeholder={genType === 'mesh' ? 'Describe what you want to generate...\ne.g. "medieval castle tower"' : 'Describe the texture...\ne.g. "mossy stone wall with cracks"'}
+        rows={3}
+        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+      />
+      <div>
+        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-600">Quality</p>
+        <div className="flex gap-1">
+          {(['draft', 'standard', 'premium'] as const).map((q) => (
+            <button key={q} onClick={() => setGenQuality(q)} className={['flex-1 rounded py-1 text-[10px] font-semibold capitalize transition-colors', genQuality === q ? 'bg-[#FFB81C] text-black' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>{q}</button>
+          ))}
+        </div>
+      </div>
+      {genError && <p className="rounded border border-red-400/20 bg-red-400/10 px-2 py-1.5 text-[10px] text-red-400">{genError}</p>}
+      <button
+        onClick={handleGenerate}
+        disabled={!genPrompt.trim() || isGenerating}
+        className={['w-full rounded-lg py-2 text-xs font-bold transition-all', !genPrompt.trim() || isGenerating ? 'cursor-not-allowed bg-white/5 text-gray-600' : 'bg-[#FFB81C] text-black hover:bg-[#FFB81C]/90 active:scale-95'].join(' ')}
+      >
+        {isGenerating ? 'Generating...' : `Generate ${genType === 'mesh' ? '3D Model' : 'Texture'}`}
+      </button>
+      {generatedAssets.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-600">Generated</p>
+          {generatedAssets.map((asset) => <GeneratedAssetCard key={asset.id} asset={asset} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AssetsPanel() {
+  const [activeTab, setActiveTab] = useState<GenerateTab>('marketplace')
+
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('All')

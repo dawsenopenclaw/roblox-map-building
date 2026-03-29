@@ -6,7 +6,7 @@ import Link from 'next/link'
 const clerkAppearance = {
   variables: {
     colorPrimary: '#D4AF37',
-    colorBackground: '#242424',
+    colorBackground: '#141414',
     colorText: '#F9FAFB',
     colorTextSecondary: '#9CA3AF',
     colorInputBackground: '#1a2236',

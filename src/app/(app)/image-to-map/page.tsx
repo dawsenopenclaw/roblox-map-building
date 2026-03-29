@@ -139,7 +139,7 @@ function UploadZone({
           {/* Overlay badge */}
           {!disabled && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl">
-              <span className="px-4 py-2 rounded-lg bg-[#1a1a1a]/80 border border-white/20 text-sm text-white font-medium backdrop-blur-sm">
+              <span className="px-4 py-2 rounded-lg bg-[#0a0a0a]/80 border border-white/20 text-sm text-white font-medium backdrop-blur-sm">
                 Click to change image
               </span>
             </div>
@@ -161,7 +161,7 @@ function UploadZone({
             <p className="text-white font-semibold text-sm">
               {dragging ? 'Drop it!' : 'Drag & drop your image'}
             </p>
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               or <span className="text-[#FFB81C]">click to browse</span> — JPG, PNG, WebP, GIF
             </p>
           </div>
@@ -185,7 +185,7 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
       {/* Progress bar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-400 font-medium">Generating map...</span>
+          <span className="text-gray-300 font-medium">Generating map...</span>
           <span className="text-[#FFB81C] font-bold tabular-nums">{pct}%</span>
         </div>
         <div className="h-2 bg-white/8 rounded-full overflow-hidden">
@@ -219,8 +219,8 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
               <span className="w-5 h-5 rounded-full border border-white/10 flex-shrink-0" />
             )}
             <span className={`text-sm transition-colors ${
-              step.status === 'done' ? 'text-gray-500 line-through' :
-              step.status === 'running' ? 'text-white' : 'text-gray-600'
+              step.status === 'done' ? 'text-gray-400 line-through' :
+              step.status === 'running' ? 'text-white' : 'text-gray-500'
             }`}>
               {step.label}
             </span>
@@ -240,14 +240,14 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
       <div className="grid grid-cols-2 gap-3">
         {/* Input */}
         <div className="space-y-2">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">Your Image</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">Your Image</p>
           <div className="rounded-xl overflow-hidden border border-white/10 bg-[#080B16]" style={{ minHeight: 140 }}>
             {inputImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={inputImage} alt="Input" className="w-full h-full object-cover" style={{ maxHeight: 180 }} />
             ) : (
               <div className="h-36 flex items-center justify-center">
-                <span className="text-gray-600 text-sm">No image</span>
+                <span className="text-gray-500 text-sm">No image</span>
               </div>
             )}
           </div>
@@ -255,7 +255,7 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
 
         {/* Generated map placeholder */}
         <div className="space-y-2">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">Generated Map</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">Generated Map</p>
           <div
             className="rounded-xl overflow-hidden border border-[#FFB81C]/20 bg-[#080B16] relative"
             style={{ minHeight: 140 }}
@@ -295,11 +295,11 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
           <AnimatedCard
             key={stat.label}
             index={i}
-            className="bg-[#1e1e1e] border border-white/8 rounded-xl p-3 text-center space-y-1"
+            className="bg-[#141414] border border-white/8 rounded-xl p-3 text-center space-y-1"
           >
             <span className="text-base">{stat.icon}</span>
             <p className="text-[#FFB81C] font-bold text-base">{stat.value}</p>
-            <p className="text-gray-500 text-xs">{stat.label}</p>
+            <p className="text-gray-400 text-xs">{stat.label}</p>
           </AnimatedCard>
         ))}
       </div>
@@ -322,7 +322,7 @@ function OptionsPanel({
     <div className="space-y-5">
       {/* Biome */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Biome Type</label>
+        <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Biome Type</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {BIOME_OPTIONS.map((b) => (
             <button
@@ -333,7 +333,7 @@ function OptionsPanel({
               className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all text-xs disabled:opacity-40
                 ${options.biome === b.value
                   ? 'border-[#FFB81C]/50 bg-[#FFB81C]/8 text-white shadow-[0_0_12px_rgba(255,184,28,0.1)]'
-                  : 'border-white/8 bg-[#0A0C18] text-gray-400 hover:border-white/15 hover:text-gray-200'
+                  : 'border-white/8 bg-[#0A0C18] text-gray-300 hover:border-white/15 hover:text-gray-200'
                 }`}
             >
               <span className="text-base flex-shrink-0">{b.icon}</span>
@@ -346,7 +346,7 @@ function OptionsPanel({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         {/* Scale */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Map Scale</label>
+          <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Map Scale</label>
           <div className="grid grid-cols-2 gap-1.5">
             {SCALE_OPTIONS.map((s) => (
               <button
@@ -356,11 +356,11 @@ function OptionsPanel({
                 className={`px-3 py-2 rounded-lg border text-xs transition-all disabled:opacity-40 text-left
                   ${options.scale === s.value
                     ? 'border-[#FFB81C]/40 bg-[#FFB81C]/8 text-white'
-                    : 'border-white/8 bg-[#0A0C18] text-gray-500 hover:border-white/15 hover:text-gray-300'
+                    : 'border-white/8 bg-[#0A0C18] text-gray-400 hover:border-white/15 hover:text-gray-300'
                   }`}
               >
                 <p className="font-semibold">{s.label}</p>
-                <p className="text-gray-600 text-[10px]">{s.studs}</p>
+                <p className="text-gray-500 text-[10px]">{s.studs}</p>
               </button>
             ))}
           </div>
@@ -368,7 +368,7 @@ function OptionsPanel({
 
         {/* Detail */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Detail Level</label>
+          <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Detail Level</label>
           <div className="grid grid-cols-2 gap-1.5">
             {DETAIL_OPTIONS.map((d) => (
               <button
@@ -378,7 +378,7 @@ function OptionsPanel({
                 className={`px-3 py-2 rounded-lg border text-xs transition-all disabled:opacity-40 relative text-left
                   ${options.detail === d.value
                     ? 'border-[#FFB81C]/40 bg-[#FFB81C]/8 text-white'
-                    : 'border-white/8 bg-[#0A0C18] text-gray-500 hover:border-white/15 hover:text-gray-300'
+                    : 'border-white/8 bg-[#0A0C18] text-gray-400 hover:border-white/15 hover:text-gray-300'
                   }`}
               >
                 <p className="font-semibold">{d.label}</p>
@@ -453,7 +453,7 @@ export default function ImageToMapPage() {
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-[#FFB81C]/70 uppercase tracking-widest">AI Feature</span>
           <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span className="text-xs text-gray-500">Image to Map</span>
+          <span className="text-xs text-gray-400">Image to Map</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
           Turn Any Image Into a{' '}
@@ -461,7 +461,7 @@ export default function ImageToMapPage() {
             Roblox Map
           </span>
         </h1>
-        <p className="text-gray-400 text-base max-w-xl leading-relaxed">
+        <p className="text-gray-300 text-base max-w-xl leading-relaxed">
           Upload a photo, concept sketch, or reference image. Our AI converts it into a
           fully playable Roblox terrain in under 60 seconds.
         </p>
@@ -471,7 +471,7 @@ export default function ImageToMapPage() {
 
         {/* ── Left column: Upload + Options ── */}
         <div className="lg:col-span-3 space-y-5">
-          <GlowCard className="bg-[#1e1e1e] border border-white/8 p-5 space-y-5">
+          <GlowCard className="bg-[#141414] border border-white/8 p-5 space-y-5">
             <UploadZone
               onFile={handleFile}
               preview={preview}
@@ -506,7 +506,7 @@ export default function ImageToMapPage() {
               <>
                 <a
                   href="/editor"
-                  className="flex-1 h-11 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#1a1a1a] text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
+                  className="flex-1 h-11 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#0a0a0a] text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
                 >
                   Open in Editor
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -524,11 +524,11 @@ export default function ImageToMapPage() {
               <button
                 onClick={handleGenerate}
                 disabled={!file || isGenerating}
-                className="flex-1 h-11 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#1a1a1a] text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.2)]"
+                className="flex-1 h-11 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#0a0a0a] text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.2)]"
               >
                 {isGenerating ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-[#1a1a1a]/30 border-t-[#1a1a1a] rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-[#0a0a0a]/30 border-t-[#0a0a0a] rounded-full animate-spin" />
                     Generating...
                   </>
                 ) : (
@@ -555,7 +555,7 @@ export default function ImageToMapPage() {
                 exit={{ opacity: 0 }}
                 className="space-y-3"
               >
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Tips for best results</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Tips for best results</p>
                 {[
                   { icon: '🌅', tip: 'Aerial or top-down shots generate more accurate terrain' },
                   { icon: '🎨', tip: 'High contrast images produce better biome detection' },
@@ -565,10 +565,10 @@ export default function ImageToMapPage() {
                   <AnimatedCard
                     key={item.tip}
                     index={i}
-                    className="flex items-start gap-3 bg-[#1e1e1e] border border-white/8 rounded-xl p-3.5"
+                    className="flex items-start gap-3 bg-[#141414] border border-white/8 rounded-xl p-3.5"
                   >
                     <span className="text-lg flex-shrink-0">{item.icon}</span>
-                    <p className="text-xs text-gray-400 leading-relaxed">{item.tip}</p>
+                    <p className="text-xs text-gray-300 leading-relaxed">{item.tip}</p>
                   </AnimatedCard>
                 ))}
               </motion.div>
@@ -580,10 +580,10 @@ export default function ImageToMapPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="bg-[#1e1e1e] border border-white/8 rounded-2xl p-5 space-y-4"
+                className="bg-[#141414] border border-white/8 rounded-2xl p-5 space-y-4"
               >
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Ready to generate</p>
-                <div className="space-y-2 text-sm text-gray-400">
+                <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Ready to generate</p>
+                <div className="space-y-2 text-sm text-gray-300">
                   <div className="flex items-center justify-between">
                     <span>File</span>
                     <span className="text-white font-medium truncate max-w-[150px]">{file.name}</span>
@@ -606,7 +606,7 @@ export default function ImageToMapPage() {
                   </div>
                 </div>
                 <div className="pt-2 border-t border-white/8">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
                     <span className="text-[#FFB81C]">⚡</span>
                     <span>Est. cost: <span className="text-[#FFB81C] font-semibold">~45 tokens</span></span>
                   </div>
@@ -620,7 +620,7 @@ export default function ImageToMapPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="bg-[#1e1e1e] border border-white/8 rounded-2xl p-5"
+                className="bg-[#141414] border border-white/8 rounded-2xl p-5"
               >
                 <GenerationProgress steps={steps} />
               </motion.div>
@@ -662,12 +662,12 @@ export default function ImageToMapPage() {
             <AnimatedCard
               key={feat.title}
               index={i}
-              className="bg-[#1e1e1e] border border-white/8 rounded-xl p-5 space-y-3"
+              className="bg-[#141414] border border-white/8 rounded-xl p-5 space-y-3"
             >
               <span className="text-2xl">{feat.icon}</span>
               <div>
                 <p className="text-white font-semibold text-sm">{feat.title}</p>
-                <p className="text-gray-500 text-xs mt-1 leading-relaxed">{feat.desc}</p>
+                <p className="text-gray-400 text-xs mt-1 leading-relaxed">{feat.desc}</p>
               </div>
             </AnimatedCard>
           ))}

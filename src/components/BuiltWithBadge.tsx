@@ -27,9 +27,9 @@ export function BuiltWithBadge({
   }
 
   const variantClasses = {
-    dark: 'bg-[#060918] border border-white/10 text-white hover:border-[#FFB81C]/40 hover:bg-[#242424]',
+    dark: 'bg-[#060918] border border-white/10 text-white hover:border-[#FFB81C]/40 hover:bg-[#141414]',
     light: 'bg-white border border-gray-200 text-gray-900 hover:border-[#FFB81C] hover:bg-gray-50',
-    minimal: 'text-gray-400 hover:text-white',
+    minimal: 'text-gray-300 hover:text-white',
   }
 
   const logoSize = { sm: 14, md: 18, lg: 22 }[size]

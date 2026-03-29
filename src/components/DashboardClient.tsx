@@ -166,12 +166,12 @@ function TreeNode({
         className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors text-left group ${
           isSelected
             ? 'bg-[#FFB81C]/15 text-white'
-            : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+            : 'text-gray-300 hover:text-gray-200 hover:bg-white/5'
         }`}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
       >
         {hasChildren ? (
-          <span className="text-gray-500 w-3 flex-shrink-0 text-center">
+          <span className="text-gray-400 w-3 flex-shrink-0 text-center">
             {node.expanded ? '▾' : '▸'}
           </span>
         ) : (
@@ -182,7 +182,7 @@ function TreeNode({
           {node.label}
         </span>
         {node.children && (
-          <span className="ml-auto text-gray-600 text-xs flex-shrink-0">
+          <span className="ml-auto text-gray-500 text-xs flex-shrink-0">
             {node.children.length}
           </span>
         )}
@@ -330,14 +330,14 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] text-white" style={{ height: 'calc(100vh - 0px)' }}>
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-white" style={{ height: 'calc(100vh - 0px)' }}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div className="h-11 bg-[#1e1e1e] border-b border-white/8 flex items-center px-4 gap-4 flex-shrink-0 select-none">
+      <div className="h-11 bg-[#141414] border-b border-white/8 flex items-center px-4 gap-4 flex-shrink-0 select-none">
         {/* Logo */}
         <div className="flex items-center gap-2 mr-2">
           <div className="w-6 h-6 rounded bg-[#FFB81C] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#1a1a1a] text-xs font-black">R</span>
+            <span className="text-[#0a0a0a] text-xs font-black">R</span>
           </div>
           <span className="text-white font-bold text-sm hidden sm:block">ForjeGames</span>
         </div>
@@ -348,16 +348,16 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             onClick={() => setShowProjectMenu((v) => !v)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/8 border border-white/10 text-sm text-gray-200 transition-colors"
           >
-            <span className="text-gray-500 text-xs">📁</span>
+            <span className="text-gray-400 text-xs">📁</span>
             <span className="font-medium">{projectName}</span>
-            <svg className="w-3 h-3 text-gray-500 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3 text-gray-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
           {showProjectMenu && (
             <div className="absolute top-full left-0 mt-1 w-52 bg-[#111425] border border-white/10 rounded-lg shadow-xl z-50 py-1">
               <div className="px-3 py-2 border-b border-white/8 mb-1">
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Recent Projects</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Recent Projects</p>
               </div>
               {['My First Game', 'Medieval Castle', 'Tropical Island'].map((p) => (
                 <button
@@ -371,7 +371,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                 </button>
               ))}
               <div className="border-t border-white/8 mt-1 pt-1">
-                <Link href="/voice" className="block px-3 py-2 text-sm text-gray-500 hover:text-gray-300 hover:bg-white/5">
+                <Link href="/voice" className="block px-3 py-2 text-sm text-gray-400 hover:text-gray-300 hover:bg-white/5">
                   + New project
                 </Link>
               </div>
@@ -403,12 +403,12 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
       <div className="flex flex-1 min-h-0">
 
         {/* Left sidebar — Project Navigator / Explorer */}
-        <aside className="w-56 bg-[#1e1e1e] border-r border-white/8 flex flex-col flex-shrink-0">
+        <aside className="w-56 bg-[#141414] border-r border-white/8 flex flex-col flex-shrink-0">
           {/* Explorer header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/8">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Explorer</span>
+            <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Explorer</span>
             <button
-              className="w-5 h-5 rounded flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-sm"
+              className="w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm"
               aria-label="Add element"
               title="Add new element"
             >
@@ -432,7 +432,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
 
           {/* Add element button */}
           <div className="p-2 border-t border-white/8">
-            <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors border border-dashed border-white/10 hover:border-white/20">
+            <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors border border-dashed border-white/10 hover:border-white/20">
               <span>+</span>
               <span>Add element</span>
             </button>
@@ -448,7 +448,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                 <button
                   key={v}
                   className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                    i === 0 ? 'bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/20' : 'text-gray-500 hover:text-gray-300'
+                    i === 0 ? 'bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/20' : 'text-gray-400 hover:text-gray-300'
                   }`}
                 >
                   {v}
@@ -456,18 +456,18 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               ))}
             </div>
             <div className="flex-1" />
-            <div className="flex items-center gap-1 text-gray-600">
-              <button className="p-1 hover:text-gray-400 transition-colors" title="Move" aria-label="Move tool">
+            <div className="flex items-center gap-1 text-gray-500">
+              <button className="p-1 hover:text-gray-300 transition-colors" title="Move" aria-label="Move tool">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                 </svg>
               </button>
-              <button className="p-1 hover:text-gray-400 transition-colors" title="Rotate" aria-label="Rotate tool">
+              <button className="p-1 hover:text-gray-300 transition-colors" title="Rotate" aria-label="Rotate tool">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
-              <button className="p-1 hover:text-gray-400 transition-colors" title="Scale" aria-label="Scale tool">
+              <button className="p-1 hover:text-gray-300 transition-colors" title="Scale" aria-label="Scale tool">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
@@ -483,19 +483,19 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
                 {selectedId && selectedProps ? (
-                  <div className="bg-[#1e1e1e]/80 border border-white/10 rounded-xl px-6 py-4 backdrop-blur-sm">
-                    <p className="text-xs text-gray-500 mb-1">Selected</p>
+                  <div className="bg-[#141414]/80 border border-white/10 rounded-xl px-6 py-4 backdrop-blur-sm">
+                    <p className="text-xs text-gray-400 mb-1">Selected</p>
                     <p className="text-lg font-semibold text-white">{selectedProps.label}</p>
-                    <p className="text-xs text-gray-500 mt-1">{selectedProps.type} — properties in right panel</p>
+                    <p className="text-xs text-gray-400 mt-1">{selectedProps.type} — properties in right panel</p>
                   </div>
                 ) : (
                   <div>
                     <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
-                      <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
                       </svg>
                     </div>
-                    <p className="text-gray-500 text-sm">Select an element or use the command bar below</p>
+                    <p className="text-gray-400 text-sm">Select an element or use the command bar below</p>
                     <p className="text-gray-700 text-xs mt-1">Tip: Press Tab to focus the command bar</p>
                   </div>
                 )}
@@ -518,7 +518,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             {/* Suggestions */}
             {showSuggestions && filteredSuggestions.length > 0 && (
               <div className="border-b border-white/8 px-3 pt-2 pb-1">
-                <p className="text-xs text-gray-600 mb-1.5">Suggestions</p>
+                <p className="text-xs text-gray-500 mb-1.5">Suggestions</p>
                 <div className="flex flex-wrap gap-1.5">
                   {filteredSuggestions.map((s) => (
                     <button
@@ -527,7 +527,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                         setCommand(s)
                         commandRef.current?.focus()
                       }}
-                      className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
+                      className="text-xs px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 hover:border-white/20 transition-colors"
                     >
                       {s}
                     </button>
@@ -554,14 +554,14 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                     if (e.key === 'Escape') setShowSuggestions(false)
                   }}
                   placeholder="Type a command or click the mic to speak..."
-                  className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/40 focus:bg-[#2a2a2a] transition-colors"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-blue-400/40 focus:bg-[#1c1c1c] transition-colors"
                   aria-label="Build command input"
                 />
               </div>
 
               {/* Mic button */}
               <button
-                className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
                 aria-label="Voice input"
                 title="Voice command"
               >
@@ -574,10 +574,10 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               <button
                 onClick={submitCommand}
                 disabled={!command.trim() || isSubmitting}
-                className="h-9 px-4 rounded-lg bg-[#FFB81C] hover:bg-[#FFB81C]/90 disabled:opacity-30 disabled:cursor-not-allowed text-[#1a1a1a] text-sm font-semibold transition-colors flex-shrink-0 flex items-center gap-1.5"
+                className="h-9 px-4 rounded-lg bg-[#FFB81C] hover:bg-[#FFB81C]/90 disabled:opacity-30 disabled:cursor-not-allowed text-[#0a0a0a] text-sm font-semibold transition-colors flex-shrink-0 flex items-center gap-1.5"
               >
                 {isSubmitting ? (
-                  <span className="w-4 h-4 border-2 border-[#1a1a1a]/30 border-t-[#1a1a1a] rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[#0a0a0a]/30 border-t-[#0a0a0a] rounded-full animate-spin" />
                 ) : (
                   <>
                     Build
@@ -592,7 +592,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
         </div>
 
         {/* Right sidebar — Properties / AI Output */}
-        <aside className="w-60 bg-[#1e1e1e] border-l border-white/8 flex flex-col flex-shrink-0">
+        <aside className="w-60 bg-[#141414] border-l border-white/8 flex flex-col flex-shrink-0">
           {selectedProps ? (
             <>
               {/* Properties panel */}
@@ -604,23 +604,23 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               <div className="flex-1 overflow-y-auto p-3 space-y-4">
                 {/* Name */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Name</p>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Name</p>
                   <input
                     defaultValue={selectedProps.label}
-                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-400/40 transition-colors"
                   />
                 </div>
 
                 {/* Position */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Position</p>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Position</p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {(['x', 'y', 'z'] as const).map((axis) => (
                       <div key={axis}>
-                        <p className="text-xs text-gray-600 mb-1 text-center">{axis.toUpperCase()}</p>
+                        <p className="text-xs text-gray-500 mb-1 text-center">{axis.toUpperCase()}</p>
                         <input
                           defaultValue={selectedProps.position[axis]}
-                          className="w-full bg-[#2a2a2a] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                          className="w-full bg-[#1c1c1c] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-blue-400/40 transition-colors"
                         />
                       </div>
                     ))}
@@ -629,14 +629,14 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
 
                 {/* Size */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Size</p>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Size</p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {(['x', 'y', 'z'] as const).map((axis) => (
                       <div key={axis}>
-                        <p className="text-xs text-gray-600 mb-1 text-center">{axis.toUpperCase()}</p>
+                        <p className="text-xs text-gray-500 mb-1 text-center">{axis.toUpperCase()}</p>
                         <input
                           defaultValue={selectedProps.size[axis]}
-                          className="w-full bg-[#2a2a2a] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                          className="w-full bg-[#1c1c1c] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-blue-400/40 transition-colors"
                         />
                       </div>
                     ))}
@@ -645,20 +645,20 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
 
                 {/* Material */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Material</p>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Material</p>
                   <select
                     defaultValue={selectedProps.material}
-                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors appearance-none cursor-pointer"
+                    className="w-full bg-[#1c1c1c] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-blue-400/40 transition-colors appearance-none cursor-pointer"
                   >
                     {['SmoothPlastic', 'Grass', 'Wood', 'Metal', 'Brick', 'Marble', 'Neon', 'Glass'].map((m) => (
-                      <option key={m} value={m} className="bg-[#2a2a2a]">{m}</option>
+                      <option key={m} value={m} className="bg-[#1c1c1c]">{m}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Type badge */}
                 <div>
-                  <p className="text-xs text-gray-500 mb-1.5 font-medium">Type</p>
+                  <p className="text-xs text-gray-400 mb-1.5 font-medium">Type</p>
                   <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-mono bg-white/5 border border-white/10 ${ELEMENT_COLORS[selectedProps.type]}`}>
                     {ELEMENT_ICONS[selectedProps.type]} {selectedProps.type}
                   </span>
@@ -674,7 +674,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                <p className="text-xs text-gray-600">Recent builds</p>
+                <p className="text-xs text-gray-500">Recent builds</p>
 
                 {recentCommands.map((cmd) => (
                   <div key={cmd.id} className="bg-[#111425] rounded-lg p-2.5 border border-white/5">
@@ -687,12 +687,12 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                         {cmd.status === 'running' && <span className="inline-block w-2 h-2 bg-[#FFB81C] rounded-full animate-pulse mr-1" />}
                         {cmd.status}
                       </span>
-                      <span className="text-xs text-gray-600">{timeAgo(cmd.timestamp)}</span>
+                      <span className="text-xs text-gray-500">{timeAgo(cmd.timestamp)}</span>
                     </div>
                     {cmd.tokensUsed > 0 && (
                       <div className="mt-1.5 flex items-center gap-1">
                         <span className="text-[#FFB81C] text-xs">⚡</span>
-                        <span className="text-xs text-gray-600">{cmd.tokensUsed} tokens</span>
+                        <span className="text-xs text-gray-500">{cmd.tokensUsed} tokens</span>
                       </div>
                     )}
                   </div>
@@ -700,7 +700,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
 
                 {recentCommands.length === 0 && (
                   <div className="text-center py-8">
-                    <p className="text-gray-600 text-xs">No commands yet.</p>
+                    <p className="text-gray-500 text-xs">No commands yet.</p>
                     <p className="text-gray-700 text-xs mt-1">Type a command below to start building.</p>
                   </div>
                 )}
@@ -710,7 +710,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               {recentCommands[0]?.tokensUsed > 0 && (
                 <div className="p-3 border-t border-white/8">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-500">Last operation</span>
+                    <span className="text-gray-400">Last operation</span>
                     <span className="flex items-center gap-1 text-[#FFB81C]">
                       <span>⚡</span>
                       <span className="font-semibold">{recentCommands[0].tokensUsed} tokens</span>

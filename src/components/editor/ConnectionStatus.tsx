@@ -34,7 +34,7 @@ const DOT_CLASSES: Record<ConnectionState, string> = {
 const LABEL_CLASSES: Record<ConnectionState, string> = {
   connected:    'text-green-400',
   connecting:   'text-yellow-400',
-  disconnected: 'text-gray-500',
+  disconnected: 'text-gray-400',
 }
 
 const LABELS: Record<ConnectionState, string> = {
@@ -103,7 +103,7 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
   // Full panel
   // ---------------------------------------------------------------------------
   return (
-    <div className={`bg-[#1e1e1e] border border-white/8 rounded-xl p-4 select-none ${className}`}>
+    <div className={`bg-[#141414] border border-white/8 rounded-xl p-4 select-none ${className}`}>
       {/* Status row */}
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_CLASSES[state]}`} />
@@ -114,7 +114,7 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
         {state === 'disconnected' && (
           <button
             onClick={() => setShowHelp((v) => !v)}
-            className="ml-auto text-xs text-gray-600 hover:text-gray-400 transition-colors underline underline-offset-2"
+            className="ml-auto text-xs text-gray-500 hover:text-gray-300 transition-colors underline underline-offset-2"
           >
             {showHelp ? 'Hide' : 'How to connect'}
           </button>
@@ -123,17 +123,17 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
 
       {/* Connected details */}
       {state === 'connected' && status && (
-        <div className="space-y-1.5 text-xs text-gray-500">
+        <div className="space-y-1.5 text-xs text-gray-400">
           {status.pluginVersion && (
             <div className="flex justify-between">
               <span>Plugin version</span>
-              <span className="text-gray-400 font-mono">{status.pluginVersion}</span>
+              <span className="text-gray-300 font-mono">{status.pluginVersion}</span>
             </div>
           )}
           {status.lastSeenAgo !== null && (
             <div className="flex justify-between">
               <span>Last ping</span>
-              <span className="text-gray-400 font-mono">
+              <span className="text-gray-300 font-mono">
                 {status.lastSeenAgo < 5 ? 'just now' : `${status.lastSeenAgo}s ago`}
               </span>
             </div>
@@ -150,14 +150,14 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
       {/* Help panel */}
       {showHelp && state === 'disconnected' && (
         <div className="mt-3 pt-3 border-t border-white/8 space-y-2.5">
-          <p className="text-xs font-medium text-gray-400">Setup instructions:</p>
+          <p className="text-xs font-medium text-gray-300">Setup instructions:</p>
           {[
             'Open Roblox Studio',
             'Go to Plugins tab → Manage Plugins',
             'Search for "ForjeGames" and install',
             'Click "Connect" in the ForjeGames toolbar',
           ].map((step, i) => (
-            <div key={step} className="flex items-start gap-2 text-xs text-gray-500">
+            <div key={step} className="flex items-start gap-2 text-xs text-gray-400">
               <span className="text-[#FFB81C] font-mono flex-shrink-0">{i + 1}.</span>
               <span>{step}</span>
             </div>

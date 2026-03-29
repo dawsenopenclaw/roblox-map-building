@@ -37,14 +37,14 @@ const DEMO_USERS: AdminUser[] = [
 ]
 
 const TIER_COLORS: Record<SubscriptionTier, string> = {
-  FREE: 'bg-[#3a3a3a] text-[#6B7280]',
+  FREE: 'bg-[#1c1c1c] text-[#6B7280]',
   HOBBY: 'bg-blue-900/40 text-blue-300',
   CREATOR: 'bg-purple-900/40 text-purple-300',
   STUDIO: 'bg-[#FFB81C]/10 text-[#FFB81C]',
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
-  USER: 'bg-[#3a3a3a] text-[#6B7280]',
+  USER: 'bg-[#1c1c1c] text-[#6B7280]',
   CREATOR: 'bg-purple-900/40 text-purple-300',
   MODERATOR: 'bg-blue-900/40 text-blue-300',
   ADMIN: 'bg-[#FFB81C]/10 text-[#FFB81C]',
@@ -121,7 +121,7 @@ export default function AdminUsersPage() {
           )}
           <button
             onClick={fetchUsers}
-            className="flex items-center gap-2 px-3 py-2 bg-[#242424] border border-[#3a3a3a] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -140,16 +140,16 @@ export default function AdminUsersPage() {
             setSearch(e.target.value)
             setPage(1)
           }}
-          className="w-full pl-10 pr-4 py-3 bg-[#242424] border border-[#3a3a3a] rounded-xl text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#FFB81C] transition-colors"
+          className="w-full pl-10 pr-4 py-3 bg-[#141414] border border-[#1c1c1c] rounded-xl text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#FFB81C] transition-colors"
         />
       </div>
 
       {/* Table */}
-      <div className="bg-[#242424] border border-[#3a3a3a] rounded-xl overflow-hidden">
+      <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-[#3a3a3a]">
+              <tr className="border-b border-[#1c1c1c]">
                 {['User', 'Tier', 'Role', 'Tokens', 'Joined', 'Status', 'Actions'].map((h) => (
                   <th
                     key={h}
@@ -160,7 +160,7 @@ export default function AdminUsersPage() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3a3a3a]">
+            <tbody className="divide-y divide-[#1c1c1c]">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center">
@@ -182,7 +182,7 @@ export default function AdminUsersPage() {
                   return (
                     <tr
                       key={user.id}
-                      className={`hover:bg-[#2e2e2e] transition-colors ${isBanned ? 'opacity-50' : ''}`}
+                      className={`hover:bg-[#1c1c1c] transition-colors ${isBanned ? 'opacity-50' : ''}`}
                     >
                       <td className="px-4 py-4">
                         <div className="flex flex-col">
@@ -224,7 +224,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleBan(user.id)}
                           disabled={actionUserId === user.id || isDemo}
                           title={isBanned ? 'Unban user' : 'Ban user'}
-                          className="p-1.5 rounded-lg border border-[#3a3a3a] hover:border-red-500 hover:text-red-400 text-[#6B7280] transition-colors disabled:opacity-40"
+                          className="p-1.5 rounded-lg border border-[#1c1c1c] hover:border-red-500 hover:text-red-400 text-[#6B7280] transition-colors disabled:opacity-40"
                         >
                           <Ban className="w-3.5 h-3.5" />
                         </button>
@@ -239,7 +239,7 @@ export default function AdminUsersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#3a3a3a]">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[#1c1c1c]">
             <p className="text-sm text-[#6B7280]">
               Page {page} of {totalPages}
             </p>
@@ -247,14 +247,14 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 bg-[#2e2e2e] border border-[#3a3a3a] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
+                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 bg-[#2e2e2e] border border-[#3a3a3a] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
+                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
               >
                 Next
               </button>

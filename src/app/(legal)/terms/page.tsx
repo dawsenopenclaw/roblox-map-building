@@ -45,14 +45,14 @@ export default function TermsPage() {
           Legal Document
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">Terms of Service</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-300 text-sm">
           Effective: {EFFECTIVE_DATE} &nbsp;·&nbsp; {COMPANY}
         </p>
       </div>
 
       {/* TOC */}
       <nav className="bg-white/5 border border-white/10 rounded-xl p-6 mb-10 not-prose">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
           Table of Contents
         </p>
         <ol className="grid grid-cols-1 md:grid-cols-2 gap-1">
@@ -60,7 +60,7 @@ export default function TermsPage() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="text-sm text-gray-400 hover:text-[#FFB81C] transition-colors block py-0.5"
+                className="text-sm text-gray-300 hover:text-[#FFB81C] transition-colors block py-0.5"
               >
                 {s.title}
               </a>
@@ -423,7 +423,7 @@ export default function TermsPage() {
         <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">
           13. Disclaimers &amp; Limitation of Liability
         </h2>
-        <p className="uppercase text-sm font-medium text-gray-400 mb-3">
+        <p className="uppercase text-sm font-medium text-gray-300 mb-3">
           Disclaimer of warranties
         </p>
         <p>
@@ -432,7 +432,7 @@ export default function TermsPage() {
           MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. WE DO NOT WARRANT
           THAT THE SERVICE WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE OF HARMFUL COMPONENTS.
         </p>
-        <p className="uppercase text-sm font-medium text-gray-400 mt-6 mb-3">
+        <p className="uppercase text-sm font-medium text-gray-300 mt-6 mb-3">
           Limitation of liability
         </p>
         <p>
@@ -571,11 +571,11 @@ export default function TermsPage() {
         </p>
 
         <div className="mt-10 pt-6 border-t border-white/10">
-          <p className="text-sm text-gray-500">
-            <strong className="text-gray-400">Contact:</strong> {ADDRESS} &nbsp;·&nbsp; {EMAIL}
+          <p className="text-sm text-gray-400">
+            <strong className="text-gray-300">Contact:</strong> {ADDRESS} &nbsp;·&nbsp; {EMAIL}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
-            <strong className="text-gray-400">Last updated:</strong> {EFFECTIVE_DATE}
+          <p className="text-sm text-gray-400 mt-1">
+            <strong className="text-gray-300">Last updated:</strong> {EFFECTIVE_DATE}
           </p>
         </div>
       </section>

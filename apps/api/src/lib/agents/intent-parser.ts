@@ -37,6 +37,38 @@ const INTENT_AGENT_MAP: Record<IntentType, { agents: AgentType[]; canParallelize
 }
 
 // ---------------------------------------------------------------------------
+// Prompt expansion — expands terse user inputs into detailed build briefs
+// before sending to downstream agents.
+// ---------------------------------------------------------------------------
+
+const STRUCTURE_EXPANSIONS: Record<string, string> = {
+  castle:     'medieval stone castle with 4 corner towers (8x8x40 studs each, Cobblestone), 4-stud-thick curtain walls (24 studs tall), gatehouse with portcullis, moat (8 studs wide, 4 deep, Water material), great hall keep, interior courtyard, wall-mounted torch sconces with PointLights (orange, range 16), flag poles on towers, drawbridge, battlements, arrow-slit windows',
+  house:      'two-storey timber-framed house with brick chimney, glass windows, wooden-plank front porch, wooden door with ProximityPrompt, interior floor/ceiling Parts, hanging lantern with PointLight (warm white), WoodPlanks material walls, tiled roof using WedgeParts in dark red Brick',
+  tower:      'tall stone wizard tower (10x10 base, 60 studs tall, Cobblestone), conical dark SmoothPlastic roof, narrow arched windows, Neon glowing orb at top with PointLight (blue, range 30), wooden door, spiral staircase Parts inside, ivy on lower third using Concrete texture',
+  bridge:     'stone arch bridge 6 studs wide over a river, cobblestone deck, arched underside using WedgeParts, stone railings every 4 studs, Slate-material piers, lantern posts at both ends with SpotLights pointing down, reflective water plane beneath',
+  shop:       'market shop with SurfaceGui wooden sign, tiled SmoothPlastic counter, striped WedgePart awning, display shelves with item Parts, bell above door, PointLight lantern, ProximityPrompt door, Brick walls, WoodPlanks floor',
+  temple:     'ancient stone temple with 6 Marble columns (4x4x30 studs) at entrance, wide stone steps, interior altar with glowing Neon orb, torch sconces on walls (PointLight orange), cracked Concrete textures, reflective pool (flat transparent blue Part) in front, large stone doors',
+  lighthouse: 'coastal lighthouse tower (10x10 base, 80 studs tall, white SmoothPlastic), red stripe band at 40 studs, rotating SpotLight at top (brightness 5, range 500), spiral staircase inside, keeper cottage beside it, wooden dock extending over water, wave particle Parts at base',
+  dungeon:    'underground dungeon with Slate-wall corridors (6x6 studs), arched ceilings using WedgeParts, iron-bar cell doors (thin dark Parts), amber PointLight torch sconces every 12 studs, treasure room with chest model, rubble Parts on floor, dripping water particle',
+  arena:      'gladiatorial arena with 256x256 Sand-material floor, 8-tier Concrete seating surrounding it, 4 grand stone entrance arches, torches on every column with PointLights, raised VIP box, weapon-rack Parts along walls',
+  village:    'medieval village with 6 varied timber-framed houses, central stone well with rope mechanism, cobblestone paths (Cobblestone material flat Parts), blacksmith forge (Fire particle + SurfaceLight), tavern with hanging SurfaceGui sign, small chapel with bell tower, market stalls, PointLight lantern posts at intersections',
+}
+
+/**
+ * Expand a short user prompt into a detailed build brief for higher-quality AI output.
+ * Only expands build_structure intents; other intents are returned unchanged.
+ */
+export function expandBuildPrompt(prompt: string): string {
+  const lower = prompt.toLowerCase()
+  for (const [key, expansion] of Object.entries(STRUCTURE_EXPANSIONS)) {
+    if (lower.includes(key)) {
+      return `${prompt}\n\nDetailed Roblox build requirements (use all of these): ${expansion}`
+    }
+  }
+  return prompt
+}
+
+// ---------------------------------------------------------------------------
 // System prompt for Claude
 // ---------------------------------------------------------------------------
 
@@ -48,7 +80,8 @@ Parse the user's message and return ONLY valid JSON with this exact shape:
   "confidence": <0.0 to 1.0>,
   "parameters": {
     <key-value pairs relevant to the intent>
-  }
+  },
+  "expandedPrompt": "<detailed version of the user request with specific Roblox details expanded>"
 }
 
 Valid intents:
@@ -74,23 +107,25 @@ Valid intents:
 - unknown           — cannot determine intent
 
 Parameter hints by intent:
-- build_structure: type, style, position, size
-- modify_terrain: biome, region, operation (raise/lower/flatten/paint), features
-- add_npc: name, description, behavior, dialogue
-- generate_script: description, scriptType (server/client/module)
-- update_ui: elements, layout, theme
-- add_audio: soundType, loop, volume, position
-- adjust_lighting: time_of_day, brightness, fog, atmosphere
-- configure_economy: currency, prices, shops
-- create_quest: name, objectives, rewards, npcGiver
-- add_combat: weaponType, mechanics, health
-- manage_inventory: categories, maxSlots
-- add_vehicle: vehicleType, seats, speed
-- add_particle: effectType, color, rate, lifetime
-- add_animation: animationType, target, loop
-- configure_monetization: productType, price, name
+- build_structure: type (castle/house/tower/bridge/shop/dungeon/arena/village/temple/lighthouse), style (medieval/modern/sci-fi/fantasy/realistic), position:{x,z}, expandedDescription
+- modify_terrain: biome (plains/forest/mountain/desert/ocean/tundra/volcanic/tropical), region, operation (raise/lower/flatten/paint/fill), features (hills/rivers/lakes/cliffs/boulders)
+- add_npc: name, description, behavior (patrol/idle/follow/guard), dialogue (array of strings), outfit
+- generate_script: description, scriptType (server/client/module), features (list of specific gameplay mechanics to implement)
+- update_ui: elements, layout, theme, colors
+- add_audio: soundType, loop, volume, position, assetId
+- adjust_lighting: time_of_day, brightness, fog, atmosphere, bloomEnabled
+- configure_economy: currency, prices, shops, startingBalance
+- create_quest: name, objectives, rewards, npcGiver, stages
+- add_combat: weaponType, mechanics, health, damage
+- manage_inventory: categories, maxSlots, persistence
+- add_vehicle: vehicleType, seats, speed, engineSound
+- add_particle: effectType, color, rate, lifetime, emitterSize
+- add_animation: animationType, target, loop, priority
+- configure_monetization: productType, price, name, benefits
 - search_marketplace: query, category
 - check_quality: checkType (performance/visual/all)
+
+For "expandedPrompt": if the user said "build a castle", expand to include all components: walls, towers, gate, moat, interior rooms, torches, flags, drawbridge etc. Be specific about Roblox materials (Cobblestone, Brick, SmoothPlastic, WoodPlanks, Marble, Glass), sizes in studs, Color3 values, and lighting types (PointLight, SpotLight, SurfaceLight).
 
 Respond ONLY with JSON, no prose.`
 
@@ -124,13 +159,15 @@ function keywordFallback(input: string): ParsedIntent {
   for (const entry of KEYWORD_MAP) {
     if (entry.patterns.some((p) => p.test(input))) {
       const routing = INTENT_AGENT_MAP[entry.intent]
+      const expandedPrompt = entry.intent === 'build_structure' ? expandBuildPrompt(input) : input
       return {
         intent: entry.intent,
         label: entry.intent.replace(/_/g, ' '),
         confidence: 0.6,
-        parameters: { rawInput: input },
+        parameters: { rawInput: input, expandedPrompt },
         agents: routing.agents,
         canParallelize: routing.canParallelize,
+        expandedPrompt,
       }
     }
   }
@@ -176,7 +213,13 @@ export async function parseIntent(
       }
     )
 
-    let parsed: { intent: IntentType; label: string; confidence: number; parameters: Record<string, unknown> }
+    let parsed: {
+      intent: IntentType
+      label: string
+      confidence: number
+      parameters: Record<string, unknown>
+      expandedPrompt?: string
+    }
 
     try {
       // Strip markdown code fences if Claude wraps the response
@@ -189,13 +232,18 @@ export async function parseIntent(
     const intent = parsed.intent as IntentType
     const routing = INTENT_AGENT_MAP[intent] ?? INTENT_AGENT_MAP.unknown
 
+    // If Claude didn't provide an expandedPrompt, generate one locally
+    const expandedPrompt = parsed.expandedPrompt
+      ?? (intent === 'build_structure' ? expandBuildPrompt(userInput) : userInput)
+
     return {
       intent,
       label: parsed.label ?? intent.replace(/_/g, ' '),
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.8,
-      parameters: parsed.parameters ?? {},
+      parameters: { ...parsed.parameters ?? {}, expandedPrompt },
       agents: routing.agents,
       canParallelize: routing.canParallelize,
+      expandedPrompt,
     }
   } catch {
     return keywordFallback(userInput)

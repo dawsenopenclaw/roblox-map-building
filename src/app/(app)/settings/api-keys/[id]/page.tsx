@@ -91,10 +91,10 @@ function emptyUsageData(keyId: string): UsageData {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-      <p className="text-gray-400 text-xs uppercase tracking-wide mb-1">{label}</p>
+    <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+      <p className="text-gray-300 text-xs uppercase tracking-wide mb-1">{label}</p>
       <p className="text-white text-2xl font-bold">{value}</p>
-      {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
+      {sub && <p className="text-gray-400 text-xs mt-1">{sub}</p>}
     </div>
   )
 }
@@ -113,16 +113,16 @@ function RateLimitBar({
     pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-[#FFB81C]'
 
   return (
-    <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
+    <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-white font-semibold">Rate Limit Status</p>
-        <span className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2 py-1 rounded-full uppercase">
+        <span className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-1 rounded-full uppercase">
           {tier}
         </span>
       </div>
       <div className="flex items-end gap-2 mb-3">
         <span className="text-3xl font-bold text-white">{current}</span>
-        <span className="text-gray-400 text-sm mb-1">/ {limit} this hour</span>
+        <span className="text-gray-300 text-sm mb-1">/ {limit} this hour</span>
       </div>
       <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
         <div
@@ -131,8 +131,8 @@ function RateLimitBar({
         />
       </div>
       <div className="flex justify-between mt-2">
-        <p className="text-gray-500 text-xs">{Math.round(pct)}% used</p>
-        <p className="text-gray-500 text-xs">{limit - current} remaining</p>
+        <p className="text-gray-400 text-xs">{Math.round(pct)}% used</p>
+        <p className="text-gray-400 text-xs">{limit - current} remaining</p>
       </div>
     </div>
   )
@@ -141,21 +141,21 @@ function RateLimitBar({
 function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
   if (endpoints.length === 0) {
     return (
-      <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-4">Top Endpoints</h3>
-        <p className="text-gray-500 text-sm text-center py-6">No endpoint data for this period</p>
+        <p className="text-gray-400 text-sm text-center py-6">No endpoint data for this period</p>
       </div>
     )
   }
   const maxCount = endpoints[0].count
 
   return (
-    <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+    <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
       <h3 className="text-white font-semibold mb-4">Top Endpoints</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-400 border-b border-white/10">
+            <tr className="text-gray-300 border-b border-white/10">
               <th className="text-left py-2 pr-4">Method</th>
               <th className="text-left py-2 pr-4">Path</th>
               <th className="text-right py-2 pr-4">Calls</th>
@@ -174,7 +174,7 @@ function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
                           ? 'bg-green-500/10 text-green-400'
                           : ep.method === 'DELETE'
                             ? 'bg-red-500/10 text-red-400'
-                            : 'bg-white/5 text-gray-400'
+                            : 'bg-white/5 text-gray-300'
                     }`}
                   >
                     {ep.method}
@@ -231,16 +231,16 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
         <h2 className="text-white font-bold text-lg mb-2">{title}</h2>
-        <p className="text-gray-400 text-sm mb-6">{description}</p>
+        <p className="text-gray-300 text-sm mb-6">{description}</p>
         <div className="flex gap-3">
           <button onClick={onConfirm} className={`flex-1 font-bold py-2.5 rounded-xl text-sm transition-colors ${confirmClass}`}>
             {confirmLabel}
           </button>
           <button
             onClick={onCancel}
-            className="px-5 border border-white/10 hover:border-white/30 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
+            className="px-5 border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 rounded-xl text-sm transition-colors"
           >
             Cancel
           </button>
@@ -362,10 +362,10 @@ export default function ApiKeyDetailPage() {
         <div className="h-8 bg-white/5 rounded-xl animate-pulse w-48 mb-8" />
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-[#242424] border border-white/10 rounded-2xl animate-pulse" />
+            <div key={i} className="h-24 bg-[#141414] border border-white/10 rounded-2xl animate-pulse" />
           ))}
         </div>
-        <div className="h-64 bg-[#242424] border border-white/10 rounded-2xl animate-pulse" />
+        <div className="h-64 bg-[#141414] border border-white/10 rounded-2xl animate-pulse" />
       </div>
     )
   }
@@ -373,12 +373,12 @@ export default function ApiKeyDetailPage() {
   if (fetchError) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Link href="/settings/api-keys" className="text-gray-500 hover:text-white text-sm transition-colors mb-6 inline-block">
+        <Link href="/settings/api-keys" className="text-gray-400 hover:text-blue-400 text-sm transition-colors mb-6 inline-block">
           &larr; Back to API Keys
         </Link>
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
           <p className="text-red-400 font-semibold mb-2">Error loading key</p>
-          <p className="text-gray-400 text-sm">{fetchError}</p>
+          <p className="text-gray-300 text-sm">{fetchError}</p>
         </div>
       </div>
     )
@@ -394,11 +394,11 @@ export default function ApiKeyDetailPage() {
       <div className="flex items-center gap-3 mb-2">
         <Link
           href="/settings/api-keys"
-          className="text-gray-500 hover:text-white text-sm transition-colors"
+          className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
         >
           API Keys
         </Link>
-        <span className="text-gray-600">/</span>
+        <span className="text-gray-500">/</span>
         <span className="text-gray-300 text-sm">{key.name}</span>
       </div>
 
@@ -414,7 +414,7 @@ export default function ApiKeyDetailPage() {
           </div>
           <div className="flex items-center gap-3 mt-1">
             <code className="text-[#FFB81C] text-sm font-mono">{key.prefix}...</code>
-            <span className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded-full uppercase">
+            <span className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-0.5 rounded-full uppercase">
               {key.tier}
             </span>
             {key.scopes.map((s) => (
@@ -427,7 +427,7 @@ export default function ApiKeyDetailPage() {
             ))}
           </div>
           {key.lastUsedAt && (
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               Last used {new Date(key.lastUsedAt).toLocaleString()}
             </p>
           )}
@@ -471,12 +471,12 @@ export default function ApiKeyDetailPage() {
             </code>
             <button
               onClick={() => copyKey(rotationResult.key.rawKey)}
-              className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+              className="text-xs text-gray-300 hover:text-blue-400 border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <p className="text-gray-500 text-xs mt-2">
+          <p className="text-gray-400 text-xs mt-2">
             Copy this key now — it will never be shown again. Redirecting to new key...
           </p>
         </div>

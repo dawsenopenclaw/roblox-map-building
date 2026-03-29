@@ -21,7 +21,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <Link href="/" className="text-[#FFB81C] font-bold text-lg tracking-tight">
             ForjeGames
           </Link>
-          <nav className="flex gap-6 text-sm text-gray-400">
+          <nav className="flex gap-6 text-sm text-gray-300">
             {legalLinks.map((l) => (
               <Link key={l.href} href={l.href} className="hover:text-white transition-colors">
                 {l.label}
@@ -35,14 +35,14 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         {/* Sidebar */}
         <aside className="hidden lg:block w-56 shrink-0">
           <div className="sticky top-24 space-y-1">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
               Legal
             </p>
             {legalLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="block px-3 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-blue-400 hover:bg-white/5 transition-colors"
               >
                 {l.label}
               </Link>
@@ -56,7 +56,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
 
       {/* Footer strip */}
       <footer className="border-t border-white/10 mt-16 py-8">
-        <div className="max-w-7xl mx-auto px-6 text-center text-sm text-gray-500">
+        <div className="max-w-7xl mx-auto px-6 text-center text-sm text-gray-400">
           &copy; {new Date().getFullYear()} ForjeGames LLC — Dawsen Porter. All rights reserved.
         </div>
       </footer>

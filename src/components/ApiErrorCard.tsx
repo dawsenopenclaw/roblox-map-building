@@ -104,7 +104,7 @@ export function ApiErrorCard({ variant, onRetry, className = '' }: ApiErrorCardP
 
   return (
     <div
-      className={`bg-[#242424] border ${config.borderColor} rounded-2xl p-6 text-center ${className}`}
+      className={`bg-[#141414] border ${config.borderColor} rounded-2xl p-6 text-center ${className}`}
     >
       {/* Icon */}
       <div
@@ -114,7 +114,7 @@ export function ApiErrorCard({ variant, onRetry, className = '' }: ApiErrorCardP
       </div>
 
       <h3 className="text-base font-semibold text-white mb-1">{config.title}</h3>
-      <p className="text-gray-400 text-sm mb-5 leading-relaxed">{config.description}</p>
+      <p className="text-gray-300 text-sm mb-5 leading-relaxed">{config.description}</p>
 
       {onRetry && (
         <>
@@ -139,7 +139,7 @@ export function ApiErrorCard({ variant, onRetry, className = '' }: ApiErrorCardP
               onChange={e => setAutoRetry(e.target.checked)}
               className="w-3.5 h-3.5 accent-[#FFB81C] cursor-pointer"
             />
-            <span className="text-xs text-gray-500 group-hover:text-gray-400 transition-colors">
+            <span className="text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
               Auto-retry on next error
             </span>
           </label>

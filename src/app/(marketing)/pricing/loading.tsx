@@ -12,7 +12,7 @@ export default function PricingLoading() {
           <div className="h-6 w-1/2 rounded-xl shimmer mx-auto mb-8" />
 
           {/* Annual / Monthly toggle */}
-          <div className="inline-flex items-center gap-2 bg-[#242424] border border-white/10 rounded-full p-1.5">
+          <div className="inline-flex items-center gap-2 bg-[#141414] border border-white/10 rounded-full p-1.5">
             <div className="h-8 w-24 rounded-full shimmer" />
             <div className="h-8 w-28 rounded-full shimmer" />
           </div>
@@ -23,7 +23,7 @@ export default function PricingLoading() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className={`relative flex flex-col bg-[#242424] border rounded-2xl p-6 ${
+              className={`relative flex flex-col bg-[#141414] border rounded-2xl p-6 ${
                 i === 2 ? 'border-[#FFB81C]/30' : 'border-white/10'
               }`}
             >
@@ -58,7 +58,7 @@ export default function PricingLoading() {
         </div>
 
         {/* Token calculator card */}
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-8 max-w-2xl mx-auto mb-20">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-8 max-w-2xl mx-auto mb-20">
           <div className="h-7 w-72 rounded-xl shimmer-gold mx-auto mb-2" />
           <div className="h-4 w-48 rounded-md shimmer mx-auto mb-8" />
 
@@ -69,7 +69,7 @@ export default function PricingLoading() {
             <div className="h-4 w-14 rounded-md shimmer" />
           </div>
 
-          <div className="bg-[#2e2e2e] rounded-xl p-5 mb-6 flex items-center justify-between gap-4">
+          <div className="bg-[#1c1c1c] rounded-xl p-5 mb-6 flex items-center justify-between gap-4">
             <div>
               <div className="h-4 w-32 rounded-md shimmer mb-2" />
               <div className="h-8 w-20 rounded-xl shimmer-gold mb-1" />
@@ -80,7 +80,7 @@ export default function PricingLoading() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between bg-[#1a1a1a] rounded-lg px-3 py-2">
+              <div key={i} className="flex items-center justify-between bg-[#0a0a0a] rounded-lg px-3 py-2">
                 <div className="h-4 w-36 rounded-md shimmer" />
                 <div className="h-4 w-10 rounded-md shimmer" />
               </div>
@@ -92,7 +92,7 @@ export default function PricingLoading() {
         <div className="mb-20">
           <div className="h-7 w-56 rounded-xl shimmer-gold mx-auto mb-8" />
           <div className="rounded-2xl border border-white/10 overflow-hidden">
-            <div className="grid grid-cols-5 gap-0 bg-[#242424] border-b border-white/10 px-4 py-4">
+            <div className="grid grid-cols-5 gap-0 bg-[#141414] border-b border-white/10 px-4 py-4">
               <div className="h-4 w-20 rounded-md shimmer" />
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-4 w-16 rounded-md shimmer mx-auto" />
@@ -102,7 +102,7 @@ export default function PricingLoading() {
               <div
                 key={i}
                 className={`grid grid-cols-5 gap-0 px-4 py-3.5 border-b border-white/5 ${
-                  i % 2 === 0 ? 'bg-[#1a1a1a]/40' : ''
+                  i % 2 === 0 ? 'bg-[#0a0a0a]/40' : ''
                 }`}
               >
                 <div className="h-3.5 w-32 rounded-md shimmer" />
@@ -117,7 +117,7 @@ export default function PricingLoading() {
         {/* Guarantee cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-16">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-6 text-center">
+            <div key={i} className="bg-[#141414] border border-white/10 rounded-2xl p-6 text-center">
               <div className="w-12 h-12 rounded-full shimmer mx-auto mb-3" />
               <div className="h-5 w-32 rounded-lg shimmer-gold mx-auto mb-2" />
               <div className="h-4 w-full rounded-md shimmer mb-1" />

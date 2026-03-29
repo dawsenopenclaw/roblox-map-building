@@ -8,7 +8,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon, subtitle, trend }: StatCardProps) {
   return (
-    <div className="bg-[#242424] border border-[#3a3a3a] rounded-xl p-5">
+    <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-[#6B7280] uppercase tracking-wider">{title}</p>

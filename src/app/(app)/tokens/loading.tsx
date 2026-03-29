@@ -12,7 +12,7 @@ export default function TokensLoading() {
         </div>
 
         {/* Balance hero card */}
-        <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-2xl p-8 mb-6 text-center">
+        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-8 mb-6 text-center">
           <div className="h-4 w-28 rounded-md shimmer mx-auto mb-3" />
           <div className="h-14 w-40 rounded-2xl shimmer-gold mx-auto mb-2" />
           <div className="h-4 w-36 rounded-md shimmer mx-auto mb-6" />
@@ -27,7 +27,7 @@ export default function TokensLoading() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className={`bg-[#242424] border rounded-2xl p-6 text-center ${
+              className={`bg-[#141414] border rounded-2xl p-6 text-center ${
                 i === 1 ? 'border-[#FFB81C]/30' : 'border-white/10'
               }`}
             >
@@ -41,7 +41,7 @@ export default function TokensLoading() {
         </div>
 
         {/* Usage history */}
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="h-5 w-32 rounded-lg shimmer-gold" />
             <div className="flex gap-2">

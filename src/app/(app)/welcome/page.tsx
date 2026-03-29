@@ -24,7 +24,7 @@ function ProgressBar({ step }: { step: number }) {
           }`}
         />
       ))}
-      <span className="text-gray-500 text-xs ml-1 whitespace-nowrap">
+      <span className="text-gray-400 text-xs ml-1 whitespace-nowrap">
         Step {step} of {TOTAL_STEPS}
       </span>
     </div>
@@ -54,7 +54,7 @@ function StepWelcome({
       <h1 className="text-3xl font-bold text-white mb-2">
         Welcome to ForjeGames{firstName ? `, ${firstName}` : ''}! 🎮
       </h1>
-      <p className="text-gray-400 mb-8">
+      <p className="text-gray-300 mb-8">
         What do you want to build?
       </p>
 
@@ -134,11 +134,11 @@ function StepTryIt() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-white mb-2">Let's build something right now.</h2>
-      <p className="text-gray-400 mb-6">Type what you want:</p>
+      <p className="text-gray-300 mb-6">Type what you want:</p>
 
       {/* Input */}
       <div className="relative mb-4">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
           Build me a
         </span>
         <input
@@ -148,7 +148,7 @@ function StepTryIt() {
           onKeyDown={(e) => e.key === 'Enter' && runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
           placeholder="medieval castle"
           disabled={running}
-          className="w-full bg-[#242424] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
+          className="w-full bg-[#141414] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-blue-400/50 transition-colors disabled:opacity-50"
         />
         <button
           onClick={() => runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
@@ -166,7 +166,7 @@ function StepTryIt() {
             <button
               key={s}
               onClick={() => { setInput(s); runDemo(`Build me a ${s}`) }}
-              className="text-left text-xs text-gray-500 hover:text-gray-300 transition-colors px-1"
+              className="text-left text-xs text-gray-400 hover:text-gray-300 transition-colors px-1"
             >
               "Build me a {s}"
             </button>
@@ -180,7 +180,7 @@ function StepTryIt() {
           {DEMO_STEPS.slice(0, Math.min(demoStep + 1, DEMO_STEPS.length)).map((s, i) => (
             <div key={i} className="flex items-center gap-2 mb-1">
               <span className="text-[#FFB81C]">›</span>
-              <span className={i < demoStep ? 'text-gray-500' : 'text-gray-200'}>{s}</span>
+              <span className={i < demoStep ? 'text-gray-400' : 'text-gray-200'}>{s}</span>
               {i < demoStep && <span className="ml-auto text-emerald-400">done</span>}
               {i === demoStep && running && (
                 <span className="ml-auto text-[#FFB81C] animate-pulse">running</span>
@@ -206,14 +206,14 @@ function StepReady() {
     <div className="text-center">
       <div className="text-5xl mb-5">🎉</div>
       <h2 className="text-3xl font-bold text-white mb-3">You're Ready!</h2>
-      <p className="text-gray-400 text-lg mb-8">Welcome aboard!</p>
+      <p className="text-gray-300 text-lg mb-8">Welcome aboard!</p>
 
-      <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
+      <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
         <p className="text-[#FFB81C] text-3xl font-bold">1,000</p>
-        <p className="text-gray-400 text-sm mt-0.5">Free tokens to start building</p>
+        <p className="text-gray-300 text-sm mt-0.5">Free tokens to start building</p>
       </div>
 
-      <p className="text-gray-600 text-xs mt-3">No credit card required. Tokens never expire.</p>
+      <p className="text-gray-500 text-xs mt-3">No credit card required. Tokens never expire.</p>
     </div>
   )
 }
@@ -272,7 +272,7 @@ export default function WelcomePage() {
       <div className="w-full max-w-md">
         <ProgressBar step={step} />
 
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-7">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-7">
           {step === 1 && (
             <StepWelcome
               firstName={firstName}
@@ -288,7 +288,7 @@ export default function WelcomePage() {
             <button
               onClick={handleSkip}
               disabled={finishing}
-              className="text-gray-500 text-sm hover:text-gray-300 transition-colors disabled:opacity-40"
+              className="text-gray-400 text-sm hover:text-gray-300 transition-colors disabled:opacity-40"
             >
               Skip
             </button>
@@ -298,7 +298,7 @@ export default function WelcomePage() {
                 <button
                   onClick={() => setStep(step - 1)}
                   disabled={finishing}
-                  className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40"
+                  className="text-sm text-gray-300 hover:text-white transition-colors disabled:opacity-40"
                 >
                   ← Back
                 </button>

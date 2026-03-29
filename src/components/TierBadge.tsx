@@ -101,7 +101,7 @@ export function TierProgressBar({
   if (!nextTier) {
     return (
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between text-xs text-gray-400">
           <span>Mythic — Max tier reached</span>
         </div>
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -117,7 +117,7 @@ export function TierProgressBar({
 
   return (
     <div className="space-y-1">
-      <div className="flex justify-between text-xs text-gray-500">
+      <div className="flex justify-between text-xs text-gray-400">
         <span>{config.label}</span>
         <span>{nextTier.charAt(0) + nextTier.slice(1).toLowerCase()} at {nextMin.toLocaleString()} XP</span>
       </div>

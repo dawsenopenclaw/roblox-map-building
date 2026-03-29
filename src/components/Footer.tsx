@@ -95,14 +95,14 @@ function FooterColumn({
                 href={l.href}
                 target={l.href.startsWith('http') ? '_blank' : undefined}
                 rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-sm text-gray-400 hover:text-white transition-colors"
+                className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
               >
                 {l.label}
               </a>
             ) : (
               <Link
                 href={l.href}
-                className="text-sm text-gray-400 hover:text-white transition-colors"
+                className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
               >
                 {l.label}
               </Link>
@@ -116,7 +116,7 @@ function FooterColumn({
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#242424] mt-auto">
+    <footer className="border-t border-white/10 bg-[#141414] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
 
         {/* Brand + charity badge row */}
@@ -130,7 +130,7 @@ export function Footer() {
               <span style={{ color: '#D4AF37' }}>Forje</span>
               <span className="text-white">Games</span>
             </Link>
-            <p className="text-gray-400 text-sm mt-2 max-w-xs leading-relaxed">
+            <p className="text-gray-300 text-sm mt-2 max-w-xs leading-relaxed">
               AI-powered Roblox game development. Build professional games faster than ever.
             </p>
           </div>
@@ -162,11 +162,11 @@ export function Footer() {
               <p className="text-sm font-semibold" style={{ color: '#D4AF37' }}>
                 10% donated to charity
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 Not tax-deductible. See{' '}
                 <Link
                   href="/terms#charity"
-                  className="hover:text-gray-300 transition-colors underline underline-offset-2"
+                  className="text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-2"
                 >
                   Terms §12
                 </Link>
@@ -185,7 +185,7 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             &copy; 2026 ForjeGames. All rights reserved.
           </p>
 
@@ -198,14 +198,14 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-white/5 transition-colors"
               >
                 {s.icon}
               </a>
             ))}
           </nav>
 
-          <p className="text-xs text-gray-600 sm:text-right">
+          <p className="text-xs text-gray-500 sm:text-right">
             Not affiliated with Roblox Corporation.
           </p>
         </div>

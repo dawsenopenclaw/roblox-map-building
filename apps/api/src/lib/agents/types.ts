@@ -67,6 +67,12 @@ export interface ParsedIntent {
   agents: AgentType[]
   /** Whether parallel execution is safe */
   canParallelize: boolean
+  /**
+   * Expanded version of the user prompt with specific Roblox details filled in.
+   * E.g. "build a castle" → detailed component list with materials, sizes, lighting.
+   * Downstream agents should prefer this over the raw user input.
+   */
+  expandedPrompt?: string
 }
 
 // ---------------------------------------------------------------------------

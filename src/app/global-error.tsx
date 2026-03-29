@@ -26,7 +26,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="bg-[#1a1a1a] text-white antialiased">
+      <body className="bg-[#0a0a0a] text-white antialiased">
         {/* Ambient red glow */}
         <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
           <div className="w-[500px] h-[500px] rounded-full bg-red-500/8 blur-[120px]" />
@@ -34,7 +34,7 @@ export default function GlobalError({
 
         <div className="relative min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full text-center">
-            <div className="bg-[#242424]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+            <div className="bg-[#141414]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
 
               {/* Icon */}
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
@@ -56,18 +56,18 @@ export default function GlobalError({
               <h1 className="text-2xl font-bold text-white mb-3">
                 Something went wrong
               </h1>
-              <p className="text-gray-400 text-sm leading-relaxed">
+              <p className="text-gray-300 text-sm leading-relaxed">
                 An unexpected error occurred at the application level. We&apos;ve been
                 automatically notified. Your data is safe.
               </p>
 
               {error.digest && (
-                <p className="text-gray-600 text-xs font-mono mt-4">
+                <p className="text-gray-500 text-xs font-mono mt-4">
                   Error ID: {error.digest}
                 </p>
               )}
 
-              <p className="text-gray-600 text-xs mt-1 mb-6">
+              <p className="text-gray-500 text-xs mt-1 mb-6">
                 Our team has been notified — no action needed on your end.
               </p>
 
@@ -105,7 +105,7 @@ export default function GlobalError({
 
               {/* Report */}
               <div className="mt-8 pt-6 border-t border-white/10">
-                <p className="text-gray-600 text-xs">
+                <p className="text-gray-500 text-xs">
                   Still stuck?{' '}
                   <a
                     href={`mailto:support@ForjeGames.gg?subject=Global+error+report${error.digest ? `&body=Error+ID:+${error.digest}` : ''}`}

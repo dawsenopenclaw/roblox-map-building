@@ -110,7 +110,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
         <p className="text-sm font-semibold text-white">Notifications</p>
         {unreadCount > 0 && (
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/20">
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-400/15 text-blue-400 border border-blue-400/20">
             {unreadCount} new
           </span>
         )}
@@ -122,12 +122,12 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
           <div
             key={n.id}
             role="listitem"
-            className={`flex gap-3 px-4 py-3 text-xs transition-colors hover:bg-white/[0.03] ${n.unread ? 'bg-[#D4AF37]/[0.04]' : ''}`}
+            className={`flex gap-3 px-4 py-3 text-xs transition-colors hover:bg-white/[0.03] ${n.unread ? 'bg-blue-400/[0.04]' : ''}`}
           >
-            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${n.unread ? 'bg-[#D4AF37]' : 'bg-gray-700'}`} aria-hidden="true" />
+            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${n.unread ? 'bg-blue-400' : 'bg-gray-700'}`} aria-hidden="true" />
             <div className="flex-1 min-w-0">
-              <p className={n.unread ? 'text-white' : 'text-gray-400'}>{n.text}</p>
-              <p className="text-gray-600 mt-0.5">{n.time}</p>
+              <p className={n.unread ? 'text-white' : 'text-gray-300'}>{n.text}</p>
+              <p className="text-gray-500 mt-0.5">{n.time}</p>
             </div>
           </div>
         ))}
@@ -158,7 +158,7 @@ function UserMenu() {
       {/* Identity */}
       <div className="px-4 py-3 border-b border-white/[0.07]">
         <p className="text-sm font-semibold text-white truncate">ForgeUser</p>
-        <p className="text-xs text-gray-500 truncate">user@example.com</p>
+        <p className="text-xs text-gray-400 truncate">user@example.com</p>
       </div>
 
       {/* Links */}
@@ -166,17 +166,17 @@ function UserMenu() {
         <Link
           href="/settings"
           role="menuitem"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
         >
-          <span className="text-gray-500"><IconSettings /></span>
+          <span className="text-gray-400 group-hover:text-blue-400"><IconSettings /></span>
           Settings
         </Link>
         <Link
           href="/billing"
           role="menuitem"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-white/[0.05] transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
         >
-          <span className="text-gray-500"><IconBilling /></span>
+          <span className="text-gray-400 group-hover:text-blue-400"><IconBilling /></span>
           Billing
         </Link>
       </div>
@@ -231,11 +231,11 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length
 
   return (
-    <header className="h-14 bg-[#242424] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
+    <header className="h-14 bg-[#141414] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
       {/* Hamburger (mobile) */}
       <button
         onClick={onMenuOpen}
-        className="lg:hidden p-2 -ml-1 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+        className="lg:hidden p-2 -ml-1 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
         aria-label="Open navigation menu"
       >
         <IconMenu />
@@ -245,13 +245,13 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       <div className="flex-1 max-w-md hidden sm:block">
         <button
           onClick={onCommandPalette}
-          className="w-full flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg pl-3 pr-2 py-2 text-sm text-gray-500 hover:border-[#D4AF37]/30 hover:bg-white/[0.06] hover:text-gray-400 transition-all duration-150 text-left group"
+          className="w-full flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg pl-3 pr-2 py-2 text-sm text-gray-400 hover:border-blue-400/30 hover:bg-white/[0.06] hover:text-gray-300 transition-all duration-150 text-left group"
           aria-label="Search (Ctrl+K)"
         >
-          <span className="text-gray-600 group-hover:text-gray-400 transition-colors flex-shrink-0">
+          <span className="text-gray-500 group-hover:text-gray-300 transition-colors flex-shrink-0">
             <IconSearch />
           </span>
-          <span className="flex-1 text-gray-600">Search anything…</span>
+          <span className="flex-1 text-gray-500">Search anything…</span>
           <ShortcutHint keys="Ctrl+K" className="opacity-60" />
         </button>
       </div>
@@ -262,7 +262,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* New Project */}
       <Link
         href="/voice"
-        className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#D4AF37]/90 active:scale-95 text-[#1a1a1a] text-xs font-bold rounded-lg px-3 py-2 transition-all duration-150 flex-shrink-0"
+        className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#D4AF37]/90 active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 transition-all duration-150 flex-shrink-0"
         aria-label="New project (Ctrl+N)"
       >
         <IconPlus />
@@ -278,20 +278,20 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
         aria-live="polite"
         aria-atomic="true"
       >
-        <span className="text-[#D4AF37] flex-shrink-0" aria-hidden="true">
+        <span className="text-blue-400 flex-shrink-0" aria-hidden="true">
           <IconCoin />
         </span>
-        <span className="text-white text-sm font-bold tabular-nums" aria-hidden="true">
+        <span className="text-blue-400 text-sm font-bold tabular-nums" aria-hidden="true">
           {tokenBalance}
         </span>
-        <span className="text-gray-600 text-xs hidden md:block" aria-hidden="true">tokens</span>
+        <span className="text-gray-500 text-xs hidden md:block" aria-hidden="true">tokens</span>
       </div>
 
       {/* Notification bell */}
       <div className="relative flex-shrink-0" ref={notifRef}>
         <button
           onClick={() => { setNotifOpen((v) => !v); setProfileOpen(false) }}
-          className="relative p-2 text-gray-500 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+          className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
           aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
           aria-expanded={notifOpen}
           aria-haspopup="true"
@@ -299,7 +299,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           <IconBell />
           {unreadCount > 0 && (
             <span
-              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#242424]"
+              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#141414]"
               style={{ background: '#D4AF37' }}
               aria-hidden="true"
             />
@@ -322,13 +322,13 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
             className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs select-none flex-shrink-0"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
-              color: '#1a1a1a',
+              color: '#0a0a0a',
             }}
             aria-hidden="true"
           >
             FG
           </div>
-          <span className="text-gray-600 group-hover:text-gray-400 transition-colors hidden sm:block">
+          <span className="text-gray-500 group-hover:text-gray-300 transition-colors hidden sm:block">
             <IconChevronDown />
           </span>
         </button>

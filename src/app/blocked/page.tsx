@@ -18,7 +18,7 @@ export default function BlockedPage() {
         {/* Icon */}
         <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 mx-auto flex items-center justify-center mb-6">
           <svg
-            className="w-10 h-10 text-gray-500"
+            className="w-10 h-10 text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -36,7 +36,7 @@ export default function BlockedPage() {
           ForjeGames is Not Available in Your Region
         </h1>
 
-        <p className="text-gray-400 leading-relaxed mb-6">
+        <p className="text-gray-300 leading-relaxed mb-6">
           Access to ForjeGames is restricted in your location due to U.S. federal export control
           laws and economic sanctions programs administered by the U.S. Department of the Treasury
           Office of Foreign Assets Control (OFAC) and the U.S. Department of Commerce Bureau of
@@ -45,7 +45,7 @@ export default function BlockedPage() {
 
         <div className="bg-white/5 border border-white/10 rounded-xl p-5 text-left mb-6">
           <p className="text-sm font-medium text-white mb-3">Restricted jurisdictions include:</p>
-          <ul className="space-y-1 text-sm text-gray-400">
+          <ul className="space-y-1 text-sm text-gray-300">
             {[
               'North Korea (Democratic People\'s Republic of Korea)',
               'Iran (Islamic Republic of Iran)',
@@ -63,7 +63,7 @@ export default function BlockedPage() {
           </ul>
         </div>
 
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-gray-400 mb-6">
           If you believe you have received this message in error — for example, if you are using a
           VPN that routes traffic through a restricted region — please disable your VPN and try
           again. If the issue persists and you believe your access should not be restricted, contact
@@ -89,7 +89,7 @@ export default function BlockedPage() {
           </a>
         </div>
 
-        <p className="text-xs text-gray-600 mt-8">
+        <p className="text-xs text-gray-500 mt-8">
           This restriction is imposed by law, not by ForjeGames&apos;s policies. We are required
           by U.S. law to deny service to persons in embargoed countries and to those on U.S.
           government sanctions lists. This page is served in compliance with 50 U.S.C. § 1701 et

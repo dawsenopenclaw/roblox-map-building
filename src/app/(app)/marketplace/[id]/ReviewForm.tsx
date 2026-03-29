@@ -32,7 +32,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#242424] border border-[#FFB81C]/20 rounded-xl p-4 mb-6">
+    <form onSubmit={handleSubmit} className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl p-4 mb-6">
       <h3 className="text-sm font-medium text-white mb-3">Leave a Review</h3>
 
       {/* Star picker */}
@@ -49,7 +49,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
               className="focus:outline-none"
             >
               <svg
-                className={`w-7 h-7 transition-colors ${value <= (hoveredRating || rating) ? 'text-[#FFB81C]' : 'text-gray-600'}`}
+                className={`w-7 h-7 transition-colors ${value <= (hoveredRating || rating) ? 'text-[#FFB81C]' : 'text-gray-500'}`}
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -59,7 +59,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
           )
         })}
         {rating > 0 && (
-          <span className="text-sm text-gray-400 ml-2 self-center">
+          <span className="text-sm text-gray-300 ml-2 self-center">
             {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][rating]}
           </span>
         )}
@@ -70,7 +70,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
         onChange={e => setBody(e.target.value)}
         placeholder="Share your experience (optional)..."
         rows={3}
-        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 resize-none mb-3"
+        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-400/50 resize-none mb-3"
       />
 
       {error && <p className="text-xs text-red-400 mb-3">{error}</p>}

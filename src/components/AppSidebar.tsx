@@ -150,10 +150,10 @@ function SectionGroup({
         className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 group"
         aria-expanded={open}
       >
-        <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-500 group-hover:text-gray-400 transition-colors">
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 group-hover:text-gray-300 transition-colors">
           {section.label}
         </span>
-        <span className="text-gray-600 group-hover:text-gray-400 transition-colors">
+        <span className="text-gray-500 group-hover:text-gray-300 transition-colors">
           <IconChevron open={open} />
         </span>
       </button>
@@ -171,12 +171,12 @@ function SectionGroup({
                 className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   active
                     ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                    : 'text-gray-300 hover:text-blue-400 hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <span
                   className={`flex-shrink-0 transition-all duration-150 ${
-                    active ? 'text-[#D4AF37]' : 'text-gray-500 group-hover:text-gray-300'
+                    active ? 'text-[#D4AF37]' : 'text-gray-400 group-hover:text-blue-400'
                   }`}
                 >
                   <Icon />
@@ -222,7 +222,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-[#242424] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full w-60 bg-[#141414] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } lg:static lg:z-auto`}
         aria-label="Main navigation"
@@ -232,7 +232,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
             {/* Forge hex icon */}
             <span
-              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#1a1a1a] font-black text-sm select-none"
+              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#0a0a0a] font-black text-sm select-none"
               style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
               aria-hidden="true"
             >
@@ -245,7 +245,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           </Link>
           <button
             onClick={onClose}
-            className="lg:hidden text-gray-600 hover:text-white transition-colors flex-shrink-0 ml-2"
+            className="lg:hidden text-gray-400 hover:text-white transition-colors flex-shrink-0 ml-2"
             aria-label="Close navigation"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -275,7 +275,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 select-none"
               style={{
                 background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
-                color: '#1a1a1a',
+                color: '#0a0a0a',
               }}
               aria-hidden="true"
             >
@@ -293,7 +293,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             {/* Settings shortcut */}
             <Link
               href="/settings"
-              className="text-gray-600 hover:text-gray-300 transition-colors flex-shrink-0"
+              className="text-gray-400 hover:text-white transition-colors flex-shrink-0"
               aria-label="Open settings"
             >
               <IconGear />

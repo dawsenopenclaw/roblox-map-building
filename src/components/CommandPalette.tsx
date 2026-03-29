@@ -51,7 +51,7 @@ function KeyBadge({ keys }: { keys: string }) {
       {keys.split('+').map((k, i) => (
         <kbd
           key={i}
-          className="inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1 rounded bg-white/10 border border-white/20 text-[10px] text-gray-400 font-mono"
+          className="inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1 rounded bg-white/10 border border-white/20 text-[10px] text-gray-300 font-mono"
         >
           {k}
         </kbd>
@@ -275,11 +275,11 @@ export function CommandPalette({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed top-[10vh] left-1/2 -translate-x-1/2 w-full max-w-xl z-[101]"
           >
-            <div className="bg-[#242424] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-[#141414] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
               {/* Search input */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10">
                 <svg
-                  className="w-4 h-4 text-gray-400 flex-shrink-0"
+                  className="w-4 h-4 text-gray-300 flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -300,7 +300,7 @@ export function CommandPalette({
                   placeholder="Search pages, actions, help…"
                   className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 outline-none"
                 />
-                <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded bg-white/10 border border-white/20 text-[10px] text-gray-400 font-mono flex-shrink-0">
+                <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded bg-white/10 border border-white/20 text-[10px] text-gray-300 font-mono flex-shrink-0">
                   Esc
                 </kbd>
               </div>
@@ -308,13 +308,13 @@ export function CommandPalette({
               {/* Results */}
               <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-2">
                 {flat.length === 0 ? (
-                  <p className="text-center text-gray-500 text-sm py-8">No results for &ldquo;{query}&rdquo;</p>
+                  <p className="text-center text-gray-400 text-sm py-8">No results for &ldquo;{query}&rdquo;</p>
                 ) : (
                   (() => {
                     let globalIndex = 0
                     return Object.entries(grouped).map(([group, items]) => (
                       <div key={group}>
-                        <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+                        <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
                           {group}
                         </p>
                         {items.map((item) => {
@@ -329,7 +329,7 @@ export function CommandPalette({
                               className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
                                 isSelected
                                   ? 'bg-[#FFB81C]/10 text-white'
-                                  : 'text-gray-300 hover:text-white'
+                                  : 'text-gray-300 hover:text-blue-400'
                               }`}
                             >
                               {/* Icon */}
@@ -347,7 +347,7 @@ export function CommandPalette({
                                   {item.label}
                                 </span>
                                 {item.description && (
-                                  <span className="text-xs text-gray-500 block truncate">
+                                  <span className="text-xs text-gray-400 block truncate">
                                     {item.description}
                                   </span>
                                 )}
@@ -384,7 +384,7 @@ export function CommandPalette({
               </div>
 
               {/* Footer */}
-              <div className="px-4 py-2.5 border-t border-white/10 flex items-center gap-4 text-[10px] text-gray-500">
+              <div className="px-4 py-2.5 border-t border-white/10 flex items-center gap-4 text-[10px] text-gray-400">
                 <span className="flex items-center gap-1">
                   <kbd className="inline-flex items-center justify-center h-4 px-1 rounded bg-white/10 border border-white/20 font-mono text-[9px]">
                     ↑↓

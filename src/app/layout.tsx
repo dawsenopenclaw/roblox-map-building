@@ -126,7 +126,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#1a1a1a" />
+        <meta name="theme-color" content="#0a0a0a" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -145,14 +145,14 @@ export default function RootLayout({
           appearance={{
             variables: {
               colorPrimary: '#FFB81C',
-              colorBackground: '#242424',
+              colorBackground: '#141414',
               colorText: '#ffffff',
               colorTextSecondary: '#9ca3af',
-              colorInputBackground: '#242424',
+              colorInputBackground: '#141414',
               colorInputText: '#ffffff',
             },
             elements: {
-              card: 'shadow-xl border border-white/10 bg-[#242424]',
+              card: 'shadow-xl border border-white/10 bg-[#141414]',
               formButtonPrimary: 'bg-[#FFB81C] text-black hover:bg-[#E6A519]',
               footerActionLink: 'text-[#FFB81C] hover:text-[#E6A519]',
             },

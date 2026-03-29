@@ -46,7 +46,7 @@ export default function MaintenancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 overflow-hidden">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div className="w-[550px] h-[550px] rounded-full bg-[#FFB81C]/6 blur-[120px]" />
@@ -63,7 +63,7 @@ export default function MaintenancePage() {
       />
 
       <div className="relative max-w-lg w-full text-center">
-        <div className="bg-[#242424]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#141414]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Animated icon wrapper */}
           <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center animate-[spin_8s_linear_infinite]"
@@ -84,7 +84,7 @@ export default function MaintenancePage() {
           <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
             We&apos;re making things better
           </h1>
-          <p className="text-gray-400 text-sm leading-relaxed mb-6">
+          <p className="text-gray-300 text-sm leading-relaxed mb-6">
             ForjeGames is undergoing scheduled maintenance. We&apos;ll be back shortly —
             no data has been lost and your projects are safe.
           </p>
@@ -99,7 +99,7 @@ export default function MaintenancePage() {
             </div>
           ) : (
             <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-8">
-              <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+              <div className="flex items-center justify-center gap-2 text-gray-300 text-sm">
                 <svg className="w-4 h-4 text-[#FFB81C] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                 </svg>
@@ -110,7 +110,7 @@ export default function MaintenancePage() {
 
           {/* Status page subscribe */}
           <div className="border-t border-white/10 pt-8 mb-8">
-            <p className="text-gray-400 text-sm mb-4">
+            <p className="text-gray-300 text-sm mb-4">
               Subscribe to our status page for real-time updates and incident notifications.
             </p>
             <a
@@ -129,7 +129,7 @@ export default function MaintenancePage() {
 
           {/* Social links */}
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-4">Follow for live updates</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Follow for live updates</p>
             <div className="flex items-center justify-center gap-3">
               <a
                 href={twitterUrl}

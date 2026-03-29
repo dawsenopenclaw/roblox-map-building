@@ -34,9 +34,9 @@ export function CharitySelector({ current }: { current?: string }) {
   }
 
   return (
-    <div className="bg-[#242424] border border-white/10 rounded-xl p-4">
+    <div className="bg-[#141414] border border-white/10 rounded-xl p-4">
       <p className="text-white font-medium mb-1">Your 10% goes to</p>
-      <p className="text-gray-400 text-sm mb-4">10% of every payment is automatically donated.</p>
+      <p className="text-gray-300 text-sm mb-4">10% of every payment is automatically donated.</p>
       <div className="space-y-2">
         {CHARITIES.map(charity => (
           <button
@@ -46,7 +46,7 @@ export function CharitySelector({ current }: { current?: string }) {
             className={`w-full text-left p-3 rounded-lg border transition-colors disabled:opacity-50 ${
               selected === charity.slug
                 ? 'border-[#FFB81C] bg-[#FFB81C]/10 text-white'
-                : 'border-white/10 text-gray-400 hover:border-white/30'
+                : 'border-white/10 text-gray-300 hover:border-white/30'
             }`}
           >
             <span className="font-medium">{charity.name}</span>

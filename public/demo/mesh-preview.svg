@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" fill="#0f0f0f"/>
+
+  <!-- Back face -->
+  <polygon points="60,50 140,50 140,130 60,130" fill="none" stroke="#FFB81C" stroke-width="1" opacity="0.3"/>
+
+  <!-- Isometric cube wireframe -->
+  <!-- Top face -->
+  <polygon points="100,30 155,65 100,100 45,65" fill="none" stroke="#FFB81C" stroke-width="1.5" opacity="0.9"/>
+
+  <!-- Left face -->
+  <polygon points="45,65 100,100 100,160 45,125" fill="none" stroke="#FFB81C" stroke-width="1.5" opacity="0.7"/>
+
+  <!-- Right face -->
+  <polygon points="155,65 100,100 100,160 155,125" fill="none" stroke="#FFB81C" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Subtle fill overlays -->
+  <polygon points="100,30 155,65 100,100 45,65" fill="#FFB81C" opacity="0.04"/>
+  <polygon points="45,65 100,100 100,160 45,125" fill="#FFB81C" opacity="0.02"/>
+  <polygon points="155,65 100,100 100,160 155,125" fill="#FFB81C" opacity="0.01"/>
+
+  <!-- Diagonal wireframe lines on top face -->
+  <line x1="100" y1="30" x2="100" y2="100" stroke="#FFB81C" stroke-width="0.5" opacity="0.3"/>
+  <line x1="45" y1="65" x2="155" y2="65" stroke="#FFB81C" stroke-width="0.5" opacity="0.3"/>
+
+  <!-- Grid dots at vertices -->
+  <circle cx="100" cy="30"  r="2" fill="#FFB81C" opacity="0.9"/>
+  <circle cx="155" cy="65"  r="2" fill="#FFB81C" opacity="0.9"/>
+  <circle cx="100" cy="100" r="2" fill="#FFB81C" opacity="0.9"/>
+  <circle cx="45"  cy="65"  r="2" fill="#FFB81C" opacity="0.9"/>
+  <circle cx="45"  cy="125" r="2" fill="#FFB81C" opacity="0.7"/>
+  <circle cx="100" cy="160" r="2" fill="#FFB81C" opacity="0.7"/>
+  <circle cx="155" cy="125" r="2" fill="#FFB81C" opacity="0.7"/>
+
+  <!-- Label -->
+  <text x="100" y="185" text-anchor="middle" font-family="monospace" font-size="9" fill="#FFB81C" opacity="0.5" letter-spacing="2">3D PREVIEW</text>
+</svg>

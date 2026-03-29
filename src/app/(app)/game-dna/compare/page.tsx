@@ -123,7 +123,7 @@ const DEMO_SCANS_BY_ID: Record<string, GameScan> = {
 
 function ScoreDelta({ a, b }: { a: number; b: number }) {
   const delta = a - b
-  if (Math.abs(delta) < 3) return <span className="text-gray-500 text-xs">Tied</span>
+  if (Math.abs(delta) < 3) return <span className="text-gray-400 text-xs">Tied</span>
   return (
     <span className={`text-xs font-semibold ${delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
       {delta > 0 ? `+${delta}` : delta} (Game A {delta > 0 ? 'wins' : 'loses'})
@@ -234,7 +234,7 @@ function CompareContent() {
           ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Compare Games</h1>
-        <p className="text-gray-400 text-sm mt-1">Side-by-side DNA analysis — find where you win and lose</p>
+        <p className="text-gray-300 text-sm mt-1">Side-by-side DNA analysis — find where you win and lose</p>
       </div>
 
       {/* Demo banner */}
@@ -248,14 +248,14 @@ function CompareContent() {
       )}
 
       {/* Selector */}
-      <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide">Game A</label>
+            <label className="block text-xs text-gray-300 mb-2 font-medium uppercase tracking-wide">Game A</label>
             <select
               value={scanAId}
               onChange={(e) => setScanAId(e.target.value)}
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.map((s) => (
@@ -266,11 +266,11 @@ function CompareContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide">Game B</label>
+            <label className="block text-xs text-gray-300 mb-2 font-medium uppercase tracking-wide">Game B</label>
             <select
               value={scanBId}
               onChange={(e) => setScanBId(e.target.value)}
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.filter((s) => s.id !== scanAId).map((s) => (
@@ -295,11 +295,11 @@ function CompareContent() {
         <>
           {/* Radar comparison */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
+            <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-1">
                 {scanA!.gameName || 'Game A'}
               </h2>
-              <p className="text-xs text-gray-600 mb-4">vs Genre Average</p>
+              <p className="text-xs text-gray-500 mb-4">vs Genre Average</p>
               <ResponsiveContainer width="100%" height={260}>
                 <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                   <PolarGrid stroke="#ffffff15" />
@@ -309,11 +309,11 @@ function CompareContent() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
+            <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-1">
                 {scanB!.gameName || 'Game B'}
               </h2>
-              <p className="text-xs text-gray-600 mb-4">vs Genre Average</p>
+              <p className="text-xs text-gray-500 mb-4">vs Genre Average</p>
               <ResponsiveContainer width="100%" height={260}>
                 <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                   <PolarGrid stroke="#ffffff15" />
@@ -325,8 +325,8 @@ function CompareContent() {
           </div>
 
           {/* Overlay radar */}
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">
               Overlay Comparison
             </h2>
             <ResponsiveContainer width="100%" height={320}>
@@ -341,9 +341,9 @@ function CompareContent() {
           </div>
 
           {/* Difference table */}
-          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wide">
                 Attribute Comparison
               </h2>
             </div>
@@ -351,14 +351,14 @@ function CompareContent() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
-                    <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Attribute</th>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Attribute</th>
                     <th className="text-left px-5 py-3 text-xs text-[#FFB81C] font-medium">
                       {scanA!.gameName || 'Game A'}
                     </th>
                     <th className="text-left px-5 py-3 text-xs text-blue-400 font-medium">
                       {scanB!.gameName || 'Game B'}
                     </th>
-                    <th className="text-left px-5 py-3 text-xs text-gray-500 font-medium">Result</th>
+                    <th className="text-left px-5 py-3 text-xs text-gray-400 font-medium">Result</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -371,14 +371,14 @@ function CompareContent() {
 
                     return (
                       <tr key={field.key} className="border-b border-white/5 hover:bg-white/[0.02]">
-                        <td className="px-5 py-3 text-gray-400">{field.label}</td>
+                        <td className="px-5 py-3 text-gray-300">{field.label}</td>
                         <td className="px-5 py-3 text-white">
                           {aVal}
-                          <span className="ml-2 text-xs text-gray-600">({scoreA})</span>
+                          <span className="ml-2 text-xs text-gray-500">({scoreA})</span>
                         </td>
                         <td className="px-5 py-3 text-white">
                           {bVal}
-                          <span className="ml-2 text-xs text-gray-600">({scoreB})</span>
+                          <span className="ml-2 text-xs text-gray-500">({scoreB})</span>
                         </td>
                         <td className="px-5 py-3">
                           <ScoreDelta a={scoreA} b={scoreB} />
@@ -392,13 +392,13 @@ function CompareContent() {
           </div>
 
           {/* Strategic recommendations */}
-          <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">
               Strategic Gaps — Where to Improve
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">
+                <p className="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wide">
                   {scanA!.gameName || 'Game A'} lags behind in:
                 </p>
                 <div className="space-y-2">
@@ -411,7 +411,7 @@ function CompareContent() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">
+                <p className="text-xs text-gray-400 mb-3 font-medium uppercase tracking-wide">
                   {scanA!.gameName || 'Game A'} leads in:
                 </p>
                 <div className="space-y-2">
@@ -430,13 +430,13 @@ function CompareContent() {
 
       {/* Empty state */}
       {!canCompare && !loading && (
-        <div className="bg-[#242424] border border-dashed border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#141414] border border-dashed border-white/10 rounded-2xl p-12 text-center">
           <div className="text-5xl mb-4">🧬 vs 🧬</div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-300 text-sm">
             Select two completed scans above to see a side-by-side comparison
           </p>
           {scans.length < 2 && (
-            <p className="text-gray-600 text-xs mt-2">
+            <p className="text-gray-500 text-xs mt-2">
               You need at least 2 completed scans.{' '}
               <Link href="/editor" className="text-[#FFB81C] hover:underline">
                 Scan more games →
@@ -451,7 +451,7 @@ function CompareContent() {
 
 export default function GameDnaComparePage() {
   return (
-    <Suspense fallback={<div className="text-gray-400 text-sm p-8">Loading…</div>}>
+    <Suspense fallback={<div className="text-gray-300 text-sm p-8">Loading…</div>}>
       <CompareContent />
     </Suspense>
   )

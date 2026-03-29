@@ -40,8 +40,8 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-[#242424] border-green-500/30 text-green-300'
-          : 'bg-[#242424] border-red-500/30 text-red-300'
+          ? 'bg-[#141414] border-green-500/30 text-green-300'
+          : 'bg-[#141414] border-red-500/30 text-red-300'
       }`}
     >
       {type === 'success' ? <Check size={14} /> : <Trash2 size={14} />}
@@ -193,7 +193,7 @@ function ProfileTab() {
   return (
     <div className="space-y-4">
       {/* Profile card */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Profile</h3>
 
         {/* Avatar */}
@@ -203,42 +203,42 @@ function ProfileTab() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Email</label>
+            <label className="block text-sm text-gray-300 mb-1.5">Email</label>
             <input
               type="email"
               value="dawsen@forjegames.gg"
               disabled
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-500 text-sm cursor-not-allowed"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-400 text-sm cursor-not-allowed"
             />
-            <p className="text-gray-600 text-xs mt-1.5">Managed by Clerk — change in account settings.</p>
+            <p className="text-gray-500 text-xs mt-1.5">Managed by Clerk — change in account settings.</p>
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Display Name</label>
+            <label className="block text-sm text-gray-300 mb-1.5">Display Name</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Bio</label>
+            <label className="block text-sm text-gray-300 mb-1.5">Bio</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-none"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1.5">Charity Preference</label>
+            <label className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
             <select
               value={charity}
               onChange={(e) => setCharity(e.target.value)}
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors appearance-none"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors appearance-none"
             >
               {charities.map((c) => (
                 <option key={c} value={c}>
@@ -246,7 +246,7 @@ function ProfileTab() {
                 </option>
               ))}
             </select>
-            <p className="text-gray-600 text-xs mt-1.5">
+            <p className="text-gray-500 text-xs mt-1.5">
               A portion of revenue is donated to this organisation.
             </p>
           </div>
@@ -262,12 +262,12 @@ function ProfileTab() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-[#242424] border border-red-500/20 rounded-xl p-6">
+      <div className="bg-[#141414] border border-red-500/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Trash2 size={15} className="text-red-400" />
           <h3 className="text-red-400 font-semibold">Danger Zone</h3>
         </div>
-        <p className="text-gray-400 text-sm mb-4">
+        <p className="text-gray-300 text-sm mb-4">
           Permanently delete your account and all associated data. This cannot be undone.
         </p>
 
@@ -293,7 +293,7 @@ function ProfileTab() {
               onChange={(e) => setDeleteInput(e.target.value)}
               placeholder="delete my account"
               autoComplete="off"
-              className="w-full bg-[#2e2e2e] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
+              className="w-full bg-[#1c1c1c] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
             />
             <div className="flex gap-3">
               <button
@@ -308,7 +308,7 @@ function ProfileTab() {
                   setShowDeleteDialog(false)
                   setDeleteInput('')
                 }}
-                className="text-sm border border-white/20 text-gray-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
+                className="text-sm border border-white/20 text-gray-300 hover:text-blue-400 px-4 py-2 rounded-lg transition-colors"
               >
                 Cancel
               </button>
@@ -333,8 +333,8 @@ function BillingTab() {
   return (
     <div className="space-y-4">
       {/* Plan */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Current Plan</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-2.5 mb-2">
@@ -345,8 +345,8 @@ function BillingTab() {
                 Active
               </span>
             </div>
-            <p className="text-gray-400 text-sm">5,000 tokens/month · Full AI · Priority builds</p>
-            <p className="text-gray-500 text-xs mt-1.5">
+            <p className="text-gray-300 text-sm">5,000 tokens/month · Full AI · Priority builds</p>
+            <p className="text-gray-400 text-xs mt-1.5">
               <span className="text-white font-semibold">$29/mo</span> · Renews April 28, 2026
             </p>
           </div>
@@ -360,7 +360,7 @@ function BillingTab() {
             </Link>
             <button
               onClick={() => window.open('/api/billing/portal', '_blank')}
-              className="text-xs text-gray-400 hover:text-white text-center transition-colors"
+              className="text-xs text-gray-300 hover:text-blue-400 text-center transition-colors"
             >
               Manage billing →
             </button>
@@ -369,15 +369,15 @@ function BillingTab() {
       </div>
 
       {/* Token Balance */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Token Balance</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
         <div className="flex items-end gap-3 mb-1">
           <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
             {tokenBalance.toLocaleString()}
           </span>
-          <span className="text-gray-400 text-sm mb-1">remaining</span>
+          <span className="text-gray-300 text-sm mb-1">remaining</span>
         </div>
-        <p className="text-gray-500 text-xs mb-4">of {tokenLimit.toLocaleString()} total this month</p>
+        <p className="text-gray-400 text-xs mb-4">of {tokenLimit.toLocaleString()} total this month</p>
 
         <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
           <div
@@ -391,7 +391,7 @@ function BillingTab() {
             }}
           />
         </div>
-        <div className="flex justify-between text-xs text-gray-600 mb-5">
+        <div className="flex justify-between text-xs text-gray-500 mb-5">
           <span>{(tokenLimit - tokenBalance).toLocaleString()} used</span>
           <span>{tokenPct}%</span>
         </div>
@@ -406,8 +406,8 @@ function BillingTab() {
       </div>
 
       {/* Usage Breakdown */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Usage This Month</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
             { label: 'AI Generations', used: 142, limit: 200, color: '#FFB81C' },
@@ -419,7 +419,7 @@ function BillingTab() {
               <div key={stat.label} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-gray-300 text-sm">{stat.label}</span>
-                  <span className="text-gray-400 text-xs tabular-nums">
+                  <span className="text-gray-300 text-xs tabular-nums">
                     {stat.used.toLocaleString()} / {stat.limit.toLocaleString()}
                   </span>
                 </div>
@@ -432,7 +432,7 @@ function BillingTab() {
                     }}
                   />
                 </div>
-                <p className="text-gray-600 text-xs text-right">{pct}% used</p>
+                <p className="text-gray-500 text-xs text-right">{pct}% used</p>
               </div>
             )
           })}
@@ -440,16 +440,16 @@ function BillingTab() {
       </div>
 
       {/* Payment History */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Payment History</p>
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payment History</p>
         <div className="overflow-x-auto -mx-6 px-6">
           <table className="w-full text-sm min-w-[400px]">
             <thead>
               <tr className="border-b border-white/5">
-                <th className="text-left text-xs text-gray-500 font-medium pb-3">Date</th>
-                <th className="text-left text-xs text-gray-500 font-medium pb-3">Description</th>
-                <th className="text-right text-xs text-gray-500 font-medium pb-3">Amount</th>
-                <th className="text-right text-xs text-gray-500 font-medium pb-3">Status</th>
+                <th className="text-left text-xs text-gray-400 font-medium pb-3">Date</th>
+                <th className="text-left text-xs text-gray-400 font-medium pb-3">Description</th>
+                <th className="text-right text-xs text-gray-400 font-medium pb-3">Amount</th>
+                <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -459,7 +459,7 @@ function BillingTab() {
                 { id: '3', date: 'Jan 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
               ].map((row) => (
                 <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3.5 text-gray-400 text-xs whitespace-nowrap">{row.date}</td>
+                  <td className="py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.date}</td>
                   <td className="py-3.5 text-white pr-4">{row.description}</td>
                   <td className="py-3.5 text-white text-right tabular-nums font-medium">{row.amount}</td>
                   <td className="py-3.5 text-right">
@@ -546,11 +546,11 @@ function ApiKeysTab() {
     <div className="space-y-4">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
           <div>
             <h3 className="text-white font-semibold">API Keys</h3>
-            <p className="text-gray-500 text-xs mt-0.5">
+            <p className="text-gray-400 text-xs mt-0.5">
               Use these keys to authenticate ForjeGames API calls.
             </p>
           </div>
@@ -573,7 +573,7 @@ function ApiKeysTab() {
               onChange={(e) => setNewKeyName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
               placeholder="Key name (e.g. Production)"
-              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors mb-3"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors mb-3"
               autoFocus
             />
             <div className="flex gap-3">
@@ -589,7 +589,7 @@ function ApiKeysTab() {
                   setShowCreate(false)
                   setNewKeyName('')
                 }}
-                className="text-sm border border-white/20 text-gray-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
+                className="text-sm border border-white/20 text-gray-300 hover:text-blue-400 px-4 py-2 rounded-lg transition-colors"
               >
                 Cancel
               </button>
@@ -599,7 +599,7 @@ function ApiKeysTab() {
 
         {/* Keys list */}
         {keys.length === 0 ? (
-          <p className="text-gray-500 text-sm py-4">No API keys yet. Create one to get started.</p>
+          <p className="text-gray-400 text-sm py-4">No API keys yet. Create one to get started.</p>
         ) : (
           <div className="space-y-3">
             {keys.map((key) => {
@@ -615,23 +615,23 @@ function ApiKeysTab() {
                       <p className="text-white text-sm font-medium">{key.name}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <p className="text-gray-500 text-xs font-mono">
+                      <p className="text-gray-400 text-xs font-mono">
                         {revealed ? key.prefix : '\u2022'.repeat(16) + '...'}
                       </p>
                       <button
                         onClick={() => toggleReveal(key.id)}
-                        className="text-gray-600 hover:text-gray-400 transition-colors"
+                        className="text-gray-500 hover:text-gray-300 transition-colors"
                       >
                         {revealed ? <EyeOff size={12} /> : <Eye size={12} />}
                       </button>
                       <button
                         onClick={() => copyKey(key.prefix)}
-                        className="text-gray-600 hover:text-[#FFB81C] transition-colors"
+                        className="text-gray-500 hover:text-[#FFB81C] transition-colors"
                       >
                         <Copy size={12} />
                       </button>
                     </div>
-                    <p className="text-gray-600 text-xs mt-0.5">Created {key.createdAt}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Created {key.createdAt}</p>
                   </div>
 
                   {deleteConfirm === key.id ? (
@@ -644,7 +644,7 @@ function ApiKeysTab() {
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="text-xs border border-white/20 text-gray-400 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+                        className="text-xs border border-white/20 text-gray-300 hover:text-blue-400 px-3 py-1.5 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -757,14 +757,14 @@ function NotificationsTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {groups.map((group) => (
-        <div key={group.section} className="bg-[#242424] border border-white/10 rounded-xl p-6">
+        <div key={group.section} className="bg-[#141414] border border-white/10 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-5">{group.section}</h3>
           <div className="space-y-5">
             {group.rows.map((row) => (
               <div key={row.key} className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-white text-sm font-medium">{row.label}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{row.description}</p>
+                  <p className="text-gray-400 text-xs mt-0.5">{row.description}</p>
                 </div>
                 <Toggle checked={prefs[row.key]} onChange={() => toggle(row.key)} />
               </div>
@@ -808,7 +808,7 @@ function AppearanceTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {/* Theme */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Theme</h3>
         <div className="grid grid-cols-2 gap-3">
           {(
@@ -831,7 +831,7 @@ function AppearanceTab() {
                   key === 'dark' ? 'bg-[#060b1f]' : 'bg-gray-100'
                 }`}
               >
-                <Icon size={20} className={key === 'dark' ? 'text-[#FFB81C]' : 'text-gray-600'} />
+                <Icon size={20} className={key === 'dark' ? 'text-[#FFB81C]' : 'text-gray-500'} />
               </div>
               <span
                 className={`text-sm font-medium ${theme === key ? 'text-[#FFB81C]' : 'text-gray-300'}`}
@@ -849,7 +849,7 @@ function AppearanceTab() {
       </div>
 
       {/* Accent Color */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Accent Color</h3>
         <div className="flex gap-3 flex-wrap">
           {ACCENTS.map(({ key, label, color }) => (
@@ -859,7 +859,7 @@ function AppearanceTab() {
               className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium ${
                 accentColor === key
                   ? 'border-white/30 bg-white/5 text-white'
-                  : 'border-white/10 hover:border-white/20 text-gray-400 hover:text-white'
+                  : 'border-white/10 hover:border-white/20 text-gray-300 hover:text-blue-400'
               }`}
             >
               <span
@@ -873,11 +873,11 @@ function AppearanceTab() {
       </div>
 
       {/* Compact Mode */}
-      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-white font-medium text-sm">Compact Mode</p>
-            <p className="text-gray-500 text-xs mt-0.5">
+            <p className="text-gray-400 text-xs mt-0.5">
               Reduce padding and spacing across the dashboard
             </p>
           </div>
@@ -950,7 +950,7 @@ function ConnectedTab() {
       {items.map((item) => {
         const conn = connections[item.key]
         return (
-          <div key={item.key} className="bg-[#242424] border border-white/10 rounded-xl p-6">
+          <div key={item.key} className="bg-[#141414] border border-white/10 rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
                 <div
@@ -968,9 +968,9 @@ function ConnectedTab() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-400 text-xs">{item.description}</p>
+                  <p className="text-gray-300 text-xs">{item.description}</p>
                   {conn.connected && conn.username && (
-                    <p className="text-gray-500 text-xs mt-1">
+                    <p className="text-gray-400 text-xs mt-1">
                       @{conn.username} · Since {conn.connectedAt}
                     </p>
                   )}
@@ -980,7 +980,7 @@ function ConnectedTab() {
               {conn.connected ? (
                 <button
                   onClick={() => handleDisconnect(item.key)}
-                  className="text-xs border border-white/20 hover:border-red-500/30 hover:text-red-400 text-gray-400 px-3 py-2 rounded-xl transition-colors flex-shrink-0"
+                  className="text-xs border border-white/20 hover:border-red-500/30 hover:text-red-400 text-gray-300 px-3 py-2 rounded-xl transition-colors flex-shrink-0"
                 >
                   Disconnect
                 </button>
@@ -1019,7 +1019,7 @@ export default function SettingsClient() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Settings</h1>
-        <p className="text-gray-400 mt-1 text-sm">Manage your account and preferences.</p>
+        <p className="text-gray-300 mt-1 text-sm">Manage your account and preferences.</p>
       </div>
 
       {/* Tabs */}
@@ -1031,7 +1031,7 @@ export default function SettingsClient() {
             className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 border ${
               tab === t.key
                 ? 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/20'
-                : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'
+                : 'text-gray-300 hover:text-blue-400 hover:bg-white/5 border-transparent'
             }`}
           >
             {t.icon}

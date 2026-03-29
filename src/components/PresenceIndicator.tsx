@@ -96,7 +96,7 @@ export function PresenceIndicator({
           className={`w-2 h-2 rounded-full ${socketReady ? 'bg-green-400' : 'bg-gray-500'}`}
           title={socketReady ? 'Live sync active' : 'Offline'}
         />
-        <span className="text-xs text-gray-500 hidden sm:inline">
+        <span className="text-xs text-gray-400 hidden sm:inline">
           {socketReady ? 'Live' : 'Offline'}
         </span>
       </div>
@@ -134,14 +134,14 @@ export function PresenceIndicator({
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
                 {user.displayName}
                 {user.editingZone && (
-                  <span className="text-gray-400"> ({user.editingZone})</span>
+                  <span className="text-gray-300"> ({user.editingZone})</span>
                 )}
               </div>
             </div>
           ))}
 
           {overflow > 0 && (
-            <div className="w-7 h-7 rounded-full bg-[#1A2050] border-2 border-white/10 flex items-center justify-center text-xs text-gray-400">
+            <div className="w-7 h-7 rounded-full bg-[#1A2050] border-2 border-white/10 flex items-center justify-center text-xs text-gray-300">
               +{overflow}
             </div>
           )}
@@ -149,7 +149,7 @@ export function PresenceIndicator({
       )}
 
       {visible.length === 0 && (
-        <span className="text-xs text-gray-600">Just you</span>
+        <span className="text-xs text-gray-500">Just you</span>
       )}
     </div>
   )

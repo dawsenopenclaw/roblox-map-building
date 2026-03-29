@@ -176,7 +176,7 @@ export default function TeamHistoryPage() {
           ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Version History</h1>
-        <p className="text-gray-400 text-sm mt-1">Browse, compare, and roll back project versions</p>
+        <p className="text-gray-300 text-sm mt-1">Browse, compare, and roll back project versions</p>
       </div>
 
       {/* Demo banner */}
@@ -187,15 +187,15 @@ export default function TeamHistoryPage() {
       )}
 
       {/* Project ID input */}
-      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
-        <label className="block text-xs text-gray-400 mb-2 font-medium">Project ID</label>
+      <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+        <label className="block text-xs text-gray-300 mb-2 font-medium">Project ID</label>
         <div className="flex gap-3">
           <input
             type="text"
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="Enter project ID to load versions"
-            className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+            className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
           />
           <button
             onClick={fetchVersions}
@@ -223,12 +223,12 @@ export default function TeamHistoryPage() {
       {versions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Timeline */}
-          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wide">
                 Commit Timeline
               </h2>
-              <span className="text-xs text-gray-600">{versions.length} versions</span>
+              <span className="text-xs text-gray-500">{versions.length} versions</span>
             </div>
 
             <div className="divide-y divide-white/5 max-h-96 overflow-y-auto">
@@ -253,7 +253,7 @@ export default function TeamHistoryPage() {
                         </p>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-xs mt-1">{timeAgo(v.createdAt)}</p>
+                    <p className="text-gray-500 text-xs mt-1">{timeAgo(v.createdAt)}</p>
 
                     <div className="flex gap-2 mt-2">
                       <button
@@ -261,7 +261,7 @@ export default function TeamHistoryPage() {
                         className={`text-xs px-2 py-1 rounded-lg transition-colors ${
                           selectedFrom === v.id
                             ? 'bg-[#FFB81C]/20 text-[#FFB81C] border border-[#FFB81C]/30'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
                         From
@@ -271,7 +271,7 @@ export default function TeamHistoryPage() {
                         className={`text-xs px-2 py-1 rounded-lg transition-colors ${
                           selectedTo === v.id
                             ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
                         To
@@ -279,7 +279,7 @@ export default function TeamHistoryPage() {
                       <button
                         onClick={() => handleRollback(v.id)}
                         disabled={rollingBack || idx === 0}
-                        className="text-xs px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="text-xs px-2 py-1 rounded-lg bg-white/5 text-gray-300 hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         {idx === 0 ? 'Current' : 'Rollback'}
                       </button>
@@ -291,13 +291,13 @@ export default function TeamHistoryPage() {
           </div>
 
           {/* Diff view */}
-          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#141414] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-white uppercase tracking-wide">
                 Diff View
               </h2>
               {(selectedFrom || selectedTo) && (
-                <p className="text-xs text-gray-600 mt-0.5">
+                <p className="text-xs text-gray-500 mt-0.5">
                   {selectedFrom ? `From: v${versions.find((v) => v.id === selectedFrom)?.version}` : 'Select "From"'}
                   {' → '}
                   {selectedTo ? `To: v${versions.find((v) => v.id === selectedTo)?.version}` : 'Select "To"'}
@@ -315,7 +315,7 @@ export default function TeamHistoryPage() {
               ) : diff ? (
                 <div className="space-y-4">
                   {diff.summary && (
-                    <p className="text-xs text-gray-400 bg-white/5 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-300 bg-white/5 rounded-lg px-3 py-2">
                       {diff.summary}
                     </p>
                   )}
@@ -354,13 +354,13 @@ export default function TeamHistoryPage() {
                   )}
 
                   {diff.diff.added.length === 0 && diff.diff.modified.length === 0 && diff.diff.removed.length === 0 && (
-                    <p className="text-gray-500 text-sm text-center py-8">No differences found</p>
+                    <p className="text-gray-400 text-sm text-center py-8">No differences found</p>
                   )}
                 </div>
               ) : (
                 <div className="text-center py-12">
                   <div className="text-3xl mb-3">📋</div>
-                  <p className="text-gray-500 text-sm">Select From and To versions to see differences</p>
+                  <p className="text-gray-400 text-sm">Select From and To versions to see differences</p>
                 </div>
               )}
             </div>
@@ -370,9 +370,9 @@ export default function TeamHistoryPage() {
 
       {/* Empty state — only shown after a real load with no results */}
       {versions.length === 0 && !loading && projectId && !error && !isDemo && (
-        <div className="bg-[#242424] border border-dashed border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#141414] border border-dashed border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-3">📦</div>
-          <p className="text-gray-400 text-sm">No versions found for this project</p>
+          <p className="text-gray-300 text-sm">No versions found for this project</p>
         </div>
       )}
     </div>

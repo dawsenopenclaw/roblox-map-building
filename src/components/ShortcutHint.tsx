@@ -17,7 +17,7 @@ interface ShortcutHintProps {
 
 function Key({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1 rounded bg-white/10 border border-white/20 text-[10px] font-mono text-gray-400">
+    <kbd className="inline-flex items-center justify-center min-w-[1.4rem] h-5 px-1 rounded bg-white/10 border border-white/20 text-[10px] font-mono text-gray-300">
       {children}
     </kbd>
   )

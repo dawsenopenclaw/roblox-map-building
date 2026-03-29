@@ -14,7 +14,7 @@ export default function ReferralsLoading() {
         {/* Stats row — 3 cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
+            <div key={i} className="bg-[#141414] border border-white/10 rounded-2xl p-5">
               <div className="h-3.5 w-24 rounded-md shimmer mb-2" />
               <div className="h-8 w-20 rounded-xl shimmer-gold" />
             </div>
@@ -22,7 +22,7 @@ export default function ReferralsLoading() {
         </div>
 
         {/* Referral link card */}
-        <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
           <div className="h-5 w-32 rounded-lg shimmer-gold mb-4" />
           <div className="flex gap-3">
             <div className="flex-1 h-11 rounded-xl shimmer" />
@@ -32,7 +32,7 @@ export default function ReferralsLoading() {
         </div>
 
         {/* How it works */}
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 mb-6">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 mb-6">
           <div className="h-5 w-28 rounded-lg shimmer-gold mb-5" />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -47,7 +47,7 @@ export default function ReferralsLoading() {
         </div>
 
         {/* Referral history */}
-        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
           <div className="h-5 w-40 rounded-lg shimmer-gold mb-4" />
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between py-3.5 border-b border-white/5">

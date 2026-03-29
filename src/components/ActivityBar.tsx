@@ -66,7 +66,7 @@ export function ActivityBar() {
 
   return (
     <div
-      className="w-12 bg-[#1a1a1a] border-r border-white/8 flex flex-col items-center py-2 flex-shrink-0 select-none"
+      className="w-12 bg-[#0a0a0a] border-r border-white/8 flex flex-col items-center py-2 flex-shrink-0 select-none"
       role="navigation"
       aria-label="Activity bar"
     >
@@ -77,7 +77,7 @@ export function ActivityBar() {
         aria-label="ForjeGames — go to editor"
         title="ForjeGames"
       >
-        <span className="text-[#1a1a1a] text-xs font-black">R</span>
+        <span className="text-[#0a0a0a] text-xs font-black">R</span>
       </Link>
 
       {/* Primary nav */}
@@ -94,7 +94,7 @@ export function ActivityBar() {
               className={`relative w-10 h-10 rounded-lg flex items-center justify-center transition-colors group ${
                 active
                   ? 'text-white bg-white/10'
-                  : 'text-gray-600 hover:text-gray-300 hover:bg-white/5'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
               }`}
             >
               {/* Active indicator bar */}
@@ -132,7 +132,7 @@ export function ActivityBar() {
               className={`relative w-10 h-10 rounded-lg flex items-center justify-center transition-colors group ${
                 active
                   ? 'text-white bg-white/10'
-                  : 'text-gray-600 hover:text-gray-300 hover:bg-white/5'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
               }`}
             >
               {active && (

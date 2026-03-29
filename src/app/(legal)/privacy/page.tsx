@@ -22,10 +22,10 @@ export default function PrivacyPage() {
           Privacy Document
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">Privacy Policy</h1>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-300 text-sm">
           Effective: {EFFECTIVE_DATE} &nbsp;·&nbsp; {COMPANY}
         </p>
-        <p className="text-gray-400 text-sm mt-2">
+        <p className="text-gray-300 text-sm mt-2">
           Questions? Contact us at{' '}
           <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
             {EMAIL}
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
               ].map(([purpose, basis]) => (
                 <tr key={purpose} className="hover:bg-white/5">
                   <td className="px-4 py-3 text-gray-300">{purpose}</td>
-                  <td className="px-4 py-3 text-gray-400">{basis}</td>
+                  <td className="px-4 py-3 text-gray-300">{basis}</td>
                 </tr>
               ))}
             </tbody>
@@ -161,7 +161,7 @@ export default function PrivacyPage() {
               ].map(([type, period]) => (
                 <tr key={type} className="hover:bg-white/5">
                   <td className="px-4 py-3 text-gray-300">{type}</td>
-                  <td className="px-4 py-3 text-gray-400">{period}</td>
+                  <td className="px-4 py-3 text-gray-300">{period}</td>
                 </tr>
               ))}
             </tbody>
@@ -235,19 +235,19 @@ export default function PrivacyPage() {
               complaint with your local supervisory authority (e.g., ICO in the UK, CNIL in France).
             </li>
           </ul>
-          <p className="text-sm text-gray-400 mt-4">
+          <p className="text-sm text-gray-300 mt-4">
             To exercise any right, contact us at{' '}
             <a href={`mailto:${DPA_EMAIL}`} className="text-[#FFB81C] hover:underline">
               {DPA_EMAIL}
             </a>
             . We will respond within 30 days. Identity verification may be required.
           </p>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-gray-300 mt-2">
             <strong className="text-white">International transfers:</strong> We transfer data from
             the EU/UK to the US. We rely on the EU-US Data Privacy Framework and Standard
             Contractual Clauses (SCCs) as our legal transfer mechanism.
           </p>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-gray-300 mt-2">
             <strong className="text-white">Data Protection Agreement:</strong> Enterprise and B2B
             customers may request a Data Processing Agreement (DPA) at{' '}
             <a href={`mailto:${DPA_EMAIL}`} className="text-[#FFB81C] hover:underline">
@@ -296,7 +296,7 @@ export default function PrivacyPage() {
               discriminate against you for exercising CCPA rights.
             </li>
           </ul>
-          <p className="text-sm text-gray-400 mt-4">
+          <p className="text-sm text-gray-300 mt-4">
             To submit a CCPA request, contact us at{' '}
             <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
               {EMAIL}
@@ -305,7 +305,7 @@ export default function PrivacyPage() {
             45 days with notice). An authorized agent may submit on your behalf with written
             permission.
           </p>
-          <p className="text-sm text-gray-400 mt-2">
+          <p className="text-sm text-gray-300 mt-2">
             <strong className="text-white">Do Not Sell or Share My Personal Information:</strong>{' '}
             We do not sell personal information. Contact us at {EMAIL} to opt out of any sharing.
           </p>
@@ -356,7 +356,7 @@ export default function PrivacyPage() {
               Service, and only to processors that agree to COPPA-compliant data handling.
             </li>
           </ul>
-          <p className="text-sm text-gray-400 mt-4">
+          <p className="text-sm text-gray-300 mt-4">
             If you believe we have inadvertently collected personal information from a child under
             13 without consent, contact {EMAIL} immediately. We will delete the information promptly.
           </p>
@@ -386,8 +386,8 @@ export default function PrivacyPage() {
               ].map(([type, purpose, opt]) => (
                 <tr key={type} className="hover:bg-white/5">
                   <td className="px-4 py-3 text-gray-300">{type}</td>
-                  <td className="px-4 py-3 text-gray-400">{purpose}</td>
-                  <td className="px-4 py-3 text-gray-400">{opt}</td>
+                  <td className="px-4 py-3 text-gray-300">{purpose}</td>
+                  <td className="px-4 py-3 text-gray-300">{opt}</td>
                 </tr>
               ))}
             </tbody>
