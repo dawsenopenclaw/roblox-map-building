@@ -6,7 +6,7 @@
   "background_color": "#0A0E27",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "start_url": "/dashboard",
+  "start_url": "/editor",
   "scope": "/",
   "icons": [
     {
