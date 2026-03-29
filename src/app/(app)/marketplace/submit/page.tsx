@@ -85,7 +85,7 @@ export default function SubmitTemplatePage() {
       }
 
       setSuccess(true)
-      setTimeout(() => router.push('/marketplace'), 2000)
+      setTimeout(() => router.push('/editor'), 2000)
     } catch {
       setError('Network error — please try again')
     } finally {

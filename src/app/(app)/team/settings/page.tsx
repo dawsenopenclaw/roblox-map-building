@@ -204,8 +204,8 @@ export default function TeamSettingsPage() {
       <div className="max-w-3xl mx-auto text-center py-20">
         <div className="text-4xl mb-4">🔑</div>
         <p className="text-gray-400 text-sm">You need to be an Owner or Admin to manage team settings.</p>
-        <Link href="/team" className="text-[#FFB81C] hover:underline text-sm mt-4 inline-block">
-          ← Back to team
+        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mt-4 inline-block">
+          ← Back to editor
         </Link>
       </div>
     )
@@ -214,8 +214,8 @@ export default function TeamSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Link href="/team" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
-          ← Back to team
+        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+          ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Team Settings</h1>
         <p className="text-gray-400 text-sm mt-1">Manage roles and permissions</p>

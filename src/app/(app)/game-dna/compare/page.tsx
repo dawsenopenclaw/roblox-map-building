@@ -230,8 +230,8 @@ function CompareContent() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <Link href="/game-dna" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
-          ← Back to scanner
+        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+          ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Compare Games</h1>
         <p className="text-gray-400 text-sm mt-1">Side-by-side DNA analysis — find where you win and lose</p>
@@ -438,7 +438,7 @@ function CompareContent() {
           {scans.length < 2 && (
             <p className="text-gray-600 text-xs mt-2">
               You need at least 2 completed scans.{' '}
-              <Link href="/game-dna" className="text-[#FFB81C] hover:underline">
+              <Link href="/editor" className="text-[#FFB81C] hover:underline">
                 Scan more games →
               </Link>
             </p>

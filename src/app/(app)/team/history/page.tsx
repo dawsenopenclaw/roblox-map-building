@@ -172,8 +172,8 @@ export default function TeamHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Link href="/team" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
-          ← Back to team
+        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+          ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Version History</h1>
         <p className="text-gray-400 text-sm mt-1">Browse, compare, and roll back project versions</p>
