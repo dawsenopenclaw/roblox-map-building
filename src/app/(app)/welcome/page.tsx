@@ -247,7 +247,7 @@ export default function WelcomePage() {
     try {
       await completeOnboarding(interest ?? 'all', false)
     } catch {
-      // Non-fatal
+      // Non-fatal — metadata update failed, proceed anyway
     }
     router.push('/editor')
   }
@@ -257,7 +257,7 @@ export default function WelcomePage() {
     try {
       await completeOnboarding(interest ?? 'all', true)
     } catch {
-      // Non-fatal
+      // Non-fatal — metadata update failed, proceed anyway
     }
     router.push('/editor')
   }
