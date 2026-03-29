@@ -5,6 +5,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import useSWR from 'swr'
+import { AnimatedCard } from '@/components/ui/animated-card'
+import { AnimatedCounter } from '@/components/ui/animated-counter'
+import { useAnalytics } from '@/hooks/useAnalytics'
+import { OnboardingTooltips } from '@/components/OnboardingTooltips'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -196,21 +200,22 @@ function SkeletonBlock({ className = '' }: { className?: string }) {
 function StatCard({
   label,
   value,
+  numericValue,
   icon,
   trend,
   delay = 0,
 }: {
   label: string
   value: string
+  /** If provided, AnimatedCounter is used instead of static text */
+  numericValue?: number
   icon: React.ReactNode
   trend?: string
   delay?: number
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: 'easeOut' }}
+    <AnimatedCard
+      index={Math.round(delay * 20)}
       className="bg-[#0D1231] border border-white/10 rounded-xl p-4 flex items-center gap-4"
     >
       <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center flex-shrink-0 text-[#FFB81C]">
@@ -218,10 +223,16 @@ function StatCard({
       </div>
       <div>
         <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-xl font-bold text-white mt-0.5">{value}</p>
+        <p className="text-xl font-bold text-white mt-0.5">
+          {numericValue !== undefined ? (
+            <AnimatedCounter value={numericValue} />
+          ) : (
+            value
+          )}
+        </p>
         {trend && <p className="text-xs text-green-400 mt-0.5">{trend}</p>}
       </div>
-    </motion.div>
+    </AnimatedCard>
   )
 }
 
@@ -292,6 +303,7 @@ function Sparkline({ data, color = '#FFB81C' }: { data: number[]; color?: string
 
 export function DashboardClient({ firstName, subscription }: DashboardProps) {
   const router = useRouter()
+  const { track } = useAnalytics()
   const [searchOpen, setSearchOpen] = useState(false)
   const [, forceUpdate] = useState(0)
 
@@ -311,6 +323,17 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
   useEffect(() => {
     const t = setInterval(() => forceUpdate((n) => n + 1), 30_000)
     return () => clearInterval(t)
+  }, [])
+
+  // Track dashboard load — detect first-ever visit via localStorage
+  useEffect(() => {
+    const FIRST_VISIT_KEY = 'rf_dashboard_visited'
+    if (typeof window === 'undefined') return
+    if (!localStorage.getItem(FIRST_VISIT_KEY)) {
+      localStorage.setItem(FIRST_VISIT_KEY, '1')
+      track('signup_completed', { method: 'clerk' })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Keyboard shortcuts
@@ -351,6 +374,9 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
 
   return (
     <>
+      {/* ─── Post-onboarding contextual tooltips ──────────────────────────── */}
+      <OnboardingTooltips />
+
       {/* ─── Cmd+K Search overlay ─────────────────────────────────────────── */}
       <AnimatePresence>
         {searchOpen && (
@@ -441,6 +467,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
         <StatCard
           label="Total Builds"
           value="14"
+          numericValue={14}
           trend="+3 this week"
           delay={0.05}
           icon={
@@ -452,6 +479,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
         <StatCard
           label="Tokens Used"
           value={lifetimeSpent > 0 ? lifetimeSpent.toLocaleString() : '2,480'}
+          numericValue={lifetimeSpent > 0 ? lifetimeSpent : 2480}
           trend="This month"
           delay={0.1}
           icon={
@@ -474,7 +502,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
       </div>
 
       {/* ─── Quick action cards ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+      <div data-tour="quick-actions" className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
         {QUICK_ACTIONS.map((action, i) => (
           <motion.div
             key={action.href}
@@ -484,6 +512,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
           >
             <Link
               href={action.href}
+              onClick={() => track('feature_discovery', { featureName: action.label, page: '/dashboard' })}
               className="group relative block bg-[#0D1231] border border-white/10 rounded-xl p-4 overflow-hidden transition-all duration-200 hover:border-[#FFB81C]/40 hover:shadow-[0_0_20px_rgba(255,184,28,0.08)]"
             >
               {/* Gold glow on hover */}
@@ -532,6 +561,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.35 }}
+            data-tour="token-balance"
             className="bg-[#0D1231] border border-white/10 rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">
@@ -541,7 +571,9 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             <div className="flex items-center gap-4">
               <TokenRing balance={balance} limit={planLimit} />
               <div className="flex-1 min-w-0">
-                <p className="text-3xl font-bold text-[#FFB81C]">{balance.toLocaleString()}</p>
+                <p className="text-3xl font-bold text-[#FFB81C]">
+                  <AnimatedCounter value={balance} />
+                </p>
                 <p className="text-gray-500 text-xs mt-0.5">of {planLimit.toLocaleString()} remaining</p>
                 <div className="mt-2">
                   <Sparkline data={sparkData} />
@@ -576,6 +608,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.35 }}
+            data-tour="streak-widget"
             className="bg-[#0D1231] border border-white/10 rounded-xl p-4"
           >
             <div className="flex items-center justify-between mb-3">

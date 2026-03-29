@@ -3,6 +3,9 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import { Info, Check, X, Minus, ArrowRight, Zap } from 'lucide-react'
+import { AnimatedCard } from '@/components/ui/animated-card'
+import { AnimatedButton } from '@/components/ui/animated-button'
+import { AnimatedCounter } from '@/components/ui/animated-counter'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -360,11 +363,10 @@ export default function PricingPage() {
           const price = annual ? tier.priceYearly : tier.priceMonthly
           const savings = annualSavings(tier.priceMonthly)
           return (
-            <motion.div
+            <AnimatedCard
               key={tier.key}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
+              index={i}
+              noGlow={!tier.highlight}
               className={`relative flex flex-col rounded-2xl border p-6 ${
                 tier.highlight
                   ? 'bg-gradient-to-b from-[#FFB81C]/8 to-[#0D1231] border-[#FFB81C]/50 ring-2 ring-[#FFB81C]/25 shadow-2xl shadow-[#FFB81C]/10'
@@ -432,19 +434,21 @@ export default function PricingPage() {
                 )}
                 <p className="text-sm text-[#FFB81C] mt-2 font-medium flex items-center gap-1">
                   <Zap className="w-3.5 h-3.5" />
-                  {tier.tokens.toLocaleString()} tokens/month
+                  <AnimatedCounter value={tier.tokens} /> tokens/month
                 </p>
               </div>
 
-              <Link
-                href={tier.ctaHref}
-                className={`relative block text-center font-bold py-3 rounded-xl text-sm transition-all mb-6 ${
-                  tier.highlight
-                    ? 'bg-[#FFB81C] hover:bg-[#E6A519] text-black shadow-lg shadow-[#FFB81C]/25 hover:shadow-[#FFB81C]/40'
-                    : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
-                }`}
-              >
-                {tier.cta}
+              <Link href={tier.ctaHref} className="mb-6 block">
+                <AnimatedButton
+                  glowColor={tier.highlight ? 'gold' : 'blue'}
+                  className={`w-full font-bold py-3 rounded-xl text-sm ${
+                    tier.highlight
+                      ? 'bg-[#FFB81C] hover:bg-[#E6A519] text-black shadow-lg shadow-[#FFB81C]/25'
+                      : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
+                  }`}
+                >
+                  {tier.cta}
+                </AnimatedButton>
               </Link>
 
               <div className="space-y-2 flex-1 relative">
@@ -461,7 +465,7 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </AnimatedCard>
           )
         })}
       </div>

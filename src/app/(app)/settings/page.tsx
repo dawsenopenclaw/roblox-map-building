@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { CharitySelector } from '@/components/CharitySelector'
+import { resetOnboardingTour } from '@/components/OnboardingTooltips'
 
 type Tab = 'account' | 'notifications' | 'charity' | 'team' | 'danger'
 
@@ -91,6 +92,18 @@ function AccountTab() {
           className="mt-6 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
         >
           {saved ? 'Saved!' : saving ? 'Saving...' : 'Save changes'}
+        </button>
+      </div>
+
+      {/* Onboarding tour */}
+      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+        <h3 className="text-white font-semibold mb-1">Product Tour</h3>
+        <p className="text-gray-500 text-sm mb-4">Re-run the onboarding tooltips to rediscover key features.</p>
+        <button
+          onClick={() => { resetOnboardingTour(); window.location.href = '/dashboard' }}
+          className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          Re-run dashboard tour
         </button>
       </div>
 

@@ -1,7 +1,21 @@
 import { Resend } from 'resend'
 import { serverEnv, clientEnv } from './env'
+import {
+  WelcomeEmail,
+  BuildCompleteEmail,
+  TokenLowEmail,
+  SaleNotificationEmail,
+  WeeklyDigestEmail,
+  ParentalConsentEmail,
+  CharityUpdateEmail,
+  ReEngagementEmail,
+} from './email-templates'
 
 const resend = new Resend(serverEnv.RESEND_API_KEY)
+const FROM = 'RobloxForge <noreply@robloxforge.com>'
+const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
+
+// ─── Parental Consent ─────────────────────────────────────────────────────────
 
 export async function sendParentalConsentEmail({
   parentEmail,
@@ -12,22 +26,224 @@ export async function sendParentalConsentEmail({
   childName: string
   token: string
 }) {
-  const verifyUrl = `${clientEnv.NEXT_PUBLIC_APP_URL}/api/onboarding/parental-consent/verify?token=${token}`
+  const approveUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=approve`
+  const denyUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=deny`
+
   return resend.emails.send({
-    from: 'RobloxForge <noreply@robloxforge.com>',
+    from: FROM,
     to: parentEmail,
     subject: `Parental consent required for ${childName}'s RobloxForge account`,
-    html: `
-      <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0A0E27;color:white;padding:32px;border-radius:12px">
-        <h1 style="color:#FFB81C;margin-bottom:16px">Parental Consent Required</h1>
-        <p>Your child <strong>${childName}</strong> (under 13) has signed up for RobloxForge, an AI-powered Roblox game development platform.</p>
-        <p>Under the Children's Online Privacy Protection Act (COPPA), we need your consent before ${childName} can use our service.</p>
-        <p style="margin:24px 0">
-          <a href="${verifyUrl}" style="background:#FFB81C;color:black;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Approve Account</a>
-        </p>
-        <p style="color:#9ca3af;font-size:14px">This link expires in 48 hours. If you did not create this account, you can safely ignore this email.</p>
-        <p style="color:#9ca3af;font-size:12px">RobloxForge collects only the minimum data necessary to provide the service. We never sell data. See our <a href="${clientEnv.NEXT_PUBLIC_APP_URL}/privacy" style="color:#FFB81C">Privacy Policy</a>.</p>
-      </div>
-    `,
+    react: ParentalConsentEmail({
+      childName,
+      parentEmail,
+      approveUrl,
+      denyUrl,
+    }),
+  })
+}
+
+// ─── Welcome ──────────────────────────────────────────────────────────────────
+
+export async function sendWelcomeEmail({
+  email,
+  name,
+}: {
+  email: string
+  name: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Welcome to RobloxForge, ${name}! Here are 100 free tokens`,
+    react: WelcomeEmail({ name }),
+  })
+}
+
+// ─── Build Complete ───────────────────────────────────────────────────────────
+
+export async function sendBuildCompleteEmail({
+  email,
+  buildType,
+  buildName,
+  buildId,
+  thumbnailUrl,
+}: {
+  email: string
+  buildType: string
+  buildName: string
+  buildId: string
+  thumbnailUrl?: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Your ${buildType} "${buildName}" is ready!`,
+    react: BuildCompleteEmail({ buildType, buildName, buildId, thumbnailUrl }),
+  })
+}
+
+// ─── Token Low ────────────────────────────────────────────────────────────────
+
+export async function sendTokenLowEmail({
+  email,
+  name,
+  tokenCount,
+}: {
+  email: string
+  name: string
+  tokenCount: number
+}) {
+  const isVeryLow = tokenCount <= 5
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: isVeryLow
+      ? `Only ${tokenCount} tokens left — top up now`
+      : `You have ${tokenCount} tokens remaining on RobloxForge`,
+    react: TokenLowEmail({ name, tokenCount }),
+  })
+}
+
+// ─── Sale Notification ────────────────────────────────────────────────────────
+
+export async function sendSaleNotificationEmail({
+  email,
+  templateName,
+  saleAmount,
+  platformFee,
+  monthlyTotal,
+  salesThisMonth,
+}: {
+  email: string
+  templateName: string
+  saleAmount: number
+  platformFee?: number
+  monthlyTotal?: number
+  salesThisMonth?: number
+}) {
+  const fee = platformFee ?? saleAmount * 0.1
+  const net = saleAmount - fee
+  const formatted = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(net)
+
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `${formatted} earned from "${templateName}"`,
+    react: SaleNotificationEmail({
+      templateName,
+      saleAmount,
+      platformFee: fee,
+      monthlyTotal,
+      salesThisMonth,
+    }),
+  })
+}
+
+// ─── Weekly Digest ────────────────────────────────────────────────────────────
+
+export async function sendWeeklyDigestEmail({
+  email,
+  name,
+  buildsThisWeek,
+  tokensUsed,
+  earningsThisWeek,
+  streakDays,
+  trendingTemplates,
+  communityHighlight,
+}: {
+  email: string
+  name: string
+  buildsThisWeek: number
+  tokensUsed: number
+  earningsThisWeek: number
+  streakDays: number
+  trendingTemplates?: Array<{ name: string; category: string; sales: number; thumbnailUrl?: string }>
+  communityHighlight?: string
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Your RobloxForge weekly digest — ${buildsThisWeek} builds this week`,
+    react: WeeklyDigestEmail({
+      name,
+      buildsThisWeek,
+      tokensUsed,
+      earningsThisWeek,
+      streakDays,
+      trendingTemplates,
+      communityHighlight,
+    }),
+  })
+}
+
+// ─── Charity Update ───────────────────────────────────────────────────────────
+
+export async function sendCharityUpdateEmail({
+  email,
+  month,
+  totalDonatedThisMonth,
+  totalDonatedAllTime,
+  currentCauseName,
+  currentCauseDescription,
+  currentCauseUrl,
+  communityContributors,
+  buildsThisMonth,
+  impactStats,
+}: {
+  email: string
+  month?: string
+  totalDonatedThisMonth: number
+  totalDonatedAllTime: number
+  currentCauseName: string
+  currentCauseDescription: string
+  currentCauseUrl: string
+  communityContributors: number
+  buildsThisMonth: number
+  impactStats?: Array<{ label: string; value: string }>
+}) {
+  const formatted = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(totalDonatedThisMonth)
+
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Together we've donated ${formatted} this month — your charity update`,
+    react: CharityUpdateEmail({
+      month,
+      totalDonatedThisMonth,
+      totalDonatedAllTime,
+      currentCauseName,
+      currentCauseDescription,
+      currentCauseUrl,
+      communityContributors,
+      buildsThisMonth,
+      impactStats,
+    }),
+  })
+}
+
+// ─── Re-engagement ────────────────────────────────────────────────────────────
+
+export async function sendReEngagementEmail({
+  email,
+  name,
+  daysInactive,
+  bonusTokens = 50,
+}: {
+  email: string
+  name: string
+  daysInactive: number
+  bonusTokens?: number
+}) {
+  return resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `We miss you, ${name} — come back and get ${bonusTokens} free tokens`,
+    react: ReEngagementEmail({ name, daysInactive, bonusTokens }),
   })
 }
