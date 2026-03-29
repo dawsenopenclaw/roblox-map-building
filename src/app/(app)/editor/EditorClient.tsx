@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -210,55 +210,67 @@ function Message({ msg }: { msg: ChatMessage }) {
   )
 }
 
-// ─── Slide-out panel ─────────────────────────────────────────────────────────
+// ─── Panel body components ────────────────────────────────────────────────────
 
-const PANEL_CONTENT: Record<NonNullable<PanelId>, { title: string; body: React.ReactNode }> = {
-  projects: {
-    title: 'Projects',
-    body: (
-      <div className="p-4 space-y-3">
-        <button className="w-full flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          New Game
-        </button>
-        <div className="space-y-1 pt-2">
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium px-1 mb-2">Recent</p>
-          {['My First Game', 'Castle Adventure', 'Racing Sim'].map((name) => (
-            <button
-              key={name}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-left transition-colors group"
-            >
-              <div className="w-8 h-8 rounded-md bg-white/5 border border-white/8 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-                </svg>
-              </div>
-              <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{name}</span>
-            </button>
-          ))}
-        </div>
+const RECENT_PROJECTS = ['My First Game', 'Castle Adventure', 'Racing Sim']
+
+function ProjectsPanel() {
+  return (
+    <div className="p-4 space-y-3">
+      <button className="w-full flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
+        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        New Game
+      </button>
+      <div className="space-y-1 pt-2">
+        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium px-1 mb-2">Recent</p>
+        {RECENT_PROJECTS.map((name) => (
+          <button
+            key={name}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-left transition-colors group"
+          >
+            <div className="w-8 h-8 rounded-md bg-white/5 border border-white/8 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
+                <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+              </svg>
+            </div>
+            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{name}</span>
+          </button>
+        ))}
       </div>
-    ),
-  },
-  assets: {
-    title: 'Assets',
-    body: (
-      <div className="p-4">
-        <div className="relative mb-4">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
-            <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
-            <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-          </svg>
-          <input
-            type="text"
-            placeholder="Search assets..."
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
-          />
-        </div>
+    </div>
+  )
+}
+
+const ALL_ASSETS = ['Castle Kit', 'Forest Pack', 'City Builder', 'Dungeon Set', 'Ocean Terrain', 'Neon City']
+
+function AssetsPanel() {
+  const [query, setQuery] = useState('')
+  const filtered = query.trim()
+    ? ALL_ASSETS.filter((a) => a.toLowerCase().includes(query.toLowerCase()))
+    : ALL_ASSETS
+
+  return (
+    <div className="p-4">
+      <div className="relative mb-4">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
+          <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search assets..."
+          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
+        />
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-xs text-gray-600 text-center py-6">No assets match &ldquo;{query}&rdquo;</p>
+      ) : (
         <div className="grid grid-cols-2 gap-2">
-          {['Castle Kit', 'Forest Pack', 'City Builder', 'Dungeon Set', 'Ocean Terrain', 'Neon City'].map((name) => (
+          {filtered.map((name) => (
             <div
               key={name}
               className="bg-white/5 border border-white/8 hover:border-white/15 rounded-lg p-2.5 cursor-pointer transition-colors"
@@ -268,78 +280,122 @@ const PANEL_CONTENT: Record<NonNullable<PanelId>, { title: string; body: React.R
             </div>
           ))}
         </div>
-      </div>
-    ),
-  },
-  dna: {
-    title: 'Game DNA',
-    body: (
-      <div className="p-4 space-y-4">
-        <p className="text-xs text-gray-500 leading-relaxed">
-          Paste any Roblox game URL to analyze its core loop, retention hooks, and monetization formula.
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="https://roblox.com/games/..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
-          />
-          <button className="bg-[#FFB81C] hover:bg-[#E6A519] text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
-            Scan
-          </button>
-        </div>
-        <Link href="/game-dna" className="block text-center text-[11px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors pt-1">
-          View full DNA reports &rarr;
-        </Link>
-      </div>
-    ),
-  },
-  tokens: {
-    title: 'Tokens',
-    body: (
-      <div className="p-4 space-y-4">
-        <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-xl p-4 text-center">
-          <p className="text-3xl font-bold text-[#FFB81C]">1,000</p>
-          <p className="text-xs text-gray-500 mt-1">tokens remaining</p>
-        </div>
-        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-          <div className="h-full w-full bg-[#FFB81C] rounded-full" />
-        </div>
-        <p className="text-[11px] text-gray-600 text-center">Free tier · 0 tokens used</p>
-        <Link
-          href="/billing"
-          className="flex items-center justify-center gap-2 w-full bg-white/5 hover:bg-white/8 border border-white/10 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+      )}
+    </div>
+  )
+}
+
+function DnaPanel() {
+  const [url, setUrl] = useState('')
+  const [scanning, setScanning] = useState(false)
+  const [result, setResult] = useState<string | null>(null)
+
+  const handleScan = () => {
+    if (!url.trim() || scanning) return
+    setScanning(true)
+    setResult(null)
+    setTimeout(() => {
+      setScanning(false)
+      setResult('Analysis complete. Connect an API key in Settings to enable live DNA scanning.')
+    }, 1200)
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      <p className="text-xs text-gray-500 leading-relaxed">
+        Paste any Roblox game URL to analyze its core loop, retention hooks, and monetization formula.
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleScan()}
+          placeholder="https://roblox.com/games/..."
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
+        />
+        <button
+          onClick={handleScan}
+          disabled={!url.trim() || scanning}
+          className="bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-50 disabled:cursor-not-allowed text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
         >
-          Buy more tokens
+          {scanning ? '...' : 'Scan'}
+        </button>
+      </div>
+      {result && (
+        <div className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5">
+          <p className="text-[11px] text-gray-400 leading-relaxed">{result}</p>
+        </div>
+      )}
+      <Link href="/game-dna" className="block text-center text-[11px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors pt-1">
+        View full DNA reports &rarr;
+      </Link>
+    </div>
+  )
+}
+
+const TOKEN_LIMIT = 1000
+
+function TokensPanel({ tokensUsed }: { tokensUsed: number }) {
+  const remaining = Math.max(0, TOKEN_LIMIT - tokensUsed)
+  const usedPct = Math.min(100, (tokensUsed / TOKEN_LIMIT) * 100)
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-xl p-4 text-center">
+        <p className="text-3xl font-bold text-[#FFB81C]">{remaining.toLocaleString()}</p>
+        <p className="text-xs text-gray-500 mt-1">tokens remaining</p>
+      </div>
+      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-[#FFB81C] rounded-full transition-all duration-500"
+          style={{ width: `${usedPct}%` }}
+        />
+      </div>
+      <p className="text-[11px] text-gray-600 text-center">Free tier &middot; {tokensUsed.toLocaleString()} tokens used</p>
+      <Link
+        href="/billing"
+        className="flex items-center justify-center gap-2 w-full bg-white/5 hover:bg-white/8 border border-white/10 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+      >
+        Buy more tokens
+      </Link>
+    </div>
+  )
+}
+
+function SettingsPanel() {
+  return (
+    <div className="p-4 space-y-1">
+      {[
+        { label: 'Profile', href: '/settings' },
+        { label: 'API Keys', href: '/settings/api-keys' },
+        { label: 'Billing', href: '/billing' },
+        { label: 'Team', href: '/team' },
+        { label: 'Referrals', href: '/referrals' },
+      ].map(({ label, href }) => (
+        <Link
+          key={label}
+          href={href}
+          className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors text-sm"
+        >
+          {label}
+          <svg className="w-4 h-4 text-gray-600" viewBox="0 0 16 16" fill="none">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </Link>
-      </div>
-    ),
-  },
-  settings: {
-    title: 'Settings',
-    body: (
-      <div className="p-4 space-y-1">
-        {[
-          { label: 'Profile', href: '/settings' },
-          { label: 'API Keys', href: '/settings/api-keys' },
-          { label: 'Billing', href: '/billing' },
-          { label: 'Team', href: '/team' },
-          { label: 'Referrals', href: '/referrals' },
-        ].map(({ label, href }) => (
-          <Link
-            key={label}
-            href={href}
-            className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors text-sm"
-          >
-            {label}
-            <svg className="w-4 h-4 text-gray-600" viewBox="0 0 16 16" fill="none">
-              <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </Link>
-        ))}
-      </div>
-    ),
-  },
+      ))}
+    </div>
+  )
+}
+
+// ─── Panel title map ──────────────────────────────────────────────────────────
+
+const PANEL_TITLE: Record<NonNullable<PanelId>, string> = {
+  projects: 'Projects',
+  assets: 'Assets',
+  dna: 'Game DNA',
+  tokens: 'Tokens',
+  settings: 'Settings',
 }
 
 // ─── Icon bar button ──────────────────────────────────────────────────────────
@@ -444,19 +500,18 @@ export function EditorClient() {
       setMessages((prev) => [...prev, userMsg, statusMsg])
 
       try {
-        // Try real API first
         let responseText: string | null = null
         let tokensUsed = estimateTokens(trimmed)
 
         try {
-          const res = await fetch('/api/ai/generate', {
+          const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: trimmed }),
+            body: JSON.stringify({ message: trimmed }),
           })
           if (res.ok) {
-            const data = await res.json() as { result?: string; tokensUsed?: number }
-            responseText = data.result ?? null
+            const data = await res.json() as { message?: string; tokensUsed?: number; intent?: string }
+            responseText = data.message ?? null
             tokensUsed = data.tokensUsed ?? tokensUsed
           }
         } catch {
@@ -508,8 +563,6 @@ export function EditorClient() {
       submit(input)
     }
   }
-
-  const panelData = activePanel ? PANEL_CONTENT[activePanel] : null
 
   return (
     <div className="flex h-screen bg-[#080B1E] overflow-hidden" style={{ height: '100dvh' }}>
@@ -571,10 +624,10 @@ export function EditorClient() {
       </div>
 
       {/* ── Slide-out panel ───────────────────────────────────────────────── */}
-      {panelData && (
+      {activePanel && (
         <div className="w-56 bg-[#0A0E1F] border-r border-white/8 flex flex-col flex-shrink-0 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
-            <span className="text-sm font-semibold text-white">{panelData.title}</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+            <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
             <button
               onClick={() => setActivePanel(null)}
               className="text-gray-600 hover:text-gray-400 transition-colors"
@@ -585,8 +638,12 @@ export function EditorClient() {
               </svg>
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {panelData.body}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {activePanel === 'projects' && <ProjectsPanel />}
+            {activePanel === 'assets' && <AssetsPanel />}
+            {activePanel === 'dna' && <DnaPanel />}
+            {activePanel === 'tokens' && <TokensPanel tokensUsed={totalTokens} />}
+            {activePanel === 'settings' && <SettingsPanel />}
           </div>
         </div>
       )}
