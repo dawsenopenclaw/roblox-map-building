@@ -1,4 +1,6 @@
 {
+  "buildCommand": "npx next build",
+  "installCommand": "npm install --ignore-scripts",
   "crons": [
     {
       "path": "/api/internal/cost-snapshot",
