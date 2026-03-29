@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { captureClientEvent } from '@/lib/analytics'
+import { captureClientEvent } from '@/lib/analytics-client'
 
 interface AchievementUnlockEvent {
   name: string

@@ -19,7 +19,7 @@ export default async function DashboardPage() {
       const accountAgeMs = Date.now() - new Date(clerkUser.createdAt).getTime()
       const isNew = accountAgeMs < 10 * 60 * 1000 // 10 minutes
       if (!onboarding?.completed && isNew) {
-        redirect('/onboarding')
+        redirect('/welcome')
       }
     }
   } catch {

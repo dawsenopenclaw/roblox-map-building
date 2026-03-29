@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../../_adminGuard'
+import { requireAdmin } from '../../../_adminGuard'
 import { db } from '@/lib/db'
 
 type Params = { params: Promise<{ id: string }> }

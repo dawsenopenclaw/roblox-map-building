@@ -141,7 +141,7 @@ function sanitizeErrorMessage(message?: string): string {
     /chunk-[a-z0-9]+/gi,           // chunk names
   ]
 
-  let safe = message
+  const safe = message
   for (const pattern of internals) {
     if (pattern.test(safe)) {
       return 'An unexpected error occurred. Our team has been notified.'

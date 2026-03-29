@@ -12,8 +12,8 @@
 
 import { useCallback, useContext } from 'react'
 import { AnalyticsContext } from '@/components/AnalyticsProvider'
-import { captureClientEvent } from '@/lib/analytics'
-import type { AnalyticsEvent, EventProperties, UserContext } from '@/lib/analytics'
+import { captureClientEvent } from '@/lib/analytics-client'
+import type { AnalyticsEvent, UserContext } from '@/lib/analytics-client'
 
 export interface UseAnalyticsReturn {
   /**
@@ -22,7 +22,7 @@ export interface UseAnalyticsReturn {
    */
   track: <E extends AnalyticsEvent>(
     event: E,
-    properties?: EventProperties[E]
+    properties?: Record<string, unknown>
   ) => void
 
   /**
@@ -39,7 +39,7 @@ export function useAnalytics(): UseAnalyticsReturn {
   const ctx = useContext(AnalyticsContext)
 
   const track = useCallback(
-    <E extends AnalyticsEvent>(event: E, properties?: EventProperties[E]) => {
+    <E extends AnalyticsEvent>(event: E, properties?: Record<string, unknown>) => {
       captureClientEvent(event, properties, ctx?.userContext)
     },
     [ctx?.userContext]

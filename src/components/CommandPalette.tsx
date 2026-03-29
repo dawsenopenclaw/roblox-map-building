@@ -316,7 +316,7 @@ export function CommandPalette({
               {/* Results */}
               <div ref={listRef} className="max-h-[60vh] overflow-y-auto py-2">
                 {flat.length === 0 ? (
-                  <p className="text-center text-gray-500 text-sm py-8">No results for "{query}"</p>
+                  <p className="text-center text-gray-500 text-sm py-8">No results for &ldquo;{query}&rdquo;</p>
                 ) : (
                   (() => {
                     let globalIndex = 0
