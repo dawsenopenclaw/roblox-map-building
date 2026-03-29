@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import type { ReactNode } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -173,13 +174,13 @@ function ParamTable({ params }: { params: Param[] }) {
   )
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({ children }: { children: ReactNode }) {
   return <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3 mt-1">{children}</h3>
 }
 
-function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
+function SectionHeading({ children }: { id?: string; children: ReactNode }) {
   return (
-    <h2 id={id} className="text-2xl font-bold text-white mb-2 scroll-mt-28">
+    <h2 className="text-2xl font-bold text-white mb-2 scroll-mt-28">
       {children}
     </h2>
   )

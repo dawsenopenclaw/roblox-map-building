@@ -248,7 +248,7 @@ export default function WelcomePage() {
     } catch {
       // Non-fatal
     }
-    router.push('/dashboard')
+    router.push('/editor')
   }
 
   const handleSkip = async () => {
@@ -258,12 +258,12 @@ export default function WelcomePage() {
     } catch {
       // Non-fatal
     }
-    router.push('/dashboard')
+    router.push('/editor')
   }
 
   const nextLabel =
     step === TOTAL_STEPS
-      ? finishing ? 'Launching...' : 'Go to Dashboard →'
+      ? finishing ? 'Launching...' : 'Go to Editor →'
       : 'Next →'
 
   return (
@@ -271,7 +271,7 @@ export default function WelcomePage() {
       <div className="w-full max-w-md">
         <ProgressBar step={step} />
 
-        <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7">
+        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-7">
           {step === 1 && (
             <StepWelcome
               firstName={firstName}
