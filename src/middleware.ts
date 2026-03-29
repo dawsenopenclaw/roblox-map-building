@@ -149,9 +149,9 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.next()
     }
 
-    // Redirect authenticated users away from auth pages
+    // Redirect authenticated users away from auth pages → go straight to editor
     if (isAuthRoute(request) && userId) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return NextResponse.redirect(new URL('/editor', request.url))
     }
 
     // Protect non-public routes
@@ -179,7 +179,7 @@ export default clerkMiddleware(async (auth, request) => {
         if (request.nextUrl.pathname.startsWith('/api/')) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        return NextResponse.redirect(new URL('/editor', request.url))
       }
     }
   } catch (err) {

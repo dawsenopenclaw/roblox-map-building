@@ -13,14 +13,14 @@ import { Spotlight } from '@/components/ui/spotlight'
 /**
  * Client shell for the app layout.
  *
- * On /dashboard we render the full-IDE layout:
- *   ActivityBar (far-left icon rail) + full-height editor content (no top nav, no padding)
- *
- * On all other routes we keep the existing top nav + left sidebar + padded main layout.
+ * /editor — renders children directly (full-screen, zero chrome)
+ * /dashboard — IDE layout with ActivityBar
+ * everything else — standard top nav + sidebar + padded main
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const isEditor = pathname === '/dashboard'
+  const isNewEditor = pathname === '/editor'
+  const isDashboardIDE = pathname === '/dashboard'
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleNewProject = useCallback(() => {
-    window.location.href = '/voice'
+    window.location.href = '/editor'
   }, [])
 
   const shortcutHandlers = useMemo(
@@ -48,9 +48,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useKeyboardShortcuts(shortcutHandlers)
 
+  // /editor renders its own full-screen layout — no wrapper chrome
+  if (isNewEditor) {
+    return <>{children}</>
+  }
+
   return (
     <>
-      {isEditor ? (
+      {isDashboardIDE ? (
         /* ── IDE layout: activity bar + full-height editor ── */
         <div className="min-h-screen bg-[#0A0E1A] flex overflow-hidden" style={{ height: '100vh' }}>
           <ActivityBar />
