@@ -1,4 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  planBuildAssets,
+  extractSearchTerms,
+  generateMarketplaceLuau,
+  type BuildAssetPlan,
+  type MarketplaceAsset,
+} from '@/lib/roblox-asset-search'
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -618,6 +625,18 @@ async function callTextureApi(
 
 // ─── POST /api/ai/chat ────────────────────────────────────────────────────────
 
+// ─── Marketplace asset shape sent to the client ──────────────────────────────
+
+export interface MarketplaceAssetClient {
+  assetId: number
+  name: string
+  creator: string
+  thumbnailUrl: string | null
+  isFree: boolean
+  catalogUrl: string
+  searchTerm: string
+}
+
 interface ChatResponsePayload {
   message: string
   tokensUsed: number
@@ -632,6 +651,15 @@ interface ChatResponsePayload {
     textureUrl: string | null
     resolution: string
     status: string
+  }
+  /** Present when intent is 'building' — marketplace-first results */
+  buildResult?: {
+    foundAssets: MarketplaceAssetClient[]
+    missingTerms: string[]
+    luauCode: string
+    totalMarketplace: number
+    totalCustom: number
+    estimatedCustomCost: number
   }
 }
 
@@ -654,8 +682,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const tokensUsed = estimateTokens(message)
 
   // Simulated thinking delay: 1000–1800ms scaled by message complexity
-  // Skipped for mesh/texture intents which have real async API calls
-  if (intent !== 'mesh' && intent !== 'texture') {
+  // Skipped for mesh/texture/building intents which have real async API calls
+  if (intent !== 'mesh' && intent !== 'texture' && intent !== 'building') {
     const delayMs = Math.min(1800, 1000 + Math.floor(message.length * 1.5))
     await sleep(delayMs)
   }
@@ -714,6 +742,87 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     } catch {
       // Leave default demo message, no textureResult attached
+    }
+    return NextResponse.json(payload)
+  }
+
+  // ── Marketplace-first building pipeline ──────────────────────────────────
+  if (intent === 'building' || intent === 'terrain' || intent === 'fullgame') {
+    try {
+      // 1. Extract what assets we need from the prompt
+      const searchTerms = extractSearchTerms(message)
+
+      if (searchTerms.length > 0) {
+        // 2. Search marketplace for all terms in parallel
+        const plan: BuildAssetPlan = await planBuildAssets(searchTerms)
+
+        // 3. Build placement grid — simple row/column layout, 30 studs apart
+        const GRID_SPACING = 30
+        const placements = plan.found.map(({ asset, searchTerm }, i) => ({
+          assetId:  asset.assetId,
+          name:     asset.name,
+          position: {
+            x: (i % 4) * GRID_SPACING,
+            y: 0,
+            z: Math.floor(i / 4) * GRID_SPACING,
+          },
+          scale: 1,
+        }))
+
+        // 4. Generate Luau code
+        const luauCode = placements.length > 0
+          ? generateMarketplaceLuau(placements)
+          : '-- No marketplace assets found — generate custom models with Meshy'
+
+        // 5. Build client-facing asset list
+        const foundAssets: MarketplaceAssetClient[] = plan.found.map(({ asset, searchTerm }) => ({
+          assetId:     asset.assetId,
+          name:        asset.name,
+          creator:     asset.creator,
+          thumbnailUrl: asset.thumbnailUrl,
+          isFree:      asset.isFree,
+          catalogUrl:  asset.catalogUrl,
+          searchTerm,
+        }))
+
+        payload.buildResult = {
+          foundAssets,
+          missingTerms: plan.missing,
+          luauCode,
+          totalMarketplace: plan.totalMarketplace,
+          totalCustom: plan.totalCustom,
+          estimatedCustomCost: plan.estimatedCustomCost,
+        }
+
+        // 6. Override message with marketplace-first summary
+        const foundCount = plan.totalMarketplace
+        const customCount = plan.totalCustom
+        const parts: string[] = []
+
+        if (foundCount > 0) {
+          parts.push(`Found ${foundCount} marketplace asset${foundCount !== 1 ? 's' : ''} for your build`)
+        }
+        if (customCount > 0) {
+          parts.push(`Generating ${customCount} custom model${customCount !== 1 ? 's' : ''} (${plan.estimatedCustomCost} Meshy credit${plan.estimatedCustomCost !== 1 ? 's' : ''})`)
+        }
+
+        if (foundCount === 0 && customCount === 0) {
+          payload.message = DEMO_RESPONSES[intent]
+        } else {
+          payload.message = `✓ Build Plan Ready
+
+${parts.join(' · ')}
+
+Marketplace assets (${foundCount}):
+${foundAssets.map((a, i) => `  ${i + 1}. ${a.name} by ${a.creator} [ID: ${a.assetId}]`).join('\n')}
+${customCount > 0 ? `\nCustom generation needed (${customCount}):\n${plan.missing.map((t, i) => `  ${foundCount + i + 1}. "${t}" — will generate with Meshy AI`).join('\n')}` : ''}
+
+Luau code generated — uses InsertService:LoadAsset() with real asset IDs.
+Token cost: ${tokensUsed} tokens`
+        }
+      }
+    } catch {
+      // Fall through to default demo message if marketplace search fails
     }
     return NextResponse.json(payload)
   }

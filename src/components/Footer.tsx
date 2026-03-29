@@ -7,6 +7,7 @@ const PRODUCT_LINKS = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/docs', label: 'Documentation' },
+  { href: '/download', label: 'Download' },
 ]
 
 const COMPANY_LINKS = [

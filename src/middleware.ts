@@ -114,6 +114,12 @@ function isAdminEmail(email: string | null | undefined): boolean {
   return list.includes(email.toLowerCase())
 }
 
+// ─── Demo mode ────────────────────────────────────────────────────────────────
+// Set DEMO_MODE=true in .env to bypass all auth gates (local dev / demo deploys).
+// When false (default), auth is enforced for non-public routes whenever Clerk
+// can resolve a session — regardless of whether test or live keys are in use.
+const DEMO_MODE = process.env.DEMO_MODE === 'true'
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, request) => {
@@ -162,6 +168,9 @@ export default clerkMiddleware(async (auth, request) => {
     }
 
     // ── 2. Auth routing ────────────────────────────────────────────────────────
+    // In demo mode all routes are accessible — skip auth resolution entirely.
+    if (DEMO_MODE) return NextResponse.next()
+
     let userId: string | null = null
     let claims: Record<string, unknown> | null = null
 
@@ -170,8 +179,7 @@ export default clerkMiddleware(async (auth, request) => {
       userId = session.userId
       claims = session.sessionClaims as Record<string, unknown> | null
     } catch {
-      // Clerk unreachable — pass all requests through until production keys
-      // are configured. No sign-in redirect; the site must be fully accessible.
+      // Clerk unreachable — pass all requests through so the site stays up.
       return NextResponse.next()
     }
 
@@ -180,11 +188,9 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.redirect(new URL('/editor', request.url))
     }
 
-    // Protect non-public routes
-    // TEMPORARY: Skip auth redirect when Clerk test keys don't work on production domain
-    // Remove this bypass once Clerk production keys are configured
-    const clerkConfigured = process.env.CLERK_SECRET_KEY?.startsWith('sk_live_')
-    if (!isPublicRoute(request) && !userId && clerkConfigured) {
+    // Protect non-public routes — isPublicRoute is the single source of truth.
+    // All routes listed in the public matcher are accessible without auth.
+    if (!isPublicRoute(request) && !userId) {
       return NextResponse.redirect(new URL('/sign-in', request.url))
     }
 
@@ -192,17 +198,7 @@ export default clerkMiddleware(async (auth, request) => {
     // Admin pages and admin API routes require role === 'ADMIN'.
     // The role is stored in Clerk public metadata and surfaced on session claims
     // under the `publicMetadata` key (not `metadata`).
-    // TEMPORARY: When Clerk production keys are not configured, skip the admin
-    // guard entirely so the owner can access /admin without auth.
-    if (isAdminRoute(request) && clerkConfigured) {
-      if (!userId) {
-        // Unauthenticated: redirect to sign-in (never silently fall through)
-        if (request.nextUrl.pathname.startsWith('/api/')) {
-          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-        }
-        return NextResponse.redirect(new URL('/sign-in', request.url))
-      }
-
+    if (isAdminRoute(request) && userId) {
       const meta = ((claims as { publicMetadata?: Record<string, unknown> })?.publicMetadata ?? {}) as Record<string, unknown>
       const role = meta.role as string | undefined
       if (role !== 'ADMIN') {

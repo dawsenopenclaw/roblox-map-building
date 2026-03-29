@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 320" width="520" height="320">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#06080F"/>
+      <stop offset="100%" stop-color="#0A0D1A"/>
+    </linearGradient>
+
+    <!-- Grid pattern -->
+    <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1A2040" stroke-width="0.5"/>
+    </pattern>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <rect width="100" height="100" fill="url(#smallGrid)"/>
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#252B50" stroke-width="1"/>
+    </pattern>
+
+    <!-- Marketplace (green) glow -->
+    <filter id="glowGreen" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Custom (gold) glow -->
+    <filter id="glowGold" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- Subtle drop shadow -->
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="520" height="320" fill="url(#bg)"/>
+  <rect width="520" height="320" fill="url(#grid)"/>
+
+  <!-- Bottom fog -->
+  <rect x="0" y="260" width="520" height="60" fill="url(#bg)" opacity="0.6"/>
+
+  <!-- ── Title bar ── -->
+  <rect x="0" y="0" width="520" height="30" fill="rgba(0,0,0,0.5)"/>
+  <text x="14" y="19" font-family="'Inter', 'SF Pro', system-ui, sans-serif" font-size="11" fill="#9CA3AF" font-weight="600" letter-spacing="0.5">ASSET PLACEMENT PREVIEW</text>
+  <!-- Legend -->
+  <rect x="310" y="9" width="8" height="8" rx="2" fill="#4ADE80" opacity="0.9"/>
+  <text x="322" y="18" font-family="system-ui" font-size="10" fill="#6B7280">Marketplace</text>
+  <rect x="400" y="9" width="8" height="8" rx="2" fill="#FFB81C" opacity="0.9"/>
+  <text x="412" y="18" font-family="system-ui" font-size="10" fill="#6B7280">Custom AI</text>
+
+  <!-- ═══════════════════════════════════════════════════
+       ISOMETRIC GRID — 4 rows × 4 cols of asset slots
+       Each slot: 80x60px cell, offset for isometric look
+       ═══════════════════════════════════════════════════ -->
+
+  <!-- Row 0 ─────────────────────────────────────────── -->
+
+  <!-- Slot 0,0 · Medieval Castle · MARKETPLACE (green) -->
+  <g transform="translate(60, 80)" filter="url(#shadow)">
+    <!-- Shadow base -->
+    <ellipse cx="0" cy="2" rx="34" ry="10" fill="rgba(74,222,128,0.12)"/>
+    <!-- Isometric cube body (left face) -->
+    <polygon points="-34,8 0,-8 0,38 -34,54" fill="#1A4D2E"/>
+    <!-- Right face -->
+    <polygon points="0,-8 34,8 34,54 0,38" fill="#166534"/>
+    <!-- Top face -->
+    <polygon points="-34,8 0,-8 34,8 0,24" fill="#4ADE80" opacity="0.9"/>
+    <!-- Castle tower top (small rect) -->
+    <rect x="-6" y="-24" width="12" height="16" fill="#4ADE80" opacity="0.7"/>
+    <!-- Battlements -->
+    <rect x="-6" y="-28" width="3" height="5" fill="#4ADE80"/>
+    <rect x="-1" y="-28" width="3" height="5" fill="#4ADE80"/>
+    <rect x="4" y="-28" width="3" height="5" fill="#4ADE80"/>
+    <!-- Green badge -->
+    <rect x="-18" y="-38" width="36" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-30" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <!-- Asset ID label -->
+    <text x="0" y="56" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 15787799</text>
+  </g>
+
+  <!-- Slot 0,1 · Medieval House · MARKETPLACE (green) -->
+  <g transform="translate(185, 65)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="28" ry="8" fill="rgba(74,222,128,0.1)"/>
+    <polygon points="-28,6 0,-6 0,30 -28,42" fill="#1C3A2A"/>
+    <polygon points="0,-6 28,6 28,42 0,30" fill="#14532D"/>
+    <polygon points="-28,6 0,-6 28,6 0,18" fill="#22C55E" opacity="0.9"/>
+    <!-- Roof triangle -->
+    <polygon points="-14,-6 0,-20 14,-6" fill="#16A34A"/>
+    <rect x="-12" y="-38" width="24" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-30" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <text x="0" y="46" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 71620652</text>
+  </g>
+
+  <!-- Slot 0,2 · Oak Tree · MARKETPLACE (green) -->
+  <g transform="translate(310, 75)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="20" ry="6" fill="rgba(74,222,128,0.1)"/>
+    <!-- Trunk -->
+    <rect x="-4" y="0" width="8" height="24" fill="#92400E"/>
+    <!-- Foliage circles -->
+    <circle cx="0" cy="-8" r="18" fill="#15803D" opacity="0.9"/>
+    <circle cx="-10" cy="-2" r="13" fill="#16A34A" opacity="0.8"/>
+    <circle cx="10" cy="-2" r="13" fill="#16A34A" opacity="0.8"/>
+    <circle cx="0" cy="-16" r="12" fill="#22C55E" opacity="0.7"/>
+    <rect x="-14" y="-40" width="28" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-32" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <text x="0" y="38" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 48329102</text>
+  </g>
+
+  <!-- Slot 0,3 · Stone Wall · MARKETPLACE (green) -->
+  <g transform="translate(430, 80)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="32" ry="8" fill="rgba(74,222,128,0.1)"/>
+    <polygon points="-32,6 0,-8 0,20 -32,34" fill="#292929"/>
+    <polygon points="0,-8 32,6 32,34 0,20" fill="#1F1F1F"/>
+    <polygon points="-32,6 0,-8 32,6 0,20" fill="#4A4A4A" opacity="0.9"/>
+    <!-- Stone texture lines -->
+    <line x1="-16" y1="4" x2="-8" y2="0" stroke="#555" stroke-width="0.6"/>
+    <line x1="0" y1="4" x2="16" y2="10" stroke="#555" stroke-width="0.6"/>
+    <rect x="-18" y="-28" width="36" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-20" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <text x="0" y="44" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 23948271</text>
+  </g>
+
+  <!-- Row 1 ─────────────────────────────────────────── -->
+
+  <!-- Slot 1,0 · Wall Torch · MARKETPLACE (green) -->
+  <g transform="translate(100, 160)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="16" ry="5" fill="rgba(74,222,128,0.1)"/>
+    <!-- Torch pole -->
+    <rect x="-3" y="-18" width="6" height="24" fill="#78350F"/>
+    <!-- Flame -->
+    <ellipse cx="0" cy="-20" rx="6" ry="9" fill="#FCD34D" opacity="0.9"/>
+    <ellipse cx="0" cy="-24" rx="4" ry="6" fill="#F97316" opacity="0.8"/>
+    <ellipse cx="0" cy="-28" rx="2" ry="4" fill="#EF4444" opacity="0.7"/>
+    <rect x="-14" y="-44" width="28" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-36" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <text x="0" y="22" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 13288075</text>
+  </g>
+
+  <!-- Slot 1,1 · Wooden Barrel · MARKETPLACE (green) -->
+  <g transform="translate(235, 150)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="18" ry="5" fill="rgba(74,222,128,0.1)"/>
+    <!-- Barrel body -->
+    <rect x="-12" y="-14" width="24" height="22" rx="4" fill="#92400E"/>
+    <!-- Barrel hoops -->
+    <ellipse cx="0" cy="-14" rx="12" ry="3" fill="#78350F"/>
+    <ellipse cx="0" cy="-3" rx="12" ry="3" fill="#78350F"/>
+    <ellipse cx="0" cy="8" rx="12" ry="3" fill="#78350F"/>
+    <rect x="-16" y="-36" width="32" height="12" rx="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="0.8"/>
+    <text x="0" y="-28" text-anchor="middle" font-family="system-ui" font-size="7" fill="#4ADE80" font-weight="700">MARKETPLACE</text>
+    <text x="0" y="30" text-anchor="middle" font-family="'SF Mono', monospace" font-size="8" fill="#6B7280">ID: 58392104</text>
+  </g>
+
+  <!-- Slot 1,2 · Medieval Gate · CUSTOM (gold — not in marketplace) -->
+  <g transform="translate(365, 155)" filter="url(#shadow)">
+    <ellipse cx="0" cy="2" rx="30" ry="8" fill="rgba(255,184,28,0.1)"/>
+    <!-- Gate frame -->
+    <polygon points="-30,4 0,-10 0,30 -30,44" fill="#1A1206" opacity="0.8"/>
+    <polygon points="0,-10 30,4 30,44 0,30" fill="#12100A" opacity="0.8"/>
+    <polygon points="-30,4 0,-10 30,4 0,18" fill="#FFB81C" opacity="0.25"/>
+    <!-- Question mark for custom -->
+    <text x="0" y="10" text-anchor="middle" font-family="system-ui" font-size="20" fill="#FFB81C" opacity="0.4" font-weight="900">?</text>
+    <!-- Gold badge -->
+    <rect x="-22" y="-34" width="44" height="12" rx="4" fill="rgba(255,184,28,0.2)" stroke="#FFB81C" stroke-width="0.8"/>
+    <text x="0" y="-26" text-anchor="middle" font-family="system-ui" font-size="7" fill="#FFB81C" font-weight="700">CUSTOM AI</text>
+    <text x="0" y="50" text-anchor="middle" font-family="system-ui" font-size="8" fill="#6B7280">Meshy · 1 credit</text>
+  </g>
+
+  <!-- Slot 1,3 · Cobblestone Floor · CUSTOM (gold) -->
+  <g transform="translate(460, 175)" filter="url(#shadow)">
+    <polygon points="-36,2 0,-12 36,2 0,16" fill="#1A1A1A" stroke="#FFB81C" stroke-width="0.8" stroke-dasharray="3,2"/>
+    <!-- Cobblestone pattern hint -->
+    <line x1="-18" y1="0" x2="-6" y2="-6" stroke="#FFB81C" stroke-width="0.4" opacity="0.4"/>
+    <line x1="6" y1="-6" x2="18" y2="0" stroke="#FFB81C" stroke-width="0.4" opacity="0.4"/>
+    <text x="0" y="-16" text-anchor="middle" font-family="system-ui" font-size="7" fill="#FFB81C" font-weight="700">CUSTOM AI</text>
+    <text x="0" y="30" text-anchor="middle" font-family="system-ui" font-size="8" fill="#6B7280">Meshy · 1 credit</text>
+  </g>
+
+  <!-- ── Bottom status bar ── -->
+  <rect x="0" y="290" width="520" height="30" fill="rgba(0,0,0,0.7)"/>
+
+  <!-- Counts -->
+  <rect x="14" y="299" width="8" height="8" rx="2" fill="#4ADE80"/>
+  <text x="26" y="308" font-family="system-ui" font-size="10" fill="#9CA3AF">6 marketplace assets</text>
+
+  <rect x="170" y="299" width="8" height="8" rx="2" fill="#FFB81C"/>
+  <text x="182" y="308" font-family="system-ui" font-size="10" fill="#9CA3AF">2 custom (2 Meshy credits)</text>
+
+  <!-- Luau code indicator -->
+  <rect x="355" y="297" width="90" height="14" rx="4" fill="rgba(255,184,28,0.1)" stroke="rgba(255,184,28,0.3)" stroke-width="0.8"/>
+  <text x="400" y="307" text-anchor="middle" font-family="'SF Mono', monospace" font-size="9" fill="#FFB81C">Luau ready</text>
+
+  <!-- Total cost -->
+  <text x="505" y="308" text-anchor="end" font-family="system-ui" font-size="10" fill="#6B7280">~$0.02 total</text>
+</svg>

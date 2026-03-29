@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Maps our category names to Roblox catalog category IDs
-const CATEGORY_MAP: Record<string, string> = {
+// Maps our category names to Roblox catalog subcategory values
+// Valid subcategory values confirmed against catalog.roblox.com/v1/search/items/details
+const SUBCATEGORY_MAP: Record<string, string> = {
   models:  'Models',
-  meshes:  'MeshPart',
+  meshes:  'Meshes',
   audio:   'Audio',
   images:  'Decals',
   plugins: 'Plugins',
@@ -28,50 +29,39 @@ interface RobloxCatalogResponse {
   previousPageCursor?: string
 }
 
-async function getThumbnail(assetId: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://thumbnails.roblox.com/v1/assets?assetIds=${assetId}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`,
-      { next: { revalidate: 3600 } }
-    )
-    if (!res.ok) return null
-    const json = await res.json()
-    return json?.data?.[0]?.imageUrl ?? null
-  } catch {
-    return null
-  }
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const query    = searchParams.get('query') ?? ''
   const category = (searchParams.get('category') ?? 'all').toLowerCase()
-  const limit    = Math.min(Number(searchParams.get('limit') ?? 20), 30)
+  // Allowed limit values by Roblox API: 10, 28, 30, 50, 60, 100, 120
+  const limit    = 30
 
-  const robloxCategory = CATEGORY_MAP[category] ?? ''
+  const subcategory = SUBCATEGORY_MAP[category] ?? ''
 
-  // Build Roblox catalog search URL
-  const url = new URL('https://catalog.roblox.com/v1/search/items')
-  url.searchParams.set('keyword', query)
+  // Use the /details endpoint which returns full item data (name, creator, price, etc.)
+  // The base /v1/search/items endpoint only returns id + itemType
+  const url = new URL('https://catalog.roblox.com/v1/search/items/details')
+  if (query.trim()) url.searchParams.set('keyword', query.trim())
   url.searchParams.set('limit', String(limit))
-  url.searchParams.set('includeNotForSale', 'false')
-  url.searchParams.set('isKeywordSuggestionEnabled', 'true')
-  if (robloxCategory) url.searchParams.set('category', robloxCategory)
+  if (subcategory) url.searchParams.set('subcategory', subcategory)
 
   let catalogData: RobloxCatalogResponse
   try {
     const res = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; ForjeGames/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; RobloxMapBuilder/1.0)',
       },
       next: { revalidate: 60 },
     })
 
     if (!res.ok) {
       const text = await res.text()
-      console.error('[roblox/search] catalog error:', res.status, text.slice(0, 200))
-      return NextResponse.json({ error: 'Roblox catalog unavailable', status: res.status }, { status: 502 })
+      console.error('[roblox/search] catalog error:', res.status, text.slice(0, 300))
+      return NextResponse.json(
+        { error: 'Roblox catalog unavailable', status: res.status },
+        { status: 502 },
+      )
     }
 
     catalogData = await res.json()
@@ -82,14 +72,15 @@ export async function GET(req: NextRequest) {
 
   const items = catalogData?.data ?? []
 
-  // Fetch thumbnails in parallel (batch, up to 10 at a time to avoid rate limits)
+  // Batch-fetch thumbnails for all asset IDs
   const assetIds = items.map((i) => i.id)
-  let thumbnailMap: Record<number, string> = {}
+  const thumbnailMap: Record<number, string> = {}
+
   if (assetIds.length > 0) {
     try {
       const batchRes = await fetch(
         `https://thumbnails.roblox.com/v1/assets?assetIds=${assetIds.join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`,
-        { next: { revalidate: 3600 } }
+        { next: { revalidate: 3600 } },
       )
       if (batchRes.ok) {
         const batchJson = await batchRes.json()
@@ -100,7 +91,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch {
-      // Thumbnails optional — continue without them
+      // Thumbnails are optional — continue without them
     }
   }
 

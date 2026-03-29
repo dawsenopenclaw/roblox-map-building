@@ -8,6 +8,27 @@ import Image from 'next/image'
 
 type MessageRole = 'user' | 'assistant' | 'system' | 'status'
 
+// ─── Marketplace build result type (mirrors API shape) ─────────────────────
+
+interface MarketplaceAssetClient {
+  assetId: number
+  name: string
+  creator: string
+  thumbnailUrl: string | null
+  isFree: boolean
+  catalogUrl: string
+  searchTerm: string
+}
+
+interface BuildResult {
+  foundAssets: MarketplaceAssetClient[]
+  missingTerms: string[]
+  luauCode: string
+  totalMarketplace: number
+  totalCustom: number
+  estimatedCustomCost: number
+}
+
 interface ChatMessage {
   id: string
   role: MessageRole
@@ -15,6 +36,8 @@ interface ChatMessage {
   tokensUsed?: number
   timestamp: Date
   model?: string
+  /** Present for building/terrain/fullgame intents */
+  buildResult?: BuildResult
 }
 
 type ModelId = 'claude-4' | 'claude-3-5' | 'gemini-2' | 'gpt-4o' | 'grok-3'
@@ -312,6 +335,171 @@ function TypingIndicator() {
   )
 }
 
+// ─── Build Result Card ─────────────────────────────────────────────────────────
+
+function AssetPill({ asset }: { asset: MarketplaceAssetClient }) {
+  const [imgErr, setImgErr] = useState(false)
+  return (
+    <a
+      href={asset.catalogUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`${asset.name} by ${asset.creator}`}
+      className="flex flex-col items-center gap-1 group"
+    >
+      <div
+        className="w-12 h-12 rounded-lg overflow-hidden border flex items-center justify-center transition-all"
+        style={{
+          background: 'rgba(74,222,128,0.06)',
+          borderColor: 'rgba(74,222,128,0.25)',
+        }}
+      >
+        {asset.thumbnailUrl && !imgErr ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/roblox/thumbnail?id=${asset.assetId}&size=150x150`}
+            alt={asset.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+          />
+        ) : (
+          <svg className="w-5 h-5 text-green-500/50" viewBox="0 0 20 20" fill="none">
+            <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+            <circle cx="10" cy="10" r="3" fill="currentColor" opacity="0.4"/>
+          </svg>
+        )}
+      </div>
+      <span
+        className="text-[8px] text-center leading-tight max-w-[48px] truncate text-gray-500 group-hover:text-gray-300 transition-colors"
+        title={asset.name}
+      >
+        {asset.name.split(' ').slice(0, 2).join(' ')}
+      </span>
+    </a>
+  )
+}
+
+function BuildResultCard({ result }: { result: BuildResult }) {
+  const [showCode, setShowCode] = useState(false)
+  const [copied, setCopied]     = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(result.luauCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div
+      className="mt-3 rounded-xl overflow-hidden"
+      style={{ border: '1px solid rgba(74,222,128,0.2)', background: 'rgba(0,0,0,0.3)' }}
+    >
+      {/* Header row */}
+      <div
+        className="flex items-center justify-between px-3 py-2"
+        style={{ background: 'rgba(74,222,128,0.06)', borderBottom: '1px solid rgba(74,222,128,0.1)' }}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-400" style={{ boxShadow: '0 0 6px #4ADE80' }}/>
+          <span className="text-[11px] font-semibold text-green-400">
+            {result.totalMarketplace} marketplace asset{result.totalMarketplace !== 1 ? 's' : ''} found
+          </span>
+        </div>
+        {result.totalCustom > 0 && (
+          <span className="text-[10px] text-[#FFB81C] font-medium">
+            + {result.totalCustom} custom ({result.estimatedCustomCost} credit{result.estimatedCustomCost !== 1 ? 's' : ''})
+          </span>
+        )}
+      </div>
+
+      {/* Asset thumbnails row */}
+      {result.foundAssets.length > 0 && (
+        <div className="px-3 py-3">
+          <p className="text-[9px] text-gray-600 uppercase tracking-wider font-medium mb-2">
+            From Roblox Creator Store — free &amp; ready to use
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {result.foundAssets.map((asset) => (
+              <AssetPill key={asset.assetId} asset={asset} />
+            ))}
+            {/* Custom placeholders */}
+            {result.missingTerms.map((term) => (
+              <div key={term} className="flex flex-col items-center gap-1">
+                <div
+                  className="w-12 h-12 rounded-lg overflow-hidden border flex items-center justify-center"
+                  style={{ background: 'rgba(255,184,28,0.06)', borderColor: 'rgba(255,184,28,0.25)', borderStyle: 'dashed' }}
+                >
+                  <svg className="w-5 h-5 text-[#FFB81C]/40" viewBox="0 0 20 20" fill="none">
+                    <path d="M10 5v10M5 10h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <span className="text-[8px] text-center max-w-[48px] leading-tight text-[#FFB81C]/60">
+                  {term.split(' ').slice(0, 2).join(' ')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Custom gen notice */}
+      {result.missingTerms.length > 0 && (
+        <div
+          className="px-3 py-2 flex items-center gap-2"
+          style={{ background: 'rgba(255,184,28,0.04)', borderTop: '1px solid rgba(255,184,28,0.1)' }}
+        >
+          <svg className="w-3 h-3 text-[#FFB81C] flex-shrink-0" viewBox="0 0 12 12" fill="currentColor">
+            <path d="M6 1l1.5 3.5H11l-2.75 2 1 3.5L6 8.25 2.75 10l1-3.5L1 4.5h3.5L6 1z"/>
+          </svg>
+          <span className="text-[10px] text-[#FFB81C]/80">
+            Generating {result.missingTerms.length} custom model{result.missingTerms.length !== 1 ? 's' : ''} with Meshy AI:
+            {' '}{result.missingTerms.map((t) => `"${t}"`).join(', ')}
+          </span>
+        </div>
+      )}
+
+      {/* Luau code section */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <button
+          onClick={() => setShowCode((s) => !s)}
+          className="w-full flex items-center justify-between px-3 py-2 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+              <path d="M4 3l-3 3 3 3M8 3l3 3-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            View Luau Code (InsertService:LoadAsset)
+          </span>
+          <svg className={`w-3 h-3 transition-transform ${showCode ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        </button>
+        {showCode && (
+          <div className="relative">
+            <pre
+              className="px-3 py-2 text-[9px] font-mono text-green-300/70 overflow-x-auto leading-relaxed"
+              style={{ background: 'rgba(0,0,0,0.4)', maxHeight: '180px' }}
+            >
+              {result.luauCode}
+            </pre>
+            <button
+              onClick={handleCopy}
+              className="absolute top-1.5 right-2 text-[9px] px-2 py-0.5 rounded transition-colors"
+              style={{
+                background: copied ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)',
+                color: copied ? '#4ADE80' : '#6B7280',
+                border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
 function Message({ msg }: { msg: ChatMessage }) {
@@ -383,6 +571,8 @@ function Message({ msg }: { msg: ChatMessage }) {
           />
           <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap font-[inherit]">{msg.content}</p>
         </div>
+        {/* Marketplace-first build result card */}
+        {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
         {msg.tokensUsed !== undefined && (
           <span className="text-[10px] text-blue-400/70 pl-1 flex items-center gap-1">
             <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
@@ -401,16 +591,16 @@ function Message({ msg }: { msg: ChatMessage }) {
 
 // Static scene objects always present in the mock isometric scene
 const SCENE_BASE_OBJECTS = [
-  { id: 'b1', type: 'building', color: '#4A7CB5', darkColor: '#2E5A8E', topColor: '#5B8EC7', x: 52, y: 42, w: 60, h: 44 },
-  { id: 'b2', type: 'building', color: '#6B7280', darkColor: '#4B5563', topColor: '#9CA3AF', x: 36, y: 55, w: 44, h: 32 },
-  { id: 'b3', type: 'building', color: '#8B5E3C', darkColor: '#6B4423', topColor: '#A8784F', x: 64, y: 60, w: 36, h: 24 },
-  { id: 'b4', type: 'building', color: '#374151', darkColor: '#1F2937', topColor: '#6B7280', x: 26, y: 40, w: 28, h: 56 },
-  { id: 't1', type: 'tree', x: 20, y: 35, size: 18 },
-  { id: 't2', type: 'tree', x: 74, y: 38, size: 14 },
-  { id: 't3', type: 'tree', x: 80, y: 55, size: 16 },
-  { id: 't4', type: 'tree', x: 16, y: 62, size: 12 },
-  { id: 't5', type: 'tree', x: 72, y: 48, size: 10 },
-  { id: 't6', type: 'tree', x: 24, y: 50, size: 13 },
+  { id: 'b1', type: 'building', color: '#3B6EA8', darkColor: '#1E4A7A', topColor: '#5B8EC7', accent: '#7AB3E8', x: 52, y: 40, w: 62, h: 50 },
+  { id: 'b2', type: 'building', color: '#5A6472', darkColor: '#3A4451', topColor: '#8A9BB0', accent: '#A8B8CC', x: 34, y: 54, w: 46, h: 36 },
+  { id: 'b3', type: 'building', color: '#7A5230', darkColor: '#5A3418', topColor: '#A87850', accent: '#D4A878', x: 66, y: 59, w: 38, h: 28 },
+  { id: 'b4', type: 'building', color: '#2E3A4A', darkColor: '#1A2230', topColor: '#5A6880', accent: '#7A90AA', x: 24, y: 38, w: 30, h: 62 },
+  { id: 't1', type: 'tree', x: 20, y: 33, size: 20 },
+  { id: 't2', type: 'tree', x: 75, y: 36, size: 15 },
+  { id: 't3', type: 'tree', x: 81, y: 54, size: 17 },
+  { id: 't4', type: 'tree', x: 15, y: 61, size: 13 },
+  { id: 't5', type: 'tree', x: 73, y: 47, size: 11 },
+  { id: 't6', type: 'tree', x: 23, y: 49, size: 14 },
 ]
 
 export const SPAWN_COLORS = [
@@ -440,12 +630,15 @@ export interface SceneBlock {
 }
 
 function IsometricBuilding({
-  color, darkColor, topColor, x, y, w, h, spawned,
+  color, darkColor, topColor, accent, x, y, w, h, spawned,
 }: {
-  color: string; darkColor: string; topColor: string
+  color: string; darkColor: string; topColor: string; accent?: string
   x: number; y: number; w: number; h: number; spawned: boolean
 }) {
   const halfW = w / 2
+  // Window grid: how many windows fit
+  const winCols = Math.max(1, Math.floor(halfW / 10))
+  const winRows = Math.max(1, Math.floor(h / 14))
 
   return (
     <div
@@ -454,83 +647,198 @@ function IsometricBuilding({
         left: `${x}%`,
         top: `${y}%`,
         width: `${w}px`,
-        animation: spawned ? 'block-spawn 0.55s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
+        animation: spawned ? 'block-spawn-smooth 0.65s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
         opacity: spawned ? 0 : 1,
+        filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))',
       }}
     >
-      {/* Top face */}
+      {/* ── Top face (roof) ── */}
       <div style={{
         width: `${w}px`,
-        height: `${halfW * 0.5}px`,
-        background: topColor,
-        transform: 'skewX(-30deg) scaleY(0.6)',
+        height: `${halfW * 0.55}px`,
+        background: `linear-gradient(135deg, ${topColor} 0%, ${topColor}CC 100%)`,
+        transform: 'skewX(-30deg) scaleY(0.58)',
         transformOrigin: 'bottom left',
         position: 'relative',
         zIndex: 3,
-        boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.3)',
-      }} />
-      {/* Front-left face */}
+        boxShadow: `inset 0 -3px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15)`,
+      }}>
+        {/* Roof edge highlight */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+          background: `rgba(255,255,255,0.2)`,
+        }} />
+      </div>
+
+      {/* ── Front-left face (light side) ── */}
       <div style={{
         width: `${halfW}px`,
         height: `${h}px`,
-        background: color,
+        background: `linear-gradient(180deg, ${color} 0%, ${darkColor}AA 100%)`,
         position: 'absolute',
-        top: `${halfW * 0.5 * 0.6 - 2}px`,
+        top: `${halfW * 0.55 * 0.58 - 2}px`,
         left: 0,
         transform: 'skewY(15deg)',
         transformOrigin: 'top left',
         zIndex: 2,
-        boxShadow: 'inset -2px 0 6px rgba(0,0,0,0.2)',
-      }} />
-      {/* Front-right face */}
+        overflow: 'hidden',
+      }}>
+        {/* Ambient occlusion at base */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '8px', background: 'rgba(0,0,0,0.25)' }} />
+        {/* Window grid — left face */}
+        {Array.from({ length: winRows }).map((_, r) =>
+          Array.from({ length: winCols }).map((_, c) => {
+            const lit = (r + c) % 3 !== 0
+            return (
+              <div key={`lw${r}-${c}`} style={{
+                position: 'absolute',
+                left: `${8 + c * (86 / winCols)}%`,
+                top: `${8 + r * (80 / winRows)}%`,
+                width: `${Math.max(4, 60 / winCols)}%`,
+                height: `${Math.max(3, 55 / winRows)}%`,
+                background: lit ? `rgba(255,220,120,0.55)` : 'rgba(0,0,0,0.4)',
+                borderRadius: '1px',
+                boxShadow: lit ? '0 0 4px rgba(255,200,80,0.4)' : 'none',
+              }} />
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Front-right face (shadow side) ── */}
       <div style={{
         width: `${halfW}px`,
-        height: `${h * 0.85}px`,
-        background: darkColor,
+        height: `${h * 0.87}px`,
+        background: `linear-gradient(180deg, ${darkColor} 0%, ${darkColor}88 100%)`,
         position: 'absolute',
-        top: `${halfW * 0.5 * 0.6 - 2}px`,
+        top: `${halfW * 0.55 * 0.58 - 2}px`,
         left: `${halfW}px`,
         transform: 'skewY(-15deg)',
         transformOrigin: 'top right',
         zIndex: 2,
-      }} />
+        overflow: 'hidden',
+      }}>
+        {/* Ambient occlusion at base */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '6px', background: 'rgba(0,0,0,0.3)' }} />
+        {/* Edge highlight where faces meet */}
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '2px', height: '100%', background: `rgba(255,255,255,0.08)` }} />
+        {/* Window grid — right face (dimmer) */}
+        {Array.from({ length: winRows }).map((_, r) =>
+          Array.from({ length: Math.max(1, winCols - 1) }).map((_, c) => {
+            const lit = (r * 2 + c) % 4 !== 0
+            return (
+              <div key={`rw${r}-${c}`} style={{
+                position: 'absolute',
+                left: `${10 + c * (78 / Math.max(1, winCols - 1))}%`,
+                top: `${10 + r * (78 / winRows)}%`,
+                width: `${Math.max(5, 55 / Math.max(1, winCols - 1))}%`,
+                height: `${Math.max(4, 50 / winRows)}%`,
+                background: lit ? `rgba(255,200,100,0.28)` : 'rgba(0,0,0,0.35)',
+                borderRadius: '1px',
+              }} />
+            )
+          })
+        )}
+      </div>
+
+      {/* ── Accent stripe on roof edge ── */}
+      {accent && (
+        <div style={{
+          position: 'absolute',
+          top: `${halfW * 0.55 * 0.58 - 3}px`,
+          left: 0,
+          width: `${w}px`,
+          height: '3px',
+          background: accent,
+          opacity: 0.6,
+          zIndex: 4,
+        }} />
+      )}
     </div>
   )
 }
 
 function IsometricTree({ x, y, size }: { x: number; y: number; size: number }) {
+  const trunkW = size * 0.22
+  const trunkH = size * 0.45
+  const r1 = size * 0.78   // outer canopy radius
+  const r2 = size * 0.58   // mid canopy radius
+  const r3 = size * 0.38   // top canopy radius
+
   return (
     <div className="absolute pointer-events-none" style={{ left: `${x}%`, top: `${y}%` }}>
+      {/* Ground shadow */}
       <div style={{
-        width: `${size * 0.25}px`,
-        height: `${size * 0.4}px`,
-        background: '#6B4423',
+        position: 'absolute',
+        bottom: `-${size * 0.05}px`,
+        left: `${-r1 * 0.6}px`,
+        width: `${r1 * 1.2}px`,
+        height: `${r1 * 0.35}px`,
+        background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 70%)',
+        zIndex: 0,
+      }} />
+
+      {/* Trunk */}
+      <div style={{
+        width: `${trunkW}px`,
+        height: `${trunkH}px`,
+        background: 'linear-gradient(180deg, #7A5230 0%, #5A3A18 100%)',
         margin: '0 auto',
         position: 'relative',
         zIndex: 1,
+        borderRadius: '2px 2px 0 0',
+        boxShadow: `inset -2px 0 4px rgba(0,0,0,0.3)`,
       }} />
+
+      {/* Canopy — bottom layer (widest, darkest) */}
       <div style={{
-        width: 0,
-        height: 0,
-        borderLeft: `${size * 0.6}px solid transparent`,
-        borderRight: `${size * 0.6}px solid transparent`,
-        borderBottom: `${size * 0.9}px solid #16A34A`,
+        width: `${r1 * 2}px`,
+        height: `${r1 * 1.1}px`,
+        background: 'radial-gradient(ellipse at 45% 40%, #1A6B30 0%, #0F4A20 60%, #0A3518 100%)',
+        borderRadius: '50% 50% 40% 40%',
         position: 'absolute',
-        top: `-${size * 0.85}px`,
-        left: `-${size * 0.475}px`,
+        bottom: `${trunkH * 0.55}px`,
+        left: `${trunkW / 2 - r1}px`,
         zIndex: 2,
-        filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.45)',
       }} />
+
+      {/* Canopy — mid layer */}
       <div style={{
-        width: 0,
-        height: 0,
-        borderLeft: `${size * 0.45}px solid transparent`,
-        borderRight: `${size * 0.45}px solid transparent`,
-        borderBottom: `${size * 0.7}px solid #22C55E`,
+        width: `${r2 * 2}px`,
+        height: `${r2 * 1.15}px`,
+        background: 'radial-gradient(ellipse at 40% 35%, #22883C 0%, #166B28 55%, #0D4A1A 100%)',
+        borderRadius: '50% 50% 38% 38%',
         position: 'absolute',
-        top: `-${size * 1.1}px`,
-        left: `-${size * 0.35}px`,
+        bottom: `${trunkH * 0.72}px`,
+        left: `${trunkW / 2 - r2}px`,
         zIndex: 3,
+        boxShadow: `inset 0 -2px 8px rgba(0,0,0,0.3), inset 2px 2px 6px rgba(100,200,80,0.15)`,
+      }} />
+
+      {/* Canopy — top layer (brightest) */}
+      <div style={{
+        width: `${r3 * 2}px`,
+        height: `${r3 * 1.2}px`,
+        background: 'radial-gradient(ellipse at 38% 30%, #34D058 0%, #22A840 45%, #168830 100%)',
+        borderRadius: '50% 50% 35% 35%',
+        position: 'absolute',
+        bottom: `${trunkH * 0.92}px`,
+        left: `${trunkW / 2 - r3}px`,
+        zIndex: 4,
+        boxShadow: `inset 1px 1px 6px rgba(120,255,100,0.2)`,
+      }} />
+
+      {/* Light catch on top canopy */}
+      <div style={{
+        width: `${r3 * 0.8}px`,
+        height: `${r3 * 0.5}px`,
+        background: 'radial-gradient(ellipse, rgba(120,255,100,0.18) 0%, transparent 70%)',
+        borderRadius: '50%',
+        position: 'absolute',
+        bottom: `${trunkH * 1.05}px`,
+        left: `${trunkW / 2 - r3 * 0.4}px`,
+        zIndex: 5,
       }} />
     </div>
   )
@@ -968,55 +1276,157 @@ type GenerateTab = 'marketplace' | 'generate'
 type GenerateQuality = 'draft' | 'standard' | 'premium'
 type GenerateAssetType = 'mesh' | 'texture'
 
+interface MeshTextures {
+  albedo: string
+  normal: string
+  roughness: string
+}
+
 interface GeneratedAsset {
   id: string
   prompt: string
   type: GenerateAssetType
   quality: GenerateQuality
-  status: 'loading' | 'complete' | 'demo' | 'error'
+  status: 'loading' | 'complete' | 'demo' | 'error' | 'pending'
+  // Mesh (3D model)
   meshUrl?: string | null
-  textureUrl?: string | null
+  fbxUrl?: string | null
   thumbnailUrl?: string | null
+  videoUrl?: string | null
   polygonCount?: number | null
+  taskId?: string | null
+  // Textures
+  textureUrl?: string | null
+  normalUrl?: string | null
+  roughnessUrl?: string | null
   resolution?: string
+  textures?: MeshTextures | null
+  // Shared
+  luauCode?: string | null
+  costEstimateUsd?: number
   createdAt: Date
 }
 
 function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
   const isLoading = asset.status === 'loading'
+  const isPending = asset.status === 'pending'
   const isDemo    = asset.status === 'demo'
   const isError   = asset.status === 'error'
+  const isWorking = isLoading || isPending
+  const [copied, setCopied] = useState(false)
+
+  const previewImg = asset.thumbnailUrl ?? asset.textures?.albedo ?? asset.textureUrl ?? null
+
+  function handleImportToStudio() {
+    if (!asset.luauCode) return
+    navigator.clipboard.writeText(asset.luauCode).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+
   return (
     <div className="rounded-lg border border-white/8 bg-white/[0.03] p-2.5 space-y-2">
-      <div className="relative flex h-16 w-full items-center justify-center overflow-hidden rounded-md bg-white/5">
-        {isLoading && (
-          <div className="flex flex-col items-center gap-1">
+      {/* Preview */}
+      <div className="relative flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-white/5">
+        {isWorking && (
+          <div className="flex flex-col items-center gap-1.5">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#FFB81C]/30 border-t-[#FFB81C]"/>
-            <span className="text-[9px] text-gray-600">Generating...</span>
+            <span className="text-[9px] text-gray-500">{isPending ? 'Mesh generating…' : 'Generating…'}</span>
           </div>
         )}
-        {!isLoading && !isError && asset.thumbnailUrl && (
+        {!isWorking && !isError && previewImg && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={asset.thumbnailUrl} alt={asset.prompt} className="h-full w-full object-contain"/>
+          <img src={previewImg} alt={asset.prompt} className="h-full w-full object-contain"/>
+        )}
+        {!isWorking && !isError && !previewImg && (
+          <div className="flex flex-col items-center gap-1 text-gray-700">
+            <svg className="w-7 h-7" viewBox="0 0 28 28" fill="none">
+              <path d="M14 3L25 9V19L14 25L3 19V9L14 3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+              <path d="M14 3V25M3 9L14 15M25 9L14 15" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.4"/>
+            </svg>
+            <span className="text-[8px]">No preview</span>
+          </div>
         )}
         {isError && <span className="text-[10px] text-red-400">Failed</span>}
         {isDemo && <span className="absolute right-1 top-1 rounded bg-[#FFB81C]/20 px-1 py-0.5 text-[8px] font-bold text-[#FFB81C]">DEMO</span>}
+        {asset.status === 'complete' && asset.meshUrl && <span className="absolute left-1 top-1 rounded bg-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400">GLB READY</span>}
+        {isPending && <span className="absolute left-1 top-1 rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">PENDING</span>}
       </div>
+
+      {/* Texture strip */}
+      {asset.textures && (
+        <div className="flex gap-1">
+          {[
+            { label: 'Albedo',  url: asset.textures.albedo },
+            { label: 'Normal',  url: asset.textures.normal },
+            { label: 'Rough',   url: asset.textures.roughness },
+          ].map(({ label, url }) => (
+            <div key={label} className="flex-1 relative overflow-hidden rounded">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={label} className="w-full h-8 object-cover" />
+              <span className="absolute bottom-0 left-0 right-0 text-center text-[7px] text-white/70 bg-black/60 py-0.5">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Info */}
       <div>
         <p className="truncate text-[11px] font-medium leading-tight text-gray-300" title={asset.prompt}>{asset.prompt}</p>
-        <div className="mt-1 flex items-center gap-1.5">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <span className="text-[9px] text-gray-600">{asset.type === 'mesh' ? '3D Model' : 'Texture'}</span>
           <span className="text-[9px] text-gray-700">·</span>
           <span className="text-[9px] capitalize text-gray-600">{asset.quality}</span>
           {asset.polygonCount != null && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.polygonCount.toLocaleString()} poly</span></>}
           {asset.resolution && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.resolution}px</span></>}
+          {(asset.costEstimateUsd ?? 0) > 0 && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-emerald-600">${asset.costEstimateUsd!.toFixed(3)}</span></>}
         </div>
       </div>
-      {!isLoading && !isError && (
-        <div className="flex items-center gap-1">
-          {asset.meshUrl && <a href={asset.meshUrl} download className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 transition-colors hover:bg-white/10 hover:text-white">Download GLB</a>}
-          {asset.textureUrl && <a href={asset.textureUrl} download className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 transition-colors hover:bg-white/10 hover:text-white">Download PNG</a>}
-          {isDemo && !asset.meshUrl && !asset.textureUrl && <p className="text-[9px] italic text-gray-700">Add API key for real downloads</p>}
+
+      {/* Actions */}
+      {!isWorking && !isError && (
+        <div className="space-y-1">
+          <div className="flex gap-1">
+            {asset.meshUrl && (
+              <a href={asset.meshUrl} target="_blank" rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                GLB
+              </a>
+            )}
+            {asset.fbxUrl && (
+              <a href={asset.fbxUrl} target="_blank" rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                FBX
+              </a>
+            )}
+            {(asset.textureUrl ?? asset.textures?.albedo) && (
+              <a href={asset.textureUrl ?? asset.textures?.albedo} target="_blank" rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                Texture
+              </a>
+            )}
+          </div>
+          {asset.luauCode && (
+            <button
+              onClick={handleImportToStudio}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
+              style={{
+                background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(255,184,28,0.1)',
+                border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,184,28,0.25)'}`,
+                color: copied ? '#4ADE80' : '#FFB81C',
+              }}
+            >
+              {copied ? (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied!</>
+              ) : (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M5 1h4a1 1 0 011 1v4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>Copy MeshPart Luau &rarr; Import to Studio</>
+              )}
+            </button>
+          )}
+          {isDemo && !asset.meshUrl && !asset.textureUrl && (
+            <p className="text-[9px] italic text-gray-700 text-center">Set MESHY_API_KEY + FAL_KEY for real assets</p>
+          )}
         </div>
       )}
     </div>
@@ -1041,25 +1451,77 @@ function GenerateSubPanel() {
       ...prev,
     ])
     try {
-      const endpoint = genType === 'mesh' ? '/api/ai/mesh' : '/api/ai/texture'
-      const body = genType === 'mesh'
-        ? { prompt: genPrompt.trim(), quality: genQuality }
-        : { prompt: genPrompt.trim(), resolution: '1024' }
-      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) throw new Error(`API error ${res.status}`)
       if (genType === 'mesh') {
-        const data = (await res.json()) as { meshUrl?: string | null; thumbnailUrl?: string | null; polygonCount?: number | null; status: string }
+        // Mesh: call /api/ai/mesh with full pipeline (Meshy + Fal textures)
+        const res = await fetch('/api/ai/mesh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: genPrompt.trim(), quality: genQuality, withTextures: true }),
+        })
+        if (!res.ok) throw new Error(`API error ${res.status}`)
+        const data = (await res.json()) as {
+          meshUrl?: string | null
+          fbxUrl?: string | null
+          thumbnailUrl?: string | null
+          videoUrl?: string | null
+          polygonCount?: number | null
+          textures?: { albedo: string; normal: string; roughness: string } | null
+          luauCode?: string | null
+          costEstimateUsd?: number
+          status: string
+          taskId?: string | null
+        }
+
+        const nextStatus: GeneratedAsset['status'] =
+          data.status === 'demo' ? 'demo' :
+          data.status === 'pending' ? 'pending' :
+          data.status === 'complete' ? 'complete' : 'loading'
+
         setGeneratedAssets((prev) => prev.map((a) => a.id !== id ? a : {
           ...a,
-          status: (data.status === 'demo' ? 'demo' : data.status === 'complete' ? 'complete' : 'loading') as GeneratedAsset['status'],
-          meshUrl: data.meshUrl, thumbnailUrl: data.thumbnailUrl ?? '/demo/mesh-preview.svg', polygonCount: data.polygonCount,
+          status: nextStatus,
+          meshUrl: data.meshUrl,
+          fbxUrl: data.fbxUrl,
+          thumbnailUrl: data.thumbnailUrl,
+          videoUrl: data.videoUrl,
+          polygonCount: data.polygonCount,
+          textures: data.textures,
+          luauCode: data.luauCode,
+          costEstimateUsd: data.costEstimateUsd,
+          taskId: data.taskId,
         }))
       } else {
-        const data = (await res.json()) as { textureUrl?: string | null; resolution?: string; status: string }
+        // Texture: call /api/ai/texture for PBR texture set
+        const res = await fetch('/api/ai/texture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: genPrompt.trim(), resolution: '1024', seamless: true }),
+        })
+        if (!res.ok) throw new Error(`API error ${res.status}`)
+        const data = (await res.json()) as {
+          textureUrl?: string | null
+          normalUrl?: string | null
+          roughnessUrl?: string | null
+          resolution?: string
+          luauCode?: string | null
+          costEstimateUsd?: number
+          status: string
+        }
+        const nextStatus: GeneratedAsset['status'] = data.status === 'demo' ? 'demo' : data.status === 'complete' ? 'complete' : 'loading'
         setGeneratedAssets((prev) => prev.map((a) => a.id !== id ? a : {
           ...a,
-          status: (data.status === 'demo' ? 'demo' : data.status === 'complete' ? 'complete' : 'loading') as GeneratedAsset['status'],
-          textureUrl: data.textureUrl, thumbnailUrl: data.textureUrl ?? '/demo/mesh-preview.svg', resolution: data.resolution,
+          status: nextStatus,
+          textureUrl: data.textureUrl,
+          normalUrl: data.normalUrl,
+          roughnessUrl: data.roughnessUrl,
+          thumbnailUrl: data.textureUrl,
+          // Build textures object when all 3 maps present
+          textures: data.textureUrl && data.normalUrl && data.roughnessUrl
+            ? { albedo: data.textureUrl, normal: data.normalUrl, roughness: data.roughnessUrl }
+            : null,
+          resolution: data.resolution,
+          luauCode: data.luauCode,
+          costEstimateUsd: data.costEstimateUsd,
         }))
       }
       setGenPrompt('')
@@ -1114,8 +1576,6 @@ function GenerateSubPanel() {
 }
 
 function RobloxMarketplacePanel() {
-  const [activeTab, setActiveTab] = useState<GenerateTab>('marketplace')
-
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('All')
@@ -1123,6 +1583,7 @@ function RobloxMarketplacePanel() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [addingId, setAddingId] = useState<number | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Debounce search input 400ms
@@ -1143,7 +1604,7 @@ function RobloxMarketplacePanel() {
       try {
         const cat = CATEGORY_PARAM[activeCategory]
         const endpoint = debouncedQuery.trim()
-          ? `/api/roblox/search?query=${encodeURIComponent(debouncedQuery.trim())}&category=${cat}&limit=20`
+          ? `/api/roblox/search?query=${encodeURIComponent(debouncedQuery.trim())}&category=${cat}`
           : `/api/roblox/trending?category=${cat}`
         const res = await fetch(endpoint)
         if (!res.ok) throw new Error(`API ${res.status}`)
@@ -1160,7 +1621,7 @@ function RobloxMarketplacePanel() {
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, activeCategory])
+  }, [debouncedQuery, activeCategory, retryKey])
 
   async function handleAddToGame(asset: RobloxAsset) {
     setAddingId(asset.id)
@@ -1252,7 +1713,7 @@ function RobloxMarketplacePanel() {
           <div className="py-6 text-center">
             <p className="mb-2 text-xs text-red-400/80">{error}</p>
             <button
-              onClick={() => setDebouncedQuery((q) => q + ' ')}
+              onClick={() => setRetryKey((k) => k + 1)}
               className="text-[10px] text-[#FFB81C] hover:underline"
             >
               Retry
@@ -1888,28 +2349,28 @@ export function EditorClient() {
         let responseText: string | null = null
         let tokensUsed = estimateTokens(trimmed)
 
-        try {
-          const res = await fetch('/api/ai/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              message: trimmed,
-              model: selectedModel,
-              gameContext: activeGame
-                ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre }
-                : null,
-            }),
-          })
-          if (res.ok) {
-            const data = await res.json() as { message?: string; tokensUsed?: number }
-            responseText = data.message ?? null
-            tokensUsed = data.tokensUsed ?? tokensUsed
-          }
-        } catch {
-          // fall through to demo
-        }
+        const res = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: trimmed,
+            model: selectedModel,
+            gameContext: activeGame
+              ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre }
+              : null,
+          }),
+        })
 
-        if (!responseText) responseText = getDemoResponse(trimmed)
+        if (!res.ok) throw new Error(`API error ${res.status}`)
+
+        const data = await res.json() as {
+          message?: string
+          tokensUsed?: number
+          buildResult?: BuildResult
+        }
+        responseText = data.message ?? getDemoResponse(trimmed)
+        tokensUsed = data.tokensUsed ?? tokensUsed
+        const buildResult = data.buildResult
 
         setTotalTokens((prev) => prev + tokensUsed)
 
@@ -1942,6 +2403,7 @@ export function EditorClient() {
               tokensUsed,
               timestamp: new Date(),
               model: selectedModel,
+              ...(buildResult ? { buildResult } : {}),
             },
           ]
         })

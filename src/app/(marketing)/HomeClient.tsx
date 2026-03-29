@@ -52,7 +52,7 @@ function EditorMockup() {
         <span className="w-3 h-3 rounded-full" style={{ background: '#FFBD2E' }} />
         <span className="w-3 h-3 rounded-full" style={{ background: '#27C93F' }} />
         <span
-          className="ml-3 text-xs font-mono"
+          className="ml-3 text-xs font-mono truncate min-w-0"
           style={{
             color: 'rgba(212,175,55,0.7)',
             background: 'rgba(212,175,55,0.08)',
@@ -60,9 +60,9 @@ function EditorMockup() {
             borderRadius: 4,
           }}
         >
-          ForjeGames Editor — castle_map.rbxl
+          <span className="hidden sm:inline">ForjeGames Editor — </span>castle_map.rbxl
         </span>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex-shrink-0 flex items-center gap-1">
           <span
             className="text-xs px-2 py-0.5 rounded"
             style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981', fontSize: 11 }}
@@ -74,9 +74,9 @@ function EditorMockup() {
 
       {/* Editor body */}
       <div className="flex" style={{ height: 280 }}>
-        {/* Left sidebar — game tree */}
+        {/* Left sidebar — game tree (hidden on mobile) */}
         <div
-          className="flex-shrink-0 py-3"
+          className="hidden sm:flex flex-col flex-shrink-0 py-3"
           style={{
             width: 168,
             background: '#0d1117',
@@ -220,9 +220,9 @@ function EditorMockup() {
           </div>
         </div>
 
-        {/* Right panel — properties */}
+        {/* Right panel — properties (hidden on mobile) */}
         <div
-          className="flex-shrink-0 py-3 flex flex-col gap-3"
+          className="hidden sm:flex flex-shrink-0 flex-col gap-3 py-3"
           style={{
             width: 148,
             background: '#0d1117',
@@ -264,7 +264,7 @@ function EditorMockup() {
       >
         <span style={{ color: 'rgba(212,175,55,0.6)', fontSize: 13 }}>›</span>
         <span
-          className="flex-1 text-sm font-mono"
+          className="flex-1 text-sm font-mono truncate min-w-0"
           style={{ color: '#E5E7EB' }}
         >
           build a castle with stone walls, 4 towers, and a working gate

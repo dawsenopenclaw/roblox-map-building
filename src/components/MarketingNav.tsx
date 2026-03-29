@@ -7,7 +7,7 @@ const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
-  { href: '/blog', label: 'Blog' },
+  { href: '/download', label: 'Download' },
 ]
 
 export function MarketingNav() {
@@ -96,7 +96,7 @@ export function MarketingNav() {
               color: '#0a0a0a',
             }}
           >
-            Get Started Free
+            Try Free
           </Link>
         </div>
 
@@ -157,7 +157,7 @@ export function MarketingNav() {
                   color: '#0a0a0a',
                 }}
               >
-                Get Started Free
+                Try Free
               </Link>
             </div>
           </div>

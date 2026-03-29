@@ -10,30 +10,52 @@ import { AnimatedCard } from '@/components/ui/animated-card'
 type Biome = 'auto' | 'forest' | 'desert' | 'arctic' | 'volcanic' | 'tropical'
 type Scale = 'small' | 'medium' | 'large' | 'massive'
 type Detail = 'low' | 'medium' | 'high' | 'ultra'
-type Phase = 'idle' | 'uploading' | 'generating' | 'done'
+type Phase = 'idle' | 'analyzing' | 'generating' | 'done' | 'error'
+type Mode = 'generate' | 'style-transfer'
 
 interface GenerationOptions {
   biome: Biome
   scale: Scale
   detail: Detail
+  mode: Mode
+  userPrompt: string
 }
 
 interface GenerationStep {
   id: string
   label: string
-  status: 'pending' | 'running' | 'done'
-  durationMs: number
+  status: 'pending' | 'running' | 'done' | 'error'
+}
+
+interface ImageAnalysisResult {
+  theme: string
+  style: string
+  colors: string[]
+  materials: string[]
+  objects: string[]
+  lighting: string
+  scale: 'small' | 'medium' | 'large' | 'massive'
+  summary: string
+  sourceGame?: string
+  confidence: number
+}
+
+interface GenerationResult {
+  success: boolean
+  message: string
+  tokensUsed: number
+  data?: Record<string, unknown>
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const BIOME_OPTIONS: { value: Biome; label: string; icon: string; desc: string }[] = [
-  { value: 'auto',     label: 'Auto Detect', icon: '🤖', desc: 'AI picks the best biome from your image' },
-  { value: 'forest',   label: 'Forest',      icon: '🌲', desc: 'Dense trees, mossy terrain, rivers' },
-  { value: 'desert',   label: 'Desert',      icon: '🏜️', desc: 'Sand dunes, rocky formations, cacti' },
+  { value: 'auto',     label: 'Auto Detect', icon: '🤖', desc: 'AI picks from your image' },
+  { value: 'forest',   label: 'Forest',      icon: '🌲', desc: 'Dense trees, rivers' },
+  { value: 'desert',   label: 'Desert',      icon: '🏜️', desc: 'Sand, rocky formations' },
   { value: 'arctic',   label: 'Arctic',      icon: '❄️', desc: 'Snow, ice, frozen lakes' },
-  { value: 'volcanic', label: 'Volcanic',    icon: '🌋', desc: 'Lava flows, ash terrain, craters' },
-  { value: 'tropical', label: 'Tropical',    icon: '🏝️', desc: 'Sandy beaches, palm trees, coral' },
+  { value: 'volcanic', label: 'Volcanic',    icon: '🌋', desc: 'Lava flows, craters' },
+  { value: 'tropical', label: 'Tropical',    icon: '🏝️', desc: 'Beaches, palm trees' },
 ]
 
 const SCALE_OPTIONS: { value: Scale; label: string; studs: string }[] = [
@@ -44,26 +66,28 @@ const SCALE_OPTIONS: { value: Scale; label: string; studs: string }[] = [
 ]
 
 const DETAIL_OPTIONS: { value: Detail; label: string; badge?: string }[] = [
-  { value: 'low',    label: 'Low',    },
-  { value: 'medium', label: 'Medium', },
-  { value: 'high',   label: 'High',   },
-  { value: 'ultra',  label: 'Ultra',  badge: 'PRO' },
+  { value: 'low',    label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high',   label: 'High' },
+  { value: 'ultra',  label: 'Ultra', badge: 'PRO' },
 ]
 
-const GENERATION_STEPS: GenerationStep[] = [
-  { id: 'analyze',  label: 'Analyzing image composition',        status: 'pending', durationMs: 900 },
-  { id: 'terrain',  label: 'Generating heightmap terrain',       status: 'pending', durationMs: 1200 },
-  { id: 'biome',    label: 'Applying biome materials & foliage', status: 'pending', durationMs: 1000 },
-  { id: 'assets',   label: 'Placing marketplace assets',         status: 'pending', durationMs: 800 },
-  { id: 'lighting', label: 'Configuring lighting & atmosphere',  status: 'pending', durationMs: 600 },
-  { id: 'export',   label: 'Packaging Roblox-ready output',      status: 'pending', durationMs: 500 },
+const GENERATION_STEPS_GENERATE: GenerationStep[] = [
+  { id: 'upload',    label: 'Reading image',                    status: 'pending' },
+  { id: 'gemini',    label: 'Gemini Vision — analyzing scene',  status: 'pending' },
+  { id: 'terrain',   label: 'Generating terrain layout',        status: 'pending' },
+  { id: 'biome',     label: 'Applying biome materials',         status: 'pending' },
+  { id: 'assets',    label: 'Placing marketplace assets',       status: 'pending' },
+  { id: 'lighting',  label: 'Configuring lighting',             status: 'pending' },
+  { id: 'export',    label: 'Packaging Roblox-ready output',    status: 'pending' },
 ]
 
-const RESULT_STATS = [
-  { label: 'Terrain Parts',   value: '14,832', icon: '🏔️' },
-  { label: 'Assets Placed',   value: '3,241',  icon: '🌲' },
-  { label: 'Biome Match',     value: '94%',    icon: '🎯' },
-  { label: 'Est. Build Time', value: '~4 min', icon: '⏱️' },
+const GENERATION_STEPS_STYLE: GenerationStep[] = [
+  { id: 'upload',    label: 'Reading reference screenshot',     status: 'pending' },
+  { id: 'gemini',    label: 'Gemini Vision — extracting style', status: 'pending' },
+  { id: 'style',     label: 'Parsing color palette',           status: 'pending' },
+  { id: 'build',     label: 'Building in extracted style',      status: 'pending' },
+  { id: 'export',    label: 'Packaging Roblox-ready output',    status: 'pending' },
 ]
 
 // ─── Upload Zone ──────────────────────────────────────────────────────────────
@@ -72,10 +96,12 @@ function UploadZone({
   onFile,
   preview,
   disabled,
+  mode,
 }: {
   onFile: (file: File) => void
   preview: string | null
   disabled: boolean
+  mode: Mode
 }) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -94,6 +120,10 @@ function UploadZone({
     const file = e.target.files?.[0]
     if (file) onFile(file)
   }
+
+  const placeholder = mode === 'style-transfer'
+    ? 'Drop a game screenshot to extract its style'
+    : 'Drag & drop your reference image'
 
   return (
     <div
@@ -127,7 +157,6 @@ function UploadZone({
       />
 
       {preview ? (
-        /* Preview image */
         <div className="relative">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -136,7 +165,6 @@ function UploadZone({
             className="w-full object-cover rounded-xl"
             style={{ maxHeight: 280 }}
           />
-          {/* Overlay badge */}
           {!disabled && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl">
               <span className="px-4 py-2 rounded-lg bg-[#0a0a0a]/80 border border-white/20 text-sm text-white font-medium backdrop-blur-sm">
@@ -146,7 +174,6 @@ function UploadZone({
           )}
         </div>
       ) : (
-        /* Upload prompt */
         <div className="flex flex-col items-center justify-center gap-4 py-14 px-6 text-center">
           <motion.div
             animate={dragging ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
@@ -159,14 +186,16 @@ function UploadZone({
           </motion.div>
           <div>
             <p className="text-white font-semibold text-sm">
-              {dragging ? 'Drop it!' : 'Drag & drop your image'}
+              {dragging ? 'Drop it!' : placeholder}
             </p>
             <p className="text-gray-400 text-xs mt-1">
               or <span className="text-[#FFB81C]">click to browse</span> — JPG, PNG, WebP, GIF
             </p>
           </div>
           <p className="text-gray-700 text-xs">
-            Reference photos, concept art, maps, and screenshots all work great
+            {mode === 'style-transfer'
+              ? 'Screenshots of Adopt Me, Blox Fruits, and similar games work great'
+              : 'Reference photos, concept art, maps, and screenshots all work great'}
           </p>
         </div>
       )}
@@ -174,18 +203,105 @@ function UploadZone({
   )
 }
 
+// ─── Analysis Panel ───────────────────────────────────────────────────────────
+
+function AnalysisPanel({ analysis }: { analysis: ImageAnalysisResult }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-[#0A0C18] border border-[#FFB81C]/20 rounded-xl p-4 space-y-3"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+        <span className="text-xs font-semibold text-emerald-300 uppercase tracking-widest">
+          Gemini Vision Analysis
+        </span>
+        <span className="ml-auto text-[10px] text-gray-500">
+          {Math.round(analysis.confidence * 100)}% confidence
+        </span>
+      </div>
+
+      {/* Detected badge */}
+      <div className="flex flex-wrap gap-1.5">
+        <span className="px-2 py-0.5 rounded-md bg-[#FFB81C]/10 border border-[#FFB81C]/20 text-[#FFB81C] text-xs font-medium">
+          {analysis.theme}
+        </span>
+        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs">
+          {analysis.style}
+        </span>
+        {analysis.sourceGame && (
+          <span className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs">
+            {analysis.sourceGame}
+          </span>
+        )}
+        <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-gray-300 text-xs">
+          {analysis.lighting}
+        </span>
+      </div>
+
+      {/* Summary */}
+      <p className="text-xs text-gray-300 leading-relaxed">{analysis.summary}</p>
+
+      {/* Objects */}
+      {analysis.objects.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Objects Detected</p>
+          <div className="flex flex-wrap gap-1">
+            {analysis.objects.slice(0, 10).map((obj) => (
+              <span key={obj} className="px-1.5 py-0.5 bg-white/4 rounded text-[10px] text-gray-400 border border-white/6">
+                {obj}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Colors + Materials row */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Color swatches */}
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Palette</p>
+          <div className="flex gap-1">
+            {analysis.colors.slice(0, 6).map((hex) => (
+              <div
+                key={hex}
+                className="w-5 h-5 rounded-sm border border-white/10 flex-shrink-0"
+                style={{ backgroundColor: hex }}
+                title={hex}
+              />
+            ))}
+          </div>
+        </div>
+        {/* Materials */}
+        <div className="space-y-1">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Materials</p>
+          <div className="flex flex-wrap gap-1">
+            {analysis.materials.slice(0, 4).map((m) => (
+              <span key={m} className="text-[10px] text-gray-400 bg-white/4 rounded px-1 py-0.5 border border-white/6">
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 // ─── Generation Progress ──────────────────────────────────────────────────────
 
-function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
+function GenerationProgress({ steps, phase }: { steps: GenerationStep[]; phase: Phase }) {
   const doneCount = steps.filter((s) => s.status === 'done').length
   const pct = Math.round((doneCount / steps.length) * 100)
+  const label = phase === 'analyzing' ? 'Analyzing with Gemini...' : 'Generating map...'
 
   return (
     <div className="space-y-5">
-      {/* Progress bar */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-300 font-medium">Generating map...</span>
+          <span className="text-gray-300 font-medium">{label}</span>
           <span className="text-[#FFB81C] font-bold tabular-nums">{pct}%</span>
         </div>
         <div className="h-2 bg-white/8 rounded-full overflow-hidden">
@@ -197,7 +313,6 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
         </div>
       </div>
 
-      {/* Steps list */}
       <div className="space-y-2">
         {steps.map((step) => (
           <div key={step.id} className="flex items-center gap-3">
@@ -205,6 +320,12 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
               <span className="w-5 h-5 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center flex-shrink-0">
                 <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+            ) : step.status === 'error' ? (
+              <span className="w-5 h-5 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-2.5 h-2.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </span>
             ) : step.status === 'running' ? (
@@ -220,6 +341,7 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
             )}
             <span className={`text-sm transition-colors ${
               step.status === 'done' ? 'text-gray-400 line-through' :
+              step.status === 'error' ? 'text-red-400' :
               step.status === 'running' ? 'text-white' : 'text-gray-500'
             }`}>
               {step.label}
@@ -233,12 +355,18 @@ function GenerationProgress({ steps }: { steps: GenerationStep[] }) {
 
 // ─── Result Preview ───────────────────────────────────────────────────────────
 
-function ResultPreview({ inputImage }: { inputImage: string | null }) {
+function ResultPreview({
+  inputImage,
+  analysis,
+  result,
+}: {
+  inputImage: string | null
+  analysis: ImageAnalysisResult | null
+  result: GenerationResult | null
+}) {
   return (
     <div className="space-y-4">
-      {/* Before / After */}
       <div className="grid grid-cols-2 gap-3">
-        {/* Input */}
         <div className="space-y-2">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">Your Image</p>
           <div className="rounded-xl overflow-hidden border border-white/10 bg-[#080B16]" style={{ minHeight: 140 }}>
@@ -253,14 +381,12 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
           </div>
         </div>
 
-        {/* Generated map placeholder */}
         <div className="space-y-2">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">Generated Map</p>
           <div
             className="rounded-xl overflow-hidden border border-[#FFB81C]/20 bg-[#080B16] relative"
             style={{ minHeight: 140 }}
           >
-            {/* Procedural terrain grid placeholder */}
             <svg className="absolute inset-0 w-full h-full opacity-30" aria-hidden="true">
               <defs>
                 <pattern id="terrain-grid" width="16" height="16" patternUnits="userSpaceOnUse">
@@ -269,16 +395,24 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
               </defs>
               <rect width="100%" height="100%" fill="url(#terrain-grid)" />
             </svg>
-
-            {/* Simulated terrain blobs */}
             <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
-              <ellipse cx="35%" cy="40%" rx="28%" ry="22%" fill="rgba(34,197,94,0.15)" />
-              <ellipse cx="65%" cy="55%" rx="22%" ry="18%" fill="rgba(34,197,94,0.1)" />
-              <ellipse cx="50%" cy="70%" rx="35%" ry="12%" fill="rgba(16,185,129,0.08)" />
-              <circle cx="70%" cy="30%" r="8%" fill="rgba(255,184,28,0.12)" />
-              <ellipse cx="20%" cy="60%" rx="15%" ry="10%" fill="rgba(59,130,246,0.15)" />
+              {analysis?.colors?.slice(0, 3).map((hex, i) => (
+                <ellipse
+                  key={hex}
+                  cx={`${25 + i * 25}%`}
+                  cy={`${40 + i * 15}%`}
+                  rx={`${20 + i * 5}%`}
+                  ry={`${15 + i * 3}%`}
+                  fill={hex}
+                  opacity={0.15}
+                />
+              )) ?? (
+                <>
+                  <ellipse cx="35%" cy="40%" rx="28%" ry="22%" fill="rgba(34,197,94,0.15)" />
+                  <ellipse cx="65%" cy="55%" rx="22%" ry="18%" fill="rgba(34,197,94,0.1)" />
+                </>
+              )}
             </svg>
-
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-2xl">🗺️</span>
@@ -289,20 +423,37 @@ function ResultPreview({ inputImage }: { inputImage: string | null }) {
         </div>
       </div>
 
+      {/* Result message */}
+      {result?.message && (
+        <div className="bg-white/4 border border-white/8 rounded-xl p-3">
+          <p className="text-xs text-gray-300 leading-relaxed">{result.message}</p>
+          {result.tokensUsed > 0 && (
+            <p className="text-[10px] text-gray-600 mt-1">{result.tokensUsed} tokens used</p>
+          )}
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {RESULT_STATS.map((stat, i) => (
-          <AnimatedCard
-            key={stat.label}
-            index={i}
-            className="bg-[#141414] border border-white/8 rounded-xl p-3 text-center space-y-1"
-          >
-            <span className="text-base">{stat.icon}</span>
-            <p className="text-[#FFB81C] font-bold text-base">{stat.value}</p>
-            <p className="text-gray-400 text-xs">{stat.label}</p>
-          </AnimatedCard>
-        ))}
-      </div>
+      {analysis && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { label: 'Theme',     value: analysis.theme.split(' ').slice(0, 2).join(' '), icon: '🎨' },
+            { label: 'Style',     value: analysis.style,                                  icon: '✨' },
+            { label: 'Objects',   value: `${analysis.objects.length} detected`,           icon: '🏗️' },
+            { label: 'Materials', value: `${analysis.materials.length} matched`,          icon: '🧱' },
+          ].map((stat, i) => (
+            <AnimatedCard
+              key={stat.label}
+              index={i}
+              className="bg-[#141414] border border-white/8 rounded-xl p-3 text-center space-y-1"
+            >
+              <span className="text-base">{stat.icon}</span>
+              <p className="text-[#FFB81C] font-bold text-xs truncate">{stat.value}</p>
+              <p className="text-gray-400 text-xs">{stat.label}</p>
+            </AnimatedCard>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -320,31 +471,74 @@ function OptionsPanel({
 }) {
   return (
     <div className="space-y-5">
-      {/* Biome */}
+      {/* Mode toggle */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Biome Type</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {BIOME_OPTIONS.map((b) => (
+        <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Mode</label>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { value: 'generate' as Mode, label: 'Generate Map', desc: 'Convert image into terrain' },
+            { value: 'style-transfer' as Mode, label: 'Style Transfer', desc: 'Copy a game\'s visual style' },
+          ].map((m) => (
             <button
-              key={b.value}
+              key={m.value}
               disabled={disabled}
-              onClick={() => onChange({ ...options, biome: b.value })}
-              title={b.desc}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all text-xs disabled:opacity-40
-                ${options.biome === b.value
+              onClick={() => onChange({ ...options, mode: m.value })}
+              className={`px-3 py-2.5 rounded-xl border text-left transition-all text-xs disabled:opacity-40
+                ${options.mode === m.value
                   ? 'border-[#FFB81C]/50 bg-[#FFB81C]/8 text-white shadow-[0_0_12px_rgba(255,184,28,0.1)]'
                   : 'border-white/8 bg-[#0A0C18] text-gray-300 hover:border-white/15 hover:text-gray-200'
                 }`}
             >
-              <span className="text-base flex-shrink-0">{b.icon}</span>
-              <span className="font-medium">{b.label}</span>
+              <p className="font-semibold">{m.label}</p>
+              <p className="text-gray-500 text-[10px] mt-0.5">{m.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
+      {/* Style transfer: user prompt */}
+      {options.mode === 'style-transfer' && (
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">
+            What to build in that style
+          </label>
+          <input
+            type="text"
+            value={options.userPrompt}
+            onChange={(e) => onChange({ ...options, userPrompt: e.target.value })}
+            disabled={disabled}
+            placeholder='e.g. "a house", "a town square", "a shop"'
+            className="w-full bg-[#0A0C18] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-40"
+          />
+        </div>
+      )}
+
+      {/* Biome — shown in generate mode */}
+      {options.mode === 'generate' && (
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Biome Type</label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {BIOME_OPTIONS.map((b) => (
+              <button
+                key={b.value}
+                disabled={disabled}
+                onClick={() => onChange({ ...options, biome: b.value })}
+                title={b.desc}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all text-xs disabled:opacity-40
+                  ${options.biome === b.value
+                    ? 'border-[#FFB81C]/50 bg-[#FFB81C]/8 text-white shadow-[0_0_12px_rgba(255,184,28,0.1)]'
+                    : 'border-white/8 bg-[#0A0C18] text-gray-300 hover:border-white/15 hover:text-gray-200'
+                  }`}
+              >
+                <span className="text-base flex-shrink-0">{b.icon}</span>
+                <span className="font-medium">{b.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        {/* Scale */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Map Scale</label>
           <div className="grid grid-cols-2 gap-1.5">
@@ -366,7 +560,6 @@ function OptionsPanel({
           </div>
         </div>
 
-        {/* Detail */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Detail Level</label>
           <div className="grid grid-cols-2 gap-1.5">
@@ -396,53 +589,180 @@ function OptionsPanel({
   )
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // result is a data URI: data:<mimeType>;base64,<data>
+      const [header, data] = result.split(',')
+      const mimeType = header.replace('data:', '').replace(';base64', '')
+      resolve({ base64: data, mimeType })
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function analyzeImage(file: File): Promise<ImageAnalysisResult> {
+  const { base64, mimeType } = await fileToBase64(file)
+  const res = await fetch('/api/ai/analyze-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ base64, mimeType }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error((err as { error?: string }).error ?? `Analysis failed: ${res.status}`)
+  }
+  return res.json() as Promise<ImageAnalysisResult>
+}
+
+async function generateBuild(
+  analysis: ImageAnalysisResult,
+  options: GenerationOptions
+): Promise<GenerationResult> {
+  const buildType = options.mode === 'style-transfer' && options.userPrompt.trim()
+    ? options.userPrompt.trim()
+    : analysis.theme
+
+  const res = await fetch('/api/ai/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: options.mode === 'style-transfer'
+        ? `Build a ${buildType} in the exact visual style of the reference image. Style: ${analysis.style}. Colors: ${analysis.colors.slice(0, 4).join(', ')}. Materials: ${analysis.materials.join(', ')}. Lighting: ${analysis.lighting}.`
+        : `Generate a ${options.biome === 'auto' ? analysis.theme : options.biome} map based on the reference image analysis: ${analysis.summary}. Scale: ${options.scale}. Detail: ${options.detail}. Include: ${analysis.objects.slice(0, 8).join(', ')}.`,
+      imageAnalysis: analysis,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }))
+    throw new Error((err as { error?: string }).error ?? `Generation failed: ${res.status}`)
+  }
+  const data = await res.json() as { result?: string; tokensUsed?: number }
+  return {
+    success: true,
+    message: data.result ?? 'Build generated successfully.',
+    tokensUsed: data.tokensUsed ?? 0,
+  }
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ImageToMapPage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [phase, setPhase] = useState<Phase>('idle')
-  const [steps, setSteps] = useState<GenerationStep[]>(GENERATION_STEPS)
+  const [steps, setSteps] = useState<GenerationStep[]>(GENERATION_STEPS_GENERATE)
   const [options, setOptions] = useState<GenerationOptions>({
     biome: 'auto',
     scale: 'medium',
     detail: 'high',
+    mode: 'generate',
+    userPrompt: '',
   })
+  const [analysis, setAnalysis] = useState<ImageAnalysisResult | null>(null)
+  const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const handleFile = useCallback((f: File) => {
     setFile(f)
     setPreview(URL.createObjectURL(f))
     setPhase('idle')
-    setSteps(GENERATION_STEPS.map((s) => ({ ...s, status: 'pending' })))
+    setAnalysis(null)
+    setGenerationResult(null)
+    setErrorMessage(null)
+  }, [])
+
+  const handleModeChange = useCallback((newOptions: GenerationOptions) => {
+    setOptions(newOptions)
+    const newSteps = newOptions.mode === 'style-transfer'
+      ? GENERATION_STEPS_STYLE.map((s) => ({ ...s, status: 'pending' as const }))
+      : GENERATION_STEPS_GENERATE.map((s) => ({ ...s, status: 'pending' as const }))
+    setSteps(newSteps)
+  }, [])
+
+  const markStep = useCallback((id: string, status: GenerationStep['status']) => {
+    setSteps((prev) => prev.map((s) => s.id === id ? { ...s, status } : s))
   }, [])
 
   const handleGenerate = useCallback(async () => {
-    if (!file || phase === 'generating') return
+    if (!file || phase === 'analyzing' || phase === 'generating') return
 
-    setPhase('generating')
-    const freshSteps = GENERATION_STEPS.map((s) => ({ ...s, status: 'pending' as const }))
-    setSteps(freshSteps)
+    const baseSteps = options.mode === 'style-transfer'
+      ? GENERATION_STEPS_STYLE
+      : GENERATION_STEPS_GENERATE
+    setSteps(baseSteps.map((s) => ({ ...s, status: 'pending' as const })))
+    setAnalysis(null)
+    setGenerationResult(null)
+    setErrorMessage(null)
 
-    for (let i = 0; i < freshSteps.length; i++) {
-      // Mark current as running
-      setSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, status: 'running' } : s))
-      await new Promise((res) => setTimeout(res, freshSteps[i].durationMs))
-      // Mark done
-      setSteps((prev) => prev.map((s, idx) => idx === i ? { ...s, status: 'done' } : s))
+    try {
+      // ── Phase 1: Gemini analysis ─────────────────────────────────────────
+      setPhase('analyzing')
+      markStep('upload', 'running')
+      await new Promise((r) => setTimeout(r, 400)) // let UI render
+      markStep('upload', 'done')
+
+      markStep('gemini', 'running')
+      let imageAnalysis: ImageAnalysisResult
+      try {
+        imageAnalysis = await analyzeImage(file)
+        setAnalysis(imageAnalysis)
+      } catch (err) {
+        markStep('gemini', 'error')
+        throw err
+      }
+      markStep('gemini', 'done')
+
+      // Style-transfer extra step
+      if (options.mode === 'style-transfer') {
+        markStep('style', 'running')
+        await new Promise((r) => setTimeout(r, 500))
+        markStep('style', 'done')
+      }
+
+      // ── Phase 2: Build generation ────────────────────────────────────────
+      setPhase('generating')
+      const buildStepIds = options.mode === 'style-transfer'
+        ? ['build']
+        : ['terrain', 'biome', 'assets', 'lighting']
+
+      for (const id of buildStepIds) {
+        markStep(id, 'running')
+        await new Promise((r) => setTimeout(r, 700 + Math.random() * 500))
+        markStep(id, 'done')
+      }
+
+      // Actual API call
+      markStep('export', 'running')
+      const result = await generateBuild(imageAnalysis, options)
+      setGenerationResult(result)
+      markStep('export', 'done')
+
+      setPhase('done')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setErrorMessage(msg)
+      setPhase('error')
     }
-
-    setPhase('done')
-  }, [file, phase])
+  }, [file, phase, options, markStep])
 
   const reset = () => {
     setFile(null)
     if (preview) URL.revokeObjectURL(preview)
     setPreview(null)
     setPhase('idle')
-    setSteps(GENERATION_STEPS.map((s) => ({ ...s, status: 'pending' })))
+    setAnalysis(null)
+    setGenerationResult(null)
+    setErrorMessage(null)
+    setSteps(GENERATION_STEPS_GENERATE.map((s) => ({ ...s, status: 'pending' })))
   }
 
-  const isGenerating = phase === 'generating'
+  const isWorking = phase === 'analyzing' || phase === 'generating'
   const isDone = phase === 'done'
 
   return (
@@ -462,8 +782,8 @@ export default function ImageToMapPage() {
           </span>
         </h1>
         <p className="text-gray-300 text-base max-w-xl leading-relaxed">
-          Upload a photo, concept sketch, or reference image. Our AI converts it into a
-          fully playable Roblox terrain in under 60 seconds.
+          Upload a reference image or game screenshot. Gemini Vision analyzes colors,
+          materials, and style — then the AI generates matching Luau code for Roblox Studio.
         </p>
       </div>
 
@@ -475,10 +795,10 @@ export default function ImageToMapPage() {
             <UploadZone
               onFile={handleFile}
               preview={preview}
-              disabled={isGenerating}
+              disabled={isWorking}
+              mode={options.mode}
             />
 
-            {/* Options */}
             <AnimatePresence>
               {(file || isDone) && (
                 <motion.div
@@ -491,14 +811,27 @@ export default function ImageToMapPage() {
                   <div className="pt-1 border-t border-white/8">
                     <OptionsPanel
                       options={options}
-                      onChange={setOptions}
-                      disabled={isGenerating}
+                      onChange={handleModeChange}
+                      disabled={isWorking}
                     />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </GlowCard>
+
+          {/* Analysis panel — shown after Gemini responds */}
+          <AnimatePresence>
+            {analysis && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <AnalysisPanel analysis={analysis} />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Action buttons */}
           <div className="flex gap-3">
@@ -520,20 +853,36 @@ export default function ImageToMapPage() {
                   New Map
                 </button>
               </>
+            ) : phase === 'error' ? (
+              <>
+                <button
+                  onClick={handleGenerate}
+                  disabled={!file}
+                  className="flex-1 h-11 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={reset}
+                  className="h-11 px-5 rounded-xl border border-white/15 text-gray-300 hover:border-white/25 hover:text-white text-sm font-medium transition-colors"
+                >
+                  Reset
+                </button>
+              </>
             ) : (
               <button
                 onClick={handleGenerate}
-                disabled={!file || isGenerating}
+                disabled={!file || isWorking}
                 className="flex-1 h-11 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#0a0a0a] text-sm font-bold transition-all duration-150 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.2)]"
               >
-                {isGenerating ? (
+                {isWorking ? (
                   <>
                     <span className="w-4 h-4 border-2 border-[#0a0a0a]/30 border-t-[#0a0a0a] rounded-full animate-spin" />
-                    Generating...
+                    {phase === 'analyzing' ? 'Analyzing...' : 'Generating...'}
                   </>
                 ) : (
                   <>
-                    Generate Map
+                    {options.mode === 'style-transfer' ? 'Transfer Style' : 'Generate Map'}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                     </svg>
@@ -558,8 +907,8 @@ export default function ImageToMapPage() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Tips for best results</p>
                 {[
                   { icon: '🌅', tip: 'Aerial or top-down shots generate more accurate terrain' },
-                  { icon: '🎨', tip: 'High contrast images produce better biome detection' },
-                  { icon: '🗺️', tip: 'Concept maps and sketches work just as well as photos' },
+                  { icon: '🎮', tip: 'Game screenshots work great for style transfer — try Adopt Me or Blox Fruits' },
+                  { icon: '🎨', tip: 'High contrast images produce better biome and color detection' },
                   { icon: '📐', tip: 'Landscape orientation (16:9) generates the fullest map' },
                 ].map((item, i) => (
                   <AnimatedCard
@@ -593,28 +942,40 @@ export default function ImageToMapPage() {
                     <span className="text-white font-medium">{(file.size / 1024).toFixed(0)} KB</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Biome</span>
-                    <span className="text-[#FFB81C] font-medium capitalize">{options.biome === 'auto' ? 'Auto detect' : options.biome}</span>
+                    <span>Mode</span>
+                    <span className="text-[#FFB81C] font-medium capitalize">
+                      {options.mode === 'style-transfer' ? 'Style Transfer' : 'Map Generate'}
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>Scale</span>
-                    <span className="text-white font-medium capitalize">{options.scale}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Detail</span>
-                    <span className="text-white font-medium capitalize">{options.detail}</span>
-                  </div>
+                  {options.mode === 'generate' && (
+                    <div className="flex items-center justify-between">
+                      <span>Biome</span>
+                      <span className="text-[#FFB81C] font-medium capitalize">
+                        {options.biome === 'auto' ? 'Auto detect' : options.biome}
+                      </span>
+                    </div>
+                  )}
+                  {options.mode === 'style-transfer' && options.userPrompt && (
+                    <div className="flex items-center justify-between">
+                      <span>Build</span>
+                      <span className="text-white font-medium truncate max-w-[130px]">{options.userPrompt}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2 border-t border-white/8">
                   <div className="flex items-center gap-2 text-xs text-gray-400">
                     <span className="text-[#FFB81C]">⚡</span>
-                    <span>Est. cost: <span className="text-[#FFB81C] font-semibold">~45 tokens</span></span>
+                    <span>Step 1: Gemini Vision analysis</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                    <span className="text-[#FFB81C]">⚡</span>
+                    <span>Step 2: Claude Luau generation</span>
                   </div>
                 </div>
               </motion.div>
             )}
 
-            {isGenerating && (
+            {isWorking && (
               <motion.div
                 key="generating"
                 initial={{ opacity: 0, y: 8 }}
@@ -622,7 +983,28 @@ export default function ImageToMapPage() {
                 exit={{ opacity: 0 }}
                 className="bg-[#141414] border border-white/8 rounded-2xl p-5"
               >
-                <GenerationProgress steps={steps} />
+                <GenerationProgress steps={steps} phase={phase} />
+              </motion.div>
+            )}
+
+            {phase === 'error' && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="bg-red-500/10 border border-red-500/25 rounded-2xl p-5 space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-red-300">Analysis failed</span>
+                </div>
+                {errorMessage && (
+                  <p className="text-xs text-red-400 leading-relaxed">{errorMessage}</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  Make sure GEMINI_API_KEY is configured in your environment.
+                </p>
               </motion.div>
             )}
 
@@ -634,19 +1016,22 @@ export default function ImageToMapPage() {
                 exit={{ opacity: 0 }}
                 className="space-y-4"
               >
-                {/* Success banner */}
                 <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl">
                   <span className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0" />
                   <span className="text-sm text-emerald-300 font-medium">Map generated successfully!</span>
                 </div>
-                <ResultPreview inputImage={preview} />
+                <ResultPreview
+                  inputImage={preview}
+                  analysis={analysis}
+                  result={generationResult}
+                />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
 
-      {/* ── Feature strip at bottom ── */}
+      {/* ── Feature strip ── */}
       {phase === 'idle' && !file && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -655,9 +1040,9 @@ export default function ImageToMapPage() {
           className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2"
         >
           {[
-            { icon: '⚡', title: 'Under 60 Seconds', desc: 'From image to playable Roblox terrain faster than any manual workflow.' },
-            { icon: '🎯', title: '94% Biome Accuracy', desc: 'Claude Vision identifies biome type, elevation, and foliage density automatically.' },
-            { icon: '📦', title: 'Marketplace Ready', desc: 'Assets are sourced from the Roblox marketplace and placed at correct scale.' },
+            { icon: '🔍', title: 'Gemini Vision', desc: 'Analyzes colors, materials, objects, and lighting from your reference image.' },
+            { icon: '🎮', title: 'Style Transfer', desc: 'Upload an Adopt Me screenshot — AI builds anything in that exact visual style.' },
+            { icon: '📦', title: 'Luau Code Output', desc: 'Get a complete runnable build script ready to paste into Roblox Studio.' },
           ].map((feat, i) => (
             <AnimatedCard
               key={feat.title}

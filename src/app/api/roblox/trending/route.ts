@@ -1,62 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const CATEGORY_MAP: Record<string, string> = {
+// Valid subcategory values confirmed against catalog.roblox.com/v1/search/items/details
+const SUBCATEGORY_MAP: Record<string, string> = {
   models:  'Models',
-  meshes:  'MeshPart',
+  meshes:  'Meshes',
   audio:   'Audio',
   images:  'Decals',
   plugins: 'Plugins',
   all:     '',
 }
 
-// Curated search terms that surface high-quality, popular assets
+// Curated keywords that surface high-quality, popular assets per category
 const TRENDING_QUERIES: Record<string, string> = {
   models:  'building',
-  meshes:  'mesh',
-  audio:   'music',
+  meshes:  'mesh part',
+  audio:   'background music',
   images:  'texture',
-  plugins: 'studio',
-  all:     'popular',
+  plugins: 'studio plugin',
+  all:     'game asset',
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const category = (searchParams.get('category') ?? 'models').toLowerCase()
+  const category = (searchParams.get('category') ?? 'all').toLowerCase()
 
-  const robloxCategory = CATEGORY_MAP[category] ?? ''
-  const keyword = TRENDING_QUERIES[category] ?? 'popular'
+  const subcategory = SUBCATEGORY_MAP[category] ?? ''
+  const keyword     = TRENDING_QUERIES[category] ?? 'game asset'
 
-  const url = new URL('https://catalog.roblox.com/v1/search/items')
+  // Use /details endpoint — base endpoint only returns id+itemType, no names/prices
+  // Allowed limit values: 10, 28, 30, 50, 60, 100, 120
+  const url = new URL('https://catalog.roblox.com/v1/search/items/details')
   url.searchParams.set('keyword', keyword)
-  url.searchParams.set('limit', '20')
-  url.searchParams.set('includeNotForSale', 'false')
-  url.searchParams.set('sortType', 'Relevance')
-  if (robloxCategory) url.searchParams.set('category', robloxCategory)
+  url.searchParams.set('limit', '30')
+  if (subcategory) url.searchParams.set('subcategory', subcategory)
 
   try {
     const res = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; ForjeGames/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; RobloxMapBuilder/1.0)',
       },
       next: { revalidate: 300 },
     })
 
     if (!res.ok) {
-      return NextResponse.json({ error: 'Roblox catalog unavailable', status: res.status }, { status: 502 })
+      const text = await res.text()
+      console.error('[roblox/trending] catalog error:', res.status, text.slice(0, 300))
+      return NextResponse.json(
+        { error: 'Roblox catalog unavailable', status: res.status },
+        { status: 502 },
+      )
     }
 
     const catalogData = await res.json()
     const items = catalogData?.data ?? []
 
-    // Batch thumbnails
+    // Batch-fetch thumbnails
     const assetIds = items.map((i: { id: number }) => i.id)
-    let thumbnailMap: Record<number, string> = {}
+    const thumbnailMap: Record<number, string> = {}
+
     if (assetIds.length > 0) {
       try {
         const thumbRes = await fetch(
           `https://thumbnails.roblox.com/v1/assets?assetIds=${assetIds.join(',')}&returnPolicy=PlaceHolder&size=150x150&format=Png&isCircular=false`,
-          { next: { revalidate: 3600 } }
+          { next: { revalidate: 3600 } },
         )
         if (thumbRes.ok) {
           const thumbJson = await thumbRes.json()
@@ -65,7 +72,7 @@ export async function GET(req: NextRequest) {
           }
         }
       } catch {
-        // Optional
+        // Thumbnails are optional — continue without them
       }
     }
 

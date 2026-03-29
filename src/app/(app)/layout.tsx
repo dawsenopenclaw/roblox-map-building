@@ -13,16 +13,18 @@ import { AnalyticsProvider } from '@/components/AnalyticsProvider'
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // 1. Clerk auth check — unauthenticated → sign-in (independent of DB)
-  // TEMPORARY: Skip redirect when Clerk test keys can't work on production domain
+  // Skip redirect in demo mode (DEMO_MODE=true) so the full site is accessible.
+  const demoMode = process.env.DEMO_MODE === 'true'
   let userId: string | null = null
-  try {
-    const session = await auth()
-    userId = session.userId
-  } catch {
-    // Clerk unavailable or misconfigured — allow access in demo mode
+  if (!demoMode) {
+    try {
+      const session = await auth()
+      userId = session.userId
+    } catch {
+      // Clerk unavailable or misconfigured — allow access rather than locking users out.
+    }
+    if (!userId) redirect('/sign-in')
   }
-  const clerkConfigured = process.env.CLERK_SECRET_KEY?.startsWith('sk_live_')
-  if (!userId && clerkConfigured) redirect('/sign-in')
 
   // 2. DB lookup with graceful fallback (never throws)
   const user = await requireAuthUser().catch(() => null)
