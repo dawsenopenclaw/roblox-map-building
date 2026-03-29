@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 interface PurchaseButtonProps {
   templateId: string
@@ -11,6 +12,7 @@ interface PurchaseButtonProps {
 
 export function PurchaseButton({ templateId, priceCents, title, isFree }: PurchaseButtonProps) {
   const router = useRouter()
+  const { track } = useAnalytics()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,8 +28,10 @@ export function PurchaseButton({ templateId, priceCents, title, isFree }: Purcha
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'Purchase failed')
+        track('error_encountered', { errorType: 'template_purchase_failed', message: data.error, page: `/marketplace/${templateId}` })
         return
       }
+      track('template_purchased', { templateId, templateTitle: title, priceCents, isFree })
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl
       } else if (data.success) {
@@ -35,6 +39,7 @@ export function PurchaseButton({ templateId, priceCents, title, isFree }: Purcha
       }
     } catch {
       setError('Network error — please try again')
+      track('error_encountered', { errorType: 'network_error', page: `/marketplace/${templateId}` })
     } finally {
       setLoading(false)
     }

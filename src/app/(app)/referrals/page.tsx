@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 type ReferralStats = {
   code: string
@@ -21,6 +22,7 @@ type ReferralStats = {
 }
 
 export default function ReferralsPage() {
+  const { track } = useAnalytics()
   const [data, setData] = useState<ReferralStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -45,6 +47,7 @@ export default function ReferralsPage() {
     if (!data) return
     navigator.clipboard.writeText(data.referralUrl)
     setCopied(true)
+    track('referral_link_shared', { channel: 'clipboard' })
     setTimeout(() => setCopied(false), 2000)
   }
 

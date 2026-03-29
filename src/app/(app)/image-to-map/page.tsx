@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useRef } from 'react'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 type ProcessingStep = 'idle' | 'uploading' | 'analyzing' | 'generating' | 'placing' | 'done' | 'error'
 
@@ -57,6 +58,7 @@ function StepIndicator({ current }: { current: ProcessingStep }) {
 }
 
 export default function ImageToMapPage() {
+  const { track } = useAnalytics()
   const [step, setStep] = useState<ProcessingStep>('idle')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -70,10 +72,15 @@ export default function ImageToMapPage() {
       return
     }
 
+    const fileSizeMb = Math.round((file.size / 1024 / 1024) * 100) / 100
+    track('image_map_started', { fileType: file.type, fileSizeMb })
+
     // Preview
     const url = URL.createObjectURL(file)
     setImageUrl(url)
     setStep('uploading')
+
+    const startTime = Date.now()
 
     // Simulate AI processing pipeline
     // Real implementation calls /api/image-to-map in Phase 5
@@ -84,7 +91,9 @@ export default function ImageToMapPage() {
       setTokenCost(c => c + Math.floor(Math.random() * 80 + 40))
     }
     setStep('done')
-  }, [])
+
+    track('image_map_completed', { durationMs: Date.now() - startTime, tokensUsed: tokenCost })
+  }, [track, tokenCost])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()

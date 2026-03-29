@@ -5,6 +5,7 @@ import { getAuthUser } from '@/lib/clerk'
 import { TierBadge } from '@/components/TierBadge'
 import { PurchaseButton } from './PurchaseButton'
 import { ReviewForm } from './ReviewForm'
+import { captureServerEvent } from '@/lib/analytics'
 
 function StarDisplay({ rating }: { rating: number }) {
   return (
@@ -57,6 +58,15 @@ export default async function TemplateDetailPage({
   ])
 
   if (!template || template.status !== 'PUBLISHED') notFound()
+
+  // Fire template_viewed analytics (server-side, non-blocking)
+  if (user) {
+    void captureServerEvent(user.clerkId, 'template_viewed', {
+      templateId: template.id,
+      templateTitle: template.title,
+      priceCents: template.priceCents,
+    })
+  }
 
   // Check if user purchased this template
   let hasPurchased = false

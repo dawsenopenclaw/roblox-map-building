@@ -3,6 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { TOKEN_PACKS } from '@/lib/subscription-tiers'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -41,6 +42,7 @@ function UsageChart({ data }: { data: typeof USAGE_DATA }) {
 }
 
 export default function BillingPage() {
+  const { track } = useAnalytics()
   const { data: balance } = useSWR('/api/tokens/balance', fetcher)
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -51,9 +53,13 @@ export default function BillingPage() {
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
+      if (data.url) {
+        track('subscription_upgraded', { fromTier: 'unknown', toTier: 'portal' })
+        window.location.href = data.url
+      }
     } catch {
       alert('Could not open billing portal. Try again.')
+      track('error_encountered', { errorType: 'billing_portal_failed', page: '/billing' })
     } finally {
       setPortalLoading(false)
     }
@@ -68,9 +74,13 @@ export default function BillingPage() {
         body: JSON.stringify({ type: 'token_pack', packSlug }),
       })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
+      if (data.url) {
+        track('token_purchased', { packSlug })
+        window.location.href = data.url
+      }
     } catch {
       alert('Could not start checkout. Try again.')
+      track('error_encountered', { errorType: 'token_checkout_failed', page: '/billing' })
     } finally {
       setBuyingPack(null)
     }
