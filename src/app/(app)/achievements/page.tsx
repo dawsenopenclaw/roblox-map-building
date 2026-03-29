@@ -1,15 +1,7 @@
 'use client'
-import useSWR from 'swr'
+
+import { useState } from 'react'
 import { ACHIEVEMENTS } from '@/lib/achievements'
-import { ShareButtons } from '@/components/ShareButtons'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
-
-const fetcher = (url: string) =>
-  fetch(url).then((r) => {
-    if (!r.ok) throw new Error(`HTTP ${r.status}`)
-    return r.json()
-  })
 
 const CATEGORY_LABELS: Record<string, string> = {
   FIRST_STEPS: 'First Steps',
@@ -20,157 +12,85 @@ const CATEGORY_LABELS: Record<string, string> = {
   EXPLORATION: 'Exploration',
 }
 
-const CATEGORY_ORDER = ['FIRST_STEPS', 'VELOCITY', 'MARKETPLACE', 'COMMUNITY', 'QUALITY', 'EXPLORATION']
-
-interface Achievement {
-  slug: string
-  name: string
-  description: string
-  icon: string
-  category: string
-  xpReward: number
-  unlocked: boolean
-  unlockedAt: string | null
-}
-
-/** All 30 achievements in locked state — used as fallback when the API is unavailable */
-const LOCKED_FALLBACK: Achievement[] = ACHIEVEMENTS.map((a) => ({
-  slug: a.slug,
-  name: a.name,
-  description: a.description,
-  icon: a.icon,
-  category: a.category as string,
-  xpReward: a.xpReward,
-  unlocked: false,
-  unlockedAt: null,
-}))
+const TABS = ['All', 'First Steps', 'Velocity', 'Marketplace', 'Community', 'Quality', 'Exploration']
 
 export default function AchievementsPage() {
-  const { data, isLoading, error } = useSWR('/api/gamification/achievements', fetcher)
+  const [activeTab, setActiveTab] = useState('All')
 
-  // On any API/network/DB error fall back to showing all achievements as locked
-  const isFallback = !!error || data?._fallback === true
+  const filtered =
+    activeTab === 'All'
+      ? ACHIEVEMENTS
+      : ACHIEVEMENTS.filter(
+          (a) => CATEGORY_LABELS[a.category as string] === activeTab
+        )
 
-  const achievements: Achievement[] = isFallback
-    ? LOCKED_FALLBACK
-    : (data?.achievements ?? LOCKED_FALLBACK)
-
-  const unlockedCount: number = isFallback ? 0 : (data?.unlockedCount ?? 0)
-  const total: number = achievements.length
-
-  const grouped = CATEGORY_ORDER.reduce<Record<string, Achievement[]>>((acc, cat) => {
-    acc[cat] = achievements.filter((a) => a.category === cat)
-    return acc
-  }, {})
-
-  if (isLoading) {
-    return (
-      <div className="max-w-5xl mx-auto animate-pulse">
-        <div className="h-8 bg-white/10 rounded w-48 mb-8" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-32 bg-white/5 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const total = ACHIEVEMENTS.length
+  const unlocked = 0
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Fallback notice */}
-      {isFallback && (
-        <div className="mb-4 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs">
-          Achievement progress is temporarily unavailable. Showing all achievements as locked.
-        </div>
-      )}
-
+    <div className="max-w-5xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Achievements</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {unlockedCount} / {total} unlocked
-          </p>
-        </div>
-        {/* Progress percentage */}
-        <div className="text-right">
-          <p className="text-3xl font-bold text-[#FFB81C]">
-            {total > 0 ? Math.round((unlockedCount / total) * 100) : 0}%
-          </p>
-          <p className="text-xs text-gray-500">complete</p>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold text-white">Achievements</h1>
+      <p className="text-gray-400 text-sm mt-1">
+        {unlocked}/{total} unlocked
+      </p>
 
-      {/* Overall progress bar */}
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-8">
+      {/* Progress bar */}
+      <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
         <div
           className="h-full bg-[#FFB81C] rounded-full transition-all duration-700"
-          style={{ width: `${total > 0 ? (unlockedCount / total) * 100 : 0}%` }}
+          style={{ width: `${total > 0 ? (unlocked / total) * 100 : 0}%` }}
         />
       </div>
+      <p className="text-xs text-gray-500 mt-1">
+        {total > 0 ? Math.round((unlocked / total) * 100) : 0}% complete
+      </p>
 
-      {/* Categories */}
-      {CATEGORY_ORDER.map((cat) => {
-        const catAchievements = grouped[cat] ?? []
-        if (catAchievements.length === 0) return null
-        const catUnlocked = catAchievements.filter((a) => a.unlocked).length
-        return (
-          <div key={cat} className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-white">
-                {CATEGORY_LABELS[cat] ?? cat}
-              </h2>
-              <span className="text-xs text-gray-500">
-                {catUnlocked}/{catAchievements.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {catAchievements.map((achievement) => (
-                <div
-                  key={achievement.slug}
-                  className={`bg-[#0D1231] border rounded-xl p-3 text-center transition-all flex flex-col items-center ${
-                    achievement.unlocked
-                      ? 'border-[#FFB81C]/30 ring-1 ring-[#FFB81C]/10'
-                      : 'border-white/10 opacity-50 grayscale'
-                  }`}
-                >
-                  <div className="text-3xl mb-2">{achievement.icon}</div>
-                  <p
-                    className={`text-xs font-semibold mb-1 ${
-                      achievement.unlocked ? 'text-white' : 'text-gray-400'
-                    }`}
-                  >
-                    {achievement.name}
-                  </p>
-                  <p className="text-xs text-gray-500 leading-tight">{achievement.description}</p>
-                  {achievement.xpReward > 0 && (
-                    <div className="mt-2 inline-flex items-center gap-1 bg-[#FFB81C]/10 px-1.5 py-0.5 rounded-full">
-                      <span className="text-[10px] text-[#FFB81C] font-bold">
-                        +{achievement.xpReward} XP
-                      </span>
-                    </div>
-                  )}
-                  {achievement.unlocked && achievement.unlockedAt && (
-                    <p className="text-[10px] text-gray-600 mt-1">
-                      {new Date(achievement.unlockedAt).toLocaleDateString()}
-                    </p>
-                  )}
-                  {achievement.unlocked && (
-                    <div className="mt-2 w-full overflow-hidden">
-                      <ShareButtons
-                        url={`${APP_URL}/achievements`}
-                        text={`I just unlocked "${achievement.name}" on RobloxForge! ${achievement.icon} ${achievement.description}`}
-                        compact
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-2 mt-6 mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              activeTab === tab
+                ? 'bg-[#FFB81C] text-black'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        {filtered.map((achievement) => (
+          <div
+            key={achievement.slug}
+            className="bg-[#0D1231] border border-white/10 rounded-xl p-4 flex flex-col items-center text-center opacity-60"
+          >
+            <div className="text-4xl mb-3">{achievement.icon}</div>
+            <p className="text-sm font-semibold text-gray-300 mb-1">
+              {achievement.name}
+            </p>
+            <p className="text-xs text-gray-500 leading-snug mb-3">
+              {achievement.description}
+            </p>
+            {achievement.xpReward > 0 && (
+              <div className="inline-flex items-center gap-1 bg-[#FFB81C]/10 px-2 py-0.5 rounded-full mb-2">
+                <span className="text-[11px] text-[#FFB81C] font-bold">
+                  +{achievement.xpReward} XP
+                </span>
+              </div>
+            )}
+            <div className="mt-auto pt-2 flex items-center gap-1 text-gray-600 text-xs">
+              <span>🔒</span>
+              <span>Locked</span>
             </div>
           </div>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }

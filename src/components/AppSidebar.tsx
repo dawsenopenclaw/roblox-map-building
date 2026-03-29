@@ -2,33 +2,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { GradientText } from '@/components/ui/gradient-text'
-import { Dock } from '@/components/ui/dock'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: '⬡' },
   { href: '/voice', label: 'Voice Build', icon: '🎙️' },
   { href: '/image-to-map', label: 'Image to Map', icon: '🗺️' },
   { href: '/marketplace', label: 'Marketplace', icon: '🛒' },
-  { href: '/achievements', label: 'Achievements', icon: '🏆' },
   { href: '/game-dna', label: 'Game DNA', icon: '🧬' },
   { href: '/team', label: 'Team', icon: '👥' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
-function NavIcon({ icon }: { icon: string }) {
-  return <span className="text-lg w-6 h-6 flex items-center justify-center" aria-hidden="true">{icon}</span>
-}
-
 export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname()
-
-  const dockItems = NAV_ITEMS.map((item) => ({
-    id: item.href,
-    label: item.label,
-    icon: <NavIcon icon={item.icon} />,
-    href: item.href,
-    active: pathname === item.href || pathname.startsWith(item.href + '/'),
-  }))
 
   return (
     <>
@@ -60,9 +46,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           </button>
         </div>
 
-        {/* Nav — full labels visible, dock magnification on icon area */}
         <nav className="flex-1 px-3 py-4 overflow-y-auto" aria-label="Sidebar">
-          {/* On wide sidebar we show full nav links; the Dock effect enriches the icon scaling */}
           <div className="space-y-1">
             {NAV_ITEMS.map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + '/')
