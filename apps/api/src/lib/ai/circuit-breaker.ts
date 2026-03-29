@@ -32,6 +32,8 @@ export class CircuitBreaker {
   private successes = 0
   private lastFailureTime?: number
   private lastErrorMessage?: string
+  /** True while a HALF_OPEN probe request is in flight — prevents concurrent probes */
+  private halfOpenProbeActive = false
 
   private readonly failureThreshold: number
   private readonly recoveryTimeoutMs: number
@@ -65,11 +67,13 @@ export class CircuitBreaker {
       const elapsed = Date.now() - (this.lastFailureTime ?? 0)
       if (elapsed >= this.recoveryTimeoutMs) {
         this.state = 'HALF_OPEN'
+        this.halfOpenProbeActive = false
         return true
       }
       return false
     }
-    // HALF_OPEN: allow one test request
+    // HALF_OPEN: allow exactly one probe; reject concurrent callers
+    if (this.halfOpenProbeActive) return false
     return true
   }
 
@@ -78,6 +82,7 @@ export class CircuitBreaker {
     if (this.state === 'HALF_OPEN') {
       this.state = 'CLOSED'
       this.failures = 0
+      this.halfOpenProbeActive = false
     }
   }
 
@@ -87,6 +92,7 @@ export class CircuitBreaker {
     this.lastErrorMessage = error.message
     if (this.failures >= this.failureThreshold || this.state === 'HALF_OPEN') {
       this.state = 'OPEN'
+      this.halfOpenProbeActive = false
     }
   }
 
@@ -104,6 +110,9 @@ export class CircuitBreaker {
         this.lastErrorMessage
       )
     }
+
+    // Mark probe active before executing so concurrent callers are rejected
+    if (this.state === 'HALF_OPEN') this.halfOpenProbeActive = true
 
     let lastError: Error = new Error('Unknown error')
 
@@ -142,6 +151,7 @@ export class CircuitBreaker {
     this.successes = 0
     this.lastFailureTime = undefined
     this.lastErrorMessage = undefined
+    this.halfOpenProbeActive = false
   }
 }
 

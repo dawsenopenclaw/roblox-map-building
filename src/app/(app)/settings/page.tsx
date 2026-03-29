@@ -42,7 +42,10 @@ function AccountTab() {
             D
           </div>
           <div>
-            <button className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors">
+            <button
+              onClick={() => alert('Photo upload coming soon. Use Clerk profile settings.')}
+              className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2 rounded-lg transition-colors"
+            >
               Upload photo
             </button>
             <p className="text-gray-600 text-xs mt-1">JPG or PNG. Max 2MB.</p>
@@ -113,7 +116,10 @@ function AccountTab() {
         <p className="text-gray-400 text-sm mb-4">
           Password management is handled through Clerk. Click below to update.
         </p>
-        <button className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors">
+        <button
+          onClick={() => window.open('https://accounts.clerk.dev', '_blank')}
+          className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors"
+        >
           Change password
         </button>
       </div>
@@ -254,6 +260,14 @@ function DangerTab() {
             <div className="flex gap-3">
               <button
                 disabled={deleteInput !== 'delete my account'}
+                onClick={async () => {
+                  try {
+                    await fetch('/api/user/delete', { method: 'DELETE' })
+                    window.location.href = '/sign-in'
+                  } catch {
+                    // non-fatal — user stays on page
+                  }
+                }}
                 className="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Permanently delete
@@ -274,7 +288,17 @@ function DangerTab() {
         <p className="text-gray-400 text-sm mb-4">
           Download all your projects, builds, and account data. Provided within 48 hours per GDPR/CCPA.
         </p>
-        <button className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors">
+        <button
+          onClick={async () => {
+            try {
+              await fetch('/api/user/export', { method: 'POST' })
+              alert('Export requested. You will receive an email within 48 hours.')
+            } catch {
+              alert('Failed to request export. Please try again.')
+            }
+          }}
+          className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors"
+        >
           Request data export
         </button>
       </div>

@@ -11,7 +11,7 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
-  const eventId = useEffect(() => {
+  useEffect(() => {
     Sentry.captureException(error)
   }, [error])
 

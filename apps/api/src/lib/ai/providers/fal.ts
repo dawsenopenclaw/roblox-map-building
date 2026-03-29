@@ -52,13 +52,14 @@ async function falRequest<T>(
   const base = useQueue ? FAL_QUEUE_BASE : FAL_API_BASE
   const url = `${base}/${model}`
 
+  // Fal REST API expects input fields at the top level, not nested under "input"
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Key ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ input }),
+    body: JSON.stringify(input),
   })
 
   if (!response.ok) {
@@ -162,7 +163,7 @@ export async function generateTextures(params: {
     roughness: { url: string }
     metallic?: { url: string }
     ao?: { url: string }
-  }>('fal-ai/stable-diffusion-xl/texture', input)
+  }>('fal-ai/fast-sdxl/texture', input)
 
   return {
     albedo: output.albedo.url,

@@ -116,8 +116,8 @@ export async function POST(req: NextRequest) {
   if (!category || !VALID_CATEGORIES.includes(category as TemplateCategory)) {
     return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
   }
-  if (typeof priceCents !== 'number' || priceCents < 0) {
-    return NextResponse.json({ error: 'Invalid price' }, { status: 400 })
+  if (typeof priceCents !== 'number' || !Number.isInteger(priceCents) || priceCents < 0) {
+    return NextResponse.json({ error: 'Invalid price — must be a non-negative integer (cents)' }, { status: 400 })
   }
   if (screenshots && screenshots.length > 5) {
     return NextResponse.json({ error: 'Maximum 5 screenshots allowed' }, { status: 400 })

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-// Secured by CRON_SECRET header — called by Vercel cron or GitHub Actions nightly
-export async function POST(req: NextRequest) {
+// Secured by CRON_SECRET header — called by Vercel cron (GET) or GitHub Actions nightly (POST)
+async function runSnapshot(req: NextRequest): Promise<NextResponse> {
   const secret = req.headers.get('x-cron-secret')
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -31,10 +31,15 @@ export async function POST(req: NextRequest) {
   const totalRevenue = 0
   const margin = totalRevenue > 0 ? ((totalRevenue - totalCostUsd) / totalRevenue) * 100 : 0
 
+  // Schema stores values as micro-dollars (multiply by 1_000_000 for precision)
+  const totalCostUsdMicro = Math.round(totalCostUsd * 1_000_000)
+  const totalRevenueMicro = Math.round(totalRevenue * 1_000_000)
+  const marginMicro = Math.round(margin * 1_000_000)
+
   await db.dailyCostSnapshot.upsert({
     where: { date: yesterday },
-    create: { date: yesterday, providerCosts, totalCostUsd, totalRevenue, margin },
-    update: { providerCosts, totalCostUsd, totalRevenue, margin },
+    create: { date: yesterday, providerCosts, totalCostUsdMicro, totalRevenueMicro, marginMicro },
+    update: { providerCosts, totalCostUsdMicro, totalRevenueMicro, marginMicro },
   })
 
   return NextResponse.json({

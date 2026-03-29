@@ -6,7 +6,8 @@ import { db } from '@/lib/db'
 type ClerkUserEvent = {
   type: string
   data: {
-    id: string
+    // `id` is optional on user.deleted events fired from the Clerk dashboard
+    id: string | undefined
     email_addresses: Array<{ email_address: string; id: string }>
     primary_email_address_id: string
     first_name: string | null
@@ -40,6 +41,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'user.created') {
+    const clerkId = event.data.id
+    if (!clerkId) return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
+
     const primaryEmail = event.data.email_addresses.find(
       (e) => e.id === event.data.primary_email_address_id
     )?.email_address
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest) {
     await db.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          clerkId: event.data.id,
+          clerkId,
           email: primaryEmail,
           displayName:
             [event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || null,
@@ -85,6 +89,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'user.updated') {
+    if (!event.data.id) return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
+
     const primaryEmail = event.data.email_addresses.find(
       (e) => e.id === event.data.primary_email_address_id
     )?.email_address
@@ -100,6 +106,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === 'user.deleted') {
+    // Clerk may omit `data.id` when the deletion originates from the dashboard.
+    // Guard against undefined before writing to the database.
+    if (!event.data.id) {
+      return NextResponse.json({ error: 'Missing user id in delete event' }, { status: 400 })
+    }
     // Soft delete — preserves audit trail and relational data
     await db.user.update({
       where: { clerkId: event.data.id },

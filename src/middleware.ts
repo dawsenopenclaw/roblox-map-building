@@ -137,9 +137,18 @@ export default clerkMiddleware(async (auth, request) => {
 
   // ── 3. Admin route guard ──────────────────────────────────────────────────────
   // Admin pages and admin API routes require role === 'ADMIN'.
-  // The role is stored in Clerk public metadata and surfaced on session claims.
-  if (isAdminRoute(request) && userId) {
-    const meta = (claims?.metadata ?? claims ?? {}) as Record<string, unknown>
+  // The role is stored in Clerk public metadata and surfaced on session claims
+  // under the `publicMetadata` key (not `metadata`).
+  if (isAdminRoute(request)) {
+    if (!userId) {
+      // Unauthenticated: redirect to sign-in (never silently fall through)
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      return NextResponse.redirect(new URL('/sign-in', request.url))
+    }
+
+    const meta = (claims?.publicMetadata ?? {}) as Record<string, unknown>
     const role = meta.role as string | undefined
     if (role !== 'ADMIN') {
       // For API routes return 403, for page routes redirect to dashboard

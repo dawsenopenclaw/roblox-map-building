@@ -54,8 +54,8 @@ referralRoutes.get('/stats', requireAuth, async (c) => {
   })
 })
 
-// POST /api/referrals/track — track a referral conversion on signup
-referralRoutes.post('/track', zValidator('json', referralTrackSchema), async (c) => {
+// POST /api/referrals/track — track a referral conversion on signup (internal, requires auth)
+referralRoutes.post('/track', requireAuth, zValidator('json', referralTrackSchema), async (c) => {
   const { code, newUserId } = c.req.valid('json')
 
   const referral = await db.referral.findUnique({ where: { code } })

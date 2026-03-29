@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
 
 const RESEND_COOLDOWN = 60 // seconds
 
@@ -155,9 +156,9 @@ function VerifyEmailContent() {
           {/* Footer */}
           <p className="text-xs text-gray-600 mt-6">
             Wrong email?{' '}
-            <a href="/sign-in" className="text-[#FFB81C] hover:underline">
+            <Link href="/sign-in" className="text-[#FFB81C] hover:underline">
               Go back to sign in
-            </a>
+            </Link>
           </p>
 
         </div>

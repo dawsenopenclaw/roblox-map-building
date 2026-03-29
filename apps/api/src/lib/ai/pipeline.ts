@@ -8,7 +8,7 @@ import { anthropicBreaker, meshyBreaker, falBreaker, withFallback } from './circ
 import { claudeChat, claudeVision, type ChatOptions } from './providers/anthropic'
 import { generateImages, generateTextures, type FalModel } from './providers/fal'
 import { textTo3DComplete, imageTo3DComplete } from './providers/meshy'
-import { aggregateCosts, estimateCost, type GenerationType, type TotalCostEstimate } from './cost-estimator'
+import { aggregateCosts, estimateCost, usdToTokens, type GenerationType, type TotalCostEstimate } from './cost-estimator'
 import { validate3DModel, validateImageResult, validateAIResponse, withQualityGate } from './quality-gate'
 
 export type PipelineStepStatus = 'pending' | 'running' | 'done' | 'failed' | 'skipped' | 'cached'
@@ -117,10 +117,7 @@ Style: ${style}. Respond ONLY with valid JSON.`
         })
       )
     )
-    if (fromCache) {
-      cacheHits++
-      planStep.status = 'cached'
-    }
+    if (fromCache) cacheHits++
     terrainPlan = planResult.content
     planCost = planResult.costUsd
     totalCostUsd += planCost
@@ -146,10 +143,7 @@ Style: ${style}. Respond ONLY with valid JSON.`
         generateTextures({ prompt: `${style} terrain texture: ${prompt}`, resolution: 1024 })
       )
     )
-    if (textureCached) {
-      cacheHits++
-      textureStep.status = 'cached'
-    }
+    if (textureCached) cacheHits++
     textures = {
       albedo: textureResult.albedo,
       normal: textureResult.normal,
@@ -183,7 +177,7 @@ Style: ${style}. Respond ONLY with valid JSON.`
     data: { layout, terrainPlan, textures },
     steps,
     totalCostUsd,
-    totalTokens: Math.ceil(totalCostUsd * 10_000),
+    totalTokens: usdToTokens(totalCostUsd),
     durationMs: Date.now() - start,
     errors,
     cacheHits,
@@ -259,7 +253,7 @@ Respond ONLY with valid JSON.`,
         )
       )
     )
-    if (fromCache) { cacheHits++; planStep.status = 'cached' }
+    if (fromCache) cacheHits++
     try { cityPlan = JSON.parse(result.content) } catch { cityPlan = { raw: result.content } }
     totalCostUsd += result.costUsd
     planStep.costUsd = result.costUsd
@@ -340,7 +334,7 @@ Respond ONLY with valid JSON.`,
     data: { cityPlan, buildings, textures },
     steps,
     totalCostUsd,
-    totalTokens: Math.ceil(totalCostUsd * 10_000),
+    totalTokens: usdToTokens(totalCostUsd),
     durationMs: Date.now() - start,
     errors,
     cacheHits,
@@ -418,7 +412,7 @@ export async function assetsPipeline(params: {
     data: assets,
     steps,
     totalCostUsd,
-    totalTokens: Math.ceil(totalCostUsd * 10_000),
+    totalTokens: usdToTokens(totalCostUsd),
     durationMs: Date.now() - start,
     errors,
     cacheHits,

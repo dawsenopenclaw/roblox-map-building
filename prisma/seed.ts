@@ -969,18 +969,21 @@ async function main() {
     { user: dawsen, templateName: 'Sound Effects Bundle', amountCents: 7_99, daysBack: 42 },
   ]
 
-  for (const e of earningDefs) {
-    await prisma.creatorEarning.create({
-      data: {
-        userId: e.user.id,
-        templateName: e.templateName,
-        amountCents: e.amountCents,
-        netCents: Math.floor(e.amountCents * 0.85),
-        status: EarningStatus.PAID,
-        paidAt: daysAgo(e.daysBack - 5),
-        createdAt: daysAgo(e.daysBack),
-      },
-    })
+  const existingEarningsCount = await prisma.creatorEarning.count({ where: { userId: { in: allUsers.map((u) => u.id) } } })
+  if (existingEarningsCount === 0) {
+    for (const e of earningDefs) {
+      await prisma.creatorEarning.create({
+        data: {
+          userId: e.user.id,
+          templateName: e.templateName,
+          amountCents: e.amountCents,
+          netCents: Math.floor(e.amountCents * 0.85),
+          status: EarningStatus.PAID,
+          paidAt: daysAgo(e.daysBack - 5),
+          createdAt: daysAgo(e.daysBack),
+        },
+      })
+    }
   }
 
   // ── 11. Charity donations — $124,567 total ─────────────────────────────────
@@ -1014,18 +1017,21 @@ async function main() {
   ]
   // Total above: 28400+18200+12000+22300+15800+8967+1200+500+5000+12200 = 124,567 ✓
 
-  for (const d of donationBatches) {
-    await prisma.charityDonation.create({
-      data: {
-        userId: d.user.id,
-        charitySlug: d.charity.slug,
-        charityName: d.charity.name,
-        amountCents: d.amountCents,
-        status: d.status,
-        processedAt: d.status === DonationStatus.COMPLETED ? daysAgo(d.daysBack - 1) : null,
-        createdAt: daysAgo(d.daysBack),
-      },
-    })
+  const existingDonationCount = await prisma.charityDonation.count({ where: { userId: { in: allUsers.map((u) => u.id) } } })
+  if (existingDonationCount === 0) {
+    for (const d of donationBatches) {
+      await prisma.charityDonation.create({
+        data: {
+          userId: d.user.id,
+          charitySlug: d.charity.slug,
+          charityName: d.charity.name,
+          amountCents: d.amountCents,
+          status: d.status,
+          processedAt: d.status === DonationStatus.COMPLETED ? daysAgo(d.daysBack - 1) : null,
+          createdAt: daysAgo(d.daysBack),
+        },
+      })
+    }
   }
 
   // ── 12. Achievements unlocked for demo users ───────────────────────────────
@@ -1449,18 +1455,21 @@ async function main() {
     },
   ]
 
-  for (const n of notifDefs) {
-    await prisma.notification.create({
-      data: {
-        userId: n.user.id,
-        type: n.type,
-        title: n.title,
-        body: n.body,
-        read: n.read,
-        readAt: n.read ? daysAgo(n.daysBack - 1) : null,
-        createdAt: daysAgo(n.daysBack),
-      },
-    })
+  const existingNotifCount = await prisma.notification.count({ where: { userId: { in: allUsers.map((u) => u.id) } } })
+  if (existingNotifCount === 0) {
+    for (const n of notifDefs) {
+      await prisma.notification.create({
+        data: {
+          userId: n.user.id,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          read: n.read,
+          readAt: n.read ? daysAgo(n.daysBack - 1) : null,
+          createdAt: daysAgo(n.daysBack),
+        },
+      })
+    }
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

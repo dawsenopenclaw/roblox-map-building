@@ -125,22 +125,35 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Award token bonus if milestone hit
-  if (bonusTokens > 0 && user.tokenBalance) {
-    await db.tokenBalance.update({
-      where: { id: user.tokenBalance.id },
-      data: {
-        balance: { increment: bonusTokens },
-        lifetimeEarned: { increment: bonusTokens },
-        transactions: {
-          create: {
-            type: 'BONUS',
-            amount: bonusTokens,
-            description: `${type === 'login' ? streak.loginStreak : streak.buildStreak}-day ${type} streak bonus`,
+  // Award token bonus if milestone hit — create balance record if user doesn't have one yet
+  if (bonusTokens > 0) {
+    const streakDays = type === 'login' ? streak.loginStreak : streak.buildStreak
+    const description = `${streakDays}-day ${type} streak bonus`
+
+    if (user.tokenBalance) {
+      await db.tokenBalance.update({
+        where: { id: user.tokenBalance.id },
+        data: {
+          balance: { increment: bonusTokens },
+          lifetimeEarned: { increment: bonusTokens },
+          transactions: {
+            create: { type: 'BONUS', amount: bonusTokens, description },
           },
         },
-      },
-    })
+      })
+    } else {
+      // First-time balance record — create it with the bonus as starting balance
+      await db.tokenBalance.create({
+        data: {
+          userId: user.id,
+          balance: bonusTokens,
+          lifetimeEarned: bonusTokens,
+          transactions: {
+            create: { type: 'BONUS', amount: bonusTokens, description },
+          },
+        },
+      })
+    }
   }
 
   return NextResponse.json({

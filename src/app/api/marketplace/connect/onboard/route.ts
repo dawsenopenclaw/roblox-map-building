@@ -16,41 +16,46 @@ export async function POST(req: NextRequest) {
 
   let stripeAccountId: string
 
-  if (user.creatorAccount?.stripeAccountId) {
-    stripeAccountId = user.creatorAccount.stripeAccountId
-  } else {
-    // Create new Express account
-    const account = await stripe.accounts.create({
-      type: 'express',
-      email: user.email,
-      metadata: { userId: user.id },
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-    })
-    stripeAccountId = account.id
+  try {
+    if (user.creatorAccount?.stripeAccountId) {
+      stripeAccountId = user.creatorAccount.stripeAccountId
+    } else {
+      // Create new Express account
+      const account = await stripe.accounts.create({
+        type: 'express',
+        email: user.email,
+        metadata: { userId: user.id },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      })
+      stripeAccountId = account.id
 
-    await db.creatorAccount.create({
-      data: {
-        userId: user.id,
-        stripeAccountId,
-      },
+      await db.creatorAccount.create({
+        data: {
+          userId: user.id,
+          stripeAccountId,
+        },
+      })
+    }
+
+    // Generate onboarding link
+    const body = await req.json().catch(() => ({})) as { returnUrl?: string; refreshUrl?: string }
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const returnUrl = body.returnUrl || `${baseUrl}/marketplace/earnings?onboarded=1`
+    const refreshUrl = body.refreshUrl || `${baseUrl}/marketplace/earnings?refresh=1`
+
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: refreshUrl,
+      return_url: returnUrl,
+      type: 'account_onboarding',
     })
+
+    return NextResponse.json({ url: accountLink.url })
+  } catch (e) {
+    console.error('Stripe Connect onboard error:', e)
+    return NextResponse.json({ error: 'Failed to create Stripe Connect account' }, { status: 500 })
   }
-
-  // Generate onboarding link
-  const body = await req.json().catch(() => ({})) as { returnUrl?: string; refreshUrl?: string }
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const returnUrl = body.returnUrl || `${baseUrl}/marketplace/earnings?onboarded=1`
-  const refreshUrl = body.refreshUrl || `${baseUrl}/marketplace/earnings?refresh=1`
-
-  const accountLink = await stripe.accountLinks.create({
-    account: stripeAccountId,
-    refresh_url: refreshUrl,
-    return_url: returnUrl,
-    type: 'account_onboarding',
-  })
-
-  return NextResponse.json({ url: accountLink.url })
 }

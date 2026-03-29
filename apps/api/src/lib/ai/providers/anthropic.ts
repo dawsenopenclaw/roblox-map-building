@@ -5,8 +5,24 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 
-export const anthropicClient = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
+// Lazy singleton — checked at call time so missing key fails fast at the call
+// site with a clear error, not at server startup.
+let _anthropicClient: Anthropic | null = null
+
+export function getAnthropicClient(): Anthropic {
+  if (!_anthropicClient) {
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+    _anthropicClient = new Anthropic({ apiKey })
+  }
+  return _anthropicClient
+}
+
+/** @deprecated use getAnthropicClient() — kept for existing direct references */
+export const anthropicClient = new Proxy({} as Anthropic, {
+  get(_target, prop) {
+    return (getAnthropicClient() as never as Record<string | symbol, unknown>)[prop]
+  },
 })
 
 // Pricing per million tokens (as of Claude 3.5 Sonnet)
@@ -80,6 +96,20 @@ export function estimateChatCost(
 /**
  * Chat completion with retry on transient errors
  */
+const DEFAULT_TIMEOUT_MS = 30_000
+
+async function withTimeout<T>(promise: Promise<T>, ms = DEFAULT_TIMEOUT_MS, label = 'request'): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Anthropic ${label} timed out after ${ms}ms`)), ms)
+  })
+  try {
+    return await Promise.race([promise, timeout])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export async function claudeChat(
   messages: ChatMessage[],
   options: ChatOptions = {}
@@ -88,12 +118,16 @@ export async function claudeChat(
   const maxTokens = options.maxTokens ?? 4096
   const start = Date.now()
 
-  const response = await anthropicClient.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: options.systemPrompt,
-    messages: messages as Anthropic.MessageParam[],
-  })
+  const response = await withTimeout(
+    getAnthropicClient().messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: options.systemPrompt,
+      messages: messages as Anthropic.MessageParam[],
+    }),
+    DEFAULT_TIMEOUT_MS,
+    'chat'
+  )
 
   const inputTokens = response.usage.input_tokens
   const outputTokens = response.usage.output_tokens
@@ -123,7 +157,7 @@ export async function* claudeChatStream(
   const model = options.model ?? DEFAULT_MODEL
   const maxTokens = options.maxTokens ?? 4096
 
-  const stream = anthropicClient.messages.stream({
+  const stream = getAnthropicClient().messages.stream({
     model,
     max_tokens: maxTokens,
     system: options.systemPrompt,
@@ -164,17 +198,21 @@ export async function claudeVision(
           },
         }
 
-  const response = await anthropicClient.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: options.systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: [imageContent, { type: 'text', text: prompt }],
-      },
-    ],
-  })
+  const response = await withTimeout(
+    getAnthropicClient().messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: options.systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: [imageContent, { type: 'text', text: prompt }],
+        },
+      ],
+    }),
+    DEFAULT_TIMEOUT_MS,
+    'vision'
+  )
 
   const inputTokens = response.usage.input_tokens
   const outputTokens = response.usage.output_tokens

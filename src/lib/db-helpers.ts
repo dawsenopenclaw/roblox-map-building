@@ -217,7 +217,7 @@ export function createBatchLoader<TKey extends string, TResult extends { id: str
   batchFn: (ids: TKey[]) => Promise<TResult[]>
 ) {
   let pending: TKey[] = []
-  let resolvers: Map<TKey, Array<(value: TResult | null) => void>> = new Map()
+  let resolvers: Map<TKey, Array<{ resolve: (value: TResult | null) => void; reject: (err: unknown) => void }>> = new Map()
   let scheduled = false
 
   function schedule() {
@@ -237,9 +237,9 @@ export function createBatchLoader<TKey extends string, TResult extends { id: str
       try {
         results = await batchFn(keys as TKey[])
       } catch (err) {
-        // Reject all waiting callers
+        // Reject all waiting callers so errors propagate instead of silently returning null
         for (const [, cbs] of currentResolvers) {
-          cbs.forEach((resolve) => resolve(null))
+          cbs.forEach(({ reject }) => reject(err))
         }
         return
       }
@@ -248,7 +248,7 @@ export function createBatchLoader<TKey extends string, TResult extends { id: str
 
       for (const [key, cbs] of currentResolvers) {
         const value = resultMap.get(key) ?? null
-        cbs.forEach((resolve) => resolve(value))
+        cbs.forEach(({ resolve }) => resolve(value))
       }
     })
   }
@@ -259,13 +259,13 @@ export function createBatchLoader<TKey extends string, TResult extends { id: str
      * are batched into one DB round-trip.
      */
     load(id: TKey): Promise<TResult | null> {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         pending.push(id)
         const existing = resolvers.get(id)
         if (existing) {
-          existing.push(resolve)
+          existing.push({ resolve, reject })
         } else {
-          resolvers.set(id, [resolve])
+          resolvers.set(id, [{ resolve, reject }])
         }
         schedule()
       })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { Search, ChevronRight, Shield, Ban, RefreshCw } from 'lucide-react'
 
 type SubscriptionTier = 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO'
@@ -56,8 +57,8 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/admin/users?${params}`)
       if (!res.ok) throw new Error(`${res.status}`)
       setData(await res.json())
-    } catch (e) {
-      console.error(e)
+    } catch {
+      // non-fatal — table stays in previous state
     } finally {
       setLoading(false)
     }
@@ -292,12 +293,12 @@ function UserRow({
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
-          <a
+          <Link
             href={`/admin/users/${user.id}`}
             className="p-1.5 rounded-lg border border-[#1E2451] hover:border-[#FFB81C] text-[#6B7280] hover:text-[#FFB81C] transition-colors"
           >
             <ChevronRight className="w-3.5 h-3.5" />
-          </a>
+          </Link>
         </div>
       </td>
     </tr>

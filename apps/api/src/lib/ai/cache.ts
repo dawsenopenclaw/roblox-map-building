@@ -104,7 +104,8 @@ export async function invalidateProviderCache(provider: string): Promise<number>
     const pattern = `${CACHE_PREFIX}${provider}:*`
     const keys = await redis.keys(pattern)
     if (keys.length === 0) return 0
-    const deleted = await redis.del(...keys)
+    // Pass keys as an array — spread of large arrays can exceed call stack limits
+    const deleted = await redis.del(keys as [string, ...string[]])
     console.info(`[ai:cache] INVALIDATE_PROVIDER provider=${provider} deleted=${deleted}`)
     return deleted
   } catch (err) {
