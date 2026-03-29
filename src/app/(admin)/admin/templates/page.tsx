@@ -127,7 +127,7 @@ export default function AdminTemplatesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Template Moderation</h1>
-          <p className="text-[#6B7280] text-sm mt-1">
+          <p className="text-[#B0B0B0] text-sm mt-1">
             {data
               ? `${data.total} template${data.total !== 1 ? 's' : ''} pending review`
               : '—'}
@@ -141,7 +141,7 @@ export default function AdminTemplatesPage() {
           )}
           <button
             onClick={fetchQueue}
-            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#FFB81C] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -157,7 +157,7 @@ export default function AdminTemplatesPage() {
         <div className="flex flex-col items-center justify-center py-16 bg-[#141414] border border-[#1c1c1c] rounded-xl">
           <CheckCircle className="w-10 h-10 text-green-400 mb-3" />
           <p className="text-white font-medium">Queue is empty</p>
-          <p className="text-[#6B7280] text-sm mt-1">All templates have been reviewed</p>
+          <p className="text-[#B0B0B0] text-sm mt-1">All templates have been reviewed</p>
         </div>
       ) : (
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl overflow-hidden">
@@ -168,7 +168,7 @@ export default function AdminTemplatesPage() {
                 {['Template', 'Creator', 'Category', 'Price', 'Submitted', 'Actions'].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-semibold text-[#6B7280] uppercase tracking-wider"
+                    className="px-4 py-3 text-left text-xs font-semibold text-[#B0B0B0] uppercase tracking-wider"
                   >
                     {h}
                   </th>
@@ -212,11 +212,11 @@ function TemplateRow({
     <tr className="hover:bg-[#1c1c1c] transition-colors">
       <td className="px-4 py-4 max-w-[280px]">
         <p className="text-white text-sm font-medium truncate">{template.title}</p>
-        <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-2">{template.description}</p>
+        <p className="text-[#B0B0B0] text-xs mt-0.5 line-clamp-2">{template.description}</p>
         {template.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {template.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-1.5 py-0.5 bg-[#1c1c1c] text-[#6B7280] rounded">
+              <span key={tag} className="text-xs px-1.5 py-0.5 bg-[#1c1c1c] text-[#B0B0B0] rounded">
                 {tag}
               </span>
             ))}
@@ -238,7 +238,7 @@ function TemplateRow({
         <p className="text-white text-sm">
           {template.creator.displayName || template.creator.username || '—'}
         </p>
-        <p className="text-[#6B7280] text-xs">{template.creator.email}</p>
+        <p className="text-[#B0B0B0] text-xs">{template.creator.email}</p>
       </td>
       <td className="px-4 py-4">
         <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] rounded-full">
@@ -248,7 +248,7 @@ function TemplateRow({
       <td className="px-4 py-4 text-sm text-white">
         {template.priceCents > 0 ? `$${(template.priceCents / 100).toFixed(2)}` : 'Free'}
       </td>
-      <td className="px-4 py-4 text-xs text-[#6B7280]">
+      <td className="px-4 py-4 text-xs text-[#B0B0B0]">
         {new Date(template.createdAt).toLocaleDateString()}
       </td>
       <td className="px-4 py-4">
@@ -260,7 +260,7 @@ function TemplateRow({
                 placeholder="Reason (optional)"
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="flex-1 min-w-0 px-2 py-1 bg-[#1c1c1c] border border-[#1c1c1c] rounded text-xs text-white placeholder:text-[#6B7280] focus:outline-none focus:border-red-500"
+                className="flex-1 min-w-0 px-2 py-1 bg-[#1c1c1c] border border-[#1c1c1c] rounded text-xs text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-red-500"
               />
               <button
                 onClick={() => {
@@ -274,7 +274,7 @@ function TemplateRow({
               </button>
               <button
                 onClick={() => setShowRejectInput(false)}
-                className="px-2 py-1 bg-[#1c1c1c] border border-[#1c1c1c] text-[#6B7280] rounded text-xs hover:text-white transition-colors"
+                className="px-2 py-1 bg-[#1c1c1c] border border-[#1c1c1c] text-[#B0B0B0] rounded text-xs hover:text-white transition-colors"
               >
                 Cancel
               </button>

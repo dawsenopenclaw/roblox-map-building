@@ -132,10 +132,55 @@ function detectIntent(message: string): IntentKey {
 // ─── Demo responses ───────────────────────────────────────────────────────────
 
 const DEMO_RESPONSES: Record<IntentKey, string> = {
-  mesh:
-    'Generated 3D model! Processing your description through Meshy AI. In demo mode — add a MESHY_API_KEY to generate real GLB/FBX models. Used 28 tokens.',
-  texture:
-    'Texture generated! Fal AI Flux Pro created a seamless tileable texture at 1024×1024. In demo mode — add a FAL_API_KEY to get real textures. Used 20 tokens.',
+  mesh: `✓ 3D Model Generated
+
+ForjeAI processed your description through the Meshy AI pipeline:
+
+Model details:
+  Style         Low-poly stylized (optimized for Roblox)
+  Polygon count 2,847 triangles — well within 5,000 limit
+  Format        GLB + FBX (Roblox-compatible)
+  LODs          3 levels of detail auto-generated
+  Dimensions    Auto-scaled to Roblox grid (1 stud = 0.28m)
+
+Textures baked:
+  Albedo map      1024×1024 px
+  Normal map      1024×1024 px — surface detail preserved
+  Roughness map   512×512 px
+
+Studio import steps:
+  1. Download the GLB from the panel below
+  2. Roblox Studio → Asset Manager → Import → select file
+  3. The model appears in your Toolbox → My Models
+  4. Drag into workspace — scale and position as needed
+
+Token cost: 28 tokens
+
+Tip: Add MESHY_API_KEY to your environment to generate real models. Demo shows a placeholder preview.`,
+
+  texture: `✓ Texture Generated
+
+Fal AI Flux Pro pipeline completed:
+
+Output specs:
+  Resolution    1024×1024 px (Roblox max recommended)
+  Format        PNG with alpha channel
+  Tiling        Seamless — edges match when tiled across geometry
+  Color space   sRGB, gamma corrected for Roblox renderer
+
+PBR maps generated:
+  Albedo / Diffuse   — base color map
+  Normal map         — 8-bit XYZ surface normals
+  Roughness          — grayscale, 0 = mirror / 1 = matte
+  Metallic           — grayscale mask for metal surfaces
+
+Roblox usage:
+  SurfaceAppearance → set each map in the corresponding slot
+  Tiling control via UV scale in SurfaceAppearance.TextureTransparency
+
+Token cost: 20 tokens
+
+Tip: Add FAL_API_KEY to generate real textures. Demo shows a preview tile.`,
 
   terrain: `✓ Terrain Generated
 
@@ -654,7 +699,7 @@ function sleep(ms: number): Promise<void> {
 
 // ─── Internal API callers ─────────────────────────────────────────────────────
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 async function callMeshApi(
   prompt: string,

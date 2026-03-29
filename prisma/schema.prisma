@@ -37,10 +37,10 @@ model User {
   apiUsage      ApiUsageRecord[]
 
   // Marketplace
-  createdTemplates  Template[]           @relation("CreatedTemplates")
-  boughtTemplates   TemplatePurchase[]   @relation("BoughtTemplates")
-  authoredReviews   TemplateReview[]     @relation("AuthoredReviews")
-  creatorAccount    CreatorAccount?
+  createdTemplates Template[]         @relation("CreatedTemplates")
+  boughtTemplates  TemplatePurchase[] @relation("BoughtTemplates")
+  authoredReviews  TemplateReview[]   @relation("AuthoredReviews")
+  creatorAccount   CreatorAccount?
 
   // Gamification
   userXp           UserXP?
@@ -52,21 +52,22 @@ model User {
   webhookEndpoints WebhookEndpoint[]
 
   // Referrals
-  referralsMade    Referral[]        @relation("ReferrerReferrals")
-  referralReceived Referral[]        @relation("ReferredReferrals")
+  referralsMade    Referral[] @relation("ReferrerReferrals")
+  referralReceived Referral[] @relation("ReferredReferrals")
 
   // Notifications & Earnings
-  notifications    Notification[]
-  creatorEarnings  CreatorEarning[]
+  notifications   Notification[]
+  creatorEarnings CreatorEarning[]
 
   // Game DNA Scanner
-  gameScans        GameScan[]
+  gameScans GameScan[]
 
   // Team Collaboration
-  teamMemberships  TeamMember[]
-  sentInvites      TeamInvite[]       @relation("SentInvites")
-  teamActivities   TeamActivity[]     @relation("TeamActivities")
-  projectVersions  ProjectVersion[]   @relation("ProjectVersions")
+  ownedTeams      Team[]           @relation("OwnedTeams")
+  teamMemberships TeamMember[]
+  sentInvites     TeamInvite[]     @relation("SentInvites")
+  teamActivities  TeamActivity[]   @relation("TeamActivities")
+  projectVersions ProjectVersion[] @relation("ProjectVersions")
 
   @@index([clerkId])
   @@index([email])
@@ -214,25 +215,25 @@ model AuditLog {
 // ─── API Usage Tracking ────────────────────────────────────────────────────
 
 model ApiUsageRecord {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Optional: tracks which API key triggered this record (null = session-based)
-  apiKeyId   String?
-  apiKey     ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
-  provider   String
-  operation  String
+  apiKeyId     String?
+  apiKey       ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  provider     String
+  operation    String
   // HTTP method + path for per-key endpoint analytics
-  httpMethod String?
-  httpPath   String?
-  statusCode Int?
-  tokensUsed Int      @default(0)
+  httpMethod   String?
+  httpPath     String?
+  statusCode   Int?
+  tokensUsed   Int      @default(0)
   // Stored as micro-dollars (Int) to avoid float precision issues
-  costUsdMicro Int    @default(0)
+  costUsdMicro Int      @default(0)
   durationMs   Int?
-  success    Boolean  @default(true)
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  success      Boolean  @default(true)
+  metadata     Json?
+  createdAt    DateTime @default(now())
 
   @@index([userId])
   @@index([apiKeyId])
@@ -245,15 +246,15 @@ model ApiUsageRecord {
 // ─── Cost Tracking (aggregated daily) ──────────────────────────────────────
 
 model DailyCostSnapshot {
-  id            String   @id @default(cuid())
-  date          DateTime @unique @db.Date
-  providerCosts Json
+  id                String   @id @default(cuid())
+  date              DateTime @unique @db.Date
+  providerCosts     Json
   // Stored as micro-dollars (Int) to avoid float precision issues
-  totalCostUsdMicro  Int
-  totalRevenueMicro  Int
-  marginMicro        Int
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  totalCostUsdMicro Int
+  totalRevenueMicro Int
+  marginMicro       Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([date])
 }
@@ -394,18 +395,18 @@ enum PayoutStatus {
 }
 
 model CreatorAccount {
-  id                    String    @id @default(cuid())
-  userId                String    @unique
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stripeAccountId       String    @unique
-  chargesEnabled        Boolean   @default(false)
-  payoutsEnabled        Boolean   @default(false)
-  detailsSubmitted      Boolean   @default(false)
-  pendingBalanceCents   Int       @default(0)
-  totalEarnedCents      Int       @default(0)
-  lastPayoutAt          DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeAccountId     String    @unique
+  chargesEnabled      Boolean   @default(false)
+  payoutsEnabled      Boolean   @default(false)
+  detailsSubmitted    Boolean   @default(false)
+  pendingBalanceCents Int       @default(0)
+  totalEarnedCents    Int       @default(0)
+  lastPayoutAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@index([userId])
   @@index([stripeAccountId])
@@ -414,15 +415,15 @@ model CreatorAccount {
 // ─── Gamification ───────────────────────────────────────────────────────────
 
 model UserXP {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  totalXp       Int      @default(0)
-  tier          XPTier   @default(NOVICE)
-  dailyXpToday  Int      @default(0)
-  dailyXpDate   DateTime @default(now()) @db.Date
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalXp      Int      @default(0)
+  tier         XPTier   @default(NOVICE)
+  dailyXpToday Int      @default(0)
+  dailyXpDate  DateTime @default(now()) @db.Date
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   xpEvents XPEvent[]
 
@@ -505,19 +506,19 @@ model UserAchievement {
 }
 
 model Streak {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  loginStreak         Int      @default(0)
-  buildStreak         Int      @default(0)
-  longestLoginStreak  Int      @default(0)
-  longestBuildStreak  Int      @default(0)
-  lastLoginDate       DateTime @default(now()) @db.Date
-  lastBuildDate       DateTime @default(now()) @db.Date
-  totalLogins         Int      @default(0)
-  totalBuilds         Int      @default(0)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loginStreak        Int      @default(0)
+  buildStreak        Int      @default(0)
+  longestLoginStreak Int      @default(0)
+  longestBuildStreak Int      @default(0)
+  lastLoginDate      DateTime @default(now()) @db.Date
+  lastBuildDate      DateTime @default(now()) @db.Date
+  totalLogins        Int      @default(0)
+  totalBuilds        Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([userId])
 }
@@ -555,9 +556,9 @@ enum ScanStatus {
 }
 
 model GameGenome {
-  id                String   @id @default(cuid())
-  scanId            String   @unique
-  scan              GameScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  id     String   @id @default(cuid())
+  scanId String   @unique
+  scan   GameScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
   // 12-variable genome
   gameType          String
@@ -574,18 +575,18 @@ model GameGenome {
   communitySize     String
 
   // Raw scores 0-100 for radar chart
-  scores            Json
+  scores Json
 
   // Genre averages for comparison
-  genreAverages     Json?
+  genreAverages Json?
 
   // Analysis metadata
-  rawRobloxData     Json?
-  visionAnalysis    Json?
-  recommendations   Json
+  rawRobloxData   Json?
+  visionAnalysis  Json?
+  recommendations Json
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([scanId])
 }
@@ -593,14 +594,15 @@ model GameGenome {
 // ─── Team Collaboration ────────────────────────────────────────────────────
 
 model Team {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
   description String?
-  slug        String   @unique
+  slug        String    @unique
   ownerId     String
+  owner       User      @relation("OwnedTeams", fields: [ownerId], references: [id], onDelete: Restrict)
   deletedAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   members    TeamMember[]
   invites    TeamInvite[]
@@ -733,23 +735,23 @@ model VersionDiff {
 // ─── API Keys ───────────────────────────────────────────────────────────────
 
 model ApiKey {
-  id         String     @id @default(cuid())
-  userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  keyHash    String     @unique
-  prefix     String
-  scopes     String[]
-  tier       ApiKeyTier @default(FREE)
-  revokedAt  DateTime?
-  lastUsedAt DateTime?
-  expiresAt  DateTime?
+  id                     String     @id @default(cuid())
+  userId                 String
+  user                   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                   String
+  keyHash                String     @unique
+  prefix                 String
+  scopes                 String[]
+  tier                   ApiKeyTier @default(FREE)
+  revokedAt              DateTime?
+  lastUsedAt             DateTime?
+  expiresAt              DateTime?
   // Rotation: if set, this key was created by rotating rotatedFromId; that old key
   // remains valid until rotatedFromGraceEndsAt (24-hour window) then is auto-revoked.
-  rotatedFromId          String?   @unique
+  rotatedFromId          String?    @unique
   rotatedFromGraceEndsAt DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
 
   usageRecords ApiUsageRecord[]
 
@@ -770,15 +772,15 @@ enum ApiKeyTier {
 // ─── Webhooks ───────────────────────────────────────────────────────────────
 
 model WebhookEndpoint {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   url       String
   secret    String
   events    String[]
-  active    Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   deliveries WebhookDelivery[]
 
@@ -807,21 +809,22 @@ model WebhookDelivery {
 // ─── Referrals ──────────────────────────────────────────────────────────────
 
 model Referral {
-  id          String         @id @default(cuid())
-  referrerId  String
-  referrer    User           @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
-  referredId  String?
-  referred    User?          @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: SetNull)
-  code        String         @unique
-  status      ReferralStatus @default(PENDING)
+  id              String         @id @default(cuid())
+  referrerId      String
+  referrer        User           @relation("ReferrerReferrals", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId      String?
+  referred        User?          @relation("ReferredReferrals", fields: [referredId], references: [id], onDelete: SetNull)
+  code            String         @unique
+  status          ReferralStatus @default(PENDING)
   // Stored as cents (Int) to avoid float precision issues
-  commissionCents Int        @default(0)
-  createdAt   DateTime       @default(now())
-  convertedAt DateTime?
+  commissionCents Int            @default(0)
+  createdAt       DateTime       @default(now())
+  convertedAt     DateTime?
 
   @@index([referrerId])
   @@index([code])
   @@index([referredId])
+  @@index([referrerId, status])
 }
 
 enum ReferralStatus {
@@ -830,6 +833,19 @@ enum ReferralStatus {
   PAID
   EXPIRED
   INVALID
+}
+
+// ─── Waitlist ───────────────────────────────────────────────────────────
+
+model Waitlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String   @default("download_page")
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([source])
+  @@index([createdAt])
 }
 
 // ─── Notifications ──────────────────────────────────────────────────────────
@@ -886,6 +902,8 @@ model CreatorEarning {
   @@index([userId, status])
   @@index([status])
   @@index([templateId])
+  @@index([buyerId])
+  @@index([templateId, buyerId])
   @@index([userId, createdAt])
 }
 

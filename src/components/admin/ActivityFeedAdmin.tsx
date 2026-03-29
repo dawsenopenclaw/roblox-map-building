@@ -23,12 +23,12 @@ const METHOD_COLORS: Record<string, string> = {
   PUT: 'text-blue-400',
   PATCH: 'text-blue-400',
   DELETE: 'text-red-400',
-  GET: 'text-[#6B7280]',
+  GET: 'text-[#B0B0B0]',
 }
 
 export function ActivityFeedAdmin({ items }: { items: ActivityItem[] }) {
   if (!items.length) {
-    return <p className="text-[#6B7280] text-sm py-4">No recent activity</p>
+    return <p className="text-[#B0B0B0] text-sm py-4">No recent activity</p>
   }
 
   return (
@@ -39,17 +39,17 @@ export function ActivityFeedAdmin({ items }: { items: ActivityItem[] }) {
         return (
           <div key={item.id} className="flex items-start gap-3 py-2 border-b border-[#1c1c1c] last:border-0">
             <span
-              className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#6B7280]'}`}
+              className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#B0B0B0]'}`}
             >
               {method}
             </span>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-white font-mono truncate">{path}</p>
               {item.user && (
-                <p className="text-xs text-[#6B7280] truncate">{item.user.email}</p>
+                <p className="text-xs text-[#B0B0B0] truncate">{item.user.email}</p>
               )}
             </div>
-            <span className="text-xs text-[#6B7280] flex-shrink-0">{timeAgo(item.createdAt)}</span>
+            <span className="text-xs text-[#B0B0B0] flex-shrink-0">{timeAgo(item.createdAt)}</span>
           </div>
         )
       })}

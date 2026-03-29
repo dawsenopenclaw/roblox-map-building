@@ -19,7 +19,6 @@ export async function POST(req: NextRequest) {
     })
     return NextResponse.json({ url: session.url })
   } catch (error) {
-    console.error('Billing portal session error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

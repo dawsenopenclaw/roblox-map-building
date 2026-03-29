@@ -5,11 +5,16 @@ import type { ReactNode } from 'react'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SectionId =
+  | 'quickstart'
+  | 'features'
+  | 'pricing'
   | 'getting-started'
   | 'authentication'
   | 'endpoint-voice-to-game'
   | 'endpoint-image-to-map'
   | 'endpoint-generate'
+  | 'endpoint-mesh'
+  | 'endpoint-texture'
   | 'endpoint-marketplace-search'
   | 'sdks'
   | 'rate-limits'
@@ -24,15 +29,20 @@ interface NavSection {
 // ─── Navigation structure ─────────────────────────────────────────────────────
 
 const NAV: NavSection[] = [
-  { id: 'getting-started', label: 'Getting Started' },
-  { id: 'authentication', label: 'Authentication' },
+  { id: 'quickstart', label: 'Quick Start', group: 'Overview' },
+  { id: 'features', label: 'Features', group: 'Overview' },
+  { id: 'pricing', label: 'Pricing', group: 'Overview' },
+  { id: 'getting-started', label: 'Getting Started', group: 'API Reference' },
+  { id: 'authentication', label: 'Authentication', group: 'API Reference' },
   { id: 'endpoint-voice-to-game', label: 'POST /api/ai/voice-to-game', group: 'Endpoints' },
   { id: 'endpoint-image-to-map', label: 'POST /api/ai/image-to-map', group: 'Endpoints' },
   { id: 'endpoint-generate', label: 'POST /api/ai/generate', group: 'Endpoints' },
+  { id: 'endpoint-mesh', label: 'POST /api/ai/mesh', group: 'Endpoints' },
+  { id: 'endpoint-texture', label: 'POST /api/ai/texture', group: 'Endpoints' },
   { id: 'endpoint-marketplace-search', label: 'GET /api/marketplace/search', group: 'Endpoints' },
-  { id: 'sdks', label: 'SDKs' },
-  { id: 'rate-limits', label: 'Rate Limits' },
-  { id: 'errors', label: 'Errors' },
+  { id: 'sdks', label: 'SDKs', group: 'API Reference' },
+  { id: 'rate-limits', label: 'Rate Limits', group: 'API Reference' },
+  { id: 'errors', label: 'Errors', group: 'API Reference' },
 ]
 
 // ─── Lightweight syntax highlighter ──────────────────────────────────────────
@@ -268,7 +278,7 @@ function EndpointSection({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DocsClient() {
-  const [activeSection, setActiveSection] = useState<SectionId>('getting-started')
+  const [activeSection, setActiveSection] = useState<SectionId>('quickstart')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
   // When user clicks a nav item, suppress the observer for 1 second so the
@@ -373,7 +383,7 @@ export default function DocsClient() {
           style={{ background: 'rgba(6,9,24,0.85)' }}
         >
           <div className="max-w-7xl mx-auto px-5 h-12 flex items-center gap-4">
-            <span className="text-white font-semibold text-sm">API Reference</span>
+            <span className="text-white font-semibold text-sm">Documentation</span>
             <span className="text-[10px] border border-white/10 text-gray-400 px-2 py-0.5 rounded font-mono">v1</span>
             {/* Mobile hamburger */}
             <button
@@ -424,6 +434,345 @@ export default function DocsClient() {
 
           {/* Main content */}
           <main className="flex-1 min-w-0 max-w-3xl">
+
+            {/* ── Quick Start ─────────────────────────────────────────── */}
+            <section id="quickstart" className="scroll-mt-28">
+              <SectionHeading id="quickstart">Quick Start</SectionHeading>
+              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+                Go from zero to your first AI-generated Roblox map in under 5 minutes. No install required — everything
+                runs in the browser.
+              </p>
+
+              {/* Step 1 */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">1</span>
+                  <h3 className="text-white font-semibold text-sm">Sign up for free</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed ml-10">
+                  Create an account at{' '}
+                  <a href="/sign-up" className="text-[#FFB81C] hover:underline">forjegames.com/sign-up</a>.
+                  No credit card required. You get 10 free AI calls per day on the Free plan immediately after sign-up.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">2</span>
+                  <h3 className="text-white font-semibold text-sm">Open the Editor</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                  From your dashboard, click <strong className="text-white">New Project</strong> then{' '}
+                  <strong className="text-white">Open Editor</strong>. The AI editor loads in the same tab — no download needed.
+                </p>
+                <div className="ml-10 rounded-xl border border-white/8 overflow-hidden" style={{ background: '#0a0f24' }}>
+                  <div className="px-4 py-3 border-b border-white/8 flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                    <span className="text-xs text-gray-500 ml-2 font-mono">forjegames.com/editor</span>
+                  </div>
+                  <div className="px-5 py-4 text-xs text-gray-400 leading-relaxed">
+                    <span className="text-[#FFB81C]">ForjeGames Editor</span> — AI Build Assistant ready
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="mb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">3</span>
+                  <h3 className="text-white font-semibold text-sm">Type or speak your first build command</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                  Type a plain-English prompt in the command bar, or click the mic icon to speak. The AI returns a
+                  Luau script, map blueprint, or 3D model — depending on what you asked for.
+                </p>
+                <div className="ml-10">
+                  <SectionLabel>Example prompts</SectionLabel>
+                  <div className="space-y-2">
+                    {[
+                      'Build a city map with 3 zones — residential, industrial, and a park',
+                      'Generate a coin shop script with 5 items and a leaderboard',
+                      'Create a low-poly oak tree 3D model',
+                    ].map((prompt) => (
+                      <div
+                        key={prompt}
+                        className="rounded-lg border border-white/8 px-4 py-2.5 text-xs text-gray-300 font-mono"
+                        style={{ background: '#141414' }}
+                      >
+                        <span className="text-[#FFB81C] mr-2">&gt;</span>{prompt}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">4</span>
+                  <h3 className="text-white font-semibold text-sm">Import to Roblox Studio</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                  Install the free <strong className="text-white">ForjeGames Studio Plugin</strong> from the Roblox
+                  marketplace, then click <strong className="text-white">Export &rarr; Send to Studio</strong> inside
+                  the editor. The plugin receives the build and places it in your game automatically.
+                </p>
+                <div className="ml-10">
+                  <CodeBlock
+                    lang="curl"
+                    code={`-- The plugin runs this in Studio automatically after export
+local ForjeGames = require(game:GetService("ServerScriptService").ForjeGamesPlugin)
+ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <Divider />
+
+            {/* ── Features ────────────────────────────────────────────── */}
+            <section id="features" className="scroll-mt-28">
+              <SectionHeading id="features">Features</SectionHeading>
+              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+                Every feature is available via the web editor and the REST API. Use them individually or chain them
+                together in a single pipeline.
+              </p>
+
+              <div className="grid sm:grid-cols-2 gap-5">
+                {[
+                  {
+                    title: 'Voice to Game',
+                    badge: 'POST /api/ai/voice-to-game',
+                    color: 'blue',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    ),
+                    desc: 'Speak or type a game mechanic in plain English. The AI generates production-ready Luau scripts with event handlers, UI, and DataStore logic baked in.',
+                  },
+                  {
+                    title: 'Image to Map',
+                    badge: 'POST /api/ai/image-to-map',
+                    color: 'purple',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    ),
+                    desc: 'Upload concept art, a sketch, or a top-down photo. Claude Vision + Depth Pro convert it into a full map blueprint with terrain regions and marketplace asset placements.',
+                  },
+                  {
+                    title: 'AI Script Generator',
+                    badge: 'POST /api/ai/generate',
+                    color: 'emerald',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                      </svg>
+                    ),
+                    desc: 'Generate any Roblox game system from a prompt: leaderboards, pet systems, tycoon builders, obby checkpoints, economy configs, NPC dialogue trees, and more.',
+                  },
+                  {
+                    title: '3D Model Generator',
+                    badge: 'POST /api/ai/mesh',
+                    color: 'amber',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                      </svg>
+                    ),
+                    desc: 'Text-to-3D via Meshy AI. Describe any prop, vehicle, building, or character and receive a Roblox-ready .obj mesh with UV-mapped textures in under 60 seconds.',
+                  },
+                  {
+                    title: 'Game DNA Scanner',
+                    badge: 'Analysis',
+                    color: 'rose',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    ),
+                    desc: 'Paste any Roblox game URL. The scanner reverse-engineers its mechanics, economy, monetization model, and design patterns — giving you a competitive teardown in seconds.',
+                  },
+                  {
+                    title: 'Marketplace',
+                    badge: 'GET /api/marketplace/search',
+                    color: 'cyan',
+                    icon: (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                      </svg>
+                    ),
+                    desc: 'Programmatic search across the entire Roblox asset marketplace. Filter by category, price, and creator. Results include asset IDs ready for auto-placement in map blueprints.',
+                  },
+                ].map((f) => {
+                  const colorMap: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+                    blue:    { bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    text: 'text-blue-400',    badge: 'text-blue-400 bg-blue-400/10 border-blue-400/25' },
+                    purple:  { bg: 'bg-purple-500/10',  border: 'border-purple-500/20',  text: 'text-purple-400',  badge: 'text-purple-400 bg-purple-400/10 border-purple-400/25' },
+                    emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400', badge: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/25' },
+                    amber:   { bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   text: 'text-amber-400',   badge: 'text-amber-400 bg-amber-400/10 border-amber-400/25' },
+                    rose:    { bg: 'bg-rose-500/10',    border: 'border-rose-500/20',    text: 'text-rose-400',    badge: 'text-rose-400 bg-rose-400/10 border-rose-400/25' },
+                    cyan:    { bg: 'bg-cyan-500/10',    border: 'border-cyan-500/20',    text: 'text-cyan-400',    badge: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/25' },
+                  }
+                  const c = colorMap[f.color]
+                  return (
+                    <div
+                      key={f.title}
+                      className="rounded-xl border border-white/8 p-5"
+                      style={{ background: '#0a0f24' }}
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-9 h-9 rounded-lg ${c.bg} border ${c.border} flex items-center justify-center flex-shrink-0 ${c.text}`}>
+                          {f.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-semibold mb-1">{f.title}</p>
+                          <span className={`inline-flex items-center border text-[10px] font-bold px-1.5 py-0.5 rounded font-mono ${c.badge}`}>
+                            {f.badge}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-gray-400 text-xs leading-relaxed">{f.desc}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <Divider />
+
+            {/* ── Pricing ─────────────────────────────────────────────── */}
+            <section id="pricing" className="scroll-mt-28">
+              <SectionHeading id="pricing">Pricing</SectionHeading>
+              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+                All plans include access to every feature. The difference is in usage limits and team seats.
+                Upgrade or downgrade at any time — billing is pro-rated to the day.
+              </p>
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {[
+                  {
+                    name: 'Free',
+                    price: '$0',
+                    period: 'forever',
+                    highlight: false,
+                    features: [
+                      '10 AI calls / day',
+                      '500 API requests / day',
+                      '1 concurrent request',
+                      'Community support',
+                      'Watermarked exports',
+                    ],
+                  },
+                  {
+                    name: 'Hobby',
+                    price: '$12',
+                    period: 'per month',
+                    highlight: false,
+                    features: [
+                      '100 AI calls / day',
+                      '5,000 API requests / day',
+                      '3 concurrent requests',
+                      'Email support',
+                      'No watermarks',
+                    ],
+                  },
+                  {
+                    name: 'Creator',
+                    price: '$49',
+                    period: 'per month',
+                    highlight: true,
+                    features: [
+                      '1,000 AI calls / day',
+                      '50,000 API requests / day',
+                      '10 concurrent requests',
+                      'Priority support',
+                      'Team seats (up to 5)',
+                    ],
+                  },
+                  {
+                    name: 'Studio',
+                    price: '$199',
+                    period: 'per month',
+                    highlight: false,
+                    features: [
+                      'Unlimited AI calls',
+                      'Unlimited API requests',
+                      '25 concurrent requests',
+                      'Dedicated support',
+                      'Unlimited team seats',
+                    ],
+                  },
+                ].map((plan) => (
+                  <div
+                    key={plan.name}
+                    className={`rounded-xl border p-5 flex flex-col ${
+                      plan.highlight
+                        ? 'border-[#FFB81C]/40'
+                        : 'border-white/8'
+                    }`}
+                    style={{ background: plan.highlight ? 'rgba(255,184,28,0.04)' : '#0a0f24' }}
+                  >
+                    {plan.highlight && (
+                      <span className="inline-flex self-start text-[10px] font-bold text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/25 px-2 py-0.5 rounded mb-3">
+                        MOST POPULAR
+                      </span>
+                    )}
+                    <p className="text-white font-bold text-base mb-0.5">{plan.name}</p>
+                    <div className="flex items-end gap-1 mb-4">
+                      <span className="text-2xl font-bold text-white">{plan.price}</span>
+                      <span className="text-gray-400 text-xs mb-1">{plan.period}</span>
+                    </div>
+                    <ul className="space-y-2 flex-1">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
+                          <svg className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="2 8 6 12 14 4" />
+                          </svg>
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <a
+                      href="/sign-up"
+                      className={`mt-5 block text-center text-xs font-semibold py-2 rounded-lg transition-colors ${
+                        plan.highlight
+                          ? 'bg-[#FFB81C] text-black hover:bg-[#e6a619]'
+                          : 'border border-white/12 text-gray-300 hover:border-white/25 hover:text-white'
+                      }`}
+                    >
+                      {plan.name === 'Free' ? 'Get started' : 'Start free trial'}
+                    </a>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className="rounded-xl border border-white/8 p-4 text-sm text-gray-300 leading-relaxed"
+                style={{ background: '#0a0f24' }}
+              >
+                <strong className="text-white">Enterprise?</strong> Custom contracts, SLA guarantees, on-premise
+                deployment, and volume discounts are available. Contact{' '}
+                <a href="mailto:enterprise@forjegames.com" className="text-[#FFB81C] hover:underline">
+                  enterprise@forjegames.com
+                </a>.
+              </div>
+            </section>
+
+            <Divider />
 
             {/* ── Getting Started ─────────────────────────────────────── */}
             <section id="getting-started" className="scroll-mt-28">
@@ -619,6 +968,86 @@ export default function DocsClient() {
     "warnings": []
   },
   "model": "quality",
+  "created_at": "2026-03-28T12:00:00Z"
+}`}
+            />
+
+            <Divider />
+
+            {/* ── POST /api/ai/mesh ────────────────────────────────────── */}
+            <EndpointSection
+              id="endpoint-mesh"
+              method="POST"
+              path="/api/ai/mesh"
+              description="Generate a Roblox-ready 3D mesh from a text description using Meshy AI. Returns a .obj file URL with UV-mapped textures. Meshes are scaled and centered for direct insertion into Roblox Studio via the ForjeGames plugin."
+              params={[
+                { name: 'prompt', type: 'string', required: true, description: 'Text description of the 3D object to generate. Be specific about shape, style, and detail level.' },
+                { name: 'style', type: 'string', required: false, description: 'Visual style: "realistic" | "cartoon" | "lowpoly" | "voxel". Defaults to "lowpoly" for Roblox compatibility.' },
+                { name: 'negative_prompt', type: 'string', required: false, description: 'Describe what to avoid in the generated mesh (e.g. "high poly, organic shapes").' },
+                { name: 'texture_richness', type: 'string', required: false, description: '"low" | "medium" | "high". Controls texture resolution and detail. Defaults to "medium".' },
+                { name: 'seed', type: 'number', required: false, description: 'Random seed for reproducible generation. Omit for a random result.' },
+              ]}
+              curlExample={`curl -X POST https://api.forjegames.com/api/ai/mesh \\
+  -H "Authorization: Bearer fg_sk_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "prompt": "A medieval wooden chest with iron hinges and lock",
+    "style": "lowpoly",
+    "texture_richness": "high"
+  }'`}
+              responseExample={`{
+  "id": "mesh_k3l4m5n6",
+  "status": "complete",
+  "prompt": "A medieval wooden chest with iron hinges and lock",
+  "style": "lowpoly",
+  "output": {
+    "obj_url": "https://cdn.forjegames.com/meshes/mesh_k3l4m5n6/model.obj",
+    "mtl_url": "https://cdn.forjegames.com/meshes/mesh_k3l4m5n6/model.mtl",
+    "texture_url": "https://cdn.forjegames.com/meshes/mesh_k3l4m5n6/texture_0.png",
+    "poly_count": 3840,
+    "plugin_import_url": "https://api.forjegames.com/imports/mesh_k3l4m5n6"
+  },
+  "created_at": "2026-03-28T12:00:00Z"
+}`}
+            />
+
+            <Divider />
+
+            {/* ── POST /api/ai/texture ─────────────────────────────────── */}
+            <EndpointSection
+              id="endpoint-texture"
+              method="POST"
+              path="/api/ai/texture"
+              description="Generate or restyle a texture for an existing 3D mesh. Provide either a mesh ID from a previous /api/ai/mesh call or upload your own .obj file URL. Returns a new diffuse texture PNG at the requested resolution."
+              params={[
+                { name: 'mesh_id', type: 'string', required: false, description: 'ID of a mesh previously generated by /api/ai/mesh. Either mesh_id or mesh_url is required.' },
+                { name: 'mesh_url', type: 'string', required: false, description: 'Publicly accessible .obj URL for texturing. Either mesh_id or mesh_url is required.' },
+                { name: 'prompt', type: 'string', required: true, description: 'Text description of the desired texture appearance (e.g. "weathered oak wood with iron accents").' },
+                { name: 'resolution', type: 'number', required: false, description: 'Output texture resolution in pixels. Accepted: 512, 1024, 2048. Defaults to 1024.' },
+                { name: 'style', type: 'string', required: false, description: 'Texture style: "realistic" | "cartoon" | "stylized" | "pbr". Defaults to "stylized".' },
+                { name: 'negative_prompt', type: 'string', required: false, description: 'What to avoid in the texture (e.g. "dark, muddy colors").' },
+              ]}
+              curlExample={`curl -X POST https://api.forjegames.com/api/ai/texture \\
+  -H "Authorization: Bearer fg_sk_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "mesh_id": "mesh_k3l4m5n6",
+    "prompt": "Weathered oak wood with iron accents, cartoon style",
+    "resolution": 1024,
+    "style": "cartoon"
+  }'`}
+              responseExample={`{
+  "id": "tex_w1x2y3z4",
+  "status": "complete",
+  "mesh_id": "mesh_k3l4m5n6",
+  "prompt": "Weathered oak wood with iron accents, cartoon style",
+  "output": {
+    "texture_url": "https://cdn.forjegames.com/textures/tex_w1x2y3z4/diffuse_1024.png",
+    "resolution": 1024,
+    "style": "cartoon",
+    "roblox_decal_id": null,
+    "plugin_import_url": "https://api.forjegames.com/imports/tex_w1x2y3z4"
+  },
   "created_at": "2026-03-28T12:00:00Z"
 }`}
             />

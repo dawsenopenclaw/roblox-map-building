@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: BASE_URL, priority: 1.0, changeFrequency: 'weekly' as const },
     { url: `${BASE_URL}/pricing`, priority: 0.9, changeFrequency: 'weekly' as const },
     { url: `${BASE_URL}/docs`, priority: 0.8, changeFrequency: 'monthly' as const },
+    { url: `${BASE_URL}/download`, priority: 0.85, changeFrequency: 'weekly' as const },
   ]
 
   const legalPages = [

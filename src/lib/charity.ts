@@ -49,7 +49,6 @@ export async function processDonation({
       where: { id: donationRecord.id },
       data: { status: 'FAILED' },
     })
-    console.error('Charity donation skipped: STRIPE_CHARITY_ACCOUNT_ID is not configured')
     return null
   }
 
@@ -78,7 +77,6 @@ export async function processDonation({
       where: { id: donationRecord.id },
       data: { status: 'FAILED' },
     })
-    console.error('Charity donation failed:', err)
     throw err
   }
 }

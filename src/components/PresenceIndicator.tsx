@@ -38,7 +38,7 @@ export function PresenceIndicator({
     async function connectSocket() {
       try {
         const { io } = await import('socket.io-client')
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
         const socket = io(apiUrl, {
           transports: ['websocket', 'polling'],
           autoConnect: true,

@@ -96,7 +96,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ results, category, total: results.length })
   } catch (err) {
-    console.error('[roblox/trending] error:', err)
     return NextResponse.json({ error: 'Failed to reach Roblox API' }, { status: 502 })
   }
 }

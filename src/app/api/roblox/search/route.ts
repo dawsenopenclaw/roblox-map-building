@@ -66,7 +66,6 @@ export async function GET(req: NextRequest) {
 
     catalogData = await res.json()
   } catch (err) {
-    console.error('[roblox/search] fetch error:', err)
     return NextResponse.json({ error: 'Failed to reach Roblox API' }, { status: 502 })
   }
 

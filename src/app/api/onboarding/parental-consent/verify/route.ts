@@ -40,7 +40,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.redirect(new URL('/onboarding/parental-consent/success', req.url))
   } catch (error) {
-    console.error('Parental consent verify error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

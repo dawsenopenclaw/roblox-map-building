@@ -58,7 +58,6 @@ export async function GET(req: NextRequest) {
       pageSize: PAGE_SIZE,
     })
   } catch (error) {
-    console.error('Admin users GET error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

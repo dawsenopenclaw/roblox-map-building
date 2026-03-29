@@ -121,7 +121,6 @@ export async function GET(
 
     return NextResponse.json(details)
   } catch (err) {
-    console.error('[roblox/games/[id]] fetch error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

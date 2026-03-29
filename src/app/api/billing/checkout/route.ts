@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid checkout type' }, { status: 400 })
   } catch (error) {
-    console.error('Checkout session error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

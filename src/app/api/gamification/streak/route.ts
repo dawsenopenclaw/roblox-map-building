@@ -43,7 +43,6 @@ export async function GET() {
 
     return NextResponse.json(user.streak)
   } catch (error) {
-    console.error('Streak GET error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }
@@ -171,7 +170,6 @@ export async function POST(req: NextRequest) {
       bonusTokensAwarded: bonusTokens,
     })
   } catch (error) {
-    console.error('Streak POST error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

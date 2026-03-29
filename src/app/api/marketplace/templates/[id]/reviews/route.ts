@@ -19,7 +19,6 @@ export async function POST(
   try {
     user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
   } catch (err) {
-    console.error('[reviews POST] DB error:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -83,7 +82,6 @@ export async function POST(
 
     return NextResponse.json({ review }, { status: 201 })
   } catch (err) {
-    console.error('[reviews POST] DB error creating review:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
 }
@@ -127,7 +125,6 @@ export async function GET(
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (err) {
-    console.error('[reviews GET] DB error:', err)
     return NextResponse.json({ reviews: [], pagination: { page: 1, limit, total: 0, totalPages: 0 } })
   }
 }
@@ -149,7 +146,6 @@ export async function PATCH(
   try {
     user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
   } catch (err) {
-    console.error('[reviews PATCH] DB error:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -180,7 +176,6 @@ export async function PATCH(
 
     return NextResponse.json({ review: updated })
   } catch (err) {
-    console.error('[reviews PATCH] DB error updating review:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
 }

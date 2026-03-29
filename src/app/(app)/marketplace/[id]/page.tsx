@@ -393,7 +393,6 @@ export default async function TemplateDetailPage({
       }
     }
   } catch (err) {
-    console.error('[marketplace/[id]] DB error:', err)
     // Fall back to demo so page doesn't crash
     return <TemplateDetail template={FALLBACK_DEMO} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }

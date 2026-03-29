@@ -18,7 +18,6 @@ export async function POST(req: NextRequest) {
     await db.user.update({ where: { clerkId }, data: { charityChoice: parsed.data.charitySlug } })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('User charity error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

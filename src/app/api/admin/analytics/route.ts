@@ -137,7 +137,6 @@ export async function GET() {
       costVsRevenue,
     })
   } catch (error) {
-    console.error('Admin analytics error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

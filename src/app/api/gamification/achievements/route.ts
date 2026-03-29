@@ -39,7 +39,6 @@ export async function GET() {
 
     return NextResponse.json({ achievements, unlockedCount: unlockedSlugs.size, total: ACHIEVEMENTS.length })
   } catch (err) {
-    console.error('[achievements GET] DB error — returning all locked fallback:', err)
     // Return all achievements as locked so the page always renders
     const achievements = ACHIEVEMENTS.map((a) => ({
       ...a,
@@ -243,7 +242,9 @@ export async function POST(req: NextRequest) {
       await grantXp(user.id, XPEventType.ACHIEVEMENT, {
         xpReward: achievement.xpReward,
         achievementSlug: slug,
-      }).catch((err) => console.error('Failed to grant achievement XP:', err))
+      }).catch(() => {
+        // Non-critical side effect
+      })
     }
 
     // Fire notification (best-effort)
@@ -251,11 +252,12 @@ export async function POST(req: NextRequest) {
       name: achievement.name,
       description: achievement.description,
       xpReward: achievement.xpReward,
-    }).catch((err) => console.error('Achievement notification failed:', err))
+    }).catch(() => {
+      // Non-critical side effect
+    })
 
     return NextResponse.json({ unlocked: true, achievement: { slug, name: achievement.name, xpReward: achievement.xpReward } }, { status: 201 })
   } catch (error) {
-    console.error('Achievements POST error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

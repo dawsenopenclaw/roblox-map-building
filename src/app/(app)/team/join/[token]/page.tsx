@@ -19,7 +19,7 @@ export default function JoinTeamPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [result, setResult] = useState<JoinResult | null>(null)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
 
   useEffect(() => {
     // Guard against missing token param (malformed URL)

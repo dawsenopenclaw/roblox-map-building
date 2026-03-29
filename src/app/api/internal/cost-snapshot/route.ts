@@ -50,7 +50,6 @@ async function runSnapshot(req: NextRequest): Promise<NextResponse> {
       providerCosts,
     })
   } catch (error) {
-    console.error('Cost snapshot error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

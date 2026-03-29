@@ -5,9 +5,9 @@ export type Tier = 'NOVICE' | 'APPRENTICE' | 'BUILDER' | 'MASTER' | 'LEGEND' | '
 const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: string; border: string; icon: string }> = {
   NOVICE: {
     label: 'Novice',
-    color: '#6B7280',
-    bg: '#6B728015',
-    border: '#6B728030',
+    color: '#B0B0B0',
+    bg: '#B0B0B015',
+    border: '#B0B0B030',
     icon: '🌱',
   },
   APPRENTICE: {

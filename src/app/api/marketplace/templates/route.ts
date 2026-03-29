@@ -156,7 +156,6 @@ export async function GET(req: NextRequest) {
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     })
   } catch (err) {
-    console.error('[marketplace/templates GET] DB error:', err)
     // Return demo data so the page renders instead of crashing
     const filtered = DEMO_TEMPLATES.filter((t) => {
       if (category && t.category !== category) return false
@@ -182,7 +181,6 @@ export async function POST(req: NextRequest) {
   try {
     user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
   } catch (err) {
-    console.error('[marketplace/templates POST] DB error looking up user:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -249,7 +247,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ template }, { status: 201 })
   } catch (err) {
-    console.error('[marketplace/templates POST] DB error creating template:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
 }

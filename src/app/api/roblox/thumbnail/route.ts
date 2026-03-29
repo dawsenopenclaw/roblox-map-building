@@ -56,7 +56,6 @@ export async function GET(req: NextRequest) {
       },
     })
   } catch (err) {
-    console.error('[roblox/thumbnail] error:', err)
     return NextResponse.json({ error: 'Thumbnail proxy failed' }, { status: 502 })
   }
 }

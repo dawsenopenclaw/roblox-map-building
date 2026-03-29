@@ -34,17 +34,16 @@ export async function POST(req: NextRequest) {
       data: { dateOfBirth: dob, isUnder13: under13 },
     })
   } catch (err) {
-    console.error('[onboarding/complete] DB error:', err)
     // DB unavailable — still return the routing decision so the flow can continue
     return NextResponse.json({
       isUnder13: under13,
-      redirect: under13 ? '/onboarding/parental-consent' : '/dashboard',
+      redirect: under13 ? '/onboarding/parental-consent' : '/onboarding',
       dbError: true,
     })
   }
 
   return NextResponse.json({
     isUnder13: under13,
-    redirect: under13 ? '/onboarding/parental-consent' : '/dashboard',
+    redirect: under13 ? '/onboarding/parental-consent' : '/onboarding',
   })
 }

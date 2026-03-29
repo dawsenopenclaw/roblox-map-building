@@ -4,7 +4,23 @@ export const BASE_URL = 'https://forjegames.com'
 export const SITE_NAME = 'ForjeGames'
 export const DEFAULT_DESCRIPTION =
   'Build Roblox games with AI. Generate terrain, assets, and scripts from voice or image prompts — no Studio plugins required. The fastest way to ship Roblox maps.'
-export const OG_IMAGE = `${BASE_URL}/og-image.svg`
+export const OG_IMAGE = `${BASE_URL}/api/og` // Dynamic OG image endpoint
+
+/**
+ * Generate a dynamic OG image URL with custom parameters
+ * @param type - Image type: 'default' | 'template' | 'game-dna' | 'profile'
+ * @param params - Query parameters for the image
+ */
+export function generateOGImageUrl(
+  type: 'default' | 'template' | 'game-dna' | 'profile' = 'default',
+  params: Record<string, string | number> = {}
+): string {
+  const searchParams = new URLSearchParams({ type: type.toString() })
+  Object.entries(params).forEach(([key, value]) => {
+    searchParams.set(key, value.toString())
+  })
+  return `${OG_IMAGE}?${searchParams.toString()}`
+}
 
 export function createMetadata({
   title,

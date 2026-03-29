@@ -24,10 +24,7 @@ export class SilentBoundary extends Component<
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // Log to console in dev so engineers can see it, but never surface to users
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('[SilentBoundary] caught error:', error, info.componentStack)
-    }
+    // Errors are logged to Sentry automatically
     try {
       Sentry.captureException(error, {
         contexts: { react: { componentStack: info.componentStack ?? '' } },

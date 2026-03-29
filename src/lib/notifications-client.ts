@@ -61,8 +61,8 @@ export async function sendNotification({
     metadata: metadata ?? null,
   })
 
-  redis.publish(userNotificationChannel(userId), payload).catch((err) => {
-    console.error('[notifications-client] Redis publish failed:', err)
+  redis.publish(userNotificationChannel(userId), payload).catch(() => {
+    // Redis publish failure is non-critical, notification already created in DB
   })
 
   return notification

@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import Link from 'next/link'
 
 /* ─── Floating particle dot ──────────────────────────────────────────────── */
@@ -543,6 +544,111 @@ function StepCard({
   )
 }
 
+/* ─── Animated stat counter ──────────────────────────────────────────────── */
+function StatCounter({
+  target,
+  suffix,
+  label,
+}: {
+  target: number
+  suffix: string
+  label: string
+}) {
+  const [count, setCount] = React.useState(0)
+  const [triggered, setTriggered] = React.useState(false)
+  const ref = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !triggered) {
+          setTriggered(true)
+          const duration = 1800
+          const steps = 60
+          const increment = target / steps
+          let current = 0
+          const interval = setInterval(() => {
+            current += increment
+            if (current >= target) {
+              setCount(target)
+              clearInterval(interval)
+            } else {
+              setCount(Math.floor(current))
+            }
+          }, duration / steps)
+        }
+      },
+      { threshold: 0.4 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [target, triggered])
+
+  return (
+    <div ref={ref} className="text-center">
+      <p
+        className="text-4xl sm:text-5xl font-extrabold tabular-nums"
+        style={{
+          background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+        }}
+      >
+        {count.toLocaleString()}{suffix}
+      </p>
+      <p className="text-sm text-gray-400 mt-2 font-medium">{label}</p>
+    </div>
+  )
+}
+
+/* ─── Small feature grid card ────────────────────────────────────────────── */
+function GridFeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <div
+      className="group rounded-2xl p-6 flex flex-col transition-all duration-300 cursor-default"
+      style={{
+        background: '#141414',
+        border: '1px solid rgba(255,255,255,0.07)',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.border = '1px solid rgba(212,175,55,0.35)'
+        el.style.boxShadow = '0 0 28px rgba(212,175,55,0.12), 0 8px 24px rgba(0,0,0,0.4)'
+        el.style.transform = 'translateY(-3px)'
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.border = '1px solid rgba(255,255,255,0.07)'
+        el.style.boxShadow = 'none'
+        el.style.transform = 'translateY(0)'
+      }}
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 flex-shrink-0"
+        style={{
+          background: 'rgba(212,175,55,0.10)',
+          border: '1px solid rgba(212,175,55,0.22)',
+        }}
+      >
+        {icon}
+      </div>
+      <h3 className="text-base font-bold text-white mb-2">{title}</h3>
+      <p className="text-sm leading-relaxed" style={{ color: '#9CA3AF' }}>{description}</p>
+    </div>
+  )
+}
+
 /* ─── Main component ─────────────────────────────────────────────────────── */
 export default function HomeClient() {
   return (
@@ -817,6 +923,234 @@ export default function HomeClient() {
         <div className="divider-gold" />
       </div>
 
+      {/* ═══════════════════════ FEATURE GRID ════════════════════════════════ */}
+      <section className="relative w-full max-w-6xl mx-auto px-4 py-24">
+        <div className="text-center mb-14">
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5 text-xs font-semibold uppercase tracking-widest"
+            style={{
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.22)',
+              color: '#D4AF37',
+            }}
+          >
+            Full Feature Suite
+          </div>
+          <h2
+            className="text-4xl sm:text-5xl font-extrabold text-white mb-4"
+            style={{ letterSpacing: '-0.03em', lineHeight: 1.1 }}
+          >
+            Six tools. One platform.
+            <br />
+            <span style={{ color: '#FFB81C' }}>Infinite games.</span>
+          </h2>
+          <p className="text-gray-400 text-lg max-w-xl mx-auto leading-relaxed">
+            Every tool you need to go from blank canvas to published Roblox game.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* 1 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <path d="M12 18.5a6.5 6.5 0 100-13 6.5 6.5 0 000 13z" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M19 10a7 7 0 01-14 0M12 19v3M8 22h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            }
+            title="Voice to Game"
+            description="Speak your idea — AI transcribes, interprets, and starts building in real-time. Supports 8 languages."
+          />
+          {/* 2 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M3 15l5-5 4 4 3-3 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+              </svg>
+            }
+            title="Image to Map"
+            description="Upload any photo or sketch — AI segments it, reads depth, and reconstructs it as a playable Roblox map."
+          />
+          {/* 3 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <path d="M8 3H5a2 2 0 00-2 2v3M21 3h-3a2 2 0 00-2 2v3M8 21H5a2 2 0 01-2-2v-3M21 21h-3a2 2 0 01-2-2v-3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="M7 12h10M12 7l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            }
+            title="AI Script Generator"
+            description="Describe any behavior in plain English — get clean, production-ready Luau code with zero syntax errors."
+          />
+          {/* 4 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <path d="M12 3L3 8l9 5 9-5-9-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M3 16l9 5 9-5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+                <path d="M3 12l9 5 9-5" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              </svg>
+            }
+            title="3D Model Generator"
+            description="Type a description, get a textured 3D mesh via Meshy AI. Export directly as an .rbxm ready for Studio."
+          />
+          {/* 5 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              </svg>
+            }
+            title="Game DNA Scanner"
+            description="Paste any Roblox game URL. AI reverse-engineers its engagement hooks, monetization patterns, and retention loops."
+          />
+          {/* 6 */}
+          <GridFeatureCard
+            icon={
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" style={{ color: '#FFB81C' }}>
+                <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8" />
+              </svg>
+            }
+            title="Marketplace"
+            description="Browse 10,000+ community templates. Buy, sell, and remix full game worlds — one-click deploy to Studio."
+          />
+        </div>
+      </section>
+
+      {/* Section divider */}
+      <div className="w-full max-w-5xl px-6 my-2">
+        <div className="divider-gold" />
+      </div>
+
+      {/* ═══════════════════════ SOCIAL PROOF ════════════════════════════════ */}
+      <section className="relative w-full max-w-5xl mx-auto px-4 py-24">
+        {/* Radial glow */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          <div
+            className="w-[500px] h-[300px] rounded-full"
+            style={{
+              background: 'radial-gradient(ellipse, rgba(212,175,55,0.07) 0%, transparent 70%)',
+              filter: 'blur(24px)',
+            }}
+          />
+        </div>
+
+        <div className="relative z-10 text-center mb-14">
+          <div
+            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5 text-xs font-semibold uppercase tracking-widest"
+            style={{
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.22)',
+              color: '#D4AF37',
+            }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-glow-pulse" />
+            Trusted by Builders
+          </div>
+          <h2
+            className="text-4xl sm:text-5xl font-extrabold text-white mb-4"
+            style={{ letterSpacing: '-0.03em', lineHeight: 1.1 }}
+          >
+            Join <span style={{ color: '#FFB81C' }}>1,000+</span> Roblox developers
+            <br />already building with ForjeGames
+          </h2>
+          <p className="text-gray-400 text-lg max-w-lg mx-auto leading-relaxed">
+            From solo hobbyists to full studios — developers at every level ship faster with AI.
+          </p>
+        </div>
+
+        {/* Animated stat counters */}
+        <div
+          className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-10 py-14 px-8 rounded-3xl"
+          style={{
+            background: '#141414',
+            border: '1px solid rgba(212,175,55,0.15)',
+            boxShadow: '0 0 60px rgba(212,175,55,0.06), inset 0 1px 0 rgba(212,175,55,0.08)',
+          }}
+        >
+          <StatCounter target={50000} suffix="+" label="Builds Generated" />
+          <div
+            className="hidden sm:block w-px self-stretch"
+            style={{ background: 'rgba(212,175,55,0.12)' }}
+          />
+          <StatCounter target={10000} suffix="+" label="Templates in Marketplace" />
+          <div
+            className="hidden sm:block w-px self-stretch"
+            style={{ background: 'rgba(212,175,55,0.12)' }}
+          />
+          <div className="text-center">
+            <p
+              className="text-4xl sm:text-5xl font-extrabold"
+              style={{
+                background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              4.8★
+            </p>
+            <p className="text-sm text-gray-400 mt-2 font-medium">Average Rating</p>
+          </div>
+        </div>
+
+        {/* Testimonial strip */}
+        <div className="relative z-10 mt-12 grid sm:grid-cols-3 gap-5">
+          {[
+            {
+              quote: '"Built my first obby in 20 minutes. Blew my mind."',
+              author: 'Roblox dev, 14',
+              avatar: '🎮',
+            },
+            {
+              quote: '"The script generator alone saves me 2 hours every session."',
+              author: 'Studio owner',
+              avatar: '⚡',
+            },
+            {
+              quote: '"Image to Map turned my sketch into a full playable world."',
+              author: 'Solo developer',
+              avatar: '🗺️',
+            },
+          ].map((t, i) => (
+            <div
+              key={i}
+              className="rounded-2xl p-5 flex flex-col gap-3"
+              style={{
+                background: '#141414',
+                border: '1px solid rgba(255,255,255,0.07)',
+              }}
+            >
+              <p className="text-sm text-gray-300 leading-relaxed italic">{t.quote}</p>
+              <div className="flex items-center gap-2 mt-auto">
+                <span
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                  style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)' }}
+                >
+                  {t.avatar}
+                </span>
+                <span className="text-xs text-gray-500">{t.author}</span>
+                <span className="ml-auto text-xs" style={{ color: '#FFB81C' }}>★★★★★</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Section divider */}
+      <div className="w-full max-w-5xl px-6 my-2">
+        <div className="divider-gold" />
+      </div>
+
       {/* ═══════════════════════ FEATURES ════════════════════════════════════ */}
       <section className="relative w-full max-w-6xl mx-auto px-4 py-24">
         <div className="text-center mb-16">
@@ -967,15 +1301,16 @@ export default function HomeClient() {
           className="pointer-events-none absolute inset-0 flex items-center justify-center"
         >
           <div
-            className="w-[600px] h-[600px] rounded-full animate-glow-pulse"
+            className="w-[700px] h-[500px] rounded-full animate-glow-pulse"
             style={{
-              background: 'radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 65%)',
-              filter: 'blur(20px)',
+              background: 'radial-gradient(ellipse, rgba(212,175,55,0.14) 0%, transparent 65%)',
+              filter: 'blur(24px)',
             }}
           />
         </div>
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-3xl mx-auto">
+          {/* Section label */}
           <div
             className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 text-xs font-semibold uppercase tracking-widest"
             style={{
@@ -985,28 +1320,28 @@ export default function HomeClient() {
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-glow-pulse" />
-            Ready to build?
+            Get Started Today
           </div>
 
+          {/* Headline */}
           <h2
             className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-white mb-6"
             style={{ letterSpacing: '-0.04em', lineHeight: 1.05 }}
           >
-            Try it now.
+            Ready to build?
           </h2>
 
-          <p
-            className="text-xl sm:text-2xl text-white mb-4 font-medium leading-relaxed"
-          >
-            Type <span style={{ color: '#FFB81C', fontStyle: 'italic' }}>"build a castle"</span> and watch
-            <br className="hidden sm:block" /> AI do the rest.
+          {/* Sub-copy */}
+          <p className="text-xl sm:text-2xl text-white mb-3 font-medium leading-relaxed">
+            Start building for free —
+            <span style={{ color: '#D4AF37' }}> no credit card required.</span>
           </p>
-          <p className="text-base text-gray-200 mb-10 max-w-md leading-relaxed">
-            1,000 free tokens on signup. No credit card. No scripting knowledge needed.
-            Your game will be ready before you finish your coffee.
+          <p className="text-base mb-10 max-w-md leading-relaxed" style={{ color: '#9CA3AF' }}>
+            1,000 free tokens on signup. Voice, image, and text inputs. Works directly with Roblox Studio.
+            Your first game ships in minutes.
           </p>
 
-          {/* CTA */}
+          {/* Gold CTA button */}
           <div className="relative group mb-5">
             <div
               aria-hidden="true"
@@ -1037,15 +1372,15 @@ export default function HomeClient() {
                 el.style.transform = 'translateY(0) scale(1)'
               }}
             >
-              Start Building Free
+              Get Started Free
               <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
           </div>
 
-          <p className="text-sm text-gray-300">
-            Join 50,000+ creators already building on ForjeGames
+          <p className="text-sm" style={{ color: '#B0B0B0' }}>
+            No credit card required&nbsp;&nbsp;·&nbsp;&nbsp;Free forever tier&nbsp;&nbsp;·&nbsp;&nbsp;1,000+ developers already building
           </p>
         </div>
       </section>

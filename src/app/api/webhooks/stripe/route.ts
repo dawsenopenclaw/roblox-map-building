@@ -4,7 +4,7 @@ import { stripe, constructWebhookEvent } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { earnTokens, spendTokens } from '@/lib/tokens-server'
 import { processDonation } from '@/lib/charity'
-import { getTierTokenAllowance } from '@/lib/subscription-tiers'
+import { getTierTokenAllowance, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
 
 import { notifyTemplateSoldClient } from '@/lib/notifications-client'
@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
   try {
     event = constructWebhookEvent(body, signature)
   } catch (err) {
-    console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
@@ -148,7 +147,8 @@ export async function POST(req: NextRequest) {
             select: { id: true },
           })
           if (!alreadyGranted) {
-            const allowance = getTierTokenAllowance(sub.tier as any)
+            // sub.tier is guaranteed to be a SubscriptionTier enum from Prisma schema
+            const allowance = getTierTokenAllowance(sub.tier as SubscriptionTier)
             await earnTokens(userId, allowance, 'SUBSCRIPTION_GRANT', `Monthly ${sub.tier} token grant`, { invoiceId: invoice.id })
           }
         }
@@ -169,19 +169,36 @@ export async function POST(req: NextRequest) {
         if (!userId) break
 
         const priceId = subscription.items.data[0]?.price.id
-        const tierEntry = Object.entries(
-          (await import('@/lib/subscription-tiers')).SUBSCRIPTION_TIERS
-        ).find(([, tier]) => tier.stripePriceIdMonthly === priceId || (tier as any).stripePriceIdYearly === priceId)
-        const tier = (tierEntry?.[0] || 'FREE') as 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO'
+        const tierEntry = Object.entries(SUBSCRIPTION_TIERS).find(([, tier]) =>
+          tier.stripePriceIdMonthly === priceId || tier.stripePriceIdYearly === priceId
+        )
+        const tier = (tierEntry?.[0] || 'FREE') as SubscriptionTier
 
         // Use upsert — subscription row may not yet exist if 'created' fires before checkout session
+        // Map Stripe subscription status to our SubscriptionStatus enum
+        const normalizeStatus = (stripeStatus: string): 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'TRIALING' | 'INCOMPLETE' | 'INCOMPLETE_EXPIRED' | 'PAUSED' | 'UNPAID' => {
+          const statusMap: Record<string, 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'TRIALING' | 'INCOMPLETE' | 'INCOMPLETE_EXPIRED' | 'PAUSED' | 'UNPAID'> = {
+            'active': 'ACTIVE',
+            'past_due': 'PAST_DUE',
+            'canceled': 'CANCELED',
+            'trialing': 'TRIALING',
+            'incomplete': 'INCOMPLETE',
+            'incomplete_expired': 'INCOMPLETE_EXPIRED',
+            'paused': 'PAUSED',
+            'unpaid': 'UNPAID',
+          }
+          return statusMap[stripeStatus.toLowerCase()] || 'ACTIVE'
+        }
+
+        const normalizedStatus = normalizeStatus(subscription.status)
+
         await db.subscription.upsert({
           where: { stripeSubscriptionId: subscription.id },
           create: {
             userId,
             stripeSubscriptionId: subscription.id,
             tier,
-            status: subscription.status.toUpperCase() as any,
+            status: normalizedStatus,
             currentPeriodStart: new Date(subscription.current_period_start * 1000),
             currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -189,7 +206,7 @@ export async function POST(req: NextRequest) {
           },
           update: {
             tier,
-            status: subscription.status.toUpperCase() as any,
+            status: normalizedStatus,
             currentPeriodStart: new Date(subscription.current_period_start * 1000),
             currentPeriodEnd: new Date(subscription.current_period_end * 1000),
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -258,7 +275,6 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch (err) {
-    console.error(`Webhook handler failed for ${event.type}:`, err)
     // Return 200 anyway — Stripe will retry if we return 5xx
     // Log to Sentry in production
   }

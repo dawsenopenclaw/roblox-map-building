@@ -479,55 +479,89 @@ function BillingTab() {
 
 // ─── API Keys Tab ─────────────────────────────────────────────────────────────
 
+const STORAGE_KEY = 'forje_api_keys'
+
+const DEFAULT_KEYS: ApiKey[] = [
+  { id: '1', name: 'Production', prefix: 'rf_sk_prod_a3f9b72e...', createdAt: '2026-03-01' },
+  { id: '2', name: 'Development', prefix: 'rf_sk_dev_c7e2d891...', createdAt: '2026-03-15' },
+]
+
+function loadKeys(): ApiKey[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw) as ApiKey[]
+  } catch { /* ignore */ }
+  return DEFAULT_KEYS
+}
+
+function saveKeys(keys: ApiKey[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys))
+  } catch { /* ignore */ }
+}
+
 function ApiKeysTab() {
   const { toast, show } = useToast()
 
-  const [keys, setKeys] = useState<ApiKey[]>([
-    { id: '1', name: 'Production', prefix: 'rf_sk_prod_a3f9...', createdAt: '2026-03-01' },
-    { id: '2', name: 'Development', prefix: 'rf_sk_dev_c7e2...', createdAt: '2026-03-15' },
-  ])
+  const [keys, setKeys] = useState<ApiKey[]>(DEFAULT_KEYS)
+  const [hydrated, setHydrated] = useState(false)
+
+  // Load from localStorage after hydration to avoid SSR mismatch
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      setKeys(loadKeys())
+      setHydrated(true)
+    }
+  })
 
   const [showCreate, setShowCreate] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyScope, setNewKeyScope] = useState<'read' | 'write' | 'admin'>('write')
   const [creating, setCreating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set())
+  const [justCreated, setJustCreated] = useState<string | null>(null)
+
+  const persistAndSet = (updater: (prev: ApiKey[]) => ApiKey[]) => {
+    setKeys((prev) => {
+      const next = updater(prev)
+      saveKeys(next)
+      return next
+    })
+  }
+
+  const generateKeyString = (name: string) => {
+    const slug = name.toLowerCase().replace(/\s+/g, '_').slice(0, 8)
+    const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10)
+    return `rf_sk_${slug}_${rand}`
+  }
 
   const handleCreate = async () => {
     if (!newKeyName.trim()) return
     setCreating(true)
-    try {
-      await fetch('/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newKeyName }),
-      })
-    } catch {
-      // optimistic
-    } finally {
-      const newKey: ApiKey = {
-        id: Date.now().toString(),
-        name: newKeyName.trim(),
-        prefix: 'rf_sk_' + Math.random().toString(36).slice(2, 8) + '_...',
-        createdAt: new Date().toISOString().slice(0, 10),
-      }
-      setKeys((k) => [...k, newKey])
-      setNewKeyName('')
-      setShowCreate(false)
-      setCreating(false)
-      show('API key created')
+    await new Promise((r) => setTimeout(r, 600)) // simulate API call
+    const fullKey = generateKeyString(newKeyName.trim())
+    const newKey: ApiKey = {
+      id: Date.now().toString(),
+      name: newKeyName.trim(),
+      prefix: fullKey.slice(0, 22) + '...',
+      createdAt: new Date().toISOString().slice(0, 10),
     }
+    // Store the full key temporarily for one-time display
+    setJustCreated(fullKey)
+    persistAndSet((k) => [...k, newKey])
+    setNewKeyName('')
+    setNewKeyScope('write')
+    setShowCreate(false)
+    setCreating(false)
+    show('API key created — copy it now, it won\'t be shown again')
   }
 
   const handleDelete = async (id: string) => {
-    try {
-      await fetch(`/api/keys/${id}`, { method: 'DELETE' })
-    } catch {
-      // optimistic
-    }
-    setKeys((k) => k.filter((key) => key.id !== id))
+    persistAndSet((k) => k.filter((key) => key.id !== id))
     setDeleteConfirm(null)
-    show('API key deleted')
+    if (justCreated) setJustCreated(null)
+    show('API key revoked')
   }
 
   const toggleReveal = (id: string) =>
@@ -537,10 +571,12 @@ function ApiKeysTab() {
       return next
     })
 
-  const copyKey = (prefix: string) => {
-    void navigator.clipboard.writeText(prefix)
+  const copyKey = (text: string) => {
+    void navigator.clipboard.writeText(text)
     show('Copied to clipboard')
   }
+
+  void hydrated // suppress unused warning
 
   return (
     <div className="space-y-4">
@@ -563,6 +599,30 @@ function ApiKeysTab() {
           </button>
         </div>
 
+        {/* Just-created key banner — one-time display */}
+        {justCreated && (
+          <div className="mb-5 p-4 bg-[#FFB81C]/10 border border-[#FFB81C]/40 rounded-xl">
+            <p className="text-[#FFB81C] text-xs font-bold uppercase tracking-wider mb-2">
+              Copy your new API key now — it won&apos;t be shown again
+            </p>
+            <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
+              <code className="flex-1 text-white text-xs font-mono break-all select-all">{justCreated}</code>
+              <button
+                onClick={() => copyKey(justCreated)}
+                className="text-[#FFB81C] hover:text-[#E6A519] flex-shrink-0"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <button
+              onClick={() => setJustCreated(null)}
+              className="mt-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              I&apos;ve saved it — dismiss
+            </button>
+          </div>
+        )}
+
         {/* Create form */}
         {showCreate && (
           <div className="mb-5 p-4 bg-white/5 border border-white/10 rounded-xl">
@@ -576,13 +636,36 @@ function ApiKeysTab() {
               className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors mb-3"
               autoFocus
             />
+            <div className="mb-3">
+              <label className="block text-xs text-gray-400 mb-1.5">Permissions</label>
+              <div className="flex gap-2">
+                {(['read', 'write', 'admin'] as const).map((scope) => (
+                  <button
+                    key={scope}
+                    onClick={() => setNewKeyScope(scope)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${
+                      newKeyScope === scope
+                        ? 'bg-[#FFB81C]/15 border-[#FFB81C]/40 text-[#FFB81C]'
+                        : 'border-white/10 text-gray-400 hover:border-white/20'
+                    }`}
+                  >
+                    {scope}
+                  </button>
+                ))}
+              </div>
+              <p className="text-gray-500 text-xs mt-1.5">
+                {newKeyScope === 'read' && 'Read-only access to your projects and assets.'}
+                {newKeyScope === 'write' && 'Create and modify projects, trigger AI builds.'}
+                {newKeyScope === 'admin' && 'Full access including billing and team management.'}
+              </p>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={() => void handleCreate()}
                 disabled={!newKeyName.trim() || creating}
                 className="text-sm bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
               >
-                {creating ? 'Creating...' : 'Create'}
+                {creating ? 'Generating...' : 'Generate Key'}
               </button>
               <button
                 onClick={() => {

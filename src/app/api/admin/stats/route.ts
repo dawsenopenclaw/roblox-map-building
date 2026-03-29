@@ -123,7 +123,6 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error('Admin stats error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

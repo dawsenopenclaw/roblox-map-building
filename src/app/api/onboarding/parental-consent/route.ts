@@ -21,7 +21,6 @@ export async function POST(req: NextRequest) {
   try {
     user = await db.user.findUnique({ where: { clerkId } })
   } catch (err) {
-    console.error('[onboarding/parental-consent] DB findUnique error:', err)
     // DB unavailable — proceed optimistically (DOB was validated at age-gate step)
   }
 
@@ -45,7 +44,6 @@ export async function POST(req: NextRequest) {
         },
       })
     } catch (err) {
-      console.error('[onboarding/parental-consent] DB update error:', err)
       // Non-fatal — still attempt to send the email
     }
 
@@ -60,7 +58,6 @@ export async function POST(req: NextRequest) {
       message: 'Consent email sent. Account locked until parent approves.',
     })
   } catch (err) {
-    console.error('[onboarding/parental-consent] Email send error:', err)
     return NextResponse.json({ error: 'Failed to send consent email. Please try again.' }, { status: 500 })
   }
 }

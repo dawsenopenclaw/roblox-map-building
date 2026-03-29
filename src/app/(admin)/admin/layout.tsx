@@ -7,7 +7,7 @@ export const metadata = {
 }
 
 // Owner bypass: set ADMIN_EMAIL in .env.local to always grant access regardless of DB role.
-const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? 'dawsenm@gmail.com'
+const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Try to get Clerk session — if unavailable or unconfigured, fall through to demo mode.

@@ -159,6 +159,10 @@ export default function AcceptableUsePage() {
           <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
             {EMAIL}
           </a>
+          . Full details at{' '}
+          <a href="https://forjegames.com/acceptable-use" className="text-[#FFB81C] hover:underline">
+            forjegames.com/acceptable-use
+          </a>
           . Include:
         </p>
         <ul className="space-y-1 text-gray-300 mt-3">

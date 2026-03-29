@@ -69,7 +69,6 @@ export async function GET() {
       activeCharities: getActiveCharities(),
     })
   } catch (error) {
-    console.error('Admin charity GET error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }
@@ -102,7 +101,6 @@ export async function POST(req: NextRequest) {
       charity: { slug, name, description, url },
     })
   } catch (error) {
-    console.error('Admin charity POST error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

@@ -75,9 +75,9 @@ function MetricCard({
     <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-[#6B7280] uppercase tracking-wider">{title}</p>
+          <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">{title}</p>
           <p className="text-2xl font-bold text-white mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-[#6B7280] mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-[#B0B0B0] mt-1">{subtitle}</p>}
           {trendUp !== undefined && (
             <div
               className={`flex items-center gap-1 mt-2 text-xs font-medium ${trendUp ? 'text-green-400' : 'text-red-400'}`}
@@ -100,9 +100,9 @@ function ProgressBar({ label, count, total, color }: { label: string; count: num
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between text-xs">
-        <span className="text-[#6B7280]">{label}</span>
+        <span className="text-[#B0B0B0]">{label}</span>
         <span className="text-white font-medium">
-          {count.toLocaleString()} <span className="text-[#6B7280]">({pct.toFixed(1)}%)</span>
+          {count.toLocaleString()} <span className="text-[#B0B0B0]">({pct.toFixed(1)}%)</span>
         </span>
       </div>
       <div className="h-2 bg-[#1c1c1c] rounded-full overflow-hidden">
@@ -165,7 +165,7 @@ export default function AdminAnalyticsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Analytics</h1>
-          <p className="text-[#6B7280] text-sm mt-1">Revenue, growth, and retention metrics</p>
+          <p className="text-[#B0B0B0] text-sm mt-1">Revenue, growth, and retention metrics</p>
         </div>
         {isDemo && (
           <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
@@ -207,11 +207,11 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* MRR bar chart */}
         <div className="xl:col-span-2 bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-6">
             MRR Trend
           </h2>
           {data.mrrHistory.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-[#6B7280] text-sm">
+            <div className="h-40 flex items-center justify-center text-[#B0B0B0] text-sm">
               No data available
             </div>
           ) : (
@@ -236,7 +236,7 @@ export default function AdminAnalyticsPage() {
               </div>
               <div className="flex justify-between mt-3">
                 {data.mrrHistory.map((point, i) => (
-                  <span key={i} className="text-xs text-[#6B7280] text-center flex-1">
+                  <span key={i} className="text-xs text-[#B0B0B0] text-center flex-1">
                     {point.month.split(' ')[0]}
                   </span>
                 ))}
@@ -247,7 +247,7 @@ export default function AdminAnalyticsPage() {
 
         {/* Conversion funnel */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-6">
             Conversion Funnel
           </h2>
           <div className="space-y-4">
@@ -257,7 +257,7 @@ export default function AdminAnalyticsPage() {
             <ProgressBar label="Paying" count={data.funnel.paying} total={data.funnel.visits} color="#a87210" />
           </div>
           <div className="mt-6 pt-4 border-t border-[#1c1c1c]">
-            <p className="text-xs text-[#6B7280]">
+            <p className="text-xs text-[#B0B0B0]">
               Paid conversion:{' '}
               <span className="text-white font-semibold">
                 {data.funnel.visits > 0 ? ((data.funnel.paying / data.funnel.visits) * 100).toFixed(2) : '0.00'}%
@@ -270,20 +270,20 @@ export default function AdminAnalyticsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Top templates */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4">
             Top Templates by Revenue
           </h2>
           {data.topTemplates.length === 0 ? (
-            <p className="text-[#6B7280] text-sm">No template revenue data</p>
+            <p className="text-[#B0B0B0] text-sm">No template revenue data</p>
           ) : (
             <div className="space-y-3">
               {data.topTemplates.map((template, i) => (
                 <div key={template.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-[#6B7280] w-4 flex-shrink-0">{i + 1}</span>
+                    <span className="text-xs text-[#B0B0B0] w-4 flex-shrink-0">{i + 1}</span>
                     <div>
                       <p className="text-sm text-white font-medium">{template.title}</p>
-                      <p className="text-xs text-[#6B7280]">
+                      <p className="text-xs text-[#B0B0B0]">
                         {template.downloads.toLocaleString()} downloads
                       </p>
                     </div>
@@ -299,13 +299,13 @@ export default function AdminAnalyticsPage() {
 
         {/* Cohort retention */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4">
             Cohort Retention
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-[#6B7280] border-b border-[#1c1c1c]">
+                <tr className="text-xs text-[#B0B0B0] border-b border-[#1c1c1c]">
                   <th className="pb-2 text-left font-medium">Cohort</th>
                   <th className="pb-2 text-right font-medium">Wk 1</th>
                   <th className="pb-2 text-right font-medium">Wk 2</th>
@@ -316,14 +316,14 @@ export default function AdminAnalyticsPage() {
               <tbody className="divide-y divide-[#1c1c1c]">
                 {data.cohortRetention.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-4 text-center text-[#6B7280]">
+                    <td colSpan={5} className="py-4 text-center text-[#B0B0B0]">
                       No cohort data
                     </td>
                   </tr>
                 ) : (
                   data.cohortRetention.map((row) => (
                     <tr key={row.cohort}>
-                      <td className="py-2.5 text-[#6B7280] text-xs">{row.cohort}</td>
+                      <td className="py-2.5 text-[#B0B0B0] text-xs">{row.cohort}</td>
                       {[row.week1, row.week2, row.week4, row.week8].map((pct, i) => (
                         <td
                           key={i}

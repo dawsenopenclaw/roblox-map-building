@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Generate onboarding link
     const body = await req.json().catch(() => ({})) as { returnUrl?: string; refreshUrl?: string }
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
     const returnUrl = body.returnUrl || `${baseUrl}/marketplace/earnings?onboarded=1`
     const refreshUrl = body.refreshUrl || `${baseUrl}/marketplace/earnings?refresh=1`
 
@@ -55,7 +55,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: accountLink.url })
   } catch (error) {
-    console.error('Stripe Connect onboard error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

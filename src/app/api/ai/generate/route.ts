@@ -37,7 +37,7 @@ function estimateTokens(text: string): number {
 
 // ── Hono proxy ───────────────────────────────────────────────────────────────
 
-const HONO_URL = process.env.INTERNAL_API_URL ?? 'http://localhost:3001'
+const HONO_URL = process.env.INTERNAL_API_URL ?? 'https://api.forjegames.com'
 
 /**
  * Tries to call the Hono generate endpoint.

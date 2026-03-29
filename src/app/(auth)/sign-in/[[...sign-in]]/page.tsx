@@ -2,6 +2,7 @@
 
 import { SignIn } from '@clerk/nextjs'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 const clerkAppearance = {
   variables: {
@@ -11,7 +12,7 @@ const clerkAppearance = {
     colorTextSecondary: '#9CA3AF',
     colorInputBackground: '#1a2236',
     colorInputText: '#F9FAFB',
-    colorInputPlaceholder: '#6B7280',
+    colorInputPlaceholder: '#B0B0B0',
     colorNeutral: '#374151',
     colorDanger: '#EF4444',
     colorSuccess: '#10B981',
@@ -91,7 +92,11 @@ const clerkAppearance = {
   },
 }
 
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+
 export default function SignInPage() {
+  const router = useRouter()
+
   return (
     <div className="flex flex-col items-center">
 
@@ -112,6 +117,29 @@ export default function SignInPage() {
           appearance={clerkAppearance}
         />
       </div>
+
+      {/* Demo bypass — shown when DEMO_MODE is active (test keys on prod) */}
+      {IS_DEMO && (
+        <div className="mt-5 w-full">
+          <div className="relative flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-border-subtle" />
+            <span className="text-xs text-muted uppercase tracking-widest shrink-0">or</span>
+            <div className="flex-1 h-px bg-border-subtle" />
+          </div>
+          <button
+            onClick={() => router.push('/editor')}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/8 hover:bg-gold/15 text-gold font-semibold py-2.5 text-sm transition-colors duration-150"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polygon points="5,3 19,12 5,21 5,3" />
+            </svg>
+            Try Demo — Go to Editor
+          </button>
+          <p className="mt-2 text-center text-xs text-muted-subtle">
+            No account needed in demo mode
+          </p>
+        </div>
+      )}
 
       {/* Custom footer */}
       <p className="mt-4 text-sm text-muted text-center">

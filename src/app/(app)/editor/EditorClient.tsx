@@ -490,7 +490,7 @@ function BuildResultCard({ result }: { result: BuildResult }) {
               className="absolute top-1.5 right-2 text-[9px] px-2 py-0.5 rounded transition-colors"
               style={{
                 background: copied ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)',
-                color: copied ? '#4ADE80' : '#6B7280',
+                color: copied ? '#4ADE80' : '#B0B0B0',
                 border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
               }}
             >
@@ -503,9 +503,25 @@ function BuildResultCard({ result }: { result: BuildResult }) {
   )
 }
 
+// ─── Timestamp display ─────────────────────────────────────────────────────────
+
+function MessageTimestamp({ ts }: { ts: Date }) {
+  const label = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return (
+    <span
+      className="text-[9px] text-gray-600 select-none"
+      style={{ animation: 'timestamp-fade 0.15s ease-out forwards' }}
+    >
+      {label}
+    </span>
+  )
+}
+
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
 function Message({ msg }: { msg: ChatMessage }) {
+  const [showTs, setShowTs] = useState(false)
+
   if (msg.role === 'system') {
     return (
       <div className="flex justify-center my-2">
@@ -522,15 +538,23 @@ function Message({ msg }: { msg: ChatMessage }) {
 
   if (msg.role === 'user') {
     return (
-      <div className="flex justify-end gap-2">
-        <div
-          className="max-w-[80%] px-4 py-3 rounded-2xl rounded-tr-sm"
-          style={{
-            background: 'linear-gradient(135deg, rgba(255,184,28,0.12) 0%, rgba(255,107,53,0.08) 100%)',
-            border: '1px solid rgba(255,184,28,0.25)',
-          }}
-        >
-          <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
+      <div
+        className="flex justify-end gap-2 group"
+        onMouseEnter={() => setShowTs(true)}
+        onMouseLeave={() => setShowTs(false)}
+      >
+        <div className="flex flex-col items-end gap-1">
+          <div
+            className="max-w-[80%] px-4 py-3 rounded-2xl rounded-tr-sm transition-all duration-200"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,184,28,0.14) 0%, rgba(255,107,53,0.09) 100%)',
+              border: '1px solid rgba(255,184,28,0.28)',
+              boxShadow: '0 2px 12px rgba(255,184,28,0.08)',
+            }}
+          >
+            <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
+          </div>
+          {showTs && <MessageTimestamp ts={msg.timestamp} />}
         </div>
         <div className="w-7 h-7 rounded-full flex-shrink-0 bg-white/10 border border-white/15 flex items-center justify-center self-end">
           <svg className="w-3.5 h-3.5 text-gray-300" viewBox="0 0 14 14" fill="none">
@@ -542,11 +566,16 @@ function Message({ msg }: { msg: ChatMessage }) {
     )
   }
 
-  // assistant
+  // assistant — words fade in progressively
   const modelColor = MODELS.find((m) => m.id === msg.model)?.color ?? '#FFB81C'
+  const words = msg.content.split(' ')
 
   return (
-    <div className="flex items-start gap-3">
+    <div
+      className="flex items-start gap-3 group"
+      onMouseEnter={() => setShowTs(true)}
+      onMouseLeave={() => setShowTs(false)}
+    >
       {/* AI Avatar */}
       <div
         className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
@@ -572,19 +601,36 @@ function Message({ msg }: { msg: ChatMessage }) {
             className="absolute top-0 left-4 right-4 h-px rounded-full"
             style={{ background: `linear-gradient(90deg, transparent, ${modelColor}40, transparent)` }}
           />
-          <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap font-[inherit]">{msg.content}</p>
+          <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap font-[inherit]">
+            {words.map((word, i) => (
+              <span
+                key={i}
+                style={{
+                  animation: 'word-fade-in 0.25s ease-out forwards',
+                  animationDelay: `${Math.min(i * 18, 600)}ms`,
+                  opacity: 0,
+                  display: 'inline',
+                }}
+              >
+                {word}{i < words.length - 1 ? ' ' : ''}
+              </span>
+            ))}
+          </p>
         </div>
         {/* Marketplace-first build result card */}
         {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
-        {msg.tokensUsed !== undefined && (
-          <span className="text-[10px] text-blue-400/70 pl-1 flex items-center gap-1">
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1"/>
-              <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-            </svg>
-            {msg.tokensUsed} tokens
-          </span>
-        )}
+        <div className="flex items-center gap-2 pl-1">
+          {msg.tokensUsed !== undefined && (
+            <span className="text-[10px] text-blue-400/70 flex items-center gap-1">
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1"/>
+                <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+              </svg>
+              {msg.tokensUsed} tokens
+            </span>
+          )}
+          {showTs && <MessageTimestamp ts={msg.timestamp} />}
+        </div>
       </div>
     </div>
   )
@@ -976,7 +1022,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
               onClick={() => setActiveView(mode)}
               className="px-2.5 py-1.5 text-[10px] font-medium transition-colors"
               style={{
-                color: activeView === mode ? '#FFB81C' : '#6B7280',
+                color: activeView === mode ? '#FFB81C' : '#B0B0B0',
                 background: activeView === mode ? 'rgba(255,184,28,0.12)' : 'transparent',
               }}
             >
@@ -992,7 +1038,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
               background: 'rgba(0,0,0,0.6)',
               backdropFilter: 'blur(8px)',
               border: `1px solid ${showGrid ? 'rgba(255,184,28,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              color: showGrid ? '#FFB81C' : '#6B7280',
+              color: showGrid ? '#FFB81C' : '#B0B0B0',
             }}
           >
             Show Grid
@@ -1077,7 +1123,7 @@ function ProjectsPanel({
   // Genre colour dots
   const GENRE_COLORS: Record<string, string> = {
     RPG: '#8B5CF6', Racing: '#3B82F6', Tycoon: '#F59E0B',
-    Obby: '#10B981', Sandbox: '#6B7280',
+    Obby: '#10B981', Sandbox: '#B0B0B0',
   }
 
   const handleConnectGame = () => {
@@ -1202,7 +1248,7 @@ function ProjectsPanel({
                   <div className="flex items-center gap-2 mt-0.5">
                     <span
                       className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: GENRE_COLORS[game.genre] ?? '#6B7280' }}
+                      style={{ backgroundColor: GENRE_COLORS[game.genre] ?? '#B0B0B0' }}
                     />
                     <p className="text-[10px] text-gray-500">
                       {formatVisits(game.visits)} visits &middot; {game.updated}
@@ -1616,7 +1662,6 @@ function RobloxMarketplacePanel() {
         if (!cancelled) setResults(json.results ?? [])
       } catch (err) {
         if (!cancelled) setError('Could not load marketplace. Check your connection.')
-        console.error('[AssetsPanel]', err)
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -1806,7 +1851,7 @@ const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
   // Buildings
   { id: 'bld-001', name: 'Medieval Castle Tower', creator: 'StoneForge3D',   description: 'Tall stone tower with crenellations and arrow slits.',    downloads: 4820,  rating: 4.9, category: 'Buildings',  polyCount: 2100, style: 'realistic',  tags: ['castle','medieval','tower'],    gradientFrom: '#4B5563', gradientTo: '#1F2937' },
   { id: 'bld-002', name: 'Modern House',          creator: 'ArchViz3D',      description: 'Contemporary house with flat roof and large windows.',   downloads: 6340,  rating: 4.7, category: 'Buildings',  polyCount:  820, style: 'low-poly',   tags: ['house','modern','residential'], gradientFrom: '#475569', gradientTo: '#334155' },
-  { id: 'bld-004', name: 'Ruined Stone Wall',     creator: 'RuinsWorkshop',  description: 'Crumbled ancient wall with moss and weathering.',        downloads: 3210,  rating: 4.6, category: 'Buildings',  polyCount:  940, style: 'realistic',  tags: ['ruins','wall','stone'],         gradientFrom: '#6B7280', gradientTo: '#374151' },
+  { id: 'bld-004', name: 'Ruined Stone Wall',     creator: 'RuinsWorkshop',  description: 'Crumbled ancient wall with moss and weathering.',        downloads: 3210,  rating: 4.6, category: 'Buildings',  polyCount:  940, style: 'realistic',  tags: ['ruins','wall','stone'],         gradientFrom: '#B0B0B0', gradientTo: '#374151' },
   { id: 'bld-005', name: 'Fantasy Tavern',        creator: 'TavernCraft',    description: 'Cozy medieval tavern with thatched roof and warm glow.', downloads: 5570,  rating: 4.9, category: 'Buildings',  polyCount: 1650, style: 'stylized',   tags: ['tavern','inn','medieval'],      gradientFrom: '#92400E', gradientTo: '#78350F' },
   // Vehicles
   { id: 'veh-001', name: 'Sports Car (Red)',      creator: 'AutoMesh3D',     description: 'Sleek sports car with separate wheel meshes.',           downloads: 7120,  rating: 4.8, category: 'Vehicles',   polyCount: 3200, style: 'realistic',  tags: ['car','sports','racing'],        gradientFrom: '#DC2626', gradientTo: '#991B1B' },
@@ -1843,7 +1888,7 @@ const SORT_OPTIONS = ['Popular', 'New', 'Top Rated'] as const
 type SortLabel = typeof SORT_OPTIONS[number]
 
 const STYLE_COLORS: Record<AssetStyle, string> = {
-  realistic: '#6B7280',
+  realistic: '#B0B0B0',
   'low-poly': '#0891B2',
   stylized: '#7C3AED',
   cartoon: '#D97706',
@@ -2276,16 +2321,70 @@ function TokensPanel({ tokensUsed }: { tokensUsed: number }) {
   )
 }
 
-function SettingsPanel() {
+function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <div className="p-4 space-y-3">
-      {/* Inline setting row */}
-      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/8">
-        <span className="text-xs text-gray-300">Theme</span>
-        <span className="text-xs font-semibold text-gray-300 bg-white/8 px-2 py-0.5 rounded-md">Dark</span>
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative flex-shrink-0 w-9 h-5 rounded-full transition-all duration-200 forge-focus"
+      style={{
+        background: checked
+          ? 'linear-gradient(90deg, #D4AF37, #FFB81C)'
+          : 'rgba(255,255,255,0.1)',
+        boxShadow: checked ? '0 0 8px rgba(255,184,28,0.35)' : 'none',
+      }}
+    >
+      <span
+        className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200"
+        style={{ transform: checked ? 'translateX(16px)' : 'translateX(0)' }}
+      />
+    </button>
+  )
+}
+
+function SettingsPanel() {
+  const [notifications, setNotifications] = useState(true)
+  const [autoSave, setAutoSave]           = useState(true)
+  const [streamingText, setStreamingText] = useState(true)
+
+  const toggleRows = [
+    { label: 'Notifications',  sub: 'Build & asset alerts',        value: notifications, set: setNotifications },
+    { label: 'Auto-save',      sub: 'Save sessions automatically', value: autoSave,       set: setAutoSave      },
+    { label: 'Streaming text', sub: 'Animated word fade-in',       value: streamingText, set: setStreamingText  },
+  ]
+
+  return (
+    <div className="p-4 space-y-3" style={{ animation: 'panel-slide-in 0.2s ease-out forwards' }}>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Preferences</p>
+
+      {/* Theme row — always dark */}
+      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.025] border border-white/[0.07]">
+        <div>
+          <p className="text-xs text-gray-200 font-medium">Theme</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">Interface color scheme</p>
+        </div>
+        <span className="text-[11px] font-semibold text-gray-300 bg-white/8 px-2.5 py-1 rounded-md border border-white/10">Dark</span>
+      </div>
+
+      {/* Toggle rows */}
+      <div className="space-y-1">
+        {toggleRows.map(({ label, sub, value, set }) => (
+          <div
+            key={label}
+            className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.025] border border-white/[0.07] hover:border-white/[0.12] transition-all duration-200"
+          >
+            <div>
+              <p className="text-xs text-gray-200 font-medium">{label}</p>
+              <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>
+            </div>
+            <ToggleSwitch checked={value} onChange={set} />
+          </div>
+        ))}
       </div>
 
       {/* Link rows */}
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold pt-1">Account</p>
       <div className="space-y-1">
         {[
           { label: 'API Keys', sub: 'Configure',   href: '/settings/api-keys' },
@@ -2296,10 +2395,10 @@ function SettingsPanel() {
           <Link
             key={label}
             href={href}
-            className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/8 transition-colors group"
+            className="forge-focus flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/8 transition-all duration-200 group"
           >
-            <span className="text-xs text-gray-300 group-hover:text-gray-200 transition-colors">{label}</span>
-            <div className="flex items-center gap-1 text-[#FFB81C]/60 group-hover:text-[#FFB81C] transition-colors">
+            <span className="text-xs text-gray-300 group-hover:text-gray-100 transition-colors">{label}</span>
+            <div className="flex items-center gap-1 text-[#FFB81C]/50 group-hover:text-[#FFB81C] transition-colors duration-200">
               <span className="text-[11px] font-medium">{sub}</span>
               <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
                 <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -2309,7 +2408,7 @@ function SettingsPanel() {
         ))}
       </div>
 
-      <div className="pt-1 border-t border-white/6">
+      <div className="pt-2 border-t border-white/6">
         <p className="text-[10px] text-gray-700 text-center">ForjeAI v0.1.0</p>
       </div>
     </div>
@@ -2329,11 +2428,21 @@ function IconBtn({
       title={label}
       aria-label={label}
       className={[
-        'w-10 h-10 rounded-xl flex items-center justify-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C]',
-        active ? 'bg-[#FFB81C]/15 text-[#FFB81C]' : 'text-gray-400 hover:text-gray-300 hover:bg-white/5',
+        'forge-focus relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200',
+        active
+          ? 'bg-[#FFB81C]/15 text-[#FFB81C]'
+          : 'text-gray-500 hover:text-gray-200 hover:bg-white/6',
       ].join(' ')}
+      style={active ? { boxShadow: '0 0 12px rgba(255,184,28,0.18)' } : {}}
     >
       {children}
+      {/* Gold underline indicator when active */}
+      {active && (
+        <span
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
+          style={{ background: '#FFB81C', boxShadow: '0 0 4px #FFB81C' }}
+        />
+      )}
     </button>
   )
 }
@@ -2357,6 +2466,10 @@ export function EditorClient() {
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [activeGame, setActiveGame] = useState<RobloxGame | null>(DEMO_GAMES[0])
+  const [projectName, setProjectName] = useState('Medieval Kingdom')
+  const [editingProjectName, setEditingProjectName] = useState(false)
+  const [showBuildOverlay, setShowBuildOverlay] = useState(false)
+  const projectNameInputRef = useRef<HTMLInputElement>(null)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -2374,6 +2487,16 @@ export function EditorClient() {
     ta.style.height = 'auto'
     ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'
   }, [input])
+
+  // Sync project name when active game changes
+  useEffect(() => {
+    if (activeGame) setProjectName(activeGame.name)
+  }, [activeGame])
+
+  // Focus project name input when editing starts
+  useEffect(() => {
+    if (editingProjectName) projectNameInputRef.current?.select()
+  }, [editingProjectName])
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput((prev) => (prev ? prev + ' ' + text : text))
@@ -2472,6 +2595,10 @@ export function EditorClient() {
         const buildResult = data.buildResult
 
         setTotalTokens((prev) => prev + tokensUsed)
+
+        // Show "building" overlay briefly
+        setShowBuildOverlay(true)
+        setTimeout(() => setShowBuildOverlay(false), 1800)
 
         // Spawn a new block in the viewport for each AI response
         setSceneBlocks((prev) => {
@@ -2601,16 +2728,68 @@ export function EditorClient() {
 
   return (
     <>
-      {/* Keyframes */}
+      {/* Keyframes + global polish */}
       <style>{`
         @keyframes typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-4px); opacity: 1; }
+          30% { transform: translateY(-5px); opacity: 1; }
         }
         @keyframes block-spawn {
           0%   { opacity: 0; transform: translateY(-20px) scale(0.7); }
           60%  { opacity: 1; transform: translateY(4px) scale(1.04); }
           100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes block-spawn-smooth {
+          0%   { opacity: 0; transform: translateY(-20px) scale(0.7); }
+          60%  { opacity: 1; transform: translateY(4px) scale(1.04); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes word-fade-in {
+          from { opacity: 0; transform: translateY(3px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes build-overlay-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        @keyframes build-overlay-out {
+          from { opacity: 1; }
+          to   { opacity: 0; }
+        }
+        @keyframes panel-slide-in {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,28,0.4); }
+          50%       { box-shadow: 0 0 0 4px rgba(255,184,28,0); }
+        }
+        @keyframes float-particle {
+          0%   { transform: translateY(0px) translateX(0px); opacity: 0.4; }
+          33%  { transform: translateY(-8px) translateX(4px); opacity: 0.8; }
+          66%  { transform: translateY(-4px) translateX(-3px); opacity: 0.5; }
+          100% { transform: translateY(0px) translateX(0px); opacity: 0.4; }
+        }
+        @keyframes grid-drift {
+          0%   { background-position: 0 0; }
+          100% { background-position: 10% 10%; }
+        }
+        @keyframes timestamp-fade {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        /* Thin scrollbar — gold-tinted */
+        .forge-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+        .forge-scroll::-webkit-scrollbar-track { background: transparent; }
+        .forge-scroll::-webkit-scrollbar-thumb {
+          background: rgba(212,175,55,0.2);
+          border-radius: 99px;
+        }
+        .forge-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.4); }
+        /* Focus ring — gold */
+        .forge-focus:focus-visible {
+          outline: 2px solid #D4AF37;
+          outline-offset: 2px;
         }
       `}</style>
 
@@ -2733,26 +2912,36 @@ export function EditorClient() {
                 {/* Quick action chips — visible when empty */}
                 {messages.length === 1 && (
                   <div className="space-y-3">
-                    <p className="text-[11px] text-gray-500 uppercase tracking-wider">Quick start</p>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Quick start</p>
                     <div className="grid grid-cols-2 gap-2">
                       {QUICK_ACTIONS.map(({ label, icon, prompt }) => (
                         <button
                           key={label}
                           onClick={() => submit(prompt)}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all hover:scale-[1.02]"
+                          className="forge-focus group flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-[0.97]"
                           style={{
                             background: 'rgba(255,255,255,0.03)',
                             border: '1px solid rgba(255,255,255,0.08)',
                           }}
                           onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,184,28,0.25)'
+                            const el = e.currentTarget as HTMLButtonElement
+                            el.style.background = 'rgba(255,184,28,0.06)'
+                            el.style.border = '1px solid rgba(255,184,28,0.28)'
+                            el.style.boxShadow = '0 0 14px rgba(255,184,28,0.08)'
+                            el.style.transform = 'translateY(-1px)'
                           }}
                           onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.border = '1px solid rgba(255,255,255,0.08)'
+                            const el = e.currentTarget as HTMLButtonElement
+                            el.style.background = 'rgba(255,255,255,0.03)'
+                            el.style.border = '1px solid rgba(255,255,255,0.08)'
+                            el.style.boxShadow = 'none'
+                            el.style.transform = 'none'
                           }}
                         >
-                          <span className="text-base">{icon}</span>
-                          <span className="text-xs text-gray-300 font-medium">{label}</span>
+                          <span className="text-base transition-transform duration-200 group-hover:scale-110">{icon}</span>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-gray-200 font-semibold">{label}</span>
+                          </div>
                         </button>
                       ))}
                     </div>
@@ -2816,18 +3005,20 @@ export function EditorClient() {
                         <button
                           onClick={() => listening ? stop() : start()}
                           aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-                          title={listening ? 'Stop' : 'Voice input'}
+                          title={listening ? 'Stop recording' : 'Voice input'}
                           className={[
-                            'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
+                            'relative w-8 h-8 rounded-lg flex items-center justify-center transition-all',
                             listening
-                              ? 'bg-red-500/20 text-red-400 scale-110'
+                              ? 'bg-red-500/20 text-red-400 scale-110 ring-2 ring-red-500/50 animate-pulse'
                               : 'text-gray-500 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10',
                           ].join(' ')}
                         >
                           {listening ? (
-                            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                              <rect x="4" y="4" width="8" height="8" rx="1" fill="currentColor"/>
-                            </svg>
+                            /* Pulsing red dot while recording */
+                            <span className="flex items-center justify-center">
+                              <span className="absolute inline-flex h-3 w-3 rounded-full bg-red-500 opacity-75 animate-ping" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                            </span>
                           ) : (
                             <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                               <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>

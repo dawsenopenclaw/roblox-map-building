@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Clerk webhook DB error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

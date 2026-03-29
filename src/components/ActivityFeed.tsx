@@ -68,7 +68,7 @@ export function ActivityFeed({
       try {
         const { io } = await import('socket.io-client')
         const token = await getToken()
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
 
         const socket = io(apiUrl, {
           auth: { token },
@@ -108,7 +108,7 @@ export function ActivityFeed({
     async function poll() {
       try {
         const token = await getToken()
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
         const res = await fetch(`${apiUrl}/api/teams/${teamId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })

@@ -17,7 +17,7 @@ export async function generateMetadata({
   // Falls back to a generic title if unavailable (unauthenticated server context).
   let gameName = 'Game DNA Report'
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.forjegames.com'
     const res = await fetch(`${apiUrl}/api/dna/${id}`, { cache: 'no-store' })
     if (res.ok) {
       const data = (await res.json()) as { scan?: { gameName?: string | null } }

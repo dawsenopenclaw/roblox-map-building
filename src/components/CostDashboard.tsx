@@ -18,7 +18,7 @@ function formatCurrency(usd: number) {
 }
 
 export function CostDashboard() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
   const { data: snapshots, isLoading } = useSWR<Snapshot[]>(
     `${apiBase}/api/costs/snapshots`,
     fetcher

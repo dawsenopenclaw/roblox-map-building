@@ -75,7 +75,7 @@ export default function TeamSettingsPage() {
   const [success, setSuccess] = useState('')
   const [isDemo, setIsDemo] = useState(false)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
 
   const fetchTeams = useCallback(async () => {
     try {

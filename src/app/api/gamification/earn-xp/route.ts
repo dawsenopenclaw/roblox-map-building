@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Earn XP error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

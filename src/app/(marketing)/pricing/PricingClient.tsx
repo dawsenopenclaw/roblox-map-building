@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useId } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, Heart, Zap, Rocket, Building2 } from 'lucide-react'
+import { Check, X, ChevronDown, Heart, Zap, Star, Rocket, Building2 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -29,32 +29,53 @@ const TIERS = [
     ],
   },
   {
+    key: 'STARTER',
+    name: 'Starter',
+    icon: Star,
+    priceMonthly: 9.99,
+    priceYearly: 7.99,
+    tagline: 'For hobbyists leveling up',
+    highlight: false,
+    badge: null,
+    cta: 'Start Starter Trial',
+    ctaHref: '/sign-up?plan=starter',
+    features: [
+      '100 AI generations / day',
+      '5 projects',
+      'Marketplace access',
+      'All basic templates',
+      'Email support',
+      'COPPA compliant',
+    ],
+  },
+  {
     key: 'PRO',
     name: 'Pro',
     icon: Rocket,
-    priceMonthly: 15,
-    priceYearly: 12,
+    priceMonthly: 24.99,
+    priceYearly: 19.99,
     tagline: 'For serious creators',
     highlight: true,
     badge: 'Most Popular',
-    cta: 'Start Free Trial',
+    cta: 'Start Pro Trial',
     ctaHref: '/sign-up?plan=pro',
     features: [
       '1,000 AI generations / day',
       'Unlimited projects',
       'Marketplace access + selling',
-      'Team collaboration (up to 5)',
+      'Team collaboration (3 members)',
       'Game DNA scanner',
       'Priority support',
       'All premium templates',
+      'Advanced analytics',
     ],
   },
   {
     key: 'STUDIO',
     name: 'Studio',
     icon: Building2,
-    priceMonthly: 50,
-    priceYearly: 40,
+    priceMonthly: 49.99,
+    priceYearly: 39.99,
     tagline: 'For agencies & studios',
     highlight: false,
     badge: null,
@@ -65,18 +86,35 @@ const TIERS = [
       'Unlimited projects',
       'Full API access',
       'White-label exports',
-      'Dedicated account manager',
+      'Team collaboration (50 members)',
+      'Dedicated support',
       'Priority AI queue',
       'Custom integrations',
-      'Team collaboration (unlimited)',
+      'All Pro features included',
     ],
   },
+]
+
+// Feature matrix for comparison table
+const COMPARE_FEATURES = [
+  { label: 'AI generations / day',        free: '10',         starter: '100',          pro: '1,000',        studio: 'Unlimited'  },
+  { label: 'Projects',                    free: '1',          starter: '5',            pro: 'Unlimited',    studio: 'Unlimited'  },
+  { label: 'Basic templates',             free: true,         starter: true,           pro: true,           studio: true         },
+  { label: 'Marketplace access',          free: false,        starter: true,           pro: true,           studio: true         },
+  { label: 'Marketplace selling',         free: false,        starter: false,          pro: true,           studio: true         },
+  { label: 'Team members',               free: 'Solo',       starter: 'Solo',         pro: '3',            studio: '50'         },
+  { label: 'Game DNA scanner',           free: false,        starter: false,          pro: true,           studio: true         },
+  { label: 'Priority AI queue',          free: false,        starter: false,          pro: true,           studio: true         },
+  { label: 'API access',                 free: false,        starter: false,          pro: false,          studio: true         },
+  { label: 'White-label exports',        free: false,        starter: false,          pro: false,          studio: true         },
+  { label: 'Support',                    free: 'Community',  starter: 'Email',        pro: 'Priority',     studio: 'Dedicated'  },
+  { label: 'COPPA compliant',            free: true,         starter: true,           pro: true,           studio: true         },
 ]
 
 const FAQ = [
   {
     q: 'What counts as an AI generation?',
-    a: 'Each time the AI generates something — terrain, a building, a map scene, a script — that counts as 1 generation. Free plan includes 10 per day. Pro gets 1,000/day. Studio is unlimited.',
+    a: 'Each time the AI generates something — terrain, a building, a map scene, a script — that counts as 1 generation. Free plan includes 10 per day, Starter gets 100/day, Pro gets 1,000/day, and Studio is unlimited.',
   },
   {
     q: 'Can I cancel anytime?',
@@ -84,7 +122,7 @@ const FAQ = [
   },
   {
     q: 'Is it safe for kids?',
-    a: 'Yes. ForjeGames is COPPA compliant with parental controls built in. Safe for players aged 8 and up.',
+    a: 'Yes. RobloxForge is COPPA compliant with parental controls built in. Safe for creators aged 8 and up with parental consent.',
   },
   {
     q: "What's the 10% donation?",
@@ -100,13 +138,29 @@ const FAQ = [
   },
   {
     q: 'What is white-label on Studio?',
-    a: 'Studio plan lets you export games and assets with your own branding — no ForjeGames watermarks. Ideal for agencies delivering work to clients.',
+    a: 'Studio plan lets you export games and assets with your own branding — no RobloxForge watermarks. Ideal for agencies delivering work to clients.',
   },
   {
     q: 'How does annual billing work?',
     a: 'Annual billing charges you once per year at a 20% discount compared to monthly. You can switch between monthly and annual at any time from your account settings.',
   },
+  {
+    q: 'What is API access on Studio?',
+    a: 'Studio plan includes full REST API and SDK access (npm, Python, Go) so you can integrate RobloxForge into your own tools, CI/CD pipelines, or custom workflows.',
+  },
+  {
+    q: 'Can I upgrade or downgrade my plan?',
+    a: "Yes. You can switch plans at any time. Upgrades take effect immediately (prorated). Downgrades take effect at the next billing cycle so you don't lose features you've paid for.",
+  },
 ]
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatPrice(p: number) {
+  return p % 1 === 0 ? `$${p}` : `$${p.toFixed(2)}`
+}
 
 // ---------------------------------------------------------------------------
 // Animated FAQ item
@@ -121,7 +175,6 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
 
   useEffect(() => {
     if (!bodyRef.current) return
-    // Measure the natural scrollHeight then animate
     const el = bodyRef.current
     setHeight(isOpen ? el.scrollHeight : 0)
   }, [isOpen])
@@ -155,6 +208,21 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Comparison table cell
+// ---------------------------------------------------------------------------
+
+function CompareCell({ value }: { value: string | boolean }) {
+  if (typeof value === 'boolean') {
+    return value ? (
+      <Check className="w-4 h-4 text-[#FFB81C] mx-auto" />
+    ) : (
+      <X className="w-4 h-4 text-gray-600 mx-auto" />
+    )
+  }
+  return <span className="text-sm text-gray-300">{value}</span>
 }
 
 // ---------------------------------------------------------------------------
@@ -223,7 +291,7 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Tier Cards                                                          */}
         {/* ------------------------------------------------------------------ */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-14 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-14 items-start">
           {TIERS.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon = tier.icon
@@ -231,9 +299,9 @@ export default function PricingClient() {
             return (
               <div
                 key={tier.key}
-                className={`relative flex flex-col rounded-2xl border p-7 transition-all ${
+                className={`relative flex flex-col rounded-2xl border p-6 transition-all ${
                   tier.highlight
-                    ? 'bg-[#0f1320] border-[#FFB81C]/70 shadow-[0_0_50px_rgba(255,184,28,0.15)] sm:-mt-4 sm:pb-11 sm:pt-11'
+                    ? 'bg-[#0f1320] border-[#FFB81C]/70 shadow-[0_0_50px_rgba(255,184,28,0.15)] lg:-mt-4 lg:pb-10 lg:pt-10'
                     : 'bg-[#0a0d19] border-white/10 hover:border-white/20'
                 }`}
               >
@@ -278,20 +346,20 @@ export default function PricingClient() {
                     <p className="text-5xl font-extrabold text-white">Free</p>
                   ) : (
                     <div className="flex items-end gap-1">
-                      <p className="text-5xl font-extrabold text-white">
-                        ${price}
+                      <p className="text-4xl font-extrabold text-white">
+                        {formatPrice(price)}
                       </p>
                       <span className="text-gray-400 text-sm mb-2">/mo</span>
                     </div>
                   )}
                   {annual && price > 0 && (
                     <p className="text-xs text-gray-400 mt-1">
-                      Billed ${price * 12}/year
+                      Billed {formatPrice(price * 12)}/year
                     </p>
                   )}
                   {!annual && price > 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      or ${tier.priceYearly}/mo billed annually
+                      or {formatPrice(tier.priceYearly)}/mo billed annually
                     </p>
                   )}
                 </div>
@@ -366,6 +434,85 @@ export default function PricingClient() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
+        {/* Comparison Table                                                    */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="mb-20 overflow-x-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-8">
+            Compare plans
+          </h2>
+          <table className="w-full min-w-[640px] border-collapse">
+            <thead>
+              <tr>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 w-1/3">Feature</th>
+                {TIERS.map((tier) => (
+                  <th
+                    key={tier.key}
+                    className={`text-center py-3 px-3 text-sm font-bold ${
+                      tier.highlight ? 'text-[#FFB81C]' : 'text-white'
+                    }`}
+                  >
+                    {tier.name}
+                  </th>
+                ))}
+              </tr>
+              <tr>
+                <td />
+                {TIERS.map((tier) => {
+                  const price = annual ? tier.priceYearly : tier.priceMonthly
+                  return (
+                    <td key={tier.key} className="text-center pb-4 px-3">
+                      <span className="text-xs text-gray-400">
+                        {price === 0 ? 'Free' : `${formatPrice(price)}/mo`}
+                      </span>
+                    </td>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARE_FEATURES.map((row, i) => (
+                <tr
+                  key={row.label}
+                  className={i % 2 === 0 ? 'bg-white/[0.02]' : ''}
+                >
+                  <td className="py-3 px-4 text-sm text-gray-300 rounded-l-lg">{row.label}</td>
+                  <td className="py-3 px-3 text-center"><CompareCell value={row.free} /></td>
+                  <td className="py-3 px-3 text-center"><CompareCell value={row.starter} /></td>
+                  <td className={`py-3 px-3 text-center ${i % 2 === 0 ? 'bg-[#FFB81C]/[0.04]' : 'bg-[#FFB81C]/[0.02]'}`}>
+                    <CompareCell value={row.pro} />
+                  </td>
+                  <td className="py-3 px-3 text-center rounded-r-lg"><CompareCell value={row.studio} /></td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td />
+                {TIERS.map((tier) => (
+                  <td key={tier.key} className="pt-6 px-3 text-center">
+                    <Link
+                      href={tier.ctaHref}
+                      className={`inline-block text-xs font-bold py-2 px-4 rounded-lg transition-all ${
+                        tier.highlight
+                          ? 'text-black hover:opacity-90'
+                          : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
+                      }`}
+                      style={
+                        tier.highlight
+                          ? { background: 'linear-gradient(135deg, #FFB81C, #FFD966)' }
+                          : {}
+                      }
+                    >
+                      {tier.key === 'FREE' ? 'Get Started' : 'Try Free'}
+                    </Link>
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}
         {/* ------------------------------------------------------------------ */}
         <div className="max-w-2xl mx-auto mb-20">
@@ -392,7 +539,7 @@ export default function PricingClient() {
           <div className="inline-flex items-center gap-3 bg-[#0f1320] border border-white/10 rounded-2xl px-6 py-4 text-sm">
             <Heart className="w-5 h-5 text-[#FFB81C] flex-shrink-0" />
             <div>
-              <p className="text-white font-semibold">10% of revenue donated to charity</p>
+              <p className="text-white font-semibold">10% of all revenue donated to charity</p>
               <p className="text-gray-400 text-xs mt-0.5">
                 Every paid plan contributes to coding &amp; STEM education nonprofits worldwide.
               </p>

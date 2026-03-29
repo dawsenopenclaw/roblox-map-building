@@ -18,7 +18,6 @@ export async function GET() {
 
     return NextResponse.json(onboarding ?? { completed: false })
   } catch (err) {
-    console.error('[onboarding/wizard-status] Clerk error:', err)
     // Return incomplete status so the wizard shows instead of crashing
     return NextResponse.json({ completed: false })
   }

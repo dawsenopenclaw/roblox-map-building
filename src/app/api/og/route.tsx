@@ -371,7 +371,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  // Default
+  // Default — home page/social sharing
   return new ImageResponse(
     (
       <div
@@ -387,68 +387,96 @@ export async function GET(req: NextRequest) {
           position: 'relative',
         }}
       >
-        {/* Gold top bar */}
+        {/* Gold accent bar at top */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            height: 6,
+            height: 8,
             background: GOLD,
           }}
         />
 
-        {/* Logo mark */}
+        {/* ForjeGames Logo */}
         <div
           style={{
-            width: 100,
-            height: 100,
-            borderRadius: 20,
+            width: 120,
+            height: 120,
+            borderRadius: 24,
             background: GOLD,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 56,
+            fontSize: 72,
             fontWeight: 900,
             color: '#000',
-            marginBottom: 40,
+            marginBottom: 48,
+            boxShadow: '0 20px 60px rgba(255, 184, 28, 0.2)',
           }}
         >
           R
         </div>
 
-        <div style={{ fontSize: 72, fontWeight: 900, color: '#FFFFFF', letterSpacing: -2 }}>
+        {/* Main title in white */}
+        <div
+          style={{
+            fontSize: 84,
+            fontWeight: 900,
+            color: '#FFFFFF',
+            letterSpacing: -1,
+            textAlign: 'center',
+            marginBottom: 24,
+          }}
+        >
           ForjeGames
         </div>
-        <div style={{ fontSize: 26, color: GRAY, marginTop: 16, textAlign: 'center', maxWidth: 700 }}>
-          The professional platform for Roblox creators.
-          <br />
-          Build, analyze, and sell game assets.
+
+        {/* Tagline in white */}
+        <div
+          style={{
+            fontSize: 32,
+            color: '#FFFFFF',
+            fontWeight: 600,
+            textAlign: 'center',
+            marginBottom: 48,
+            maxWidth: 900,
+            lineHeight: 1.3,
+          }}
+        >
+          AI-Powered Roblox Development
         </div>
 
-        {/* Feature pills */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 48 }}>
-          {['Game DNA Analysis', 'Template Marketplace', 'Creator Earnings'].map((label) => (
-            <div
-              key={label}
-              style={{
-                background: `${GOLD}15`,
-                border: `1px solid ${GOLD}30`,
-                borderRadius: 24,
-                padding: '8px 20px',
-                color: GOLD,
-                fontSize: 16,
-                fontWeight: 600,
-              }}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
+        {/* Gold accent bar at bottom */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 8,
+            background: GOLD,
+          }}
+        />
 
-        <div style={{ position: 'absolute', bottom: 32, color: GRAY, fontSize: 14 }}>
-          ForjeGames.gg
+        {/* Footer text */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 28,
+            left: 60,
+            right: 60,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: 16,
+            color: GRAY,
+            letterSpacing: 0.5,
+          }}
+        >
+          <span>ForjeGames.gg</span>
+          <span>Build smarter with AI</span>
         </div>
       </div>
     ),

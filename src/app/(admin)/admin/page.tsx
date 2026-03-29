@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Users, DollarSign, Layers, CreditCard, Activity } from 'lucide-react'
+import { Users, DollarSign, Layers, Hammer, ClipboardList, Activity } from 'lucide-react'
 
 interface DashboardStats {
   totalUsers: number
   mrrCents: number
   totalBuilds: number
-  activeSubscriptions: number
+  activeBuilds: number
+  pendingReviews: number
   revenueChart: { date: string; revenueCents: number }[]
   recentActivity: {
     id: string
@@ -22,7 +23,8 @@ const DEMO_STATS: DashboardStats = {
   totalUsers: 1284,
   mrrCents: 489500,
   totalBuilds: 9731,
-  activeSubscriptions: 312,
+  activeBuilds: 427,
+  pendingReviews: 12,
   revenueChart: [
     { date: '2026-02-27', revenueCents: 38000 },
     { date: '2026-02-28', revenueCents: 42000 },
@@ -66,7 +68,7 @@ const METHOD_COLORS: Record<string, string> = {
   PUT: 'text-blue-400',
   PATCH: 'text-blue-400',
   DELETE: 'text-red-400',
-  GET: 'text-[#6B7280]',
+  GET: 'text-[#B0B0B0]',
 }
 
 function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
@@ -76,7 +78,7 @@ function StatCard({ title, value, icon }: { title: string; value: string; icon: 
         {icon}
       </div>
       <div>
-        <p className="text-xs text-[#6B7280] uppercase tracking-wider">{title}</p>
+        <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">{title}</p>
         <p className="text-2xl font-bold text-white mt-1">{value}</p>
       </div>
     </div>
@@ -126,7 +128,7 @@ export default function AdminOverviewPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Overview</h1>
-          <p className="text-[#6B7280] text-sm mt-1">Platform health at a glance</p>
+          <p className="text-[#B0B0B0] text-sm mt-1">Platform health at a glance</p>
         </div>
         {isDemo && (
           <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
@@ -136,14 +138,14 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatCard
           title="Total Users"
           value={stats.totalUsers.toLocaleString()}
           icon={<Users className="w-5 h-5 text-[#FFB81C]" />}
         />
         <StatCard
-          title="MRR"
+          title="Revenue (MRR)"
           value={mrrDisplay}
           icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
         />
@@ -153,19 +155,24 @@ export default function AdminOverviewPage() {
           icon={<Layers className="w-5 h-5 text-[#FFB81C]" />}
         />
         <StatCard
-          title="Active Subscriptions"
-          value={stats.activeSubscriptions.toLocaleString()}
-          icon={<CreditCard className="w-5 h-5 text-[#FFB81C]" />}
+          title="Active Builds"
+          value={stats.activeBuilds.toLocaleString()}
+          icon={<Hammer className="w-5 h-5 text-[#FFB81C]" />}
+        />
+        <StatCard
+          title="Pending Reviews"
+          value={stats.pendingReviews.toLocaleString()}
+          icon={<ClipboardList className="w-5 h-5 text-[#FFB81C]" />}
         />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue chart */}
         <div className="xl:col-span-2 bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-1">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-1">
             Revenue — Last 30 Days
           </h2>
-          <p className="text-xs text-[#6B7280] mb-4">
+          <p className="text-xs text-[#B0B0B0] mb-4">
             Total:{' '}
             <span className="text-[#FFB81C] font-semibold">
               ${(stats.revenueChart.reduce((s, d) => s + d.revenueCents, 0) / 100).toLocaleString()}
@@ -189,7 +196,7 @@ export default function AdminOverviewPage() {
               )
             })}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-[#6B7280]">
+          <div className="flex justify-between mt-2 text-xs text-[#B0B0B0]">
             <span>{stats.revenueChart[0]?.date?.slice(5)}</span>
             <span>{stats.revenueChart[stats.revenueChart.length - 1]?.date?.slice(5)}</span>
           </div>
@@ -197,12 +204,12 @@ export default function AdminOverviewPage() {
 
         {/* Recent activity */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4 flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#FFB81C]" />
             Recent Activity
           </h2>
           {stats.recentActivity.length === 0 ? (
-            <p className="text-[#6B7280] text-sm py-4">No recent activity</p>
+            <p className="text-[#B0B0B0] text-sm py-4">No recent activity</p>
           ) : (
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {stats.recentActivity.map((item) => {
@@ -214,17 +221,17 @@ export default function AdminOverviewPage() {
                     className="flex items-start gap-3 py-2 border-b border-[#1c1c1c] last:border-0"
                   >
                     <span
-                      className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#6B7280]'}`}
+                      className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#B0B0B0]'}`}
                     >
                       {method}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white font-mono truncate">{path}</p>
                       {item.user && (
-                        <p className="text-xs text-[#6B7280] truncate">{item.user.email}</p>
+                        <p className="text-xs text-[#B0B0B0] truncate">{item.user.email}</p>
                       )}
                     </div>
-                    <span className="text-xs text-[#6B7280] flex-shrink-0">
+                    <span className="text-xs text-[#B0B0B0] flex-shrink-0">
                       {timeAgo(item.createdAt)}
                     </span>
                   </div>

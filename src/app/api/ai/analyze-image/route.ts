@@ -232,7 +232,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(analysis)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[analyze-image] error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }

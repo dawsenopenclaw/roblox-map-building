@@ -64,6 +64,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </p>
         </Link>
 
+        {/* Demo mode banner */}
+        {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
+          <div className="mb-5 flex items-center gap-2 bg-gold/10 border border-gold/25 rounded-xl px-4 py-2.5 text-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#D4AF37" aria-hidden>
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+            </svg>
+            <span className="text-gold font-medium">Demo Mode</span>
+            <span className="text-muted">— sign in with test credentials or skip straight to the editor.</span>
+          </div>
+        )}
+
         {/* Page content (Clerk card + headings) */}
         {children}
 

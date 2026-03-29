@@ -31,7 +31,6 @@ export async function POST(
       },
     })
   } catch (err) {
-    console.error('[purchase] DB error looking up user:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -62,7 +61,6 @@ export async function POST(
       },
     })
   } catch (err) {
-    console.error('[purchase] DB error looking up template:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!template || template.status !== 'PUBLISHED') {
@@ -83,7 +81,6 @@ export async function POST(
       return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
     }
   } catch (err) {
-    console.error('[purchase] DB error checking existing purchase:', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
 
@@ -116,13 +113,12 @@ export async function POST(
 
       return NextResponse.json({ success: true, purchaseId: purchase.id })
     } catch (err) {
-      console.error('[purchase] DB error creating free purchase:', err)
       return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
     }
   }
 
   // Paid template — create Stripe Checkout session
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
 
   try {
     // Get or create Stripe customer for buyer
@@ -185,7 +181,6 @@ export async function POST(
 
     return NextResponse.json({ checkoutUrl: session.url })
   } catch (err) {
-    console.error('[purchase] Stripe/DB error creating checkout session:', err)
     return NextResponse.json({ error: 'Payment service temporarily unavailable — please try again later' }, { status: 503 })
   }
 }

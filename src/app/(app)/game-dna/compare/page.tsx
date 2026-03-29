@@ -144,7 +144,7 @@ function CompareContent() {
   const [scanB, setScanB] = useState<GameScan | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
 
   // Load scan list
   useEffect(() => {

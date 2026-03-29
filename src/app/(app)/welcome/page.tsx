@@ -1,223 +1,321 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { completeOnboarding, type OnboardingInterest } from '@/lib/onboarding'
+import Link from 'next/link'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Confetti ─────────────────────────────────────────────────────────────────
 
-type Interest = OnboardingInterest
-
-const TOTAL_STEPS = 3
-
-// ─── Progress Bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({ step }: { step: number }) {
-  return (
-    <div className="flex items-center gap-2 mb-8">
-      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-        <div
-          key={i}
-          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-            i < step - 1
-              ? 'bg-[#FFB81C]/60'
-              : i === step - 1
-              ? 'bg-[#FFB81C]'
-              : 'bg-white/10'
-          }`}
-        />
-      ))}
-      <span className="text-gray-400 text-xs ml-1 whitespace-nowrap">
-        Step {step} of {TOTAL_STEPS}
-      </span>
-    </div>
-  )
+interface Particle {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  color: string
+  size: number
+  rotation: number
+  vr: number
+  opacity: number
+  shape: 'rect' | 'circle'
 }
 
-// ─── Step 1: Welcome ─────────────────────────────────────────────────────────
-
-const INTERESTS: { id: Interest; icon: string; label: string }[] = [
-  { id: 'games', icon: '🎮', label: 'Games' },
-  { id: 'maps', icon: '🗺️', label: 'Maps' },
-  { id: 'assets', icon: '🎨', label: 'Assets' },
-  { id: 'all', icon: '✨', label: 'Everything' },
+const CONFETTI_COLORS = [
+  '#FFB81C', '#FFD166', '#F9C74F',
+  '#FFFFFF', '#E0E0E0',
+  '#4FC3F7', '#81D4FA',
+  '#A5D6A7', '#C8E6C9',
 ]
 
-function StepWelcome({
-  firstName,
-  selected,
-  onSelect,
-}: {
-  firstName: string
-  selected: Interest | null
-  onSelect: (v: Interest) => void
-}) {
-  return (
-    <div>
-      <h1 className="text-3xl font-bold text-white mb-2">
-        Welcome to ForjeGames{firstName ? `, ${firstName}` : ''}! 🎮
-      </h1>
-      <p className="text-gray-300 mb-8">
-        What do you want to build?
-      </p>
-
-      <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        {INTERESTS.map((item) => {
-          const active = selected === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSelect(item.id)}
-              className={`flex flex-col items-center justify-center gap-2 p-4 sm:p-5 rounded-xl border text-sm font-semibold transition-all ${
-                active
-                  ? 'border-[#FFB81C] bg-[#FFB81C]/10 text-white'
-                  : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/25 hover:text-white'
-              }`}
-            >
-              <span className="text-2xl">{item.icon}</span>
-              {item.label}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Step 2: Try It ───────────────────────────────────────────────────────────
-
-const DEMO_STEPS = [
-  'Parsing prompt...',
-  'Generating terrain...',
-  'Placing structures...',
-  'Adding details...',
-  'Generating scripts...',
-  'Done!',
-]
-
-// Each suggestion is the completion after "Build me a "
-const SUGGESTIONS = [
-  'medieval castle',
-  'racing track',
-  'tycoon game',
-]
-
-function StepTryIt() {
-  const [input, setInput] = useState('')
-  const [running, setRunning] = useState(false)
-  const [demoStep, setDemoStep] = useState(-1)
-  const [done, setDone] = useState(false)
-  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const runDemo = (prompt: string) => {
-    if (!prompt.trim() || running) return
-    setDone(false)
-    setRunning(true)
-    setDemoStep(0)
-    let idx = 0
-    intervalRef.current = setInterval(() => {
-      idx++
-      if (idx >= DEMO_STEPS.length) {
-        clearInterval(intervalRef.current!)
-        setDemoStep(DEMO_STEPS.length)
-        setDone(true)
-        setRunning(false)
-      } else {
-        setDemoStep(idx)
-      }
-    }, 400)
-  }
+function Confetti() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const particlesRef = useRef<Particle[]>([])
+  const frameRef = useRef<number>(0)
+  const startedRef = useRef(false)
 
   useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || startedRef.current) return
+    startedRef.current = true
+
+    const ctx = canvas.getContext('2d')!
+    let width = window.innerWidth
+    let height = window.innerHeight
+
+    const resize = () => {
+      width = window.innerWidth
+      height = window.innerHeight
+      canvas.width = width
+      canvas.height = height
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    // Spawn particles
+    const COUNT = 180
+    for (let i = 0; i < COUNT; i++) {
+      particlesRef.current.push({
+        id: i,
+        x: Math.random() * width,
+        y: -20 - Math.random() * 200,
+        vx: (Math.random() - 0.5) * 4,
+        vy: 2 + Math.random() * 4,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        size: 6 + Math.random() * 8,
+        rotation: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.2,
+        opacity: 1,
+        shape: Math.random() > 0.4 ? 'rect' : 'circle',
+      })
+    }
+
+    let tick = 0
+    const loop = () => {
+      ctx.clearRect(0, 0, width, height)
+      tick++
+
+      particlesRef.current = particlesRef.current.map((p) => {
+        const ny = p.y + p.vy
+        const nx = p.x + p.vx
+        const nop = ny > height * 0.75 ? Math.max(0, p.opacity - 0.018) : p.opacity
+        return { ...p, y: ny, x: nx, rotation: p.rotation + p.vr, opacity: nop }
+      }).filter((p) => p.opacity > 0)
+
+      for (const p of particlesRef.current) {
+        ctx.save()
+        ctx.globalAlpha = p.opacity
+        ctx.fillStyle = p.color
+        ctx.translate(p.x, p.y)
+        ctx.rotate(p.rotation)
+        if (p.shape === 'rect') {
+          ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2)
+        } else {
+          ctx.beginPath()
+          ctx.arc(0, 0, p.size / 2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.restore()
+      }
+
+      if (particlesRef.current.length > 0) {
+        frameRef.current = requestAnimationFrame(loop)
+      }
+    }
+
+    frameRef.current = requestAnimationFrame(loop)
+
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
+      cancelAnimationFrame(frameRef.current)
+      window.removeEventListener('resize', resize)
     }
   }, [])
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-white mb-2">Let's build something right now.</h2>
-      <p className="text-gray-300 mb-6">Type what you want:</p>
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none fixed inset-0 z-50"
+    />
+  )
+}
 
-      {/* Input */}
-      <div className="relative mb-4">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-          Build me a
-        </span>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
-          placeholder="medieval castle"
-          disabled={running}
-          className="w-full bg-[#141414] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-blue-400/50 transition-colors disabled:opacity-50"
-        />
-        <button
-          onClick={() => runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
-          disabled={running}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#FFB81C] text-black text-xs font-bold rounded-lg hover:bg-[#E6A519] disabled:opacity-40 transition-all"
+// ─── Quick Start Cards ─────────────────────────────────────────────────────────
+
+interface CardProps {
+  icon: string
+  title: string
+  description: string
+  cta: string
+  href: string
+  accent?: boolean
+  external?: boolean
+}
+
+function QuickStartCard({ icon, title, description, cta, href, accent, external }: CardProps) {
+  const inner = (
+    <div
+      className={`group relative flex flex-col gap-3 p-5 rounded-2xl border transition-all duration-200 cursor-pointer h-full
+        ${accent
+          ? 'border-[#FFB81C]/50 bg-[#FFB81C]/8 hover:border-[#FFB81C] hover:bg-[#FFB81C]/12'
+          : 'border-white/10 bg-white/4 hover:border-white/20 hover:bg-white/7'
+        }`}
+    >
+      <div className="text-3xl">{icon}</div>
+      <div>
+        <p className={`font-semibold text-sm mb-1 ${accent ? 'text-[#FFB81C]' : 'text-white'}`}>{title}</p>
+        <p className="text-gray-400 text-xs leading-relaxed">{description}</p>
+      </div>
+      <div className="mt-auto">
+        <span
+          className={`inline-flex items-center gap-1 text-xs font-bold transition-colors
+            ${accent ? 'text-[#FFB81C] group-hover:text-[#FFD166]' : 'text-gray-300 group-hover:text-white'}`}
         >
-          {running ? '...' : 'Go →'}
-        </button>
+          {cta} →
+        </span>
+      </div>
+    </div>
+  )
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className="h-full block">
+        {inner}
+      </a>
+    )
+  }
+
+  return <Link href={href} className="h-full block">{inner}</Link>
+}
+
+// ─── Checklist ────────────────────────────────────────────────────────────────
+
+interface CheckItem {
+  id: string
+  label: string
+  done: boolean
+  href?: string
+}
+
+const INITIAL_CHECKLIST: CheckItem[] = [
+  { id: 'account', label: 'Create your account', done: true },
+  { id: 'tokens', label: 'Claim your 1,000 free tokens', done: true },
+  { id: 'editor', label: 'Open the editor and create your first build', done: false, href: '/editor' },
+  { id: 'marketplace', label: 'Browse the asset marketplace', done: false, href: '/marketplace' },
+  { id: 'invite', label: 'Invite a friend and earn 500 bonus tokens', done: false },
+]
+
+function GettingStartedChecklist() {
+  const [items, setItems] = useState<CheckItem[]>(INITIAL_CHECKLIST)
+
+  const toggle = (id: string) => {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+    )
+  }
+
+  const doneCount = items.filter((i) => i.done).length
+  const pct = Math.round((doneCount / items.length) * 100)
+
+  return (
+    <div className="bg-[#141414] border border-white/10 rounded-2xl p-5 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-white font-semibold text-sm">Getting Started</h2>
+        <span className="text-xs text-gray-400">{doneCount}/{items.length} complete</span>
       </div>
 
-      {/* Suggestions */}
-      {!running && !done && (
-        <div className="flex flex-col gap-1.5 mb-4">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setInput(s)}
-              className="text-left text-xs text-gray-400 hover:text-gray-300 transition-colors px-1"
-            >
-              "Build me a {s}"
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Progress bar */}
+      <div className="h-1.5 w-full bg-white/10 rounded-full mb-5 overflow-hidden">
+        <div
+          className="h-full bg-[#FFB81C] rounded-full transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
 
-      {/* Build log */}
-      {(running || done) && (
-        <div className="bg-[#0A0D1A] border border-white/10 rounded-xl p-4 font-mono text-xs">
-          {DEMO_STEPS.slice(0, Math.min(demoStep + 1, DEMO_STEPS.length)).map((s, i) => (
-            <div key={i} className="flex items-center gap-2 mb-1">
-              <span className="text-[#FFB81C]">›</span>
-              <span className={i < demoStep ? 'text-gray-400' : 'text-gray-200'}>{s}</span>
-              {i < demoStep && <span className="ml-auto text-emerald-400">done</span>}
-              {i === demoStep && running && (
-                <span className="ml-auto text-[#FFB81C] animate-pulse">running</span>
+      <ul className="space-y-3">
+        {items.map((item) => (
+          <li key={item.id} className="flex items-center gap-3">
+            <button
+              onClick={() => toggle(item.id)}
+              className={`w-5 h-5 rounded-md border flex-shrink-0 flex items-center justify-center transition-all ${
+                item.done
+                  ? 'bg-[#FFB81C] border-[#FFB81C]'
+                  : 'border-white/20 bg-transparent hover:border-[#FFB81C]/60'
+              }`}
+              aria-label={item.done ? 'Mark incomplete' : 'Mark complete'}
+            >
+              {item.done && (
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               )}
-            </div>
-          ))}
-          {done && (
-            <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-emerald-400 font-semibold">Build complete!</span>
-            </div>
-          )}
-        </div>
-      )}
+            </button>
+
+            <span className={`text-sm flex-1 ${item.done ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+              {item.href && !item.done ? (
+                <Link href={item.href} className="hover:text-white transition-colors">
+                  {item.label}
+                </Link>
+              ) : (
+                item.label
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
 
-// ─── Step 3: Ready ────────────────────────────────────────────────────────────
+// ─── Referral Banner ──────────────────────────────────────────────────────────
 
-function StepReady() {
+function ReferralBanner() {
+  const [copied, setCopied] = useState(false)
+  const { user } = useUser()
+
+  const referralCode = user?.id
+    ? `FRJ-${user.id.slice(-6).toUpperCase()}`
+    : 'FRJ-XXXXXX'
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(`https://forjegames.com/ref/${referralCode}`).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
-    <div className="text-center">
-      <div className="text-5xl mb-5">🎉</div>
-      <h2 className="text-3xl font-bold text-white mb-3">You're Ready!</h2>
-      <p className="text-gray-300 text-lg mb-8">Welcome aboard!</p>
+    <div className="relative overflow-hidden bg-gradient-to-r from-[#1A1400] to-[#0D1520] border border-[#FFB81C]/30 rounded-2xl p-5 sm:p-6">
+      {/* Glow */}
+      <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-[#FFB81C]/10 blur-3xl pointer-events-none" />
 
-      <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
-        <p className="text-[#FFB81C] text-3xl font-bold">1,000</p>
-        <p className="text-gray-300 text-sm mt-0.5">Free tokens to start building</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xl">🎁</span>
+            <p className="text-white font-semibold text-sm">Invite friends, earn tokens</p>
+          </div>
+          <p className="text-gray-400 text-xs leading-relaxed">
+            Share your link. Each friend who signs up gives you both <span className="text-[#FFB81C] font-semibold">500 bonus tokens</span>.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 sm:flex-shrink-0">
+          <div className="bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 font-mono select-all">
+            {referralCode}
+          </div>
+          <button
+            onClick={handleCopy}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+              copied
+                ? 'bg-emerald-500 text-white'
+                : 'bg-[#FFB81C] text-black hover:bg-[#E6A519]'
+            }`}
+          >
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+        </div>
       </div>
+    </div>
+  )
+}
 
-      <p className="text-gray-500 text-xs mt-3">No credit card required. Tokens never expire.</p>
+// ─── Token Badge ──────────────────────────────────────────────────────────────
+
+function TokenBadge() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 600)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div
+      className={`inline-flex items-center gap-2 bg-[#FFB81C]/12 border border-[#FFB81C]/40 rounded-full px-4 py-1.5 transition-all duration-500 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
+      }`}
+    >
+      <span className="text-base">🪙</span>
+      <span className="text-[#FFB81C] font-bold text-sm">1,000 free tokens ready</span>
     </div>
   )
 }
@@ -227,96 +325,92 @@ function StepReady() {
 export default function WelcomePage() {
   const router = useRouter()
   const { user } = useUser()
-  const [step, setStep] = useState(1)
-  const [interest, setInterest] = useState<Interest | null>(null)
-  const [finishing, setFinishing] = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const firstName =
     user?.firstName ||
     user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
     ''
 
-  const canNext =
-    step === 1 ? interest !== null :
-    step === 2 ? true :
-    true
-
-  const handleNext = async () => {
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1)
-      return
-    }
-    // Final step — finish onboarding
-    setFinishing(true)
-    try {
-      await completeOnboarding(interest ?? 'all', false)
-    } catch {
-      // Non-fatal — metadata update failed, proceed anyway
-    }
-    router.push('/editor')
-  }
-
-  const handleSkip = async () => {
-    setFinishing(true)
-    try {
-      await completeOnboarding(interest ?? 'all', true)
-    } catch {
-      // Non-fatal — metadata update failed, proceed anyway
-    }
-    router.push('/editor')
-  }
-
-  const nextLabel =
-    step === TOTAL_STEPS
-      ? finishing ? 'Launching...' : 'Go to Editor →'
-      : 'Next →'
+  useEffect(() => {
+    // Small delay so the page paints before confetti fires
+    const t = setTimeout(() => setShowConfetti(true), 150)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
-    <div className="min-h-screen bg-[#080B1A] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <ProgressBar step={step} />
+    <div className="min-h-screen bg-[#080B1A] text-white">
+      {showConfetti && <Confetti />}
 
-        <div className="bg-[#141414] border border-white/10 rounded-2xl p-5 sm:p-7">
-          {step === 1 && (
-            <StepWelcome
-              firstName={firstName}
-              selected={interest}
-              onSelect={setInterest}
-            />
-          )}
-          {step === 2 && <StepTryIt />}
-          {step === 3 && <StepReady />}
+      <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between mt-8">
-            <button
-              onClick={handleSkip}
-              disabled={finishing}
-              className="text-gray-400 text-sm hover:text-gray-300 transition-colors disabled:opacity-40"
-            >
-              Skip
-            </button>
+        {/* Hero */}
+        <div className="text-center mb-10">
+          <div className="text-5xl mb-5 select-none">🎉</div>
 
-            <div className="flex items-center gap-3">
-              {step > 1 && (
-                <button
-                  onClick={() => setStep(step - 1)}
-                  disabled={finishing}
-                  className="text-sm text-gray-300 hover:text-white transition-colors disabled:opacity-40"
-                >
-                  ← Back
-                </button>
-              )}
-              <button
-                onClick={handleNext}
-                disabled={!canNext || finishing}
-                className="px-5 py-2.5 bg-[#FFB81C] text-black text-sm font-bold rounded-xl hover:bg-[#E6A519] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                {nextLabel}
-              </button>
-            </div>
-          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-3">
+            Welcome to ForjeGames
+            {firstName ? (
+              <span className="text-[#FFB81C]">, {firstName}</span>
+            ) : null}
+            !
+          </h1>
+
+          <p className="text-gray-400 text-base mb-5">
+            Your account is live. Start building in seconds.
+          </p>
+
+          <TokenBadge />
         </div>
+
+        {/* Quick start cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <QuickStartCard
+            icon="⚒️"
+            title="Start Building"
+            description="Open the AI editor and generate your first Roblox map with a single prompt."
+            cta="Open Editor"
+            href="/editor"
+            accent
+          />
+          <QuickStartCard
+            icon="🛒"
+            title="Browse Marketplace"
+            description="Thousands of ready-made assets. Drop them straight into your project."
+            cta="Explore"
+            href="/marketplace"
+          />
+          <QuickStartCard
+            icon="▶️"
+            title="Watch Tutorial"
+            description="5-minute walkthrough — terrain, scripting, and export covered."
+            cta="Watch Now"
+            href="https://docs.forjegames.com/tutorial"
+            external
+          />
+        </div>
+
+        {/* Getting started checklist */}
+        <div className="mb-6">
+          <GettingStartedChecklist />
+        </div>
+
+        {/* Referral */}
+        <div className="mb-10">
+          <ReferralBanner />
+        </div>
+
+        {/* Go to editor CTA */}
+        <div className="text-center">
+          <button
+            onClick={() => router.push('/editor')}
+            className="px-8 py-3 bg-[#FFB81C] text-black text-sm font-bold rounded-xl hover:bg-[#E6A519] transition-all active:scale-95"
+          >
+            Go to Editor →
+          </button>
+          <p className="text-gray-600 text-xs mt-3">No credit card required. Tokens never expire.</p>
+        </div>
+
       </div>
     </div>
   )

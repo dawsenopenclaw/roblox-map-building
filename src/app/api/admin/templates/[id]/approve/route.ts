@@ -17,7 +17,6 @@ export async function PUT(_req: NextRequest, { params }: Params) {
     })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Template approve error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

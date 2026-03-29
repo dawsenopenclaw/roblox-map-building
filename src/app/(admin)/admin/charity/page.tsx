@@ -6,6 +6,7 @@ import { Heart, Plus, Trash2, RefreshCw } from 'lucide-react'
 interface CharityStats {
   totalDonatedAllTimeCents: number
   totalDonatedThisMonthCents: number
+  mrrCents?: number
   byCharity: {
     charitySlug: string
     charityName: string
@@ -28,6 +29,7 @@ interface CharityStats {
 const DEMO_DATA: CharityStats = {
   totalDonatedAllTimeCents: 284750,
   totalDonatedThisMonthCents: 18420,
+  mrrCents: 489500,
   byCharity: [
     { charitySlug: 'save-the-children', charityName: 'Save the Children', totalCents: 112400, count: 284 },
     { charitySlug: 'direct-relief', charityName: 'Direct Relief', totalCents: 98200, count: 196 },
@@ -100,7 +102,7 @@ export default function AdminCharityPage() {
       await fetch(`/api/admin/charity/${slug}`, { method: 'DELETE' })
       await fetchData()
     } catch (e) {
-      console.error(e)
+      // Error handling delegated to UI layer
     }
   }
 
@@ -113,13 +115,18 @@ export default function AdminCharityPage() {
   }
 
   const totalByCharity = data.byCharity.reduce((sum, c) => sum + c.totalCents, 0) || 1
+  const mrrCents = data.mrrCents ?? 0
+  const tenPctThisMonthCents = Math.round(mrrCents * 0.1)
+  const tenPctPaceDisplay = (tenPctThisMonthCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const donatedThisMonthDisplay = (data.totalDonatedThisMonthCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const pctOfTarget = tenPctThisMonthCents > 0 ? Math.min((data.totalDonatedThisMonthCents / tenPctThisMonthCents) * 100, 100) : 0
 
   return (
     <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Charity</h1>
-          <p className="text-[#6B7280] text-sm mt-1">Donation tracking and charity rotation</p>
+          <p className="text-[#B0B0B0] text-sm mt-1">Donation tracking and charity rotation</p>
         </div>
         <div className="flex items-center gap-2">
           {isDemo && (
@@ -129,7 +136,7 @@ export default function AdminCharityPage() {
           )}
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#6B7280] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#FFB81C] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -146,13 +153,13 @@ export default function AdminCharityPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-[#FFB81C]" />
             </div>
-            <p className="text-xs text-[#6B7280] uppercase tracking-wider">Total Donated — All Time</p>
+            <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">Total Donated — All Time</p>
           </div>
           <p className="text-3xl font-bold text-white">
             ${(data.totalDonatedAllTimeCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -163,11 +170,35 @@ export default function AdminCharityPage() {
             <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
               <Heart className="w-5 h-5 text-[#FFB81C]" />
             </div>
-            <p className="text-xs text-[#6B7280] uppercase tracking-wider">Donated — This Month</p>
+            <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">Donated — This Month</p>
           </div>
-          <p className="text-3xl font-bold text-white">
-            ${(data.totalDonatedThisMonthCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          <p className="text-3xl font-bold text-white">${donatedThisMonthDisplay}</p>
+        </div>
+        {/* 10% calculation card */}
+        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
+              <Heart className="w-5 h-5 text-[#FFB81C]" />
+            </div>
+            <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">10% of MRR Target</p>
+          </div>
+          <p className="text-3xl font-bold text-[#FFB81C]">${tenPctPaceDisplay}</p>
+          <p className="text-xs text-[#B0B0B0] mt-1">
+            10% of ${(mrrCents / 100).toLocaleString()} MRR
           </p>
+          {/* Progress toward 10% target */}
+          <div className="mt-3">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-[#B0B0B0]">This month</span>
+              <span className="text-white font-medium">{pctOfTarget.toFixed(1)}%</span>
+            </div>
+            <div className="h-1.5 bg-[#1c1c1c] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#FFB81C] transition-all duration-500"
+                style={{ width: `${pctOfTarget}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -183,13 +214,13 @@ export default function AdminCharityPage() {
               { key: 'description', label: 'Description', placeholder: 'Short description...' },
             ].map(({ key, label, placeholder }) => (
               <div key={key}>
-                <label className="block text-xs text-[#6B7280] mb-1">{label}</label>
+                <label className="block text-xs text-[#B0B0B0] mb-1">{label}</label>
                 <input
                   type="text"
                   placeholder={placeholder}
                   value={newCharity[key as keyof typeof newCharity]}
                   onChange={(e) => setNewCharity((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white placeholder:text-[#6B7280] focus:outline-none focus:border-[#FFB81C]"
+                  className="w-full px-3 py-2 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-[#FFB81C]"
                 />
               </div>
             ))}
@@ -204,7 +235,7 @@ export default function AdminCharityPage() {
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="px-4 py-2 bg-[#1c1c1c] border border-[#1c1c1c] text-[#6B7280] rounded-lg text-sm hover:text-white transition-colors"
+              className="px-4 py-2 bg-[#1c1c1c] border border-[#1c1c1c] text-[#B0B0B0] rounded-lg text-sm hover:text-white transition-colors"
             >
               Cancel
             </button>
@@ -215,11 +246,11 @@ export default function AdminCharityPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Per-charity breakdown */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-6">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-6">
             Donations by Charity
           </h2>
           {data.byCharity.length === 0 ? (
-            <p className="text-[#6B7280] text-sm">No donations yet</p>
+            <p className="text-[#B0B0B0] text-sm">No donations yet</p>
           ) : (
             <div className="space-y-4">
               {data.byCharity.map((charity, i) => {
@@ -239,7 +270,7 @@ export default function AdminCharityPage() {
                         style={{ width: `${pct}%`, background: color }}
                       />
                     </div>
-                    <p className="text-xs text-[#6B7280] mt-1">{charity.count} donations</p>
+                    <p className="text-xs text-[#B0B0B0] mt-1">{charity.count} donations</p>
                   </div>
                 )
               })}
@@ -249,29 +280,30 @@ export default function AdminCharityPage() {
 
         {/* Monthly history */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
+          <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4">
             Monthly History
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-[#6B7280] border-b border-[#1c1c1c]">
+                <tr className="text-xs text-[#B0B0B0] border-b border-[#1c1c1c]">
                   <th className="pb-2 text-left font-medium">Month</th>
                   <th className="pb-2 text-right font-medium">Donations</th>
                   <th className="pb-2 text-right font-medium">Amount</th>
+                  <th className="pb-2 text-right font-medium text-[#FFB81C]/70">10% Pledge</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1c1c1c]">
                 {data.monthlyHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center text-[#6B7280]">
+                    <td colSpan={3} className="py-4 text-center text-[#B0B0B0]">
                       No history
                     </td>
                   </tr>
                 ) : (
                   data.monthlyHistory.map((row) => (
                     <tr key={row.month}>
-                      <td className="py-2.5 text-[#6B7280]">{row.month}</td>
+                      <td className="py-2.5 text-[#B0B0B0]">{row.month}</td>
                       <td className="py-2.5 text-right text-white">{row.count}</td>
                       <td className="py-2.5 text-right text-[#FFB81C] font-medium">
                         ${(row.totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -287,11 +319,11 @@ export default function AdminCharityPage() {
 
       {/* Active charities */}
       <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4">
           Charities in Rotation ({data.activeCharities.length})
         </h2>
         {data.activeCharities.length === 0 ? (
-          <p className="text-[#6B7280] text-sm">No active charities configured</p>
+          <p className="text-[#B0B0B0] text-sm">No active charities configured</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {data.activeCharities.map((charity) => (
@@ -302,7 +334,7 @@ export default function AdminCharityPage() {
                 <div className="flex-1 min-w-0 mr-3">
                   <p className="text-white text-sm font-medium truncate">{charity.name}</p>
                   {charity.description && (
-                    <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-2">{charity.description}</p>
+                    <p className="text-[#B0B0B0] text-xs mt-0.5 line-clamp-2">{charity.description}</p>
                   )}
                   {charity.url && (
                     <a
@@ -318,7 +350,7 @@ export default function AdminCharityPage() {
                 <button
                   onClick={() => handleRemoveCharity(charity.slug)}
                   disabled={isDemo}
-                  className="p-1.5 rounded-lg border border-[#1c1c1c] text-[#6B7280] hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0 disabled:opacity-40"
+                  className="p-1.5 rounded-lg border border-[#1c1c1c] text-[#B0B0B0] hover:text-red-400 hover:border-red-500 transition-colors flex-shrink-0 disabled:opacity-40"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

@@ -38,7 +38,6 @@ export async function GET() {
       recentAchievements: user.userAchievements,
     })
   } catch (error) {
-    console.error('Gamification status error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

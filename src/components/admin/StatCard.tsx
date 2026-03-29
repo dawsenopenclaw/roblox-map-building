@@ -11,9 +11,9 @@ export function StatCard({ title, value, icon, subtitle, trend }: StatCardProps)
     <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-[#6B7280] uppercase tracking-wider">{title}</p>
+          <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">{title}</p>
           <p className="text-2xl font-bold text-white mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-[#6B7280] mt-1">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-[#B0B0B0] mt-1">{subtitle}</p>}
           {trend && (
             <p
               className={`text-xs font-medium mt-2 ${trend.direction === 'up' ? 'text-green-400' : 'text-red-400'}`}

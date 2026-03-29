@@ -87,7 +87,7 @@ export function useNotifications(opts?: {
     error: null,
   })
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.forjegames.com'
 
   // Refs to manage lifecycle without triggering re-renders
   const esRef = useRef<EventSource | null>(null)

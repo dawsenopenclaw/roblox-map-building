@@ -71,14 +71,14 @@ export function AdminShell({
             <Shield className="w-4 h-4 text-black" />
           </div>
           <span className="font-bold text-white">Admin</span>
-          <span className="text-xs text-[#6B7280] ml-auto">ForjeGames</span>
+          <span className="text-xs text-[#B0B0B0] ml-auto">ForjeGames</span>
         </div>
 
         {/* Demo banner */}
         {isDemo && (
           <div className="mx-3 mt-3 px-3 py-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-lg">
             <p className="text-xs text-[#FFB81C] font-medium">Demo Mode</p>
-            <p className="text-xs text-[#6B7280] mt-0.5">Showing sample data</p>
+            <p className="text-xs text-[#B0B0B0] mt-0.5">Showing sample data</p>
           </div>
         )}
 
@@ -95,12 +95,12 @@ export function AdminShell({
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group
                   ${active
                     ? 'bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20'
-                    : 'text-[#6B7280] hover:text-white hover:bg-[#1c1c1c] border border-transparent'
+                    : 'text-[#B0B0B0] hover:text-white hover:bg-[#1c1c1c] border border-transparent'
                   }
                 `}
               >
                 <item.icon
-                  className={`w-4 h-4 flex-shrink-0 ${active ? 'text-[#FFB81C]' : 'text-[#6B7280] group-hover:text-white'}`}
+                  className={`w-4 h-4 flex-shrink-0 ${active ? 'text-[#FFB81C]' : 'text-[#B0B0B0] group-hover:text-white'}`}
                 />
                 {item.label}
                 {active && <ChevronRight className="w-3.5 h-3.5 ml-auto text-[#FFB81C]" />}
@@ -122,7 +122,7 @@ export function AdminShell({
           </div>
           <Link
             href="/dashboard"
-            className="mt-3 flex items-center gap-2 text-xs text-[#6B7280] hover:text-white transition-colors"
+            className="mt-3 flex items-center gap-2 text-xs text-[#B0B0B0] hover:text-white transition-colors"
           >
             Back to app
           </Link>
@@ -136,7 +136,7 @@ export function AdminShell({
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="Open navigation"
-            className="p-1.5 rounded-lg text-[#6B7280] hover:text-white"
+            className="p-1.5 rounded-lg text-[#B0B0B0] hover:text-white"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -145,7 +145,7 @@ export function AdminShell({
             <button
               onClick={() => setSidebarOpen(false)}
               aria-label="Close navigation"
-              className="ml-auto p-1.5 rounded-lg text-[#6B7280] hover:text-white"
+              className="ml-auto p-1.5 rounded-lg text-[#B0B0B0] hover:text-white"
             >
               <X className="w-5 h-5" />
             </button>

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import * as Sentry from '@sentry/nextjs'
 
 export default function AuthError({
   error,
@@ -11,7 +12,7 @@ export default function AuthError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error('[auth-error]', error)
+    Sentry.captureException(error)
   }, [error])
 
   return (

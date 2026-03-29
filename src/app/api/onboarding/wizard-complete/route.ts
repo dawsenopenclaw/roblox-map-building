@@ -34,7 +34,6 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (err) {
-    console.error('[onboarding/wizard-complete] Clerk error:', err)
     // Non-fatal — metadata update failed but we still let the user proceed
     return NextResponse.json({ ok: true, clerkError: true })
   }

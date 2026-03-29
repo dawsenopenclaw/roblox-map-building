@@ -2,7 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? 'dawsenm@gmail.com'
+const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 /**
  * Verifies the request is from an ADMIN user.

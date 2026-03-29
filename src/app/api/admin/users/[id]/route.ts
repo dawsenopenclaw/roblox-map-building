@@ -78,7 +78,6 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Admin user update error:', error)
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

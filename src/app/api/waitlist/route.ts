@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 
 // Basic email validation — no external dependency needed
 function isValidEmail(value: string): boolean {
@@ -10,8 +11,7 @@ function isValidEmail(value: string): boolean {
  * Body: { email: string }
  *
  * Accepts a waitlist signup for the desktop app.
- * Currently returns a success response immediately.
- * TODO: persist to database (e.g. Prisma waitlist table) when ready.
+ * Persists email to Prisma Waitlist table.
  */
 export async function POST(req: NextRequest) {
   let body: unknown
@@ -46,12 +46,18 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // TODO: save to database
-  // await prisma.waitlist.upsert({
-  //   where: { email },
-  //   create: { email, source: 'download_page' },
-  //   update: {},
-  // })
+  try {
+    await db.waitlist.upsert({
+      where: { email },
+      create: { email, source: 'download_page' },
+      update: {},
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, message: 'Failed to save to waitlist.' },
+      { status: 500 }
+    )
+  }
 
   return NextResponse.json(
     { success: true, message: "You'll be notified when the desktop app launches." },

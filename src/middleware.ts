@@ -45,19 +45,12 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/onboarding(.*)',
-  // Editor — public until Clerk production keys configured
-  '/editor(.*)',
+  // Welcome / post-auth landing (no session yet during onboarding redirect)
   '/welcome(.*)',
-  // App pages — all accessible without auth until Clerk production keys configured
-  '/settings(.*)',
-  '/billing(.*)',
-  '/earnings(.*)',
-  '/referrals(.*)',
-  '/achievements(.*)',
-  // Admin — accessible for owner (guard handled below)
-  '/admin(.*)',
-  // All API routes accessible (individual endpoints handle their own auth as needed)
-  '/api/(.*)',
+  // Webhooks — Stripe, Clerk, etc. must always reach these endpoints
+  '/api/webhooks/(.*)',
+  // Public API endpoints (unauthenticated reads only)
+  '/api/og',
   // System / utility pages — must be reachable without auth
   '/blocked',
   '/maintenance(.*)',
@@ -115,15 +108,57 @@ function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 // ─── Demo mode ────────────────────────────────────────────────────────────────
-// Set DEMO_MODE=true in .env to bypass all auth gates (local dev / demo deploys).
-// When false (default), auth is enforced for non-public routes whenever Clerk
-// can resolve a session — regardless of whether test or live keys are in use.
+// SECURITY: DEMO_MODE bypasses ALL auth gates. Must NEVER be true in production.
+// Only valid for local dev or isolated demo deployments with no real user data.
+// To enable: set DEMO_MODE=true in .env.local (never .env.production).
 const DEMO_MODE = process.env.DEMO_MODE === 'true'
+if (DEMO_MODE && process.env.NODE_ENV === 'production') {
+  // Hard-fail at startup if someone accidentally deploys with DEMO_MODE=true in prod.
+  throw new Error('[middleware] DEMO_MODE=true is not allowed in production. Remove it from your environment.')
+}
+
+// ─── CORS configuration ───────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
+// Always allow the app's own origin
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? ''
+
+function getCorsHeaders(request: NextRequest): HeadersInit {
+  const origin = request.headers.get('origin') ?? ''
+  const isAllowed =
+    origin === APP_URL ||
+    ALLOWED_ORIGINS.includes(origin) ||
+    // Allow same-origin requests (no Origin header)
+    origin === ''
+
+  return isAllowed
+    ? {
+        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+        'Access-Control-Max-Age': '86400',
+        'Access-Control-Allow-Credentials': 'true',
+      }
+    : {}
+}
+
+function handleCorsPreFlight(request: NextRequest): NextResponse | null {
+  if (request.method !== 'OPTIONS') return null
+  const headers = getCorsHeaders(request)
+  return new NextResponse(null, { status: 204, headers })
+}
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, request) => {
   try {
+    // ── CORS preflight — must run before any redirect or auth check ────────────
+    const preFlightResponse = handleCorsPreFlight(request)
+    if (preFlightResponse) return preFlightResponse
+
     // ── 0. Maintenance mode (runs before geo and auth checks) ──────────────────
     const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
 
@@ -169,6 +204,7 @@ export default clerkMiddleware(async (auth, request) => {
 
     // ── 2. Auth routing ────────────────────────────────────────────────────────
     // In demo mode all routes are accessible — skip auth resolution entirely.
+    // DEMO_MODE in production throws at module load (see guard above).
     if (DEMO_MODE) return NextResponse.next()
 
     let userId: string | null = null
@@ -191,7 +227,13 @@ export default clerkMiddleware(async (auth, request) => {
     // Protect non-public routes — isPublicRoute is the single source of truth.
     // All routes listed in the public matcher are accessible without auth.
     if (!isPublicRoute(request) && !userId) {
-      return NextResponse.redirect(new URL('/sign-in', request.url))
+      // API routes: return 401 JSON instead of redirecting to sign-in page
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      const signInUrl = new URL('/sign-in', request.url)
+      signInUrl.searchParams.set('redirect_url', request.nextUrl.pathname)
+      return NextResponse.redirect(signInUrl)
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────
@@ -211,13 +253,23 @@ export default clerkMiddleware(async (auth, request) => {
     }
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────
-    // Log the error for observability but pass the request through so users
-    // are not locked out by a transient Clerk or runtime failure.
-    console.error('[middleware] unhandled error — passing request through:', err)
+    // Pass request through so users are not locked out by a transient Clerk or runtime failure.
     return NextResponse.next()
   }
 })
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)'],
+  matcher: [
+    /*
+     * Match all request paths EXCEPT:
+     * - _next/static  (Next.js build output — JS/CSS chunks)
+     * - _next/image   (image optimisation endpoint)
+     * - Static file extensions: ico, png, jpg/jpeg, webp, svg, gif, woff/woff2, ttf, otf, mp4, mp3
+     *
+     * Webhook paths (/api/webhooks/*) ARE matched here intentionally — they reach
+     * the middleware so the CORS preflight handler runs, but isPublicRoute() exempts
+     * them from Clerk auth so Stripe/Clerk can always fire.
+     */
+    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3)$).*)',
+  ],
 }

@@ -69,7 +69,7 @@ export default function TeamHistoryPage() {
   const [success, setSuccess] = useState('')
   const [isDemo, setIsDemo] = useState(true)
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.forjegames.com'
 
   const fetchVersions = useCallback(async () => {
     if (!projectId.trim()) return

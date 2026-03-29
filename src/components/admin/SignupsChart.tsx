@@ -8,7 +8,7 @@ interface DataPoint {
 export function SignupsChart({ data }: { data: DataPoint[] }) {
   if (!data.length) {
     return (
-      <div className="h-40 flex items-center justify-center text-[#6B7280] text-sm">
+      <div className="h-40 flex items-center justify-center text-[#B0B0B0] text-sm">
         No signup data
       </div>
     )
@@ -19,7 +19,7 @@ export function SignupsChart({ data }: { data: DataPoint[] }) {
 
   return (
     <div>
-      <p className="text-xs text-[#6B7280] mb-4">
+      <p className="text-xs text-[#B0B0B0] mb-4">
         Total: <span className="text-[#FFB81C] font-semibold">{totalSignups.toLocaleString()}</span>
       </p>
       <div className="flex items-end gap-1 h-40">
@@ -40,7 +40,7 @@ export function SignupsChart({ data }: { data: DataPoint[] }) {
           )
         })}
       </div>
-      <div className="flex justify-between mt-2 text-xs text-[#6B7280]">
+      <div className="flex justify-between mt-2 text-xs text-[#B0B0B0]">
         <span>{data[0]?.date?.slice(5)}</span>
         <span>{data[data.length - 1]?.date?.slice(5)}</span>
       </div>
