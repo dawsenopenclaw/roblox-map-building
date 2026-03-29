@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
+import { createMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
-  title: 'Privacy Policy — RobloxForge',
+export const metadata: Metadata = createMetadata({
+  title: 'Privacy Policy',
   description: 'How RobloxForge collects, uses, and protects your personal data. GDPR, CCPA, and COPPA compliant.',
-}
+  path: '/privacy',
+  noIndex: true,
+})
 
 const EFFECTIVE_DATE = 'March 28, 2026'
 const COMPANY = 'RobloxForge LLC'

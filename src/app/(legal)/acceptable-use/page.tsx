@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { createMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
-  title: 'Acceptable Use Policy — RobloxForge',
+export const metadata: Metadata = createMetadata({
+  title: 'Acceptable Use Policy',
   description: 'RobloxForge Acceptable Use Policy. Rules for safe and legal use of the platform.',
-}
+  path: '/acceptable-use',
+  noIndex: true,
+})
 
 const EFFECTIVE_DATE = 'March 28, 2026'
 const COMPANY = 'RobloxForge LLC'

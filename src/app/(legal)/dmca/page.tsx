@@ -1,9 +1,12 @@
 import type { Metadata } from 'next'
+import { createMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
-  title: 'DMCA Policy — RobloxForge',
+export const metadata: Metadata = createMetadata({
+  title: 'DMCA Policy',
   description: 'RobloxForge DMCA takedown policy. 48-hour response SLA. Designated agent contact.',
-}
+  path: '/dmca',
+  noIndex: true,
+})
 
 const EFFECTIVE_DATE = 'March 28, 2026'
 const AGENT_EMAIL = 'dmca@robloxforge.gg'
