@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
+  // Connection pool: max 10 connections, 20s timeout, prepared statements enabled
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
@@ -149,6 +150,7 @@ model TokenTransaction {
   @@index([balanceId])
   @@index([createdAt])
   @@index([type])
+  @@index([balanceId, createdAt])
 }
 
 enum TokenTransactionType {
@@ -215,20 +217,29 @@ model ApiUsageRecord {
   id         String   @id @default(cuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Optional: tracks which API key triggered this record (null = session-based)
+  apiKeyId   String?
+  apiKey     ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
   provider   String
   operation  String
+  // HTTP method + path for per-key endpoint analytics
+  httpMethod String?
+  httpPath   String?
+  statusCode Int?
   tokensUsed Int      @default(0)
   // Stored as micro-dollars (Int) to avoid float precision issues
   costUsdMicro Int    @default(0)
-  durationMs Int?
+  durationMs   Int?
   success    Boolean  @default(true)
   metadata   Json?
   createdAt  DateTime @default(now())
 
   @@index([userId])
+  @@index([apiKeyId])
   @@index([provider])
   @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
 }
 
 // ─── Cost Tracking (aggregated daily) ──────────────────────────────────────
@@ -303,7 +314,15 @@ model Template {
   @@index([downloads])
   @@index([slug])
   @@index([deletedAt])
+  @@index([featuredAt])
+  @@index([priceCents])
+  // Composite indexes for common browse/filter patterns
   @@index([status, category])
+  @@index([status, createdAt])
+  @@index([status, averageRating])
+  @@index([status, downloads])
+  @@index([creatorId, createdAt])
+  @@index([creatorId, status])
 }
 
 model TemplateScreenshot {
@@ -336,6 +355,8 @@ model TemplateReview {
   @@index([templateId])
   @@index([reviewerId])
   @@index([rating])
+  @@index([templateId, createdAt])
+  @@index([templateId, rating])
 }
 
 model TemplatePurchase {
@@ -360,6 +381,8 @@ model TemplatePurchase {
   @@index([buyerId])
   @@index([createdAt])
   @@index([payoutStatus])
+  @@index([buyerId, createdAt])
+  @@index([templateId, payoutStatus])
 }
 
 enum PayoutStatus {
@@ -519,6 +542,8 @@ model GameScan {
   @@index([createdAt])
   @@index([robloxPlaceId])
   @@index([status])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 enum ScanStatus {
@@ -652,6 +677,7 @@ model TeamActivity {
   @@index([teamId])
   @@index([userId])
   @@index([createdAt])
+  @@index([teamId, createdAt])
 }
 
 model ZoneLock {
@@ -685,7 +711,9 @@ model ProjectVersion {
   @@unique([teamId, projectId, version])
   @@index([teamId])
   @@index([projectId])
+  @@index([userId])
   @@index([createdAt])
+  @@index([teamId, projectId, createdAt])
 }
 
 model VersionDiff {
@@ -716,12 +744,20 @@ model ApiKey {
   revokedAt  DateTime?
   lastUsedAt DateTime?
   expiresAt  DateTime?
+  // Rotation: if set, this key was created by rotating rotatedFromId; that old key
+  // remains valid until rotatedFromGraceEndsAt (24-hour window) then is auto-revoked.
+  rotatedFromId          String?   @unique
+  rotatedFromGraceEndsAt DateTime?
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
+
+  usageRecords ApiUsageRecord[]
 
   @@index([userId])
   @@index([prefix])
   @@index([revokedAt])
+  // Composite: look up active (non-revoked) keys for a user
+  @@index([userId, revokedAt])
 }
 
 enum ApiKeyTier {
@@ -813,6 +849,7 @@ model Notification {
   @@index([userId])
   @@index([userId, read])
   @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 enum NotificationType {
@@ -848,6 +885,8 @@ model CreatorEarning {
   @@index([createdAt])
   @@index([userId, status])
   @@index([status])
+  @@index([templateId])
+  @@index([userId, createdAt])
 }
 
 enum EarningStatus {

@@ -5,6 +5,7 @@
  */
 
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../../middleware/auth'
 import { aiRateLimit } from '../../middleware/security'
 import {
@@ -25,6 +26,7 @@ import {
   notifyTokenLow,
   notifyTokenDepleted,
 } from '../../lib/notifications'
+import { aiGenerateSchema } from '../../lib/validators'
 
 const log = createLogger('ai:generate')
 
@@ -75,7 +77,7 @@ interface GenerateBody {
  * POST /api/ai/generate
  * Two-phase: first call returns estimate (confirmed=false), second executes (confirmed=true)
  */
-generateRoutes.post('/', async (c) => {
+generateRoutes.post('/', zValidator('json', aiGenerateSchema), async (c) => {
   const start = Date.now()
   const userId = c.get('userId') as string
   const requestId = c.get('requestId') as string | undefined
@@ -83,18 +85,7 @@ generateRoutes.post('/', async (c) => {
 
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
-  const body = await c.req.json<GenerateBody>().catch(() => null)
-  if (!body || !body.mode || !body.prompt) {
-    return c.json({
-      error: 'Invalid request body',
-      required: { mode: 'terrain | city | assets | full-game', prompt: 'string' },
-    }, 400)
-  }
-
-  const validModes: GenerationMode[] = ['terrain', 'city', 'assets', 'full-game']
-  if (!validModes.includes(body.mode)) {
-    return c.json({ error: `Invalid mode. Must be one of: ${validModes.join(', ')}` }, 400)
-  }
+  const body = c.req.valid('json')
 
   // Normalize mode for cost estimator
   const costMode = body.mode === 'full-game' ? 'full-game' : body.mode

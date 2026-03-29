@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 type ApiKey = {
   id: string
@@ -231,7 +232,9 @@ export default function ApiKeysPage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <p className="text-white font-semibold">{key.name}</p>
+                    <Link href={`/settings/api-keys/${key.id}`} className="text-white font-semibold hover:text-[#FFB81C] transition-colors">
+                      {key.name}
+                    </Link>
                     <span className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2 py-0.5 rounded-full">
                       {key.tier}
                     </span>
