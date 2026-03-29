@@ -207,12 +207,12 @@ export default function PricingClient() {
       </div>
 
       {/* Trust line */}
-      <p className="text-center text-gray-500 text-sm mb-20">
-        All plans include:{' '}
+      <p className="text-center text-gray-500 text-sm mb-20 flex flex-wrap justify-center gap-x-3 gap-y-1">
+        <span>All plans include:</span>
         <span className="text-gray-400">COPPA compliance</span>
-        {' · '}
+        <span aria-hidden="true" className="hidden sm:inline">·</span>
         <span className="text-gray-400">10% donated to education</span>
-        {' · '}
+        <span aria-hidden="true" className="hidden sm:inline">·</span>
         <span className="text-gray-400">Cancel anytime</span>
       </p>
 

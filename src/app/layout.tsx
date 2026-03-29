@@ -129,6 +129,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#0A0E27" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />

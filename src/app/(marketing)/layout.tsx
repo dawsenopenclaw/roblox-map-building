@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex flex-col">
+    <div className="min-h-screen bg-[#0A0E27] flex flex-col overflow-x-hidden">
       {/* Minimal nav */}
       <nav
         className="flex items-center justify-between px-6 py-4"
