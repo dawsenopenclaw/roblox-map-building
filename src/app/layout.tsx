@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { ClerkProvider } from '@clerk/nextjs'
 import { PostHogProvider } from '@/components/PostHogProvider'
 import { SkipToContent } from '@/components/SkipToContent'
 import { InstallPrompt } from '@/components/InstallPrompt'
@@ -139,12 +140,34 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-background text-white antialiased font-sans">
-        <SkipToContent />
-        <OfflineIndicator />
-        <ToastProvider>
-          <PostHogProvider>{children}</PostHogProvider>
-        </ToastProvider>
-        <InstallPrompt />
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          afterSignInUrl="/dashboard"
+          afterSignUpUrl="/onboarding"
+          appearance={{
+            variables: {
+              colorPrimary: '#FFB81C',
+              colorBackground: '#0D1231',
+              colorText: '#ffffff',
+              colorTextSecondary: '#9ca3af',
+              colorInputBackground: '#111827',
+              colorInputText: '#ffffff',
+            },
+            elements: {
+              card: 'shadow-xl border border-white/10 bg-[#0D1231]',
+              formButtonPrimary: 'bg-[#FFB81C] text-black hover:bg-[#E6A519]',
+              footerActionLink: 'text-[#FFB81C] hover:text-[#E6A519]',
+            },
+          }}
+        >
+          <SkipToContent />
+          <OfflineIndicator />
+          <ToastProvider>
+            <PostHogProvider>{children}</PostHogProvider>
+          </ToastProvider>
+          <InstallPrompt />
+        </ClerkProvider>
         <Script
           id="register-sw"
           strategy="afterInteractive"
