@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { serverEnv } from '@/lib/env'
 
 // Lazy initialization — don't throw during build when env vars aren't set
 

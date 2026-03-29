@@ -17,6 +17,8 @@ export const XP_AMOUNTS: Record<XPEventType, number | ((meta: Record<string, unk
   ACHIEVEMENT: (meta) => (meta?.xpReward as number) || 0,
   STREAK_BONUS: (meta) => (meta?.bonus as number) || 0,
   DAILY_LOGIN: 5,
+  PURCHASE: 25,
+  REVIEW_GIVEN: 15,
 }
 
 export const TIER_THRESHOLDS: Array<{ tier: XPTier; min: number }> = [
