@@ -7,11 +7,9 @@ const PRODUCT_LINKS = [
   { href: '/pricing', label: 'Pricing' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/docs', label: 'Documentation' },
-  { href: '/blog', label: 'Blog' },
 ]
 
 const COMPANY_LINKS = [
-  { href: '/about', label: 'About' },
   { href: 'mailto:support@forjegames.gg', label: 'Support' },
   { href: 'mailto:legal@forjegames.gg', label: 'Legal' },
   { href: 'mailto:abuse@forjegames.gg', label: 'Report Abuse' },
@@ -30,7 +28,6 @@ const COMMUNITY_LINKS = [
   { href: 'https://github.com/forjegames', label: 'GitHub' },
   { href: 'https://twitter.com/forjegames', label: 'Twitter / X' },
   { href: 'https://youtube.com/@forjegames', label: 'YouTube' },
-  { href: '/changelog', label: 'Changelog' },
 ]
 
 const SOCIAL_LINKS = [

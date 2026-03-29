@@ -72,7 +72,7 @@ export function ActivityBar() {
     >
       {/* Logo mark */}
       <Link
-        href="/dashboard"
+        href="/editor"
         className="w-8 h-8 rounded bg-[#FFB81C] flex items-center justify-center mb-4 flex-shrink-0 hover:bg-[#FFB81C]/90 transition-colors"
         aria-label="ForjeGames — go to editor"
         title="ForjeGames"

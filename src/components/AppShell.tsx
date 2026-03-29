@@ -2,7 +2,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/AppSidebar'
-import { ActivityBar } from '@/components/ActivityBar'
 import { AppTopNav } from '@/components/AppTopNav'
 import { AchievementToastProvider } from '@/components/AchievementToast'
 import { CommandPalette } from '@/components/CommandPalette'
@@ -14,13 +13,11 @@ import { Spotlight } from '@/components/ui/spotlight'
  * Client shell for the app layout.
  *
  * /editor — renders children directly (full-screen, zero chrome)
- * /dashboard — IDE layout with ActivityBar
  * everything else — standard top nav + sidebar + padded main
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isNewEditor = pathname === '/editor'
-  const isDashboardIDE = pathname === '/dashboard'
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -55,31 +52,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {isDashboardIDE ? (
-        /* ── IDE layout: activity bar + full-height editor ── */
-        <div className="min-h-screen bg-[#0A0E1A] flex overflow-hidden" style={{ height: '100vh' }}>
-          <ActivityBar />
-          <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-            {children}
-          </div>
+      {/* ── Standard layout: top nav + left sidebar + padded main ── */}
+      <div className="min-h-screen bg-[#0D1320] flex">
+        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <AppTopNav
+            onMenuOpen={() => setSidebarOpen(true)}
+            onCommandPalette={() => setPaletteOpen(true)}
+          />
+          <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
+            <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
+              {children}
+            </main>
+          </Spotlight>
         </div>
-      ) : (
-        /* ── Standard layout: top nav + left sidebar + padded main ── */
-        <div className="min-h-screen bg-[#0D1320] flex">
-          <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <div className="flex-1 flex flex-col min-w-0">
-            <AppTopNav
-              onMenuOpen={() => setSidebarOpen(true)}
-              onCommandPalette={() => setPaletteOpen(true)}
-            />
-            <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
-              <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
-                {children}
-              </main>
-            </Spotlight>
-          </div>
-        </div>
-      )}
+      </div>
 
       <AchievementToastProvider />
 
