@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Client-side analytics — safe for 'use client' components.
  * Wraps posthog-js only. Never imports posthog-node.
  */
@@ -27,7 +27,7 @@ export interface UserContext {
 
 function baseProps(ctx?: UserContext): Record<string, unknown> {
   return {
-    $app: 'robloxforge',
+    $app: 'ForjeGames',
     ...(ctx?.tier && { user_tier: ctx.tier }),
     ...(ctx?.role && { user_role: ctx.role }),
     ...(ctx?.streak !== undefined && { user_streak: ctx.streak }),

@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'robloxforge-static-v1'
-const API_CACHE = 'robloxforge-api-v1'
+const STATIC_CACHE = 'forjegames-static-v1'
+const API_CACHE = 'forjegames-api-v1'
 const OFFLINE_URL = '/offline'
 
 const STATIC_ASSETS = [
@@ -177,7 +177,7 @@ async function processQueuedGenerations() {
 
 function openQueueDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('robloxforge-queue', 1)
+    const req = indexedDB.open('forjegames-queue', 1)
     req.onupgradeneeded = (e) => {
       e.target.result.createObjectStore('queue', {
         keyPath: 'id',

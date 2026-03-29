@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -30,7 +30,7 @@ interface CharityUpdateEmailProps {
   dashboardUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const CharityUpdateEmail = ({
   month = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
@@ -153,7 +153,7 @@ export const CharityUpdateEmail = ({
           <Section style={howSection}>
             <Text style={howHeading}>How donations work</Text>
             <Text style={howText}>
-              RobloxForge donates <strong style={goldText}>1% of all platform revenue</strong> to
+              ForjeGames donates <strong style={goldText}>1% of all platform revenue</strong> to
               rotating charitable causes. Every build you create, every template you sell,
               and every subscription contributes directly to this fund. You build — we give.
             </Text>
@@ -172,7 +172,7 @@ export const CharityUpdateEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              RobloxForge &mdash; AI-powered Roblox game building
+              ForjeGames &mdash; AI-powered Roblox game building
             </Text>
             <Text style={footerLinks}>
               <Link href={`${baseUrl}/charity`} style={footerLink}>Charity Program</Link>
@@ -182,7 +182,7 @@ export const CharityUpdateEmail = ({
               <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
             </Text>
             <Text style={footerAddress}>
-              RobloxForge Inc. · All rights reserved
+              ForjeGames Inc. · All rights reserved
             </Text>
           </Section>
         </Container>

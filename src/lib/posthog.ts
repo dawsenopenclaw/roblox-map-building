@@ -1,4 +1,4 @@
-import { PostHog } from 'posthog-node'
+﻿import { PostHog } from 'posthog-node'
 import { clientEnv } from './env'
 
 let _client: PostHog | null = null
@@ -22,7 +22,7 @@ export async function captureEvent(
 ) {
   const client = getPostHogClient()
   if (!client) return
-  client.capture({ distinctId, event, properties: { ...properties, $app: 'robloxforge' } })
+  client.capture({ distinctId, event, properties: { ...properties, $app: 'ForjeGames' } })
 }
 
 export async function identifyUser(

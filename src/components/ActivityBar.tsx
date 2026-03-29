@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -74,8 +74,8 @@ export function ActivityBar() {
       <Link
         href="/dashboard"
         className="w-8 h-8 rounded bg-[#FFB81C] flex items-center justify-center mb-4 flex-shrink-0 hover:bg-[#FFB81C]/90 transition-colors"
-        aria-label="RobloxForge — go to editor"
-        title="RobloxForge"
+        aria-label="ForjeGames — go to editor"
+        title="ForjeGames"
       >
         <span className="text-[#070910] text-xs font-black">R</span>
       </Link>

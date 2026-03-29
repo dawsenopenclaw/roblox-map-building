@@ -1,8 +1,8 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Maintenance — RobloxForge',
-  description: 'RobloxForge is temporarily down for scheduled maintenance.',
+  title: 'Maintenance — ForjeGames',
+  description: 'ForjeGames is temporarily down for scheduled maintenance.',
 }
 
 // Wrench SVG — no lucide import needed, server component stays lightweight
@@ -26,9 +26,9 @@ export default function MaintenancePage() {
   // Values would normally be sourced from env or a status API.
   // Providing sensible defaults so the page renders standalone.
   const estimatedReturn = process.env.MAINTENANCE_UNTIL ?? null
-  const statusPageUrl = process.env.NEXT_PUBLIC_STATUS_PAGE_URL ?? 'https://status.robloxforge.gg'
-  const twitterUrl = 'https://twitter.com/RobloxForge'
-  const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL ?? 'https://discord.gg/robloxforge'
+  const statusPageUrl = process.env.NEXT_PUBLIC_STATUS_PAGE_URL ?? 'https://status.ForjeGames.gg'
+  const twitterUrl = 'https://twitter.com/ForjeGames'
+  const discordUrl = process.env.NEXT_PUBLIC_DISCORD_URL ?? 'https://discord.gg/ForjeGames'
 
   let formattedReturn: string | null = null
   if (estimatedReturn) {
@@ -46,9 +46,24 @@ export default function MaintenancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
-      <div className="max-w-lg w-full text-center">
-        <div className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4 overflow-hidden">
+      {/* Ambient glow */}
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+        <div className="w-[550px] h-[550px] rounded-full bg-[#FFB81C]/6 blur-[120px]" />
+      </div>
+
+      {/* Background grid */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            'linear-gradient(#FFB81C 1px, transparent 1px), linear-gradient(90deg, #FFB81C 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }}
+      />
+
+      <div className="relative max-w-lg w-full text-center">
+        <div className="bg-[#0D1231]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Animated icon wrapper */}
           <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center animate-[spin_8s_linear_infinite]"
@@ -59,12 +74,18 @@ export default function MaintenancePage() {
             </div>
           </div>
 
+          {/* Status badge */}
+          <div className="inline-flex items-center gap-1.5 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-3 py-1 mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-pulse" />
+            <span className="text-[#FFB81C] text-xs font-semibold uppercase tracking-wider">Scheduled Maintenance</span>
+          </div>
+
           {/* Heading */}
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+          <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">
             We&apos;re making things better
           </h1>
           <p className="text-gray-400 text-sm leading-relaxed mb-6">
-            RobloxForge is down for scheduled maintenance. We&apos;ll be back shortly —
+            ForjeGames is undergoing scheduled maintenance. We&apos;ll be back shortly —
             no data has been lost and your projects are safe.
           </p>
 
@@ -74,13 +95,16 @@ export default function MaintenancePage() {
               <p className="text-xs text-[#FFB81C] uppercase tracking-wider font-medium mb-1">
                 Estimated return
               </p>
-              <p className="text-white font-semibold">{formattedReturn}</p>
+              <p className="text-white font-semibold text-lg">{formattedReturn}</p>
             </div>
           ) : (
             <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 mb-8">
-              <p className="text-gray-400 text-sm">
-                We expect to be back within the next few hours. Thank you for your patience.
-              </p>
+              <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+                <svg className="w-4 h-4 text-[#FFB81C] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                Expected back within the next few hours
+              </div>
             </div>
           )}
 
@@ -93,7 +117,7 @@ export default function MaintenancePage() {
               href={statusPageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-sm transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-sm transition-all shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/30 hover:-translate-y-0.5"
             >
               {/* Bell icon */}
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>

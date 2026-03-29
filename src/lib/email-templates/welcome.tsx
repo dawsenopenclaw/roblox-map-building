@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -23,7 +23,7 @@ interface WelcomeEmailProps {
   communityUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const WelcomeEmail = ({
   name = 'Builder',
@@ -37,7 +37,7 @@ export const WelcomeEmail = ({
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
       `}</style>
     </Head>
-    <Preview>Welcome to RobloxForge — 1,000 free tokens, ready to use.</Preview>
+    <Preview>Welcome to ForjeGames — 1,000 free tokens, ready to use.</Preview>
     <Body style={body}>
       <Container style={container}>
         {/* Logo Header */}
@@ -126,7 +126,7 @@ export const WelcomeEmail = ({
         {/* Footer */}
         <Section style={footer}>
           <Text style={footerText}>
-            RobloxForge &mdash; AI-powered Roblox game building
+            ForjeGames &mdash; AI-powered Roblox game building
           </Text>
           <Text style={footerLinks}>
             <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -136,7 +136,7 @@ export const WelcomeEmail = ({
             <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
           </Text>
           <Text style={footerAddress}>
-            RobloxForge Inc. · All rights reserved
+            ForjeGames Inc. · All rights reserved
           </Text>
         </Section>
       </Container>

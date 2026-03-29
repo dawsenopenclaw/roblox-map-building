@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 
@@ -56,7 +56,7 @@ export default function ParentalConsentPage() {
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#FFB81C]">RobloxForge</h1>
+          <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
         </div>
         <div className="bg-[#0D1231] border border-white/10 rounded-xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-2">Parent&apos;s Permission Required</h2>
@@ -83,7 +83,7 @@ export default function ParentalConsentPage() {
             <div className="bg-[#0A0E27] rounded-lg p-4 text-xs text-gray-500">
               <strong className="text-gray-400">What we tell your parent:</strong>
               <ul className="mt-2 space-y-1 list-disc list-inside">
-                <li>What RobloxForge is (AI game dev platform)</li>
+                <li>What ForjeGames is (AI game dev platform)</li>
                 <li>What data we collect (email + DOB)</li>
                 <li>How to approve or deny the account</li>
               </ul>

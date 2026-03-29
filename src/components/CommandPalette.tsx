@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -195,7 +195,7 @@ export function CommandPalette({
       label: 'Documentation',
       description: 'Open the docs site',
       icon: '📖',
-      action: () => window.open('https://docs.robloxforge.com', '_blank'),
+      action: () => window.open('https://docs.ForjeGames.com', '_blank'),
     },
   ]
 

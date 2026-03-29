@@ -5,13 +5,13 @@ import PricingClient from './PricingClient'
 export const metadata: Metadata = createMetadata({
   title: 'Pricing',
   description:
-    'Simple, transparent pricing. Start free with 3 game builds per month. Upgrade to Creator ($15/mo) or Studio ($50/mo) when you\'re ready. No contracts, cancel anytime.',
+    'Simple, transparent pricing. Start free with 10 AI generations per day. Upgrade to Starter, Pro, or Studio plans when ready. No contracts, cancel anytime.',
   path: '/pricing',
   keywords: [
     'Roblox AI pricing',
     'Roblox game builder cost',
     'AI Roblox map generator price',
-    'RobloxForge plans',
+    'ForjeGames plans',
   ],
   jsonLd: {
     '@context': 'https://schema.org',
@@ -19,10 +19,10 @@ export const metadata: Metadata = createMetadata({
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'What are game builds?',
+        name: 'What counts as an AI generation?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Each time the AI generates something — terrain, a building, a full game scene — that counts as 1 build. Free plan includes 3 per month. Creator and Studio are unlimited.',
+          text: 'Each time the AI generates something — terrain, a building, a full game scene — that counts as 1 generation. Free plan includes 10 per day. Starter gets 100/day, Pro 1,000/day, Studio is unlimited.',
         },
       },
       {
@@ -38,7 +38,7 @@ export const metadata: Metadata = createMetadata({
         name: 'Is it safe for kids?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. RobloxForge is COPPA compliant with parental controls built in. Safe for players aged 8 and up.',
+          text: 'Yes. ForjeGames is COPPA compliant with parental controls built in. Safe for players aged 8 and up.',
         },
       },
       {
@@ -62,7 +62,7 @@ export const metadata: Metadata = createMetadata({
         name: 'Can I sell what I make?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. Creator and Studio plans let you list templates and assets on the marketplace. You keep 70% of every sale.',
+          text: 'Yes. Starter, Pro, and Studio plans let you list templates and assets on the marketplace. You keep 70% of every sale.',
         },
       },
     ],

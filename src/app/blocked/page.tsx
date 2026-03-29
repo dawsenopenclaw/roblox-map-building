@@ -1,9 +1,9 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Access Restricted — RobloxForge',
-  description: 'RobloxForge is not available in your region due to U.S. export control laws.',
+  title: 'Access Restricted — ForjeGames',
+  description: 'ForjeGames is not available in your region due to U.S. export control laws.',
 }
 
 export default function BlockedPage() {
@@ -33,11 +33,11 @@ export default function BlockedPage() {
         </div>
 
         <h1 className="text-2xl font-bold text-white mb-3">
-          RobloxForge is Not Available in Your Region
+          ForjeGames is Not Available in Your Region
         </h1>
 
         <p className="text-gray-400 leading-relaxed mb-6">
-          Access to RobloxForge is restricted in your location due to U.S. federal export control
+          Access to ForjeGames is restricted in your location due to U.S. federal export control
           laws and economic sanctions programs administered by the U.S. Department of the Treasury
           Office of Foreign Assets Control (OFAC) and the U.S. Department of Commerce Bureau of
           Industry and Security (BIS).
@@ -68,8 +68,8 @@ export default function BlockedPage() {
           VPN that routes traffic through a restricted region — please disable your VPN and try
           again. If the issue persists and you believe your access should not be restricted, contact
           us at{' '}
-          <a href="mailto:legal@robloxforge.gg" className="text-[#FFB81C] hover:underline">
-            legal@robloxforge.gg
+          <a href="mailto:legal@ForjeGames.gg" className="text-[#FFB81C] hover:underline">
+            legal@ForjeGames.gg
           </a>
           .
         </p>
@@ -82,7 +82,7 @@ export default function BlockedPage() {
             Return Home
           </Link>
           <a
-            href="mailto:legal@robloxforge.gg"
+            href="mailto:legal@ForjeGames.gg"
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 text-[#FFB81C] text-sm font-medium transition-colors"
           >
             Contact Legal
@@ -90,7 +90,7 @@ export default function BlockedPage() {
         </div>
 
         <p className="text-xs text-gray-600 mt-8">
-          This restriction is imposed by law, not by RobloxForge&apos;s policies. We are required
+          This restriction is imposed by law, not by ForjeGames&apos;s policies. We are required
           by U.S. law to deny service to persons in embargoed countries and to those on U.S.
           government sanctions lists. This page is served in compliance with 50 U.S.C. § 1701 et
           seq. (IEEPA), 22 U.S.C. § 2778 (AECA), and 15 C.F.R. Part 730 et seq. (EAR).

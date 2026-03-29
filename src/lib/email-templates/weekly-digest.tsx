@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -35,7 +35,7 @@ interface WeeklyDigestEmailProps {
   dashboardUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const WeeklyDigestEmail = ({
   name = 'Builder',
@@ -62,7 +62,7 @@ export const WeeklyDigestEmail = ({
         `}</style>
       </Head>
       <Preview>
-        Your weekly RobloxForge summary — {buildsThisWeek} builds, {tokensUsed} tokens used
+        Your weekly ForjeGames summary — {buildsThisWeek} builds, {tokensUsed} tokens used
         {hasStreak ? `, ${streakDays}-day streak!` : ''}
       </Preview>
       <Body style={body}>
@@ -195,7 +195,7 @@ export const WeeklyDigestEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              RobloxForge &mdash; AI-powered Roblox game building
+              ForjeGames &mdash; AI-powered Roblox game building
             </Text>
             <Text style={footerLinks}>
               <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -205,7 +205,7 @@ export const WeeklyDigestEmail = ({
               <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
             </Text>
             <Text style={footerAddress}>
-              RobloxForge Inc. · All rights reserved
+              ForjeGames Inc. · All rights reserved
             </Text>
           </Section>
         </Container>

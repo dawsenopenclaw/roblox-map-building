@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
@@ -140,7 +140,7 @@ export default function ApiKeysPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">API Keys</h1>
           <p className="text-gray-400 mt-1 text-sm">
-            Manage keys for programmatic access to RobloxForge.
+            Manage keys for programmatic access to ForjeGames.
           </p>
         </div>
         <button
@@ -268,7 +268,7 @@ export default function ApiKeysPage() {
           <div className="text-4xl mb-4">&#128273;</div>
           <h3 className="text-white font-semibold mb-2">No API keys yet</h3>
           <p className="text-gray-400 text-sm mb-6">
-            Create your first key to start using the RobloxForge API.
+            Create your first key to start using the ForjeGames API.
           </p>
           <button
             onClick={() => { setShowCreate(true); setCreateError(null) }}

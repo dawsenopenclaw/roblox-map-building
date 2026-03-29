@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -35,7 +35,7 @@ function ErrorContent() {
           <p className="text-gray-400 text-sm">{msg.description}</p>
           <p className="text-gray-500 text-xs mt-6">
             Need help?{' '}
-            <a href="mailto:support@robloxforge.com" className="text-[#FFB81C]">
+            <a href="mailto:support@ForjeGames.com" className="text-[#FFB81C]">
               Contact support
             </a>
           </p>

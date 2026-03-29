@@ -1,19 +1,19 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
   title: 'Terms of Service',
-  description: 'RobloxForge Terms of Service. Read the full terms and conditions before using the platform.',
+  description: 'ForjeGames Terms of Service. Read the full terms and conditions governing your use of the platform, including subscription, AI content, and marketplace rules.',
   path: '/terms',
   noIndex: true,
 })
 
 const EFFECTIVE_DATE = 'March 28, 2026'
-const COMPANY = 'RobloxForge LLC'
+const COMPANY = 'ForjeGames LLC'
 const OWNER = 'Dawsen Porter'
-const EMAIL = 'legal@robloxforge.gg'
-const ADDRESS = 'RobloxForge LLC, United States'
+const EMAIL = 'legal@forjegames.com'
+const ADDRESS = 'ForjeGames LLC, United States'
 
 const sections = [
   { id: 'acceptance', title: '1. Acceptance & Age Requirements' },
@@ -70,7 +70,7 @@ export default function TermsPage() {
       </nav>
 
       <p className="text-gray-300 leading-relaxed">
-        Please read these Terms of Service (&quot;Terms&quot;) carefully before using RobloxForge
+        Please read these Terms of Service (&quot;Terms&quot;) carefully before using ForjeGames
         (the &quot;Service&quot;), operated by {COMPANY} (&quot;we,&quot; &quot;us,&quot; or
         &quot;our&quot;). By accessing or using the Service you agree to be bound by these Terms. If
         you do not agree, do not use the Service.
@@ -133,7 +133,7 @@ export default function TermsPage() {
           3. Service Description
         </h2>
         <p>
-          RobloxForge is an AI-powered game development platform that assists users in creating
+          ForjeGames is an AI-powered game development platform that assists users in creating
           Roblox game content including scripts, assets, models, and game logic (&quot;Generated
           Content&quot;). The Service uses large language models and generative AI to fulfill user
           requests.
@@ -144,7 +144,7 @@ export default function TermsPage() {
           any time with or without notice.
         </p>
         <p>
-          RobloxForge is an independent third-party tool. It is not affiliated with, endorsed by, or
+          ForjeGames is an independent third-party tool. It is not affiliated with, endorsed by, or
           sponsored by Roblox Corporation. Use of the Service must comply with Roblox Corporation&apos;s
           applicable terms of service and community standards.
         </p>
@@ -297,7 +297,7 @@ export default function TermsPage() {
           8. Plugin Developer Terms
         </h2>
         <p>
-          Developers who publish plugins or integrations to the RobloxForge platform
+          Developers who publish plugins or integrations to the ForjeGames platform
           (&quot;Developers&quot;) are additionally subject to our Plugin Developer Agreement,
           incorporated herein by reference.
         </p>
@@ -342,7 +342,7 @@ export default function TermsPage() {
         <p className="mt-4">
           Full Acceptable Use details are available at{' '}
           <Link href="/acceptable-use" className="text-[#FFB81C] hover:underline">
-            robloxforge.gg/acceptable-use
+            ForjeGames.gg/acceptable-use
           </Link>
           .
         </p>
@@ -373,7 +373,7 @@ export default function TermsPage() {
           policy. Accounts that repeatedly infringe copyrights will be terminated.
         </p>
         <p>
-          <strong className="text-white">Trademarks.</strong> &quot;RobloxForge&quot; and our logos
+          <strong className="text-white">Trademarks.</strong> &quot;ForjeGames&quot; and our logos
           are trademarks of {COMPANY}. You may not use our trademarks without prior written consent.
           &quot;Roblox&quot; is a trademark of Roblox Corporation; we are not affiliated with or
           endorsed by Roblox Corporation.
@@ -404,7 +404,7 @@ export default function TermsPage() {
         <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-lg p-4 mb-4 not-prose">
           <p className="text-sm text-[#FFB81C] font-medium">Important Disclosure</p>
           <p className="text-sm text-gray-300 mt-1">
-            10% of RobloxForge revenue is donated to charitable causes selected by {OWNER}.
+            10% of ForjeGames revenue is donated to charitable causes selected by {OWNER}.
             These donations are made by {COMPANY} — they are <strong>not</strong> tax-deductible
             for customers. No portion of your subscription or purchase price constitutes a
             charitable contribution on your behalf.

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 
 type Endpoint = {
@@ -176,7 +176,7 @@ export default function WebhooksPage() {
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://your-server.com/webhooks/robloxforge"
+                placeholder="https://your-server.com/webhooks/ForjeGames"
                 className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
                 autoFocus
               />
@@ -334,7 +334,7 @@ export default function WebhooksPage() {
       <div className="mt-8 bg-[#0D1231] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-3">Verifying Signatures</h3>
         <p className="text-gray-400 text-sm mb-4">
-          Every request includes an <code className="text-[#FFB81C] bg-[#FFB81C]/10 px-1 rounded">X-RobloxForge-Signature</code> header
+          Every request includes an <code className="text-[#FFB81C] bg-[#FFB81C]/10 px-1 rounded">X-ForjeGames-Signature</code> header
           with an HMAC-SHA256 signature. Verify it to ensure authenticity.
         </p>
         <pre className="bg-black/40 rounded-xl p-4 text-xs text-green-300 font-mono overflow-x-auto">

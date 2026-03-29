@@ -3,9 +3,9 @@ import { createMetadata } from '@/lib/metadata'
 import HomeClient from './HomeClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'RobloxForge — Build Roblox Games with AI',
+  title: 'ForjeGames',
   description:
-    'Generate terrain, assets, and scripts from voice or image prompts. The fastest AI-powered Roblox game development platform. Free to start.',
+    'Generate terrain, assets, and scripts from voice or image prompts. The fastest AI-powered Roblox game development platform for creators. Free to start.',
   path: '/',
   keywords: [
     'voice to game',
@@ -18,11 +18,11 @@ export const metadata: Metadata = createMetadata({
   jsonLd: {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'RobloxForge',
-    url: 'https://robloxforge.gg',
+    name: 'ForjeGames',
+    url: 'https://forjegames.com',
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://robloxforge.gg/docs?q={search_term_string}',
+      target: 'https://forjegames.com/docs?q={search_term_string}',
       'query-input': 'required name=search_term_string',
     },
   },

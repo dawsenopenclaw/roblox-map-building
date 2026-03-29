@@ -1,17 +1,17 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
   title: 'Acceptable Use Policy',
-  description: 'RobloxForge Acceptable Use Policy. Rules for safe and legal use of the platform.',
+  description: 'ForjeGames Acceptable Use Policy. Rules for safe and legal use of the platform, covering prohibited content, AI generation rules, and enforcement procedures.',
   path: '/acceptable-use',
   noIndex: true,
 })
 
 const EFFECTIVE_DATE = 'March 28, 2026'
-const COMPANY = 'RobloxForge LLC'
-const EMAIL = 'abuse@robloxforge.gg'
+const COMPANY = 'ForjeGames LLC'
+const EMAIL = 'abuse@forjegames.com'
 
 export default function AcceptableUsePage() {
   return (
@@ -28,8 +28,8 @@ export default function AcceptableUsePage() {
       </div>
 
       <p className="text-gray-300 leading-relaxed">
-        This Acceptable Use Policy (&quot;AUP&quot;) governs your use of the RobloxForge platform and
-        all services operated by {COMPANY}. By using RobloxForge, you agree to comply with this AUP.
+        This Acceptable Use Policy (&quot;AUP&quot;) governs your use of the ForjeGames platform and
+        all services operated by {COMPANY}. By using ForjeGames, you agree to comply with this AUP.
         Violations may result in account suspension or termination, removal of content, and reporting
         to appropriate authorities.
       </p>
@@ -46,7 +46,7 @@ export default function AcceptableUsePage() {
         <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">
           1. Prohibited Content
         </h2>
-        <p>You may not use RobloxForge to generate, store, upload, share, or distribute content that:</p>
+        <p>You may not use ForjeGames to generate, store, upload, share, or distribute content that:</p>
 
         <h3 className="text-base font-semibold text-white mt-5 mb-3">A. Is Illegal</h3>
         <ul className="space-y-1 text-gray-300">
@@ -88,7 +88,7 @@ export default function AcceptableUsePage() {
         <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2 mb-4">
           2. Prohibited Technical Activities
         </h2>
-        <p>You may not use RobloxForge to:</p>
+        <p>You may not use ForjeGames to:</p>
         <ul className="space-y-1 text-gray-300 mt-3">
           <li>Attempt unauthorized access to any account, system, or network</li>
           <li>Conduct penetration testing, vulnerability scanning, or security research on our systems without written authorization</li>
@@ -114,7 +114,7 @@ export default function AcceptableUsePage() {
           <li>Generate synthetic identities for fraudulent purposes</li>
           <li>Create AI-generated academic work submitted as your own without disclosure (academic dishonesty)</li>
           <li>Generate content designed to impersonate real people in misleading ways</li>
-          <li>Use AI outputs to build competing AI services that replicate RobloxForge functionality</li>
+          <li>Use AI outputs to build competing AI services that replicate ForjeGames functionality</li>
           <li>Generate content that violates Roblox Corporation&apos;s Community Standards — including weapons of mass destruction content, extremist content, or graphic violence</li>
         </ul>
       </section>
@@ -125,7 +125,7 @@ export default function AcceptableUsePage() {
           4. Roblox Platform Compliance
         </h2>
         <p>
-          Content generated via RobloxForge intended for upload to Roblox must comply with
+          Content generated via ForjeGames intended for upload to Roblox must comply with
           Roblox Corporation&apos;s{' '}
           <a
             href="https://en.help.roblox.com/hc/en-us/articles/203313410"
@@ -144,7 +144,7 @@ export default function AcceptableUsePage() {
           >
             Terms of Use
           </a>
-          . RobloxForge is an independent tool — we are not responsible for content rejected by
+          . ForjeGames is an independent tool — we are not responsible for content rejected by
           Roblox&apos;s moderation systems or violations of Roblox&apos;s policies.
         </p>
       </section>

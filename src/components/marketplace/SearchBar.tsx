@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, X, Clock, TrendingUp } from 'lucide-react'
@@ -7,7 +7,7 @@ import { Search, X, Clock, TrendingUp } from 'lucide-react'
 
 const DEBOUNCE_MS = 300
 const MAX_RECENT = 5
-const STORAGE_KEY = 'robloxforge:recent-searches'
+const STORAGE_KEY = 'ForjeGames:recent-searches'
 
 const POPULAR_SEARCHES = [
   'medieval castle',

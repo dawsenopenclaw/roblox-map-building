@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -16,7 +16,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center">
       <div className="max-w-md w-full text-center p-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Welcome to RobloxForge</h1>
+        <h1 className="text-3xl font-bold text-white mb-4">Welcome to ForjeGames</h1>
         <p className="text-gray-400 mb-8">Let&apos;s set up your account. This takes 30 seconds.</p>
         <button
           onClick={() => router.push('/onboarding/age-gate')}

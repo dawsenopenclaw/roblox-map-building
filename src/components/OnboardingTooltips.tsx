@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 /**
  * OnboardingTooltips — contextual coach marks shown after completing the wizard.
@@ -52,7 +52,7 @@ const TOOLTIPS: TooltipConfig[] = [
   },
 ]
 
-const LS_KEY = 'robloxforge:tooltips:dismissed'
+const LS_KEY = 'ForjeGames:tooltips:dismissed'
 
 // ─── Tooltip bubble ───────────────────────────────────────────────────────────
 

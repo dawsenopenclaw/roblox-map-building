@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -30,7 +30,7 @@ interface ReEngagementEmailProps {
   dashboardUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 const defaultWhatsNew: WhatsNew[] = [
   {
@@ -111,7 +111,7 @@ export const ReEngagementEmail = ({
             <Section key={index} style={newItem}>
               <Row>
                 <Column style={newItemIconCol}>
-                  <Text style={newItemIcon} dangerouslySetInnerHTML={{ __html: item.icon }} />
+                  <Text style={newItemIcon}>{item.icon}</Text>
                 </Column>
                 <Column style={newItemContent}>
                   <Text style={newItemTitle}>{item.title}</Text>
@@ -159,7 +159,7 @@ export const ReEngagementEmail = ({
         {/* Footer */}
         <Section style={footer}>
           <Text style={footerText}>
-            RobloxForge &mdash; AI-powered Roblox game building
+            ForjeGames &mdash; AI-powered Roblox game building
           </Text>
           <Text style={footerLinks}>
             <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -169,7 +169,7 @@ export const ReEngagementEmail = ({
             <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
           </Text>
           <Text style={footerAddress}>
-            RobloxForge Inc. · All rights reserved
+            ForjeGames Inc. · All rights reserved
           </Text>
         </Section>
       </Container>

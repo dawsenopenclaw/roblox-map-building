@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { TOTAL_STEPS } from '@/lib/onboarding'
@@ -96,7 +96,7 @@ export function OnboardingStep({
               />
             </svg>
           </div>
-          <span className="text-white font-semibold text-sm tracking-wide">RobloxForge</span>
+          <span className="text-white font-semibold text-sm tracking-wide">ForjeGames</span>
         </div>
 
         <span className="text-gray-500 text-sm">

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -52,7 +52,7 @@ export default function AgeGatePage() {
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#FFB81C]">RobloxForge</h1>
+          <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
         </div>
         <div className="bg-[#0D1231] border border-white/10 rounded-xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-2">When were you born?</h2>

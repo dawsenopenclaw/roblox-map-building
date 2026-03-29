@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useRef } from 'react'
 import { Download, X } from 'lucide-react'
@@ -74,7 +74,7 @@ export function InstallPrompt() {
   return (
     <div
       role="dialog"
-      aria-label="Install RobloxForge"
+      aria-label="Install ForjeGames"
       className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:w-80 rounded-2xl bg-[#0F1535] border border-[#F5A623]/30 shadow-2xl shadow-black/50 p-4 animate-in slide-in-from-bottom-4 duration-300"
     >
       {/* Header */}
@@ -106,7 +106,7 @@ export function InstallPrompt() {
             <p className="text-sm font-semibold text-white">
               Add to home screen
             </p>
-            <p className="text-xs text-white/50">RobloxForge</p>
+            <p className="text-xs text-white/50">ForjeGames</p>
           </div>
         </div>
         <button
@@ -120,7 +120,7 @@ export function InstallPrompt() {
 
       {/* Body */}
       <p className="text-xs text-white/50 mb-4 leading-relaxed">
-        Install RobloxForge for faster access, offline support, and a
+        Install ForjeGames for faster access, offline support, and a
         full-screen experience.
       </p>
 

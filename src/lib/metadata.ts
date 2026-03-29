@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
-export const BASE_URL = 'https://robloxforge.gg'
-export const SITE_NAME = 'RobloxForge'
+export const BASE_URL = 'https://forjegames.com'
+export const SITE_NAME = 'ForjeGames'
 export const DEFAULT_DESCRIPTION =
   'Build Roblox games with AI. Generate terrain, assets, and scripts from voice or image prompts — no Studio plugins required. The fastest way to ship Roblox maps.'
 export const OG_IMAGE = `${BASE_URL}/og-image.svg`
@@ -41,9 +41,9 @@ export function createMetadata({
       'Roblox Studio AI',
       ...keywords,
     ],
-    authors: [{ name: 'RobloxForge' }],
-    creator: 'RobloxForge',
-    publisher: 'RobloxForge LLC',
+    authors: [{ name: 'ForjeGames' }],
+    creator: 'ForjeGames',
+    publisher: 'ForjeGames LLC',
     robots: noIndex
       ? { index: false, follow: false }
       : {
@@ -65,8 +65,8 @@ export function createMetadata({
       title: fullTitle,
       description,
       images: [image],
-      creator: '@robloxforge',
-      site: '@robloxforge',
+      creator: '@forjegames',
+      site: '@forjegames',
     },
     other: jsonLd
       ? {

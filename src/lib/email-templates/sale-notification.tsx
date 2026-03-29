@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -25,7 +25,7 @@ interface SaleNotificationEmailProps {
   earningsUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const SaleNotificationEmail = ({
   templateName = 'My Template',
@@ -141,7 +141,7 @@ export const SaleNotificationEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              RobloxForge &mdash; AI-powered Roblox game building
+              ForjeGames &mdash; AI-powered Roblox game building
             </Text>
             <Text style={footerLinks}>
               <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -151,7 +151,7 @@ export const SaleNotificationEmail = ({
               <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
             </Text>
             <Text style={footerAddress}>
-              RobloxForge Inc. · All rights reserved
+              ForjeGames Inc. · All rights reserved
             </Text>
           </Section>
         </Container>

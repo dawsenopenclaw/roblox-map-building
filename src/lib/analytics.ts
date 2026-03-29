@@ -1,10 +1,10 @@
-/**
- * Centralized analytics module for RobloxForge.
+﻿/**
+ * Centralized analytics module for ForjeGames.
  *
  * - Client-side: wraps posthog-js (singleton already initialised in PostHogProvider)
  * - Server-side: wraps posthog-node via getPostHogClient()
  * - All event names are typed — no raw strings at call sites
- * - Auto-attaches $app: 'robloxforge' to every event
+ * - Auto-attaches $app: 'ForjeGames' to every event
  * - Batching handled automatically by the PostHog SDKs (flushAt / autocapture)
  */
 
@@ -110,7 +110,7 @@ export interface UserContext {
 
 function baseProps(ctx?: UserContext): Record<string, unknown> {
   return {
-    $app: 'robloxforge',
+    $app: 'ForjeGames',
     ...(ctx?.tier && { user_tier: ctx.tier }),
     ...(ctx?.role && { user_role: ctx.role }),
     ...(ctx?.streak !== undefined && { user_streak: ctx.streak }),

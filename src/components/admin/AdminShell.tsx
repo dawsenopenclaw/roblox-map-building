@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -69,7 +69,7 @@ export function AdminShell({
             <Shield className="w-4 h-4 text-black" />
           </div>
           <span className="font-bold text-white">Admin</span>
-          <span className="text-xs text-[#6B7280] ml-auto">RobloxForge</span>
+          <span className="text-xs text-[#6B7280] ml-auto">ForjeGames</span>
         </div>
 
         {/* Nav */}

@@ -9,7 +9,7 @@ import { ReviewForm } from './ReviewForm'
 import { captureServerEvent } from '@/lib/analytics'
 import { ShareButtons } from '@/components/ShareButtons'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 // ─── Shared demo shape ────────────────────────────────────────────────────────
 
@@ -264,7 +264,7 @@ export async function generateMetadata({
   if (id.startsWith('demo-')) {
     const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
     return {
-      title: `${demo.title} - RobloxForge Marketplace`,
+      title: `${demo.title} - ForjeGames Marketplace`,
       description: demo.description.slice(0, 160),
     }
   }
@@ -283,17 +283,17 @@ export async function generateMetadata({
     const description = template.description?.slice(0, 160) ?? ''
 
     return {
-      title: `${template.title} - RobloxForge Marketplace`,
+      title: `${template.title} - ForjeGames Marketplace`,
       description,
       openGraph: {
-        title: `${template.title} - RobloxForge Marketplace`,
+        title: `${template.title} - ForjeGames Marketplace`,
         description,
         images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
         type: 'website',
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${template.title} - RobloxForge Marketplace`,
+        title: `${template.title} - ForjeGames Marketplace`,
         description,
         images: [ogUrl.toString()],
       },
@@ -487,7 +487,7 @@ function TemplateDetail({
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <ShareButtons
                 url={`${APP_URL}/marketplace/${id}`}
-                text={`Check out "${template.title}" on RobloxForge Marketplace`}
+                text={`Check out "${template.title}" on ForjeGames Marketplace`}
                 compact
               />
             </div>

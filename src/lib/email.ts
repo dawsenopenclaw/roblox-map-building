@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+﻿import { Resend } from 'resend'
 import { serverEnv, clientEnv } from './env'
 import {
   WelcomeEmail,
@@ -19,7 +19,7 @@ function getResend(): Resend {
   return _resend
 }
 
-const FROM = 'RobloxForge <noreply@robloxforge.com>'
+const FROM = 'ForjeGames <noreply@ForjeGames.com>'
 const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
 
 // ─── Parental Consent ─────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ export async function sendParentalConsentEmail({
   return getResend().emails.send({
     from: FROM,
     to: parentEmail,
-    subject: `Parental consent required for ${childName}'s RobloxForge account`,
+    subject: `Parental consent required for ${childName}'s ForjeGames account`,
     react: ParentalConsentEmail({
       childName,
       parentEmail,
@@ -61,7 +61,7 @@ export async function sendWelcomeEmail({
   return getResend().emails.send({
     from: FROM,
     to: email,
-    subject: `Welcome to RobloxForge, ${name}! Here are 100 free tokens`,
+    subject: `Welcome to ForjeGames, ${name}! Here are 100 free tokens`,
     react: WelcomeEmail({ name }),
   })
 }
@@ -106,7 +106,7 @@ export async function sendTokenLowEmail({
     to: email,
     subject: isVeryLow
       ? `Only ${tokenCount} tokens left — top up now`
-      : `You have ${tokenCount} tokens remaining on RobloxForge`,
+      : `You have ${tokenCount} tokens remaining on ForjeGames`,
     react: TokenLowEmail({ name, tokenCount }),
   })
 }
@@ -173,7 +173,7 @@ export async function sendWeeklyDigestEmail({
   return getResend().emails.send({
     from: FROM,
     to: email,
-    subject: `Your RobloxForge weekly digest — ${buildsThisWeek} builds this week`,
+    subject: `Your ForjeGames weekly digest — ${buildsThisWeek} builds this week`,
     react: WeeklyDigestEmail({
       name,
       buildsThisWeek,

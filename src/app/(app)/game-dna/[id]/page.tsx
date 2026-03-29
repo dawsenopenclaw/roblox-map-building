@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import GameDnaReportClient from './GameDnaReportClient'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 export async function generateMetadata({
   params,
@@ -30,7 +30,7 @@ export async function generateMetadata({
     // Non-blocking — fall back to generic title
   }
 
-  const title = `${gameName} DNA Report - RobloxForge`
+  const title = `${gameName} DNA Report - ForjeGames`
   const description = `AI-powered game DNA analysis for ${gameName}. See genome breakdown, monetization score, and strategic recommendations.`
 
   return {

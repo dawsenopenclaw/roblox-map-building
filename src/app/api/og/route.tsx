@@ -1,4 +1,4 @@
-import { ImageResponse } from '@vercel/og'
+﻿import { ImageResponse } from '@vercel/og'
 import { NextRequest } from 'next/server'
 
 const BG = '#0A0E27'
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
             >
               R
             </div>
-            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ROBLOXFORGE MARKETPLACE</span>
+            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ForjeGames MARKETPLACE</span>
           </div>
 
           {/* Template name */}
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
 
           {/* Bottom label */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 48 }}>
-            <span style={{ color: GRAY, fontSize: 14 }}>robloxforge.gg</span>
+            <span style={{ color: GRAY, fontSize: 14 }}>ForjeGames.gg</span>
             <span style={{ color: GRAY, fontSize: 14 }}>Roblox Template Marketplace</span>
           </div>
         </div>
@@ -203,7 +203,7 @@ export async function GET(req: NextRequest) {
             >
               R
             </div>
-            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ROBLOXFORGE GAME DNA</span>
+            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ForjeGames GAME DNA</span>
           </div>
 
           <div style={{ flex: 1, display: 'flex', gap: 60, alignItems: 'center' }}>
@@ -249,7 +249,7 @@ export async function GET(req: NextRequest) {
 
           {/* Bottom */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 40 }}>
-            <span style={{ color: GRAY, fontSize: 14 }}>robloxforge.gg</span>
+            <span style={{ color: GRAY, fontSize: 14 }}>ForjeGames.gg</span>
             <span style={{ color: GRAY, fontSize: 14 }}>AI-Powered Game Analysis</span>
           </div>
         </div>
@@ -303,7 +303,7 @@ export async function GET(req: NextRequest) {
             >
               R
             </div>
-            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ROBLOXFORGE CREATOR</span>
+            <span style={{ color: GRAY, fontSize: 18, letterSpacing: 2 }}>ForjeGames CREATOR</span>
           </div>
 
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 60 }}>
@@ -362,7 +362,7 @@ export async function GET(req: NextRequest) {
 
           {/* Bottom */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 40 }}>
-            <span style={{ color: GRAY, fontSize: 14 }}>robloxforge.gg</span>
+            <span style={{ color: GRAY, fontSize: 14 }}>ForjeGames.gg</span>
             <span style={{ color: GRAY, fontSize: 14 }}>Roblox Creator Platform</span>
           </div>
         </div>
@@ -419,7 +419,7 @@ export async function GET(req: NextRequest) {
         </div>
 
         <div style={{ fontSize: 72, fontWeight: 900, color: '#FFFFFF', letterSpacing: -2 }}>
-          RobloxForge
+          ForjeGames
         </div>
         <div style={{ fontSize: 26, color: GRAY, marginTop: 16, textAlign: 'center', maxWidth: 700 }}>
           The professional platform for Roblox creators.
@@ -448,7 +448,7 @@ export async function GET(req: NextRequest) {
         </div>
 
         <div style={{ position: 'absolute', bottom: 32, color: GRAY, fontSize: 14 }}>
-          robloxforge.gg
+          ForjeGames.gg
         </div>
       </div>
     ),

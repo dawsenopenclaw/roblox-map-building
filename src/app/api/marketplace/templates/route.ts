@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { TemplateCategory, TemplateStatus } from '@prisma/client'
@@ -21,7 +21,7 @@ const DEMO_TEMPLATES = [
     tags: ['medieval', 'rpg', 'castle'],
     createdAt: new Date().toISOString(),
     screenshots: [],
-    creator: { id: 'demo-creator-1', displayName: 'RobloxForge', username: 'robloxforge', avatarUrl: null },
+    creator: { id: 'demo-creator-1', displayName: 'ForjeGames', username: 'ForjeGames', avatarUrl: null },
     _count: { reviews: 24 },
   },
   {
@@ -72,7 +72,7 @@ const DEMO_TEMPLATES = [
     tags: ['battle-royale', 'script', 'shooter'],
     createdAt: new Date().toISOString(),
     screenshots: [],
-    creator: { id: 'demo-creator-1', displayName: 'RobloxForge', username: 'robloxforge', avatarUrl: null },
+    creator: { id: 'demo-creator-1', displayName: 'ForjeGames', username: 'ForjeGames', avatarUrl: null },
     _count: { reviews: 18 },
   },
 ]

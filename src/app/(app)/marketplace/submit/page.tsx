@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
@@ -107,7 +107,7 @@ export default function SubmitTemplatePage() {
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Submit a Template</h1>
-        <p className="text-gray-400 text-sm mt-1">Share your work with the RobloxForge community</p>
+        <p className="text-gray-400 text-sm mt-1">Share your work with the ForjeGames community</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">

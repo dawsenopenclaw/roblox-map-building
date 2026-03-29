@@ -1,8 +1,8 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Legal — RobloxForge',
+  title: 'Legal — ForjeGames',
 }
 
 const legalLinks = [
@@ -19,7 +19,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-white/10 sticky top-0 z-40 bg-[#0A0A0A]/90 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="text-[#FFB81C] font-bold text-lg tracking-tight">
-            RobloxForge
+            ForjeGames
           </Link>
           <nav className="flex gap-6 text-sm text-gray-400">
             {legalLinks.map((l) => (
@@ -57,7 +57,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       {/* Footer strip */}
       <footer className="border-t border-white/10 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} RobloxForge LLC — Dawsen Porter. All rights reserved.
+          &copy; {new Date().getFullYear()} ForjeGames LLC — Dawsen Porter. All rights reserved.
         </div>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
@@ -55,7 +55,7 @@ function SuspendedContent() {
           {/* Heading */}
           <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Account Suspended</h1>
           <p className="text-gray-400 text-sm mb-8">
-            Access to your RobloxForge account has been suspended.
+            Access to your ForjeGames account has been suspended.
           </p>
 
           {/* Reason card */}
@@ -100,7 +100,7 @@ function SuspendedContent() {
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
             <a
-              href="mailto:support@robloxforge.gg?subject=Account%20Appeal"
+              href="mailto:support@ForjeGames.gg?subject=Account%20Appeal"
               className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-sm transition-colors"
             >
               Contact support

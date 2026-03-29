@@ -1,4 +1,4 @@
-export default function ParentalConsentSuccessPage() {
+﻿export default function ParentalConsentSuccessPage() {
   return (
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
@@ -6,12 +6,12 @@ export default function ParentalConsentSuccessPage() {
           <div className="text-5xl mb-4">✅</div>
           <h2 className="text-2xl font-bold text-white mb-3">Account Approved!</h2>
           <p className="text-gray-400">
-            Thank you for approving this account. Tell your child they can now log in to RobloxForge.
+            Thank you for approving this account. Tell your child they can now log in to ForjeGames.
           </p>
           <p className="text-gray-500 text-xs mt-6">
             You can revoke consent at any time by emailing{' '}
-            <a href="mailto:privacy@robloxforge.com" className="text-[#FFB81C]">
-              privacy@robloxforge.com
+            <a href="mailto:privacy@ForjeGames.com" className="text-[#FFB81C]">
+              privacy@ForjeGames.com
             </a>
           </p>
         </div>

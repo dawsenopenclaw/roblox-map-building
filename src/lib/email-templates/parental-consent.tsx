@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -21,7 +21,7 @@ interface ParentalConsentEmailProps {
   privacyUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const ParentalConsentEmail = ({
   childName = 'your child',
@@ -37,7 +37,7 @@ export const ParentalConsentEmail = ({
       `}</style>
     </Head>
     <Preview>
-      Action required: {childName} wants to join RobloxForge — parental consent needed
+      Action required: {childName} wants to join ForjeGames — parental consent needed
     </Preview>
     <Body style={body}>
       <Container style={container}>
@@ -61,7 +61,7 @@ export const ParentalConsentEmail = ({
           <Heading style={heading}>A message for parents</Heading>
           <Text style={intro}>
             Your child <strong style={childNameStyle}>{childName}</strong> has signed up for
-            RobloxForge, an AI-powered platform for creating Roblox games and maps.
+            ForjeGames, an AI-powered platform for creating Roblox games and maps.
           </Text>
           <Text style={subtext}>
             Because {childName} is under 13, we are required by the{' '}
@@ -70,11 +70,11 @@ export const ParentalConsentEmail = ({
           </Text>
         </Section>
 
-        {/* What is RobloxForge */}
+        {/* What is ForjeGames */}
         <Section style={infoSection}>
-          <Text style={infoHeading}>What is RobloxForge?</Text>
+          <Text style={infoHeading}>What is ForjeGames?</Text>
           <Text style={infoText}>
-            RobloxForge lets kids use AI to design and build Roblox game maps, browse
+            ForjeGames lets kids use AI to design and build Roblox game maps, browse
             community templates, and learn basic game design concepts — all within a
             safe, moderated environment.
           </Text>
@@ -110,7 +110,7 @@ export const ParentalConsentEmail = ({
           <Text style={actionHeading}>Your decision</Text>
           <Text style={actionDesc}>
             By clicking Approve, you confirm you are the parent or legal guardian of{' '}
-            {childName} and consent to their use of RobloxForge.
+            {childName} and consent to their use of ForjeGames.
           </Text>
 
           <Section style={buttonGroup}>
@@ -138,8 +138,8 @@ export const ParentalConsentEmail = ({
           </Text>
           <Text style={noteItem}>
             &#8226; You can revoke consent and delete all data at any time by emailing{' '}
-            <Link href="mailto:privacy@robloxforge.com" style={emailLink}>
-              privacy@robloxforge.com
+            <Link href="mailto:privacy@ForjeGames.com" style={emailLink}>
+              privacy@ForjeGames.com
             </Link>
           </Text>
           <Text style={noteItem}>
@@ -175,7 +175,7 @@ export const ParentalConsentEmail = ({
             <Link href={`${baseUrl}/terms`} style={footerLink}>Terms of Service</Link>
           </Text>
           <Text style={footerAddress}>
-            RobloxForge Inc. · All rights reserved
+            ForjeGames Inc. · All rights reserved
           </Text>
         </Section>
       </Container>

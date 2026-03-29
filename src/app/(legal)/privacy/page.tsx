@@ -1,17 +1,17 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
   title: 'Privacy Policy',
-  description: 'How RobloxForge collects, uses, and protects your personal data. GDPR, CCPA, and COPPA compliant.',
+  description: 'How ForjeGames collects, uses, and protects your personal data. GDPR, CCPA, and COPPA compliant. Covers data retention, cookies, and your full privacy rights.',
   path: '/privacy',
   noIndex: true,
 })
 
 const EFFECTIVE_DATE = 'March 28, 2026'
-const COMPANY = 'RobloxForge LLC'
-const EMAIL = 'privacy@robloxforge.gg'
-const DPA_EMAIL = 'dpa@robloxforge.gg'
+const COMPANY = 'ForjeGames LLC'
+const EMAIL = 'privacy@forjegames.com'
+const DPA_EMAIL = 'dpa@forjegames.com'
 
 export default function PrivacyPage() {
   return (
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
       <p className="text-gray-300 leading-relaxed">
         {COMPANY} (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) is committed to protecting
         your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your
-        information when you use RobloxForge (the &quot;Service&quot;). Please read this policy
+        information when you use ForjeGames (the &quot;Service&quot;). Please read this policy
         carefully. By using the Service, you agree to the practices described here.
       </p>
 

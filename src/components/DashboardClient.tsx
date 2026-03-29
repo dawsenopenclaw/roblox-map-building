@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
@@ -339,7 +339,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
           <div className="w-6 h-6 rounded bg-[#FFB81C] flex items-center justify-center flex-shrink-0">
             <span className="text-[#0A0E1A] text-xs font-black">R</span>
           </div>
-          <span className="text-white font-bold text-sm hidden sm:block">RobloxForge</span>
+          <span className="text-white font-bold text-sm hidden sm:block">ForjeGames</span>
         </div>
 
         {/* Project name dropdown */}

@@ -1,9 +1,9 @@
-import { auth } from '@clerk/nextjs/server'
+﻿import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { AdminShell } from '@/components/admin/AdminShell'
 
 export const metadata = {
-  title: 'Admin — RobloxForge',
+  title: 'Admin — ForjeGames',
   robots: { index: false, follow: false },
 }
 

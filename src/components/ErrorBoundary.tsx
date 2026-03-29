@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Component, type ReactNode, type ErrorInfo } from 'react'
 import Link from 'next/link'
@@ -155,10 +155,10 @@ function ErrorCard({
           <p className="text-gray-600 text-xs mt-5">
             Need help?{' '}
             <a
-              href="mailto:support@robloxforge.gg"
+              href="mailto:support@ForjeGames.gg"
               className="text-[#FFB81C] hover:underline"
             >
-              support@robloxforge.gg
+              support@ForjeGames.gg
             </a>
           </p>
         </div>

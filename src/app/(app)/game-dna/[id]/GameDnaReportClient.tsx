@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ShareButtons } from '@/components/ShareButtons'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -552,7 +552,7 @@ export default function GameDnaReportClient() {
         <div className="flex items-center gap-2 print:hidden">
           <ShareButtons
             url={`${APP_URL}/game-dna/${scan.id}`}
-            text={`Check out the Game DNA analysis for "${scan.gameName || 'this game'}" — DNA Score: ${totalScore}/100 on RobloxForge`}
+            text={`Check out the Game DNA analysis for "${scan.gameName || 'this game'}" — DNA Score: ${totalScore}/100 on ForjeGames`}
             compact
           />
           <Link

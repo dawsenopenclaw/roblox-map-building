@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 /**
  * AnalyticsProvider
  *
@@ -85,7 +85,7 @@ export function AnalyticsProvider({
 
       // Identify with full user properties
       posthog.identify(userId, {
-        $app: 'robloxforge',
+        $app: 'ForjeGames',
         ...(email && { email }),
         ...(tier && { tier }),
         ...(role && { role }),
@@ -105,7 +105,7 @@ export function AnalyticsProvider({
 
     import('posthog-js').then(({ default: posthog }) => {
       posthog.capture('session_start', {
-        $app: 'robloxforge',
+        $app: 'ForjeGames',
         user_tier: tier,
         user_role: role,
       })
@@ -115,7 +115,7 @@ export function AnalyticsProvider({
       const durationMs = Date.now() - sessionStartRef.current
       import('posthog-js').then(({ default: posthog }) => {
         posthog.capture('session_end', {
-          $app: 'robloxforge',
+          $app: 'ForjeGames',
           user_tier: tier,
           duration_ms: durationMs,
           duration_minutes: Math.round(durationMs / 60000),

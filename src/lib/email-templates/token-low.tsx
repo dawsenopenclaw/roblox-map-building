@@ -1,4 +1,4 @@
-import {
+﻿import {
   Body,
   Button,
   Container,
@@ -20,7 +20,7 @@ interface TokenLowEmailProps {
   topUpUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
 
 export const TokenLowEmail = ({
   name = 'Builder',
@@ -41,7 +41,7 @@ export const TokenLowEmail = ({
       <Preview>
         {isVeryLow
           ? `Only ${tokenCount} tokens left — top up now to keep building`
-          : `You have ${tokenCount} tokens remaining on RobloxForge`}
+          : `You have ${tokenCount} tokens remaining on ForjeGames`}
       </Preview>
       <Body style={body}>
         <Container style={container}>
@@ -142,7 +142,7 @@ export const TokenLowEmail = ({
           {/* Footer */}
           <Section style={footer}>
             <Text style={footerText}>
-              RobloxForge &mdash; AI-powered Roblox game building
+              ForjeGames &mdash; AI-powered Roblox game building
             </Text>
             <Text style={footerLinks}>
               <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -152,7 +152,7 @@ export const TokenLowEmail = ({
               <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
             </Text>
             <Text style={footerAddress}>
-              RobloxForge Inc. · All rights reserved
+              ForjeGames Inc. · All rights reserved
             </Text>
           </Section>
         </Container>

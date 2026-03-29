@@ -1,17 +1,17 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
   title: 'DMCA Policy',
-  description: 'RobloxForge DMCA takedown policy. 48-hour response SLA. Designated agent contact.',
+  description: 'ForjeGames DMCA copyright takedown policy. Submit infringement notices to our designated agent. 48-hour response SLA with counter-notification instructions.',
   path: '/dmca',
   noIndex: true,
 })
 
 const EFFECTIVE_DATE = 'March 28, 2026'
-const AGENT_EMAIL = 'dmca@robloxforge.gg'
+const AGENT_EMAIL = 'dmca@forjegames.com'
 const AGENT_NAME = 'Dawsen Porter'
-const COMPANY = 'RobloxForge LLC'
+const COMPANY = 'ForjeGames LLC'
 const ADDRESS = 'United States'
 
 export default function DmcaPage() {
@@ -44,7 +44,7 @@ export default function DmcaPage() {
 
       <p className="text-gray-300 leading-relaxed">
         {COMPANY} respects intellectual property rights and complies with the Digital Millennium
-        Copyright Act (17 U.S.C. § 512) (&quot;DMCA&quot;). If you believe content on RobloxForge
+        Copyright Act (17 U.S.C. § 512) (&quot;DMCA&quot;). If you believe content on ForjeGames
         infringes your copyright, follow the process below.
       </p>
 
@@ -135,7 +135,7 @@ export default function DmcaPage() {
             {
               step: '1',
               title: 'Receipt (0h)',
-              desc: 'We receive your notice at dmca@robloxforge.gg.',
+              desc: 'We receive your notice at dmca@ForjeGames.gg.',
             },
             {
               step: '2',
