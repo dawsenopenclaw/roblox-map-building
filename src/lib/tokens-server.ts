@@ -1,5 +1,5 @@
 import { db } from './db'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 export async function earnTokens(
   userId: string,

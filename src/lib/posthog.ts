@@ -1,12 +1,13 @@
 import { PostHog } from 'posthog-node'
+import { clientEnv } from './env'
 
 let _client: PostHog | null = null
 
 export function getPostHogClient() {
-  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return null
+  if (!clientEnv.NEXT_PUBLIC_POSTHOG_KEY) return null
   if (!_client) {
-    _client = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+    _client = new PostHog(clientEnv.NEXT_PUBLIC_POSTHOG_KEY, {
+      host: clientEnv.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
       flushAt: 20,
       flushInterval: 10000,
     })

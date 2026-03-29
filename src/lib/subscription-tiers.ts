@@ -1,3 +1,5 @@
+import { serverEnv } from './env'
+
 export const SUBSCRIPTION_TIERS = {
   FREE: {
     name: 'Free',
@@ -5,7 +7,7 @@ export const SUBSCRIPTION_TIERS = {
     priceYearly: 0,
     tokensPerMonth: 500,
     features: ['500 tokens/month', 'Basic terrain generation', 'Community support'],
-    stripePriceIdMonthly: process.env.STRIPE_FREE_PRICE_ID || '',
+    stripePriceIdMonthly: serverEnv.STRIPE_FREE_PRICE_ID || '',
     stripePriceIdYearly: '',
   },
   HOBBY: {
@@ -14,7 +16,7 @@ export const SUBSCRIPTION_TIERS = {
     priceYearly: 9590, // cents (20% discount)
     tokensPerMonth: 2000,
     features: ['2,000 tokens/month', 'Voice-to-game', 'Image-to-map', 'Email support'],
-    stripePriceIdMonthly: process.env.STRIPE_HOBBY_PRICE_ID || '',
+    stripePriceIdMonthly: serverEnv.STRIPE_HOBBY_PRICE_ID || '',
     stripePriceIdYearly: process.env.STRIPE_HOBBY_YEARLY_PRICE_ID || '',
   },
   CREATOR: {

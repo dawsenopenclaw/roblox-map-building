@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
+import { serverEnv } from './env'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+export const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY ?? '', {
   apiVersion: '2025-02-24.acacia',
   typescript: true,
 })
@@ -78,5 +79,5 @@ export async function createBillingPortalSession({ customerId, returnUrl }: { cu
 }
 
 export function constructWebhookEvent(payload: string, signature: string) {
-  return stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!)
+  return stripe.webhooks.constructEvent(payload, signature, serverEnv.STRIPE_WEBHOOK_SECRET ?? '')
 }

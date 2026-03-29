@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
+import { serverEnv, clientEnv } from './env'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(serverEnv.RESEND_API_KEY)
 
 export async function sendParentalConsentEmail({
   parentEmail,
@@ -11,7 +12,7 @@ export async function sendParentalConsentEmail({
   childName: string
   token: string
 }) {
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/onboarding/parental-consent/verify?token=${token}`
+  const verifyUrl = `${clientEnv.NEXT_PUBLIC_APP_URL}/api/onboarding/parental-consent/verify?token=${token}`
   return resend.emails.send({
     from: 'RobloxForge <noreply@robloxforge.com>',
     to: parentEmail,
@@ -25,7 +26,7 @@ export async function sendParentalConsentEmail({
           <a href="${verifyUrl}" style="background:#FFB81C;color:black;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Approve Account</a>
         </p>
         <p style="color:#9ca3af;font-size:14px">This link expires in 48 hours. If you did not create this account, you can safely ignore this email.</p>
-        <p style="color:#9ca3af;font-size:12px">RobloxForge collects only the minimum data necessary to provide the service. We never sell data. See our <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color:#FFB81C">Privacy Policy</a>.</p>
+        <p style="color:#9ca3af;font-size:12px">RobloxForge collects only the minimum data necessary to provide the service. We never sell data. See our <a href="${clientEnv.NEXT_PUBLIC_APP_URL}/privacy" style="color:#FFB81C">Privacy Policy</a>.</p>
       </div>
     `,
   })
