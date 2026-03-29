@@ -1,167 +1,168 @@
-'use client'
-import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Mic, ChevronDown, Folder, Box, Zap, Users, BarChart2, ShoppingBag } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
-// Product UI Mockups
+// Hero mockup — CSS-only editor UI
 // ---------------------------------------------------------------------------
 
-function AppMockup() {
+function HeroMockup() {
   return (
-    <div className="w-full rounded-xl overflow-hidden border border-white/10 bg-[#080B1E] shadow-2xl shadow-black/60">
+    <div className="w-full rounded-2xl overflow-hidden border border-white/10 bg-[#080B1E] shadow-[0_32px_80px_rgba(0,0,0,0.6)]">
       {/* Window chrome */}
       <div className="flex items-center gap-2 px-4 py-3 bg-[#0D1231] border-b border-white/10">
         <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
         <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
         <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-        <div className="ml-4 flex-1 bg-[#0A0E27] rounded-md px-3 py-1 text-xs text-gray-500 font-mono">
+        <div className="ml-3 flex-1 bg-[#060916] rounded px-3 py-1 text-xs text-gray-500 font-mono">
           app.forjegames.com/workspace
         </div>
       </div>
 
-      {/* App layout */}
+      {/* Three-panel layout */}
       <div className="flex" style={{ height: '380px' }}>
-        {/* Sidebar */}
-        <div className="w-52 flex-shrink-0 bg-[#0A0E1F] border-r border-white/10 p-3 flex flex-col">
-          <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2 px-1">My Projects</div>
+
+        {/* LEFT — file tree */}
+        <div className="w-44 flex-shrink-0 bg-[#0A0E1F] border-r border-white/10 p-3 hidden sm:flex flex-col gap-0.5">
+          <p className="text-[9px] font-semibold text-gray-600 uppercase tracking-widest mb-2 px-1">Workspace</p>
           {[
-            { name: 'City Tycoon v2', status: 'Live', dot: '#27C93F' },
-            { name: 'Obby Madness', status: 'Draft', dot: '#FFB81C' },
-            { name: 'Pet Simulator', status: 'Building', dot: '#8B5CF6' },
-          ].map((p) => (
+            { indent: 0, label: 'Terrain', icon: '▼', color: 'text-[#FFB81C]' },
+            { indent: 1, label: 'Baseplate', icon: '—', color: 'text-gray-500' },
+            { indent: 1, label: 'Water', icon: '—', color: 'text-gray-500' },
+            { indent: 0, label: 'Buildings', icon: '▼', color: 'text-[#FFB81C]' },
+            { indent: 1, label: 'Castle_Main', icon: '—', color: 'text-white' },
+            { indent: 1, label: 'Tower_NW', icon: '—', color: 'text-gray-400' },
+            { indent: 1, label: 'Tower_NE', icon: '—', color: 'text-gray-400' },
+            { indent: 1, label: 'Drawbridge', icon: '—', color: 'text-gray-400' },
+            { indent: 0, label: 'NPCs', icon: '▼', color: 'text-[#FFB81C]' },
+            { indent: 1, label: 'Guard_01', icon: '—', color: 'text-gray-500' },
+          ].map((row, i) => (
             <div
-              key={p.name}
-              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/5 cursor-pointer group"
+              key={i}
+              className={`flex items-center gap-1.5 px-1 py-0.5 rounded ${row.label === 'Castle_Main' ? 'bg-[#FFB81C]/10' : ''}`}
+              style={{ paddingLeft: `${4 + row.indent * 12}px` }}
             >
-              <Folder className="w-3.5 h-3.5 text-gray-500 group-hover:text-gray-300 flex-shrink-0" />
-              <span className="text-xs text-gray-300 truncate flex-1">{p.name}</span>
-              <span
-                className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                style={{ background: p.dot }}
-              />
+              <span className="text-[9px] text-gray-600 w-3">{row.icon}</span>
+              <span className={`text-[10px] ${row.color}`}>{row.label}</span>
             </div>
           ))}
-
-          <div className="mt-4 text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2 px-1">Templates</div>
-          {['City Map', 'Obby Kit', 'Simulator'].map((t) => (
-            <div key={t} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 cursor-pointer">
-              <Box className="w-3 h-3 text-gray-600" />
-              <span className="text-xs text-gray-500">{t}</span>
-            </div>
-          ))}
-
-          <div className="mt-auto pt-3 border-t border-white/10">
-            <div className="flex items-center gap-2 px-1">
-              <div className="w-6 h-6 rounded-full bg-[#FFB81C]/20 border border-[#FFB81C]/40 flex items-center justify-center text-[9px] font-bold text-[#FFB81C]">
-                D
-              </div>
-              <div>
-                <div className="text-[10px] text-white font-medium">dawse</div>
-                <div className="text-[9px] text-gray-500">Free plan</div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        {/* Main area */}
+        {/* CENTER — viewport */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Toolbar */}
-          <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 bg-[#080B1E]">
-            <span className="text-xs text-gray-400">City Tycoon v2</span>
-            <span className="text-gray-700">/</span>
-            <span className="text-xs text-white">Workspace</span>
-            <div className="ml-auto flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-md px-2 py-1 text-[10px] text-[#FFB81C]">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-pulse" />
-                Live
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-md px-2 py-1 text-[10px] text-gray-400 hover:text-white cursor-pointer">
-                Deploy
-              </div>
-            </div>
-          </div>
-
           {/* Viewport */}
           <div className="flex-1 relative bg-[#060916] overflow-hidden">
-            {/* Grid lines */}
+            {/* Grid */}
             <div
-              className="absolute inset-0 opacity-10"
+              className="absolute inset-0 opacity-[0.07]"
               style={{
                 backgroundImage:
-                  'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-                backgroundSize: '32px 32px',
+                  'linear-gradient(rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px)',
+                backgroundSize: '28px 28px',
               }}
             />
 
-            {/* Scene elements — stylized isometric block city */}
+            {/* Scene */}
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative" style={{ width: '260px', height: '200px' }}>
-                {/* Buildings — simple colored blocks arranged isometrically */}
-                {[
-                  { left: 20, top: 60, w: 36, h: 70, color: '#1a2040', accent: '#2a3560' },
-                  { left: 58, top: 30, w: 44, h: 100, color: '#FFB81C', accent: '#ffd060' },
-                  { left: 104, top: 50, w: 40, h: 80, color: '#1e2848', accent: '#2e3d72' },
-                  { left: 148, top: 40, w: 34, h: 90, color: '#2a1040', accent: '#4a2070' },
-                  { left: 186, top: 65, w: 50, h: 65, color: '#1a2c20', accent: '#2a4830' },
-                ].map((b, i) => (
-                  <div
-                    key={i}
-                    className="absolute rounded-sm border"
-                    style={{
-                      left: b.left,
-                      top: b.top,
-                      width: b.w,
-                      height: b.h,
-                      background: `linear-gradient(160deg, ${b.accent}, ${b.color})`,
-                      borderColor: `${b.accent}60`,
-                    }}
-                  />
-                ))}
-                {/* Ground plane */}
+              <div className="relative" style={{ width: '280px', height: '210px' }}>
+                {/* Moat / water */}
                 <div
-                  className="absolute bottom-0 left-0 right-0 h-8 rounded-sm"
-                  style={{ background: 'linear-gradient(180deg, #1a2040, #0d1228)', border: '1px solid rgba(255,255,255,0.05)' }}
+                  className="absolute rounded"
+                  style={{
+                    left: 10, top: 100, width: 260, height: 80,
+                    background: 'linear-gradient(180deg, #0d2040 0%, #071428 100%)',
+                    border: '1px solid rgba(30,100,180,0.3)',
+                  }}
                 />
-                {/* Selection indicator */}
+                {/* Castle keep */}
                 <div
                   className="absolute rounded-sm"
                   style={{
-                    left: 56,
-                    top: 28,
-                    width: 48,
-                    height: 104,
+                    left: 90, top: 40, width: 100, height: 100,
+                    background: 'linear-gradient(160deg, #2a3040 0%, #161c30 100%)',
+                    border: '1.5px solid rgba(255,184,28,0.4)',
+                    boxShadow: '0 0 20px rgba(255,184,28,0.12)',
+                  }}
+                />
+                {/* Corner towers */}
+                {[[70, 30], [190, 30], [70, 110], [190, 110]].map(([l, t], i) => (
+                  <div
+                    key={i}
+                    className="absolute rounded-sm"
+                    style={{
+                      left: l, top: t, width: 22, height: 60,
+                      background: 'linear-gradient(160deg, #323848 0%, #1a2030 100%)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  />
+                ))}
+                {/* Drawbridge */}
+                <div
+                  className="absolute"
+                  style={{
+                    left: 125, top: 140, width: 30, height: 12,
+                    background: '#2a1e10',
+                    border: '1px solid rgba(150,100,50,0.4)',
+                  }}
+                />
+                {/* Gold selection ring */}
+                <div
+                  className="absolute rounded-sm"
+                  style={{
+                    left: 86, top: 36, width: 108, height: 108,
                     border: '1.5px solid #FFB81C',
-                    boxShadow: '0 0 12px rgba(255,184,28,0.25)',
+                    boxShadow: '0 0 16px rgba(255,184,28,0.2)',
                   }}
                 />
               </div>
-            </div>
-
-            {/* Inspector panel overlay */}
-            <div className="absolute right-2 top-2 w-36 bg-[#0D1231]/90 border border-white/10 rounded-lg p-2.5 backdrop-blur-sm">
-              <div className="text-[9px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Properties</div>
-              {[
-                { label: 'Name', value: 'Tower_A' },
-                { label: 'Height', value: '24 studs' },
-                { label: 'Material', value: 'SmoothPlastic' },
-              ].map((prop) => (
-                <div key={prop.label} className="flex justify-between items-center mb-1">
-                  <span className="text-[9px] text-gray-500">{prop.label}</span>
-                  <span className="text-[9px] text-gray-200 font-mono">{prop.value}</span>
-                </div>
-              ))}
             </div>
           </div>
 
           {/* Command bar */}
           <div className="flex items-center gap-2 px-3 py-2.5 bg-[#0A0E1F] border-t border-white/10">
-            <Mic className="w-3.5 h-3.5 text-[#FFB81C] flex-shrink-0" />
-            <span className="text-xs text-gray-600 italic flex-1">Type or speak: "Add a medieval castle to the north district..."</span>
-            <div className="flex items-center gap-1 text-[10px] text-gray-600">
-              <kbd className="bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">⌘</kbd>
-              <kbd className="bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">K</kbd>
+            <div className="w-4 h-4 rounded-full bg-[#FFB81C]/20 flex items-center justify-center flex-shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C]" />
             </div>
+            <span className="text-xs text-[#FFB81C]/80 font-mono flex-1">
+              Build me a medieval castle with a moat
+            </span>
+            <div className="flex items-center gap-1 text-[10px] text-gray-600">
+              <kbd className="bg-white/5 border border-white/10 rounded px-1 py-0.5 font-mono">Enter</kbd>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT — AI output */}
+        <div className="w-44 flex-shrink-0 bg-[#0A0E1F] border-l border-white/10 p-3 hidden md:flex flex-col gap-2">
+          <p className="text-[9px] font-semibold text-gray-600 uppercase tracking-widest mb-1">AI Output</p>
+          {[
+            { label: 'Terrain generated', done: true },
+            { label: 'Castle placed', done: true },
+            { label: 'Moat added', done: true },
+            { label: 'Towers placed', done: true },
+            { label: 'NPCs spawned', done: false },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div
+                className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  item.done
+                    ? 'bg-[#27C93F]/20 border border-[#27C93F]/40'
+                    : 'bg-white/5 border border-white/10'
+                }`}
+              >
+                {item.done && (
+                  <svg className="w-2.5 h-2.5 text-[#27C93F]" viewBox="0 0 10 10" fill="none">
+                    <path d="M2 5l2.5 2.5 3.5-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {!item.done && <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-pulse" />}
+              </div>
+              <span className={`text-[10px] ${item.done ? 'text-gray-300' : 'text-[#FFB81C]'}`}>
+                {item.label}
+              </span>
+            </div>
+          ))}
+          <div className="mt-auto pt-3 border-t border-white/10">
+            <div className="text-[9px] text-gray-600 mb-1">Time elapsed</div>
+            <div className="text-sm font-mono font-bold text-[#FFB81C]">0:04.2s</div>
           </div>
         </div>
       </div>
@@ -169,40 +170,79 @@ function AppMockup() {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Feature card mockups
+// ---------------------------------------------------------------------------
+
 function VoiceMockup() {
+  const bars = [3, 6, 11, 5, 16, 9, 14, 7, 18, 8, 13, 17, 6, 12, 10, 4, 15, 9, 7, 11]
   return (
-    <div className="bg-[#0A0E1F] border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <Mic className="w-3.5 h-3.5 text-[#FFB81C]" />
-        <span className="text-xs font-medium text-white">Voice Command</span>
-        <div className="ml-auto w-2 h-2 rounded-full bg-[#27C93F] animate-pulse" />
+    <div className="bg-[#080B1E] border border-white/8 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/8 flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-[#27C93F] animate-pulse" />
+        <span className="text-[11px] font-medium text-gray-300">Listening...</span>
       </div>
       <div className="p-4">
-        {/* Waveform */}
-        <div className="flex items-center justify-center gap-0.5 mb-4 h-10">
-          {[4, 8, 14, 6, 20, 10, 18, 8, 12, 16, 6, 20, 10, 14, 8, 4, 16, 10, 6, 18].map((h, i) => (
+        <div className="flex items-end justify-center gap-[3px] mb-4 h-12">
+          {bars.map((h, i) => (
             <div
               key={i}
-              className="w-1 rounded-full bg-[#FFB81C]"
-              style={{ height: `${h}px`, opacity: 0.4 + (h / 20) * 0.6 }}
+              className="w-1.5 rounded-full bg-[#FFB81C]"
+              style={{ height: `${h}px`, opacity: 0.35 + (h / 18) * 0.65 }}
             />
           ))}
         </div>
-        {/* Transcript */}
-        <div className="bg-[#080B1E] rounded-lg p-3 mb-3">
+        <div className="bg-[#0A0E27] rounded-lg p-3 mb-3 border border-white/5">
           <p className="text-xs text-gray-300 leading-relaxed">
-            <span className="text-white">"Build a medieval castle</span> with a moat, drawbridge, and four corner towers in the north district..."
+            <span className="text-white font-medium">"Build a racing track</span> with banked corners, a pit lane, and grandstands for 500 players..."
           </p>
         </div>
-        {/* Processing */}
-        <div className="flex items-center gap-2 text-[11px] text-gray-500">
-          <div className="flex gap-0.5">
-            <div className="w-1 h-1 rounded-full bg-[#FFB81C] animate-bounce" style={{ animationDelay: '0ms' }} />
-            <div className="w-1 h-1 rounded-full bg-[#FFB81C] animate-bounce" style={{ animationDelay: '120ms' }} />
-            <div className="w-1 h-1 rounded-full bg-[#FFB81C] animate-bounce" style={{ animationDelay: '240ms' }} />
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1">
+            {[0, 100, 200].map((delay) => (
+              <div
+                key={delay}
+                className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-bounce"
+                style={{ animationDelay: `${delay}ms` }}
+              />
+            ))}
           </div>
-          Sourcing 14 marketplace assets...
+          <span className="text-[10px] text-gray-500">Sourcing assets...</span>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function DnaMockup() {
+  const bars = [
+    { label: 'Retention', value: 87, color: '#FFB81C' },
+    { label: 'Monetization', value: 72, color: '#8B5CF6' },
+    { label: 'Discovery', value: 91, color: '#27C93F' },
+    { label: 'Engagement', value: 65, color: '#3B82F6' },
+  ]
+  return (
+    <div className="bg-[#080B1E] border border-white/8 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/8 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-gray-300">Pet Simulator X Analysis</span>
+        <div className="bg-[#FFB81C]/15 border border-[#FFB81C]/30 rounded px-2 py-0.5 text-[10px] font-bold text-[#FFB81C]">87/100</div>
+      </div>
+      <div className="p-4 space-y-2.5">
+        {bars.map((b) => (
+          <div key={b.label}>
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-[10px] text-gray-500">{b.label}</span>
+              <span className="text-[10px] font-mono font-semibold" style={{ color: b.color }}>{b.value}</span>
+            </div>
+            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${b.value}%`, background: b.color }}
+              />
+            </div>
+          </div>
+        ))}
+        <div className="pt-1 text-[9px] text-gray-600">Core loop: Collect → Hatch → Trade · Loop time: 8 min</div>
       </div>
     </div>
   )
@@ -210,30 +250,30 @@ function VoiceMockup() {
 
 function MarketplaceMockup() {
   const items = [
-    { name: 'Medieval Castle', price: 'Free', cat: 'Environment' },
-    { name: 'Sci-Fi Hub', price: '120R$', cat: 'Sci-Fi' },
-    { name: 'Obby Kit Pro', price: '200R$', cat: 'Platformer' },
-    { name: 'City Streets', price: 'Free', cat: 'Urban' },
+    { name: 'City Starter', price: '$14.99', tag: 'Best Seller' },
+    { name: 'Obby Kit Pro', price: '$9.99', tag: '' },
+    { name: 'Simulator Core', price: '$24.99', tag: 'New' },
+    { name: 'Horror Map', price: '$7.99', tag: '' },
   ]
   return (
-    <div className="bg-[#0A0E1F] border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <ShoppingBag className="w-3.5 h-3.5 text-[#8B5CF6]" />
-        <span className="text-xs font-medium text-white">Asset Marketplace</span>
-        <div className="ml-auto bg-[#0A0E27] border border-white/10 rounded-md px-2 py-0.5 text-[10px] text-gray-500">
-          12,400+ assets
-        </div>
+    <div className="bg-[#080B1E] border border-white/8 rounded-xl overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-white/8 flex items-center justify-between">
+        <span className="text-[11px] font-medium text-gray-300">Template Marketplace</span>
+        <span className="text-[10px] text-gray-600">Your cut: 70%</span>
       </div>
       <div className="p-3 grid grid-cols-2 gap-2">
         {items.map((item) => (
-          <div key={item.name} className="bg-[#080B1E] border border-white/5 rounded-lg p-2.5 hover:border-white/15 cursor-pointer transition-colors">
-            <div className="w-full aspect-video bg-gradient-to-br from-[#1a2040] to-[#0d1228] rounded-md mb-2 flex items-center justify-center">
-              <Box className="w-6 h-6 text-gray-700" />
+          <div key={item.name} className="bg-[#0A0E1F] border border-white/5 rounded-lg p-2.5 hover:border-white/15 transition-colors cursor-pointer">
+            <div className="w-full rounded-md mb-2 flex items-center justify-center" style={{ height: '40px', background: 'linear-gradient(135deg, #1a2040, #0d1228)' }}>
+              <div className="w-6 h-6 rounded-sm bg-white/5 border border-white/10" />
             </div>
             <div className="text-[10px] font-medium text-white truncate">{item.name}</div>
             <div className="flex items-center justify-between mt-0.5">
-              <span className="text-[9px] text-gray-600">{item.cat}</span>
-              <span className="text-[9px] text-[#FFB81C] font-semibold">{item.price}</span>
+              {item.tag
+                ? <span className="text-[8px] text-[#FFB81C] font-semibold">{item.tag}</span>
+                : <span />
+              }
+              <span className="text-[10px] text-[#27C93F] font-semibold">{item.price}</span>
             </div>
           </div>
         ))}
@@ -242,308 +282,205 @@ function MarketplaceMockup() {
   )
 }
 
-function GameDNAMockup() {
-  const metrics = [
-    { label: 'Retention', value: 78, color: '#FFB81C' },
-    { label: 'Engagement', value: 91, color: '#8B5CF6' },
-    { label: 'Monetization', value: 64, color: '#27C93F' },
-    { label: 'Virality', value: 55, color: '#3B82F6' },
-  ]
+// ---------------------------------------------------------------------------
+// Main page (server component — no 'use client' needed)
+// ---------------------------------------------------------------------------
+
+export default function HomeClient() {
   return (
-    <div className="bg-[#0A0E1F] border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <BarChart2 className="w-3.5 h-3.5 text-[#27C93F]" />
-        <span className="text-xs font-medium text-white">Game DNA Analysis</span>
-      </div>
-      <div className="p-4">
-        <div className="text-[10px] text-gray-500 mb-3">Competitor: Pet Simulator X</div>
-        {metrics.map((m) => (
-          <div key={m.label} className="mb-2.5">
-            <div className="flex justify-between mb-1">
-              <span className="text-[10px] text-gray-400">{m.label}</span>
-              <span className="text-[10px] font-mono" style={{ color: m.color }}>{m.value}%</span>
-            </div>
-            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${m.value}%`, background: m.color, opacity: 0.8 }}
-              />
-            </div>
+    <>
+      {/* ------------------------------------------------------------------ */}
+      {/* 1. HERO */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="relative overflow-hidden px-4 sm:px-6 pt-20 pb-16 max-w-7xl mx-auto">
+        {/* Glow blobs */}
+        <div
+          className="pointer-events-none absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #FFB81C 0%, transparent 70%)' }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute -top-20 right-0 w-[400px] h-[400px] rounded-full opacity-10"
+          style={{ background: 'radial-gradient(circle, #8B5CF6 0%, transparent 70%)' }}
+          aria-hidden
+        />
+
+        {/* Badge */}
+        <div className="flex justify-center mb-8">
+          <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/25 rounded-full px-4 py-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C]" />
+            <span className="text-xs font-semibold text-[#FFB81C] tracking-wide">Powered by Claude AI</span>
           </div>
-        ))}
-        <div className="mt-3 bg-[#080B1E] rounded-lg p-2.5">
-          <div className="text-[9px] text-[#FFB81C] font-medium mb-1">Recommendation</div>
-          <p className="text-[9px] text-gray-400 leading-relaxed">Boost virality with shareable moments and referral rewards. Gap vs top-5 competitors: 18pts.</p>
         </div>
-      </div>
-    </div>
-  )
-}
 
-function CollabMockup() {
-  const events = [
-    { user: 'K', name: 'kai', action: 'placed Castle Tower', time: '2m ago', color: '#8B5CF6' },
-    { user: 'M', name: 'maya', action: 'updated terrain shader', time: '5m ago', color: '#3B82F6' },
-    { user: 'D', name: 'dawse', action: 'deployed to staging', time: '8m ago', color: '#FFB81C' },
-  ]
-  return (
-    <div className="bg-[#0A0E1F] border border-white/10 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-        <Users className="w-3.5 h-3.5 text-[#3B82F6]" />
-        <span className="text-xs font-medium text-white">Team Activity</span>
-        <div className="ml-auto flex -space-x-1">
-          {['#FFB81C', '#8B5CF6', '#3B82F6'].map((c, i) => (
-            <div
-              key={i}
-              className="w-5 h-5 rounded-full border border-[#0A0E1F] flex items-center justify-center text-[8px] font-bold text-white"
-              style={{ background: c + '40', borderColor: c + '60' }}
-            />
-          ))}
-        </div>
-        <span className="text-[10px] text-gray-500">3 online</span>
-      </div>
-      <div className="p-3 space-y-2">
-        {events.map((e) => (
-          <div key={e.name} className="flex items-start gap-2.5 p-2 rounded-lg bg-[#080B1E]">
-            <div
-              className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 mt-0.5"
-              style={{ background: e.color + '20', color: e.color, border: `1px solid ${e.color}40` }}
-            >
-              {e.user}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[10px] font-medium text-white">{e.name}</span>
-                <span className="text-[9px] text-gray-600">{e.time}</span>
-              </div>
-              <p className="text-[9px] text-gray-400 truncate">{e.action}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
+        {/* Headline */}
+        <h1 className="text-center font-bold leading-tight text-white mb-5"
+            style={{ fontSize: 'clamp(36px, 6vw, 72px)', letterSpacing: '-0.02em' }}>
+          Build Roblox Games
+          <br />
+          <span style={{ color: '#FFB81C' }}>10x Faster</span> with AI
+        </h1>
 
-function TryItSection() {
-  const [value, setValue] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+        {/* Sub */}
+        <p className="text-center text-gray-400 mb-8 max-w-xl mx-auto leading-relaxed"
+           style={{ fontSize: 'clamp(16px, 2vw, 20px)' }}>
+          Describe what you want. AI builds it. No coding required.
+        </p>
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (value.trim()) setSubmitted(true)
-  }
-
-  return (
-    <div className="max-w-2xl mx-auto">
-      {!submitted ? (
-        <form onSubmit={handleSubmit} className="relative">
-          <div className="flex items-center gap-3 bg-[#0D1231] border border-white/15 rounded-xl px-4 py-3.5 focus-within:border-[#FFB81C]/50 transition-colors">
-            <Zap className="w-4 h-4 text-[#FFB81C] flex-shrink-0" />
-            <input
-              type="text"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder='Try: "Build a medieval castle with a moat..."'
-              className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!value.trim()}
-              className="flex-shrink-0 bg-[#FFB81C] hover:bg-[#E6A519] disabled:bg-white/10 disabled:text-gray-600 text-black font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors"
-            >
-              Build
-            </button>
-          </div>
-          <p className="text-center text-xs text-gray-600 mt-3">No account needed to try. Sign up to save results.</p>
-        </form>
-      ) : (
-        <div className="bg-[#0D1231] border border-[#FFB81C]/30 rounded-xl p-6 text-center">
-          <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/30 flex items-center justify-center mx-auto mb-3">
-            <Zap className="w-5 h-5 text-[#FFB81C]" />
-          </div>
-          <p className="text-white font-semibold mb-1">Ready to build</p>
-          <p className="text-sm text-gray-400 mb-4">
-            Your prompt is queued. Create a free account to see results.
-          </p>
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16">
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors"
+            className="w-full sm:w-auto text-center bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-8 py-3.5 rounded-xl text-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
           >
-            Create free account
-            <ArrowRight className="w-4 h-4" />
+            Start Free
           </Link>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function PricingCard({
-  name,
-  price,
-  period,
-  description,
-  features,
-  cta,
-  href,
-  highlight,
-}: {
-  name: string
-  price: string
-  period: string
-  description: string
-  features: string[]
-  cta: string
-  href: string
-  highlight?: boolean
-}) {
-  return (
-    <div
-      className={`rounded-xl p-6 border flex flex-col ${
-        highlight
-          ? 'bg-[#FFB81C]/5 border-[#FFB81C]/30'
-          : 'bg-[#0A0E1F] border-white/10'
-      }`}
-    >
-      {highlight && (
-        <div className="text-[10px] font-bold text-[#FFB81C] uppercase tracking-widest mb-3">Most Popular</div>
-      )}
-      <div className="mb-4">
-        <div className="text-sm font-semibold text-gray-300 mb-1">{name}</div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold text-white">{price}</span>
-          <span className="text-sm text-gray-500">{period}</span>
-        </div>
-        <p className="text-xs text-gray-500 mt-1.5">{description}</p>
-      </div>
-      <ul className="space-y-2.5 mb-6 flex-1">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] mt-1.5 flex-shrink-0" />
-            {f}
-          </li>
-        ))}
-      </ul>
-      <Link
-        href={href}
-        className={`w-full text-center py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-          highlight
-            ? 'bg-[#FFB81C] hover:bg-[#E6A519] text-black'
-            : 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-        }`}
-      >
-        {cta}
-      </Link>
-    </div>
-  )
-}
-
-function FAQ({ items }: { items: { q: string; a: string }[] }) {
-  const [open, setOpen] = useState<number | null>(null)
-  return (
-    <div className="space-y-2 max-w-2xl mx-auto">
-      {items.map((item, i) => (
-        <div key={i} className="border border-white/10 rounded-xl overflow-hidden bg-[#0A0E1F]">
-          <button
-            onClick={() => setOpen(open === i ? null : i)}
-            className="w-full flex items-center justify-between px-5 py-4 text-left"
+          <a
+            href="#how-it-works"
+            className="w-full sm:w-auto text-center border border-white/15 hover:border-white/30 text-white font-semibold px-8 py-3.5 rounded-xl text-base transition-colors"
           >
-            <span className="text-sm font-medium text-white">{item.q}</span>
-            <ChevronDown
-              className="w-4 h-4 text-gray-500 flex-shrink-0 transition-transform"
-              style={{ transform: open === i ? 'rotate(180deg)' : 'rotate(0deg)' }}
-            />
-          </button>
-          {open === i && (
-            <div className="px-5 pb-4">
-              <p className="text-sm text-gray-400 leading-relaxed">{item.a}</p>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
-export default function LandingPage() {
-  return (
-    <div>
-      {/* ------------------------------------------------------------------ */}
-      {/* Hero                                                                */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="relative overflow-hidden pt-16 pb-20 px-4 sm:px-6">
-        {/* Subtle background gradient */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#FFB81C]/5 rounded-full blur-3xl" />
+            See How It Works
+          </a>
         </div>
 
-        <div className="relative max-w-7xl mx-auto">
-          {/* Launch badge */}
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 bg-[#FFB81C]/8 border border-[#FFB81C]/20 rounded-full px-4 py-1.5 text-sm text-[#FFB81C]">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C]" />
-              Launching Q2 2026 — Join 200+ creators in early access
+        {/* Hero mockup */}
+        <HeroMockup />
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 2. SOCIAL PROOF BAR */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="border-y border-white/8 py-4 px-4">
+        <p className="text-center text-sm text-gray-600">
+          Trusted by{' '}
+          <span className="text-gray-400 font-medium">200+ Roblox creators</span>
+          {' '}·{' '}
+          <span className="text-gray-400 font-medium">$12K+ donated to education</span>
+          {' '}·{' '}
+          Built on Claude AI
+        </p>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 3. THREE FEATURES */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="px-4 sm:px-6 py-24 max-w-7xl mx-auto" id="product">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: '-0.02em' }}>
+            Everything you need to ship
+          </h2>
+          <p className="text-gray-500 text-lg max-w-md mx-auto">Three tools. One platform. Zero excuses.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1 */}
+          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#FFB81C]/30 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/15 border border-[#FFB81C]/25 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[#FFB81C]" viewBox="0 0 20 20" fill="none">
+                <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M7 10c0-1.66 1.34-3 3-3s3 1.34 3 3-1.34 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="10" cy="10" r="1.5" fill="currentColor"/>
+              </svg>
             </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-1">Speak It, Build It</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">Describe your game in plain English. AI handles terrain, assets, and scripts automatically.</p>
+            </div>
+            <VoiceMockup />
           </div>
 
-          {/* Headline */}
-          <div className="text-center mb-6">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white leading-tight tracking-tight">
-              Build Roblox games with
-              <br />
-              <span className="text-[#FFB81C]">voice and AI</span>
-            </h1>
-            <p className="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
-              Describe your game. ForjeGames sources assets, writes scripts, and assembles a
-              playable Roblox scene in minutes — not weeks.
-            </p>
+          {/* Card 2 */}
+          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#8B5CF6]/30 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-[#8B5CF6]/15 border border-[#8B5CF6]/25 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[#8B5CF6]" viewBox="0 0 20 20" fill="none">
+                <path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-1">Scan Any Game's DNA</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">Paste any Roblox game URL. Get its exact formula — retention hooks, monetization, core loop.</p>
+            </div>
+            <DnaMockup />
           </div>
 
-          {/* CTA row */}
-          <div className="flex items-center justify-center gap-3 mb-14">
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold px-6 py-3 rounded-lg text-sm transition-colors shadow-lg shadow-[#FFB81C]/15"
-            >
-              Start building free
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 border border-white/15 hover:border-white/30 text-gray-300 hover:text-white font-medium px-6 py-3 rounded-lg text-sm transition-colors"
-            >
-              View pricing
-            </Link>
+          {/* Card 3 */}
+          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-6 flex flex-col gap-4 hover:border-[#27C93F]/30 transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-[#27C93F]/15 border border-[#27C93F]/25 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[#27C93F]" viewBox="0 0 20 20" fill="none">
+                <path d="M3 17h14M10 3l4 5H6l4-5z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M10 8v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white mb-1">Sell Your Creations</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">Build templates. List them in our marketplace. Keep 70% of every sale, forever.</p>
+            </div>
+            <MarketplaceMockup />
           </div>
-
-          {/* App mockup */}
-          <AppMockup />
-
-          <p className="text-center text-xs text-gray-600 mt-4">
-            ForjeGames workspace — real product, early access
-          </p>
         </div>
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Social proof strip                                                  */}
+      {/* 4. HOW IT WORKS */}
       {/* ------------------------------------------------------------------ */}
-      <section className="border-y border-white/8 bg-[#0D1231]/40 py-6">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-center">
+      <section className="px-4 sm:px-6 py-24 bg-[#0D1231]" id="how-it-works">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: '-0.02em' }}>
+              How it works
+            </h2>
+            <p className="text-gray-500 text-lg">From idea to live game in minutes, not months.</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 relative">
+            {/* Connector line — desktop only */}
+            <div className="hidden sm:block absolute top-8 left-[33%] right-[33%] h-px bg-gradient-to-r from-[#FFB81C]/30 via-[#FFB81C]/60 to-[#FFB81C]/30" />
+
             {[
-              { value: '200+', label: 'Creators in early access' },
-              { value: '< 5 min', label: 'Average build time' },
-              { value: 'Q2 2026', label: 'Public launch' },
-            ].map((s) => (
-              <div key={s.label}>
-                <div className="text-2xl font-bold text-[#FFB81C]">{s.value}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+              {
+                step: '01',
+                icon: (
+                  <svg className="w-7 h-7 text-[#FFB81C]" viewBox="0 0 28 28" fill="none">
+                    <path d="M6 8h16M6 14h10M6 20h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                    <circle cx="22" cy="20" r="4" stroke="currentColor" strokeWidth="1.8"/>
+                    <path d="M22 18v2l1.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                ),
+                title: 'Describe',
+                desc: 'Tell the AI what you want to build in plain English.',
+              },
+              {
+                step: '02',
+                icon: (
+                  <svg className="w-7 h-7 text-[#FFB81C]" viewBox="0 0 28 28" fill="none">
+                    <path d="M14 5l2 6h6l-5 3.5 2 6L14 17l-5 3.5 2-6L6 11h6l2-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                ),
+                title: 'Build',
+                desc: 'AI generates terrain, places assets, and writes all the scripts.',
+              },
+              {
+                step: '03',
+                icon: (
+                  <svg className="w-7 h-7 text-[#FFB81C]" viewBox="0 0 28 28" fill="none">
+                    <circle cx="14" cy="14" r="9" stroke="currentColor" strokeWidth="1.8"/>
+                    <path d="M11 10l7 4-7 4V10z" fill="currentColor"/>
+                  </svg>
+                ),
+                title: 'Play',
+                desc: 'Test in Studio, then publish your game to millions of players.',
+              },
+            ].map((s, i) => (
+              <div key={i} className="flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/25 flex items-center justify-center relative z-10">
+                  {s.icon}
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-[#FFB81C]/60 tracking-widest uppercase mb-1">Step {s.step}</div>
+                  <h3 className="text-xl font-bold text-white mb-2">{s.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -551,196 +488,127 @@ export default function LandingPage() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Product showcases                                                   */}
+      {/* 5. PRICING */}
       {/* ------------------------------------------------------------------ */}
-      <section id="product" className="max-w-7xl mx-auto px-4 sm:px-6 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-white mb-3">The complete Roblox dev platform</h2>
-          <p className="text-gray-400 max-w-xl mx-auto text-sm">
-            Everything from voice-to-game to team collaboration, built into one workspace.
-          </p>
-        </div>
-
-        {/* Row 1: Voice + Marketplace */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-[#FFB81C] uppercase tracking-widest mb-1">Voice Interface</div>
-              <h3 className="text-xl font-bold text-white mb-2">Speak your idea, watch it build</h3>
-              <p className="text-sm text-gray-400">
-                Say "build a medieval castle with a moat" and the AI sources marketplace assets,
-                generates terrain, and writes the Luau scripts.
-              </p>
-            </div>
-            <VoiceMockup />
-          </div>
-          <div>
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-[#8B5CF6] uppercase tracking-widest mb-1">Marketplace</div>
-              <h3 className="text-xl font-bold text-white mb-2">12,000+ assets, AI-matched</h3>
-              <p className="text-sm text-gray-400">
-                The AI searches the Roblox marketplace first — sourcing free and paid assets that
-                fit your scene before generating anything custom.
-              </p>
-            </div>
-            <MarketplaceMockup />
-          </div>
-        </div>
-
-        {/* Row 2: Game DNA + Collab */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-[#27C93F] uppercase tracking-widest mb-1">Game DNA</div>
-              <h3 className="text-xl font-bold text-white mb-2">Analyze any competitor game</h3>
-              <p className="text-sm text-gray-400">
-                Paste a Roblox game URL. Get a full breakdown of retention mechanics, monetization
-                hooks, and what to copy or avoid.
-              </p>
-            </div>
-            <GameDNAMockup />
-          </div>
-          <div>
-            <div className="mb-3">
-              <div className="text-xs font-semibold text-[#3B82F6] uppercase tracking-widest mb-1">Collaboration</div>
-              <h3 className="text-xl font-bold text-white mb-2">Build with your whole team</h3>
-              <p className="text-sm text-gray-400">
-                Invite teammates, see live edits, and ship with version history — like GitHub, but
-                for Roblox scenes.
-              </p>
-            </div>
-            <CollabMockup />
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Try it now                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="border-y border-white/8 bg-[#0D1231]/40 py-20 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto text-center mb-10">
-          <h2 className="text-3xl font-bold text-white mb-3">Try it now</h2>
-          <p className="text-gray-400 text-sm">Describe the game you want to build.</p>
-        </div>
-        <TryItSection />
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Pricing                                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-white mb-3">Straightforward pricing</h2>
-          <p className="text-gray-400 text-sm max-w-md mx-auto">
-            No tokens. No credits. Just build.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <PricingCard
-            name="Free"
-            price="$0"
-            period="/ month"
-            description="Get started, no card required."
-            features={[
-              '3 game builds per month',
-              'Marketplace asset search',
-              'Voice commands',
-              'Deploy to Roblox Studio',
-              'Community support',
-            ]}
-            cta="Start free"
-            href="/sign-up"
-          />
-          <PricingCard
-            name="Creator"
-            price="$29"
-            period="/ month"
-            description="For serious solo developers."
-            features={[
-              'Unlimited game builds',
-              'Game DNA competitor analysis',
-              'Priority AI queue',
-              'Version history (90 days)',
-              'Email support',
-            ]}
-            cta="Start 14-day trial"
-            href="/sign-up?plan=creator"
-            highlight
-          />
-          <PricingCard
-            name="Studio"
-            price="$99"
-            period="/ month"
-            description="For teams shipping multiple games."
-            features={[
-              'Everything in Creator',
-              'Up to 10 team members',
-              'Shared asset library',
-              'Analytics dashboard',
-              'Priority support + Slack',
-            ]}
-            cta="Start 14-day trial"
-            href="/sign-up?plan=studio"
-          />
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* FAQ                                                                 */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="border-t border-white/8 bg-[#0D1231]/40 py-24 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-white mb-3">Common questions</h2>
-          </div>
-          <FAQ
-            items={[
-              {
-                q: 'Do I need to know how to code?',
-                a: 'No. ForjeGames handles all Luau scripting. You describe what you want and the AI builds it. If you do know Luau, you can edit and extend the generated code directly.',
-              },
-              {
-                q: 'How does voice input work?',
-                a: 'Click the microphone icon in the workspace and describe your game. The AI transcribes your speech, parses intent, and starts building. Works in any language.',
-              },
-              {
-                q: 'Does this comply with Roblox Terms of Service?',
-                a: "Yes. ForjeGames is a third-party development tool — not a bot or exploit. All output is standard Roblox Studio-compatible code and assets.",
-              },
-              {
-                q: 'Can I cancel anytime?',
-                a: 'Yes. One-click cancellation in billing settings. No penalties. Your projects stay accessible for 30 days after cancellation.',
-              },
-              {
-                q: 'Is the 14-day trial really free?',
-                a: 'Yes. No credit card required for the Free tier. Paid trials require a card to start but you will not be charged until the trial ends — and you can cancel before then.',
-              },
-            ]}
-          />
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* CTA Banner                                                          */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="py-20 px-4 sm:px-6 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Start building today
+      <section className="px-4 sm:px-6 py-24 max-w-5xl mx-auto" id="pricing">
+        <div className="text-center mb-14">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: '-0.02em' }}>
+            Simple pricing
           </h2>
-          <p className="text-gray-400 mb-8 text-sm">
-            Free account. No credit card. Your first game in under 5 minutes.
+          <p className="text-gray-500 text-lg">Start free. Upgrade when you're ready.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {/* Free */}
+          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7 flex flex-col gap-5">
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Free</div>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-bold text-white">$0</span>
+                <span className="text-gray-500 text-sm mb-1">/month</span>
+              </div>
+            </div>
+            <ul className="space-y-2.5 flex-1">
+              {['3 AI builds per month', 'Basic terrain AI', 'Community support', 'Marketplace access'].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-400">
+                  <svg className="w-4 h-4 text-gray-600 flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/sign-up"
+              className="block text-center border border-white/15 hover:border-white/30 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Start Free
+            </Link>
+          </div>
+
+          {/* Creator — highlighted */}
+          <div className="bg-[#0D1231] border-2 border-[#FFB81C] rounded-2xl p-7 flex flex-col gap-5 relative">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+              <span className="bg-[#FFB81C] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</span>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-[#FFB81C] uppercase tracking-widest mb-2">Creator</div>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-bold text-white">$15</span>
+                <span className="text-gray-500 text-sm mb-1">/month</span>
+              </div>
+            </div>
+            <ul className="space-y-2.5 flex-1">
+              {['Unlimited AI builds', 'All AI features', 'Voice commands', 'Game DNA scanner', 'Sell templates (70% cut)', 'Priority support'].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-300">
+                  <svg className="w-4 h-4 text-[#FFB81C] flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/sign-up?plan=creator"
+              className="block text-center bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Get Creator
+            </Link>
+          </div>
+
+          {/* Studio */}
+          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7 flex flex-col gap-5">
+            <div>
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Studio</div>
+              <div className="flex items-end gap-1">
+                <span className="text-4xl font-bold text-white">$50</span>
+                <span className="text-gray-500 text-sm mb-1">/month</span>
+              </div>
+            </div>
+            <ul className="space-y-2.5 flex-1">
+              {['Everything in Creator', 'Team collaboration', 'API access', 'Custom AI training', 'Dedicated support', 'Early features'].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-400">
+                  <svg className="w-4 h-4 text-gray-600 flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/sign-up?plan=studio"
+              className="block text-center border border-white/15 hover:border-white/30 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Get Studio
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* 6. FINAL CTA */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="px-4 sm:px-6 py-24 bg-[#0D1231]">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl sm:text-5xl font-bold text-white mb-5" style={{ letterSpacing: '-0.02em' }}>
+            Ready to build your
+            <br />
+            <span style={{ color: '#FFB81C' }}>first game?</span>
+          </h2>
+          <p className="text-gray-500 text-lg mb-8">
+            Join 200+ creators already building with ForjeGames AI.
           </p>
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold px-8 py-3.5 rounded-lg text-sm transition-colors shadow-lg shadow-[#FFB81C]/15"
+            className="inline-block bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-10 py-4 rounded-xl text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
           >
-            Create free account
-            <ArrowRight className="w-4 h-4" />
+            Start Building Free
           </Link>
+          <p className="text-gray-600 text-sm mt-4">
+            No credit card required · Free forever plan
+          </p>
         </div>
       </section>
-    </div>
+    </>
   )
 }
