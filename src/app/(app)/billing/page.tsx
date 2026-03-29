@@ -2,9 +2,9 @@ import Link from 'next/link'
 
 export default function BillingPage() {
   const plan = 'Free'
-  const planDescription = '3 builds/month · Basic AI'
-  const tokens = 100
-  const tokenLimit = 150
+  const planDescription = '1,000 tokens/month · Basic AI'
+  const tokens = 1000
+  const tokenLimit = 1000
 
   const tokenPercent = Math.min(100, Math.round((tokens / tokenLimit) * 100))
 
@@ -24,7 +24,7 @@ export default function BillingPage() {
             href="/pricing"
             className="inline-flex items-center gap-1 mt-4 text-sm font-semibold text-[#FFB81C] hover:text-[#E6A519] transition-colors"
           >
-            Upgrade to Creator <span aria-hidden>→</span>
+            See plans <span aria-hidden>→</span>
           </Link>
         </div>
 
@@ -51,7 +51,7 @@ export default function BillingPage() {
         {/* Payment History */}
         <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Payment History</p>
-          <p className="text-gray-500 text-sm">No payments yet — upgrade to see billing history.</p>
+          <p className="text-gray-500 text-sm">No payments yet.</p>
         </div>
       </div>
     </div>

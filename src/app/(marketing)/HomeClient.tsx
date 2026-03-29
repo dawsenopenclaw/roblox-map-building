@@ -333,7 +333,7 @@ export default function HomeClient() {
             href="/sign-up"
             className="w-full sm:w-auto text-center bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-8 py-3.5 rounded-xl text-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
           >
-            Start Free
+            Open Editor
           </Link>
           <a
             href="#how-it-works"
@@ -488,124 +488,26 @@ export default function HomeClient() {
       </section>
 
       {/* ------------------------------------------------------------------ */}
-      {/* 5. PRICING */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="px-4 sm:px-6 py-24 max-w-5xl mx-auto" id="pricing">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3" style={{ letterSpacing: '-0.02em' }}>
-            Simple pricing
-          </h2>
-          <p className="text-gray-500 text-lg">Start free. Upgrade when you're ready.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {/* Free */}
-          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7 flex flex-col gap-5">
-            <div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Free</div>
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-bold text-white">$0</span>
-                <span className="text-gray-500 text-sm mb-1">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-2.5 flex-1">
-              {['3 AI builds per month', 'Basic terrain AI', 'Community support', 'Marketplace access'].map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-400">
-                  <svg className="w-4 h-4 text-gray-600 flex-shrink-0" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/sign-up"
-              className="block text-center border border-white/15 hover:border-white/30 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
-            >
-              Start Free
-            </Link>
-          </div>
-
-          {/* Creator — highlighted */}
-          <div className="bg-[#0D1231] border-2 border-[#FFB81C] rounded-2xl p-7 flex flex-col gap-5 relative">
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-              <span className="bg-[#FFB81C] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">Most Popular</span>
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-[#FFB81C] uppercase tracking-widest mb-2">Creator</div>
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-bold text-white">$15</span>
-                <span className="text-gray-500 text-sm mb-1">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-2.5 flex-1">
-              {['Unlimited AI builds', 'All AI features', 'Voice commands', 'Game DNA scanner', 'Sell templates (70% cut)', 'Priority support'].map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-300">
-                  <svg className="w-4 h-4 text-[#FFB81C] flex-shrink-0" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/sign-up?plan=creator"
-              className="block text-center bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-2.5 rounded-xl text-sm transition-colors"
-            >
-              Get Creator
-            </Link>
-          </div>
-
-          {/* Studio */}
-          <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7 flex flex-col gap-5">
-            <div>
-              <div className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Studio</div>
-              <div className="flex items-end gap-1">
-                <span className="text-4xl font-bold text-white">$50</span>
-                <span className="text-gray-500 text-sm mb-1">/month</span>
-              </div>
-            </div>
-            <ul className="space-y-2.5 flex-1">
-              {['Everything in Creator', 'Team collaboration', 'API access', 'Custom AI training', 'Dedicated support', 'Early features'].map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm text-gray-400">
-                  <svg className="w-4 h-4 text-gray-600 flex-shrink-0" viewBox="0 0 16 16" fill="none">
-                    <path d="M3 8l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/sign-up?plan=studio"
-              className="block text-center border border-white/15 hover:border-white/30 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
-            >
-              Get Studio
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* 6. FINAL CTA */}
+      {/* 5. FINAL CTA */}
       {/* ------------------------------------------------------------------ */}
       <section className="px-4 sm:px-6 py-24 bg-[#0D1231]">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl sm:text-5xl font-bold text-white mb-5" style={{ letterSpacing: '-0.02em' }}>
-            Ready to build your
+            Start building
             <br />
-            <span style={{ color: '#FFB81C' }}>first game?</span>
+            <span style={{ color: '#FFB81C' }}>right now</span>
           </h2>
           <p className="text-gray-500 text-lg mb-8">
-            Join 200+ creators already building with ForjeGames AI.
+            1,000 free tokens. No credit card. Just open it and build.
           </p>
           <Link
             href="/sign-up"
             className="inline-block bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-10 py-4 rounded-xl text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
           >
-            Start Building Free
+            Try It Free
           </Link>
           <p className="text-gray-600 text-sm mt-4">
-            No credit card required · Free forever plan
+            No credit card required
           </p>
         </div>
       </section>

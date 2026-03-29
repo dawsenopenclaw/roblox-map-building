@@ -37,7 +37,7 @@ export const WelcomeEmail = ({
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
       `}</style>
     </Head>
-    <Preview>Welcome to RobloxForge — 100 free tokens are waiting for you!</Preview>
+    <Preview>Welcome to RobloxForge — 1,000 free tokens, ready to use.</Preview>
     <Body style={body}>
       <Container style={container}>
         {/* Logo Header */}
@@ -62,7 +62,7 @@ export const WelcomeEmail = ({
         {/* Token Badge */}
         <Section style={tokenBadge}>
           <Text style={tokenBadgeText}>
-            🎁 You have <strong style={tokenGold}>100 free tokens</strong> to start building
+            You have <strong style={tokenGold}>1,000 free tokens</strong> ready to use
           </Text>
         </Section>
 

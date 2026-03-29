@@ -14,12 +14,12 @@ const TIERS = [
     name: 'Free',
     priceMonthly: 0,
     priceYearly: 0,
-    tagline: 'For getting started',
+    tagline: '1,000 tokens — no credit card',
     highlight: false,
-    cta: 'Start Free',
+    cta: 'Try It Free',
     ctaHref: '/sign-up',
     features: [
-      '3 game builds/mo',
+      '1,000 free tokens',
       'Voice & image AI',
       'Basic templates',
       'Community support',
@@ -32,7 +32,7 @@ const TIERS = [
     priceYearly: 12,
     tagline: 'For serious creators',
     highlight: true,
-    cta: 'Get Creator',
+    cta: 'See Creator Plan',
     ctaHref: '/sign-up',
     features: [
       'Unlimited builds',
@@ -49,7 +49,7 @@ const TIERS = [
     priceYearly: 40,
     tagline: 'For teams & studios',
     highlight: false,
-    cta: 'Get Studio',
+    cta: 'See Studio Plan',
     ctaHref: '/sign-up',
     features: [
       'Everything in Creator',
@@ -63,8 +63,8 @@ const TIERS = [
 
 const FAQ = [
   {
-    q: 'What are game builds?',
-    a: 'Each time the AI generates something — terrain, a building, a full game scene — that counts as 1 build. Free plan includes 3 per month. Creator and Studio are unlimited.',
+    q: 'What are tokens?',
+    a: 'Tokens are spent when the AI generates something — terrain, a building, a full game scene. Every account starts with 1,000 free tokens, no credit card required. Buy more whenever you need them.',
   },
   {
     q: 'Can I cancel anytime?',
@@ -104,7 +104,7 @@ export default function PricingClient() {
           Simple, transparent pricing
         </h1>
         <p className="text-lg text-gray-400 mb-8">
-          Start free. Upgrade when you're ready.
+          Use it free. Pay only if you need more.
         </p>
 
         {/* Toggle */}
@@ -149,13 +149,6 @@ export default function PricingClient() {
                   : 'bg-[#0a0d19] border-white/10'
               }`}
             >
-              {tier.highlight && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                  <span className="bg-[#FFB81C] text-black text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
-                    Most Popular
-                  </span>
-                </div>
-              )}
 
               {/* Tier name + tagline */}
               <div className="mb-6">

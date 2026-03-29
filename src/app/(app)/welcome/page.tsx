@@ -207,18 +207,12 @@ function StepReady() {
       <h2 className="text-3xl font-bold text-white mb-3">You're Ready!</h2>
       <p className="text-gray-400 text-lg mb-8">Welcome aboard!</p>
 
-      <div className="grid grid-cols-2 gap-3 mb-2">
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl py-4 px-3">
-          <p className="text-[#FFB81C] text-2xl font-bold">100</p>
-          <p className="text-gray-400 text-sm mt-0.5">Free tokens</p>
-        </div>
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl py-4 px-3">
-          <p className="text-[#FFB81C] text-2xl font-bold">3</p>
-          <p className="text-gray-400 text-sm mt-0.5">Free builds</p>
-        </div>
+      <div className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
+        <p className="text-[#FFB81C] text-3xl font-bold">1,000</p>
+        <p className="text-gray-400 text-sm mt-0.5">Free tokens to start building</p>
       </div>
 
-      <p className="text-gray-600 text-xs mt-3">Your first 3 builds are on us.</p>
+      <p className="text-gray-600 text-xs mt-3">No credit card required. Tokens never expire.</p>
     </div>
   )
 }

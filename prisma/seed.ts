@@ -467,7 +467,7 @@ async function main() {
     { user: alex, balance: 2_100, lifetimeEarned: 4_800, lifetimeSpent: 2_700 },
     { user: sarah, balance: 350, lifetimeEarned: 500, lifetimeSpent: 150 },
     { user: marcus, balance: 15_780, lifetimeEarned: 22_500, lifetimeSpent: 6_720 },
-    { user: luna, balance: 100, lifetimeEarned: 100, lifetimeSpent: 0 },
+    { user: luna, balance: 1000, lifetimeEarned: 1000, lifetimeSpent: 0 },
   ]
 
   for (const cfg of tokenConfigs) {
@@ -489,8 +489,8 @@ async function main() {
       data: {
         balanceId: tb.id,
         type: TokenTransactionType.SUBSCRIPTION_GRANT,
-        amount: 500,
-        description: 'Welcome bonus — subscription grant',
+        amount: 1000,
+        description: 'Welcome bonus — 1,000 free tokens',
         createdAt: cfg.user.createdAt,
       },
     })
