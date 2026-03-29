@@ -19,6 +19,12 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
         <div className="flex items-center gap-3">
           <Link
+            href="/download"
+            className="text-sm text-gray-400 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] rounded px-2 py-1"
+          >
+            Download
+          </Link>
+          <Link
             href="/sign-in"
             className="text-sm text-gray-400 hover:text-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] rounded px-2 py-1"
           >
