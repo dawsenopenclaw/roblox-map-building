@@ -50,10 +50,10 @@ export function Footer() {
 
           {/* Product */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3" id="footer-product">
               Product
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2" aria-labelledby="footer-product">
               {productLinks.map((l) => (
                 <li key={l.href}>
                   <Link
@@ -69,10 +69,10 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3" id="footer-legal">
               Legal
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2" aria-labelledby="footer-legal">
               {legalLinks.map((l) => (
                 <li key={l.href}>
                   <Link
@@ -88,10 +88,10 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3" id="footer-company">
               Company
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-2" aria-labelledby="footer-company">
               {companyLinks.map((l) => (
                 <li key={l.href}>
                   <a

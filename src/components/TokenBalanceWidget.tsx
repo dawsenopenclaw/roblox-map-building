@@ -14,10 +14,20 @@ export function TokenBalanceWidget() {
   )
 
   return (
-    <div className="bg-[#0D1231] border border-white/10 rounded-xl p-4">
+    <div
+      className="bg-[#0D1231] border border-white/10 rounded-xl p-4"
+      role="status"
+      aria-label={`Token balance: ${(data?.balance || 0).toLocaleString()} tokens`}
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <p className="text-gray-400 text-sm font-medium uppercase tracking-wide">Token Balance</p>
-      <p className="text-3xl font-bold text-[#FFB81C] mt-1">{(data?.balance || 0).toLocaleString()}</p>
-      <p className="text-gray-500 text-xs mt-1">{(data?.lifetimeSpent || 0).toLocaleString()} spent lifetime</p>
+      <p className="text-3xl font-bold text-[#FFB81C] mt-1" aria-hidden="true">
+        {(data?.balance || 0).toLocaleString()}
+      </p>
+      <p className="text-gray-500 text-xs mt-1">
+        {(data?.lifetimeSpent || 0).toLocaleString()} spent lifetime
+      </p>
     </div>
   )
 }

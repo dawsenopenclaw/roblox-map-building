@@ -1,6 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -167,8 +168,15 @@ function LiveTranscription({
 // ─── Build progress steps ─────────────────────────────────────────────────────
 
 function BuildProgress({ step }: { step: number }) {
+  const currentLabel = step < BUILD_STEPS.length ? BUILD_STEPS[step].label : 'Complete'
   return (
-    <div className="space-y-2 text-left w-full max-w-xs mx-auto">
+    <div
+      className="space-y-2 text-left w-full max-w-xs mx-auto"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-label={`Build progress: step ${step + 1} of ${BUILD_STEPS.length} — ${currentLabel}`}
+    >
       {BUILD_STEPS.map((s, i) => (
         <motion.div
           key={s.label}
@@ -177,15 +185,18 @@ function BuildProgress({ step }: { step: number }) {
           transition={{ delay: i * 0.18 }}
           className="flex items-center gap-3"
         >
-          <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            i < step
-              ? 'bg-green-500'
-              : i === step
-              ? 'bg-[#FFB81C] animate-pulse'
-              : 'bg-white/10'
-          }`}>
+          <div
+            className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
+              i < step
+                ? 'bg-green-500'
+                : i === step
+                ? 'bg-[#FFB81C] animate-pulse'
+                : 'bg-white/10'
+            }`}
+            aria-hidden="true"
+          >
             {i < step ? (
-              <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12">
+              <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12" aria-hidden="true">
                 <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ) : (
@@ -196,6 +207,8 @@ function BuildProgress({ step }: { step: number }) {
             i < step ? 'text-green-400' : i === step ? 'text-white font-medium' : 'text-gray-600'
           }`}>
             {s.label}
+            {i < step && <span className="sr-only"> (complete)</span>}
+            {i === step && <span className="sr-only"> (in progress)</span>}
           </span>
         </motion.div>
       ))}
@@ -333,6 +346,7 @@ function TokenCounter({ live, total, running }: { live: number; total: number; r
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VoicePage() {
+  const { track } = useAnalytics()
   const [isListening, setIsListening] = useState(false)
   const [isBuilding, setIsBuilding] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -452,7 +466,8 @@ export default function VoicePage() {
     recognition.start()
     setIsListening(true)
     setInterimTranscript('')
-  }, [setupAudioContext, teardownAudioContext])
+    track('voice_build_started', { inputType: 'voice' })
+  }, [setupAudioContext, teardownAudioContext, track])
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop()
@@ -470,17 +485,28 @@ export default function VoicePage() {
     setIsBuilding(true)
     setTypeInput('')
 
+    const buildStart = Date.now()
+    track('voice_build_started', { inputType: overrideText ? 'text' : 'voice', prompt: text.slice(0, 120) })
+
     await new Promise(resolve => setTimeout(resolve, BUILD_STEPS.length * 600 + 400))
 
     const used = liveTokens || Math.floor(Math.random() * 180 + 60)
+    const resultLabel = inferResult(text)
     const entry: CommandEntry = {
       id: Date.now().toString(),
       text,
-      result: inferResult(text),
+      result: resultLabel,
       timestamp: new Date(),
       tokensUsed: used,
       status: 'done',
     }
+
+    track('voice_build_completed', {
+      durationMs: Date.now() - buildStart,
+      tokensUsed: used,
+      resultLabel,
+    })
+    track('token_spent', { amount: used, feature: 'voice_build' })
 
     setTotalTokens(t => t + used)
     setCommands(prev => [entry, ...prev])
@@ -488,7 +514,7 @@ export default function VoicePage() {
     setInterimTranscript('')
     setIsBuilding(false)
     setBuildStep(0)
-  }, [transcript, interimTranscript, isListening, liveTokens, stopListening])
+  }, [transcript, interimTranscript, isListening, liveTokens, stopListening, track])
 
   const handleUndo = (id: string) => {
     setCommands(prev => prev.filter(c => c.id !== id))

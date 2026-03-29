@@ -5,6 +5,7 @@ import { PostHogProvider } from '@/components/PostHogProvider'
 import { SkipToContent } from '@/components/SkipToContent'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
+import { ToastProvider } from '@/components/ui/toast-notification'
 import Script from 'next/script'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 
@@ -140,7 +141,9 @@ export default function RootLayout({
       <body className="bg-background text-white antialiased font-sans">
         <SkipToContent />
         <OfflineIndicator />
-        <PostHogProvider>{children}</PostHogProvider>
+        <ToastProvider>
+          <PostHogProvider>{children}</PostHogProvider>
+        </ToastProvider>
         <InstallPrompt />
         <Script
           id="register-sw"

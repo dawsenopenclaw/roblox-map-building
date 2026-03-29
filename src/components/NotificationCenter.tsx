@@ -114,14 +114,19 @@ export function NotificationCenter() {
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-        aria-label="Notifications"
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-expanded={open}
+        aria-haspopup="true"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#FFB81C] text-black text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+          <span
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-[#FFB81C] text-black text-[10px] font-bold rounded-full flex items-center justify-center px-1"
+            aria-hidden="true"
+          >
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -129,13 +134,22 @@ export function NotificationCenter() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#0D1231] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden">
+        <div
+          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#0D1231] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+          role="region"
+          aria-label="Notifications"
+          aria-live="polite"
+          aria-atomic="false"
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
             <div className="flex items-center gap-2">
-              <h3 className="text-white font-semibold text-sm">Notifications</h3>
+              <h3 className="text-white font-semibold text-sm" id="notif-center-heading">Notifications</h3>
               {unreadCount > 0 && (
-                <span className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 px-1.5 py-0.5 rounded-full">
+                <span
+                  className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 px-1.5 py-0.5 rounded-full"
+                  aria-label={`${unreadCount} unread`}
+                >
                   {unreadCount}
                 </span>
               )}
@@ -145,6 +159,7 @@ export function NotificationCenter() {
                 onClick={markAllRead}
                 disabled={loading}
                 className="text-xs text-gray-400 hover:text-white transition-colors"
+                aria-label="Mark all notifications as read"
               >
                 Mark all read
               </button>
@@ -152,10 +167,10 @@ export function NotificationCenter() {
           </div>
 
           {/* Notification list */}
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto" role="list" aria-labelledby="notif-center-heading">
             {notifications.length === 0 ? (
-              <div className="py-12 text-center">
-                <div className="text-3xl mb-3">&#128276;</div>
+              <div className="py-12 text-center" role="listitem">
+                <div className="text-3xl mb-3" aria-hidden="true">&#128276;</div>
                 <p className="text-gray-500 text-sm">All caught up!</p>
               </div>
             ) : (
@@ -163,6 +178,8 @@ export function NotificationCenter() {
                 <button
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
+                  role="listitem"
+                  aria-label={`${n.read ? '' : 'Unread: '}${n.title}. ${n.body}. ${timeAgo(n.createdAt)}`}
                   className={`w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${
                     !n.read ? 'bg-[#FFB81C]/5' : ''
                   }`}
@@ -170,6 +187,7 @@ export function NotificationCenter() {
                   <div className="flex items-start gap-3">
                     <span
                       className="text-lg flex-shrink-0 mt-0.5"
+                      aria-hidden="true"
                       dangerouslySetInnerHTML={{ __html: TYPE_ICONS[n.type] ?? '&#8505;' }}
                     />
                     <div className="flex-1 min-w-0">
@@ -178,11 +196,14 @@ export function NotificationCenter() {
                           {n.title}
                         </p>
                         {!n.read && (
-                          <div className="w-2 h-2 rounded-full bg-[#FFB81C] flex-shrink-0 mt-1" />
+                          // Dot is decorative — status is conveyed by aria-label above
+                          <div className="w-2 h-2 rounded-full bg-[#FFB81C] flex-shrink-0 mt-1" aria-hidden="true" />
                         )}
                       </div>
                       <p className="text-gray-500 text-xs mt-0.5 line-clamp-2">{n.body}</p>
-                      <p className="text-gray-600 text-xs mt-1">{timeAgo(n.createdAt)}</p>
+                      <p className="text-gray-600 text-xs mt-1">
+                        <time dateTime={new Date(n.createdAt).toISOString()}>{timeAgo(n.createdAt)}</time>
+                      </p>
                     </div>
                   </div>
                 </button>

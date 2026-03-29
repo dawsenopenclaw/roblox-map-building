@@ -134,25 +134,36 @@ export function ActivityFeed({
   }, [teamId, getToken])
 
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div
+      className={`flex flex-col gap-1 ${className}`}
+      role="feed"
+      aria-label="Team activity feed"
+      aria-live="polite"
+      aria-atomic="false"
+    >
       {activities.length === 0 ? (
         <p className="text-gray-500 text-sm py-4 text-center">No activity yet</p>
       ) : (
         activities.map((event, idx) => {
           const icon = ACTION_ICONS[event.action] ?? ACTION_ICONS.default
           const time = event.timestamp || (event.createdAt ? new Date(event.createdAt).getTime() : Date.now())
+          const isoTime = new Date(time).toISOString()
 
           return (
             <div
               key={event.id ?? `${event.userId}-${idx}`}
               className="flex items-start gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors group"
+              role="article"
+              aria-label={event.description}
             >
-              <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
+              <span className="text-base flex-shrink-0 mt-0.5" aria-hidden="true">{icon}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-gray-300 leading-snug truncate">
                   {event.description}
                 </p>
-                <p className="text-xs text-gray-600 mt-0.5">{timeAgo(time)}</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  <time dateTime={isoTime}>{timeAgo(time)}</time>
+                </p>
               </div>
             </div>
           )
