@@ -77,9 +77,12 @@ const QUICK_ACTIONS = [
   { label: 'Forest',       icon: '🌲', prompt: 'Generate a dense forest biome with trees and rocks' },
   { label: 'NPC',          icon: '🧑', prompt: 'Create an NPC with patrol AI and dialogue' },
   { label: 'City Block',   icon: '🏙️', prompt: 'Build a city district with roads and buildings' },
-  { label: 'Race Track',   icon: '🏎️', prompt: 'Design a racing track with banked corners' },
+  { label: '3D Mesh',      icon: '💎', prompt: 'Generate a 3D mesh: medieval stone tower, Roblox game asset' },
   { label: 'Dungeon',      icon: '⚔️', prompt: 'Generate a dungeon with corridors and traps' },
 ]
+
+// Build-intent keywords that should trigger real 3D mesh generation from the chat
+const BUILD_MESH_KEYWORDS = ['build', 'generate 3d', 'create mesh', 'make a 3d', 'generate mesh', '3d model', 'mesh:']
 
 const DEMO_RESPONSES: Record<string, string> = {
   castle:  'Castle placed at map center. Added 4 towers (32 studs tall), a main great hall, iron portcullis, and a water moat with drawbridge mechanics.',
@@ -1576,6 +1579,7 @@ function GenerateSubPanel() {
 }
 
 function RobloxMarketplacePanel() {
+  const [activeTab, setActiveTab] = useState<GenerateTab>('marketplace')
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('All')
@@ -2349,7 +2353,12 @@ export function EditorClient() {
         let responseText: string | null = null
         let tokensUsed = estimateTokens(trimmed)
 
-        const res = await fetch('/api/ai/chat', {
+        // Detect build-mesh intent — run mesh generation in parallel with chat
+        const lowerTrimmed = trimmed.toLowerCase()
+        const isBuildMeshIntent = BUILD_MESH_KEYWORDS.some((kw) => lowerTrimmed.includes(kw))
+
+        // Fire both in parallel: chat + optional mesh generation
+        const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -2361,9 +2370,37 @@ export function EditorClient() {
           }),
         })
 
-        if (!res.ok) throw new Error(`API error ${res.status}`)
+        // Extract a clean mesh prompt from the user message
+        const meshPrompt = trimmed
+          .replace(/^(build|generate|create|make)\s+(a\s+)?(3d\s+)?(mesh\s*[:：]?\s*)?/i, '')
+          .trim()
+          .slice(0, 200)
 
-        const data = await res.json() as {
+        type MeshAPIResponse = {
+          meshUrl?: string | null
+          fbxUrl?: string | null
+          thumbnailUrl?: string | null
+          textures?: { albedo: string; normal: string; roughness: string } | null
+          luauCode?: string | null
+          costEstimateUsd?: number
+          polygonCount?: number | null
+          taskId?: string | null
+          status: string
+        }
+
+        const meshPromise: Promise<MeshAPIResponse | null> = isBuildMeshIntent
+          ? fetch('/api/ai/mesh', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: meshPrompt, quality: 'standard', withTextures: true }),
+            }).then((r) => r.ok ? r.json() as Promise<MeshAPIResponse> : null).catch(() => null)
+          : Promise.resolve(null)
+
+        const [chatRes, meshData] = await Promise.all([chatPromise, meshPromise])
+
+        if (!chatRes.ok) throw new Error(`API error ${chatRes.status}`)
+
+        const data = await chatRes.json() as {
           message?: string
           tokensUsed?: number
           buildResult?: BuildResult
@@ -2394,18 +2431,37 @@ export function EditorClient() {
 
         setMessages((prev) => {
           const without = prev.filter((m) => m.id !== statusMsg.id)
-          return [
-            ...without,
-            {
+          const assistantMsg: ChatMessage = {
+            id: uid(),
+            role: 'assistant',
+            content: responseText!,
+            tokensUsed,
+            timestamp: new Date(),
+            model: selectedModel,
+            ...(buildResult ? { buildResult } : {}),
+          }
+          const msgs: ChatMessage[] = [...without, assistantMsg]
+
+          // If mesh was generated, append a system message with mesh details
+          if (meshData) {
+            const meshStatus = meshData.status === 'complete' ? 'complete' : meshData.status === 'pending' ? 'pending' : meshData.status
+            const polyText = meshData.polygonCount ? ` ${meshData.polygonCount.toLocaleString()} polygons.` : ''
+            const costText = (meshData.costEstimateUsd ?? 0) > 0 ? ` Cost: $${meshData.costEstimateUsd!.toFixed(3)}.` : ''
+            const hasTextures = !!(meshData.textures?.albedo)
+            msgs.push({
               id: uid(),
-              role: 'assistant',
-              content: responseText!,
-              tokensUsed,
+              role: 'system',
+              content: meshStatus === 'complete'
+                ? `3D mesh generated.${polyText}${costText}${hasTextures ? ' PBR textures included.' : ''} MeshPart Luau ready — open Assets > Generate to copy it.`
+                : meshStatus === 'pending'
+                ? `3D mesh is generating (task ${meshData.taskId ?? 'unknown'}). Poll GET /api/ai/mesh?taskId=${meshData.taskId ?? ''} for completion.`
+                : meshStatus === 'demo'
+                ? '3D mesh demo mode — add MESHY_API_KEY to generate real meshes.'
+                : `3D mesh: ${meshStatus}`,
               timestamp: new Date(),
-              model: selectedModel,
-              ...(buildResult ? { buildResult } : {}),
-            },
-          ]
+            })
+          }
+          return msgs
         })
       } catch {
         setMessages((prev) => {
