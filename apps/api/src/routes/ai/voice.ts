@@ -14,6 +14,10 @@ import { buildCacheKey, withCache } from '../../lib/ai/cache'
 import { estimateCost, usdToTokens } from '../../lib/ai/cost-estimator'
 import { validateTranscript, validateAIResponse } from '../../lib/ai/quality-gate'
 import { db } from '../../lib/db'
+import { createLogger } from '../../lib/logger'
+import { incrementCounter, recordDuration } from '../../lib/metrics'
+
+const log = createLogger('ai:voice')
 
 // Import spendTokens from the shared lib (path from apps/api into src/)
 // We re-import db and implement inline to avoid cross-package import complexity
@@ -75,7 +79,12 @@ Examples:
 voiceRoutes.post('/', async (c) => {
   const start = Date.now()
   const userId = c.get('userId') as string
+  const requestId = c.get('requestId') as string | undefined
+  const reqLog = log.child({ requestId, userId })
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+  reqLog.info('ai voice-to-game request started')
+  incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'started' })
 
   const contentType = c.req.header('content-type') ?? ''
   let transcript = ''
@@ -95,6 +104,7 @@ voiceRoutes.post('/', async (c) => {
     const audioBuffer = Buffer.from(await audioFile.arrayBuffer())
     const mimeType = audioFile.type || 'audio/wav'
 
+    reqLog.debug('ai voice-to-game: calling deepgram transcription', { mimeType, sizeBytes: audioBuffer.length })
     try {
       const result = await deepgramBreaker.execute(() =>
         transcribeAudio(audioBuffer, { mimeType })
@@ -103,10 +113,13 @@ voiceRoutes.post('/', async (c) => {
       transcriptConfidence = result.confidence
       transcriptCostUsd = result.costUsd
       transcriptDurationMs = result.durationMs
+      reqLog.debug('ai voice-to-game: transcription complete', { confidence: transcriptConfidence, transcriptDurationMs })
 
       // Quality gate on transcript
       const transcriptGate = validateTranscript(transcript, transcriptConfidence)
       if (transcriptGate.status === 'FAIL') {
+        reqLog.warn('ai voice-to-game: transcript quality gate failed', { reasons: transcriptGate.failReasons, confidence: transcriptConfidence })
+        incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'quality_fail' })
         return c.json({
           error: 'Audio transcription quality too low',
           reasons: transcriptGate.failReasons,
@@ -114,6 +127,10 @@ voiceRoutes.post('/', async (c) => {
         }, 422)
       }
     } catch (err) {
+      const durationMs = Date.now() - start
+      reqLog.error('ai voice-to-game: transcription failed', { durationMs, error: err instanceof Error ? err.message : String(err) })
+      incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'transcription_error' })
+      recordDuration('ai_request_duration_ms', durationMs, { mode: 'voice-to-game', status: 'error' })
       return c.json({
         error: 'Transcription failed',
         detail: err instanceof Error ? err.message : String(err),
@@ -126,6 +143,7 @@ voiceRoutes.post('/', async (c) => {
       return c.json({ error: 'Provide audio file (multipart) or text in JSON body' }, 400)
     }
     transcript = body.text.trim()
+    reqLog.debug('ai voice-to-game: using text input', { transcriptLength: transcript.length })
   }
 
   // --- Step 2: Estimate cost ---
@@ -136,6 +154,8 @@ voiceRoutes.post('/', async (c) => {
   // Check balance before execution
   const balance = await db.tokenBalance.findUnique({ where: { userId } })
   if (!balance || balance.balance < tokensToSpend) {
+    reqLog.warn('ai voice-to-game: insufficient tokens', { required: tokensToSpend, available: balance?.balance ?? 0 })
+    incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'insufficient_tokens' })
     return c.json({
       error: 'Insufficient tokens',
       required: tokensToSpend,
@@ -150,6 +170,7 @@ voiceRoutes.post('/', async (c) => {
   let claudeCostUsd = 0
 
   try {
+    reqLog.debug('ai voice-to-game: parsing intent with claude')
     const { result: intentResult, fromCache } = await withCache(cacheKey, () =>
       anthropicBreaker.execute(() =>
         claudeChat(
@@ -161,7 +182,18 @@ voiceRoutes.post('/', async (c) => {
 
     commandsJson = intentResult.content
     claudeCostUsd = fromCache ? 0 : intentResult.costUsd
+
+    if (fromCache) {
+      reqLog.debug('ai voice-to-game: intent cache hit')
+      incrementCounter('ai_cache_hits_total', { provider: 'claude', type: 'voice-intent' })
+    } else {
+      incrementCounter('ai_cache_misses_total', { provider: 'claude', type: 'voice-intent' })
+    }
   } catch (err) {
+    const durationMs = Date.now() - start
+    reqLog.error('ai voice-to-game: intent parsing failed', { durationMs, error: err instanceof Error ? err.message : String(err) })
+    incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'intent_error' })
+    recordDuration('ai_request_duration_ms', durationMs, { mode: 'voice-to-game', status: 'error' })
     return c.json({
       error: 'Intent parsing failed',
       detail: err instanceof Error ? err.message : String(err),
@@ -172,6 +204,7 @@ voiceRoutes.post('/', async (c) => {
   // --- Step 4: Validate response ---
   const gate = validateAIResponse(commandsJson, 'commands')
   if (gate.status === 'FAIL') {
+    reqLog.warn('ai voice-to-game: commands quality gate failed, using fallback', { reasons: gate.failReasons })
     // Try to use raw response as fallback
     commandsJson = JSON.stringify({
       intent: 'unknown',
@@ -202,13 +235,23 @@ voiceRoutes.post('/', async (c) => {
   const actualTokens = usdToTokens(transcriptCostUsd + claudeCostUsd)
   await spendTokens(userId, actualTokens, `voice-to-game: "${transcript.slice(0, 50)}"`)
 
+  const durationMs = Date.now() - start
+  reqLog.info('ai voice-to-game: completed', {
+    durationMs,
+    tokensSpent: actualTokens,
+    transcriptConfidence,
+    cached: claudeCostUsd === 0,
+  })
+  incrementCounter('ai_requests_total', { mode: 'voice-to-game', status: 'success' })
+  recordDuration('ai_request_duration_ms', durationMs, { mode: 'voice-to-game', status: 'success' })
+
   return c.json({
     transcript,
     transcriptConfidence,
     commands,
     estimate: estimate.summary,
     tokens_spent: actualTokens,
-    duration_ms: Date.now() - start,
+    duration_ms: durationMs,
     transcript_duration_ms: transcriptDurationMs,
     cached: claudeCostUsd === 0,
   })

@@ -17,6 +17,16 @@ import {
 import { estimateCost, usdToTokens } from '../../lib/ai/cost-estimator'
 import { getAllCircuitStats } from '../../lib/ai/circuit-breaker'
 import { db } from '../../lib/db'
+import { createLogger } from '../../lib/logger'
+import { incrementCounter, recordDuration, recordGauge } from '../../lib/metrics'
+import {
+  notifyBuildComplete,
+  notifyBuildFailed,
+  notifyTokenLow,
+  notifyTokenDepleted,
+} from '../../lib/notifications'
+
+const log = createLogger('ai:generate')
 
 async function spendTokens(userId: string, amount: number, description: string) {
   return db.$transaction(async (tx) => {
@@ -68,6 +78,9 @@ interface GenerateBody {
 generateRoutes.post('/', async (c) => {
   const start = Date.now()
   const userId = c.get('userId') as string
+  const requestId = c.get('requestId') as string | undefined
+  const reqLog = log.child({ requestId, userId })
+
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
 
   const body = await c.req.json<GenerateBody>().catch(() => null)
@@ -89,6 +102,7 @@ generateRoutes.post('/', async (c) => {
 
   // --- Phase 1: Return estimate if not confirmed ---
   if (!body.confirmed) {
+    reqLog.info('ai generation estimate requested', { mode: body.mode, estimateTokens: estimate.totalTokens })
     return c.json({
       phase: 'estimate',
       message: `This generation will cost ${estimate.summary} (≈ $${estimate.totalUsd.toFixed(4)})`,
@@ -105,10 +119,18 @@ generateRoutes.post('/', async (c) => {
   }
 
   // --- Phase 2: Execute generation ---
+  reqLog.info('ai generation started', { mode: body.mode, estimateTokens: estimate.totalTokens })
+  incrementCounter('ai_requests_total', { mode: body.mode, status: 'started' })
 
   // Balance check
   const balance = await db.tokenBalance.findUnique({ where: { userId } })
   if (!balance || balance.balance < estimate.totalTokens) {
+    reqLog.warn('ai generation rejected: insufficient tokens', {
+      mode: body.mode,
+      required: estimate.totalTokens,
+      available: balance?.balance ?? 0,
+    })
+    incrementCounter('ai_requests_total', { mode: body.mode, status: 'insufficient_tokens' })
     return c.json({
       error: 'Insufficient tokens',
       required: estimate.totalTokens,
@@ -194,6 +216,21 @@ generateRoutes.post('/', async (c) => {
       }
     }
   } catch (err) {
+    const durationMs = Date.now() - start
+    reqLog.error('ai generation pipeline failed', {
+      mode: body.mode,
+      durationMs,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    incrementCounter('ai_requests_total', { mode: body.mode, status: 'error' })
+    recordDuration('ai_request_duration_ms', durationMs, { mode: body.mode, status: 'error' })
+    // Best-effort failure notification
+    notifyBuildFailed(userId, {
+      mode: body.mode,
+      prompt: body.prompt,
+      error: err instanceof Error ? err.message : String(err),
+    }).catch(() => {})
+
     return c.json({
       error: 'Generation pipeline failed',
       detail: err instanceof Error ? err.message : String(err),
@@ -208,8 +245,45 @@ generateRoutes.post('/', async (c) => {
     await spendTokens(userId, tokensToCharge, `generate-${body.mode}: "${body.prompt.slice(0, 50)}"`)
   } catch (err) {
     // Log but don't fail the request — generation already happened
-    console.error('[generate] Token deduction failed:', err)
+    reqLog.error('token deduction failed', {
+      mode: body.mode,
+      tokensToCharge,
+      error: err instanceof Error ? err.message : String(err),
+    })
   }
+
+  const durationMs = Date.now() - start
+  reqLog.info('ai generation completed', {
+    mode: body.mode,
+    durationMs,
+    tokensSpent: tokensToCharge,
+    cacheHits: result.cacheHits,
+    stepsCount: result.steps.length,
+    errors: result.errors.length,
+  })
+  incrementCounter('ai_requests_total', { mode: body.mode, status: result.success ? 'success' : 'partial' })
+  recordDuration('ai_request_duration_ms', durationMs, { mode: body.mode, status: 'success' })
+  if (result.cacheHits > 0) {
+    incrementCounter('ai_cache_hits_total', { mode: body.mode }, result.cacheHits)
+  }
+
+  // Fire notification (best-effort, non-blocking)
+  notifyBuildComplete(userId, {
+    mode: body.mode,
+    prompt: body.prompt,
+    tokensSpent: tokensToCharge,
+    durationMs,
+  }).catch((err) => reqLog.error('build-complete notification failed', { error: String(err) }))
+
+  // Check token balance and send low/depleted alerts
+  db.tokenBalance.findUnique({ where: { userId } }).then((bal) => {
+    if (!bal) return
+    if (bal.balance === 0) {
+      notifyTokenDepleted(userId).catch(() => {})
+    } else if (bal.balance < 50) {
+      notifyTokenLow(userId, bal.balance).catch(() => {})
+    }
+  }).catch(() => {})
 
   return c.json({
     phase: 'result',
@@ -230,7 +304,7 @@ generateRoutes.post('/', async (c) => {
     total_cost_usd: result.totalCostUsd,
     cache_hits: result.cacheHits,
     errors: result.errors,
-    duration_ms: Date.now() - start,
+    duration_ms: durationMs,
   })
 })
 

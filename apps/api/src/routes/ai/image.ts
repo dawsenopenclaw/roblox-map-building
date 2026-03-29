@@ -12,6 +12,10 @@ import { buildCacheKey, withCache } from '../../lib/ai/cache'
 import { estimateCost, usdToTokens } from '../../lib/ai/cost-estimator'
 import { validateAIResponse } from '../../lib/ai/quality-gate'
 import { db } from '../../lib/db'
+import { createLogger } from '../../lib/logger'
+import { incrementCounter, recordDuration } from '../../lib/metrics'
+
+const log = createLogger('ai:image')
 
 async function spendTokens(userId: string, amount: number, description: string) {
   return db.$transaction(async (tx) => {
@@ -85,7 +89,11 @@ Be precise with coordinates. Place buildings logically based on image compositio
 imageRoutes.post('/', async (c) => {
   const start = Date.now()
   const userId = c.get('userId') as string
+  const requestId = c.get('requestId') as string | undefined
+  const reqLog = log.child({ requestId, userId })
   if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+
+  reqLog.info('ai image-to-map request started')
 
   const contentType = c.req.header('content-type') ?? ''
   let imageData: { base64: string; mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif' } | { url: string }
@@ -151,6 +159,7 @@ imageRoutes.post('/', async (c) => {
   let visionCostUsd = 0
 
   try {
+    reqLog.debug('ai image-to-map: calling claude vision', { cacheKey })
     const { result: visionResult, fromCache } = await withCache(cacheKey, () =>
       anthropicBreaker.execute(() =>
         claudeVision(
@@ -166,12 +175,21 @@ imageRoutes.post('/', async (c) => {
     visionCostUsd = fromCache ? 0 : visionResult.costUsd
     layout = visionResult.analysis
 
+    if (fromCache) {
+      reqLog.debug('ai image-to-map: cache hit')
+      incrementCounter('ai_cache_hits_total', { provider: 'claude', type: 'image-to-map' })
+    } else {
+      reqLog.debug('ai image-to-map: cache miss, used claude vision')
+      incrementCounter('ai_cache_misses_total', { provider: 'claude', type: 'image-to-map' })
+    }
+
     // Validate response
     const gate = validateAIResponse(
       typeof visionResult.content === 'string' ? visionResult.content : JSON.stringify(visionResult.content),
       'json'
     )
     if (gate.status === 'FAIL') {
+      reqLog.warn('ai image-to-map: quality gate failed, using raw fallback', { reasons: gate.failReasons })
       // Fallback: return raw analysis
       layout = {
         raw: visionResult.content,
@@ -181,6 +199,13 @@ imageRoutes.post('/', async (c) => {
       }
     }
   } catch (err) {
+    const durationMs = Date.now() - start
+    reqLog.error('ai image-to-map: vision analysis failed', {
+      durationMs,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    incrementCounter('ai_requests_total', { mode: 'image-to-map', status: 'error' })
+    recordDuration('ai_request_duration_ms', durationMs, { mode: 'image-to-map', status: 'error' })
     return c.json({
       error: 'Vision analysis failed',
       detail: err instanceof Error ? err.message : String(err),
@@ -192,11 +217,20 @@ imageRoutes.post('/', async (c) => {
   const tokensCharged = Math.max(actualTokens, 10) // minimum 10 tokens
   await spendTokens(userId, tokensCharged, 'image-to-map analysis')
 
+  const durationMs = Date.now() - start
+  reqLog.info('ai image-to-map: completed', {
+    durationMs,
+    tokensCharged,
+    cached: visionCostUsd === 0,
+  })
+  incrementCounter('ai_requests_total', { mode: 'image-to-map', status: 'success' })
+  recordDuration('ai_request_duration_ms', durationMs, { mode: 'image-to-map', status: 'success' })
+
   return c.json({
     layout,
     estimate: estimate.summary,
     tokens_spent: tokensCharged,
-    duration_ms: Date.now() - start,
+    duration_ms: durationMs,
     cached: visionCostUsd === 0,
   })
 })
