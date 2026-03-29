@@ -73,7 +73,7 @@ export default function ReferralsPage() {
         {STATS.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-[#0D1231] border border-white/10 rounded-xl p-4">
+            <div key={stat.label} className="bg-[#242424] border border-white/10 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Icon size={14} style={{ color: stat.color }} />
                 <p className="text-gray-500 text-xs">{stat.label}</p>
@@ -86,14 +86,14 @@ export default function ReferralsPage() {
       </div>
 
       {/* Share section */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6 mb-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6 mb-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Your Referral Links</p>
 
         {/* Code */}
         <div className="mb-4">
           <label className="block text-sm text-gray-400 mb-1.5">Referral Code</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#111640] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#FFB81C] text-sm font-bold tracking-widest">
+            <div className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#FFB81C] text-sm font-bold tracking-widest">
               {REFERRAL_CODE}
             </div>
             <button
@@ -110,7 +110,7 @@ export default function ReferralsPage() {
         <div>
           <label className="block text-sm text-gray-400 mb-1.5">Referral Link</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
+            <div className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
               {REFERRAL_LINK}
             </div>
             <button
@@ -136,7 +136,7 @@ export default function ReferralsPage() {
       </div>
 
       {/* Referrals table */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Your Referrals</p>
 
         {REFERRALS.length === 0 ? (

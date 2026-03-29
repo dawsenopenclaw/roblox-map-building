@@ -83,7 +83,7 @@ export function OnboardingStep({
   hideNext = false,
 }: OnboardingStepProps) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#0A0E27]">
+    <div className="flex flex-col min-h-screen bg-[#1a1a1a]">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 pt-6">
         <div className="flex items-center gap-2">

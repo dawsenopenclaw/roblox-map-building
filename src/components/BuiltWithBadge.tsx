@@ -27,7 +27,7 @@ export function BuiltWithBadge({
   }
 
   const variantClasses = {
-    dark: 'bg-[#060918] border border-white/10 text-white hover:border-[#FFB81C]/40 hover:bg-[#0D1231]',
+    dark: 'bg-[#060918] border border-white/10 text-white hover:border-[#FFB81C]/40 hover:bg-[#242424]',
     light: 'bg-white border border-gray-200 text-gray-900 hover:border-[#FFB81C] hover:bg-gray-50',
     minimal: 'text-gray-400 hover:text-white',
   }

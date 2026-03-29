@@ -90,9 +90,9 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Animated mail icon */}
           <MailIcon animated={animating} />
@@ -169,7 +169,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0A0E27]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#1a1a1a]" />}>
       <VerifyEmailContent />
     </Suspense>
   )

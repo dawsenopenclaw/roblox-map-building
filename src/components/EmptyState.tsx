@@ -129,7 +129,7 @@ export function EmptyState({
         {/* Icon */}
         <div className="relative mb-5">
           <div className="absolute inset-0 rounded-full bg-[#FFB81C]/5 animate-ping" style={{ animationDuration: '3s' }} />
-          <div className="relative w-20 h-20 rounded-full bg-[#0D1231] border border-[#FFB81C]/20 flex items-center justify-center shadow-xl">
+          <div className="relative w-20 h-20 rounded-full bg-[#242424] border border-[#FFB81C]/20 flex items-center justify-center shadow-xl">
             <div className="animate-[float_3s_ease-in-out_infinite]">
               {config.icon}
             </div>

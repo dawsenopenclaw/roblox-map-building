@@ -40,8 +40,8 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-[#0D1231] border-green-500/30 text-green-300'
-          : 'bg-[#0D1231] border-red-500/30 text-red-300'
+          ? 'bg-[#242424] border-green-500/30 text-green-300'
+          : 'bg-[#242424] border-red-500/30 text-red-300'
       }`}
     >
       {type === 'success' ? <Check size={14} /> : <Trash2 size={14} />}
@@ -193,7 +193,7 @@ function ProfileTab() {
   return (
     <div className="space-y-4">
       {/* Profile card */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Profile</h3>
 
         {/* Avatar */}
@@ -219,7 +219,7 @@ function ProfileTab() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
             />
           </div>
 
@@ -229,7 +229,7 @@ function ProfileTab() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-none"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-none"
             />
           </div>
 
@@ -238,7 +238,7 @@ function ProfileTab() {
             <select
               value={charity}
               onChange={(e) => setCharity(e.target.value)}
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors appearance-none"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors appearance-none"
             >
               {charities.map((c) => (
                 <option key={c} value={c}>
@@ -262,7 +262,7 @@ function ProfileTab() {
       </div>
 
       {/* Danger Zone */}
-      <div className="bg-[#0D1231] border border-red-500/20 rounded-xl p-6">
+      <div className="bg-[#242424] border border-red-500/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Trash2 size={15} className="text-red-400" />
           <h3 className="text-red-400 font-semibold">Danger Zone</h3>
@@ -293,7 +293,7 @@ function ProfileTab() {
               onChange={(e) => setDeleteInput(e.target.value)}
               placeholder="delete my account"
               autoComplete="off"
-              className="w-full bg-[#111640] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
+              className="w-full bg-[#2e2e2e] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
             />
             <div className="flex gap-3">
               <button
@@ -333,7 +333,7 @@ function BillingTab() {
   return (
     <div className="space-y-4">
       {/* Plan */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Current Plan</p>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -369,7 +369,7 @@ function BillingTab() {
       </div>
 
       {/* Token Balance */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Token Balance</p>
         <div className="flex items-end gap-3 mb-1">
           <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
@@ -406,7 +406,7 @@ function BillingTab() {
       </div>
 
       {/* Usage Breakdown */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
@@ -440,7 +440,7 @@ function BillingTab() {
       </div>
 
       {/* Payment History */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Payment History</p>
         <div className="overflow-x-auto -mx-6 px-6">
           <table className="w-full text-sm min-w-[400px]">
@@ -546,7 +546,7 @@ function ApiKeysTab() {
     <div className="space-y-4">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
           <div>
             <h3 className="text-white font-semibold">API Keys</h3>
@@ -573,7 +573,7 @@ function ApiKeysTab() {
               onChange={(e) => setNewKeyName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
               placeholder="Key name (e.g. Production)"
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors mb-3"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors mb-3"
               autoFocus
             />
             <div className="flex gap-3">
@@ -757,7 +757,7 @@ function NotificationsTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {groups.map((group) => (
-        <div key={group.section} className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+        <div key={group.section} className="bg-[#242424] border border-white/10 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-5">{group.section}</h3>
           <div className="space-y-5">
             {group.rows.map((row) => (
@@ -808,7 +808,7 @@ function AppearanceTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {/* Theme */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Theme</h3>
         <div className="grid grid-cols-2 gap-3">
           {(
@@ -849,7 +849,7 @@ function AppearanceTab() {
       </div>
 
       {/* Accent Color */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Accent Color</h3>
         <div className="flex gap-3 flex-wrap">
           {ACCENTS.map(({ key, label, color }) => (
@@ -873,7 +873,7 @@ function AppearanceTab() {
       </div>
 
       {/* Compact Mode */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-white font-medium text-sm">Compact Mode</p>
@@ -950,7 +950,7 @@ function ConnectedTab() {
       {items.map((item) => {
         const conn = connections[item.key]
         return (
-          <div key={item.key} className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+          <div key={item.key} className="bg-[#242424] border border-white/10 rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
                 <div

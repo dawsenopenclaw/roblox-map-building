@@ -19,7 +19,7 @@ export default function TeamLoading() {
           <div className="space-y-3">
             <div className="h-4 w-24 rounded-md shimmer mb-1" />
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="bg-[#0D1231] border border-white/10 rounded-xl px-4 py-3">
+              <div key={i} className="bg-[#242424] border border-white/10 rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="h-4 w-32 rounded-md shimmer-gold" />
                   <div className="h-5 w-16 rounded-full shimmer" />
@@ -32,7 +32,7 @@ export default function TeamLoading() {
           {/* Team detail panel */}
           <div className="lg:col-span-2 space-y-4">
             {/* Team header card */}
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="flex items-start justify-between gap-4 mb-4">
                 <div>
                   <div className="h-6 w-44 rounded-xl shimmer-gold mb-2" />
@@ -55,7 +55,7 @@ export default function TeamLoading() {
             </div>
 
             {/* Members list card */}
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-white/5">
                 <div className="h-4 w-28 rounded-md shimmer-gold" />
               </div>
@@ -76,7 +76,7 @@ export default function TeamLoading() {
             </div>
 
             {/* Activity feed card */}
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
               <div className="px-5 py-4 border-b border-white/5">
                 <div className="h-4 w-20 rounded-md shimmer-gold" />
               </div>

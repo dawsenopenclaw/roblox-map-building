@@ -193,8 +193,8 @@ export default function TeamSettingsPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
-        <div className="h-8 w-48 bg-[#0D1231] rounded animate-pulse" />
-        <div className="h-64 bg-[#0D1231] rounded-2xl animate-pulse" />
+        <div className="h-8 w-48 bg-[#242424] rounded animate-pulse" />
+        <div className="h-64 bg-[#242424] rounded-2xl animate-pulse" />
       </div>
     )
   }
@@ -235,7 +235,7 @@ export default function TeamSettingsPage() {
           <select
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors w-full sm:w-auto"
+            className="bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors w-full sm:w-auto"
           >
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -258,7 +258,7 @@ export default function TeamSettingsPage() {
 
       {/* Role management */}
       {team && (
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/5">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
               Member Roles — {team.name}
@@ -273,7 +273,7 @@ export default function TeamSettingsPage() {
               { role: 'EDITOR', desc: 'Edit & build', color: 'text-purple-400' },
               { role: 'VIEWER', desc: 'View only', color: 'text-gray-400' },
             ].map(({ role, desc, color }) => (
-              <div key={role} className="bg-[#111640] rounded-xl p-3 text-center">
+              <div key={role} className="bg-[#2e2e2e] rounded-xl p-3 text-center">
                 <p className={`text-xs font-semibold ${color}`}>{role}</p>
                 <p className="text-gray-600 text-xs mt-0.5">{desc}</p>
               </div>
@@ -289,7 +289,7 @@ export default function TeamSettingsPage() {
               {team.members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#111640] flex items-center justify-center text-sm text-gray-400 font-medium">
+                    <div className="w-9 h-9 rounded-full bg-[#2e2e2e] flex items-center justify-center text-sm text-gray-400 font-medium">
                       {member.userId.slice(5, 7).toUpperCase()}
                     </div>
                     <div>
@@ -310,7 +310,7 @@ export default function TeamSettingsPage() {
                           defaultValue={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
                           disabled={updatingId === member.id}
-                          className="bg-[#111640] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
+                          className="bg-[#2e2e2e] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
@@ -336,7 +336,7 @@ export default function TeamSettingsPage() {
       )}
 
       {/* Zone locking info */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
           Zone Locking
         </h2>
@@ -349,7 +349,7 @@ export default function TeamSettingsPage() {
             { icon: '⏱', label: 'Auto-expire', desc: 'Locks clear after 30min' },
             { icon: '🔓', label: 'Manual unlock', desc: 'Owner/Admin can unlock any zone' },
           ].map((item) => (
-            <div key={item.label} className="bg-[#111640] rounded-xl p-3 text-center">
+            <div key={item.label} className="bg-[#2e2e2e] rounded-xl p-3 text-center">
               <span className="text-2xl block mb-1">{item.icon}</span>
               <p className="text-white text-xs font-medium">{item.label}</p>
               <p className="text-gray-600 text-xs mt-0.5">{item.desc}</p>

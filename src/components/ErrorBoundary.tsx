@@ -109,7 +109,7 @@ function ErrorCard({
   return (
     <div className="min-h-[300px] flex items-center justify-center p-6">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-8">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-8">
           {/* Icon */}
           <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
             <svg

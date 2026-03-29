@@ -272,7 +272,7 @@ function NotificationCenterInner() {
           />
 
           <div
-            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#0D1231] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-[#242424] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
             role="region"
             aria-label="Notifications"
             aria-live="polite"

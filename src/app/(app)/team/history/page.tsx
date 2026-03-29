@@ -187,7 +187,7 @@ export default function TeamHistoryPage() {
       )}
 
       {/* Project ID input */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <label className="block text-xs text-gray-400 mb-2 font-medium">Project ID</label>
         <div className="flex gap-3">
           <input
@@ -195,7 +195,7 @@ export default function TeamHistoryPage() {
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="Enter project ID to load versions"
-            className="flex-1 bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+            className="flex-1 bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
           />
           <button
             onClick={fetchVersions}
@@ -223,7 +223,7 @@ export default function TeamHistoryPage() {
       {versions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Timeline */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 Commit Timeline
@@ -291,7 +291,7 @@ export default function TeamHistoryPage() {
           </div>
 
           {/* Diff view */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 Diff View
@@ -370,7 +370,7 @@ export default function TeamHistoryPage() {
 
       {/* Empty state — only shown after a real load with no results */}
       {versions.length === 0 && !loading && projectId && !error && !isDemo && (
-        <div className="bg-[#0D1231] border border-dashed border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#242424] border border-dashed border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-3">📦</div>
           <p className="text-gray-400 text-sm">No versions found for this project</p>
         </div>

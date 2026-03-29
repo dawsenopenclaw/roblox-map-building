@@ -14,7 +14,7 @@ export default function DashboardLoading() {
         {/* Stat cards — 3 cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="h-3 w-24 rounded-md shimmer" />
                 <div className="w-8 h-8 rounded-xl shimmer" />
@@ -28,7 +28,7 @@ export default function DashboardLoading() {
         {/* Quick action bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-4">
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-4">
               <div className="w-10 h-10 rounded-xl shimmer mb-3" />
               <div className="h-4 w-20 rounded-md shimmer-gold mb-1" />
               <div className="h-3 w-32 rounded-md shimmer" />
@@ -45,7 +45,7 @@ export default function DashboardLoading() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-4">
+                <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="h-4 w-32 rounded-md shimmer" />
                     <div className="h-5 w-16 rounded-full shimmer" />
@@ -63,7 +63,7 @@ export default function DashboardLoading() {
           {/* Right sidebar */}
           <div className="space-y-4">
             {/* Token widget — circle + text */}
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="h-4 w-24 rounded-md shimmer-gold mb-4" />
               <div className="flex items-center gap-4">
                 {/* Circle */}
@@ -77,7 +77,7 @@ export default function DashboardLoading() {
             </div>
 
             {/* Activity feed — 5 items */}
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="h-4 w-28 rounded-md shimmer-gold mb-4" />
               <div className="space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (

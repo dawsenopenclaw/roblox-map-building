@@ -922,7 +922,7 @@ export default function HomeClient() {
               </svg>
             }
             title="Describe Your Game"
-            description='Type or say what you want to build. "Medieval castle with lava moat" — that\'s all it takes.'
+            description={"Type or say what you want to build. \"Medieval castle with lava moat\" — that's all it takes."}
           />
           <StepCard
             number={2}

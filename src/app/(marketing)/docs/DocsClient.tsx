@@ -101,7 +101,7 @@ function CodeBlock({ code, lang }: { code: string; lang: 'curl' | 'json' }) {
   const html = lang === 'curl' ? highlightCurl(code) : highlightJson(code)
 
   return (
-    <div className="relative group rounded-xl overflow-hidden border border-white/8" style={{ background: '#111827' }}>
+    <div className="relative group rounded-xl overflow-hidden border border-white/8" style={{ background: '#242424' }}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/8">
         <span className="text-xs text-gray-500 font-mono">{lang === 'curl' ? 'bash' : 'json'}</span>
         <button

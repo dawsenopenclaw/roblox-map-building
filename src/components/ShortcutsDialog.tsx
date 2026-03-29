@@ -55,7 +55,7 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
 
 function Key({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[1.8rem] h-7 px-2 rounded-md bg-[#111640] border border-white/20 text-xs font-mono text-gray-200 shadow-sm">
+    <kbd className="inline-flex items-center justify-center min-w-[1.8rem] h-7 px-2 rounded-md bg-[#2e2e2e] border border-white/20 text-xs font-mono text-gray-200 shadow-sm">
       {children}
     </kbd>
   )
@@ -95,7 +95,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed inset-0 z-[101] flex items-center justify-center p-4"
           >
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                 <div className="flex items-center gap-2.5">

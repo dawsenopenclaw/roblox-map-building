@@ -89,7 +89,7 @@ function StatCard({
   return (
     <div
       className="rounded-xl border border-gray-800 p-5 flex flex-col gap-3 transition-colors hover:border-gray-700"
-      style={{ background: '#111827' }}
+      style={{ background: '#242424' }}
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{label}</span>
@@ -130,7 +130,7 @@ function ActionCard({
     <Link
       href={href}
       className="group rounded-xl border border-gray-800 p-5 flex flex-col gap-3 transition-all duration-200 hover:border-[#D4AF37]/50 cursor-pointer"
-      style={{ background: '#111827' }}
+      style={{ background: '#242424' }}
       // gold glow on hover via inline style + group-hover driven shadow
     >
       <div
@@ -344,7 +344,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               </div>
               <div
                 className="rounded-xl border border-gray-800 overflow-hidden"
-                style={{ background: '#111827' }}
+                style={{ background: '#242424' }}
               >
                 {activity.map((item, idx) => (
                   <div
@@ -398,7 +398,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
               <div
                 className="rounded-xl border border-gray-800 overflow-hidden"
-                style={{ background: '#111827' }}
+                style={{ background: '#242424' }}
               >
                 <div className="p-2">
                   {CHECKLIST.map((item) => (
@@ -432,7 +432,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               <section>
                 <div
                   className="rounded-xl border p-5"
-                  style={{ background: '#111827', borderColor: `${GOLD}30` }}
+                  style={{ background: '#242424', borderColor: `${GOLD}30` }}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span style={{ color: GOLD }}>⚡</span>

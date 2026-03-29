@@ -454,10 +454,10 @@ export default function GameDnaReportClient() {
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-6">
-        <div className="h-12 w-64 bg-[#0D1231] rounded-xl animate-pulse" />
+        <div className="h-12 w-64 bg-[#242424] rounded-xl animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 bg-[#0D1231] rounded-2xl animate-pulse" />
-          <div className="h-80 bg-[#0D1231] rounded-2xl animate-pulse" />
+          <div className="h-80 bg-[#242424] rounded-2xl animate-pulse" />
+          <div className="h-80 bg-[#242424] rounded-2xl animate-pulse" />
         </div>
       </div>
     )
@@ -557,7 +557,7 @@ export default function GameDnaReportClient() {
           />
           <Link
             href={`/game-dna/compare?a=${scan.id}`}
-            className="px-4 py-2 text-sm bg-[#0D1231] border border-white/10 text-white rounded-xl hover:border-white/20 transition-colors"
+            className="px-4 py-2 text-sm bg-[#242424] border border-white/10 text-white rounded-xl hover:border-white/20 transition-colors"
           >
             Compare
           </Link>
@@ -571,7 +571,7 @@ export default function GameDnaReportClient() {
       </div>
 
       {/* Score summary bar */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Overall Score',   value: totalScore,                               color: scoreColor },
@@ -597,7 +597,7 @@ export default function GameDnaReportClient() {
       </div>
 
       {/* 12-variable genome tags */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Genome Profile</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[
@@ -614,7 +614,7 @@ export default function GameDnaReportClient() {
             { label: 'Update Rate',  value: genome.updateCadence },
             { label: 'Community',    value: genome.communitySize },
           ].map((item) => (
-            <div key={item.label} className="bg-[#111640] rounded-xl p-3">
+            <div key={item.label} className="bg-[#2e2e2e] rounded-xl p-3">
               <p className="text-xs text-gray-500 mb-1">{item.label}</p>
               <p className="text-sm text-white font-medium truncate" title={item.value}>{item.value}</p>
             </div>
@@ -625,7 +625,7 @@ export default function GameDnaReportClient() {
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* CSS Radar chart */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
             Genome Radar vs Genre Average
           </h2>
@@ -633,7 +633,7 @@ export default function GameDnaReportClient() {
         </div>
 
         {/* Monetization breakdown */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
             Monetization Breakdown
           </h2>
@@ -662,7 +662,7 @@ export default function GameDnaReportClient() {
       </div>
 
       {/* Progression timeline */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
           Progression Timeline
         </h2>
@@ -673,13 +673,13 @@ export default function GameDnaReportClient() {
       </div>
 
       {/* Recommendations */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
           Strategic Recommendations
         </h2>
         <div className="space-y-3">
           {(Array.isArray(genome.recommendations) ? genome.recommendations : []).map((rec, i) => (
-            <div key={i} className="flex items-start gap-3 bg-[#111640] rounded-xl px-4 py-3">
+            <div key={i} className="flex items-start gap-3 bg-[#2e2e2e] rounded-xl px-4 py-3">
               <span className="text-[#FFB81C] text-sm font-bold flex-shrink-0 mt-0.5">
                 {String(i + 1).padStart(2, '0')}
               </span>

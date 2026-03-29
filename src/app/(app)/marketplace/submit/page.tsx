@@ -123,7 +123,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('title', e.target.value)}
             placeholder="e.g. Medieval Castle Game Template"
             maxLength={100}
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 
@@ -138,7 +138,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('description', e.target.value)}
             placeholder="Describe what's included, how to use it, and what makes it special..."
             rows={5}
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
+            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
           />
         </div>
 
@@ -151,7 +151,7 @@ export default function SubmitTemplatePage() {
             <select
               value={form.category}
               onChange={e => set('category', e.target.value)}
-              className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50"
+              className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50"
             >
               {CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -171,7 +171,7 @@ export default function SubmitTemplatePage() {
                 value={form.priceCents === 0 ? '' : form.priceCents}
                 onChange={e => set('priceCents', parseFloat(e.target.value) || 0)}
                 placeholder="0.00 (free)"
-                className="w-full bg-[#0D1231] border border-white/10 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#242424] border border-white/10 rounded-xl pl-7 pr-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
               />
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function SubmitTemplatePage() {
             value={form.rbxmFileUrl}
             onChange={e => set('rbxmFileUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
           <p className="text-xs text-gray-500 mt-1">Upload your .rbxm file to a CDN and paste the URL here</p>
         </div>
@@ -202,7 +202,7 @@ export default function SubmitTemplatePage() {
             value={form.thumbnailUrl}
             onChange={e => set('thumbnailUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 
@@ -218,7 +218,7 @@ export default function SubmitTemplatePage() {
               onChange={e => setScreenshotInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
               placeholder="https://..."
-              className="flex-1 bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="flex-1 bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
             />
             <button
               type="button"
@@ -257,7 +257,7 @@ export default function SubmitTemplatePage() {
             value={form.tags}
             onChange={e => set('tags', e.target.value)}
             placeholder="medieval, rpg, adventure (comma-separated)"
-            className="w-full bg-[#0D1231] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-[#242424] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
         </div>
 

@@ -25,7 +25,7 @@ export default function MarketingLoading() {
           <div
             className="relative w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{
-              background: 'linear-gradient(135deg, #1A1F45 0%, #0D1231 100%)',
+              background: 'linear-gradient(135deg, #1A1F45 0%, #242424 100%)',
               border: '1.5px solid rgba(255,184,28,0.35)',
               boxShadow: '0 0 0 0 rgba(255,184,28,0.4)',
               animation: 'logo-pulse 2s ease-in-out infinite',

@@ -104,7 +104,7 @@ export function ApiErrorCard({ variant, onRetry, className = '' }: ApiErrorCardP
 
   return (
     <div
-      className={`bg-[#0D1231] border ${config.borderColor} rounded-2xl p-6 text-center ${className}`}
+      className={`bg-[#242424] border ${config.borderColor} rounded-2xl p-6 text-center ${className}`}
     >
       {/* Icon */}
       <div

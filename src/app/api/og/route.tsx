@@ -1,9 +1,9 @@
 ﻿import { ImageResponse } from '@vercel/og'
 import { NextRequest } from 'next/server'
 
-const BG = '#0A0E27'
+const BG = '#1a1a1a'
 const GOLD = '#FFB81C'
-const DARK_CARD = '#0D1231'
+const DARK_CARD = '#242424'
 const GRAY = '#9CA3AF'
 
 // Tier colors

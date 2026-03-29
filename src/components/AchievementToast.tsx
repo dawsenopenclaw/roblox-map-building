@@ -67,7 +67,7 @@ function AchievementToastProviderInner() {
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className="bg-[#0D1231] border border-[#FFB81C]/40 rounded-xl px-5 py-4 flex items-center gap-3 shadow-lg shadow-black/40 animate-in slide-in-from-bottom-4"
+          className="bg-[#242424] border border-[#FFB81C]/40 rounded-xl px-5 py-4 flex items-center gap-3 shadow-lg shadow-black/40 animate-in slide-in-from-bottom-4"
           style={{ minWidth: 280 }}
         >
           <div className="text-3xl flex-shrink-0" aria-hidden="true">{toast.icon}</div>

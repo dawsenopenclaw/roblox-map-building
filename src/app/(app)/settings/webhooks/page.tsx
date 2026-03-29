@@ -167,7 +167,7 @@ export default function WebhooksPage() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
             <h2 className="text-white font-bold text-lg mb-6">Add Webhook Endpoint</h2>
 
             <div className="mb-4">
@@ -177,7 +177,7 @@ export default function WebhooksPage() {
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="https://your-server.com/webhooks/ForjeGames"
-                className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
                 autoFocus
               />
               <p className="text-gray-600 text-xs mt-1">Must be HTTPS.</p>
@@ -250,11 +250,11 @@ export default function WebhooksPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5 animate-pulse h-28" />
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5 animate-pulse h-28" />
           ))}
         </div>
       ) : endpoints.length === 0 ? (
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-4">&#128257;</div>
           <h3 className="text-white font-semibold mb-2">No webhook endpoints</h3>
           <p className="text-gray-400 text-sm mb-6">
@@ -272,7 +272,7 @@ export default function WebhooksPage() {
           {endpoints.map((ep) => {
             const lastDelivery = ep.deliveries?.[0] ?? null
             return (
-              <div key={ep.id} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+              <div key={ep.id} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
@@ -331,7 +331,7 @@ export default function WebhooksPage() {
       )}
 
       {/* Signature verification guide */}
-      <div className="mt-8 bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+      <div className="mt-8 bg-[#242424] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-3">Verifying Signatures</h3>
         <p className="text-gray-400 text-sm mb-4">
           Every request includes an <code className="text-[#FFB81C] bg-[#FFB81C]/10 px-1 rounded">X-ForjeGames-Signature</code> header

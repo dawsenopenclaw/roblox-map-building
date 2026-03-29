@@ -206,7 +206,7 @@ function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: Mod
       </button>
 
       {open && (
-        <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#0D1231] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#242424] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="px-3 py-2 border-b border-white/8">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Select Model</p>
           </div>
@@ -515,7 +515,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
   return (
     <div
       className="flex-1 relative overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #0A1628 0%, #0D1F3C 35%, #111827 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #0A1628 0%, #0D1F3C 35%, #242424 100%)' }}
     >
       {/* Sky gradient */}
       <div className="absolute inset-0 pointer-events-none" style={{

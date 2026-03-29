@@ -32,7 +32,7 @@ export function CostDashboard() {
   return (
     <div className="space-y-6">
       {/* Today's running cost */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <h2 className="text-white font-semibold mb-4">Today&apos;s API Spend</h2>
         <p className="text-4xl font-bold text-[#FFB81C]">
           {formatCurrency(today?.totalCostUsd || 0)}
@@ -42,7 +42,7 @@ export function CostDashboard() {
             {Object.entries(today.byProvider).map(([provider, data]) => {
               const costUsd = typeof data === 'number' ? data : (data as ProviderData).costUsd
               return (
-                <div key={provider} className="bg-[#0A0E27] rounded-lg p-3">
+                <div key={provider} className="bg-[#1a1a1a] rounded-lg p-3">
                   <p className="text-gray-400 text-xs uppercase">{provider}</p>
                   <p className="text-white font-medium">{formatCurrency(costUsd)}</p>
                 </div>
@@ -53,7 +53,7 @@ export function CostDashboard() {
       </div>
 
       {/* 30-day history */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <h2 className="text-white font-semibold mb-4">30-Day Cost History</h2>
         {isLoading ? (
           <div className="space-y-2">

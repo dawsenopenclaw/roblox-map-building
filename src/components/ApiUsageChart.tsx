@@ -50,7 +50,7 @@ function CustomTooltip({ active, payload, label, range }: CustomTooltipProps) {
   if (!active || !payload?.length || !label) return null
   const formatter = range === '7d' ? formatDay : formatHour
   return (
-    <div className="bg-[#0A0E27] border border-white/10 rounded-xl px-4 py-3 text-sm shadow-xl">
+    <div className="bg-[#1a1a1a] border border-white/10 rounded-xl px-4 py-3 text-sm shadow-xl">
       <p className="text-gray-400 mb-2">{formatter(label)}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color }} className="font-medium">
@@ -80,7 +80,7 @@ export function ApiUsageChart({
   const labelFormatter = range === '7d' ? formatDay : formatHour
 
   return (
-    <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+    <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-white font-semibold">Requests Over Time</h3>
         <div className="flex gap-1 bg-white/5 rounded-lg p-1">
@@ -160,7 +160,7 @@ export function ApiUsageChart({
               strokeWidth={2}
               fill="url(#goldGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#FFB81C', stroke: '#0A0E27', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#FFB81C', stroke: '#1a1a1a', strokeWidth: 2 }}
             />
             <Area
               type="monotone"
@@ -170,7 +170,7 @@ export function ApiUsageChart({
               strokeWidth={2}
               fill="url(#redGradient)"
               dot={false}
-              activeDot={{ r: 4, fill: '#ef4444', stroke: '#0A0E27', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#ef4444', stroke: '#1a1a1a', strokeWidth: 2 }}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -338,7 +338,7 @@ export function GameTree({ onSelect, className = '' }: GameTreeProps) {
   )
 
   return (
-    <div className={`flex flex-col h-full bg-[#0D1020] ${className}`}>
+    <div className={`flex flex-col h-full bg-[#1e1e1e] ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/8 flex-shrink-0">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Explorer</span>

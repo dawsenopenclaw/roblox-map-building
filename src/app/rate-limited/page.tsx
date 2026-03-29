@@ -51,14 +51,14 @@ function RateLimitedContent() {
   })
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4 overflow-hidden">
       {/* Amber ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div className="w-[500px] h-[500px] rounded-full bg-[#FFB81C]/8 blur-[120px]" />
       </div>
 
       <div className="relative max-w-md w-full text-center">
-        <div className="bg-[#0D1231]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#242424]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Hourglass icon */}
           <div className="mx-auto mb-6 relative w-20 h-20">
@@ -129,7 +129,7 @@ function RateLimitedContent() {
 
 export default function RateLimitedPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0A0E27]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#1a1a1a]" />}>
       <RateLimitedContent />
     </Suspense>
   )

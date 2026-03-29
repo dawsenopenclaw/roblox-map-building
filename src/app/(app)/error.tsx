@@ -15,7 +15,7 @@ export default function AppError({
   return (
     <div className="flex items-center justify-center min-h-[60vh] p-6">
       <div className="max-w-md w-full text-center">
-        <div className={`bg-[#0D1231] rounded-2xl p-8 border ${
+        <div className={`bg-[#242424] rounded-2xl p-8 border ${
           isAiTimeout ? 'border-[#FFB81C]/20' : 'border-white/10'
         }`}>
           <div className="text-5xl mb-4">{isAiTimeout ? '⏳' : '🔧'}</div>

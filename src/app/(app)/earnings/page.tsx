@@ -59,7 +59,7 @@ export default function EarningsPage() {
         {STATS.map((stat) => {
           const Icon = stat.icon
           return (
-            <div key={stat.label} className="bg-[#0D1231] border border-white/10 rounded-xl p-4">
+            <div key={stat.label} className="bg-[#242424] border border-white/10 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Icon size={14} style={{ color: stat.color }} />
                 <p className="text-gray-500 text-xs">{stat.label}</p>
@@ -86,7 +86,7 @@ export default function EarningsPage() {
       </div>
 
       {/* Payout history */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Payout History</p>
 
         {PAYOUTS.length === 0 ? (
@@ -122,7 +122,7 @@ export default function EarningsPage() {
       </div>
 
       {/* CTA */}
-      <div className="mt-6 bg-[#0D1231] border border-white/10 rounded-xl p-6 flex items-center justify-between gap-4 flex-wrap">
+      <div className="mt-6 bg-[#242424] border border-white/10 rounded-xl p-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-white font-semibold text-sm">Sell your map templates</p>
           <p className="text-gray-400 text-xs mt-0.5">List your maps on the marketplace and earn 80% of every sale.</p>

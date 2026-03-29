@@ -113,7 +113,7 @@ function ErrorShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div
@@ -123,7 +123,7 @@ function ErrorShell({
       </div>
 
       <div className="relative max-w-md w-full text-center">
-        <div className="bg-[#0D1231]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#242424]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
 
           {/* Icon */}
           <div

@@ -1,4 +1,5 @@
-﻿import { auth } from '@clerk/nextjs/server'
+﻿import React from 'react'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { AdminShell } from '@/components/admin/AdminShell'
 

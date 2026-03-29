@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -118,11 +117,6 @@ function estimateTokens(text: string): number {
 // ─── POST /api/ai/chat ────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { userId } = await auth()
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   let body: { message?: unknown; conversationId?: unknown }
 
   try {

@@ -330,14 +330,14 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
   }, [])
 
   return (
-    <div className="flex flex-col h-full bg-[#0A0E1A] text-white" style={{ height: 'calc(100vh - 0px)' }}>
+    <div className="flex flex-col h-full bg-[#1a1a1a] text-white" style={{ height: 'calc(100vh - 0px)' }}>
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div className="h-11 bg-[#0D1020] border-b border-white/8 flex items-center px-4 gap-4 flex-shrink-0 select-none">
+      <div className="h-11 bg-[#1e1e1e] border-b border-white/8 flex items-center px-4 gap-4 flex-shrink-0 select-none">
         {/* Logo */}
         <div className="flex items-center gap-2 mr-2">
           <div className="w-6 h-6 rounded bg-[#FFB81C] flex items-center justify-center flex-shrink-0">
-            <span className="text-[#0A0E1A] text-xs font-black">R</span>
+            <span className="text-[#1a1a1a] text-xs font-black">R</span>
           </div>
           <span className="text-white font-bold text-sm hidden sm:block">ForjeGames</span>
         </div>
@@ -403,7 +403,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
       <div className="flex flex-1 min-h-0">
 
         {/* Left sidebar — Project Navigator / Explorer */}
-        <aside className="w-56 bg-[#0D1020] border-r border-white/8 flex flex-col flex-shrink-0">
+        <aside className="w-56 bg-[#1e1e1e] border-r border-white/8 flex flex-col flex-shrink-0">
           {/* Explorer header */}
           <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/8">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Explorer</span>
@@ -483,7 +483,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
                 {selectedId && selectedProps ? (
-                  <div className="bg-[#0D1020]/80 border border-white/10 rounded-xl px-6 py-4 backdrop-blur-sm">
+                  <div className="bg-[#1e1e1e]/80 border border-white/10 rounded-xl px-6 py-4 backdrop-blur-sm">
                     <p className="text-xs text-gray-500 mb-1">Selected</p>
                     <p className="text-lg font-semibold text-white">{selectedProps.label}</p>
                     <p className="text-xs text-gray-500 mt-1">{selectedProps.type} — properties in right panel</p>
@@ -554,7 +554,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                     if (e.key === 'Escape') setShowSuggestions(false)
                   }}
                   placeholder="Type a command or click the mic to speak..."
-                  className="w-full bg-[#141728] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/40 focus:bg-[#141728] transition-colors"
+                  className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/40 focus:bg-[#2a2a2a] transition-colors"
                   aria-label="Build command input"
                 />
               </div>
@@ -574,10 +574,10 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
               <button
                 onClick={submitCommand}
                 disabled={!command.trim() || isSubmitting}
-                className="h-9 px-4 rounded-lg bg-[#FFB81C] hover:bg-[#FFB81C]/90 disabled:opacity-30 disabled:cursor-not-allowed text-[#0A0E1A] text-sm font-semibold transition-colors flex-shrink-0 flex items-center gap-1.5"
+                className="h-9 px-4 rounded-lg bg-[#FFB81C] hover:bg-[#FFB81C]/90 disabled:opacity-30 disabled:cursor-not-allowed text-[#1a1a1a] text-sm font-semibold transition-colors flex-shrink-0 flex items-center gap-1.5"
               >
                 {isSubmitting ? (
-                  <span className="w-4 h-4 border-2 border-[#0A0E1A]/30 border-t-[#0A0E1A] rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-[#1a1a1a]/30 border-t-[#1a1a1a] rounded-full animate-spin" />
                 ) : (
                   <>
                     Build
@@ -592,7 +592,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
         </div>
 
         {/* Right sidebar — Properties / AI Output */}
-        <aside className="w-60 bg-[#0D1020] border-l border-white/8 flex flex-col flex-shrink-0">
+        <aside className="w-60 bg-[#1e1e1e] border-l border-white/8 flex flex-col flex-shrink-0">
           {selectedProps ? (
             <>
               {/* Properties panel */}
@@ -607,7 +607,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                   <p className="text-xs text-gray-500 mb-1.5 font-medium">Name</p>
                   <input
                     defaultValue={selectedProps.label}
-                    className="w-full bg-[#141728] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
                   />
                 </div>
 
@@ -620,7 +620,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                         <p className="text-xs text-gray-600 mb-1 text-center">{axis.toUpperCase()}</p>
                         <input
                           defaultValue={selectedProps.position[axis]}
-                          className="w-full bg-[#141728] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                          className="w-full bg-[#2a2a2a] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
                         />
                       </div>
                     ))}
@@ -636,7 +636,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                         <p className="text-xs text-gray-600 mb-1 text-center">{axis.toUpperCase()}</p>
                         <input
                           defaultValue={selectedProps.size[axis]}
-                          className="w-full bg-[#141728] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                          className="w-full bg-[#2a2a2a] border border-white/10 rounded px-1.5 py-1 text-xs text-gray-200 font-mono text-center focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
                         />
                       </div>
                     ))}
@@ -648,10 +648,10 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                   <p className="text-xs text-gray-500 mb-1.5 font-medium">Material</p>
                   <select
                     defaultValue={selectedProps.material}
-                    className="w-full bg-[#141728] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors appearance-none cursor-pointer"
+                    className="w-full bg-[#2a2a2a] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 font-mono focus:outline-none focus:border-[#FFB81C]/40 transition-colors appearance-none cursor-pointer"
                   >
                     {['SmoothPlastic', 'Grass', 'Wood', 'Metal', 'Brick', 'Marble', 'Neon', 'Glass'].map((m) => (
-                      <option key={m} value={m} className="bg-[#141728]">{m}</option>
+                      <option key={m} value={m} className="bg-[#2a2a2a]">{m}</option>
                     ))}
                   </select>
                 </div>

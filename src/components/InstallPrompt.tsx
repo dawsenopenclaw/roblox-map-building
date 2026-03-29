@@ -81,7 +81,7 @@ export function InstallPrompt() {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* Mini icon */}
-          <div className="w-10 h-10 rounded-xl bg-[#0A0E27] border border-white/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[#1a1a1a] border border-white/10 flex items-center justify-center flex-shrink-0">
             <svg viewBox="0 0 40 40" className="w-6 h-6">
               <path
                 d="M20 4 L23 13 L18 9 Z"
@@ -128,7 +128,7 @@ export function InstallPrompt() {
       <div className="flex gap-2">
         <button
           onClick={handleInstall}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#F5A623] text-[#0A0E27] text-sm font-semibold hover:bg-[#F5A623]/90 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#F5A623] text-[#1a1a1a] text-sm font-semibold hover:bg-[#F5A623]/90 transition-colors"
         >
           <Download className="w-4 h-4" />
           Install

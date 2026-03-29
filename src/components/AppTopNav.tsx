@@ -231,7 +231,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length
 
   return (
-    <header className="h-14 bg-[#111827] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
+    <header className="h-14 bg-[#242424] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
       {/* Hamburger (mobile) */}
       <button
         onClick={onMenuOpen}
@@ -262,7 +262,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* New Project */}
       <Link
         href="/voice"
-        className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#D4AF37]/90 active:scale-95 text-[#0A0E1A] text-xs font-bold rounded-lg px-3 py-2 transition-all duration-150 flex-shrink-0"
+        className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#D4AF37]/90 active:scale-95 text-[#1a1a1a] text-xs font-bold rounded-lg px-3 py-2 transition-all duration-150 flex-shrink-0"
         aria-label="New project (Ctrl+N)"
       >
         <IconPlus />
@@ -299,7 +299,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           <IconBell />
           {unreadCount > 0 && (
             <span
-              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#111827]"
+              className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#242424]"
               style={{ background: '#D4AF37' }}
               aria-hidden="true"
             />
@@ -322,7 +322,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
             className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs select-none flex-shrink-0"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
-              color: '#0A0E1A',
+              color: '#1a1a1a',
             }}
             aria-hidden="true"
           >

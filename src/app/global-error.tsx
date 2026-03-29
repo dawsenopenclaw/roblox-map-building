@@ -26,7 +26,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="bg-[#0A0E27] text-white antialiased">
+      <body className="bg-[#1a1a1a] text-white antialiased">
         {/* Ambient red glow */}
         <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
           <div className="w-[500px] h-[500px] rounded-full bg-red-500/8 blur-[120px]" />
@@ -34,7 +34,7 @@ export default function GlobalError({
 
         <div className="relative min-h-screen flex items-center justify-center p-4">
           <div className="max-w-md w-full text-center">
-            <div className="bg-[#0D1231]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+            <div className="bg-[#242424]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
 
               {/* Icon */}
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">

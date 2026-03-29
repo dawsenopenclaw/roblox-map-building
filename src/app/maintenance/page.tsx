@@ -46,7 +46,7 @@ export default function MaintenancePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4 overflow-hidden">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div className="w-[550px] h-[550px] rounded-full bg-[#FFB81C]/6 blur-[120px]" />
@@ -63,7 +63,7 @@ export default function MaintenancePage() {
       />
 
       <div className="relative max-w-lg w-full text-center">
-        <div className="bg-[#0D1231]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+        <div className="bg-[#242424]/90 backdrop-blur-sm border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
 
           {/* Animated icon wrapper */}
           <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center animate-[spin_8s_linear_infinite]"

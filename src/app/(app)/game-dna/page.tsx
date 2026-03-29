@@ -160,7 +160,7 @@ function RadarChart({ values }: { values: { axis: string; score: number }[] }) {
             cy={pt.y}
             r="4"
             fill="#FFB81C"
-            stroke="#0A0E1A"
+            stroke="#1a1a1a"
             strokeWidth="2"
           />
         )
@@ -318,7 +318,7 @@ export default function GameDnaPage() {
       </div>
 
       {/* ── URL Input Card ── */}
-      <GlowCard className="bg-[#0D1020] border border-white/8 p-6 space-y-4">
+      <GlowCard className="bg-[#1e1e1e] border border-white/8 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             {/* Subtle icon */}
@@ -334,17 +334,17 @@ export default function GameDnaPage() {
               onKeyDown={(e) => { if (e.key === 'Enter') handleAnalyze() }}
               placeholder="Paste any Roblox game URL..."
               disabled={phase === 'loading'}
-              className="w-full bg-[#141728] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/50 focus:bg-[#141728] transition-colors disabled:opacity-50"
+              className="w-full bg-[#2a2a2a] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#FFB81C]/50 focus:bg-[#2a2a2a] transition-colors disabled:opacity-50"
             />
           </div>
           <button
             onClick={phase === 'result' ? reset : handleAnalyze}
             disabled={phase === 'loading' || (!url.trim() && phase !== 'result')}
-            className="flex-shrink-0 h-11 px-6 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#0A0E1A] text-sm font-bold transition-all duration-150 flex items-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
+            className="flex-shrink-0 h-11 px-6 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] disabled:opacity-30 disabled:cursor-not-allowed text-[#1a1a1a] text-sm font-bold transition-all duration-150 flex items-center gap-2 shadow-[0_0_20px_rgba(255,184,28,0.25)]"
           >
             {phase === 'loading' ? (
               <>
-                <span className="w-4 h-4 border-2 border-[#0A0E1A]/30 border-t-[#0A0E1A] rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-[#1a1a1a]/30 border-t-[#1a1a1a] rounded-full animate-spin" />
                 Analyzing
               </>
             ) : phase === 'result' ? (
@@ -393,7 +393,7 @@ export default function GameDnaPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="bg-[#0D1020] border border-white/8 rounded-2xl p-6"
+            className="bg-[#1e1e1e] border border-white/8 rounded-2xl p-6"
           >
             <AnalysisSkeleton />
           </motion.div>
@@ -411,7 +411,7 @@ export default function GameDnaPage() {
             className="space-y-6"
           >
             {/* Game header strip */}
-            <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#0D1020] border border-[#FFB81C]/15 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-4 px-5 py-4 bg-[#1e1e1e] border border-[#FFB81C]/15 rounded-2xl">
               <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/15 border border-[#FFB81C]/25 flex items-center justify-center text-xl flex-shrink-0">
                 🎮
               </div>
@@ -436,7 +436,7 @@ export default function GameDnaPage() {
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
               {/* Radar chart */}
-              <AnimatedCard className="lg:col-span-2 bg-[#0D1020] border border-white/8 rounded-2xl p-5 flex flex-col items-center gap-4">
+              <AnimatedCard className="lg:col-span-2 bg-[#1e1e1e] border border-white/8 rounded-2xl p-5 flex flex-col items-center gap-4">
                 <div className="w-full flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">DNA Radar</span>
                   <span className="text-xs text-gray-600">6 axes</span>
@@ -452,7 +452,7 @@ export default function GameDnaPage() {
                     key={gene.id}
                     index={i}
                     onClick={() => setActiveGene(activeGene === gene.id ? null : gene.id)}
-                    className={`bg-[#0D1020] border rounded-xl p-4 cursor-pointer transition-colors ${
+                    className={`bg-[#1e1e1e] border rounded-xl p-4 cursor-pointer transition-colors ${
                       activeGene === gene.id
                         ? 'border-[#FFB81C]/40 bg-[#FFB81C]/5'
                         : 'border-white/8 hover:border-white/15'
@@ -523,7 +523,7 @@ export default function GameDnaPage() {
               </div>
               <a
                 href="/editor"
-                className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#0A0E1A] text-sm font-bold transition-colors shadow-[0_0_16px_rgba(255,184,28,0.2)]"
+                className="flex-shrink-0 px-5 py-2.5 rounded-xl bg-[#FFB81C] hover:bg-[#D4AF37] text-[#1a1a1a] text-sm font-bold transition-colors shadow-[0_0_16px_rgba(255,184,28,0.2)]"
               >
                 Open in Editor
               </a>
@@ -547,7 +547,7 @@ export default function GameDnaPage() {
             <AnimatedCard
               key={feat.title}
               index={i}
-              className="bg-[#0D1020] border border-white/8 rounded-xl p-5 space-y-3"
+              className="bg-[#1e1e1e] border border-white/8 rounded-xl p-5 space-y-3"
             >
               <span className="text-2xl">{feat.icon}</span>
               <div>

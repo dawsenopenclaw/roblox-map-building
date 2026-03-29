@@ -177,7 +177,7 @@ export default function ApiKeysPage() {
       {/* Create form modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-white font-bold text-lg mb-6">Create API Key</h2>
 
             <div className="mb-4">
@@ -188,7 +188,7 @@ export default function ApiKeysPage() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && createKey()}
                 placeholder="e.g. Production, My Script"
-                className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
                 autoFocus
               />
             </div>
@@ -260,11 +260,11 @@ export default function ApiKeysPage() {
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5 animate-pulse h-24" />
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5 animate-pulse h-24" />
           ))}
         </div>
       ) : keys.length === 0 ? (
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-4">&#128273;</div>
           <h3 className="text-white font-semibold mb-2">No API keys yet</h3>
           <p className="text-gray-400 text-sm mb-6">
@@ -280,7 +280,7 @@ export default function ApiKeysPage() {
       ) : (
         <div className="space-y-3">
           {keys.map((key) => (
-            <div key={key.id} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div key={key.id} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
@@ -342,7 +342,7 @@ export default function ApiKeysPage() {
       )}
 
       {/* Rate limit info */}
-      <div className="mt-8 bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+      <div className="mt-8 bg-[#242424] border border-white/10 rounded-2xl p-6">
         <h3 className="text-white font-semibold mb-3">Rate Limits by Tier</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

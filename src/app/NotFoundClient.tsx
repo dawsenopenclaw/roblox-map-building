@@ -24,7 +24,7 @@ export default function NotFoundClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4 overflow-hidden">
       {/* Background grid */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.04]"
@@ -55,14 +55,14 @@ export default function NotFoundClient() {
           404
         </p>
 
-        <div className="relative bg-[#0D1231]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+        <div className="relative bg-[#242424]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
           {/* Icon */}
           <div className="relative w-20 h-20 mx-auto mb-5">
             <div
               className="absolute inset-0 rounded-full bg-[#FFB81C]/10 animate-ping"
               style={{ animationDuration: '3s' }}
             />
-            <div className="relative w-20 h-20 rounded-full bg-[#0A0E27] border-2 border-[#FFB81C]/30 flex items-center justify-center">
+            <div className="relative w-20 h-20 rounded-full bg-[#1a1a1a] border-2 border-[#FFB81C]/30 flex items-center justify-center">
               <svg
                 className="w-9 h-9 text-[#FFB81C]"
                 fill="none"
@@ -92,7 +92,7 @@ export default function NotFoundClient() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search for a page..."
-              className="flex-1 bg-[#0A0E27] border border-white/10 focus:border-[#FFB81C]/50 text-white placeholder-gray-600 text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
+              className="flex-1 bg-[#1a1a1a] border border-white/10 focus:border-[#FFB81C]/50 text-white placeholder-gray-600 text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
             />
             <button
               type="submit"

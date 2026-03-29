@@ -34,7 +34,7 @@ export function CharitySelector({ current }: { current?: string }) {
   }
 
   return (
-    <div className="bg-[#0D1231] border border-white/10 rounded-xl p-4">
+    <div className="bg-[#242424] border border-white/10 rounded-xl p-4">
       <p className="text-white font-medium mb-1">Your 10% goes to</p>
       <p className="text-gray-400 text-sm mb-4">10% of every payment is automatically donated.</p>
       <div className="space-y-2">

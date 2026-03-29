@@ -105,7 +105,7 @@ export default function BillingClient() {
       <div className="space-y-4">
 
         {/* ── Current Plan ── */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Current Plan</p>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
@@ -142,7 +142,7 @@ export default function BillingClient() {
         </div>
 
         {/* ── Token Balance ── */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Token Balance</p>
 
           {/* Big number */}
@@ -181,7 +181,7 @@ export default function BillingClient() {
         </div>
 
         {/* ── Usage Breakdown ── */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-5">Usage This Month</p>
           <div className="space-y-5">
             {USAGE_STATS.map(stat => (
@@ -191,7 +191,7 @@ export default function BillingClient() {
         </div>
 
         {/* ── Payment History ── */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment History</p>
             <button

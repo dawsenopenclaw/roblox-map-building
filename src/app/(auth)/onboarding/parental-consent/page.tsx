@@ -37,9 +37,9 @@ export default function ParentalConsentPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
-          <div className="bg-[#0D1231] border border-white/10 rounded-xl p-8 shadow-xl">
+          <div className="bg-[#242424] border border-white/10 rounded-xl p-8 shadow-xl">
             <div className="text-4xl mb-4">📧</div>
             <h2 className="text-xl font-bold text-white mb-3">Check your parent&apos;s email</h2>
             <p className="text-gray-400 text-sm">
@@ -53,12 +53,12 @@ export default function ParentalConsentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
         </div>
-        <div className="bg-[#0D1231] border border-white/10 rounded-xl p-8 shadow-xl">
+        <div className="bg-[#242424] border border-white/10 rounded-xl p-8 shadow-xl">
           <h2 className="text-xl font-bold text-white mb-2">Parent&apos;s Permission Required</h2>
           <p className="text-gray-400 text-sm mb-6">
             Since you&apos;re under 13, we need a parent or guardian to approve your account. This is required by US law (COPPA). We&apos;ll send them a one-click approval link.
@@ -80,7 +80,7 @@ export default function ParentalConsentPage() {
               />
             </div>
 
-            <div className="bg-[#0A0E27] rounded-lg p-4 text-xs text-gray-500">
+            <div className="bg-[#1a1a1a] rounded-lg p-4 text-xs text-gray-500">
               <strong className="text-gray-400">What we tell your parent:</strong>
               <ul className="mt-2 space-y-1 list-disc list-inside">
                 <li>What ForjeGames is (AI game dev platform)</li>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Users, DollarSign, Layers, CreditCard, Activity } from 'lucide-react'
 
 interface DashboardStats {
@@ -71,7 +71,7 @@ const METHOD_COLORS: Record<string, string> = {
 
 function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-5 flex items-start gap-4">
+    <div className="bg-[#242424] border border-[#3a3a3a] rounded-xl p-5 flex items-start gap-4">
       <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center flex-shrink-0">
         {icon}
       </div>
@@ -161,7 +161,7 @@ export default function AdminOverviewPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue chart */}
-        <div className="xl:col-span-2 bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
+        <div className="xl:col-span-2 bg-[#242424] border border-[#3a3a3a] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-1">
             Revenue — Last 30 Days
           </h2>
@@ -196,7 +196,7 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* Recent activity */}
-        <div className="bg-[#0D1231] border border-[#1E2451] rounded-xl p-6">
+        <div className="bg-[#242424] border border-[#3a3a3a] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#6B7280] uppercase tracking-wider mb-4 flex items-center gap-2">
             <Activity className="w-4 h-4 text-[#FFB81C]" />
             Recent Activity
@@ -211,7 +211,7 @@ export default function AdminOverviewPage() {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3 py-2 border-b border-[#1E2451] last:border-0"
+                    className="flex items-start gap-3 py-2 border-b border-[#3a3a3a] last:border-0"
                   >
                     <span
                       className={`text-xs font-mono font-bold w-12 flex-shrink-0 ${METHOD_COLORS[method] ?? 'text-[#6B7280]'}`}

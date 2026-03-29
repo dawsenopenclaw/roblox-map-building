@@ -66,7 +66,7 @@ export function ActivityBar() {
 
   return (
     <div
-      className="w-12 bg-[#070910] border-r border-white/8 flex flex-col items-center py-2 flex-shrink-0 select-none"
+      className="w-12 bg-[#1a1a1a] border-r border-white/8 flex flex-col items-center py-2 flex-shrink-0 select-none"
       role="navigation"
       aria-label="Activity bar"
     >
@@ -77,7 +77,7 @@ export function ActivityBar() {
         aria-label="ForjeGames — go to editor"
         title="ForjeGames"
       >
-        <span className="text-[#070910] text-xs font-black">R</span>
+        <span className="text-[#1a1a1a] text-xs font-black">R</span>
       </Link>
 
       {/* Primary nav */}

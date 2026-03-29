@@ -116,7 +116,7 @@ function FooterColumn({
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#111827] mt-auto">
+    <footer className="border-t border-white/10 bg-[#242424] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
 
         {/* Brand + charity badge row */}

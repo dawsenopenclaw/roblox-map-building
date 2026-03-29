@@ -248,14 +248,14 @@ function CompareContent() {
       )}
 
       {/* Selector */}
-      <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+      <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide">Game A</label>
             <select
               value={scanAId}
               onChange={(e) => setScanAId(e.target.value)}
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.map((s) => (
@@ -270,7 +270,7 @@ function CompareContent() {
             <select
               value={scanBId}
               onChange={(e) => setScanBId(e.target.value)}
-              className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              className="w-full bg-[#2e2e2e] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.filter((s) => s.id !== scanAId).map((s) => (
@@ -295,7 +295,7 @@ function CompareContent() {
         <>
           {/* Radar comparison */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
                 {scanA!.gameName || 'Game A'}
               </h2>
@@ -309,7 +309,7 @@ function CompareContent() {
               </ResponsiveContainer>
             </div>
 
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
                 {scanB!.gameName || 'Game B'}
               </h2>
@@ -325,7 +325,7 @@ function CompareContent() {
           </div>
 
           {/* Overlay radar */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
               Overlay Comparison
             </h2>
@@ -341,7 +341,7 @@ function CompareContent() {
           </div>
 
           {/* Difference table */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/5">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
                 Attribute Comparison
@@ -392,7 +392,7 @@ function CompareContent() {
           </div>
 
           {/* Strategic recommendations */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-5">
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
               Strategic Gaps — Where to Improve
             </h2>
@@ -430,7 +430,7 @@ function CompareContent() {
 
       {/* Empty state */}
       {!canCompare && !loading && (
-        <div className="bg-[#0D1231] border border-dashed border-white/10 rounded-2xl p-12 text-center">
+        <div className="bg-[#242424] border border-dashed border-white/10 rounded-2xl p-12 text-center">
           <div className="text-5xl mb-4">🧬 vs 🧬</div>
           <p className="text-gray-400 text-sm">
             Select two completed scans above to see a side-by-side comparison

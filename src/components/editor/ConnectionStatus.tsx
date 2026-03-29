@@ -103,7 +103,7 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
   // Full panel
   // ---------------------------------------------------------------------------
   return (
-    <div className={`bg-[#0D1020] border border-white/8 rounded-xl p-4 select-none ${className}`}>
+    <div className={`bg-[#1e1e1e] border border-white/8 rounded-xl p-4 select-none ${className}`}>
       {/* Status row */}
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_CLASSES[state]}`} />

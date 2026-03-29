@@ -32,7 +32,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-xl p-4 mb-6">
+    <form onSubmit={handleSubmit} className="bg-[#242424] border border-[#FFB81C]/20 rounded-xl p-4 mb-6">
       <h3 className="text-sm font-medium text-white mb-3">Leave a Review</h3>
 
       {/* Star picker */}

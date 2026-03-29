@@ -6,15 +6,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /* ── Core backgrounds ── */
-        background:        '#030712',   // gray-950
-        surface:           '#111827',   // gray-900
-        'surface-2':       '#1a2236',   // card variant
-        'surface-elevated':'#1f2937',   // gray-800
+        /* ── Core backgrounds — dark grey ── */
+        background:        '#1a1a1a',   // dark grey
+        surface:           '#242424',   // medium-dark grey
+        'surface-2':       '#2e2e2e',   // lighter grey variant
+        'surface-elevated':'#383838',   // elevated panels
 
         /* ── Borders ── */
-        border:            '#1f2937',   // gray-800
-        'border-subtle':   '#374151',   // gray-700
+        border:            '#3a3a3a',   // grey border
+        'border-subtle':   '#4a4a4a',   // focus/hover borders
 
         /* ── Gold accent ── */
         gold:              '#D4AF37',
@@ -45,7 +45,7 @@ const config: Config = {
         'gradient-conic':    'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
         'gold-shimmer':      'linear-gradient(90deg, transparent, rgba(212,175,55,0.3), transparent)',
         'hero-glow':         'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 70%)',
-        'card-gradient':     'linear-gradient(135deg, rgba(26,34,54,0.9) 0%, rgba(17,24,39,0.9) 100%)',
+        'card-gradient':     'linear-gradient(135deg, rgba(46,46,46,0.9) 0%, rgba(36,36,36,0.9) 100%)',
       },
       boxShadow: {
         'gold-sm':  '0 0 10px rgba(212,175,55,0.15)',

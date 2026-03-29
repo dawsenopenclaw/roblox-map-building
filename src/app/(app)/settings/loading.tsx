@@ -25,7 +25,7 @@ export default function SettingsLoading() {
         {/* Account tab content */}
         <div className="space-y-6">
           {/* Profile Photo card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
             <div className="h-5 w-32 rounded-lg shimmer-gold mb-4" />
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full shimmer flex-shrink-0" />
@@ -37,7 +37,7 @@ export default function SettingsLoading() {
           </div>
 
           {/* Profile Details card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
             <div className="h-5 w-36 rounded-lg shimmer-gold mb-4" />
             <div className="space-y-4">
               {[0, 1, 2].map((i) => (
@@ -51,14 +51,14 @@ export default function SettingsLoading() {
           </div>
 
           {/* Password card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
             <div className="h-5 w-24 rounded-lg shimmer-gold mb-2" />
             <div className="h-4 w-full max-w-sm rounded-md shimmer mb-4" />
             <div className="h-10 w-36 rounded-xl shimmer" />
           </div>
 
           {/* Billing card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
             <div className="h-5 w-20 rounded-lg shimmer-gold mb-2" />
             <div className="h-4 w-72 rounded-md shimmer mb-4" />
             <div className="h-10 w-32 rounded-xl shimmer" />

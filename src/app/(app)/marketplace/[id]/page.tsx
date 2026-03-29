@@ -457,7 +457,7 @@ function TemplateDetail({
           {/* Screenshot gallery */}
           {template.screenshots.length > 0 ? (
             <div className="space-y-3">
-              <div className="aspect-video bg-[#111640] rounded-xl overflow-hidden">
+              <div className="aspect-video bg-[#2e2e2e] rounded-xl overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={template.screenshots[0].url}
@@ -468,7 +468,7 @@ function TemplateDetail({
               {template.screenshots.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {template.screenshots.map((s) => (
-                    <div key={s.id} className="w-24 h-16 flex-shrink-0 bg-[#111640] rounded-lg overflow-hidden">
+                    <div key={s.id} className="w-24 h-16 flex-shrink-0 bg-[#2e2e2e] rounded-lg overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={s.url} alt={s.altText || ''} className="w-full h-full object-cover" />
                     </div>
@@ -477,7 +477,7 @@ function TemplateDetail({
               )}
             </div>
           ) : (
-            <div className="aspect-video bg-[#111640] rounded-xl flex items-center justify-center">
+            <div className="aspect-video bg-[#2e2e2e] rounded-xl flex items-center justify-center">
               <span className="text-6xl opacity-20">🎮</span>
             </div>
           )}
@@ -516,7 +516,7 @@ function TemplateDetail({
           </div>
 
           {/* Description */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
             <h2 className="text-lg font-semibold text-white mb-3">Description</h2>
             <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{template.description}</p>
           </div>
@@ -535,10 +535,10 @@ function TemplateDetail({
             ) : (
               <div className="space-y-4">
                 {template.reviews.map((review) => (
-                  <div key={review.id} className="bg-[#0D1231] border border-white/10 rounded-xl p-4">
+                  <div key={review.id} className="bg-[#242424] border border-white/10 rounded-xl p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#111640] flex items-center justify-center text-sm">
+                        <div className="w-8 h-8 rounded-full bg-[#2e2e2e] flex items-center justify-center text-sm">
                           {review.reviewer.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={review.reviewer.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
@@ -561,7 +561,7 @@ function TemplateDetail({
                       <p className="text-sm text-gray-300">{review.body}</p>
                     )}
                     {review.creatorResponse && (
-                      <div className="mt-3 bg-[#111640] rounded-lg p-3 border-l-2 border-[#FFB81C]/40">
+                      <div className="mt-3 bg-[#2e2e2e] rounded-lg p-3 border-l-2 border-[#FFB81C]/40">
                         <p className="text-xs text-[#FFB81C] font-medium mb-1">Creator response</p>
                         <p className="text-sm text-gray-300">{review.creatorResponse}</p>
                       </div>
@@ -576,7 +576,7 @@ function TemplateDetail({
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Purchase card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-xl p-5 sticky top-6">
+          <div className="bg-[#242424] border border-white/10 rounded-xl p-5 sticky top-6">
             <p className="text-3xl font-bold text-white mb-1">
               {isFree ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
             </p>
@@ -624,10 +624,10 @@ function TemplateDetail({
           </div>
 
           {/* Creator card */}
-          <div className="bg-[#0D1231] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#242424] border border-white/10 rounded-xl p-5">
             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-3">Creator</h3>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#111640] flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-[#2e2e2e] flex items-center justify-center">
                 {template.creator.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={template.creator.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />

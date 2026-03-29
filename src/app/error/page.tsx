@@ -27,9 +27,9 @@ function ErrorContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#0D1231] border border-red-500/20 rounded-xl p-8 shadow-xl">
+        <div className="bg-[#242424] border border-red-500/20 rounded-xl p-8 shadow-xl">
           <div className="text-5xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-white mb-3">{msg.title}</h2>
           <p className="text-gray-400 text-sm">{msg.description}</p>
@@ -47,7 +47,7 @@ function ErrorContent() {
 
 export default function ErrorPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0A0E27]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#1a1a1a]" />}>
       <ErrorContent />
     </Suspense>
   )

@@ -12,7 +12,7 @@ export default function VoiceLoading() {
         </div>
 
         {/* Mic button area */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-8 flex flex-col items-center gap-6">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-8 flex flex-col items-center gap-6">
           {/* Mic button circle */}
           <div className="w-28 h-28 rounded-full shimmer" />
 
@@ -44,7 +44,7 @@ export default function VoiceLoading() {
         <div className="space-y-3">
           <div className="h-5 w-36 rounded-lg shimmer-gold mb-4" />
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-xl px-5 py-4">
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-xl px-5 py-4">
               <div className="flex items-start justify-between gap-4 mb-2">
                 <div className="h-4 w-2/3 rounded-md shimmer" />
                 <div className="h-5 w-16 rounded-full shimmer flex-shrink-0" />

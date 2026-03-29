@@ -275,7 +275,7 @@ export function CommandPalette({
             transition={{ duration: 0.18, ease: 'easeOut' }}
             className="fixed top-[10vh] left-1/2 -translate-x-1/2 w-full max-w-xl z-[101]"
           >
-            <div className="bg-[#0D1231] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-[#242424] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
               {/* Search input */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/10">
                 <svg

@@ -7,7 +7,7 @@ export function TokenBalanceWidget() {
   const { data, isLoading } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
 
   if (isLoading) return (
-    <div className="bg-[#0D1231] border border-white/10 rounded-xl p-4 animate-pulse">
+    <div className="bg-[#242424] border border-white/10 rounded-xl p-4 animate-pulse">
       <div className="h-4 bg-white/10 rounded w-24 mb-2" />
       <div className="h-8 bg-white/10 rounded w-16" />
     </div>
@@ -15,7 +15,7 @@ export function TokenBalanceWidget() {
 
   return (
     <div
-      className="bg-[#0D1231] border border-white/10 rounded-xl p-4"
+      className="bg-[#242424] border border-white/10 rounded-xl p-4"
       role="status"
       aria-label={`Token balance: ${(data?.balance || 0).toLocaleString()} tokens`}
       aria-live="polite"

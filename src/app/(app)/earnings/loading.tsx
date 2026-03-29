@@ -12,7 +12,7 @@ export default function EarningsLoading() {
         </div>
 
         {/* Milestone progress bar card */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-8">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-between mb-3">
             <div className="h-4 w-32 rounded-md shimmer" />
             <div className="h-4 w-24 rounded-md shimmer" />
@@ -24,7 +24,7 @@ export default function EarningsLoading() {
         {/* Stat cards — 5 cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-5">
               <div className="h-3 w-20 rounded-md shimmer mb-2" />
               <div className="h-7 w-16 rounded-lg shimmer-gold" />
             </div>
@@ -32,7 +32,7 @@ export default function EarningsLoading() {
         </div>
 
         {/* Revenue chart card */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-8">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="h-5 w-40 rounded-lg shimmer-gold" />
             {/* Period buttons */}
@@ -60,7 +60,7 @@ export default function EarningsLoading() {
         </div>
 
         {/* Payout schedule card */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-8">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 mb-8">
           <div className="h-5 w-36 rounded-lg shimmer-gold mb-4" />
           <div className="grid sm:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -77,7 +77,7 @@ export default function EarningsLoading() {
         </div>
 
         {/* Transaction history card */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
           <div className="h-5 w-40 rounded-lg shimmer-gold mb-4" />
           {/* Table header */}
           <div className="flex gap-4 pb-3 border-b border-white/10">

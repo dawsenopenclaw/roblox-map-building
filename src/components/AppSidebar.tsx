@@ -222,7 +222,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-60 bg-[#111827] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full w-60 bg-[#242424] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } lg:static lg:z-auto`}
         aria-label="Main navigation"
@@ -232,7 +232,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
             {/* Forge hex icon */}
             <span
-              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#0A0E1A] font-black text-sm select-none"
+              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#1a1a1a] font-black text-sm select-none"
               style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
               aria-hidden="true"
             >
@@ -275,7 +275,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 select-none"
               style={{
                 background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
-                color: '#0A0E1A',
+                color: '#1a1a1a',
               }}
               aria-hidden="true"
             >

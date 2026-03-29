@@ -12,7 +12,7 @@ export default function BillingLoading() {
         </div>
 
         {/* Current plan card */}
-        <div className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <div className="h-4 w-24 rounded-md shimmer mb-2" />
@@ -35,7 +35,7 @@ export default function BillingLoading() {
         {/* Usage stats grid — 4 cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-2xl p-4">
+            <div key={i} className="bg-[#242424] border border-white/10 rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-5 h-5 rounded-md shimmer flex-shrink-0" />
                 <div className="h-3.5 w-20 rounded-md shimmer" />
@@ -46,7 +46,7 @@ export default function BillingLoading() {
         </div>
 
         {/* Payment method card */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-6">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6 mb-6">
           <div className="h-5 w-36 rounded-lg shimmer-gold mb-4" />
           <div className="flex items-center gap-4">
             <div className="w-12 h-8 rounded-md shimmer flex-shrink-0" />
@@ -59,7 +59,7 @@ export default function BillingLoading() {
         </div>
 
         {/* Billing history */}
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="h-5 w-32 rounded-lg shimmer-gold" />
             <div className="h-8 w-28 rounded-xl shimmer" />

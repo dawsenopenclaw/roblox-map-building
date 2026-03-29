@@ -148,7 +148,7 @@ function StepTryIt() {
           onKeyDown={(e) => e.key === 'Enter' && runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
           placeholder="medieval castle"
           disabled={running}
-          className="w-full bg-[#0D1231] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
+          className="w-full bg-[#242424] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
         />
         <button
           onClick={() => runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
@@ -208,7 +208,7 @@ function StepReady() {
       <h2 className="text-3xl font-bold text-white mb-3">You're Ready!</h2>
       <p className="text-gray-400 text-lg mb-8">Welcome aboard!</p>
 
-      <div className="bg-[#0D1231] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
+      <div className="bg-[#242424] border border-[#FFB81C]/20 rounded-xl py-5 px-4 mb-2">
         <p className="text-[#FFB81C] text-3xl font-bold">1,000</p>
         <p className="text-gray-400 text-sm mt-0.5">Free tokens to start building</p>
       </div>
@@ -272,7 +272,7 @@ export default function WelcomePage() {
       <div className="w-full max-w-md">
         <ProgressBar step={step} />
 
-        <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-7">
+        <div className="bg-[#242424] border border-white/10 rounded-2xl p-7">
           {step === 1 && (
             <StepWelcome
               firstName={firstName}

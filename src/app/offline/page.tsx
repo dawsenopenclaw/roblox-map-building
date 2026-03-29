@@ -49,7 +49,7 @@ export default function OfflinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0E27] flex flex-col items-center justify-center px-6 text-white overflow-hidden">
+    <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center px-6 text-white overflow-hidden">
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div className="w-[450px] h-[450px] rounded-full bg-[#F5A623]/6 blur-[100px]" />
@@ -111,7 +111,7 @@ export default function OfflinePage() {
         <button
           onClick={handleRetry}
           disabled={retrying}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#F5A623] hover:bg-[#E6951F] disabled:opacity-70 text-[#0A0E27] font-bold text-sm transition-all shadow-lg shadow-[#F5A623]/20 hover:shadow-[#F5A623]/30 hover:-translate-y-0.5"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#F5A623] hover:bg-[#E6951F] disabled:opacity-70 text-[#1a1a1a] font-bold text-sm transition-all shadow-lg shadow-[#F5A623]/20 hover:shadow-[#F5A623]/30 hover:-translate-y-0.5"
         >
           <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
           {retrying ? 'Reconnecting…' : 'Try again'}

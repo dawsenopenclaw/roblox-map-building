@@ -48,7 +48,7 @@ export function MarketingNav() {
       className={[
         'fixed top-0 inset-x-0 z-50 transition-all duration-300',
         scrolled
-          ? 'bg-[#0A0E27]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/30'
+          ? 'bg-[#1a1a1a]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/30'
           : 'bg-transparent',
       ].join(' ')}
     >
@@ -93,7 +93,7 @@ export function MarketingNav() {
             className="text-sm font-bold px-4 py-2 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
-              color: '#0A0E27',
+              color: '#1a1a1a',
             }}
           >
             Get Started Free
@@ -125,7 +125,7 @@ export function MarketingNav() {
         <div
           id="mobile-menu"
           ref={menuRef}
-          className="md:hidden bg-[#0A0E27]/98 backdrop-blur-md border-b border-white/10"
+          className="md:hidden bg-[#1a1a1a]/98 backdrop-blur-md border-b border-white/10"
           role="navigation"
           aria-label="Mobile navigation"
         >
@@ -154,7 +154,7 @@ export function MarketingNav() {
                 className="text-center text-sm font-bold px-4 py-3 rounded-lg transition-colors"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
-                  color: '#0A0E27',
+                  color: '#1a1a1a',
                 }}
               >
                 Get Started Free
