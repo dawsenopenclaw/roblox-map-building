@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,12 +64,12 @@ function highlightCurl(raw: string): string {
 
 function highlightJson(raw: string): string {
   let s = escapeHtml(raw)
-  // keys
-  s = s.replace(/(&quot;[^&]+&quot;)(?=\s*:)/g, '<span class="hl-key">$1</span>')
-  // string values
-  s = s.replace(/:\s*(&quot;[^&]*&quot;)/g, (m, val) => m.replace(val, `<span class="hl-string">${val}</span>`))
-  // numbers
-  s = s.replace(/:\s*(\d+\.?\d*)/g, (m, val) => m.replace(val, `<span class="hl-number">${val}</span>`))
+  // keys — match "key": (key must not contain newlines; stop at first closing quote not preceded by backslash)
+  s = s.replace(/(&quot;(?:[^&\\]|\\.|&(?!quot;))*&quot;)(?=\s*:)/g, '<span class="hl-key">$1</span>')
+  // string values — after colon, match quoted string (handles escaped chars represented as HTML entities)
+  s = s.replace(/(:\s*)(&quot;(?:[^&\\]|\\.|&(?!quot;))*&quot;)/g, (_, colon, val) => `${colon}<span class="hl-string">${val}</span>`)
+  // numbers (integer or float, not inside strings)
+  s = s.replace(/(:\s*)(-?\d+\.?\d*)\b/g, (_, colon, val) => `${colon}<span class="hl-number">${val}</span>`)
   // booleans / null
   s = s.replace(/\b(true|false|null)\b/g, '<span class="hl-boolean">$1</span>')
   return s
@@ -93,9 +93,37 @@ function CodeBlock({ code, lang }: { code: string; lang: 'curl' | 'json' }) {
   const [copied, setCopied] = useState(false)
 
   function copy() {
-    navigator.clipboard.writeText(code).catch(() => {})
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1800)
+    const succeed = () => { setCopied(true); setTimeout(() => setCopied(false), 1800) }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(succeed).catch(() => {
+        // fallback for browsers without clipboard API or non-HTTPS
+        try {
+          const ta = document.createElement('textarea')
+          ta.value = code
+          ta.style.position = 'fixed'
+          ta.style.opacity = '0'
+          document.body.appendChild(ta)
+          ta.focus()
+          ta.select()
+          document.execCommand('copy')
+          document.body.removeChild(ta)
+          succeed()
+        } catch {/* silent */ }
+      })
+    } else {
+      try {
+        const ta = document.createElement('textarea')
+        ta.value = code
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.focus()
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        succeed()
+      } catch {/* silent */ }
+    }
   }
 
   const html = lang === 'curl' ? highlightCurl(code) : highlightJson(code)
@@ -178,9 +206,9 @@ function SectionLabel({ children }: { children: ReactNode }) {
   return <h3 className="text-xs font-semibold text-white uppercase tracking-widest mb-3 mt-1">{children}</h3>
 }
 
-function SectionHeading({ children }: { id?: string; children: ReactNode }) {
+function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
   return (
-    <h2 className="text-2xl font-bold text-white mb-2 scroll-mt-28">
+    <h2 id={id} className="text-2xl font-bold text-white mb-2 scroll-mt-28">
       {children}
     </h2>
   )
@@ -243,34 +271,73 @@ export default function DocsClient() {
   const [activeSection, setActiveSection] = useState<SectionId>('getting-started')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
+  // When user clicks a nav item, suppress the observer for 1 second so the
+  // smooth-scroll animation doesn't fight with the manually-set active state.
+  const suppressObserverUntil = useRef<number>(0)
 
-  // Highlight active section based on scroll position
+  // Highlight active section based on scroll position.
+  // Uses a two-pass strategy: IntersectionObserver for most sections, plus a
+  // scroll-end fallback that picks the topmost visible section — this ensures
+  // the last section ("Errors") highlights when the page is scrolled to the bottom.
   useEffect(() => {
-    observerRef.current?.disconnect()
-
     const ids = NAV.map((n) => n.id)
+
+    function getTopmostVisible(): SectionId | null {
+      for (const id of ids) {
+        const el = document.getElementById(id)
+        if (!el) continue
+        const rect = el.getBoundingClientRect()
+        // Section is in or near the top 60% of the viewport
+        if (rect.top <= window.innerHeight * 0.6 && rect.bottom > 0) {
+          return id as SectionId
+        }
+      }
+      return null
+    }
+
+    // Scroll-end fallback — fires when momentum dies, catches bottom-of-page
+    let scrollTimer: ReturnType<typeof setTimeout>
+    function onScroll() {
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(() => {
+        if (Date.now() < suppressObserverUntil.current) return
+        const top = getTopmostVisible()
+        if (top) setActiveSection(top)
+      }, 80)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    observerRef.current?.disconnect()
     const elements = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[]
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id as SectionId)
-          }
-        }
+        if (Date.now() < suppressObserverUntil.current) return
+        // Pick the first intersecting entry whose section is nearest the top
+        const intersecting = entries.filter((e) => e.isIntersecting)
+        if (intersecting.length === 0) return
+        intersecting.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+        setActiveSection(intersecting[0].target.id as SectionId)
       },
-      { rootMargin: '-20% 0px -70% 0px', threshold: 0 }
+      { rootMargin: '-10% 0px -55% 0px', threshold: 0 }
     )
 
     elements.forEach((el) => observerRef.current!.observe(el))
-    return () => observerRef.current?.disconnect()
+    return () => {
+      observerRef.current?.disconnect()
+      window.removeEventListener('scroll', onScroll)
+      clearTimeout(scrollTimer)
+    }
   }, [])
 
-  function scrollTo(id: SectionId) {
+  const scrollTo = useCallback((id: SectionId) => {
     setSidebarOpen(false)
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setActiveSection(id)
-  }
+    // Suppress observer for 1 s so smooth-scroll doesn't flip active state back
+    suppressObserverUntil.current = Date.now() + 1000
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
 
   // Group nav items
   const groups: { label: string | null; items: NavSection[] }[] = []
@@ -312,11 +379,20 @@ export default function DocsClient() {
             <button
               onClick={() => setSidebarOpen((v) => !v)}
               className="lg:hidden ml-auto p-1.5 rounded-lg border border-white/10 hover:border-white/25 transition-colors"
-              aria-label="Toggle navigation"
+              aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={sidebarOpen}
             >
-              <span className="block w-4 h-px bg-gray-400 mb-1" />
-              <span className="block w-4 h-px bg-gray-400 mb-1" />
-              <span className="block w-4 h-px bg-gray-400" />
+              {sidebarOpen ? (
+                // X icon when open
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M2 2L14 14M14 2L2 14" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              ) : (
+                // Hamburger icon when closed
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M2 4H14M2 8H14M2 12H14" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
@@ -361,7 +437,7 @@ export default function DocsClient() {
               <div className="mb-7">
                 <SectionLabel>Base URL</SectionLabel>
                 <CodeBlock
-                  lang="json"
+                  lang="curl"
                   code={`https://api.forjegames.com`}
                 />
               </div>
