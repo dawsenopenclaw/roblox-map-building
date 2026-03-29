@@ -24,6 +24,13 @@ import { createLogger } from '../../lib/logger'
 import { incrementCounter, recordDuration } from '../../lib/metrics'
 import type { StreamEvent } from '../../lib/agents/types'
 
+// ---------------------------------------------------------------------------
+// Demo mode — active when ANTHROPIC_API_KEY is absent.
+// Auth and token checks are bypassed; all agents use their built-in fallbacks.
+// ---------------------------------------------------------------------------
+const DEMO_MODE = !process.env.ANTHROPIC_API_KEY
+const DEMO_USER_ID = 'demo-user'
+
 const log = createLogger('ai:chat')
 
 // ---------------------------------------------------------------------------
@@ -43,7 +50,7 @@ export type ChatInput = z.infer<typeof chatSchema>
 // ---------------------------------------------------------------------------
 
 async function spendTokens(userId: string, amount: number, description: string): Promise<void> {
-  if (amount <= 0) return
+  if (amount <= 0 || DEMO_MODE) return
   try {
     await db.$transaction(async (tx) => {
       const current = await tx.tokenBalance.findUnique({ where: { userId } })
@@ -96,7 +103,10 @@ function sseError(message: string): string {
 
 export const chatRoutes = new Hono()
 
-chatRoutes.use('*', requireAuth)
+// In demo mode skip Clerk auth — any request is allowed with a synthetic userId.
+if (!DEMO_MODE) {
+  chatRoutes.use('*', requireAuth)
+}
 chatRoutes.use('*', aiRateLimit)
 
 /**
@@ -105,7 +115,8 @@ chatRoutes.use('*', aiRateLimit)
  */
 chatRoutes.post('/', zValidator('json', chatSchema), async (c) => {
   const start = Date.now()
-  const userId = c.get('userId') as string
+  // In demo mode there is no Clerk session, so fall back to the demo userId.
+  const userId = (c.get('userId') as string | undefined) ?? (DEMO_MODE ? DEMO_USER_ID : undefined)
   const requestId = c.get('requestId') as string | undefined
   const reqLog = log.child({ requestId, userId })
 
@@ -114,27 +125,30 @@ chatRoutes.post('/', zValidator('json', chatSchema), async (c) => {
   const body = c.req.valid('json')
   const { message, gameId, conversationId } = body
 
-  reqLog.info('chat request received', { conversationId, messageLength: message.length })
+  reqLog.info('chat request received', { conversationId, messageLength: message.length, demo: DEMO_MODE })
 
   // -------------------------------------------------------------------------
-  // Pre-flight: parse intent + check balance before opening the stream
+  // Pre-flight: parse intent + check balance before opening the stream.
+  // In demo mode skip the DB balance check — no API calls will be billed.
   // -------------------------------------------------------------------------
   const intent = await parseIntent(message)
   const costEstimate = estimateIntentCost(intent.intent)
 
-  const balance = await getTokenBalance(userId)
-  if (balance < costEstimate.tokens) {
-    reqLog.warn('chat rejected: insufficient tokens', {
-      required: costEstimate.tokens,
-      available: balance,
-    })
-    incrementCounter('ai_chat_rejected_total', { reason: 'insufficient_tokens' })
-    return c.json({
-      error: 'Insufficient tokens',
-      required: costEstimate.tokens,
-      available: balance,
-      estimate: costEstimate.breakdown,
-    }, 402)
+  if (!DEMO_MODE) {
+    const balance = await getTokenBalance(userId)
+    if (balance < costEstimate.tokens) {
+      reqLog.warn('chat rejected: insufficient tokens', {
+        required: costEstimate.tokens,
+        available: balance,
+      })
+      incrementCounter('ai_chat_rejected_total', { reason: 'insufficient_tokens' })
+      return c.json({
+        error: 'Insufficient tokens',
+        required: costEstimate.tokens,
+        available: balance,
+        estimate: costEstimate.breakdown,
+      }, 402)
+    }
   }
 
   // -------------------------------------------------------------------------
