@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Check } from 'lucide-react'
+import { Check, ChevronDown } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -94,6 +94,7 @@ const FAQ = [
 
 export default function PricingClient() {
   const [annual, setAnnual] = useState(false)
+  const [openFaq, setOpenFaq] = useState<string | null>(null)
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-20">
@@ -220,13 +221,31 @@ export default function PricingClient() {
         <h2 className="text-2xl font-bold text-white text-center mb-10">
           Frequently asked questions
         </h2>
-        <div className="space-y-8">
-          {FAQ.map(({ q, a }) => (
-            <div key={q}>
-              <p className="text-white font-semibold mb-2">{q}</p>
-              <p className="text-gray-400 text-sm leading-relaxed">{a}</p>
-            </div>
-          ))}
+        <div className="space-y-2">
+          {FAQ.map(({ q, a }) => {
+            const isOpen = openFaq === q
+            return (
+              <div key={q} className="border border-white/10 rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setOpenFaq(isOpen ? null : q)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/5 transition-colors"
+                  aria-expanded={isOpen}
+                >
+                  <span className="text-white font-semibold text-sm">{q}</span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                      isOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="px-5 pb-4">
+                    <p className="text-gray-400 text-sm leading-relaxed">{a}</p>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
