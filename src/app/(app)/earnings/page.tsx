@@ -1,6 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { ShareButtons } from '@/components/ShareButtons'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
@@ -48,14 +51,19 @@ function MilestoneCelebration({ achieved }: { achieved: number[] }) {
   if (!latest) return null
 
   return (
-    <div className="bg-gradient-to-r from-[#FFB81C]/20 to-transparent border border-[#FFB81C]/30 rounded-2xl p-6 mb-8 flex items-center gap-4">
+    <div className="bg-gradient-to-r from-[#FFB81C]/20 to-transparent border border-[#FFB81C]/30 rounded-2xl p-6 mb-8 flex items-center gap-4 flex-wrap">
       <div className="text-4xl">&#127881;</div>
-      <div>
+      <div className="flex-1 min-w-0">
         <p className="text-[#FFB81C] font-bold text-lg">Milestone Achieved!</p>
         <p className="text-gray-300 text-sm">
           You've earned over <strong>{latest.label}</strong> on RobloxForge!
         </p>
       </div>
+      <ShareButtons
+        url={`${APP_URL}/marketplace`}
+        text={`Just hit the ${latest.label} earnings milestone on RobloxForge! Selling Roblox templates has never been easier.`}
+        compact
+      />
     </div>
   )
 }

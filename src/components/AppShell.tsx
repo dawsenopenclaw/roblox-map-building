@@ -6,6 +6,7 @@ import { AchievementToastProvider } from '@/components/AchievementToast'
 import { CommandPalette } from '@/components/CommandPalette'
 import { ShortcutsDialog } from '@/components/ShortcutsDialog'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { Spotlight } from '@/components/ui/spotlight'
 
 /**
  * Client shell for the app layout.
@@ -49,9 +50,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onMenuOpen={() => setSidebarOpen(true)}
           onCommandPalette={() => setPaletteOpen(true)}
         />
-        <main id="main-content" className="flex-1 p-4 sm:p-6 overflow-auto" tabIndex={-1}>
-          {children}
-        </main>
+        <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
+          <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
+            {children}
+          </main>
+        </Spotlight>
       </div>
 
       <AchievementToastProvider />

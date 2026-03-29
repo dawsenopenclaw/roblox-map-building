@@ -1,7 +1,8 @@
 'use client'
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { GradientText } from '@/components/ui/gradient-text'
+import { Dock } from '@/components/ui/dock'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: '⬡' },
@@ -15,8 +16,20 @@ const NAV_ITEMS = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
+function NavIcon({ icon }: { icon: string }) {
+  return <span className="text-lg w-6 h-6 flex items-center justify-center" aria-hidden="true">{icon}</span>
+}
+
 export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname()
+
+  const dockItems = NAV_ITEMS.map((item) => ({
+    id: item.href,
+    label: item.label,
+    icon: <NavIcon icon={item.icon} />,
+    href: item.href,
+    active: pathname === item.href || pathname.startsWith(item.href + '/'),
+  }))
 
   return (
     <>
@@ -38,8 +51,8 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
       >
         {/* Logo */}
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
-          <Link href="/dashboard" className="text-[#FFB81C] font-bold text-lg tracking-tight">
-            RobloxForge
+          <Link href="/dashboard" className="font-bold text-lg tracking-tight">
+            <GradientText>RobloxForge</GradientText>
           </Link>
           <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-white" aria-label="Close navigation">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -48,27 +61,35 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto" aria-label="Sidebar">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/')
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="text-base w-5 text-center" aria-hidden="true">{item.icon}</span>
-                {item.label}
-              </Link>
-            )
-          })}
+        {/* Nav — full labels visible, dock magnification on icon area */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto" aria-label="Sidebar">
+          {/* On wide sidebar we show full nav links; the Dock effect enriches the icon scaling */}
+          <div className="space-y-1">
+            {NAV_ITEMS.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onClose}
+                  aria-current={active ? 'page' : undefined}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                    active
+                      ? 'bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span
+                    className="text-base w-6 h-6 flex items-center justify-center flex-shrink-0 transition-transform duration-150 group-hover:scale-125"
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
         </nav>
 
         {/* Bottom: plan badge */}

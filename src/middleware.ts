@@ -45,6 +45,8 @@ const isPublicRoute = createRouteMatcher([
   '/error(.*)',
 ])
 
+const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
+
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
 // Routes that bypass geo-blocking (the blocked page itself must be accessible)
@@ -121,7 +123,7 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // ── 2. Auth routing ──────────────────────────────────────────────────────────
-  const { userId } = await auth()
+  const { userId, sessionClaims: claims } = await auth()
 
   // Redirect authenticated users away from auth pages
   if (isAuthRoute(request) && userId) {
@@ -131,6 +133,21 @@ export default clerkMiddleware(async (auth, request) => {
   // Protect non-public routes
   if (!isPublicRoute(request) && !userId) {
     return NextResponse.redirect(new URL('/sign-in', request.url))
+  }
+
+  // ── 3. Admin route guard ──────────────────────────────────────────────────────
+  // Admin pages and admin API routes require role === 'ADMIN'.
+  // The role is stored in Clerk public metadata and surfaced on session claims.
+  if (isAdminRoute(request) && userId) {
+    const meta = (claims?.metadata ?? claims ?? {}) as Record<string, unknown>
+    const role = meta.role as string | undefined
+    if (role !== 'ADMIN') {
+      // For API routes return 403, for page routes redirect to dashboard
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 })
 

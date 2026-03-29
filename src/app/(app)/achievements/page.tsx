@@ -1,6 +1,9 @@
 'use client'
 import useSWR from 'swr'
 import { AchievementCategory } from '@prisma/client'
+import { ShareButtons } from '@/components/ShareButtons'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -114,6 +117,15 @@ export default function AchievementsPage() {
                     <p className="text-[10px] text-gray-600 mt-1">
                       {new Date(achievement.unlockedAt).toLocaleDateString()}
                     </p>
+                  )}
+                  {achievement.unlocked && (
+                    <div className="mt-2 flex justify-center">
+                      <ShareButtons
+                        url={`${APP_URL}/achievements`}
+                        text={`I just unlocked "${achievement.name}" on RobloxForge! ${achievement.icon} ${achievement.description}`}
+                        compact
+                      />
+                    </div>
                   )}
                 </div>
               ))}

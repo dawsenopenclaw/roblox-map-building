@@ -1,11 +1,51 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/clerk'
 import { TierBadge } from '@/components/TierBadge'
 import { PurchaseButton } from './PurchaseButton'
 import { ReviewForm } from './ReviewForm'
 import { captureServerEvent } from '@/lib/analytics'
+import { ShareButtons } from '@/components/ShareButtons'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const template = await db.template.findUnique({
+    where: { id },
+    select: { title: true, description: true },
+  })
+
+  if (!template) return {}
+
+  const ogUrl = new URL(`${APP_URL}/api/og`)
+  ogUrl.searchParams.set('type', 'template')
+  ogUrl.searchParams.set('name', template.title)
+  const description = template.description?.slice(0, 160) ?? ''
+
+  return {
+    title: `${template.title} - RobloxForge Marketplace`,
+    description,
+    openGraph: {
+      title: `${template.title} - RobloxForge Marketplace`,
+      description,
+      images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${template.title} - RobloxForge Marketplace`,
+      description,
+      images: [ogUrl.toString()],
+    },
+  }
+}
 
 function StarDisplay({ rating }: { rating: number }) {
   return (
@@ -127,6 +167,13 @@ export default async function TemplateDetailPage({
 
           {/* Title + meta */}
           <div>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <ShareButtons
+                url={`${APP_URL}/marketplace/${id}`}
+                text={`Check out "${template.title}" on RobloxForge Marketplace`}
+                compact
+              />
+            </div>
             <div className="flex flex-wrap gap-2 mb-3">
               <span className="text-xs bg-white/5 text-gray-400 px-2.5 py-1 rounded-full">
                 {categoryLabels[template.category] || template.category}

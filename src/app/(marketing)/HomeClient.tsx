@@ -17,6 +17,12 @@ import {
   Gamepad2,
   Stethoscope,
 } from 'lucide-react'
+import { TypingText } from '@/components/ui/typing-text'
+import { GradientText } from '@/components/ui/gradient-text'
+import { ParticleBackground } from '@/components/ui/particle-background'
+import { NumberTicker } from '@/components/ui/number-ticker'
+import { MagneticButton } from '@/components/ui/magnetic-button'
+import { Spotlight } from '@/components/ui/spotlight'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -425,7 +431,7 @@ export default function LandingPage() {
         {/* ---------------------------------------------------------------- */}
         {/* Hero                                                              */}
         {/* ---------------------------------------------------------------- */}
-        <section className="relative overflow-hidden">
+        <Spotlight className="relative overflow-hidden" opacity={0.055}>
           {/* Animated gradient background */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-[#06071A] via-[#0A0E27] to-transparent" />
@@ -439,6 +445,8 @@ export default function LandingPage() {
               transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
               className="absolute bottom-0 right-0 w-[600px] h-[400px] bg-violet-600 rounded-full blur-3xl"
             />
+            {/* Floating gold particles */}
+            <ParticleBackground count={60} maxOpacity={0.3} speed={0.2} />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-16 text-center">
@@ -461,8 +469,15 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6"
             >
-              Build Roblox Games in{' '}
-              <span className="text-[#FFB81C]">Minutes,</span>
+              <TypingText
+                text="Build Roblox Games in"
+                speed={38}
+                delay={600}
+                cursor={false}
+              />{' '}
+              <GradientText as="span" className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold">
+                Minutes,
+              </GradientText>
               <br />
               Not Months
             </motion.h1>
@@ -484,13 +499,15 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14"
             >
-              <Link
-                href="/sign-up"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-lg px-8 py-4 rounded-xl transition-all shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/40 hover:scale-[1.02] active:scale-[0.98]"
+              <MagneticButton
+                strength={6}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-lg px-8 py-4 rounded-xl transition-all shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/40"
+                onClick={() => { window.location.href = '/sign-up' }}
+                aria-label="Start Building Free"
               >
                 Start Building Free
                 <ArrowRight className="w-5 h-5" />
-              </Link>
+              </MagneticButton>
               <a
                 href="#demo"
                 className="w-full sm:w-auto flex items-center justify-center gap-2 border border-white/20 hover:border-white/40 text-white font-medium text-lg px-8 py-4 rounded-xl transition-all hover:bg-white/5"
@@ -531,7 +548,7 @@ export default function LandingPage() {
               </div>
             </motion.div>
           </div>
-        </section>
+        </Spotlight>
 
         {/* ---------------------------------------------------------------- */}
         {/* Social proof bar                                                 */}
@@ -540,18 +557,18 @@ export default function LandingPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               {[
-                { target: 8547, suffix: '+', prefix: '', label: 'Creators' },
-                { target: 45000, suffix: '+', prefix: '', label: 'Games Built' },
-                { target: 2100000, suffix: '+', prefix: '', label: 'Hours Saved' },
-                { target: 124000, suffix: '', prefix: '$', label: 'Donated' },
+                { value: 8547, suffix: '+', prefix: '', label: 'Creators' },
+                { value: 45000, suffix: '+', prefix: '', label: 'Games Built' },
+                { value: 2100000, suffix: '+', prefix: '', label: 'Hours Saved' },
+                { value: 124000, suffix: '', prefix: '$', label: 'Donated' },
               ].map((stat) => (
                 <div key={stat.label}>
                   <p className="text-2xl sm:text-3xl font-bold text-[#FFB81C]">
-                    <AnimatedCounter
-                      target={stat.target}
+                    <NumberTicker
+                      value={stat.value}
                       suffix={stat.suffix}
                       prefix={stat.prefix}
-                      duration={2.2}
+                      duration={2200}
                     />
                   </p>
                   <p className="text-sm text-gray-500 mt-1">{stat.label}</p>
@@ -753,7 +770,7 @@ export default function LandingPage() {
                     transition={{ duration: 0.4 }}
                     className="bg-[#0A0E27] rounded-2xl p-5 border border-white/10"
                   >
-                    <CAUSES[causeIndex].Icon className="w-8 h-8 text-[#FFB81C] mx-auto mb-3" />
+                    {(() => { const CauseIcon = CAUSES[causeIndex].Icon; return <CauseIcon className="w-8 h-8 text-[#FFB81C] mx-auto mb-3" /> })()}
                     <p className="text-white font-semibold">{CAUSES[causeIndex].name}</p>
                     <p className="text-gray-500 text-sm mt-1">{CAUSES[causeIndex].description}</p>
                     <p className="text-[#FFB81C] font-bold mt-2 text-lg">

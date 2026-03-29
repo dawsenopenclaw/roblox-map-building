@@ -24,6 +24,7 @@ import { referralRoutes } from './routes/referrals'
 import { notificationRoutes } from './routes/notifications'
 import { earningsRoutes } from './routes/earnings'
 import { marketplaceSearchRoutes } from './routes/marketplace/search'
+import { adminRoutes } from './routes/admin'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 import { requestIdMiddleware } from './middleware/requestId'
 import { createLogger } from './lib/logger'
@@ -94,6 +95,7 @@ app.route('/api/referrals', referralRoutes)
 app.route('/api/notifications', notificationRoutes)
 app.route('/api/earnings', earningsRoutes)
 app.route('/api/marketplace/search', marketplaceSearchRoutes)
+app.route('/api/admin', adminRoutes)
 
 // ---------------------------------------------------------------------------
 // Metrics endpoint — Prometheus text format + optional JSON

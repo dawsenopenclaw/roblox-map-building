@@ -6,6 +6,7 @@ import { Info, Check, X, Minus, ArrowRight, Zap } from 'lucide-react'
 import { AnimatedCard } from '@/components/ui/animated-card'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { AnimatedCounter } from '@/components/ui/animated-counter'
+import { GlowCard } from '@/components/ui/glow-card'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -363,8 +364,8 @@ export default function PricingPage() {
           const price = annual ? tier.priceYearly : tier.priceMonthly
           const savings = annualSavings(tier.priceMonthly)
           return (
+            <GlowCard key={tier.key} glow={true}>
             <AnimatedCard
-              key={tier.key}
               index={i}
               noGlow={!tier.highlight}
               className={`relative flex flex-col rounded-2xl border p-6 ${
@@ -466,6 +467,7 @@ export default function PricingPage() {
                 ))}
               </div>
             </AnimatedCard>
+            </GlowCard>
           )
         })}
       </div>

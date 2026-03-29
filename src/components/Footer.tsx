@@ -1,4 +1,6 @@
+'use client'
 import Link from 'next/link'
+import { GradientText } from '@/components/ui/gradient-text'
 
 const CURRENT_YEAR = new Date().getFullYear()
 
@@ -29,8 +31,8 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="text-[#FFB81C] font-bold text-lg tracking-tight">
-              RobloxForge
+            <Link href="/" className="font-bold text-lg tracking-tight">
+              <GradientText>RobloxForge</GradientText>
             </Link>
             <p className="text-gray-500 text-sm mt-2 leading-relaxed">
               AI-powered Roblox game development. Build faster.
