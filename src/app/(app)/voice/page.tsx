@@ -1,1017 +1,264 @@
 'use client'
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useAnalytics } from '@/hooks/useAnalytics'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+import { useState, useRef, useCallback, useEffect } from 'react'
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type CommandStatus = 'processing' | 'done' | 'error'
 
 type CommandEntry = {
   id: string
   text: string
+  status: CommandStatus
   result: string
-  timestamp: Date
   tokensUsed: number
-  status: 'building' | 'done' | 'error'
-}
-
-type BuildStep = {
-  label: string
-  done: boolean
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SUGGESTIONS = [
-  "Build a medieval castle with a moat",
-  "Add rolling hills and a river",
-  "Create an underground cave system",
-  "Build a futuristic city skyline",
-  "Add a dense forest with fog",
-  "Create a volcanic island",
+  'Build a castle',
+  'Add forest',
+  'Racing track',
+  'Underground caves',
+  'Futuristic city',
+  'Volcanic island',
 ]
 
-const BUILD_STEPS: BuildStep[] = [
-  { label: "Parsing intent", done: false },
-  { label: "Generating terrain", done: false },
-  { label: "Placing assets", done: false },
-  { label: "Writing scripts", done: false },
-  { label: "Finalising world", done: false },
-]
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const RESULT_LABELS: Record<string, string> = {
-  "medieval castle": "Generated: Medieval Castle",
-  "rolling hills": "Generated: Hills & River",
-  "cave system": "Generated: Cave System",
-  "futuristic city": "Generated: City Skyline",
-  "forest": "Generated: Dense Forest",
-  "volcanic island": "Generated: Volcanic Isle",
+function uid(): string {
+  return Math.random().toString(36).slice(2, 9)
 }
 
-function inferResult(text: string): string {
-  const lower = text.toLowerCase()
-  for (const [key, val] of Object.entries(RESULT_LABELS)) {
-    if (lower.includes(key)) return val
-  }
-  return "Generated: Custom World"
+function estimateTokens(text: string): number {
+  return Math.ceil(text.split(/\s+/).length * 1.3)
 }
 
-// ─── SSR-safe browser check ───────────────────────────────────────────────────
+// ─── Speech hook ──────────────────────────────────────────────────────────────
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined'
-}
-
-function hasSpeechRecognition(): boolean {
-  if (!isBrowser()) return false
-  return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
-}
-
-// ─── Web Audio waveform ───────────────────────────────────────────────────────
-
-function AudioWaveform({
-  active,
-  analyserRef,
-}: {
-  active: boolean
-  analyserRef: React.MutableRefObject<AnalyserNode | null>
-}) {
-  const BARS = 40
-  const barsRef = useRef<(HTMLDivElement | null)[]>([])
-  const frameRef = useRef<number>(0)
+function useSpeechRecognition(onResult: (text: string) => void) {
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const [listening, setListening] = useState(false)
+  const [supported, setSupported] = useState(false)
 
   useEffect(() => {
-    // Guard: requestAnimationFrame is browser-only
-    if (!isBrowser()) return
-
-    let running = true
-
-    const tick = () => {
-      if (!running) return
-      const analyser = analyserRef.current
-
-      if (analyser && active) {
-        try {
-          const data = new Uint8Array(analyser.frequencyBinCount)
-          analyser.getByteFrequencyData(data)
-          const step = Math.floor(data.length / BARS)
-
-          barsRef.current.forEach((el, i) => {
-            if (!el) return
-            const raw = data[i * step] ?? 0
-            const h = 4 + (raw / 255) * 44
-            el.style.height = `${h}px`
-            el.style.opacity = raw > 10 ? '1' : '0.35'
-          })
-        } catch {
-          // AudioContext may be closed — fall through to idle animation
-        }
-      } else {
-        // Breathing idle animation
-        const t = Date.now() / 1000
-        barsRef.current.forEach((el, i) => {
-          if (!el) return
-          const h = active
-            ? 4
-            : 4 + Math.sin(t * 1.4 + i * 0.28) * 2 + 1
-          el.style.height = `${h}px`
-          el.style.opacity = '0.25'
-        })
-      }
-
-      frameRef.current = requestAnimationFrame(tick)
-    }
-
-    frameRef.current = requestAnimationFrame(tick)
-    return () => {
-      running = false
-      cancelAnimationFrame(frameRef.current)
-    }
-  }, [active, analyserRef])
-
-  return (
-    <div className="flex items-center justify-center gap-[3px] h-14 w-full">
-      {Array.from({ length: BARS }).map((_, i) => (
-        <div
-          key={i}
-          ref={el => { barsRef.current[i] = el }}
-          className="rounded-full transition-[height] duration-75"
-          style={{
-            width: '3px',
-            height: '4px',
-            background: active
-              ? `hsl(${40 + i * 1.5}, 100%, 60%)`
-              : '#2A3060',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── Typewriter transcription ─────────────────────────────────────────────────
-
-function LiveTranscription({
-  finalText,
-  interimText,
-}: {
-  finalText: string
-  interimText: string
-}) {
-  return (
-    <div className="min-h-[88px] bg-[#0A0E2A] border border-white/8 rounded-2xl p-4 text-sm leading-relaxed relative overflow-hidden">
-      {/* Subtle scanline */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.012) 3px, rgba(255,255,255,0.012) 4px)',
-        }}
-      />
-      {finalText || interimText ? (
-        <p className="relative z-10">
-          <span className="text-white">{finalText}</span>
-          {interimText && (
-            <span className="text-gray-500 italic"> {interimText}</span>
-          )}
-          <span className="inline-block w-0.5 h-4 bg-[#FFB81C] ml-0.5 animate-pulse align-middle" />
-        </p>
-      ) : (
-        <p className="text-gray-600 relative z-10">
-          Your words appear here as you speak...
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ─── Build progress steps ─────────────────────────────────────────────────────
-
-function BuildProgress({ step }: { step: number }) {
-  const currentLabel = step < BUILD_STEPS.length ? BUILD_STEPS[step].label : 'Complete'
-  return (
-    <div
-      className="space-y-2 text-left w-full max-w-xs mx-auto"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      aria-label={`Build progress: step ${step + 1} of ${BUILD_STEPS.length} — ${currentLabel}`}
-    >
-      {BUILD_STEPS.map((s, i) => (
-        <motion.div
-          key={s.label}
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: i * 0.18 }}
-          className="flex items-center gap-3"
-        >
-          <div
-            className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-              i < step
-                ? 'bg-green-500'
-                : i === step
-                ? 'bg-[#FFB81C] animate-pulse'
-                : 'bg-white/10'
-            }`}
-            aria-hidden="true"
-          >
-            {i < step ? (
-              <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12" aria-hidden="true">
-                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            ) : (
-              <div className={`w-1.5 h-1.5 rounded-full ${i === step ? 'bg-black' : 'bg-white/20'}`} />
-            )}
-          </div>
-          <span className={`text-sm transition-colors duration-300 ${
-            i < step ? 'text-green-400' : i === step ? 'text-white font-medium' : 'text-gray-600'
-          }`}>
-            {s.label}
-            {i < step && <span className="sr-only"> (complete)</span>}
-            {i === step && <span className="sr-only"> (in progress)</span>}
-          </span>
-        </motion.div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Tutorial overlay ─────────────────────────────────────────────────────────
-
-function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
-  const [step, setStep] = useState(0)
-
-  const steps = [
-    {
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-      ),
-      title: "Click the mic",
-      desc: "Tap the gold circle to start listening",
-    },
-    {
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      ),
-      title: "Describe your world",
-      desc: 'Say things like "build a medieval castle" or "add a dense forest"',
-    },
-    {
-      icon: (
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-        </svg>
-      ),
-      title: "Watch it build",
-      desc: "AI generates terrain, places assets, and writes scripts live",
-    },
-  ]
-
-  const isLast = step === steps.length - 1
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-    >
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        transition={{ type: 'spring', damping: 20 }}
-        className="bg-[#0D1231] border border-white/12 rounded-3xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl"
-      >
-        {/* Step dots */}
-        <div className="flex justify-center gap-2 mb-8">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === step ? 'bg-[#FFB81C] w-6' : 'bg-white/20 w-2'
-              }`}
-            />
-          ))}
-        </div>
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.22 }}
-          >
-            <div className="w-16 h-16 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center mx-auto mb-5 text-[#FFB81C]">
-              {steps[step].icon}
-            </div>
-            <h2 className="text-xl font-bold text-white mb-2">{steps[step].title}</h2>
-            <p className="text-gray-400 text-sm leading-relaxed">{steps[step].desc}</p>
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex gap-3 mt-8">
-          <button
-            onClick={onDismiss}
-            className="flex-1 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white text-sm transition-colors"
-          >
-            Skip
-          </button>
-          <button
-            onClick={() => isLast ? onDismiss() : setStep(s => s + 1)}
-            className="flex-1 py-2.5 rounded-xl bg-[#FFB81C] text-black font-bold text-sm hover:bg-[#E6A519] transition-colors"
-          >
-            {isLast ? "Let's go" : "Next"}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-// ─── Token counter ─────────────────────────────────────────────────────────────
-
-function TokenCounter({ live, total, running }: { live: number; total: number; running: boolean }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#0A0E2A] border border-white/8 rounded-xl">
-      <div className={`w-2 h-2 rounded-full ${running ? 'bg-[#FFB81C] animate-pulse' : 'bg-white/20'}`} />
-      <div className="flex-1">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-[#FFB81C] font-mono font-bold text-sm">
-            {running ? live.toLocaleString() : '—'}
-          </span>
-          <span className="text-gray-600 text-xs">tokens this build</span>
-        </div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-gray-400 font-mono text-xs">{total.toLocaleString()}</span>
-          <span className="text-gray-600 text-xs">total this session</span>
-        </div>
-      </div>
-      <svg className={`w-4 h-4 ${running ? 'text-[#FFB81C]' : 'text-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    </div>
-  )
-}
-
-// ─── Demo mode banner ─────────────────────────────────────────────────────────
-
-function DemoBanner() {
-  return (
-    <div className="mx-6 mb-3 px-3 py-2 bg-amber-500/8 border border-amber-500/20 rounded-xl flex items-center gap-2">
-      <svg className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <p className="text-xs text-amber-400/80">
-        Voice input unavailable in this browser — use the text box below to demo builds.
-      </p>
-    </div>
-  )
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-export default function VoicePage() {
-  const { track } = useAnalytics()
-  const [isListening, setIsListening] = useState(false)
-  const [isBuilding, setIsBuilding] = useState(false)
-  const [transcript, setTranscript] = useState('')
-  const [interimTranscript, setInterimTranscript] = useState('')
-  const [commands, setCommands] = useState<CommandEntry[]>([])
-  const [liveTokens, setLiveTokens] = useState(0)
-  const [totalTokens, setTotalTokens] = useState(0)
-  const [buildStep, setBuildStep] = useState(0)
-  // Tutorial: shown first visit, hidden once dismissed (persisted in localStorage)
-  const [showTutorial, setShowTutorial] = useState(false)
-  const [typeInput, setTypeInput] = useState('')
-  // Resolved client-side after hydration to avoid SSR mismatch
-  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null)
-
-  const recognitionRef = useRef<any>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
-  const audioCtxRef = useRef<AudioContext | null>(null)
-  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const tokenIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // ── Client-only init (runs once after hydration) ──────────────────────────
-  useEffect(() => {
-    const supported = hasSpeechRecognition()
-    setSpeechSupported(supported)
-
-    // Show tutorial only on first visit
-    try {
-      const seen = localStorage.getItem('voice_tutorial_seen')
-      if (!seen) setShowTutorial(true)
-    } catch {
-      setShowTutorial(true)
-    }
+    setSupported(
+      typeof window !== 'undefined' &&
+        ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
+    )
   }, [])
 
-  const dismissTutorial = useCallback(() => {
-    setShowTutorial(false)
-    try {
-      localStorage.setItem('voice_tutorial_seen', '1')
-    } catch {
-      // localStorage may be blocked (private browsing) — ignore
-    }
-  }, [])
+  const start = useCallback(() => {
+    if (!supported) return
+    const SR =
+      (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition })
+        .webkitSpeechRecognition ?? window.SpeechRecognition
+    const rec = new SR()
+    rec.lang = 'en-US'
+    rec.interimResults = false
+    rec.maxAlternatives = 1
 
-  // ── Audio context setup ──────────────────────────────────────────────────────
-  const setupAudioContext = useCallback(async () => {
-    if (!isBrowser()) return
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-
-      const ctx = new AudioContext()
-      audioCtxRef.current = ctx
-
-      const analyser = ctx.createAnalyser()
-      analyser.fftSize = 256
-      analyser.smoothingTimeConstant = 0.75
-      analyserRef.current = analyser
-
-      const source = ctx.createMediaStreamSource(stream)
-      source.connect(analyser)
-      sourceRef.current = source
-    } catch {
-      // Mic permission denied — waveform stays decorative
-    }
-  }, [])
-
-  const teardownAudioContext = useCallback(() => {
-    try {
-      sourceRef.current?.disconnect()
-    } catch { /* ignore */ }
-    analyserRef.current = null
-    try {
-      audioCtxRef.current?.close()
-    } catch { /* ignore */ }
-    audioCtxRef.current = null
-    try {
-      streamRef.current?.getTracks().forEach(t => t.stop())
-    } catch { /* ignore */ }
-    streamRef.current = null
-  }, [])
-
-  // ── Token simulation during build ────────────────────────────────────────────
-  useEffect(() => {
-    if (!isBuilding) {
-      setLiveTokens(0)
-      if (tokenIntervalRef.current) clearInterval(tokenIntervalRef.current)
-      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
-      return
+    rec.onstart = () => setListening(true)
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0][0].transcript
+      if (transcript.trim()) onResult(transcript.trim())
     }
 
-    setBuildStep(0)
-    setLiveTokens(0)
+    recognitionRef.current = rec
+    rec.start()
+  }, [supported, onResult])
 
-    tokenIntervalRef.current = setInterval(() => {
-      setLiveTokens(c => c + Math.floor(Math.random() * 6 + 2))
-    }, 120)
-
-    let s = 0
-    stepIntervalRef.current = setInterval(() => {
-      s++
-      setBuildStep(s)
-      if (s >= BUILD_STEPS.length - 1) {
-        if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
-      }
-    }, 580)
-
-    return () => {
-      if (tokenIntervalRef.current) clearInterval(tokenIntervalRef.current)
-      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
-    }
-  }, [isBuilding])
-
-  // ── Speech recognition ────────────────────────────────────────────────────────
-  const startListening = useCallback(async () => {
-    if (!isBrowser()) return
-
-    if (!hasSpeechRecognition()) {
-      // Don't alert — DemoBanner already explains this; just return
-      return
-    }
-
-    await setupAudioContext()
-
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    const recognition = new SR()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: any) => {
-      let interim = ''
-      let final = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const r = event.results[i]
-        if (r.isFinal) final += r[0].transcript
-        else interim += r[0].transcript
-      }
-      if (final) setTranscript(prev => prev + final + ' ')
-      setInterimTranscript(interim)
-    }
-
-    recognition.onend = () => {
-      setIsListening(false)
-      teardownAudioContext()
-    }
-    recognition.onerror = () => {
-      setIsListening(false)
-      teardownAudioContext()
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-    setInterimTranscript('')
-    track('voice_build_started', { inputType: 'voice' })
-  }, [setupAudioContext, teardownAudioContext, track])
-
-  const stopListening = useCallback(() => {
+  const stop = useCallback(() => {
     recognitionRef.current?.stop()
-    setIsListening(false)
-    teardownAudioContext()
-    setInterimTranscript('')
-  }, [teardownAudioContext])
+    setListening(false)
+  }, [])
 
-  // ── Build handler ──────────────────────────────────────────────────────────────
-  const handleBuild = useCallback(async (overrideText?: string) => {
-    const text = (overrideText ?? (transcript + interimTranscript)).trim()
-    if (!text) return
+  return { listening, supported, start, stop }
+}
 
-    if (isListening) stopListening()
-    setIsBuilding(true)
-    setTypeInput('')
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-    const buildStart = Date.now()
-    track('voice_build_started', { inputType: overrideText ? 'text' : 'voice', prompt: text.slice(0, 120) })
+export default function VoiceBuildPage() {
+  const [input, setInput] = useState('')
+  const [history, setHistory] = useState<CommandEntry[]>([])
+  const [totalTokens, setTotalTokens] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-    // Simulate build — no real API call required for demo
-    await new Promise<void>(resolve => setTimeout(resolve, BUILD_STEPS.length * 600 + 400))
+  const handleVoiceResult = useCallback((text: string) => {
+    setInput(text)
+    inputRef.current?.focus()
+  }, [])
 
-    const used = Math.floor(Math.random() * 180 + 60)
-    const resultLabel = inferResult(text)
-    const entry: CommandEntry = {
-      id: Date.now().toString(),
-      text,
-      result: resultLabel,
-      timestamp: new Date(),
-      tokensUsed: used,
-      status: 'done',
-    }
+  const { listening, supported, start, stop } = useSpeechRecognition(handleVoiceResult)
 
-    track('voice_build_completed', {
-      durationMs: Date.now() - buildStart,
-      tokensUsed: used,
-      resultLabel,
-    })
-    track('token_spent', { amount: used, feature: 'voice_build' })
+  const submit = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) return
 
-    setTotalTokens(t => t + used)
-    setCommands(prev => [entry, ...prev])
-    setTranscript('')
-    setInterimTranscript('')
-    setIsBuilding(false)
-    setBuildStep(0)
-  }, [transcript, interimTranscript, isListening, stopListening, track])
+      const tokens = estimateTokens(trimmed)
+      const entry: CommandEntry = {
+        id: uid(),
+        text: trimmed,
+        status: 'processing',
+        result: '',
+        tokensUsed: tokens,
+      }
 
-  const handleUndo = (id: string) => {
-    setCommands(prev => prev.filter(c => c.id !== id))
+      setHistory((prev) => [entry, ...prev])
+      setInput('')
+      setTotalTokens((prev) => prev + tokens)
+
+      // Simulate AI call — replace with real API route when configured
+      await new Promise((r) => setTimeout(r, 1200))
+
+      setHistory((prev) =>
+        prev.map((c) =>
+          c.id === entry.id
+            ? {
+                ...c,
+                status: 'done' as CommandStatus,
+                result: 'AI service not configured — command queued',
+              }
+            : c
+        )
+      )
+    },
+    []
+  )
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') submit(input)
   }
 
-  const handleSuggestion = (text: string) => {
-    setTranscript(text)
+  const toggleMic = () => {
+    if (listening) stop()
+    else start()
   }
-
-  const fullText = transcript + (interimTranscript ? ` ${interimTranscript}` : '')
-
-  // ── Mic button state ───────────────────────────────────────────────────────────
-  const micState: 'idle' | 'listening' | 'building' =
-    isBuilding ? 'building' : isListening ? 'listening' : 'idle'
 
   return (
-    <>
-      {/* Tutorial */}
-      <AnimatePresence>
-        {showTutorial && (
-          <TutorialOverlay onDismiss={dismissTutorial} />
-        )}
-      </AnimatePresence>
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col items-center px-4 py-10">
+      {/* Header */}
+      <div className="w-full max-w-2xl mb-8">
+        <h1 className="text-2xl font-semibold text-white">Voice Build</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Speak or type what you want to build in your Roblox world.
+        </p>
+      </div>
 
-      <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row gap-0 overflow-hidden -m-4 sm:-m-6">
+      {/* Main card */}
+      <div className="w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-xl p-6 flex flex-col gap-5">
 
-        {/* ── Left panel ── */}
-        <div className="lg:w-[38%] flex flex-col bg-[#0B0F28] border-b lg:border-b-0 lg:border-r border-white/8 overflow-y-auto">
+        {/* Mic button */}
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={toggleMic}
+            disabled={!supported}
+            aria-label={listening ? 'Stop listening' : 'Start listening'}
+            className={[
+              'w-20 h-20 rounded-full flex items-center justify-center text-3xl transition-all duration-200',
+              'border-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900',
+              listening
+                ? 'bg-red-600 border-red-500 focus:ring-red-500 scale-110'
+                : supported
+                ? 'bg-gray-800 border-gray-700 hover:bg-gray-700 hover:border-gray-600 focus:ring-gray-500'
+                : 'bg-gray-800 border-gray-700 opacity-40 cursor-not-allowed',
+            ].join(' ')}
+          >
+            {listening ? '⏹' : '🎤'}
+          </button>
 
-          {/* Header */}
-          <div className="px-6 py-5 border-b border-white/8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl font-bold text-white flex items-center gap-2.5">
-                  <span className="text-[#FFB81C]">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                  </span>
-                  Voice Build
-                </h1>
-                <p className="text-gray-500 text-sm mt-0.5">Speak your idea. AI builds it.</p>
-              </div>
-              <button
-                onClick={() => setShowTutorial(true)}
-                className="text-xs text-gray-600 hover:text-gray-400 border border-white/8 px-2.5 py-1.5 rounded-lg transition-colors"
-              >
-                Tutorial
-              </button>
-            </div>
-          </div>
-
-          {/* Demo banner — only shown when speech is confirmed unsupported */}
-          {speechSupported === false && <DemoBanner />}
-
-          {/* Mic section */}
-          <div className="px-6 pt-8 pb-4 flex flex-col items-center">
-
-            {/* Mic button */}
-            <div className="relative flex items-center justify-center">
-              {/* Idle breathing glow */}
-              {micState === 'idle' && (
-                <motion.div
-                  className="absolute rounded-full"
-                  style={{
-                    width: 120,
-                    height: 120,
-                    background: 'radial-gradient(circle, rgba(255,184,28,0.12) 0%, transparent 70%)',
-                  }}
-                  animate={{ scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                />
-              )}
-
-              {/* Recording pulse rings */}
-              {micState === 'listening' && (
-                <>
-                  <motion.div
-                    className="absolute rounded-full border border-[#FFB81C]/35"
-                    style={{ width: 120, height: 120 }}
-                    animate={{ scale: [1, 1.5], opacity: [0.6, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut' }}
-                  />
-                  <motion.div
-                    className="absolute rounded-full border border-[#FFB81C]/20"
-                    style={{ width: 120, height: 120 }}
-                    animate={{ scale: [1, 1.9], opacity: [0.5, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut', delay: 0.4 }}
-                  />
-                  <motion.div
-                    className="absolute rounded-full border border-[#FFB81C]/10"
-                    style={{ width: 120, height: 120 }}
-                    animate={{ scale: [1, 2.4], opacity: [0.35, 0] }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: 'easeOut', delay: 0.8 }}
-                  />
-                </>
-              )}
-
-              <motion.button
-                onClick={micState === 'listening' ? stopListening : micState === 'idle' ? startListening : undefined}
-                disabled={micState === 'building' || speechSupported === false}
-                whileHover={micState !== 'building' && speechSupported !== false ? { scale: 1.05 } : undefined}
-                whileTap={micState !== 'building' && speechSupported !== false ? { scale: 0.95 } : undefined}
-                animate={
-                  micState === 'listening'
-                    ? { boxShadow: ['0 0 0 0px rgba(255,184,28,0.3)', '0 0 0 12px rgba(255,184,28,0)'] }
-                    : {}
-                }
-                transition={micState === 'listening' ? { duration: 1, repeat: Infinity } : {}}
-                className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${
-                  micState === 'listening'
-                    ? 'bg-[#FFB81C] cursor-pointer'
-                    : micState === 'building' || speechSupported === false
-                    ? 'bg-[#111640] cursor-not-allowed opacity-40'
-                    : 'bg-[#111640] border-2 border-[#FFB81C]/30 hover:border-[#FFB81C]/60 cursor-pointer'
-                }`}
-                title={speechSupported === false ? 'Voice not supported in this browser' : undefined}
-              >
-                {micState === 'building' ? (
-                  <svg className="w-9 h-9 text-[#FFB81C] animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                    <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg
-                    className={`w-10 h-10 transition-colors duration-200 ${
-                      micState === 'listening' ? 'text-black' : 'text-[#FFB81C]'
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
-                )}
-              </motion.button>
-            </div>
-
-            {/* Status label */}
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={micState}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.2 }}
-                className="text-sm mt-4 font-medium"
-              >
-                {micState === 'building' ? (
-                  <span className="text-[#FFB81C]">Building your world...</span>
-                ) : micState === 'listening' ? (
-                  <span className="text-[#FFB81C]">Listening — tap to stop</span>
-                ) : speechSupported === false ? (
-                  <span className="text-gray-600">Type a command below</span>
-                ) : (
-                  <span className="text-gray-500">Tap to speak</span>
-                )}
-              </motion.p>
-            </AnimatePresence>
-
-            {/* Waveform */}
-            <div className="mt-3 w-full">
-              <AudioWaveform active={isListening} analyserRef={analyserRef} />
-            </div>
-          </div>
-
-          {/* Transcription */}
-          <div className="px-6 pb-3">
-            <LiveTranscription finalText={transcript} interimText={interimTranscript} />
-
-            <AnimatePresence>
-              {fullText && !isListening && !isBuilding && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  className="mt-3 space-y-2"
-                >
-                  <button
-                    onClick={() => handleBuild()}
-                    className="w-full bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl transition-colors text-sm"
-                  >
-                    Build Now
-                  </button>
-                  <button
-                    onClick={() => { setTranscript(''); setInterimTranscript('') }}
-                    className="w-full border border-white/8 hover:border-white/16 text-gray-500 hover:text-gray-300 text-sm py-2 rounded-xl transition-colors"
-                  >
-                    Clear
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Type-to-build fallback */}
-          <div className="px-6 pb-4">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={typeInput}
-                onChange={e => setTypeInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleBuild(typeInput)}
-                placeholder="Or type a command..."
-                disabled={isBuilding}
-                className="flex-1 bg-[#0A0E2A] border border-white/8 rounded-xl px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
-              />
-              <button
-                onClick={() => handleBuild(typeInput)}
-                disabled={!typeInput.trim() || isBuilding}
-                className="px-3 py-2.5 bg-[#111640] border border-white/8 hover:border-[#FFB81C]/30 rounded-xl text-[#FFB81C] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Suggestions */}
-          <div className="px-6 pb-4">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2.5 font-medium">Try saying...</p>
-            <div className="flex flex-wrap gap-1.5">
-              {SUGGESTIONS.slice(0, 4).map((s, i) => (
-                <motion.button
-                  key={s}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 + i * 0.07 }}
-                  onClick={() => handleSuggestion(s)}
-                  className="text-xs bg-[#0A0E2A] border border-white/8 hover:border-[#FFB81C]/30 text-gray-500 hover:text-[#FFB81C] px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  {s}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {/* Token counter */}
-          <div className="px-6 pb-4">
-            <TokenCounter live={liveTokens} total={totalTokens} running={isBuilding} />
-          </div>
-
-          {/* Command history */}
-          <div className="px-6 pb-6 flex-1">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 font-medium">History</p>
-
-            {commands.length === 0 ? (
-              <p className="text-gray-700 text-sm text-center py-6">No commands yet</p>
-            ) : (
-              <div className="space-y-2">
-                <AnimatePresence initial={false}>
-                  {commands.map((cmd) => (
-                    <motion.div
-                      key={cmd.id}
-                      initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ type: 'spring', damping: 22 }}
-                      className="bg-[#0A0E2A] border border-white/8 rounded-xl p-3 group"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm text-white leading-snug flex-1">{cmd.text}</p>
-                        <button
-                          onClick={() => handleUndo(cmd.id)}
-                          className="text-xs text-gray-700 hover:text-red-400 transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded border border-transparent hover:border-red-400/20"
-                        >
-                          Undo
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-[#FFB81C]/80 mt-1.5">{cmd.result}</p>
-
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-gray-600">
-                          {cmd.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span className="text-xs text-gray-600">
-                          {cmd.tokensUsed.toLocaleString()} tokens
-                        </span>
-                        <span className={`text-xs font-medium ${cmd.status === 'done' ? 'text-green-400' : 'text-red-400'}`}>
-                          {cmd.status === 'done' ? 'Built' : 'Failed'}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+          <span className="text-sm text-gray-400">
+            {!supported
+              ? 'Voice not supported in this browser'
+              : listening
+              ? 'Listening... speak now'
+              : 'Click to start speaking'}
+          </span>
         </div>
 
-        {/* ── Right panel: 3D preview ── */}
-        <div className="flex-1 bg-[#07091A] flex flex-col">
+        {/* Text input */}
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type what you want to build..."
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <button
+            onClick={() => submit(input)}
+            disabled={!input.trim()}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            Send
+          </button>
+        </div>
 
-          {/* Preview header */}
-          <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
-            <p className="text-sm font-medium text-gray-400">3D Preview</p>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-yellow-400/60" />
-              <span className="w-2 h-2 rounded-full bg-green-400/60" />
-              <span className="text-xs text-gray-600">Studio — connecting...</span>
-            </div>
-          </div>
-
-          {/* Preview body */}
-          <div className="flex-1 relative overflow-hidden">
-
-            {/* Grid background — faux 3D floor */}
-            <div
-              className="absolute inset-0 opacity-[0.04]"
-              style={{
-                backgroundImage: `
-                  linear-gradient(rgba(255,184,28,0.5) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(255,184,28,0.5) 1px, transparent 1px)
-                `,
-                backgroundSize: '40px 40px',
-              }}
-            />
-
-            {/* Corner dots */}
-            {[
-              'top-4 left-4', 'top-4 right-4',
-              'bottom-4 left-4', 'bottom-4 right-4',
-            ].map(pos => (
-              <div key={pos} className={`absolute ${pos} w-1.5 h-1.5 rounded-full bg-[#FFB81C]/20`} />
+        {/* Suggestions */}
+        <div>
+          <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Suggestions</p>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  setInput(s)
+                  inputRef.current?.focus()
+                }}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-gray-600 text-sm text-gray-300 rounded-full transition-colors"
+              >
+                {s}
+              </button>
             ))}
-
-            {/* Content */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <AnimatePresence mode="wait">
-                {isBuilding ? (
-                  <motion.div
-                    key="building"
-                    initial={{ opacity: 0, scale: 0.92 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.92 }}
-                    className="text-center max-w-xs px-6 w-full"
-                  >
-                    {/* Animated orb */}
-                    <div className="relative w-20 h-20 mx-auto mb-8">
-                      <motion.div
-                        className="absolute inset-0 rounded-full"
-                        style={{ background: 'radial-gradient(circle, rgba(255,184,28,0.3) 0%, transparent 70%)' }}
-                        animate={{ scale: [1, 1.3, 1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      />
-                      <div className="absolute inset-0 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/30 flex items-center justify-center">
-                        <svg className="w-9 h-9 text-[#FFB81C] animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                          <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    <p className="text-white font-semibold mb-1">Building your world...</p>
-                    <p className="text-gray-500 text-xs mb-6">AI is generating terrain, placing assets, and writing scripts</p>
-
-                    <BuildProgress step={buildStep} />
-
-                    <div className="mt-6 flex items-center justify-center gap-2">
-                      <span className="text-[#FFB81C] font-mono font-bold text-xl">{liveTokens.toLocaleString()}</span>
-                      <span className="text-gray-600 text-sm">tokens</span>
-                    </div>
-                  </motion.div>
-                ) : commands.length > 0 ? (
-                  <motion.div
-                    key="done"
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="text-center px-6"
-                  >
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: 'spring', damping: 16 }}
-                      className="w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-5"
-                    >
-                      <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 12 12">
-                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </motion.div>
-                    <p className="text-white font-semibold mb-1">{commands[0].result}</p>
-                    <p className="text-gray-500 text-sm mb-6">Sent to Roblox Studio</p>
-                    <p className="text-gray-600 text-xs">Speak or type to continue building</p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="text-center px-6"
-                  >
-                    {/* Faux 3D cube wireframe */}
-                    <svg
-                      className="w-24 h-24 mx-auto mb-6 opacity-10"
-                      viewBox="0 0 96 96"
-                      fill="none"
-                      stroke="#FFB81C"
-                      strokeWidth="1.5"
-                    >
-                      <rect x="24" y="24" width="48" height="48" />
-                      <rect x="14" y="14" width="48" height="48" />
-                      <line x1="14" y1="14" x2="24" y2="24" />
-                      <line x1="62" y1="14" x2="72" y2="24" />
-                      <line x1="14" y1="62" x2="24" y2="72" />
-                      <line x1="62" y1="62" x2="72" y2="72" />
-                    </svg>
-                    <p className="text-gray-600 font-medium mb-2">Your 3D world appears here</p>
-                    <p className="text-gray-700 text-sm mb-6">
-                      Connect Roblox Studio to see live previews
-                    </p>
-                    <a href="#" className="text-sm text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors">
-                      Install Studio plugin
-                    </a>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Command history */}
+      {history.length > 0 && (
+        <div className="w-full max-w-2xl mt-6 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-800">
+            <h2 className="text-sm font-medium text-gray-300">Command History</h2>
+          </div>
+          <ul className="divide-y divide-gray-800">
+            {history.map((cmd) => (
+              <li key={cmd.id} className="px-4 py-3 flex items-start gap-3">
+                <span className="mt-0.5 text-base flex-shrink-0">
+                  {cmd.status === 'processing'
+                    ? '⏳'
+                    : cmd.status === 'done'
+                    ? '✓'
+                    : '✗'}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-100 truncate">"{cmd.text}"</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {cmd.status === 'processing'
+                      ? 'Processing...'
+                      : cmd.result}
+                  </p>
+                </div>
+                <span className="text-xs text-gray-600 flex-shrink-0 mt-0.5">
+                  {cmd.tokensUsed} tk
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Token counter */}
+      <div className="w-full max-w-2xl mt-4 text-right">
+        <span className="text-xs text-gray-600">
+          {totalTokens} tokens used this session
+        </span>
+      </div>
+    </div>
   )
 }
