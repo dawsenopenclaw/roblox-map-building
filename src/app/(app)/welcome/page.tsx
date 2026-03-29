@@ -20,7 +20,11 @@ function ProgressBar({ step }: { step: number }) {
         <div
           key={i}
           className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-            i < step ? 'bg-[#FFB81C]' : i === step - 1 ? 'bg-[#FFB81C]' : 'bg-white/10'
+            i < step - 1
+              ? 'bg-[#FFB81C]/60'
+              : i === step - 1
+              ? 'bg-[#FFB81C]'
+              : 'bg-white/10'
           }`}
         />
       ))}
@@ -58,14 +62,14 @@ function StepWelcome({
         What do you want to build?
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {INTERESTS.map((item) => {
           const active = selected === item.id
           return (
             <button
               key={item.id}
               onClick={() => onSelect(item.id)}
-              className={`flex flex-col items-center justify-center gap-2 p-5 rounded-xl border text-sm font-semibold transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 p-4 sm:p-5 rounded-xl border text-sm font-semibold transition-all ${
                 active
                   ? 'border-[#FFB81C] bg-[#FFB81C]/10 text-white'
                   : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/25 hover:text-white'
@@ -165,7 +169,7 @@ function StepTryIt() {
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => { setInput(s); runDemo(`Build me a ${s}`) }}
+              onClick={() => setInput(s)}
               className="text-left text-xs text-gray-400 hover:text-gray-300 transition-colors px-1"
             >
               "Build me a {s}"
@@ -272,7 +276,7 @@ export default function WelcomePage() {
       <div className="w-full max-w-md">
         <ProgressBar step={step} />
 
-        <div className="bg-[#141414] border border-white/10 rounded-2xl p-7">
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-5 sm:p-7">
           {step === 1 && (
             <StepWelcome
               firstName={firstName}

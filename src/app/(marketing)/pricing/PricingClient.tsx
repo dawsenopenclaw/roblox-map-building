@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useId } from 'react'
 import Link from 'next/link'
 import { Check, ChevronDown, Heart, Zap, Rocket, Building2 } from 'lucide-react'
 
@@ -115,30 +115,41 @@ const FAQ = [
 function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boolean; onToggle: () => void }) {
   const bodyRef = useRef<HTMLDivElement>(null)
   const [height, setHeight] = useState(0)
+  const uid = useId()
+  const panelId = `faq-panel-${uid}`
+  const buttonId = `faq-btn-${uid}`
 
   useEffect(() => {
     if (!bodyRef.current) return
-    setHeight(isOpen ? bodyRef.current.scrollHeight : 0)
+    // Measure the natural scrollHeight then animate
+    const el = bodyRef.current
+    setHeight(isOpen ? el.scrollHeight : 0)
   }, [isOpen])
 
   return (
     <div className="border border-white/10 rounded-xl overflow-hidden bg-[#0a0d19]">
       <button
+        id={buttonId}
         onClick={onToggle}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/5 transition-colors"
         aria-expanded={isOpen}
+        aria-controls={panelId}
       >
         <span className="text-white font-semibold text-sm pr-4">{q}</span>
         <ChevronDown
+          aria-hidden="true"
           className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
       <div
-        style={{ height, overflow: 'hidden', transition: 'height 220ms ease' }}
+        id={panelId}
+        role="region"
+        aria-labelledby={buttonId}
+        style={{ height, overflow: 'hidden', transition: 'height 220ms ease', willChange: 'height' }}
       >
-        <div ref={bodyRef} className="px-5 pb-5">
+        <div ref={bodyRef} className="px-5 pb-5 pt-1">
           <p className="text-gray-300 text-sm leading-relaxed">{a}</p>
         </div>
       </div>
@@ -188,7 +199,7 @@ export default function PricingClient() {
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
                 !annual
                   ? 'bg-white text-black shadow'
-                  : 'text-gray-300 hover:text-blue-400'
+                  : 'text-gray-300 hover:text-[#FFB81C]'
               }`}
             >
               Monthly
@@ -198,7 +209,7 @@ export default function PricingClient() {
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
                 annual
                   ? 'bg-white text-black shadow'
-                  : 'text-gray-300 hover:text-blue-400'
+                  : 'text-gray-300 hover:text-[#FFB81C]'
               }`}
             >
               Annual
