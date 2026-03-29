@@ -581,6 +581,65 @@ Token cost: 20 tokens
 Tip: Be specific — the more detail you give, the more precise the output.`,
 }
 
+// ─── Community asset library search ──────────────────────────────────────────
+// Finds relevant community 3D meshes BEFORE generating anything from scratch.
+
+interface CommunityAssetRef {
+  id: string
+  name: string
+  category: string
+  polyCount: number
+  style: string
+  tags: string[]
+}
+
+const COMMUNITY_ASSET_INDEX: CommunityAssetRef[] = [
+  { id: 'bld-001', name: 'Medieval Castle Tower', category: 'Buildings',  polyCount: 2100, style: 'realistic', tags: ['castle','medieval','tower'] },
+  { id: 'bld-002', name: 'Modern House',          category: 'Buildings',  polyCount:  820, style: 'low-poly',  tags: ['house','modern','residential'] },
+  { id: 'bld-004', name: 'Ruined Stone Wall',     category: 'Buildings',  polyCount:  940, style: 'realistic', tags: ['ruins','wall','stone'] },
+  { id: 'bld-005', name: 'Fantasy Tavern',        category: 'Buildings',  polyCount: 1650, style: 'stylized',  tags: ['tavern','inn','medieval'] },
+  { id: 'veh-001', name: 'Sports Car (Red)',      category: 'Vehicles',   polyCount: 3200, style: 'realistic', tags: ['car','sports','racing'] },
+  { id: 'veh-002', name: 'Off-Road Truck',        category: 'Vehicles',   polyCount: 2800, style: 'realistic', tags: ['truck','4x4','offroad'] },
+  { id: 'veh-003', name: 'Wooden Sailing Ship',   category: 'Vehicles',   polyCount: 4100, style: 'stylized',  tags: ['ship','pirate','naval'] },
+  { id: 'nat-001', name: 'Oak Tree (Stylized)',   category: 'Nature',     polyCount:  520, style: 'stylized',  tags: ['tree','oak','forest'] },
+  { id: 'nat-002', name: 'Boulder Pack x3',       category: 'Nature',     polyCount:  380, style: 'realistic', tags: ['rock','boulder','terrain'] },
+  { id: 'nat-003', name: 'Pine Tree (Winter)',    category: 'Nature',     polyCount:  440, style: 'stylized',  tags: ['pine','tree','winter','snow'] },
+  { id: 'nat-004', name: 'Mushroom Cluster',      category: 'Nature',     polyCount:  290, style: 'cartoon',   tags: ['mushroom','fantasy','magic'] },
+  { id: 'prp-001', name: 'Treasure Chest',        category: 'Props',      polyCount:  420, style: 'cartoon',   tags: ['chest','treasure','loot'] },
+  { id: 'prp-002', name: 'Market Stall',          category: 'Props',      polyCount:  560, style: 'stylized',  tags: ['market','stall','shop'] },
+  { id: 'prp-003', name: 'Wooden Barrel',         category: 'Props',      polyCount:  160, style: 'realistic', tags: ['barrel','wood','tavern'] },
+  { id: 'prp-004', name: 'Campfire',              category: 'Props',      polyCount:  240, style: 'stylized',  tags: ['campfire','fire','camp'] },
+  { id: 'prp-005', name: 'Street Lamp (Iron)',    category: 'Props',      polyCount:  210, style: 'realistic', tags: ['lamp','street','urban'] },
+  { id: 'chr-001', name: 'Knight Warrior',        category: 'Characters', polyCount: 2800, style: 'stylized',  tags: ['knight','warrior','armor'] },
+  { id: 'chr-002', name: 'Village Merchant',      category: 'Characters', polyCount: 1900, style: 'cartoon',   tags: ['npc','merchant','villager'] },
+  { id: 'fur-001', name: 'Wooden Chair',          category: 'Furniture',  polyCount:  180, style: 'realistic', tags: ['chair','furniture','interior'] },
+  { id: 'fur-002', name: 'King Throne',           category: 'Furniture',  polyCount:  780, style: 'stylized',  tags: ['throne','king','royal'] },
+  { id: 'wpn-001', name: 'Broad Sword',           category: 'Weapons',    polyCount:  340, style: 'realistic', tags: ['sword','medieval','combat'] },
+  { id: 'wpn-002', name: 'Magic Staff',           category: 'Weapons',    polyCount:  460, style: 'stylized',  tags: ['staff','magic','wizard'] },
+  { id: 'wpn-003', name: 'Crossbow',              category: 'Weapons',    polyCount:  580, style: 'realistic', tags: ['crossbow','ranged','medieval'] },
+  { id: 'wpn-004', name: 'Battle Axe',            category: 'Weapons',    polyCount:  490, style: 'stylized',  tags: ['axe','battle-axe','warrior'] },
+]
+
+function searchCommunityAssets(prompt: string, maxResults = 6): CommunityAssetRef[] {
+  const words = prompt.toLowerCase().split(/\W+/).filter(w => w.length > 2)
+  const scored = COMMUNITY_ASSET_INDEX.map((asset) => {
+    let score = 0
+    const haystack = [asset.name, asset.category, ...asset.tags].join(' ').toLowerCase()
+    for (const word of words) {
+      if (haystack.includes(word)) score += word.length > 4 ? 3 : 1
+    }
+    return { asset, score }
+  }).filter(r => r.score > 0)
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, maxResults).map(r => r.asset)
+}
+
+function buildCommunityAssetSection(assets: CommunityAssetRef[]): string {
+  if (assets.length === 0) return ''
+  const rows = assets.map((a, i) => `  ${i + 1}. [${a.id}] ${a.name} — ${a.category}, ${a.polyCount.toLocaleString()} polys, ${a.style}\n     GET /api/community/assets/${a.id}`)
+  return `\nCommunity Asset Library — use these real meshes (no generation needed):\n${rows.join('\n')}`
+}
+
 // ─── Token estimation ─────────────────────────────────────────────────────────
 
 function estimateTokens(text: string): number {
@@ -681,6 +740,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const intent = detectIntent(message)
   const tokensUsed = estimateTokens(message)
 
+  // ── Community asset search (runs for all build-related intents) ───────────
+  // Preferred over generating from scratch: finds relevant pre-built 3D meshes
+  const communityAssets = searchCommunityAssets(message)
+  const communityBlock  = buildCommunityAssetSection(communityAssets)
+
   // Simulated thinking delay: 1000–1800ms scaled by message complexity
   // Skipped for mesh/texture/building intents which have real async API calls
   if (intent !== 'mesh' && intent !== 'texture' && intent !== 'building') {
@@ -688,8 +752,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await sleep(delayMs)
   }
 
+  // Augment the demo response with community asset findings when relevant
+  const baseResponse = DEMO_RESPONSES[intent]
+  const augmentedResponse = communityBlock
+    ? baseResponse + '\n' + communityBlock + '\n\nTip: Click "Assets" in the sidebar → Community tab to browse and insert these directly.'
+    : baseResponse
+
   const payload: ChatResponsePayload = {
-    message: DEMO_RESPONSES[intent],
+    message: augmentedResponse,
     tokensUsed,
     intent,
   }

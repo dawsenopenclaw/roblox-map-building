@@ -1782,62 +1782,81 @@ function RobloxMarketplacePanel() {
 }
 
 
-// ─── Community Assets Data ──────────────────────────────────────────────────
+// ─── Community 3D Asset Library ──────────────────────────────────────────────────────────────────
+
+type CommunityAssetCategory = 'Buildings' | 'Vehicles' | 'Nature' | 'Props' | 'Characters' | 'Furniture' | 'Weapons'
+type AssetStyle = 'realistic' | 'low-poly' | 'stylized' | 'cartoon'
 
 interface CommunityAssetItem {
   id: string
   name: string
   creator: string
+  description: string
   downloads: number
   rating: number
-  price: number | 'free'
-  category: 'renders' | 'models' | 'scripts' | 'ui-kits' | 'sound-packs'
+  category: CommunityAssetCategory
+  polyCount: number
+  style: AssetStyle
+  tags: string[]
   gradientFrom: string
   gradientTo: string
-  icon: string
 }
 
 const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
-  { id: 'render-001', name: 'Epic Castle Render',      creator: 'alexbuilds',    downloads: 1200, rating: 4.8, price: 'free', category: 'renders',      gradientFrom: '#7C3AED', gradientTo: '#4338CA', icon: '🏰' },
-  { id: 'model-001',  name: 'Neon City Pack',           creator: 'neonmaker',     downloads: 890,  rating: 4.6, price: 4.99,  category: 'models',       gradientFrom: '#0EA5E9', gradientTo: '#6366F1', icon: '🌆' },
-  { id: 'model-002',  name: 'Low-Poly Trees',            creator: 'polyart',       downloads: 3400, rating: 4.9, price: 'free', category: 'models',       gradientFrom: '#16A34A', gradientTo: '#15803D', icon: '🌲' },
-  { id: 'model-003',  name: 'Anime Character Pack',      creator: 'anime_dev',     downloads: 567,  rating: 4.7, price: 9.99,  category: 'models',       gradientFrom: '#EC4899', gradientTo: '#DB2777', icon: '🧍' },
-  { id: 'model-004',  name: 'Modern House Kit',          creator: 'arch_studio',   downloads: 2100, rating: 4.5, price: 2.99,  category: 'models',       gradientFrom: '#F59E0B', gradientTo: '#D97706', icon: '🏠' },
-  { id: 'render-002', name: 'Fantasy Forest Render',     creator: 'dreamscapes',   downloads: 780,  rating: 4.7, price: 'free', category: 'renders',      gradientFrom: '#059669', gradientTo: '#047857', icon: '🌿' },
-  { id: 'ui-001',     name: 'RPG HUD Kit',               creator: 'ui_wizard',     downloads: 1450, rating: 4.8, price: 7.99,  category: 'ui-kits',      gradientFrom: '#DC2626', gradientTo: '#B91C1C', icon: '🎮' },
-  { id: 'script-001', name: 'Advanced NPC AI',           creator: 'scriptmaster',  downloads: 620,  rating: 4.6, price: 14.99, category: 'scripts',      gradientFrom: '#2563EB', gradientTo: '#1D4ED8', icon: '🤖' },
-  { id: 'sound-001',  name: 'Fantasy Ambience Pack',     creator: 'soundforge',    downloads: 2800, rating: 4.9, price: 'free', category: 'sound-packs', gradientFrom: '#7C3AED', gradientTo: '#6D28D9', icon: '🎵' },
-  { id: 'model-005',  name: 'Sci-Fi Corridor Set',       creator: 'space_studio',  downloads: 940,  rating: 4.5, price: 5.99,  category: 'models',       gradientFrom: '#0891B2', gradientTo: '#0E7490', icon: '🚀' },
-  { id: 'render-003', name: 'Sunset Beach Scene',        creator: 'coastal_art',   downloads: 1560, rating: 4.8, price: 'free', category: 'renders',      gradientFrom: '#F97316', gradientTo: '#EA580C', icon: '🏖️' },
-  { id: 'ui-002',     name: 'Minimal Tycoon UI',         creator: 'cleandesign',   downloads: 3200, rating: 4.7, price: 3.99,  category: 'ui-kits',      gradientFrom: '#64748B', gradientTo: '#475569', icon: '💰' },
-  { id: 'script-002', name: 'Tween Animation Suite',     creator: 'tweenking',     downloads: 4100, rating: 4.9, price: 'free', category: 'scripts',      gradientFrom: '#8B5CF6', gradientTo: '#7C3AED', icon: '✨' },
-  { id: 'model-006',  name: 'Medieval Weapon Pack',      creator: 'armory_dev',    downloads: 1870, rating: 4.6, price: 6.99,  category: 'models',       gradientFrom: '#6B7280', gradientTo: '#4B5563', icon: '⚔️' },
-  { id: 'sound-002',  name: 'Retro Arcade SFX',          creator: 'chiptune_fx',   downloads: 2300, rating: 4.8, price: 2.99,  category: 'sound-packs', gradientFrom: '#10B981', gradientTo: '#059669', icon: '🕹️' },
-  { id: 'render-004', name: 'Dark Forest Atmosphere',    creator: 'moody_renders', downloads: 690,  rating: 4.5, price: 1.99,  category: 'renders',      gradientFrom: '#1F2937', gradientTo: '#111827', icon: '🌑' },
-  { id: 'ui-003',     name: 'Chat Bubble System',        creator: 'ui_wizard',     downloads: 1100, rating: 4.7, price: 'free', category: 'ui-kits',      gradientFrom: '#3B82F6', gradientTo: '#2563EB', icon: '💬' },
-  { id: 'model-007',  name: 'Tropical Island Biome',     creator: 'island_studio', downloads: 1680, rating: 4.8, price: 8.99,  category: 'models',       gradientFrom: '#F59E0B', gradientTo: '#10B981', icon: '🏝️' },
-  { id: 'script-003', name: 'Leaderboard & DataStore',   creator: 'data_guru',     downloads: 5200, rating: 4.9, price: 'free', category: 'scripts',      gradientFrom: '#EF4444', gradientTo: '#DC2626', icon: '📊' },
-  { id: 'sound-003',  name: 'Epic Battle Soundtrack',    creator: 'orchestra_dev', downloads: 1320, rating: 4.7, price: 12.99, category: 'sound-packs', gradientFrom: '#DC2626', gradientTo: '#991B1B', icon: '🥁' },
+  // Buildings
+  { id: 'bld-001', name: 'Medieval Castle Tower', creator: 'StoneForge3D',   description: 'Tall stone tower with crenellations and arrow slits.',    downloads: 4820,  rating: 4.9, category: 'Buildings',  polyCount: 2100, style: 'realistic',  tags: ['castle','medieval','tower'],    gradientFrom: '#4B5563', gradientTo: '#1F2937' },
+  { id: 'bld-002', name: 'Modern House',          creator: 'ArchViz3D',      description: 'Contemporary house with flat roof and large windows.',   downloads: 6340,  rating: 4.7, category: 'Buildings',  polyCount:  820, style: 'low-poly',   tags: ['house','modern','residential'], gradientFrom: '#475569', gradientTo: '#334155' },
+  { id: 'bld-004', name: 'Ruined Stone Wall',     creator: 'RuinsWorkshop',  description: 'Crumbled ancient wall with moss and weathering.',        downloads: 3210,  rating: 4.6, category: 'Buildings',  polyCount:  940, style: 'realistic',  tags: ['ruins','wall','stone'],         gradientFrom: '#6B7280', gradientTo: '#374151' },
+  { id: 'bld-005', name: 'Fantasy Tavern',        creator: 'TavernCraft',    description: 'Cozy medieval tavern with thatched roof and warm glow.', downloads: 5570,  rating: 4.9, category: 'Buildings',  polyCount: 1650, style: 'stylized',   tags: ['tavern','inn','medieval'],      gradientFrom: '#92400E', gradientTo: '#78350F' },
+  // Vehicles
+  { id: 'veh-001', name: 'Sports Car (Red)',      creator: 'AutoMesh3D',     description: 'Sleek sports car with separate wheel meshes.',           downloads: 7120,  rating: 4.8, category: 'Vehicles',   polyCount: 3200, style: 'realistic',  tags: ['car','sports','racing'],        gradientFrom: '#DC2626', gradientTo: '#991B1B' },
+  { id: 'veh-002', name: 'Off-Road Truck',        creator: 'TruckMesh',      description: 'Heavy 4x4 with chunky tires and roll cage.',            downloads: 4450,  rating: 4.7, category: 'Vehicles',   polyCount: 2800, style: 'realistic',  tags: ['truck','4x4','offroad'],        gradientFrom: '#065F46', gradientTo: '#064E3B' },
+  { id: 'veh-003', name: 'Wooden Sailing Ship',   creator: 'NavalForge',     description: 'Classic tall ship with three masts, pirate-ready.',     downloads: 3890,  rating: 4.9, category: 'Vehicles',   polyCount: 4100, style: 'stylized',   tags: ['ship','pirate','naval'],        gradientFrom: '#92400E', gradientTo: '#6B3A1F' },
+  // Nature
+  { id: 'nat-001', name: 'Oak Tree (Stylized)',   creator: 'PolyForest',     description: 'Lush oak with summer and autumn color variants.',        downloads: 12400, rating: 4.9, category: 'Nature',     polyCount:  520, style: 'stylized',   tags: ['tree','oak','forest'],          gradientFrom: '#15803D', gradientTo: '#14532D' },
+  { id: 'nat-002', name: 'Boulder Pack x3',       creator: 'TerrainKit',     description: 'Three rock boulders in S, M, L sizes.',                 downloads: 9210,  rating: 4.7, category: 'Nature',     polyCount:  380, style: 'realistic',  tags: ['rock','boulder','terrain'],     gradientFrom: '#57534E', gradientTo: '#292524' },
+  { id: 'nat-003', name: 'Pine Tree (Winter)',    creator: 'PolyForest',     description: 'Snow-dusted pine with three height variants.',           downloads: 7650,  rating: 4.8, category: 'Nature',     polyCount:  440, style: 'stylized',   tags: ['pine','tree','winter','snow'],  gradientFrom: '#0C4A6E', gradientTo: '#082F49' },
+  { id: 'nat-004', name: 'Mushroom Cluster',      creator: 'FairyForge',     description: 'Fantasy mushrooms with optional glowing caps.',          downloads: 5430,  rating: 4.6, category: 'Nature',     polyCount:  290, style: 'cartoon',    tags: ['mushroom','fantasy','magic'],   gradientFrom: '#7C3AED', gradientTo: '#5B21B6' },
+  // Props
+  { id: 'prp-001', name: 'Treasure Chest',        creator: 'PropFactory',    description: 'Chest with separate lid for open/close animation.',     downloads: 15200, rating: 5.0, category: 'Props',      polyCount:  420, style: 'cartoon',    tags: ['chest','treasure','loot'],      gradientFrom: '#B45309', gradientTo: '#92400E' },
+  { id: 'prp-002', name: 'Market Stall',          creator: 'TavernCraft',    description: 'Medieval stall with canopy and hanging goods.',          downloads: 4780,  rating: 4.7, category: 'Props',      polyCount:  560, style: 'stylized',   tags: ['market','stall','shop'],        gradientFrom: '#D97706', gradientTo: '#B45309' },
+  { id: 'prp-003', name: 'Wooden Barrel',         creator: 'PropFactory',    description: 'Classic barrel with metal hoops, four size variants.',  downloads: 11300, rating: 4.8, category: 'Props',      polyCount:  160, style: 'realistic',  tags: ['barrel','wood','tavern'],       gradientFrom: '#78350F', gradientTo: '#451A03' },
+  { id: 'prp-004', name: 'Campfire',              creator: 'OutdoorKit',     description: 'Fire pit with particle-ready pivot points.',            downloads: 8850,  rating: 4.9, category: 'Props',      polyCount:  240, style: 'stylized',   tags: ['campfire','fire','camp'],       gradientFrom: '#C2410C', gradientTo: '#9A3412' },
+  { id: 'prp-005', name: 'Street Lamp (Iron)',    creator: 'PropFactory',    description: 'Victorian iron lamp post for city streets.',            downloads: 8900,  rating: 4.8, category: 'Props',      polyCount:  210, style: 'realistic',  tags: ['lamp','street','urban'],        gradientFrom: '#374151', gradientTo: '#1F2937' },
+  // Characters
+  { id: 'chr-001', name: 'Knight Warrior',        creator: 'CharacterForge', description: 'Full-plate knight rigged for humanoid animations.',    downloads: 6720,  rating: 4.8, category: 'Characters', polyCount: 2800, style: 'stylized',   tags: ['knight','warrior','armor'],     gradientFrom: '#3730A3', gradientTo: '#312E81' },
+  { id: 'chr-002', name: 'Village Merchant',      creator: 'NPCStudio',      description: 'Friendly NPC with idle and talking animations.',       downloads: 4120,  rating: 4.6, category: 'Characters', polyCount: 1900, style: 'cartoon',    tags: ['npc','merchant','villager'],    gradientFrom: '#B45309', gradientTo: '#92400E' },
+  // Furniture
+  { id: 'fur-001', name: 'Wooden Chair',          creator: 'InteriorKit',    description: 'Handcrafted chair with optional cushion variant.',     downloads: 9340,  rating: 4.7, category: 'Furniture',  polyCount:  180, style: 'realistic',  tags: ['chair','furniture','interior'], gradientFrom: '#7C2D12', gradientTo: '#431407' },
+  { id: 'fur-002', name: 'King Throne',           creator: 'RoyalProps',     description: 'Ornate throne with velvet cushion and gold crown.',    downloads: 5640,  rating: 4.9, category: 'Furniture',  polyCount:  780, style: 'stylized',   tags: ['throne','king','royal'],        gradientFrom: '#78350F', gradientTo: '#451A03' },
+  // Weapons
+  { id: 'wpn-001', name: 'Broad Sword',           creator: 'ArmoryForge',    description: 'One-handed broadsword, grip point clearly marked.',    downloads: 13800, rating: 4.8, category: 'Weapons',    polyCount:  340, style: 'realistic',  tags: ['sword','medieval','combat'],    gradientFrom: '#475569', gradientTo: '#0F172A' },
+  { id: 'wpn-002', name: 'Magic Staff',           creator: 'MagicProps',     description: 'Wizard staff with separate glowing crystal orb.',     downloads: 8230,  rating: 4.9, category: 'Weapons',    polyCount:  460, style: 'stylized',   tags: ['staff','magic','wizard'],       gradientFrom: '#5B21B6', gradientTo: '#4C1D95' },
+  { id: 'wpn-003', name: 'Crossbow',              creator: 'ArmoryForge',    description: 'Medieval crossbow with carved stock and bolt mesh.',  downloads: 5910,  rating: 4.7, category: 'Weapons',    polyCount:  580, style: 'realistic',  tags: ['crossbow','ranged','medieval'], gradientFrom: '#4B5563', gradientTo: '#1F2937' },
+  { id: 'wpn-004', name: 'Battle Axe',            creator: 'ArmoryForge',    description: 'Double-headed axe with runic engravings.',            downloads: 7460,  rating: 4.8, category: 'Weapons',    polyCount:  490, style: 'stylized',   tags: ['axe','battle-axe','warrior'],   gradientFrom: '#7C3AED', gradientTo: '#5B21B6' },
 ]
 
-const COMMUNITY_CATEGORIES = ['All', 'Renders', 'Models', 'Scripts', 'UI Kits', 'Sound Packs'] as const
+const COMMUNITY_CATEGORIES = ['All', 'Buildings', 'Vehicles', 'Nature', 'Props', 'Characters', 'Furniture', 'Weapons'] as const
 type CommunityCategoryLabel = typeof COMMUNITY_CATEGORIES[number]
-
-const COMMUNITY_CATEGORY_MAP: Record<CommunityCategoryLabel, string> = {
-  'All':         'all',
-  'Renders':     'renders',
-  'Models':      'models',
-  'Scripts':     'scripts',
-  'UI Kits':     'ui-kits',
-  'Sound Packs': 'sound-packs',
-}
 
 const SORT_OPTIONS = ['Popular', 'New', 'Top Rated'] as const
 type SortLabel = typeof SORT_OPTIONS[number]
 
+const STYLE_COLORS: Record<AssetStyle, string> = {
+  realistic: '#6B7280',
+  'low-poly': '#0891B2',
+  stylized: '#7C3AED',
+  cartoon: '#D97706',
+}
+
 function formatDownloads(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`
   return String(n)
+}
+
+function formatPoly(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return `${n}`
 }
 
 function StarRating({ rating }: { rating: number }) {
@@ -1853,16 +1872,50 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
-function CommunityTab() {
+function generateInsertLuau(asset: CommunityAssetItem): string {
+  const varName = asset.name.replace(/[^a-zA-Z0-9]/g, '_').replace(/^_+|_+$/g, '')
+  const catHint: Record<CommunityAssetCategory, string> = {
+    Buildings: 'anchor and position on terrain',
+    Vehicles:  'attach VehicleSeat for drivable version',
+    Nature:    'randomise Y rotation for natural variation',
+    Props:     'add ProximityPrompt for interaction',
+    Characters:'attach Humanoid and scripts for NPC behavior',
+    Furniture: 'place inside building interior',
+    Weapons:   'parent to StarterPack or player backpack',
+  }
+  return [
+    `-- ForjeAI: Insert "${asset.name}" (${asset.polyCount.toLocaleString()} polys, ${asset.style})`,
+    `-- ${asset.category}: ${catHint[asset.category]}`,
+    `-- Download GLB: /api/community/assets/${asset.id} then replace ASSET_ID`,
+    ``,
+    `local function insert${varName}(position: Vector3)`,
+    `  local mesh = Instance.new("MeshPart")`,
+    `  mesh.Name = "${asset.name}"`,
+    `  mesh.MeshId = "rbxassetid://ASSET_ID"`,
+    `  mesh.Size = Vector3.new(1, 1, 1)`,
+    `  mesh.CFrame = CFrame.new(position)`,
+    `  mesh.Anchored = true`,
+    `  mesh.Material = Enum.Material.SmoothPlastic`,
+    `  mesh.Parent = workspace`,
+    `  return mesh`,
+    `end`,
+    ``,
+    `local placed = insert${varName}(Vector3.new(0, 0, 0))`,
+    `print("Placed ${asset.name} at", placed.Position)`,
+  ].join('\n')
+}
+
+function CommunityTab({ onInsertAsset }: { onInsertAsset?: (luau: string, name: string) => void }) {
   const [activeCat, setActiveCat] = useState<CommunityCategoryLabel>('All')
   const [sort, setSort]           = useState<SortLabel>('Popular')
   const [query, setQuery]         = useState('')
-  const [added, setAdded]         = useState<Set<string>>(new Set())
+  const [inserted, setInserted]   = useState<Set<string>>(new Set())
 
   const filtered = COMMUNITY_ASSETS_DATA.filter((a) => {
-    const catKey = COMMUNITY_CATEGORY_MAP[activeCat]
-    if (catKey !== 'all' && a.category !== catKey) return false
-    if (query.trim() && !a.name.toLowerCase().includes(query.toLowerCase()) && !a.creator.toLowerCase().includes(query.toLowerCase())) return false
+    if (activeCat !== 'All' && a.category !== activeCat) return false
+    const q = query.trim().toLowerCase()
+    if (q && !a.name.toLowerCase().includes(q) && !a.creator.toLowerCase().includes(q) &&
+        !a.tags.some(t => t.includes(q)) && !a.description.toLowerCase().includes(q)) return false
     return true
   }).sort((a, b) => {
     if (sort === 'Popular')   return b.downloads - a.downloads
@@ -1870,7 +1923,10 @@ function CommunityTab() {
     return b.id.localeCompare(a.id)
   })
 
-  const handleUse = (id: string) => setAdded((prev) => new Set(prev).add(id))
+  const handleInsert = (asset: CommunityAssetItem) => {
+    setInserted((prev) => new Set(prev).add(asset.id))
+    onInsertAsset?.(generateInsertLuau(asset), asset.name)
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -1884,93 +1940,99 @@ function CommunityTab() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search community assets..."
+            placeholder="Search 3D assets..."
             className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
           />
         </div>
         <div className="flex flex-wrap gap-1">
           {COMMUNITY_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCat(cat)}
-              className={[
-                'rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                activeCat === cat
-                  ? 'bg-[#FFB81C] text-black'
-                  : 'border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200',
-              ].join(' ')}
-            >
+            <button key={cat} onClick={() => setActiveCat(cat)}
+              className={['rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                activeCat === cat ? 'bg-[#FFB81C] text-black' : 'border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200',
+              ].join(' ')}>
               {cat}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1">
-          <span className="mr-1 text-[9px] font-medium text-gray-600">Sort:</span>
-          {SORT_OPTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSort(s)}
-              className={[
-                'rounded px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                sort === s ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300',
-              ].join(' ')}
-            >
-              {s}
-            </button>
-          ))}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-medium text-gray-600">Sort:</span>
+            {SORT_OPTIONS.map((s) => (
+              <button key={s} onClick={() => setSort(s)}
+                className={['rounded px-1.5 py-0.5 text-[9px] font-semibold transition-colors',
+                  sort === s ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300',
+                ].join(' ')}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <span className="text-[9px] text-gray-600">{filtered.length} assets</span>
         </div>
       </div>
+
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {filtered.length === 0 ? (
-          <p className="py-8 text-center text-xs text-gray-600">No assets found</p>
+          <div className="py-10 text-center space-y-2">
+            <p className="text-xs text-gray-600">No assets match</p>
+            <button onClick={() => { setQuery(''); setActiveCat('All') }}
+              className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors">
+              Clear filters
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filtered.map((asset) => {
-              const isAdded = added.has(asset.id)
+              const isIns = inserted.has(asset.id)
               return (
-                <div key={asset.id} className="overflow-hidden rounded-lg border border-white/8 bg-white/[0.03] transition-colors hover:border-white/[0.18]">
-                  <div
-                    className="relative flex h-14 w-full items-center justify-center text-2xl"
-                    style={{ background: `linear-gradient(135deg, ${asset.gradientFrom}, ${asset.gradientTo})` }}
-                  >
-                    <span>{asset.icon}</span>
-                    {asset.price === 'free' && (
-                      <span className="absolute right-1 top-1 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[7px] font-bold text-white">FREE</span>
-                    )}
+                <div key={asset.id} className="overflow-hidden rounded-lg border border-white/8 bg-white/[0.02] transition-all hover:border-white/[0.18]">
+                  <div className="relative flex h-14 w-full items-end justify-between p-1.5"
+                    style={{ background: `linear-gradient(135deg, ${asset.gradientFrom}, ${asset.gradientTo})` }}>
+                    <span className="rounded px-1 py-0.5 text-[7px] font-bold text-white/90"
+                      style={{ background: STYLE_COLORS[asset.style] + 'CC' }}>
+                      {asset.style}
+                    </span>
+                    <span className="rounded bg-black/50 px-1 py-0.5 text-[7px] font-mono text-white/80">
+                      {formatPoly(asset.polyCount)}p
+                    </span>
                   </div>
-                  <div className="p-2">
-                    <p className="truncate text-[10px] font-semibold leading-tight text-gray-200">{asset.name}</p>
-                    <p className="mt-0.5 text-[9px] text-gray-500">@{asset.creator}</p>
-                    <div className="mt-1 flex items-center gap-1">
+                  <div className="p-2 space-y-0.5">
+                    <p className="truncate text-[10px] font-semibold leading-tight text-gray-200" title={asset.name}>{asset.name}</p>
+                    <p className="text-[9px] text-gray-500 leading-tight line-clamp-2">{asset.description}</p>
+                    <p className="text-[9px] text-gray-600">@{asset.creator}</p>
+                    <div className="flex items-center gap-1 pt-0.5">
                       <StarRating rating={asset.rating} />
                       <span className="text-[8px] text-gray-500">{asset.rating.toFixed(1)}</span>
+                      <span className="ml-auto text-[8px] text-gray-600">{formatDownloads(asset.downloads)} dl</span>
                     </div>
-                    <div className="mt-1.5 flex items-center justify-between">
-                      <div>
-                        <p className={['text-[9px] font-bold', asset.price === 'free' ? 'text-emerald-400' : 'text-[#FFB81C]'].join(' ')}>
-                          {asset.price === 'free' ? 'Free' : `${(asset.price as number).toFixed(2)}`}
-                        </p>
-                        <p className="text-[8px] text-gray-600">{formatDownloads(asset.downloads)} dl</p>
-                      </div>
-                      <button
-                        onClick={() => handleUse(asset.id)}
-                        disabled={isAdded}
-                        className={[
-                          'rounded px-1.5 py-0.5 text-[8px] font-bold transition-colors',
-                          isAdded
-                            ? 'cursor-default bg-emerald-500/20 text-emerald-400'
-                            : 'bg-[#FFB81C]/15 text-[#FFB81C] hover:bg-[#FFB81C]/30',
-                        ].join(' ')}
-                      >
-                        {isAdded ? 'Added' : 'Use in Game'}
-                      </button>
-                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 px-2 pb-2">
+                    <button onClick={() => handleInsert(asset)} disabled={isIns}
+                      className={['rounded py-1 text-[8px] font-bold transition-all',
+                        isIns ? 'cursor-default bg-emerald-500/20 text-emerald-400' : 'bg-[#FFB81C]/15 text-[#FFB81C] hover:bg-[#FFB81C]/25 active:scale-95',
+                      ].join(' ')}>
+                      {isIns ? 'Inserted' : 'Insert'}
+                    </button>
+                    <a href={`/api/community/assets/${asset.id}`} target="_blank" rel="noreferrer"
+                      className="rounded py-1 text-[8px] font-bold bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors text-center">
+                      Details
+                    </a>
                   </div>
                 </div>
               )
             })}
           </div>
         )}
+      </div>
+
+      <div className="flex-shrink-0 border-t border-white/8 p-3">
+        <button
+          onClick={() => onInsertAsset?.('-- Open the Generate tab to create a custom 3D mesh with Meshy AI', 'Custom Asset')}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#FFB81C]/30 bg-[#FFB81C]/10 py-2 text-[10px] font-semibold text-[#FFB81C] transition-colors hover:bg-[#FFB81C]/20">
+          <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          Generate Custom 3D Asset
+        </button>
       </div>
     </div>
   )
@@ -2030,13 +2092,13 @@ function GenerateTab() {
 
 type AssetTab = 'roblox' | 'generate' | 'community'
 
-function AssetsPanel() {
+function AssetsPanel({ onInsertAsset }: { onInsertAsset?: (luau: string, name: string) => void }) {
   const [activeTab, setActiveTab] = useState<AssetTab>('community')
 
   const tabs: { id: AssetTab; label: string }[] = [
+    { id: 'community', label: 'Community' },
     { id: 'roblox',    label: 'Roblox'    },
     { id: 'generate',  label: 'Generate'  },
-    { id: 'community', label: 'Community' },
   ]
 
   return (
@@ -2062,7 +2124,7 @@ function AssetsPanel() {
       <div className="flex-1 overflow-hidden">
         {activeTab === 'roblox'    && <RobloxMarketplacePanel />}
         {activeTab === 'generate'  && <GenerateTab />}
-        {activeTab === 'community' && <CommunityTab />}
+        {activeTab === 'community' && <CommunityTab onInsertAsset={onInsertAsset} />}
       </div>
     </div>
   )
@@ -2579,7 +2641,7 @@ export function EditorClient() {
             </div>
             <div className="flex-1 overflow-y-auto min-h-0">
               {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
-              {activePanel === 'assets'   && <AssetsPanel />}
+              {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
               {activePanel === 'dna'      && <DnaPanel />}
               {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
               {activePanel === 'settings' && <SettingsPanel />}
@@ -2601,7 +2663,7 @@ export function EditorClient() {
               </div>
               <div className="flex-1 overflow-y-auto min-h-0">
                 {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
-                {activePanel === 'assets'   && <AssetsPanel />}
+                {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
                 {activePanel === 'dna'      && <DnaPanel />}
                 {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
                 {activePanel === 'settings' && <SettingsPanel />}
