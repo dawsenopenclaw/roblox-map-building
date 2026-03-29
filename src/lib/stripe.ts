@@ -1,21 +1,29 @@
 import Stripe from 'stripe'
-import { serverEnv } from './env'
 
-if (!serverEnv.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set — cannot initialise Stripe client')
-}
-if (!serverEnv.STRIPE_WEBHOOK_SECRET) {
-  // Warn loudly in non-production; hard-fail in production
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('STRIPE_WEBHOOK_SECRET is not set — webhook signature verification will be insecure')
-  } else {
-    console.warn('[stripe] STRIPE_WEBHOOK_SECRET is not set — webhook signature verification disabled in dev')
+// Lazy initialization — don't throw during build when env vars aren't set
+
+let _stripe: Stripe | null = null
+
+export function getStripe(): Stripe {
+  if (_stripe) return _stripe
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY is not set')
   }
+  _stripe = new Stripe(key, {
+    apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
+    typescript: true,
+  })
+  return _stripe
 }
 
-export const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-  typescript: true,
+// Backward compat — lazy getter
+export const stripe = new Proxy({} as Stripe, {
+  get: (_, prop) => {
+    const s = getStripe()
+    const val = (s as Record<string, unknown>)[prop as string]
+    return typeof val === 'function' ? val.bind(s) : val
+  },
 })
 
 export async function createCustomer({ email, userId }: { email: string; userId: string }) {
