@@ -3,6 +3,8 @@ import { useState, useCallback } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { TierBadge } from '@/components/TierBadge'
+import { AnimatedCard } from '@/components/ui/animated-card'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -158,13 +160,7 @@ export default function MarketplacePage() {
       {isLoading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-[#0D1231] border border-white/10 rounded-xl overflow-hidden animate-pulse">
-              <div className="h-40 bg-white/5" />
-              <div className="p-3 space-y-2">
-                <div className="h-3 bg-white/10 rounded w-3/4" />
-                <div className="h-3 bg-white/10 rounded w-1/2" />
-              </div>
-            </div>
+            <SkeletonCard key={i} imageHeight={160} lines={2} />
           ))}
         </div>
       ) : templates.length === 0 ? (
@@ -176,39 +172,41 @@ export default function MarketplacePage() {
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {templates.map((template) => {
+            {templates.map((template, i) => {
               const thumb = template.thumbnailUrl || template.screenshots?.[0]?.url
               const creatorName = template.creator?.displayName || template.creator?.username || 'Unknown'
               return (
-                <Link
+                <AnimatedCard
                   key={template.id}
-                  href={`/marketplace/${template.id}`}
-                  className="bg-[#0D1231] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors group"
+                  index={i}
+                  className="bg-[#0D1231] border border-white/10 rounded-xl overflow-hidden group"
                 >
-                  <div className="h-40 bg-[#111640] flex items-center justify-center overflow-hidden">
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt={template.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-4xl opacity-20">🎮</span>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <p className="text-white text-sm font-semibold truncate group-hover:text-[#FFB81C] transition-colors">
-                      {template.title}
-                    </p>
-                    <p className="text-gray-500 text-xs mt-0.5 truncate">{creatorName}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <StarRating rating={template.averageRating} count={template.reviewCount} />
-                      <span className="text-xs font-bold text-[#FFB81C]">
-                        {template.priceCents === 0 ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
-                      </span>
+                  <Link href={`/marketplace/${template.id}`} className="block">
+                    <div className="h-40 bg-[#111640] flex items-center justify-center overflow-hidden">
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt={template.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-4xl opacity-20">🎮</span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <span className="text-xs text-gray-600">{template.downloads.toLocaleString()} downloads</span>
+                    <div className="p-3">
+                      <p className="text-white text-sm font-semibold truncate group-hover:text-[#FFB81C] transition-colors">
+                        {template.title}
+                      </p>
+                      <p className="text-gray-500 text-xs mt-0.5 truncate">{creatorName}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <StarRating rating={template.averageRating} count={template.reviewCount} />
+                        <span className="text-xs font-bold text-[#FFB81C]">
+                          {template.priceCents === 0 ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1.5">
+                        <span className="text-xs text-gray-600">{template.downloads.toLocaleString()} downloads</span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </AnimatedCard>
               )
             })}
           </div>
