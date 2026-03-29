@@ -1,0 +1,47 @@
+appId: com.forjegames.app
+productName: ForjeGames
+
+directories:
+  output: dist-electron
+
+files:
+  - electron/**/*
+  - public/**/*
+  - "!node_modules/**/*"
+  - "!.next/**/*"
+  - "!.planning/**/*"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: public/icons/icon-512.svg
+  artifactName: ForjeGames-Setup-${version}.exe
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: public/icons/icon-512.svg
+  artifactName: ForjeGames-${version}.dmg
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
+  gatekeeperAssess: false
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+dmg:
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications

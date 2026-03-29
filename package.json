@@ -2,6 +2,7 @@
   "name": "robloxforge",
   "version": "1.0.0",
   "private": true,
+  "main": "electron/main.js",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -20,7 +21,12 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "electron-builder --win --mac",
+    "electron-build:win": "electron-builder --win",
+    "electron-build:mac": "electron-builder --mac"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -64,6 +70,9 @@
     "@vitest/coverage-v8": "^2.1.8",
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "wait-on": "^8.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "happy-dom": "^15.11.7",
