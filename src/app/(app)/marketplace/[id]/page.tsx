@@ -11,40 +11,247 @@ import { ShareButtons } from '@/components/ShareButtons'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
-// Demo template shown when the database is unavailable
-const DEMO_TEMPLATE = {
-  id: 'demo-1',
-  title: 'Medieval Castle Game Template',
-  slug: 'medieval-castle-game-template',
-  description:
-    'A fully featured medieval castle game template for Roblox. Includes dungeon systems, NPC enemies, loot tables, and a complete quest framework. Perfect for RPG games targeting the 8-16 age group.\n\nWhat\'s included:\n- Fully scripted castle environment\n- Enemy AI with patrol routes\n- Inventory and loot system\n- Quest tracker UI\n- Mobile-optimized controls',
-  category: 'GAME_TEMPLATE',
-  status: 'PUBLISHED',
-  priceCents: 999,
-  rbxmFileUrl: null as string | null,
-  thumbnailUrl: null as string | null,
-  averageRating: 4.8,
-  reviewCount: 24,
-  tags: ['medieval', 'rpg', 'castle', 'adventure'],
-  screenshots: [] as Array<{ id: string; url: string; altText: string | null; sortOrder: number }>,
+// ─── Shared demo shape ────────────────────────────────────────────────────────
+
+type DemoTemplate = {
+  id: string
+  title: string
+  slug: string
+  description: string
+  category: string
+  status: string
+  priceCents: number
+  rbxmFileUrl: string | null
+  thumbnailUrl: string | null
+  averageRating: number
+  reviewCount: number
+  tags: string[]
+  screenshots: Array<{ id: string; url: string; altText: string | null; sortOrder: number }>
   creator: {
-    id: 'demo-creator-1',
-    displayName: 'RobloxForge',
-    username: 'robloxforge',
-    avatarUrl: null as string | null,
-    userXp: { tier: 'GOLD' as string, totalXp: 5000 },
-  },
-  reviews: [] as Array<{
+    id: string
+    displayName: string | null
+    username: string | null
+    avatarUrl: string | null
+    userXp: { tier: string; totalXp: number }
+  }
+  reviews: Array<{
     id: string
     rating: number
     body: string | null
     creatorResponse: string | null
     createdAt: Date
     reviewer: { id: string; displayName: string | null; username: string | null; avatarUrl: string | null }
-  }>,
-  _count: { purchases: 1420 },
-  creatorId: 'demo-creator-1',
+  }>
+  _count: { purchases: number }
+  creatorId: string
 }
+
+// Demo templates — one per demo-* id used in the marketplace listing
+const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
+  'demo-1': {
+    id: 'demo-1',
+    title: 'Medieval Castle Pack',
+    slug: 'medieval-castle-pack',
+    description:
+      'A fully featured medieval castle game template for Roblox. Includes dungeon systems, NPC enemies, loot tables, and a complete quest framework.\n\nWhat\'s included:\n- Fully scripted castle environment\n- Enemy AI with patrol routes\n- Inventory and loot system\n- Quest tracker UI\n- Mobile-optimized controls',
+    category: 'GAME_TEMPLATE',
+    status: 'PUBLISHED',
+    priceCents: 1499,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4.5,
+    reviewCount: 42,
+    tags: ['medieval', 'rpg', 'castle', 'adventure'],
+    screenshots: [],
+    creator: { id: 'c1', displayName: 'Alex_Builds', username: 'alex_builds', avatarUrl: null, userXp: { tier: 'GOLD', totalXp: 5000 } },
+    reviews: [],
+    _count: { purchases: 1820 },
+    creatorId: 'c1',
+  },
+  'demo-2': {
+    id: 'demo-2',
+    title: 'City Starter Kit',
+    slug: 'city-starter-kit',
+    description:
+      'A free, open-source city map starter for Roblox developers. Includes road networks, building shells, street lighting, and terrain.\n\nWhat\'s included:\n- 40+ modular city blocks\n- Pre-built road system\n- Day/night lighting setup\n- Optimized for mobile',
+    category: 'MAP_TEMPLATE',
+    status: 'PUBLISHED',
+    priceCents: 0,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 5,
+    reviewCount: 128,
+    tags: ['city', 'map', 'free', 'urban'],
+    screenshots: [],
+    creator: { id: 'c2', displayName: 'Marcus', username: 'marcus_dev', avatarUrl: null, userXp: { tier: 'PLATINUM', totalXp: 12000 } },
+    reviews: [],
+    _count: { purchases: 9340 },
+    creatorId: 'c2',
+  },
+  'demo-3': {
+    id: 'demo-3',
+    title: 'Tycoon Framework',
+    slug: 'tycoon-framework',
+    description:
+      'A production-ready tycoon game framework. Drop-in support for conveyor belts, droppers, upgraders, and a prestige system.\n\nWhat\'s included:\n- Dropper & conveyor system\n- Upgrade tree UI\n- Prestige mechanic\n- ProfileStore integration\n- Mobile-first layout',
+    category: 'GAME_TEMPLATE',
+    status: 'PUBLISHED',
+    priceCents: 2499,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4,
+    reviewCount: 67,
+    tags: ['tycoon', 'simulator', 'economy'],
+    screenshots: [],
+    creator: { id: 'c3', displayName: 'Sarah', username: 'sarah_scripts', avatarUrl: null, userXp: { tier: 'GOLD', totalXp: 7200 } },
+    reviews: [],
+    _count: { purchases: 3210 },
+    creatorId: 'c3',
+  },
+  'demo-4': {
+    id: 'demo-4',
+    title: 'Modern UI Kit',
+    slug: 'modern-ui-kit',
+    description:
+      'A clean, modern UI component library for Roblox. Includes 30+ reusable ScreenGui components with consistent theming.\n\nWhat\'s included:\n- Buttons, modals, tooltips\n- Inventory grid\n- Leaderboard panel\n- Settings screen\n- Fully documented',
+    category: 'UI_KIT',
+    status: 'PUBLISHED',
+    priceCents: 999,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4.5,
+    reviewCount: 89,
+    tags: ['ui', 'gui', 'components', 'modern'],
+    screenshots: [],
+    creator: { id: 'c4', displayName: 'DesignPro', username: 'designpro', avatarUrl: null, userXp: { tier: 'SILVER', totalXp: 3100 } },
+    reviews: [],
+    _count: { purchases: 5670 },
+    creatorId: 'c4',
+  },
+  'demo-5': {
+    id: 'demo-5',
+    title: 'Combat System v2',
+    slug: 'combat-system-v2',
+    description:
+      'A complete combat system for action games. Includes hitbox detection, combo chains, blocking, dodge rolls, and skill cooldowns.\n\nWhat\'s included:\n- Melee & ranged combat\n- Combo input detection\n- Hitbox visualizer (dev mode)\n- Ragdoll on death\n- Fully networked via RemoteEvents',
+    category: 'SCRIPT',
+    status: 'PUBLISHED',
+    priceCents: 1999,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 5,
+    reviewCount: 201,
+    tags: ['combat', 'pvp', 'hitbox', 'action'],
+    screenshots: [],
+    creator: { id: 'c5', displayName: 'LuauLegend', username: 'luau_legend', avatarUrl: null, userXp: { tier: 'PLATINUM', totalXp: 18000 } },
+    reviews: [],
+    _count: { purchases: 7800 },
+    creatorId: 'c5',
+  },
+  'demo-6': {
+    id: 'demo-6',
+    title: 'Fantasy Map Bundle',
+    slug: 'fantasy-map-bundle',
+    description:
+      'A hand-crafted fantasy world map bundle with forests, mountains, rivers, and ruins. Ready to use as a game world or adventure map.\n\nWhat\'s included:\n- 5 biome zones\n- Dungeon entrance props\n- Ambient particle effects\n- Custom terrain painting\n- Optimized for <15k parts',
+    category: 'MAP_TEMPLATE',
+    status: 'PUBLISHED',
+    priceCents: 3499,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4,
+    reviewCount: 55,
+    tags: ['fantasy', 'map', 'world', 'rpg'],
+    screenshots: [],
+    creator: { id: 'c6', displayName: 'WorldForge', username: 'world_forge', avatarUrl: null, userXp: { tier: 'GOLD', totalXp: 6500 } },
+    reviews: [],
+    _count: { purchases: 2100 },
+    creatorId: 'c6',
+  },
+  'demo-7': {
+    id: 'demo-7',
+    title: 'Admin Panel Script',
+    slug: 'admin-panel-script',
+    description:
+      'A free, lightweight admin panel for any Roblox game. Permission-based commands, banning, kick, teleport, and a visual UI.\n\nWhat\'s included:\n- Role-based permissions\n- 20+ built-in commands\n- In-game GUI panel\n- Ban/unban system\n- Audit log',
+    category: 'SCRIPT',
+    status: 'PUBLISHED',
+    priceCents: 0,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4.5,
+    reviewCount: 310,
+    tags: ['admin', 'moderation', 'free', 'tools'],
+    screenshots: [],
+    creator: { id: 'c7', displayName: 'DevTools', username: 'dev_tools', avatarUrl: null, userXp: { tier: 'PLATINUM', totalXp: 22000 } },
+    reviews: [],
+    _count: { purchases: 14200 },
+    creatorId: 'c7',
+  },
+  'demo-8': {
+    id: 'demo-8',
+    title: 'Inventory UI Pack',
+    slug: 'inventory-ui-pack',
+    description:
+      'A polished inventory UI system with drag-and-drop, item tooltips, equipment slots, and hotbar. Works with any item framework.\n\nWhat\'s included:\n- Drag-and-drop grid inventory\n- Equipment slots UI\n- Item tooltip system\n- Hotbar with keybinds\n- Animated open/close',
+    category: 'UI_KIT',
+    status: 'PUBLISHED',
+    priceCents: 799,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4,
+    reviewCount: 44,
+    tags: ['inventory', 'ui', 'items', 'gui'],
+    screenshots: [],
+    creator: { id: 'c8', displayName: 'UIQueen', username: 'ui_queen', avatarUrl: null, userXp: { tier: 'SILVER', totalXp: 2800 } },
+    reviews: [],
+    _count: { purchases: 1950 },
+    creatorId: 'c8',
+  },
+  'demo-9': {
+    id: 'demo-9',
+    title: 'Tropical Island Asset Pack',
+    slug: 'tropical-island-asset-pack',
+    description:
+      'A collection of 60+ tropical island assets including palm trees, beach props, water effects, and coral reef decorations.\n\nWhat\'s included:\n- 20 palm tree variants\n- Beach hut & dock props\n- Animated water shader\n- Coral reef models\n- Seagull ambient NPC',
+    category: 'ASSET',
+    status: 'PUBLISHED',
+    priceCents: 1299,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 5,
+    reviewCount: 73,
+    tags: ['tropical', 'island', 'beach', 'props'],
+    screenshots: [],
+    creator: { id: 'c9', displayName: 'IslandArtist', username: 'island_artist', avatarUrl: null, userXp: { tier: 'GOLD', totalXp: 8100 } },
+    reviews: [],
+    _count: { purchases: 4100 },
+    creatorId: 'c9',
+  },
+  'demo-10': {
+    id: 'demo-10',
+    title: 'Dungeon Crawler Starter',
+    slug: 'dungeon-crawler-starter',
+    description:
+      'A complete dungeon crawler starter with procedural room generation, enemy spawning, loot drops, and a minimap.\n\nWhat\'s included:\n- Procedural dungeon generator\n- Enemy AI with pathfinding\n- Loot table system\n- Minimap UI\n- Boss room logic',
+    category: 'GAME_TEMPLATE',
+    status: 'PUBLISHED',
+    priceCents: 1999,
+    rbxmFileUrl: null,
+    thumbnailUrl: null,
+    averageRating: 4.5,
+    reviewCount: 96,
+    tags: ['dungeon', 'rpg', 'procedural', 'roguelike'],
+    screenshots: [],
+    creator: { id: 'c10', displayName: 'DungeonCraft', username: 'dungeon_craft', avatarUrl: null, userXp: { tier: 'GOLD', totalXp: 6900 } },
+    reviews: [],
+    _count: { purchases: 3580 },
+    creatorId: 'c10',
+  },
+}
+
+// Fallback: first demo used when DB errors on a real id
+const FALLBACK_DEMO = DEMO_TEMPLATES['demo-1']
 
 export async function generateMetadata({
   params,
@@ -55,9 +262,10 @@ export async function generateMetadata({
 
   // Demo template metadata
   if (id.startsWith('demo-')) {
+    const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
     return {
-      title: `${DEMO_TEMPLATE.title} - RobloxForge Marketplace`,
-      description: DEMO_TEMPLATE.description.slice(0, 160),
+      title: `${demo.title} - RobloxForge Marketplace`,
+      description: demo.description.slice(0, 160),
     }
   }
 
@@ -119,12 +327,13 @@ export default async function TemplateDetailPage({
 }) {
   const { id } = await params
 
-  // Serve demo template when DB is unavailable or id is a demo id
+  // Serve demo template when id is a demo id
   if (id.startsWith('demo-')) {
-    return <TemplateDetail template={DEMO_TEMPLATE} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
+    const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
+    return <TemplateDetail template={demo} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 
-  let template: typeof DEMO_TEMPLATE | null = null
+  let template: DemoTemplate | null = null
   let user: Awaited<ReturnType<typeof getAuthUser>> = null
   let hasPurchased = false
   let hasReviewed = false
@@ -158,7 +367,7 @@ export default async function TemplateDetailPage({
 
     if (!dbTemplate || dbTemplate.status !== 'PUBLISHED') notFound()
 
-    template = dbTemplate as typeof DEMO_TEMPLATE
+    template = dbTemplate as DemoTemplate
     user = dbUser
 
     // Fire template_viewed analytics (non-blocking)
@@ -186,7 +395,7 @@ export default async function TemplateDetailPage({
   } catch (err) {
     console.error('[marketplace/[id]] DB error:', err)
     // Fall back to demo so page doesn't crash
-    return <TemplateDetail template={DEMO_TEMPLATE} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
+    return <TemplateDetail template={FALLBACK_DEMO} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 
   if (!template) notFound()
@@ -205,7 +414,7 @@ export default async function TemplateDetailPage({
 
 // ─── TemplateDetail render component ─────────────────────────────────────────
 
-type TemplateShape = typeof DEMO_TEMPLATE
+type TemplateShape = DemoTemplate
 
 function TemplateDetail({
   template,
