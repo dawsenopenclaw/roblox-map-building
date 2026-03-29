@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 const COMING_SOON_FEATURES = [
@@ -50,6 +50,18 @@ export default function DownloadClient() {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  // Initialise from localStorage after hydration to avoid SSR mismatch
+  const [alreadySigned, setAlreadySigned] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('waitlist_email')) {
+        setAlreadySigned(true)
+      }
+    } catch {
+      // localStorage unavailable — not critical
+    }
+  }, [])
 
   async function handleNotify(e: React.FormEvent) {
     e.preventDefault()
@@ -65,7 +77,10 @@ export default function DownloadClient() {
         body: JSON.stringify({ email: email.trim() }),
       })
 
-      if (!res.ok) throw new Error('Request failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { message?: string }).message || 'Request failed')
+      }
 
       // Persist locally so the form stays "done" on revisit
       try {
@@ -75,15 +90,14 @@ export default function DownloadClient() {
       }
 
       setStatus('done')
-    } catch {
-      setErrorMsg('Something went wrong — try again.')
+      setAlreadySigned(true)
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong — try again.')
       setStatus('error')
     }
   }
 
-  // Check if already signed up this session
-  const alreadySigned =
-    typeof window !== 'undefined' && !!localStorage.getItem('waitlist_email')
+  const showConfirmation = status === 'done' || alreadySigned
 
   return (
     <div className="flex flex-col items-center px-6 py-20 text-white">
@@ -99,9 +113,9 @@ export default function DownloadClient() {
 
       {/* Waitlist form */}
       <div className="mt-10 w-full max-w-md">
-        {status === 'done' || alreadySigned ? (
+        {showConfirmation ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-[#FFB81C44] bg-[#FFB81C0D] px-6 py-5 text-center">
-            <span className="text-[#FFB81C] font-semibold text-base">You're on the list.</span>
+            <span className="text-[#FFB81C] font-semibold text-base">You're on the list!</span>
             <span className="text-gray-300 text-sm">We'll notify you when the desktop app is ready.</span>
           </div>
         ) : (
@@ -152,7 +166,10 @@ export default function DownloadClient() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {COMING_SOON_FEATURES.map((f) => (
-            <div key={f.title} className="flex items-start gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-4">
+            <div
+              key={f.title}
+              className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4"
+            >
               <span className="text-[#FFB81C] mt-0.5 shrink-0">{f.icon}</span>
               <div>
                 <p className="text-white text-sm font-medium leading-snug">{f.title}</p>

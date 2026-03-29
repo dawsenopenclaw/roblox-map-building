@@ -342,7 +342,7 @@ export default function TermsPage() {
         <p className="mt-4">
           Full Acceptable Use details are available at{' '}
           <Link href="/acceptable-use" className="text-[#FFB81C] hover:underline">
-            ForjeGames.gg/acceptable-use
+            forjegames.com/acceptable-use
           </Link>
           .
         </p>

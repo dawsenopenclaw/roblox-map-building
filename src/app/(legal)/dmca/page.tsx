@@ -135,7 +135,7 @@ export default function DmcaPage() {
             {
               step: '1',
               title: 'Receipt (0h)',
-              desc: 'We receive your notice at dmca@ForjeGames.gg.',
+              desc: `We receive your notice at ${AGENT_EMAIL}.`,
             },
             {
               step: '2',
