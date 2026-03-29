@@ -428,7 +428,7 @@ export default function DocsPage() {
                 <div className="text-2xl mb-3">&#128230;</div>
                 <h3 className="text-white font-semibold mb-2">TypeScript / Node.js</h3>
                 <pre className="text-sm text-gray-400 font-mono mb-4">npm install @robloxforge/sdk</pre>
-                <a href="/docs/sdk/typescript" className="text-[#FFB81C] text-sm hover:underline">
+                <a href="/docs#authentication" className="text-[#FFB81C] text-sm hover:underline">
                   View docs &rarr;
                 </a>
               </div>
@@ -436,7 +436,7 @@ export default function DocsPage() {
                 <div className="text-2xl mb-3">&#128013;</div>
                 <h3 className="text-white font-semibold mb-2">Python</h3>
                 <pre className="text-sm text-gray-400 font-mono mb-4">pip install robloxforge</pre>
-                <a href="/docs/sdk/python" className="text-[#FFB81C] text-sm hover:underline">
+                <a href="/docs#authentication" className="text-[#FFB81C] text-sm hover:underline">
                   View docs &rarr;
                 </a>
               </div>

@@ -51,7 +51,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
 
       {/* New Project button (desktop) */}
       <Link
-        href="/projects"
+        href="/voice"
         className="hidden sm:inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#FFB81C]/90 text-[#0A0E27] text-sm font-semibold rounded-xl px-3 py-2 transition-colors flex-shrink-0"
         aria-label="New project (Cmd+N)"
       >

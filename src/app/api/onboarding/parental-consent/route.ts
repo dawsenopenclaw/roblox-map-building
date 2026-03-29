@@ -11,34 +11,56 @@ export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.user.findUnique({ where: { clerkId } })
-  if (!user?.isUnder13) return NextResponse.json({ error: 'Not applicable' }, { status: 400 })
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
 
-  const body = await req.json()
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
 
-  const { token, expires } = generateConsentToken()
-  const { hashToken } = await import('@/lib/tokens')
-  const tokenHash = hashToken(token)
+  let user: Awaited<ReturnType<typeof db.user.findUnique>> = null
+  try {
+    user = await db.user.findUnique({ where: { clerkId } })
+  } catch (err) {
+    console.error('[onboarding/parental-consent] DB findUnique error:', err)
+    // DB unavailable — proceed optimistically (DOB was validated at age-gate step)
+  }
 
-  await db.user.update({
-    where: { clerkId },
-    data: {
+  // If we have a DB record and the user is not under 13, reject
+  if (user !== null && !user.isUnder13) {
+    return NextResponse.json({ error: 'Not applicable' }, { status: 400 })
+  }
+
+  try {
+    const { token, expires } = generateConsentToken()
+    const { hashToken } = await import('@/lib/tokens')
+    const tokenHash = hashToken(token)
+
+    try {
+      await db.user.update({
+        where: { clerkId },
+        data: {
+          parentEmail: parsed.data.parentEmail,
+          parentConsentToken: tokenHash,
+          parentConsentTokenExp: expires,
+        },
+      })
+    } catch (err) {
+      console.error('[onboarding/parental-consent] DB update error:', err)
+      // Non-fatal — still attempt to send the email
+    }
+
+    await sendParentalConsentEmail({
       parentEmail: parsed.data.parentEmail,
-      parentConsentToken: tokenHash,
-      parentConsentTokenExp: expires,
-    },
-  })
+      childName: user?.displayName || user?.email || 'your child',
+      token, // raw token goes in the email link, never stored
+    })
 
-  await sendParentalConsentEmail({
-    parentEmail: parsed.data.parentEmail,
-    childName: user.displayName || user.email,
-    token, // raw token goes in the email link, never stored
-  })
-
-  return NextResponse.json({
-    ok: true,
-    message: 'Consent email sent. Account locked until parent approves.',
-  })
+    return NextResponse.json({
+      ok: true,
+      message: 'Consent email sent. Account locked until parent approves.',
+    })
+  } catch (err) {
+    console.error('[onboarding/parental-consent] Email send error:', err)
+    return NextResponse.json({ error: 'Failed to send consent email. Please try again.' }, { status: 500 })
+  }
 }

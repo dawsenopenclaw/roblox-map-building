@@ -454,14 +454,22 @@ export default function OnboardingWizardPage() {
 
   const handleSkip = async () => {
     setCompleting(true)
-    await completeOnboarding(interest ?? 'all', true)
+    try {
+      await completeOnboarding(interest ?? 'all', true)
+    } catch {
+      // Non-fatal — metadata save failed but we still redirect
+    }
     router.push('/dashboard')
   }
 
   const handleFinish = async () => {
     setCompleting(true)
     setShowConfetti(true)
-    await completeOnboarding(interest ?? 'all', false)
+    try {
+      await completeOnboarding(interest ?? 'all', false)
+    } catch {
+      // Non-fatal — metadata save failed but we still redirect
+    }
     // Short delay so confetti is visible before redirect
     setTimeout(() => router.push('/dashboard'), 2400)
   }

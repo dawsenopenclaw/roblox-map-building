@@ -371,7 +371,7 @@ export function DashboardClient({ firstName, subscription }: DashboardProps) {
                 </button>
               ))}
               <div className="border-t border-white/8 mt-1 pt-1">
-                <Link href="/projects/new" className="block px-3 py-2 text-sm text-gray-500 hover:text-gray-300 hover:bg-white/5">
+                <Link href="/voice" className="block px-3 py-2 text-sm text-gray-500 hover:text-gray-300 hover:bg-white/5">
                   + New project
                 </Link>
               </div>

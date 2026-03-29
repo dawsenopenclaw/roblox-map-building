@@ -106,14 +106,6 @@ export function CommandPalette({
       action: () => navigate('/dashboard'),
     },
     {
-      id: 'nav-projects',
-      group: 'Navigation',
-      label: 'Projects',
-      description: 'Browse all projects',
-      icon: '📁',
-      action: () => navigate('/projects'),
-    },
-    {
       id: 'nav-voice',
       group: 'Navigation',
       label: 'Voice Build',

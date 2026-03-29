@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleNewProject = useCallback(() => {
-    window.location.href = '/projects'
+    window.location.href = '/voice'
   }, [])
 
   const shortcutHandlers = useMemo(

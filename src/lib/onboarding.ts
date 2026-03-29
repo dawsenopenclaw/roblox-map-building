@@ -27,16 +27,23 @@ export interface OnboardingMetadata {
 
 /**
  * Mark onboarding complete. Calls the API route which updates Clerk metadata.
+ * Throws on network errors so callers can decide how to handle them.
+ * A non-OK response is treated as non-fatal (metadata update is best-effort).
  */
 export async function completeOnboarding(
   interest: OnboardingInterest,
   skipped = false,
 ): Promise<void> {
-  await fetch('/api/onboarding/wizard-complete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ interest, skipped }),
-  })
+  try {
+    await fetch('/api/onboarding/wizard-complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interest, skipped }),
+    })
+  } catch (err) {
+    // Network error — re-throw so callers can catch and still redirect
+    throw err
+  }
 }
 
 /**

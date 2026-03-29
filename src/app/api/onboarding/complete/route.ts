@@ -19,17 +19,29 @@ export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
 
   const dob = new Date(parsed.data.dateOfBirth)
   const under13 = isUnder13(dob)
 
-  await db.user.update({
-    where: { clerkId },
-    data: { dateOfBirth: dob, isUnder13: under13 },
-  })
+  try {
+    await db.user.update({
+      where: { clerkId },
+      data: { dateOfBirth: dob, isUnder13: under13 },
+    })
+  } catch (err) {
+    console.error('[onboarding/complete] DB error:', err)
+    // DB unavailable — still return the routing decision so the flow can continue
+    return NextResponse.json({
+      isUnder13: under13,
+      redirect: under13 ? '/onboarding/parental-consent' : '/dashboard',
+      dbError: true,
+    })
+  }
 
   return NextResponse.json({
     isUnder13: under13,

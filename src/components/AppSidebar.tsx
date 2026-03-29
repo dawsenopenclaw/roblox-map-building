@@ -6,7 +6,6 @@ import { Dock } from '@/components/ui/dock'
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: '⬡' },
-  { href: '/projects', label: 'Projects', icon: '📁' },
   { href: '/voice', label: 'Voice Build', icon: '🎙️' },
   { href: '/image-to-map', label: 'Image to Map', icon: '🗺️' },
   { href: '/marketplace', label: 'Marketplace', icon: '🛒' },

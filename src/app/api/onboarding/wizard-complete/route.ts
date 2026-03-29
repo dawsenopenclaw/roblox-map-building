@@ -11,26 +11,33 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
 
-  const client = await clerkClient()
-  const clerkUser = await client.users.getUser(userId)
+  try {
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(userId)
+    const existing = (clerkUser.publicMetadata ?? {}) as Record<string, unknown>
 
-  const existing = (clerkUser.publicMetadata ?? {}) as Record<string, unknown>
-
-  await client.users.updateUserMetadata(userId, {
-    publicMetadata: {
-      ...existing,
-      onboarding: {
-        completed: true,
-        completedAt: new Date().toISOString(),
-        interest: parsed.data.interest,
-        skipped: parsed.data.skipped,
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        ...existing,
+        onboarding: {
+          completed: true,
+          completedAt: new Date().toISOString(),
+          interest: parsed.data.interest,
+          skipped: parsed.data.skipped,
+        },
       },
-    },
-  })
+    })
+  } catch (err) {
+    console.error('[onboarding/wizard-complete] Clerk error:', err)
+    // Non-fatal — metadata update failed but we still let the user proceed
+    return NextResponse.json({ ok: true, clerkError: true })
+  }
 
   return NextResponse.json({ ok: true })
 }
