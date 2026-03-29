@@ -5,7 +5,7 @@ import { SignIn } from '@clerk/nextjs'
 export default function SignInPage() {
   return (
     <SignIn
-      redirectUrl="/editor"
+      forceRedirectUrl="/editor"
       appearance={{
         baseTheme: undefined,
         variables: {
