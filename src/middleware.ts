@@ -40,6 +40,7 @@ const isPublicRoute = createRouteMatcher([
   '/dmca',
   '/acceptable-use',
   '/blocked',
+  '/maintenance(.*)',
   '/api/webhooks/(.*)',
   '/error(.*)',
 ])
@@ -49,6 +50,17 @@ const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 // Routes that bypass geo-blocking (the blocked page itself must be accessible)
 const isGeoExempt = createRouteMatcher([
   '/blocked(.*)',
+  '/maintenance(.*)',
+  '/api/webhooks/(.*)',
+  '/_next/(.*)',
+  '/favicon.ico',
+])
+
+// Routes that admin users (checked via x-robloxforge-role header or env-configured
+// admin email list) are allowed to access even during maintenance mode.
+// The maintenance page itself is always accessible to everyone.
+const isMaintenanceExempt = createRouteMatcher([
+  '/maintenance(.*)',
   '/api/webhooks/(.*)',
   '/_next/(.*)',
   '/favicon.ico',
@@ -56,7 +68,38 @@ const isGeoExempt = createRouteMatcher([
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
+// ─── Admin e-mail list (comma-separated ADMIN_EMAILS env var) ────────────────
+function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  const list = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  return list.includes(email.toLowerCase())
+}
+
 export default clerkMiddleware(async (auth, request) => {
+  // ── 0. Maintenance mode (runs before geo and auth checks) ────────────────────
+  const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
+
+  if (maintenanceActive && !isMaintenanceExempt(request)) {
+    // Resolve the authenticated user so admins can bypass maintenance.
+    // We call auth() without throwing so unauthenticated users are redirected
+    // to /maintenance rather than /sign-in.
+    const session = await auth()
+    const sessionClaims = session.sessionClaims as Record<string, unknown> | null
+
+    // Clerk surfaces the primary email on the session claims as `email`.
+    // This avoids a round-trip to the Clerk backend SDK.
+    const primaryEmail =
+      (sessionClaims?.email as string | undefined) ??
+      null
+
+    if (!isAdminEmail(primaryEmail)) {
+      return NextResponse.redirect(new URL('/maintenance', request.url))
+    }
+  }
+
   // ── 1. Geo-blocking (runs before auth, before all other logic) ───────────────
   if (!isGeoExempt(request)) {
     const countryCode = getCountryCode(request)
