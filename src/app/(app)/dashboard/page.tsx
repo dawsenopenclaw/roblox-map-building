@@ -33,9 +33,5 @@ export default async function DashboardPage() {
 
   const subscription = user.subscription?.tier || 'FREE'
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-0">
-      <DashboardClient firstName={firstName} subscription={subscription} />
-    </div>
-  )
+  return <DashboardClient firstName={firstName} subscription={subscription} />
 }
