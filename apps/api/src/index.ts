@@ -15,6 +15,9 @@ import { voiceRoutes } from './routes/ai/voice'
 import { imageRoutes } from './routes/ai/image'
 import { generateRoutes } from './routes/ai/generate'
 import { studioRoutes } from './routes/studio'
+import { screenshotRoutes } from './routes/studio/screenshot'
+import { stateRoutes } from './routes/studio/state'
+import { executeRoutes } from './routes/studio/execute'
 import { dnaRoutes } from './routes/dna/scan'
 import { teamRoutes } from './routes/teams'
 import { versionRoutes } from './routes/versions'
@@ -87,6 +90,9 @@ app.route('/api/ai/voice-to-game', voiceRoutes)
 app.route('/api/ai/image-to-map', imageRoutes)
 app.route('/api/ai/generate', generateRoutes)
 app.route('/api/studio', studioRoutes)
+app.route('/api/studio/screenshot', screenshotRoutes)
+app.route('/api/studio/state', stateRoutes)
+app.route('/api/studio/execute', executeRoutes)
 app.route('/api/dna', dnaRoutes)
 app.route('/api/teams', teamRoutes)
 app.route('/api/projects', versionRoutes)
