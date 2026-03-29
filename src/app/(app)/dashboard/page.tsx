@@ -4,7 +4,15 @@ import { redirect } from 'next/navigation'
 import { DashboardClient } from '@/components/DashboardClient'
 
 export default async function DashboardPage() {
-  const user = await requireAuthUser()
+  // requireAuthUser never throws — returns a stub when DB is unreachable
+  let user: Awaited<ReturnType<typeof requireAuthUser>> | null = null
+  try {
+    user = await requireAuthUser()
+  } catch {
+    // Clerk says not authenticated — middleware should have caught this,
+    // but redirect defensively just in case.
+    redirect('/sign-in')
+  }
 
   // ── Onboarding redirect for brand-new users ──────────────────────────────
   // Check Clerk public metadata. If the wizard has never been completed and the
@@ -27,11 +35,16 @@ export default async function DashboardPage() {
   }
 
   // Derive a friendly first name: prefer firstName field, else split email
+  const userRecord = user as Record<string, unknown> & {
+    firstName?: string | null
+    email?: string | null
+    subscription?: { tier?: string } | null
+  }
   const firstName =
-    (user as Record<string, unknown> & { firstName?: string }).firstName ||
-    (user.email ? user.email.split('@')[0] : 'Builder')
+    userRecord.firstName ||
+    (userRecord.email ? String(userRecord.email).split('@')[0] : 'Builder')
 
-  const subscription = user.subscription?.tier || 'FREE'
+  const subscription = userRecord.subscription?.tier || 'FREE'
 
-  return <DashboardClient firstName={firstName} subscription={subscription} />
+  return <DashboardClient firstName={String(firstName)} subscription={subscription} />
 }

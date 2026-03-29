@@ -19,6 +19,8 @@ const FEEDBACK_OPTIONS = [
   'Simplify it',
 ]
 
+const MAX_FILE_SIZE_MB = 10
+
 function StepIndicator({ current }: { current: ProcessingStep }) {
   const steps: ProcessingStep[] = ['analyzing', 'generating', 'placing']
   const idx = steps.indexOf(current)
@@ -64,68 +66,135 @@ export default function ImageToMapPage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [tokenCost, setTokenCost] = useState(0)
   const [feedbackHistory, setFeedbackHistory] = useState<string[]>([])
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [studioCopied, setStudioCopied] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const tokenCostRef = useRef(0)
 
-  const processFile = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file.')
-      return
-    }
-
-    const fileSizeMb = Math.round((file.size / 1024 / 1024) * 100) / 100
-    track('image_map_started', { fileType: file.type, fileSizeMb })
-
-    // Preview
-    const url = URL.createObjectURL(file)
-    setImageUrl(url)
-    setStep('uploading')
-
-    const startTime = Date.now()
-
-    // Simulate AI processing pipeline
-    // Real implementation calls /api/image-to-map in Phase 5
-    const steps: ProcessingStep[] = ['analyzing', 'generating', 'placing']
-    for (const s of steps) {
-      setStep(s)
-      await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800))
-      setTokenCost(c => c + Math.floor(Math.random() * 80 + 40))
-    }
-    setStep('done')
-
-    track('image_map_completed', { durationMs: Date.now() - startTime, tokensUsed: tokenCost })
-  }, [track, tokenCost])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
-  }, [processFile])
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) processFile(file)
-  }, [processFile])
-
-  const handleFeedback = useCallback(async (option: string) => {
-    setFeedbackHistory(prev => [...prev, option])
-    setStep('analyzing')
-    const steps: ProcessingStep[] = ['analyzing', 'generating', 'placing']
-    for (const s of steps) {
-      setStep(s)
-      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 500))
-      setTokenCost(c => c + Math.floor(Math.random() * 40 + 20))
-    }
-    setStep('done')
+  const addTokens = useCallback((amount: number) => {
+    tokenCostRef.current += amount
+    setTokenCost(tokenCostRef.current)
   }, [])
 
-  const handleReset = () => {
+  const runProcessingSteps = useCallback(
+    async (delayBase: number, delayVariance: number) => {
+      const steps: ProcessingStep[] = ['analyzing', 'generating', 'placing']
+      for (const s of steps) {
+        setStep(s)
+        await new Promise(resolve =>
+          setTimeout(resolve, delayBase + Math.random() * delayVariance)
+        )
+        addTokens(Math.floor(Math.random() * 80 + 40))
+      }
+    },
+    [addTokens]
+  )
+
+  const processFile = useCallback(
+    async (file: File) => {
+      setErrorMessage(null)
+
+      if (!file.type.startsWith('image/')) {
+        setErrorMessage('Please upload an image file (PNG, JPG, or WebP).')
+        return
+      }
+
+      const fileSizeMb = file.size / 1024 / 1024
+      if (fileSizeMb > MAX_FILE_SIZE_MB) {
+        setErrorMessage(
+          `File is ${fileSizeMb.toFixed(1)} MB — maximum is ${MAX_FILE_SIZE_MB} MB.`
+        )
+        return
+      }
+
+      // Revoke any previous object URL to avoid memory leak
+      setImageUrl(prev => {
+        if (prev) URL.revokeObjectURL(prev)
+        return null
+      })
+
+      const url = URL.createObjectURL(file)
+      setImageUrl(url)
+      setStep('uploading')
+      tokenCostRef.current = 0
+      setTokenCost(0)
+
+      track('image_map_started', {
+        fileType: file.type,
+        fileSizeMb: Math.round(fileSizeMb * 100) / 100,
+      })
+
+      const startTime = Date.now()
+
+      try {
+        await runProcessingSteps(1200, 800)
+        setStep('done')
+        track('image_map_completed', {
+          durationMs: Date.now() - startTime,
+          tokensUsed: tokenCostRef.current,
+        })
+      } catch {
+        setStep('error')
+        setErrorMessage('Something went wrong while processing your image. Please try again.')
+      }
+    },
+    [track, runProcessingSteps]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setIsDragOver(false)
+      const file = e.dataTransfer.files[0]
+      if (file) processFile(file)
+    },
+    [processFile]
+  )
+
+  const handleFileInput = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (file) processFile(file)
+      // Reset input so the same file can be re-selected after a reset
+      e.target.value = ''
+    },
+    [processFile]
+  )
+
+  const handleFeedback = useCallback(
+    async (option: string) => {
+      setFeedbackHistory(prev => [...prev, option])
+      try {
+        await runProcessingSteps(800, 500)
+        setStep('done')
+      } catch {
+        setStep('error')
+        setErrorMessage('Refinement failed. Please try again.')
+      }
+    },
+    [runProcessingSteps]
+  )
+
+  const handleReset = useCallback(() => {
     setStep('idle')
-    setImageUrl(null)
+    setImageUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev)
+      return null
+    })
+    tokenCostRef.current = 0
     setTokenCost(0)
     setFeedbackHistory([])
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
+    setErrorMessage(null)
+    setStudioCopied(false)
+  }, [])
+
+  const handleSendToStudio = useCallback(() => {
+    // Demo: copy a placeholder Roblox Studio command to clipboard
+    const command = `-- Generated map command\nprint("Map ready! Connect Roblox Studio plugin to deploy.")`
+    navigator.clipboard.writeText(command).catch(() => {/* clipboard unavailable */})
+    setStudioCopied(true)
+    setTimeout(() => setStudioCopied(false), 2500)
+  }, [])
 
   const isProcessing = ['uploading', 'analyzing', 'generating', 'placing'].includes(step)
 
@@ -140,6 +209,21 @@ export default function ImageToMapPage() {
         </p>
       </div>
 
+      {/* Error banner */}
+      {errorMessage && (
+        <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3 flex items-start gap-3">
+          <span className="mt-0.5 shrink-0">⚠</span>
+          <span>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="ml-auto shrink-0 text-red-400/60 hover:text-red-400 transition-colors"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Upload + Image */}
         <div className="space-y-4">
@@ -150,6 +234,10 @@ export default function ImageToMapPage() {
               onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
               onDragLeave={() => setIsDragOver(false)}
               onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click() }}
+              aria-label="Upload image — click or drag and drop"
               className={`relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all ${
                 isDragOver
                   ? 'border-[#FFB81C] bg-[#FFB81C]/5'
@@ -167,44 +255,64 @@ export default function ImageToMapPage() {
               <p className="text-white font-semibold mb-2">Drop your image here</p>
               <p className="text-gray-400 text-sm mb-4">or click to browse</p>
               <p className="text-gray-600 text-xs">
-                PNG, JPG, WebP — Max 10MB
+                PNG, JPG, WebP — Max {MAX_FILE_SIZE_MB}MB
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 {['Screenshot', 'Concept art', 'Real photo', 'Hand drawing'].map(hint => (
-                  <span key={hint} className="text-xs bg-white/5 text-gray-500 px-3 py-1 rounded-full border border-white/10">
+                  <span
+                    key={hint}
+                    className="text-xs bg-white/5 text-gray-500 px-3 py-1 rounded-full border border-white/10"
+                  >
                     {hint}
                   </span>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="relative">
+            <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0D1231]">
               {imageUrl && (
-                <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#0D1231]">
-                  <img
-                    src={imageUrl}
-                    alt="Uploaded reference"
-                    className={`w-full h-64 object-cover ${isProcessing ? 'opacity-60' : ''} transition-opacity`}
-                  />
-                  {isProcessing && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-[#0A0E27]/80 backdrop-blur-sm rounded-xl px-6 py-4 text-center">
-                        <svg className="w-8 h-8 text-[#FFB81C] animate-spin mx-auto mb-2" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <p className="text-white text-sm font-medium capitalize">{step}...</p>
-                      </div>
-                    </div>
-                  )}
+                <img
+                  src={imageUrl}
+                  alt="Uploaded reference"
+                  className={`w-full h-64 object-cover transition-opacity duration-300 ${isProcessing ? 'opacity-50' : 'opacity-100'}`}
+                />
+              )}
+              {isProcessing && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-[#0A0E27]/80 backdrop-blur-sm rounded-xl px-6 py-4 text-center">
+                    <svg
+                      className="w-8 h-8 text-[#FFB81C] animate-spin mx-auto mb-2"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <p className="text-white text-sm font-medium capitalize">{step}...</p>
+                  </div>
                 </div>
               )}
-              <button
-                onClick={handleReset}
-                className="mt-2 text-xs text-gray-500 hover:text-red-400 transition-colors"
-              >
-                ✕ Remove image
-              </button>
+              {step === 'error' && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#0A0E27]/80">
+                  <div className="text-center px-6 py-4">
+                    <div className="text-4xl mb-2">⚠️</div>
+                    <p className="text-red-400 text-sm font-medium">Processing failed</p>
+                  </div>
+                </div>
+              )}
+              <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between">
+                <span className="text-xs text-gray-500 truncate max-w-[200px]">
+                  {step === 'done' ? 'Map generated' : step === 'error' ? 'Error' : 'Processing...'}
+                </span>
+                <button
+                  onClick={handleReset}
+                  disabled={isProcessing}
+                  className="text-xs text-gray-500 hover:text-red-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ✕ Remove
+                </button>
+              </div>
             </div>
           )}
 
@@ -248,6 +356,11 @@ export default function ImageToMapPage() {
                   Ready
                 </span>
               )}
+              {step === 'error' && (
+                <span className="text-xs bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+                  Failed
+                </span>
+              )}
             </div>
 
             <div className="h-72 flex items-center justify-center">
@@ -258,8 +371,11 @@ export default function ImageToMapPage() {
                   <p className="text-gray-400 text-sm mb-6">
                     Connect Roblox Studio to preview and deploy
                   </p>
-                  <button className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors">
-                    Send to Studio
+                  <button
+                    onClick={handleSendToStudio}
+                    className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors"
+                  >
+                    {studioCopied ? '✓ Copied to clipboard' : 'Send to Studio'}
                   </button>
                 </div>
               ) : isProcessing ? (
@@ -272,6 +388,17 @@ export default function ImageToMapPage() {
                     </div>
                   </div>
                   <p className="text-gray-400 text-sm">Generating map layout...</p>
+                </div>
+              ) : step === 'error' ? (
+                <div className="text-center p-6">
+                  <div className="text-5xl mb-4">⚠️</div>
+                  <p className="text-red-400 text-sm font-medium mb-4">Processing failed</p>
+                  <button
+                    onClick={handleReset}
+                    className="text-sm text-gray-400 hover:text-white underline transition-colors"
+                  >
+                    Try again
+                  </button>
                 </div>
               ) : (
                 <div className="text-center p-6">
@@ -295,7 +422,8 @@ export default function ImageToMapPage() {
                   <button
                     key={option}
                     onClick={() => handleFeedback(option)}
-                    className="text-sm bg-[#111640] border border-white/10 hover:border-[#FFB81C]/30 text-gray-300 hover:text-[#FFB81C] px-3 py-1.5 rounded-lg transition-colors"
+                    disabled={isProcessing}
+                    className="text-sm bg-[#111640] border border-white/10 hover:border-[#FFB81C]/30 text-gray-300 hover:text-[#FFB81C] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {option}
                   </button>
@@ -307,7 +435,10 @@ export default function ImageToMapPage() {
                   <p className="text-xs text-gray-600 mb-2">Applied:</p>
                   <div className="flex flex-wrap gap-1">
                     {feedbackHistory.map((fb, i) => (
-                      <span key={i} className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] px-2 py-0.5 rounded-full">
+                      <span
+                        key={i}
+                        className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] px-2 py-0.5 rounded-full"
+                      >
                         {fb}
                       </span>
                     ))}

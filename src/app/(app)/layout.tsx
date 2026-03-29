@@ -1,3 +1,4 @@
+import { auth } from '@clerk/nextjs/server'
 import { requireAuthUser } from '@/lib/clerk'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/AppShell'
@@ -5,25 +6,35 @@ import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 
 /**
  * Server component layout — handles auth guard.
- * Client-side shell (AppShell) handles sidebar toggle state.
- * AnalyticsProvider identifies the user in PostHog and forwards
- * user context (tier, role, streak) to all child components.
+ *
+ * Auth check uses Clerk directly so a DB outage never kicks authenticated
+ * users to /sign-in.  requireAuthUser() returns a minimal stub when the DB
+ * is unreachable, so the layout can still render with FREE-tier defaults.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireAuthUser().catch(() => null)
-  if (!user) redirect('/sign-in')
-  if (user.isUnder13 && !user.parentConsentAt) redirect('/onboarding/parental-consent')
+  // 1. Clerk auth check — unauthenticated → sign-in (independent of DB)
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
 
-  const tier = user.subscription?.tier ?? 'FREE'
+  // 2. DB lookup with graceful fallback (never throws)
+  const user = await requireAuthUser().catch(() => null)
+
+  // 3. Parental consent gate — only enforced when we have full DB data
+  if (user && 'isUnder13' in user && user.isUnder13 && !user.parentConsentAt) {
+    redirect('/onboarding/parental-consent')
+  }
+
+  const tier = user?.subscription?.tier ?? 'FREE'
+  const clerkId = user?.clerkId ?? userId
 
   return (
     <AnalyticsProvider
-      userId={user.clerkId}
+      userId={clerkId}
       tier={tier}
-      email={user.email ?? undefined}
-      isUnder13={user.isUnder13 ?? undefined}
-      createdAt={user.createdAt?.toISOString()}
-      displayName={user.displayName ?? undefined}
+      email={user?.email ?? undefined}
+      isUnder13={(user as { isUnder13?: boolean } | null)?.isUnder13 ?? undefined}
+      createdAt={(user as { createdAt?: Date } | null)?.createdAt?.toISOString()}
+      displayName={(user as { displayName?: string | null } | null)?.displayName ?? undefined}
     >
       <AppShell>{children}</AppShell>
     </AnalyticsProvider>
