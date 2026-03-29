@@ -21,6 +21,26 @@ const STATUS_CONFIG = {
   FAILED:     { label: 'Failed',     color: 'text-red-400',    bg: 'bg-red-400/10',    dot: 'bg-red-400' },
 }
 
+// Demo scans shown when API is unavailable
+const DEMO_SCANS: ScanRecord[] = [
+  {
+    id: 'demo-a',
+    robloxUrl: 'https://www.roblox.com/games/920587237/Adopt-Me',
+    gameName: 'Adopt Me! (Demo)',
+    status: 'COMPLETE',
+    errorMsg: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+  },
+  {
+    id: 'demo-b',
+    robloxUrl: 'https://www.roblox.com/games/6284583030/Pet-Simulator-X',
+    gameName: 'Pet Simulator X (Demo)',
+    status: 'COMPLETE',
+    errorMsg: null,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+  },
+]
+
 function ScanningAnimation() {
   return (
     <div className="flex flex-col items-center gap-4 py-6">
@@ -57,6 +77,7 @@ export default function GameDnaPage() {
   const [scans, setScans] = useState<ScanRecord[]>([])
   const [loadingScans, setLoadingScans] = useState(true)
   const [activeScanId, setActiveScanId] = useState<string | null>(null)
+  const [isDemo, setIsDemo] = useState(false)
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -66,11 +87,22 @@ export default function GameDnaPage() {
       const res = await fetch(`${apiUrl}/api/dna/scans`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setIsDemo(true)
+        setScans(DEMO_SCANS)
+        return
+      }
       const data = await res.json() as { scans: ScanRecord[] }
-      setScans(data.scans)
+      if (data.scans.length === 0) {
+        // No scans yet — stay empty (not demo mode), let user submit their first scan
+        setScans([])
+      } else {
+        setScans(data.scans)
+      }
     } catch {
-      // ignore
+      // Network unavailable — show demo scans so the list isn't blank
+      setIsDemo(true)
+      setScans(DEMO_SCANS)
     } finally {
       setLoadingScans(false)
     }
@@ -103,7 +135,7 @@ export default function GameDnaPage() {
           fetchScans()
         }
       } catch {
-        // ignore
+        // ignore polling errors
       }
     }, 2500)
 
@@ -138,7 +170,7 @@ export default function GameDnaPage() {
       setActiveScanId(data.scanId!)
       await fetchScans()
     } catch {
-      setError('Network error. Please check your connection.')
+      setError('Backend unavailable. Start the API server and try again.')
     } finally {
       setLoading(false)
     }
@@ -158,6 +190,16 @@ export default function GameDnaPage() {
           </div>
         </div>
       </div>
+
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <span className="text-yellow-400 text-sm">Demo</span>
+          <p className="text-yellow-400/80 text-sm">
+            API unavailable — showing sample data. Start the backend to scan real games.
+          </p>
+        </div>
+      )}
 
       {/* Scan form */}
       <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
@@ -239,6 +281,14 @@ export default function GameDnaPage() {
           <div className="space-y-2">
             {scans.map((scan) => {
               const config = STATUS_CONFIG[scan.status]
+              let displayName = scan.gameName
+              if (!displayName) {
+                try {
+                  displayName = new URL(scan.robloxUrl).pathname.split('/')[3]?.replace(/-/g, ' ') || 'Unknown Game'
+                } catch {
+                  displayName = 'Unknown Game'
+                }
+              }
               return (
                 <div
                   key={scan.id}
@@ -247,9 +297,7 @@ export default function GameDnaPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${config.dot}`} />
                     <div className="min-w-0">
-                      <p className="text-white text-sm font-medium truncate">
-                        {scan.gameName || (() => { try { return new URL(scan.robloxUrl).pathname.split('/')[3]?.replace(/-/g, ' ') || 'Unknown Game' } catch { return 'Unknown Game' } })()}
-                      </p>
+                      <p className="text-white text-sm font-medium truncate">{displayName}</p>
                       <p className="text-gray-600 text-xs truncate max-w-xs">{scan.robloxUrl}</p>
                     </div>
                   </div>

@@ -20,22 +20,38 @@ const ALL_EVENTS = [
 export default function WebhooksPage() {
   const [endpoints, setEndpoints] = useState<Endpoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [newSecret, setNewSecret] = useState<{ secret: string; id: string } | null>(null)
   const [form, setForm] = useState({ url: '', events: ALL_EVENTS.map((e) => e.value) })
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchEndpoints() }, [])
 
   async function fetchEndpoints() {
     setLoading(true)
+    setFetchError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/webhooks`, { credentials: 'include' })
-      if (res.ok) setEndpoints((await res.json()).endpoints)
+      const url = API_BASE ? `${API_BASE}/api/webhooks` : '/api/webhooks'
+      const res = await fetch(url, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setEndpoints(Array.isArray(data.endpoints) ? data.endpoints : [])
+      } else if (res.status === 401) {
+        setFetchError('Session expired. Please sign in again.')
+      } else {
+        setEndpoints([])
+      }
+    } catch {
+      // API not reachable — show empty state
+      setEndpoints([])
     } finally {
       setLoading(false)
     }
@@ -43,9 +59,19 @@ export default function WebhooksPage() {
 
   async function createEndpoint() {
     if (!form.url) return
+    if (!form.url.startsWith('https://')) {
+      setCreateError('Endpoint URL must start with https://')
+      return
+    }
+    if (form.events.length === 0) {
+      setCreateError('Select at least one event to subscribe to.')
+      return
+    }
     setCreating(true)
+    setCreateError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/webhooks`, {
+      const url = API_BASE ? `${API_BASE}/api/webhooks` : '/api/webhooks'
+      const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -57,16 +83,29 @@ export default function WebhooksPage() {
         setShowCreate(false)
         setForm({ url: '', events: ALL_EVENTS.map((e) => e.value) })
         await fetchEndpoints()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setCreateError(err.error ?? 'Failed to create endpoint. Please try again.')
       }
+    } catch {
+      setCreateError('Could not reach the API. Please try again.')
     } finally {
       setCreating(false)
     }
   }
 
   async function deleteEndpoint(id: string) {
-    await fetch(`${API_BASE}/api/webhooks/${id}`, { method: 'DELETE', credentials: 'include' })
-    setDeleteConfirm(null)
-    await fetchEndpoints()
+    setDeleteError(null)
+    try {
+      const url = API_BASE ? `${API_BASE}/api/webhooks/${id}` : `/api/webhooks/${id}`
+      const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) throw new Error('Delete failed')
+    } catch {
+      setDeleteError('Failed to delete endpoint. Please try again.')
+    } finally {
+      setDeleteConfirm(null)
+      await fetchEndpoints()
+    }
   }
 
   function toggleEvent(event: string) {
@@ -74,6 +113,16 @@ export default function WebhooksPage() {
       ...f,
       events: f.events.includes(event) ? f.events.filter((e) => e !== event) : [...f.events, event],
     }))
+  }
+
+  async function copySecret(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard not available
+    }
   }
 
   return (
@@ -86,7 +135,7 @@ export default function WebhooksPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setShowCreate(true); setCreateError(null) }}
           className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           + Add Endpoint
@@ -103,10 +152,10 @@ export default function WebhooksPage() {
           <div className="flex items-center gap-2 bg-black/30 rounded-xl px-4 py-3">
             <code className="text-green-300 text-sm font-mono flex-1 break-all">{newSecret.secret}</code>
             <button
-              onClick={() => navigator.clipboard.writeText(newSecret.secret)}
+              onClick={() => copySecret(newSecret.secret)}
               className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
             >
-              Copy
+              {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
           <button onClick={() => setNewSecret(null)} className="mt-3 text-gray-500 hover:text-white text-sm">
@@ -129,6 +178,7 @@ export default function WebhooksPage() {
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
                 placeholder="https://your-server.com/webhooks/robloxforge"
                 className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                autoFocus
               />
               <p className="text-gray-600 text-xs mt-1">Must be HTTPS.</p>
             </div>
@@ -159,22 +209,40 @@ export default function WebhooksPage() {
               </div>
             </div>
 
+            {createError && (
+              <p className="text-red-400 text-sm mb-4">{createError}</p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={createEndpoint}
-                disabled={creating || !form.url}
+                disabled={creating || !form.url || form.events.length === 0}
                 className="flex-1 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
               >
                 {creating ? 'Adding...' : 'Add Endpoint'}
               </button>
               <button
-                onClick={() => setShowCreate(false)}
+                onClick={() => { setShowCreate(false); setCreateError(null) }}
                 className="px-5 border border-white/10 hover:border-white/30 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
               >
                 Cancel
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fetch error */}
+      {fetchError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+          <p className="text-red-400 text-sm">{fetchError}</p>
+        </div>
+      )}
+
+      {/* Delete error */}
+      {deleteError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+          <p className="text-red-400 text-sm">{deleteError}</p>
         </div>
       )}
 
@@ -192,11 +260,17 @@ export default function WebhooksPage() {
           <p className="text-gray-400 text-sm mb-6">
             Add an endpoint to start receiving real-time event notifications.
           </p>
+          <button
+            onClick={() => { setShowCreate(true); setCreateError(null) }}
+            className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            Add Endpoint
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
           {endpoints.map((ep) => {
-            const lastDelivery = ep.deliveries[0]
+            const lastDelivery = ep.deliveries?.[0] ?? null
             return (
               <div key={ep.id} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
                 <div className="flex items-start justify-between gap-4">

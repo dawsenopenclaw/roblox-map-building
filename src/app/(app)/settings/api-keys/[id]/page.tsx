@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ApiUsageChart, type UsageBucket } from '@/components/ApiUsageChart'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -52,6 +52,39 @@ type UsageData = {
 type RotationResult = {
   key: { id: string; rawKey: string; prefix: string }
   rotation: { oldKeyId: string; graceEndsAt: string; message: string }
+}
+
+// ─── Fallback empty usage data ────────────────────────────────────────────────
+
+function emptyUsageData(keyId: string): UsageData {
+  return {
+    key: {
+      id: keyId,
+      name: 'Unknown Key',
+      prefix: '...',
+      tier: 'free',
+      scopes: [],
+      lastUsedAt: null,
+      createdAt: new Date().toISOString(),
+      revokedAt: null,
+      expiresAt: null,
+    },
+    usage: {
+      range: '24h',
+      totalRequests: 0,
+      totalErrors: 0,
+      errorRate: 0,
+      totalTokens: 0,
+      hourlyBuckets: [],
+    },
+    rateLimit: {
+      tier: 'free',
+      limitPerHour: 60,
+      currentHourUsage: 0,
+      remaining: 60,
+    },
+    topEndpoints: [],
+  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -226,6 +259,8 @@ export default function ApiKeyDetailPage() {
 
   const [data, setData] = useState<UsageData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [range, setRange] = useState<TimeRange>('24h')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showRotateConfirm, setShowRotateConfirm] = useState(false)
@@ -235,15 +270,25 @@ export default function ApiKeyDetailPage() {
 
   const fetchUsage = useCallback(async (r: TimeRange) => {
     setLoading(true)
+    setFetchError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/keys/${id}/usage?range=${r}`, {
+      const base = API_BASE || ''
+      const res = await fetch(`${base}/api/keys/${id}/usage?range=${r}`, {
         credentials: 'include',
       })
       if (res.ok) {
         setData(await res.json())
       } else if (res.status === 404) {
         router.push('/settings/api-keys')
+      } else if (res.status === 401) {
+        setFetchError('Session expired. Please sign in again.')
+      } else {
+        // Show empty data so page remains usable
+        setData(emptyUsageData(id))
       }
+    } catch {
+      // API not reachable — show empty placeholder
+      setData(emptyUsageData(id))
     } finally {
       setLoading(false)
     }
@@ -256,17 +301,23 @@ export default function ApiKeyDetailPage() {
   async function handleRotate() {
     setActionLoading(true)
     setShowRotateConfirm(false)
+    setActionError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/keys/${id}/rotate`, {
+      const base = API_BASE || ''
+      const res = await fetch(`${base}/api/keys/${id}/rotate`, {
         method: 'POST',
         credentials: 'include',
       })
       if (res.ok) {
         const result = await res.json() as RotationResult
         setRotationResult(result)
-        // Redirect to the new key's detail page after a short delay
         setTimeout(() => router.push(`/settings/api-keys/${result.key.id}`), 3000)
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setActionError(err.error ?? 'Failed to rotate key. Please try again.')
       }
+    } catch {
+      setActionError('Could not reach the API. Please try again.')
     } finally {
       setActionLoading(false)
     }
@@ -275,23 +326,34 @@ export default function ApiKeyDetailPage() {
   async function handleDelete() {
     setActionLoading(true)
     setShowDeleteConfirm(false)
+    setActionError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/keys/${id}`, {
+      const base = API_BASE || ''
+      const res = await fetch(`${base}/api/keys/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       })
       if (res.ok) {
         router.push('/settings/api-keys')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setActionError(err.error ?? 'Failed to delete key. Please try again.')
       }
+    } catch {
+      setActionError('Could not reach the API. Please try again.')
     } finally {
       setActionLoading(false)
     }
   }
 
-  function copyKey(text: string) {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  async function copyKey(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard not available
+    }
   }
 
   if (loading && !data) {
@@ -304,6 +366,20 @@ export default function ApiKeyDetailPage() {
           ))}
         </div>
         <div className="h-64 bg-[#0D1231] border border-white/10 rounded-2xl animate-pulse" />
+      </div>
+    )
+  }
+
+  if (fetchError) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Link href="/settings/api-keys" className="text-gray-500 hover:text-white text-sm transition-colors mb-6 inline-block">
+          &larr; Back to API Keys
+        </Link>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
+          <p className="text-red-400 font-semibold mb-2">Error loading key</p>
+          <p className="text-gray-400 text-sm">{fetchError}</p>
+        </div>
       </div>
     )
   }
@@ -360,14 +436,14 @@ export default function ApiKeyDetailPage() {
         {!key.revokedAt && (
           <div className="flex gap-2">
             <button
-              onClick={() => setShowRotateConfirm(true)}
+              onClick={() => { setShowRotateConfirm(true); setActionError(null) }}
               disabled={actionLoading}
               className="text-sm border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 text-[#FFB81C] px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
               Rotate Key
             </button>
             <button
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={() => { setShowDeleteConfirm(true); setActionError(null) }}
               disabled={actionLoading}
               className="text-sm border border-red-500/20 hover:border-red-500/50 text-red-400 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
@@ -376,6 +452,13 @@ export default function ApiKeyDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Action error */}
+      {actionError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-6">
+          <p className="text-red-400 text-sm">{actionError}</p>
+        </div>
+      )}
 
       {/* Rotation result banner */}
       {rotationResult && (

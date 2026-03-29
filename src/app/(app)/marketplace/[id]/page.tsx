@@ -11,39 +11,87 @@ import { ShareButtons } from '@/components/ShareButtons'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
+// Demo template shown when the database is unavailable
+const DEMO_TEMPLATE = {
+  id: 'demo-1',
+  title: 'Medieval Castle Game Template',
+  slug: 'medieval-castle-game-template',
+  description:
+    'A fully featured medieval castle game template for Roblox. Includes dungeon systems, NPC enemies, loot tables, and a complete quest framework. Perfect for RPG games targeting the 8-16 age group.\n\nWhat\'s included:\n- Fully scripted castle environment\n- Enemy AI with patrol routes\n- Inventory and loot system\n- Quest tracker UI\n- Mobile-optimized controls',
+  category: 'GAME_TEMPLATE',
+  status: 'PUBLISHED',
+  priceCents: 999,
+  rbxmFileUrl: null as string | null,
+  thumbnailUrl: null as string | null,
+  averageRating: 4.8,
+  reviewCount: 24,
+  tags: ['medieval', 'rpg', 'castle', 'adventure'],
+  screenshots: [] as Array<{ id: string; url: string; altText: string | null; sortOrder: number }>,
+  creator: {
+    id: 'demo-creator-1',
+    displayName: 'RobloxForge',
+    username: 'robloxforge',
+    avatarUrl: null as string | null,
+    userXp: { tier: 'GOLD' as string, totalXp: 5000 },
+  },
+  reviews: [] as Array<{
+    id: string
+    rating: number
+    body: string | null
+    creatorResponse: string | null
+    createdAt: Date
+    reviewer: { id: string; displayName: string | null; username: string | null; avatarUrl: string | null }
+  }>,
+  _count: { purchases: 1420 },
+  creatorId: 'demo-creator-1',
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>
 }): Promise<Metadata> {
   const { id } = await params
-  const template = await db.template.findUnique({
-    where: { id },
-    select: { title: true, description: true },
-  })
 
-  if (!template) return {}
+  // Demo template metadata
+  if (id.startsWith('demo-')) {
+    return {
+      title: `${DEMO_TEMPLATE.title} - RobloxForge Marketplace`,
+      description: DEMO_TEMPLATE.description.slice(0, 160),
+    }
+  }
 
-  const ogUrl = new URL(`${APP_URL}/api/og`)
-  ogUrl.searchParams.set('type', 'template')
-  ogUrl.searchParams.set('name', template.title)
-  const description = template.description?.slice(0, 160) ?? ''
+  try {
+    const template = await db.template.findUnique({
+      where: { id },
+      select: { title: true, description: true },
+    })
 
-  return {
-    title: `${template.title} - RobloxForge Marketplace`,
-    description,
-    openGraph: {
+    if (!template) return {}
+
+    const ogUrl = new URL(`${APP_URL}/api/og`)
+    ogUrl.searchParams.set('type', 'template')
+    ogUrl.searchParams.set('name', template.title)
+    const description = template.description?.slice(0, 160) ?? ''
+
+    return {
       title: `${template.title} - RobloxForge Marketplace`,
       description,
-      images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${template.title} - RobloxForge Marketplace`,
-      description,
-      images: [ogUrl.toString()],
-    },
+      openGraph: {
+        title: `${template.title} - RobloxForge Marketplace`,
+        description,
+        images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${template.title} - RobloxForge Marketplace`,
+        description,
+        images: [ogUrl.toString()],
+      },
+    }
+  } catch {
+    return {}
   }
 }
 
@@ -71,55 +119,109 @@ export default async function TemplateDetailPage({
 }) {
   const { id } = await params
 
-  const [template, user] = await Promise.all([
-    db.template.findUnique({
-      where: { id },
-      include: {
-        screenshots: { orderBy: { sortOrder: 'asc' } },
-        creator: {
-          select: {
-            id: true,
-            displayName: true,
-            username: true,
-            avatarUrl: true,
-            userXp: { select: { tier: true, totalXp: true } },
-          },
-        },
-        reviews: {
-          orderBy: { createdAt: 'desc' },
-          include: {
-            reviewer: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
-          },
-        },
-        _count: { select: { purchases: true } },
-      },
-    }),
-    getAuthUser(),
-  ])
-
-  if (!template || template.status !== 'PUBLISHED') notFound()
-
-  // Fire template_viewed analytics (server-side, non-blocking)
-  if (user) {
-    void captureServerEvent(user.clerkId, 'template_viewed', {
-      templateId: template.id,
-      templateTitle: template.title,
-      priceCents: template.priceCents,
-    })
+  // Serve demo template when DB is unavailable or id is a demo id
+  if (id.startsWith('demo-')) {
+    return <TemplateDetail template={DEMO_TEMPLATE} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 
-  // Check if user purchased this template
+  let template: typeof DEMO_TEMPLATE | null = null
+  let user: Awaited<ReturnType<typeof getAuthUser>> = null
   let hasPurchased = false
   let hasReviewed = false
-  if (user) {
-    const purchase = await db.templatePurchase.findFirst({
-      where: { templateId: id, buyerId: user.id },
-      include: { review: true },
-    })
-    hasPurchased = !!purchase
-    hasReviewed = !!purchase?.review
+
+  try {
+    const [dbTemplate, dbUser] = await Promise.all([
+      db.template.findUnique({
+        where: { id },
+        include: {
+          screenshots: { orderBy: { sortOrder: 'asc' } },
+          creator: {
+            select: {
+              id: true,
+              displayName: true,
+              username: true,
+              avatarUrl: true,
+              userXp: { select: { tier: true, totalXp: true } },
+            },
+          },
+          reviews: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              reviewer: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+            },
+          },
+          _count: { select: { purchases: true } },
+        },
+      }),
+      getAuthUser().catch(() => null),
+    ])
+
+    if (!dbTemplate || dbTemplate.status !== 'PUBLISHED') notFound()
+
+    template = dbTemplate as typeof DEMO_TEMPLATE
+    user = dbUser
+
+    // Fire template_viewed analytics (non-blocking)
+    if (user) {
+      void captureServerEvent(user.clerkId, 'template_viewed', {
+        templateId: template.id,
+        templateTitle: template.title,
+        priceCents: template.priceCents,
+      }).catch(() => {})
+    }
+
+    // Check purchase/review status
+    if (user) {
+      try {
+        const purchase = await db.templatePurchase.findFirst({
+          where: { templateId: id, buyerId: user.id },
+          include: { review: true },
+        })
+        hasPurchased = !!purchase
+        hasReviewed = !!purchase?.review
+      } catch {
+        // Non-critical — user just won't see the review form
+      }
+    }
+  } catch (err) {
+    console.error('[marketplace/[id]] DB error:', err)
+    // Fall back to demo so page doesn't crash
+    return <TemplateDetail template={DEMO_TEMPLATE} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 
+  if (!template) notFound()
+
+  return (
+    <TemplateDetail
+      template={template}
+      id={id}
+      user={user}
+      hasPurchased={hasPurchased}
+      hasReviewed={hasReviewed}
+      isDemo={false}
+    />
+  )
+}
+
+// ─── TemplateDetail render component ─────────────────────────────────────────
+
+type TemplateShape = typeof DEMO_TEMPLATE
+
+function TemplateDetail({
+  template,
+  id,
+  user,
+  hasPurchased,
+  hasReviewed,
+  isDemo,
+}: {
+  template: TemplateShape
+  id: string
+  user: { id: string; clerkId: string } | null
+  hasPurchased: boolean
+  hasReviewed: boolean
+  isDemo: boolean
+}) {
   const isCreator = user?.id === template.creatorId
   const isFree = template.priceCents === 0
 
@@ -134,6 +236,12 @@ export default async function TemplateDetailPage({
 
   return (
     <div className="max-w-6xl mx-auto">
+      {isDemo && (
+        <div className="mb-4 bg-[#FFB81C]/10 border border-[#FFB81C]/30 rounded-xl px-4 py-3 text-sm text-[#FFB81C]">
+          Preview mode — database not yet connected. This is example content.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
@@ -209,7 +317,7 @@ export default async function TemplateDetailPage({
             <h2 className="text-lg font-semibold text-white mb-4">Reviews</h2>
 
             {/* Leave a review */}
-            {user && hasPurchased && !hasReviewed && !isCreator && (
+            {!isDemo && user && hasPurchased && !hasReviewed && !isCreator && (
               <ReviewForm templateId={id} />
             )}
 
@@ -267,7 +375,11 @@ export default async function TemplateDetailPage({
               <p className="text-xs text-gray-500 mb-4">One-time purchase, lifetime access</p>
             )}
 
-            {isCreator ? (
+            {isDemo ? (
+              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-gray-400">
+                Preview only — connect DB to enable purchases
+              </div>
+            ) : isCreator ? (
               <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-gray-400">
                 This is your template
               </div>
@@ -295,7 +407,7 @@ export default async function TemplateDetailPage({
               />
             )}
 
-            {template.rbxmFileUrl && (hasPurchased || isFree) && !isCreator && (
+            {template.rbxmFileUrl && (hasPurchased || isFree) && !isCreator && !isDemo && (
               <p className="text-xs text-gray-500 text-center mt-3">
                 Compatible with Roblox Studio
               </p>

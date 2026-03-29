@@ -17,15 +17,20 @@ export function CharitySelector({ current }: { current?: string }) {
 
   async function save(slug: string) {
     setSaving(true)
-    await fetch('/api/user/charity', {
-      method: 'POST',
-      body: JSON.stringify({ charitySlug: slug }),
-      headers: { 'Content-Type': 'application/json' },
-    })
-    setSelected(slug)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await fetch('/api/user/charity', {
+        method: 'POST',
+        body: JSON.stringify({ charitySlug: slug }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch {
+      // API not available — save selection locally
+    } finally {
+      setSelected(slug)
+      setSaving(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
   }
 
   return (

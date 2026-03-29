@@ -22,10 +22,14 @@ const SCOPE_OPTIONS = [
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
-  const copy = () => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard not available
+    }
   }
   return (
     <button
@@ -40,13 +44,16 @@ function CopyButton({ text }: { text: string }) {
 export default function ApiKeysPage() {
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [newKeyData, setNewKeyData] = useState<{ rawKey: string; id: string } | null>(null)
   const [form, setForm] = useState({ name: '', scopes: ['read-only'] as string[] })
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -55,12 +62,21 @@ export default function ApiKeysPage() {
 
   async function fetchKeys() {
     setLoading(true)
+    setFetchError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/keys`, { credentials: 'include' })
+      const url = API_BASE ? `${API_BASE}/api/keys` : '/api/keys'
+      const res = await fetch(url, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setKeys(data.keys)
+        setKeys(Array.isArray(data.keys) ? data.keys : [])
+      } else if (res.status === 401) {
+        setFetchError('Session expired. Please sign in again.')
+      } else {
+        setKeys([])
       }
+    } catch {
+      setFetchError(null) // No API server yet — show empty state instead of error
+      setKeys([])
     } finally {
       setLoading(false)
     }
@@ -69,8 +85,10 @@ export default function ApiKeysPage() {
   async function createKey() {
     if (!form.name.trim()) return
     setCreating(true)
+    setCreateError(null)
     try {
-      const res = await fetch(`${API_BASE}/api/keys`, {
+      const url = API_BASE ? `${API_BASE}/api/keys` : '/api/keys'
+      const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -82,16 +100,29 @@ export default function ApiKeysPage() {
         setShowCreate(false)
         setForm({ name: '', scopes: ['read-only'] })
         await fetchKeys()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setCreateError(err.error ?? 'Failed to create key. Please try again.')
       }
+    } catch {
+      setCreateError('Could not reach the API. Please try again.')
     } finally {
       setCreating(false)
     }
   }
 
   async function deleteKey(id: string) {
-    await fetch(`${API_BASE}/api/keys/${id}`, { method: 'DELETE', credentials: 'include' })
-    setDeleteConfirm(null)
-    await fetchKeys()
+    setDeleteError(null)
+    try {
+      const url = API_BASE ? `${API_BASE}/api/keys/${id}` : `/api/keys/${id}`
+      const res = await fetch(url, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) throw new Error('Delete failed')
+    } catch {
+      setDeleteError('Failed to revoke key. Please try again.')
+    } finally {
+      setDeleteConfirm(null)
+      await fetchKeys()
+    }
   }
 
   function toggleScope(scope: string) {
@@ -113,7 +144,7 @@ export default function ApiKeysPage() {
           </p>
         </div>
         <button
-          onClick={() => setShowCreate(true)}
+          onClick={() => { setShowCreate(true); setCreateError(null) }}
           className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           + New Key
@@ -137,7 +168,7 @@ export default function ApiKeysPage() {
               </div>
             </div>
             <button onClick={() => setNewKeyData(null)} className="text-gray-500 hover:text-white text-xl">
-              x
+              &times;
             </button>
           </div>
         </div>
@@ -155,8 +186,10 @@ export default function ApiKeysPage() {
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && createKey()}
                 placeholder="e.g. Production, My Script"
                 className="w-full bg-[#111640] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                autoFocus
               />
             </div>
 
@@ -186,22 +219,40 @@ export default function ApiKeysPage() {
               </div>
             </div>
 
+            {createError && (
+              <p className="text-red-400 text-sm mb-4">{createError}</p>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={createKey}
-                disabled={creating || !form.name.trim()}
+                disabled={creating || !form.name.trim() || form.scopes.length === 0}
                 className="flex-1 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
               >
                 {creating ? 'Creating...' : 'Create Key'}
               </button>
               <button
-                onClick={() => setShowCreate(false)}
+                onClick={() => { setShowCreate(false); setCreateError(null) }}
                 className="px-5 border border-white/10 hover:border-white/30 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
               >
                 Cancel
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Fetch error */}
+      {fetchError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+          <p className="text-red-400 text-sm">{fetchError}</p>
+        </div>
+      )}
+
+      {/* Delete error */}
+      {deleteError && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
+          <p className="text-red-400 text-sm">{deleteError}</p>
         </div>
       )}
 
@@ -220,7 +271,7 @@ export default function ApiKeysPage() {
             Create your first key to start using the RobloxForge API.
           </p>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => { setShowCreate(true); setCreateError(null) }}
             className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
           >
             Create API Key

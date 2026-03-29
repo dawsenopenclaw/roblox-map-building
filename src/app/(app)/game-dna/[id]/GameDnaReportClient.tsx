@@ -64,25 +64,83 @@ const GENOME_LABELS: Record<string, string> = {
   community_size: 'Community',
 }
 
+// Demo scan shown when API is unavailable
+const DEMO_SCAN: GameScan = {
+  id: 'demo',
+  gameName: 'Adopt Me! (Demo)',
+  robloxUrl: 'https://www.roblox.com/games/920587237/Adopt-Me',
+  status: 'COMPLETE',
+  createdAt: new Date().toISOString(),
+  genome: {
+    id: 'demo-genome',
+    gameType: 'Social Roleplay',
+    targetAge: '8–12',
+    sessionLength: '45–90 min',
+    monetizationModel: 'Cosmetics + Gamepasses',
+    progressionPace: 'Slow Grind',
+    zoneDensity: 'High',
+    artStyle: 'Pastel Cartoon',
+    retentionDriver: 'Pet Collection',
+    estimatedDau: '500k–1M',
+    engagementLoop: 'Collect → Trade → Flex',
+    updateCadence: 'Bi-weekly',
+    communitySize: 'Mega (50M+ visits)',
+    scores: {
+      game_type: 82,
+      target_age: 90,
+      session_length: 78,
+      monetization_model: 88,
+      progression_pace: 65,
+      zone_density: 72,
+      art_style: 85,
+      retention_driver: 91,
+      estimated_dau: 95,
+      engagement_loop: 87,
+      update_cadence: 76,
+      community_size: 98,
+    },
+    genreAverages: {
+      game_type: 60,
+      target_age: 65,
+      session_length: 55,
+      monetization_model: 58,
+      progression_pace: 50,
+      zone_density: 52,
+      art_style: 60,
+      retention_driver: 55,
+      estimated_dau: 50,
+      engagement_loop: 58,
+      update_cadence: 50,
+      community_size: 55,
+    },
+    recommendations: [
+      'Add a daily login streak reward system — your retention driver score (91) is strong but can be reinforced with explicit habit loops.',
+      'Introduce a limited-time trading event to spike engagement every 2 weeks, capitalising on the existing community size.',
+      'Consider adding a "starter gamepass" at R$99–149 to improve early monetisation conversion from the large free player base.',
+      'Zone density is above average (72) — ensure mobile performance is tested; consider a "lite graphics" toggle.',
+    ],
+  },
+}
+
 // Progression timeline mock data based on genome values
 function buildProgressionData(genome: GameGenome) {
   const pace = genome.scores.progression_pace ?? 50
   return [
-    { week: 'W1', newPlayer: 0, engaged: 0 },
-    { week: 'W2', newPlayer: Math.round(pace * 0.3), engaged: Math.round(pace * 0.2) },
-    { week: 'W4', newPlayer: Math.round(pace * 0.6), engaged: Math.round(pace * 0.5) },
-    { week: 'W8', newPlayer: Math.round(pace * 0.85), engaged: Math.round(pace * 0.75) },
-    { week: 'W12', newPlayer: Math.round(pace * 0.95), engaged: Math.round(pace * 0.9) },
-    { week: 'W20', newPlayer: 100, engaged: Math.round(pace) },
+    { week: 'W1',  newPlayer: 0,                        engaged: 0 },
+    { week: 'W2',  newPlayer: Math.round(pace * 0.3),   engaged: Math.round(pace * 0.2) },
+    { week: 'W4',  newPlayer: Math.round(pace * 0.6),   engaged: Math.round(pace * 0.5) },
+    { week: 'W8',  newPlayer: Math.round(pace * 0.85),  engaged: Math.round(pace * 0.75) },
+    { week: 'W12', newPlayer: Math.round(pace * 0.95),  engaged: Math.round(pace * 0.9) },
+    { week: 'W20', newPlayer: 100,                       engaged: Math.round(pace) },
   ]
 }
 
 // Monetization breakdown labels
 const MONETIZATION_ITEMS = [
-  { label: 'Cosmetics', key: 'monetization_model', weight: 0.4, color: '#FFB81C' },
-  { label: 'Gamepasses', key: 'progression_pace',  weight: 0.3, color: '#60A5FA' },
-  { label: 'Premium',   key: 'retention_driver',   weight: 0.2, color: '#A78BFA' },
-  { label: 'Dev Products', key: 'engagement_loop', weight: 0.1, color: '#34D399' },
+  { label: 'Cosmetics',    key: 'monetization_model', weight: 0.4, color: '#FFB81C' },
+  { label: 'Gamepasses',  key: 'progression_pace',   weight: 0.3, color: '#60A5FA' },
+  { label: 'Premium',     key: 'retention_driver',   weight: 0.2, color: '#A78BFA' },
+  { label: 'Dev Products', key: 'engagement_loop',   weight: 0.1, color: '#34D399' },
 ]
 
 function MonetizationBar({ label, value, color }: { label: string; value: number; color: string }) {
@@ -107,7 +165,7 @@ export default function GameDnaReportClient() {
   const { getToken } = useAuth()
   const [scan, setScan] = useState<GameScan | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [isDemo, setIsDemo] = useState(false)
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -119,13 +177,17 @@ export default function GameDnaReportClient() {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!res.ok) {
-          setError('Scan not found or access denied')
+          // API down or scan not found — fall back to demo
+          setIsDemo(true)
+          setScan(DEMO_SCAN)
           return
         }
         const data = await res.json() as { scan: GameScan }
         setScan(data.scan)
       } catch {
-        setError('Failed to load scan report')
+        // Network error — show demo data so the page still renders
+        setIsDemo(true)
+        setScan(DEMO_SCAN)
       } finally {
         setLoading(false)
       }
@@ -134,7 +196,6 @@ export default function GameDnaReportClient() {
   }, [id, apiUrl, getToken])
 
   async function handleExportPdf() {
-    // Basic print-to-PDF fallback
     window.print()
   }
 
@@ -150,10 +211,10 @@ export default function GameDnaReportClient() {
     )
   }
 
-  if (error || !scan) {
+  if (!scan) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <p className="text-red-400 text-sm mb-4">{error || 'Scan not found'}</p>
+        <p className="text-red-400 text-sm mb-4">Scan not found</p>
         <Link href="/game-dna" className="text-[#FFB81C] hover:underline text-sm">
           ← Back to scanner
         </Link>
@@ -188,11 +249,24 @@ export default function GameDnaReportClient() {
   }))
 
   const progressionData = buildProgressionData(genome)
-  const totalScore = Math.round(Object.values(genome.scores).reduce((a, b) => a + b, 0) / Object.keys(genome.scores).length)
+  const scoreValues = Object.values(genome.scores)
+  const totalScore = scoreValues.length > 0
+    ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length)
+    : 0
   const monetizationScore = genome.scores.monetization_model ?? 50
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 print:space-y-4">
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <span className="text-yellow-400 text-sm">Demo</span>
+          <p className="text-yellow-400/80 text-sm">
+            API unavailable — showing sample report. Connect your backend to see real scan data.
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -236,18 +310,18 @@ export default function GameDnaReportClient() {
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">Genome Profile</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {[
-            { label: 'Game Type',     value: genome.gameType },
-            { label: 'Target Age',    value: genome.targetAge },
-            { label: 'Session',       value: genome.sessionLength },
-            { label: 'Monetization',  value: genome.monetizationModel },
-            { label: 'Progression',   value: genome.progressionPace },
-            { label: 'Zone Density',  value: genome.zoneDensity },
-            { label: 'Art Style',     value: genome.artStyle },
-            { label: 'Retention',     value: genome.retentionDriver },
-            { label: 'Est. DAU',      value: genome.estimatedDau },
-            { label: 'Eng. Loop',     value: genome.engagementLoop },
-            { label: 'Update Rate',   value: genome.updateCadence },
-            { label: 'Community',     value: genome.communitySize },
+            { label: 'Game Type',    value: genome.gameType },
+            { label: 'Target Age',   value: genome.targetAge },
+            { label: 'Session',      value: genome.sessionLength },
+            { label: 'Monetization', value: genome.monetizationModel },
+            { label: 'Progression',  value: genome.progressionPace },
+            { label: 'Zone Density', value: genome.zoneDensity },
+            { label: 'Art Style',    value: genome.artStyle },
+            { label: 'Retention',    value: genome.retentionDriver },
+            { label: 'Est. DAU',     value: genome.estimatedDau },
+            { label: 'Eng. Loop',    value: genome.engagementLoop },
+            { label: 'Update Rate',  value: genome.updateCadence },
+            { label: 'Community',    value: genome.communitySize },
           ].map((item) => (
             <div key={item.label} className="bg-[#111640] rounded-xl p-3">
               <p className="text-xs text-gray-500 mb-1">{item.label}</p>
@@ -375,6 +449,9 @@ export default function GameDnaReportClient() {
               <p className="text-gray-300 text-sm leading-relaxed">{rec}</p>
             </div>
           ))}
+          {(genome.recommendations?.length ?? 0) === 0 && (
+            <p className="text-gray-500 text-sm">No recommendations available.</p>
+          )}
         </div>
       </div>
     </div>

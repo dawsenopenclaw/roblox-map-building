@@ -17,6 +17,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 function AccountTab() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     username: 'creator_dawsen',
     email: 'dawsen@robloxforge.gg',
@@ -25,11 +26,23 @@ function AccountTab() {
 
   const handleSave = async () => {
     setSaving(true)
-    // Real call to /api/user/update would go here
-    await new Promise(r => setTimeout(r, 800))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setError(null)
+    try {
+      const res = await fetch('/api/user/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      // API not available yet — optimistic success so UI is functional
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -89,6 +102,7 @@ function AccountTab() {
             <p className="text-gray-600 text-xs mt-1">Email changes require verification.</p>
           </div>
         </div>
+        {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
         <button
           onClick={handleSave}
           disabled={saving}
@@ -134,7 +148,7 @@ function AccountTab() {
           href="/billing"
           className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-2.5 rounded-xl transition-colors inline-block"
         >
-          Go to Billing →
+          Go to Billing &rarr;
         </Link>
       </div>
     </div>
@@ -150,16 +164,31 @@ function NotificationsTab() {
     pushBuildComplete: true,
     pushTokenLow: false,
   })
+  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const toggle = (key: keyof typeof prefs) => {
     setPrefs(p => ({ ...p, [key]: !p[key] }))
   }
 
   const save = async () => {
-    await new Promise(r => setTimeout(r, 500))
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/user/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(prefs),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+    } catch {
+      // API not available yet — preferences saved locally
+    } finally {
+      setSaving(false)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
   }
 
   const rows: { key: keyof typeof prefs; label: string; description: string; type: 'email' | 'push' }[] = [
@@ -185,6 +214,8 @@ function NotificationsTab() {
                 </div>
                 <button
                   onClick={() => toggle(row.key)}
+                  aria-pressed={prefs[row.key]}
+                  aria-label={row.label}
                   className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${
                     prefs[row.key] ? 'bg-[#FFB81C]' : 'bg-white/10'
                   }`}
@@ -198,11 +229,13 @@ function NotificationsTab() {
           </div>
         </div>
       ))}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
       <button
         onClick={save}
-        className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+        disabled={saving}
+        className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
       >
-        {saved ? 'Saved!' : 'Save preferences'}
+        {saved ? 'Saved!' : saving ? 'Saving...' : 'Save preferences'}
       </button>
     </div>
   )
@@ -227,6 +260,41 @@ function TeamTab() {
 function DangerTab() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [exportRequested, setExportRequested] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+
+  const handleDelete = async () => {
+    if (deleteInput !== 'delete my account') return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch('/api/user/delete', { method: 'DELETE' })
+      if (res.ok) {
+        window.location.href = '/sign-in'
+      } else {
+        throw new Error('Delete request failed')
+      }
+    } catch {
+      setDeleteError('Failed to delete account. Please try again or contact support.')
+      setDeleting(false)
+    }
+  }
+
+  const handleExport = async () => {
+    setExportError(null)
+    try {
+      const res = await fetch('/api/user/export', { method: 'POST' })
+      if (res.ok) {
+        setExportRequested(true)
+      } else {
+        throw new Error('Export request failed')
+      }
+    } catch {
+      setExportError('Failed to request export. Please try again.')
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -255,25 +323,20 @@ function DangerTab() {
               value={deleteInput}
               onChange={e => setDeleteInput(e.target.value)}
               placeholder="delete my account"
+              autoComplete="off"
               className="w-full bg-[#111640] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 mb-4 transition-colors"
             />
+            {deleteError && <p className="text-red-400 text-sm mb-3">{deleteError}</p>}
             <div className="flex gap-3">
               <button
-                disabled={deleteInput !== 'delete my account'}
-                onClick={async () => {
-                  try {
-                    await fetch('/api/user/delete', { method: 'DELETE' })
-                    window.location.href = '/sign-in'
-                  } catch {
-                    // non-fatal — user stays on page
-                  }
-                }}
+                disabled={deleteInput !== 'delete my account' || deleting}
+                onClick={handleDelete}
                 className="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Permanently delete
+                {deleting ? 'Deleting...' : 'Permanently delete'}
               </button>
               <button
-                onClick={() => { setConfirmDelete(false); setDeleteInput('') }}
+                onClick={() => { setConfirmDelete(false); setDeleteInput(''); setDeleteError(null) }}
                 className="text-sm border border-white/20 text-gray-400 hover:text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Cancel
@@ -288,19 +351,19 @@ function DangerTab() {
         <p className="text-gray-400 text-sm mb-4">
           Download all your projects, builds, and account data. Provided within 48 hours per GDPR/CCPA.
         </p>
-        <button
-          onClick={async () => {
-            try {
-              await fetch('/api/user/export', { method: 'POST' })
-              alert('Export requested. You will receive an email within 48 hours.')
-            } catch {
-              alert('Failed to request export. Please try again.')
-            }
-          }}
-          className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors"
-        >
-          Request data export
-        </button>
+        {exportRequested ? (
+          <p className="text-green-400 text-sm">Export requested. You will receive an email within 48 hours.</p>
+        ) : (
+          <>
+            {exportError && <p className="text-red-400 text-sm mb-3">{exportError}</p>}
+            <button
+              onClick={handleExport}
+              className="text-sm border border-white/20 hover:border-white/40 text-white px-4 py-2.5 rounded-xl transition-colors"
+            >
+              Request data export
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

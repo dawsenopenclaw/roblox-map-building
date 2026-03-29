@@ -59,19 +59,67 @@ const GENOME_LABELS: Record<string, string> = {
 }
 
 const GENOME_TEXT_FIELDS: Array<{ key: keyof GameGenome; label: string }> = [
-  { key: 'gameType',         label: 'Game Type' },
-  { key: 'targetAge',        label: 'Target Age' },
-  { key: 'sessionLength',    label: 'Session Length' },
+  { key: 'gameType',          label: 'Game Type' },
+  { key: 'targetAge',         label: 'Target Age' },
+  { key: 'sessionLength',     label: 'Session Length' },
   { key: 'monetizationModel', label: 'Monetization' },
-  { key: 'progressionPace',  label: 'Progression Pace' },
-  { key: 'zoneDensity',      label: 'Zone Density' },
-  { key: 'artStyle',         label: 'Art Style' },
-  { key: 'retentionDriver',  label: 'Retention Driver' },
-  { key: 'estimatedDau',     label: 'Est. DAU' },
-  { key: 'engagementLoop',   label: 'Engagement Loop' },
-  { key: 'updateCadence',    label: 'Update Cadence' },
-  { key: 'communitySize',    label: 'Community Size' },
+  { key: 'progressionPace',   label: 'Progression Pace' },
+  { key: 'zoneDensity',       label: 'Zone Density' },
+  { key: 'artStyle',          label: 'Art Style' },
+  { key: 'retentionDriver',   label: 'Retention Driver' },
+  { key: 'estimatedDau',      label: 'Est. DAU' },
+  { key: 'engagementLoop',    label: 'Engagement Loop' },
+  { key: 'updateCadence',     label: 'Update Cadence' },
+  { key: 'communitySize',     label: 'Community Size' },
 ]
+
+// Demo scans shown when API is unavailable
+const DEMO_SCANS: ScanSummary[] = [
+  { id: 'demo-a', gameName: 'Adopt Me! (Demo)',         robloxUrl: 'https://www.roblox.com/games/920587237', status: 'COMPLETE' },
+  { id: 'demo-b', gameName: 'Pet Simulator X (Demo)',   robloxUrl: 'https://www.roblox.com/games/6284583030', status: 'COMPLETE' },
+  { id: 'demo-c', gameName: 'Brookhaven (Demo)',        robloxUrl: 'https://www.roblox.com/games/4924922222', status: 'COMPLETE' },
+]
+
+const DEMO_SCAN_A: GameScan = {
+  id: 'demo-a',
+  gameName: 'Adopt Me! (Demo)',
+  genome: {
+    gameType: 'Social Roleplay', targetAge: '8–12', sessionLength: '45–90 min',
+    monetizationModel: 'Cosmetics + Gamepasses', progressionPace: 'Slow Grind',
+    zoneDensity: 'High', artStyle: 'Pastel Cartoon', retentionDriver: 'Pet Collection',
+    estimatedDau: '500k–1M', engagementLoop: 'Collect → Trade → Flex',
+    updateCadence: 'Bi-weekly', communitySize: 'Mega (50M+ visits)',
+    scores: {
+      game_type: 82, target_age: 90, session_length: 78, monetization_model: 88,
+      progression_pace: 65, zone_density: 72, art_style: 85, retention_driver: 91,
+      estimated_dau: 95, engagement_loop: 87, update_cadence: 76, community_size: 98,
+    },
+    recommendations: [],
+  },
+}
+
+const DEMO_SCAN_B: GameScan = {
+  id: 'demo-b',
+  gameName: 'Pet Simulator X (Demo)',
+  genome: {
+    gameType: 'Idle Simulator', targetAge: '10–14', sessionLength: '30–60 min',
+    monetizationModel: 'Robux Eggs + Gamepasses', progressionPace: 'Fast Grind',
+    zoneDensity: 'Medium', artStyle: 'Stylised 3D', retentionDriver: 'Pet Power Creep',
+    estimatedDau: '200k–500k', engagementLoop: 'Collect → Upgrade → Prestige',
+    updateCadence: 'Weekly', communitySize: 'Large (10M+ visits)',
+    scores: {
+      game_type: 74, target_age: 80, session_length: 70, monetization_model: 92,
+      progression_pace: 85, zone_density: 65, art_style: 78, retention_driver: 88,
+      estimated_dau: 82, engagement_loop: 90, update_cadence: 88, community_size: 85,
+    },
+    recommendations: [],
+  },
+}
+
+const DEMO_SCANS_BY_ID: Record<string, GameScan> = {
+  'demo-a': DEMO_SCAN_A,
+  'demo-b': DEMO_SCAN_B,
+}
 
 function ScoreDelta({ a, b }: { a: number; b: number }) {
   const delta = a - b
@@ -89,6 +137,7 @@ function CompareContent() {
   const initialA = searchParams.get('a') || ''
 
   const [scans, setScans] = useState<ScanSummary[]>([])
+  const [isDemo, setIsDemo] = useState(false)
   const [scanAId, setScanAId] = useState(initialA)
   const [scanBId, setScanBId] = useState('')
   const [scanA, setScanA] = useState<GameScan | null>(null)
@@ -100,25 +149,50 @@ function CompareContent() {
   // Load scan list
   useEffect(() => {
     async function fetchScans() {
-      const token = await getToken()
-      const res = await fetch(`${apiUrl}/api/dna/scans`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      const data = await res.json() as { scans: ScanSummary[] }
-      setScans(data.scans.filter((s) => s.status === 'COMPLETE'))
+      try {
+        const token = await getToken()
+        const res = await fetch(`${apiUrl}/api/dna/scans`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) {
+          setIsDemo(true)
+          setScans(DEMO_SCANS)
+          return
+        }
+        const data = await res.json() as { scans: ScanSummary[] }
+        const complete = data.scans.filter((s) => s.status === 'COMPLETE')
+        if (complete.length === 0) {
+          // No real scans yet — seed with demo so the selects aren't empty
+          setIsDemo(true)
+          setScans(DEMO_SCANS)
+        } else {
+          setScans(complete)
+        }
+      } catch {
+        // Network error — fall back to demo list
+        setIsDemo(true)
+        setScans(DEMO_SCANS)
+      }
     }
     fetchScans()
   }, [apiUrl, getToken])
 
   async function loadScan(scanId: string): Promise<GameScan | null> {
-    const token = await getToken()
-    const res = await fetch(`${apiUrl}/api/dna/${scanId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) return null
-    const data = await res.json() as { scan: GameScan }
-    return data.scan
+    // Return demo data immediately if this is a demo scan
+    if (scanId in DEMO_SCANS_BY_ID) {
+      return DEMO_SCANS_BY_ID[scanId]
+    }
+    try {
+      const token = await getToken()
+      const res = await fetch(`${apiUrl}/api/dna/${scanId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return null
+      const data = await res.json() as { scan: GameScan }
+      return data.scan
+    } catch {
+      return null
+    }
   }
 
   async function handleCompare() {
@@ -162,6 +236,16 @@ function CompareContent() {
         <h1 className="text-2xl font-bold text-white">Compare Games</h1>
         <p className="text-gray-400 text-sm mt-1">Side-by-side DNA analysis — find where you win and lose</p>
       </div>
+
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <span className="text-yellow-400 text-sm">Demo</span>
+          <p className="text-yellow-400/80 text-sm">
+            API unavailable — showing sample games. Connect your backend to compare real scans.
+          </p>
+        </div>
+      )}
 
       {/* Selector */}
       <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
@@ -211,7 +295,6 @@ function CompareContent() {
         <>
           {/* Radar comparison */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Side-by-side radars */}
             <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
                 {scanA!.gameName || 'Game A'}
@@ -280,14 +363,14 @@ function CompareContent() {
                 </thead>
                 <tbody>
                   {GENOME_TEXT_FIELDS.map((field) => {
-                    const scoreKey = field.key.replace(/([A-Z])/g, (m) => `_${m.toLowerCase()}`) as string
+                    const scoreKey = field.key.replace(/([A-Z])/g, (m) => `_${m.toLowerCase()}`)
                     const scoreA = scanA!.genome!.scores[scoreKey] ?? 0
                     const scoreB = scanB!.genome!.scores[scoreKey] ?? 0
                     const aVal = String(scanA!.genome![field.key] ?? '')
                     const bVal = String(scanB!.genome![field.key] ?? '')
 
                     return (
-                      <tr key={field.key} className="border-b border-white/5 hover:bg-white/2">
+                      <tr key={field.key} className="border-b border-white/5 hover:bg-white/[0.02]">
                         <td className="px-5 py-3 text-gray-400">{field.label}</td>
                         <td className="px-5 py-3 text-white">
                           {aVal}
