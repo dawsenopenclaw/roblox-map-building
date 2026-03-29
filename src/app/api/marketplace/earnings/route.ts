@@ -10,7 +10,11 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: { creatorAccount: true },
+    select: {
+      id: true,
+      email: true,
+      creatorAccount: true,
+    },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
@@ -48,7 +52,15 @@ export async function GET() {
     },
     orderBy: { createdAt: 'desc' },
     take: 50,
-    include: { template: { select: { title: true } } },
+    select: {
+      id: true,
+      amountCents: true,
+      platformFeeCents: true,
+      creatorPayoutCents: true,
+      payoutStatus: true,
+      createdAt: true,
+      template: { select: { id: true, title: true } },
+    },
   })
 
   return NextResponse.json({

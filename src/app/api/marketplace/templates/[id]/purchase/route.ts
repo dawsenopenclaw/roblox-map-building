@@ -17,13 +17,33 @@ export async function POST(
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: { subscription: true },
+    select: {
+      id: true,
+      email: true,
+      subscription: { select: { stripeCustomerId: true } },
+    },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   const template = await db.template.findUnique({
     where: { id: templateId },
-    include: { creator: { include: { creatorAccount: true } } },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      priceCents: true,
+      creatorId: true,
+      creator: {
+        select: {
+          id: true,
+          displayName: true,
+          username: true,
+          creatorAccount: {
+            select: { stripeAccountId: true, chargesEnabled: true },
+          },
+        },
+      },
+    },
   })
   if (!template || template.status !== 'PUBLISHED') {
     return NextResponse.json({ error: 'Template not found' }, { status: 404 })
@@ -33,9 +53,10 @@ export async function POST(
     return NextResponse.json({ error: 'You cannot purchase your own template' }, { status: 400 })
   }
 
-  // Check if already purchased
-  const existing = await db.templatePurchase.findFirst({
-    where: { templateId, buyerId: user.id },
+  // Use unique index (templateId + buyerId) for O(1) lookup
+  const existing = await db.templatePurchase.findUnique({
+    where: { templateId_buyerId: { templateId, buyerId: user.id } },
+    select: { id: true },
   })
   if (existing) {
     return NextResponse.json({ error: 'Already purchased' }, { status: 409 })

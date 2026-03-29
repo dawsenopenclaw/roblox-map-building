@@ -8,10 +8,24 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: {
+    select: {
+      id: true,
       tokenBalance: {
-        include: {
-          transactions: { orderBy: { createdAt: 'desc' }, take: 10 },
+        select: {
+          balance: true,
+          lifetimeEarned: true,
+          lifetimeSpent: true,
+          transactions: {
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+            select: {
+              id: true,
+              type: true,
+              amount: true,
+              description: true,
+              createdAt: true,
+            },
+          },
         },
       },
     },

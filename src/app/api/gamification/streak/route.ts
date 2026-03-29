@@ -20,7 +20,13 @@ export async function GET() {
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.user.findUnique({ where: { clerkId }, include: { streak: true } })
+  const user = await db.user.findUnique({
+    where: { clerkId },
+    select: {
+      id: true,
+      streak: true,
+    },
+  })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   if (!user.streak) {
@@ -44,7 +50,11 @@ export async function POST(req: NextRequest) {
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: { streak: true, tokenBalance: true },
+    select: {
+      id: true,
+      streak: true,
+      tokenBalance: { select: { id: true, balance: true } },
+    },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 

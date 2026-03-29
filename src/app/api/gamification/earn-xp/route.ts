@@ -44,7 +44,12 @@ export async function POST(req: NextRequest) {
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: { userXp: true },
+    select: {
+      id: true,
+      userXp: {
+        select: { id: true, totalXp: true, tier: true, dailyXpToday: true, dailyXpDate: true },
+      },
+    },
   })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 

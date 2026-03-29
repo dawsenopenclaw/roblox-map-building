@@ -9,11 +9,21 @@ export async function GET() {
 
   const user = await db.user.findUnique({
     where: { clerkId },
-    include: {
-      userXp: true,
-      streak: true,
+    select: {
+      id: true,
+      userXp: {
+        select: { totalXp: true, tier: true, dailyXpToday: true },
+      },
+      streak: {
+        select: { loginStreak: true, buildStreak: true, longestLoginStreak: true, longestBuildStreak: true },
+      },
       userAchievements: {
-        include: { achievement: true },
+        select: {
+          unlockedAt: true,
+          achievement: {
+            select: { slug: true, name: true, description: true, icon: true, category: true, xpReward: true },
+          },
+        },
         orderBy: { unlockedAt: 'desc' },
         take: 5,
       },

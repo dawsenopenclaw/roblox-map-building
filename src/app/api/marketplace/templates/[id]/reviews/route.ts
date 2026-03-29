@@ -11,12 +11,13 @@ export async function POST(
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.user.findUnique({ where: { clerkId } })
+  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  // Verify purchase
-  const purchase = await db.templatePurchase.findFirst({
-    where: { templateId, buyerId: user.id },
+  // Use unique index (templateId + buyerId) for O(1) lookup
+  const purchase = await db.templatePurchase.findUnique({
+    where: { templateId_buyerId: { templateId, buyerId: user.id } },
+    select: { id: true },
   })
   if (!purchase) {
     return NextResponse.json({ error: 'Must purchase template before reviewing' }, { status: 403 })
@@ -25,6 +26,7 @@ export async function POST(
   // Check no existing review for this purchase
   const existing = await db.templateReview.findUnique({
     where: { purchaseId: purchase.id },
+    select: { id: true },
   })
   if (existing) {
     return NextResponse.json({ error: 'You have already reviewed this template' }, { status: 409 })
@@ -78,15 +80,32 @@ export async function GET(
 ) {
   const { id: templateId } = await params
 
-  const reviews = await db.templateReview.findMany({
-    where: { templateId },
-    orderBy: { createdAt: 'desc' },
-    include: {
-      reviewer: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
-    },
-  })
+  const page = Math.max(1, parseInt(req.nextUrl.searchParams.get('page') || '1', 10))
+  const limit = Math.min(50, Math.max(1, parseInt(req.nextUrl.searchParams.get('limit') || '20', 10)))
 
-  return NextResponse.json({ reviews })
+  const [reviews, total] = await Promise.all([
+    db.templateReview.findMany({
+      where: { templateId },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        rating: true,
+        body: true,
+        creatorResponse: true,
+        respondedAt: true,
+        createdAt: true,
+        reviewer: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+      },
+    }),
+    db.templateReview.count({ where: { templateId } }),
+  ])
+
+  return NextResponse.json({
+    reviews,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  })
 }
 
 // PATCH /api/marketplace/templates/[id]/reviews — creator responds
@@ -98,7 +117,7 @@ export async function PATCH(
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.user.findUnique({ where: { clerkId } })
+  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
   let body: unknown
@@ -112,8 +131,8 @@ export async function PATCH(
   if (!reviewId) return NextResponse.json({ error: 'reviewId required' }, { status: 400 })
   if (!response?.trim()) return NextResponse.json({ error: 'Response text required' }, { status: 400 })
 
-  // Verify the user is the template creator
-  const template = await db.template.findUnique({ where: { id: templateId } })
+  // Verify the user is the template creator — select only needed fields
+  const template = await db.template.findUnique({ where: { id: templateId }, select: { id: true, creatorId: true } })
   if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 })
   if (template.creatorId !== user.id) {
     return NextResponse.json({ error: 'Only the creator can respond to reviews' }, { status: 403 })
