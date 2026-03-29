@@ -248,7 +248,7 @@ export default function GameDnaPage() {
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${config.dot}`} />
                     <div className="min-w-0">
                       <p className="text-white text-sm font-medium truncate">
-                        {scan.gameName || new URL(scan.robloxUrl).pathname.split('/')[3]?.replace(/-/g, ' ') || 'Unknown Game'}
+                        {scan.gameName || (() => { try { return new URL(scan.robloxUrl).pathname.split('/')[3]?.replace(/-/g, ' ') || 'Unknown Game' } catch { return 'Unknown Game' } })()}
                       </p>
                       <p className="text-gray-600 text-xs truncate max-w-xs">{scan.robloxUrl}</p>
                     </div>

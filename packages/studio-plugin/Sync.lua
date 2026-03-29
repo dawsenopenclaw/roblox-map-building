@@ -48,8 +48,9 @@ local _baseUrl = nil
 local function resolveBaseUrl()
   if _baseUrl then return _baseUrl end
 
+  -- game:HttpGetAsync does not exist — the correct API is HttpService:GetAsync
   local ok = pcall(function()
-    local res = game:HttpGetAsync(LOCAL_URL .. "/health")
+    local res = HttpService:GetAsync(LOCAL_URL .. "/health", true)
     if res and #res > 0 then
       _baseUrl = LOCAL_URL
     end
@@ -113,11 +114,13 @@ local function applyChanges(changes)
 
       if changeType == "insert_model" and data then
         -- Signal AssetManager to insert the model
-        -- (AssetManager listens to this event)
-        local success = pcall(function()
+        local assetOk, assetErr = pcall(function()
           local AssetManager = require(script.Parent.AssetManager)
           AssetManager.insertFromChange(change)
         end)
+        if not assetOk then
+          warn("[RobloxForge Sync] insert_model failed: " .. tostring(assetErr))
+        end
       elseif changeType == "delete_model" and data and data.name then
         local instance = workspace:FindFirstChild(data.name, true)
         if instance then

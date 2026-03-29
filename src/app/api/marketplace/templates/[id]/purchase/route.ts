@@ -62,6 +62,10 @@ export async function POST(
     return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
   }
 
+  if (template.priceCents < 0) {
+    return NextResponse.json({ error: 'Template has invalid price' }, { status: 500 })
+  }
+
   const platformFeeCents = Math.round(template.priceCents * PLATFORM_FEE_PERCENT)
   const creatorPayoutCents = template.priceCents - platformFeeCents
 
@@ -92,12 +96,18 @@ export async function POST(
 
   // Get or create Stripe customer for buyer
   let stripeCustomerId = user.subscription?.stripeCustomerId
-  if (!stripeCustomerId) {
+  if (!stripeCustomerId || stripeCustomerId.startsWith('pending_')) {
     const customer = await stripe.customers.create({
       email: user.email,
       metadata: { userId: user.id },
     })
     stripeCustomerId = customer.id
+    // Persist so future purchases reuse the same customer
+    await db.subscription.upsert({
+      where: { userId: user.id },
+      create: { userId: user.id, stripeCustomerId, tier: 'FREE', status: 'ACTIVE' },
+      update: { stripeCustomerId },
+    })
   }
 
   const creatorStripeAccountId = template.creator.creatorAccount?.stripeAccountId

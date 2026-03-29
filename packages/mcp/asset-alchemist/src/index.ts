@@ -233,14 +233,24 @@ const Generate3DModelSchema = z.object({
 async function generate3DModel(params: z.infer<typeof Generate3DModelSchema>) {
   const { description, artStyle = 'realistic', skipEnrichment = false } = params
 
-  let enriched = { enrichedPrompt: description, tags: [] as string[], style: artStyle }
+  let enriched: { enrichedPrompt: string; tags: string[]; style: string } = {
+    enrichedPrompt: description,
+    tags: [],
+    style: artStyle,
+  }
 
   if (!skipEnrichment) {
     enriched = await enrichPromptWithClaude(description, 'model')
   }
 
+  // Use enriched.style when enrichment ran (e.g. Claude may remap "pbr" → "realistic"
+  // for better Meshy results).  Fall back to the caller-supplied artStyle only when
+  // enrichment was skipped or returned an empty style.
+  const resolvedStyle = (enriched.style && enriched.style.length > 0 ? enriched.style : artStyle) as
+    'realistic' | 'cartoon' | 'low_poly' | 'pbr'
+
   const meshyResult = await meshyBreaker.execute(() =>
-    meshyTextTo3D(enriched.enrichedPrompt, artStyle)
+    meshyTextTo3D(enriched.enrichedPrompt, resolvedStyle)
   )
 
   return {

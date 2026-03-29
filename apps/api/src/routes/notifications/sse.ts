@@ -80,6 +80,9 @@ notificationSSERoutes.get('/stream', async (c) => {
   // Deduplicate subscriber connections per user (track in Redis)
   const connKey = `notif:conn:${userId}`
 
+  // Hoist cleanup so both start() return value and cancel() can call it
+  let cleanupFn: (() => void) | null = null
+
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
@@ -146,6 +149,9 @@ notificationSSERoutes.get('/stream', async (c) => {
         }
       }
 
+      // Expose cleanup so the cancel() callback can reach it
+      cleanupFn = cleanup
+
       try {
         subscriber = redis.duplicate()
         await subscriber.connect()
@@ -175,13 +181,11 @@ notificationSSERoutes.get('/stream', async (c) => {
         console.error('[SSE] setup failed:', err)
         cleanup()
       }
-
-      // Return cleanup so the stream can call it on cancel
-      return cleanup
     },
 
     cancel() {
-      // Called when client disconnects — cleanup happens via the closure
+      // Called when the client disconnects — invoke the shared cleanup
+      cleanupFn?.()
     },
   })
 

@@ -98,15 +98,17 @@ local function pollForToken(stateToken, callback)
     end)
 
     if ok and result then
-      local decoded = pcall(function() return HttpService:JSONDecode(result) end)
-      if decoded then
-        local data = HttpService:JSONDecode(result)
-        if data and data.token then
+      -- pcall returns (success, value) — capture both so we don't call JSONDecode
+      -- a second time unprotected (original code discarded the decoded value and
+      -- re-called JSONDecode outside the pcall, which could throw on malformed JSON)
+      local decodeOk, data = pcall(function() return HttpService:JSONDecode(result) end)
+      if decodeOk and data then
+        if data.token then
           connection:Disconnect()
           callback(data.token, nil)
           return
         end
-        if data and data.error then
+        if data.error then
           connection:Disconnect()
           callback(nil, data.error)
           return

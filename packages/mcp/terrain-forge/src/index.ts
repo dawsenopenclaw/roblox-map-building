@@ -405,12 +405,27 @@ function createRng(seed: number): () => number {
   let s = seed
   return () => {
     s = (s * 1664525 + 1013904223) & 0xffffffff
-    return (s >>> 0) / 0xffffffff
+    // Use 0x100000000 (2^32) so result is in [0, 1) rather than [0, 1.000...]
+    return (s >>> 0) / 0x100000000
   }
 }
 
+// seedHash produces a deterministic float in [0,1) from two positional floats and
+// an integer octave index.  Using a fixed hash avoids consuming shared RNG state
+// inside the per-point loop (which would produce non-coherent, purely random noise).
+function seedHash(nx: number, nz: number, octave: number): number {
+  // Mix bits with large primes to spread the input range
+  const ix = Math.floor(nx * 1000)
+  const iz = Math.floor(nz * 1000)
+  let h = (ix * 374761393 + iz * 668265263 + octave * 2246822519) >>> 0
+  h ^= h >>> 13
+  h = Math.imul(h, 1540483477) >>> 0
+  h ^= h >>> 15
+  return h / 0x100000000
+}
+
 function noiseOctaves(
-  rng: () => number,
+  _rng: () => number,  // kept for API compatibility; coherent noise uses seedHash
   nx: number,
   nz: number,
   profile: string
@@ -422,7 +437,10 @@ function noiseOctaves(
   let maxValue = 0
 
   for (let i = 0; i < octaves; i++) {
-    value += amplitude * (rng() * 2 - 1) * Math.sin(nx * frequency * Math.PI) * Math.cos(nz * frequency * Math.PI)
+    // Use position-keyed hash instead of advancing RNG so neighbouring grid
+    // points produce spatially coherent (not independent random) noise.
+    const h = seedHash(nx * frequency, nz * frequency, i) * 2 - 1
+    value += amplitude * h * Math.sin(nx * frequency * Math.PI) * Math.cos(nz * frequency * Math.PI)
     maxValue += amplitude
     amplitude *= 0.5
     frequency *= 2

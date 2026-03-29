@@ -5,8 +5,6 @@ import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ShareButtons } from '@/components/ShareButtons'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 import {
   RadarChart,
   PolarGrid,
@@ -20,6 +18,8 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
 interface GameGenome {
   id: string
@@ -179,10 +179,11 @@ export default function GameDnaReportClient() {
   }
 
   const { genome } = scan
+  const clamp = (v: number) => Math.min(100, Math.max(0, v))
   const radarData = Object.entries(GENOME_LABELS).map(([key, name]) => ({
     subject: name,
-    score: genome.scores[key] ?? 0,
-    average: genome.genreAverages?.[key] ?? 50,
+    score: clamp(genome.scores[key] ?? 0),
+    average: clamp(genome.genreAverages?.[key] ?? 50),
     fullMark: 100,
   }))
 

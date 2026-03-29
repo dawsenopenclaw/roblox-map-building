@@ -1,7 +1,19 @@
 import Stripe from 'stripe'
 import { serverEnv } from './env'
 
-export const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY ?? '', {
+if (!serverEnv.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY is not set — cannot initialise Stripe client')
+}
+if (!serverEnv.STRIPE_WEBHOOK_SECRET) {
+  // Warn loudly in non-production; hard-fail in production
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not set — webhook signature verification will be insecure')
+  } else {
+    console.warn('[stripe] STRIPE_WEBHOOK_SECRET is not set — webhook signature verification disabled in dev')
+  }
+}
+
+export const stripe = new Stripe(serverEnv.STRIPE_SECRET_KEY, {
   apiVersion: '2025-02-24.acacia',
   typescript: true,
 })
@@ -79,5 +91,9 @@ export async function createBillingPortalSession({ customerId, returnUrl }: { cu
 }
 
 export function constructWebhookEvent(payload: string, signature: string) {
-  return stripe.webhooks.constructEvent(payload, signature, serverEnv.STRIPE_WEBHOOK_SECRET ?? '')
+  const secret = serverEnv.STRIPE_WEBHOOK_SECRET
+  if (!secret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured — refusing to process webhook')
+  }
+  return stripe.webhooks.constructEvent(payload, signature, secret)
 }

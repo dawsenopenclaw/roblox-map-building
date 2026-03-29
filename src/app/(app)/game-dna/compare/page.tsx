@@ -280,7 +280,7 @@ function CompareContent() {
                 </thead>
                 <tbody>
                   {GENOME_TEXT_FIELDS.map((field) => {
-                    const scoreKey = field.key.replace(/([A-Z])/g, '_$1').toLowerCase() as string
+                    const scoreKey = field.key.replace(/([A-Z])/g, (m) => `_${m.toLowerCase()}`) as string
                     const scoreA = scanA!.genome!.scores[scoreKey] ?? 0
                     const scoreB = scanB!.genome!.scores[scoreKey] ?? 0
                     const aVal = String(scanA!.genome![field.key] ?? '')

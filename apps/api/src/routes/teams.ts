@@ -124,6 +124,58 @@ teamRoutes.get('/', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
+// GET /api/teams/invite/:token — accept invite
+// MUST be registered before GET /:id to prevent Hono matching "invite" as :id
+// ---------------------------------------------------------------------------
+
+teamRoutes.get('/invite/:token', async (c) => {
+  const clerkId = c.get('clerkId') as string
+  const token = c.req.param('token')
+
+  const user = await getDbUser(clerkId)
+  if (!user) return c.json({ error: 'User not found' }, 404)
+
+  const invite = await db.teamInvite.findUnique({
+    where: { token },
+    include: { team: true },
+  })
+
+  if (!invite) return c.json({ error: 'Invalid invite link' }, 404)
+  if (invite.status !== 'PENDING') return c.json({ error: `Invite is ${invite.status.toLowerCase()}` }, 400)
+  if (invite.expiresAt < new Date()) {
+    await db.teamInvite.update({ where: { id: invite.id }, data: { status: 'EXPIRED' } })
+    return c.json({ error: 'Invite has expired' }, 400)
+  }
+
+  // Check not already a member
+  const existing = await db.teamMember.findUnique({
+    where: { teamId_userId: { teamId: invite.teamId, userId: user.id } },
+  })
+  if (existing) return c.json({ error: 'Already a member of this team' }, 409)
+
+  // Accept invite
+  const [, newMember] = await db.$transaction([
+    db.teamInvite.update({
+      where: { id: invite.id },
+      data: { status: 'ACCEPTED', acceptedAt: new Date() },
+    }),
+    db.teamMember.create({
+      data: { teamId: invite.teamId, userId: user.id, role: invite.role },
+    }),
+    db.teamActivity.create({
+      data: {
+        teamId: invite.teamId,
+        userId: user.id,
+        action: 'member_joined',
+        description: `${user.displayName || user.email} joined the team`,
+      },
+    }),
+  ])
+
+  return c.json({ message: 'Joined team successfully', member: newMember, team: invite.team })
+})
+
+// ---------------------------------------------------------------------------
 // GET /api/teams/:id — team details
 // ---------------------------------------------------------------------------
 
@@ -217,57 +269,6 @@ teamRoutes.post('/:id/invite', zValidator('json', inviteSchema), async (c) => {
 })
 
 // ---------------------------------------------------------------------------
-// GET /api/teams/invite/:token — accept invite
-// ---------------------------------------------------------------------------
-
-teamRoutes.get('/invite/:token', async (c) => {
-  const clerkId = c.get('clerkId') as string
-  const token = c.req.param('token')
-
-  const user = await getDbUser(clerkId)
-  if (!user) return c.json({ error: 'User not found' }, 404)
-
-  const invite = await db.teamInvite.findUnique({
-    where: { token },
-    include: { team: true },
-  })
-
-  if (!invite) return c.json({ error: 'Invalid invite link' }, 404)
-  if (invite.status !== 'PENDING') return c.json({ error: `Invite is ${invite.status.toLowerCase()}` }, 400)
-  if (invite.expiresAt < new Date()) {
-    await db.teamInvite.update({ where: { id: invite.id }, data: { status: 'EXPIRED' } })
-    return c.json({ error: 'Invite has expired' }, 400)
-  }
-
-  // Check not already a member
-  const existing = await db.teamMember.findUnique({
-    where: { teamId_userId: { teamId: invite.teamId, userId: user.id } },
-  })
-  if (existing) return c.json({ error: 'Already a member of this team' }, 409)
-
-  // Accept invite
-  const [, newMember] = await db.$transaction([
-    db.teamInvite.update({
-      where: { id: invite.id },
-      data: { status: 'ACCEPTED', acceptedAt: new Date() },
-    }),
-    db.teamMember.create({
-      data: { teamId: invite.teamId, userId: user.id, role: invite.role },
-    }),
-    db.teamActivity.create({
-      data: {
-        teamId: invite.teamId,
-        userId: user.id,
-        action: 'member_joined',
-        description: `${user.displayName || user.email} joined the team`,
-      },
-    }),
-  ])
-
-  return c.json({ message: 'Joined team successfully', member: newMember, team: invite.team })
-})
-
-// ---------------------------------------------------------------------------
 // PUT /api/teams/:id/members/:memberId/role — update role
 // ---------------------------------------------------------------------------
 
@@ -297,9 +298,9 @@ teamRoutes.put('/:id/members/:memberId/role', zValidator('json', updateRoleSchem
     return c.json({ error: 'Cannot change owner role' }, 400)
   }
 
-  // Admin can't promote to admin unless they're owner
-  if (role === 'ADMIN' && requester.role !== 'OWNER') {
-    return c.json({ error: 'Only owners can assign admin role' }, 403)
+  // Only owners can touch other admins (promote or demote)
+  if ((targetMember.role === 'ADMIN' || role === 'ADMIN') && requester.role !== 'OWNER') {
+    return c.json({ error: 'Only owners can assign or remove the admin role' }, 403)
   }
 
   const updated = await db.teamMember.update({
@@ -395,17 +396,21 @@ teamRoutes.post('/:id/zones/lock', zValidator('json', lockZoneSchema), async (c)
   if (!member) return c.json({ error: 'Insufficient permissions' }, 403)
 
   const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000)
+  const now = new Date()
 
-  try {
-    const lock = await db.zoneLock.upsert({
-      where: { zoneId },
-      update: { teamMemberId: member.id, zoneName, expiresAt },
-      create: { teamMemberId: member.id, zoneId, zoneName, expiresAt },
-    })
-    return c.json({ lock }, 201)
-  } catch {
+  // Check for an active lock held by a different member
+  const existingLock = await db.zoneLock.findUnique({ where: { zoneId } })
+  if (existingLock && existingLock.expiresAt > now && existingLock.teamMemberId !== member.id) {
     return c.json({ error: 'Zone already locked by another member' }, 409)
   }
+
+  // Upsert: re-lock own zone or claim an expired lock
+  const lock = await db.zoneLock.upsert({
+    where: { zoneId },
+    update: { teamMemberId: member.id, zoneName, expiresAt },
+    create: { teamMemberId: member.id, zoneId, zoneName, expiresAt },
+  })
+  return c.json({ lock }, 201)
 })
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { stripe } from './stripe'
 import { db } from './db'
+import { serverEnv } from './env'
 
 export const CHARITIES = [
   { slug: 'code-org', name: 'Code.org', description: 'Computer science education for all students', url: 'https://code.org' },
@@ -42,11 +43,21 @@ export async function processDonation({
     },
   })
 
+  const charityAccountId = serverEnv.STRIPE_CHARITY_ACCOUNT_ID
+  if (!charityAccountId) {
+    await db.charityDonation.update({
+      where: { id: donationRecord.id },
+      data: { status: 'FAILED' },
+    })
+    console.error('Charity donation skipped: STRIPE_CHARITY_ACCOUNT_ID is not configured')
+    return null
+  }
+
   try {
     const transfer = await stripe.transfers.create({
       amount: donationAmountCents,
       currency: 'usd',
-      destination: process.env.STRIPE_CHARITY_ACCOUNT_ID!,
+      destination: charityAccountId,
       transfer_group: `donation_${donationRecord.id}`,
       metadata: {
         donationId: donationRecord.id,

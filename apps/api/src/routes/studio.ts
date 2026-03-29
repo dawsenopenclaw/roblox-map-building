@@ -86,8 +86,9 @@ studioRoutes.get('/sync', zValidator('query', syncQuerySchema), async (c) => {
       const keepChanges = (await redis.lrange(queueKey, 0, -1))
         .filter((item) => {
           try {
-            const c = JSON.parse(item) as StudioChange
-            return !changes.some((sent) => sent.timestamp === c.timestamp && sent.type === c.type)
+            // Renamed from `c` to `parsed` to avoid shadowing the outer Hono context `c`
+            const parsed = JSON.parse(item) as StudioChange
+            return !changes.some((sent) => sent.timestamp === parsed.timestamp && sent.type === parsed.type)
           } catch {
             return false
           }

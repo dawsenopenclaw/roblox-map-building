@@ -210,7 +210,10 @@ For scores: higher = better/more. For genre averages, use your knowledge of simi
 // ---------------------------------------------------------------------------
 
 const scanBodySchema = z.object({
-  url: z.string().url().includes('roblox.com/games'),
+  url: z.string().url().refine(
+    (val) => /roblox\.com\/games\/\d+/i.test(val),
+    { message: 'Must be a valid Roblox game URL (e.g. https://www.roblox.com/games/123456789/...)' }
+  ),
 })
 
 dnaRoutes.post('/scan', zValidator('json', scanBodySchema), async (c) => {

@@ -43,6 +43,21 @@ notificationRoutes.get('/', requireAuth, async (c) => {
   })
 })
 
+// PUT /api/notifications/read-all — mark all notifications read
+// MUST be registered before PUT /:id/read to prevent Hono matching "read-all" as :id
+notificationRoutes.put('/read-all', requireAuth, async (c) => {
+  const clerkId = (c as any).get('clerkId') as string
+  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
+  if (!user) return c.json({ error: 'User not found' }, 404)
+
+  await db.notification.updateMany({
+    where: { userId: user.id, read: false },
+    data: { read: true },
+  })
+
+  return c.json({ success: true })
+})
+
 // PUT /api/notifications/:id/read — mark single notification read
 notificationRoutes.put('/:id/read', requireAuth, async (c) => {
   const clerkId = (c as any).get('clerkId') as string
@@ -56,20 +71,6 @@ notificationRoutes.put('/:id/read', requireAuth, async (c) => {
   if (!notification) return c.json({ error: 'Notification not found' }, 404)
 
   await db.notification.update({ where: { id }, data: { read: true } })
-  return c.json({ success: true })
-})
-
-// PUT /api/notifications/read-all — mark all notifications read
-notificationRoutes.put('/read-all', requireAuth, async (c) => {
-  const clerkId = (c as any).get('clerkId') as string
-  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
-  if (!user) return c.json({ error: 'User not found' }, 404)
-
-  await db.notification.updateMany({
-    where: { userId: user.id, read: false },
-    data: { read: true },
-  })
-
   return c.json({ success: true })
 })
 
