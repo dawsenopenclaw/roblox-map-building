@@ -5,7 +5,7 @@ import PricingClient from './PricingClient'
 export const metadata: Metadata = createMetadata({
   title: 'Pricing',
   description:
-    'Start free, scale as you grow. RobloxForge plans from $0 to $29.99/month. Get AI terrain generation, voice-to-game, image-to-map, and Roblox asset creation tools.',
+    'Simple, transparent pricing. Start free with 3 game builds per month. Upgrade to Creator ($15/mo) or Studio ($50/mo) when you\'re ready. No contracts, cancel anytime.',
   path: '/pricing',
   keywords: [
     'Roblox AI pricing',
@@ -19,42 +19,50 @@ export const metadata: Metadata = createMetadata({
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'Is RobloxForge free to use?',
+        name: 'What are game builds?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. RobloxForge offers a free tier with 500 tokens per month — no credit card required. Paid plans start at $4.99/month for 2,000 tokens.',
+          text: 'Each time the AI generates something — terrain, a building, a full game scene — that counts as 1 build. Free plan includes 3 per month. Creator and Studio are unlimited.',
         },
       },
       {
         '@type': 'Question',
-        name: 'What is a token on RobloxForge?',
+        name: 'Can I cancel anytime?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Tokens are the credits used to run AI generations — terrain builds, voice commands, image-to-map conversions, and asset creation. Different operations use different token amounts.',
+          text: 'Yes. No contracts, no cancellation fees. Cancel in one click and you keep access until the end of your billing period.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Can I cancel my subscription at any time?',
+        name: 'Is it safe for kids?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. All RobloxForge subscriptions are month-to-month (or annual) with no lock-in. Cancel any time and keep access until the end of your billing period.',
+          text: 'Yes. RobloxForge is COPPA compliant with parental controls built in. Safe for players aged 8 and up.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Does RobloxForge support team accounts?',
+        name: "What's the 10% donation?",
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. The Pro plan ($14.99/month) and Studio plan ($29.99/month) include team collaboration features with shared token pools and role-based access.',
+          text: '10% of every subscription payment goes to education charities. We partner with organizations that teach kids coding and STEM skills.',
         },
       },
       {
         '@type': 'Question',
-        name: 'Is there a free trial for paid plans?',
+        name: 'Do I need to code?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Yes. All paid plans include a 14-day free trial so you can evaluate the full feature set before being charged.',
+          text: 'No. The AI handles everything. Describe what you want in plain English, and the platform builds it for you.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I sell what I make?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Creator and Studio plans let you list templates and assets on the marketplace. You keep 70% of every sale.',
         },
       },
     ],
