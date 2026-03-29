@@ -12,7 +12,8 @@ interface JoinResult {
 }
 
 export default function JoinTeamPage() {
-  const { token } = useParams<{ token: string }>()
+  const params = useParams<{ token: string }>()
+  const token = params?.token
   const { getToken } = useAuth()
   const router = useRouter()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
@@ -21,9 +22,25 @@ export default function JoinTeamPage() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
   useEffect(() => {
+    // Guard against missing token param (malformed URL)
+    if (!token) {
+      setResult({ error: 'Invalid invite link — no token found.' })
+      setStatus('error')
+      return
+    }
+
     async function acceptInvite() {
       try {
         const authToken = await getToken()
+
+        // If no API is configured, treat as demo acceptance
+        if (!process.env.NEXT_PUBLIC_API_URL) {
+          setResult({ message: 'Joined team (demo)', team: { name: 'Demo Team', id: 'demo-team-1' } })
+          setStatus('success')
+          setTimeout(() => router.push('/team'), 2500)
+          return
+        }
+
         const res = await fetch(`${apiUrl}/api/teams/invite/${token}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         })
@@ -41,6 +58,7 @@ export default function JoinTeamPage() {
         setStatus('error')
       }
     }
+
     acceptInvite()
   }, [token, apiUrl, getToken, router])
 
@@ -57,7 +75,7 @@ export default function JoinTeamPage() {
       {status === 'success' && (
         <>
           <div className="text-4xl mb-4">🎉</div>
-          <p className="text-white font-semibold text-lg mb-2">{result?.message}</p>
+          <p className="text-white font-semibold text-lg mb-2">{result?.message || 'You joined the team!'}</p>
           {result?.team && (
             <p className="text-gray-400 text-sm mb-4">
               Welcome to <strong className="text-white">{result.team.name}</strong>

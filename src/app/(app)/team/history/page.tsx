@@ -26,10 +26,39 @@ interface VersionDiff {
   }
 }
 
+// Demo versions shown when no projectId is supplied or API is unreachable
+const DEMO_VERSIONS: ProjectVersion[] = [
+  { id: 'v3', projectId: 'demo-project', userId: 'user_demo', version: 3, message: 'Added Zone 4 retail district', createdAt: new Date(Date.now() - 3600_000).toISOString() },
+  { id: 'v2', projectId: 'demo-project', userId: 'user_demo', version: 2, message: 'Rebuilt spawn plaza lighting', createdAt: new Date(Date.now() - 2 * 86400_000).toISOString() },
+  { id: 'v1', projectId: 'demo-project', userId: 'user_demo', version: 1, message: 'Initial city layout', createdAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
+]
+
+const DEMO_DIFF: VersionDiff = {
+  id: 'diff-demo',
+  fromVersionId: 'v1',
+  toVersionId: 'v3',
+  summary: '2 zones added, spawn plaza rebuilt, 1 building removed',
+  diff: {
+    added: ['Zone4/RetailDistrict', 'Zone4/ParkingLot'],
+    modified: ['SpawnPlaza/Lighting', 'SpawnPlaza/Terrain'],
+    removed: ['Zone1/OldWarehouse'],
+    changes: {},
+  },
+}
+
+function timeAgo(dateStr: string): string {
+  const elapsed = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(elapsed / 60000)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 export default function TeamHistoryPage() {
   const { getToken } = useAuth()
   const [projectId, setProjectId] = useState('')
-  const [versions, setVersions] = useState<ProjectVersion[]>([])
+  const [versions, setVersions] = useState<ProjectVersion[]>(DEMO_VERSIONS)
   const [selectedFrom, setSelectedFrom] = useState<string>('')
   const [selectedTo, setSelectedTo] = useState<string>('')
   const [diff, setDiff] = useState<VersionDiff | null>(null)
@@ -38,6 +67,7 @@ export default function TeamHistoryPage() {
   const [rollingBack, setRollingBack] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isDemo, setIsDemo] = useState(true)
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -56,16 +86,27 @@ export default function TeamHistoryPage() {
         return
       }
       const data = await res.json() as { versions: ProjectVersion[] }
-      setVersions(data.versions)
+      setVersions(data.versions ?? [])
+      setIsDemo(false)
     } catch {
-      setError('Network error')
+      setError('Network error — showing demo data')
+      setVersions(DEMO_VERSIONS)
+      setIsDemo(true)
     } finally {
       setLoading(false)
     }
   }, [projectId, apiUrl, getToken])
 
   async function fetchDiff() {
-    if (!selectedFrom || !selectedTo || !projectId) return
+    if (!selectedFrom || !selectedTo) return
+
+    // Demo shortcut — no API call needed
+    if (isDemo) {
+      setDiff(DEMO_DIFF)
+      return
+    }
+
+    if (!projectId) return
     setLoadingDiff(true)
     setDiff(null)
     try {
@@ -74,16 +115,27 @@ export default function TeamHistoryPage() {
         `${apiUrl}/api/projects/${projectId}/diff?from=${selectedFrom}&to=${selectedTo}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      if (!res.ok) return
+      if (!res.ok) {
+        setDiff(DEMO_DIFF)
+        return
+      }
       const data = await res.json() as { diff: VersionDiff }
       setDiff(data.diff)
+    } catch {
+      setDiff(DEMO_DIFF)
     } finally {
       setLoadingDiff(false)
     }
   }
 
   async function handleRollback(versionId: string) {
-    if (!projectId || !confirm('Roll back to this version? A new version will be created with the old snapshot.')) return
+    if (!confirm('Roll back to this version? A new version will be created with the old snapshot.')) return
+    if (isDemo) {
+      setSuccess('Rollback complete (demo) — new version created')
+      setTimeout(() => setSuccess(''), 3000)
+      return
+    }
+    if (!projectId) return
     setRollingBack(true)
     setError('')
     setSuccess('')
@@ -117,15 +169,6 @@ export default function TeamHistoryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFrom, selectedTo])
 
-  function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime()
-    const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins}m ago`
-    const hrs = Math.floor(mins / 60)
-    if (hrs < 24) return `${hrs}h ago`
-    return `${Math.floor(hrs / 24)}d ago`
-  }
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
@@ -135,6 +178,13 @@ export default function TeamHistoryPage() {
         <h1 className="text-2xl font-bold text-white">Version History</h1>
         <p className="text-gray-400 text-sm mt-1">Browse, compare, and roll back project versions</p>
       </div>
+
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs rounded-xl px-4 py-2.5">
+          Showing demo versions. Enter a Project ID and click Load to view real history.
+        </div>
+      )}
 
       {/* Project ID input */}
       <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
@@ -169,7 +219,7 @@ export default function TeamHistoryPage() {
         </div>
       )}
 
-      {/* Versions timeline */}
+      {/* Versions timeline — always rendered (demo or real) */}
       {versions.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Timeline */}
@@ -206,7 +256,6 @@ export default function TeamHistoryPage() {
                     <p className="text-gray-600 text-xs mt-1">{timeAgo(v.createdAt)}</p>
 
                     <div className="flex gap-2 mt-2">
-                      {/* Select for diff */}
                       <button
                         onClick={() => setSelectedFrom(v.id)}
                         className={`text-xs px-2 py-1 rounded-lg transition-colors ${
@@ -265,14 +314,12 @@ export default function TeamHistoryPage() {
                 </div>
               ) : diff ? (
                 <div className="space-y-4">
-                  {/* Summary */}
                   {diff.summary && (
                     <p className="text-xs text-gray-400 bg-white/5 rounded-lg px-3 py-2">
                       {diff.summary}
                     </p>
                   )}
 
-                  {/* Added */}
                   {diff.diff.added.length > 0 && (
                     <div>
                       <p className="text-xs text-green-400 font-medium mb-2">Added ({diff.diff.added.length})</p>
@@ -284,7 +331,6 @@ export default function TeamHistoryPage() {
                     </div>
                   )}
 
-                  {/* Modified */}
                   {diff.diff.modified.length > 0 && (
                     <div>
                       <p className="text-xs text-yellow-400 font-medium mb-2">Modified ({diff.diff.modified.length})</p>
@@ -296,7 +342,6 @@ export default function TeamHistoryPage() {
                     </div>
                   )}
 
-                  {/* Removed */}
                   {diff.diff.removed.length > 0 && (
                     <div>
                       <p className="text-xs text-red-400 font-medium mb-2">Removed ({diff.diff.removed.length})</p>
@@ -323,8 +368,8 @@ export default function TeamHistoryPage() {
         </div>
       )}
 
-      {/* Empty state */}
-      {versions.length === 0 && !loading && projectId && !error && (
+      {/* Empty state — only shown after a real load with no results */}
+      {versions.length === 0 && !loading && projectId && !error && !isDemo && (
         <div className="bg-[#0D1231] border border-dashed border-white/10 rounded-2xl p-12 text-center">
           <div className="text-4xl mb-3">📦</div>
           <p className="text-gray-400 text-sm">No versions found for this project</p>

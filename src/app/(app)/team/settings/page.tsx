@@ -38,6 +38,32 @@ const ROLE_COLORS = {
   VIEWER: 'text-gray-400',
 }
 
+// Demo data shown when API is unreachable
+const DEMO_TEAMS: TeamSummary[] = [
+  {
+    id: 'demo-team-1',
+    name: 'Map Builders',
+    description: 'Main city construction crew',
+    slug: 'map-builders',
+    ownerId: 'demo-user',
+    memberCount: 3,
+    myRole: 'OWNER',
+  },
+]
+
+const DEMO_DETAIL: TeamDetail = {
+  id: 'demo-team-1',
+  name: 'Map Builders',
+  description: 'Main city construction crew',
+  slug: 'map-builders',
+  ownerId: 'demo-user',
+  members: [
+    { id: 'm1', userId: 'user_demo_owner', role: 'OWNER', joinedAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
+    { id: 'm2', userId: 'user_demo_alice', role: 'EDITOR', joinedAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+    { id: 'm3', userId: 'user_demo_bob', role: 'VIEWER', joinedAt: new Date(Date.now() - 86400_000).toISOString() },
+  ],
+}
+
 export default function TeamSettingsPage() {
   const { getToken } = useAuth()
   const [teams, setTeams] = useState<TeamSummary[]>([])
@@ -47,32 +73,60 @@ export default function TeamSettingsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isDemo, setIsDemo] = useState(false)
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
   const fetchTeams = useCallback(async () => {
-    const token = await getToken()
-    const res = await fetch(`${apiUrl}/api/teams`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) return
-    const data = await res.json() as { teams: TeamSummary[] }
-    const adminTeams = data.teams.filter((t) => t.myRole === 'OWNER' || t.myRole === 'ADMIN')
-    setTeams(adminTeams)
-    if (adminTeams.length > 0 && !selectedTeamId) {
-      setSelectedTeamId(adminTeams[0].id)
+    try {
+      const token = await getToken()
+      const res = await fetch(`${apiUrl}/api/teams`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        setTeams(DEMO_TEAMS)
+        setSelectedTeamId(DEMO_TEAMS[0].id)
+        setIsDemo(true)
+        return
+      }
+      const data = await res.json() as { teams: TeamSummary[] }
+      const adminTeams = (data.teams ?? []).filter((t) => t.myRole === 'OWNER' || t.myRole === 'ADMIN')
+      setTeams(adminTeams)
+      if (adminTeams.length > 0 && !selectedTeamId) {
+        setSelectedTeamId(adminTeams[0].id)
+      }
+    } catch {
+      // API unreachable — fall back to demo
+      setTeams(DEMO_TEAMS)
+      setSelectedTeamId(DEMO_TEAMS[0].id)
+      setIsDemo(true)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [apiUrl, getToken, selectedTeamId])
 
   const fetchTeamDetail = useCallback(async (teamId: string) => {
-    const token = await getToken()
-    const res = await fetch(`${apiUrl}/api/teams/${teamId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) return
-    const data = await res.json() as { team: TeamDetail }
-    setTeam(data.team)
+    // Demo shortcut
+    if (teamId === DEMO_DETAIL.id) {
+      setTeam(DEMO_DETAIL)
+      return
+    }
+    try {
+      const token = await getToken()
+      const res = await fetch(`${apiUrl}/api/teams/${teamId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        setTeam(DEMO_DETAIL)
+        setIsDemo(true)
+        return
+      }
+      const data = await res.json() as { team: TeamDetail }
+      setTeam(data.team)
+    } catch {
+      setTeam(DEMO_DETAIL)
+      setIsDemo(true)
+    }
   }, [apiUrl, getToken])
 
   useEffect(() => { fetchTeams() }, [fetchTeams])
@@ -82,6 +136,18 @@ export default function TeamSettingsPage() {
 
   async function handleRoleChange(memberId: string, role: ChangeableRole) {
     if (!team) return
+    if (isDemo) {
+      setTeam((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          members: prev.members.map((m) => m.id === memberId ? { ...m, role } : m),
+        }
+      })
+      setSuccess(`Role updated to ${role} (demo)`)
+      setTimeout(() => setSuccess(''), 3000)
+      return
+    }
     setUpdatingId(memberId)
     setError('')
     setSuccess('')
@@ -105,6 +171,13 @@ export default function TeamSettingsPage() {
 
   async function handleRemoveMember(memberId: string) {
     if (!team || !confirm('Remove this member from the team?')) return
+    if (isDemo) {
+      setTeam((prev) => {
+        if (!prev) return prev
+        return { ...prev, members: prev.members.filter((m) => m.id !== memberId) }
+      })
+      return
+    }
     try {
       const token = await getToken()
       await fetch(`${apiUrl}/api/teams/${team.id}/members/${memberId}`, {
@@ -147,6 +220,13 @@ export default function TeamSettingsPage() {
         <h1 className="text-2xl font-bold text-white">Team Settings</h1>
         <p className="text-gray-400 text-sm mt-1">Manage roles and permissions</p>
       </div>
+
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs rounded-xl px-4 py-2.5">
+          Demo mode — API unreachable. Changes are local only.
+        </div>
+      )}
 
       {/* Team selector */}
       {teams.length > 1 && (
@@ -200,52 +280,58 @@ export default function TeamSettingsPage() {
             ))}
           </div>
 
-          <div className="divide-y divide-white/5">
-            {team.members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#111640] flex items-center justify-center text-sm text-gray-400 font-medium">
-                    {member.userId.slice(5, 7).toUpperCase()}
+          {team.members.length === 0 ? (
+            <div className="px-5 py-8 text-center">
+              <p className="text-gray-500 text-sm">No members yet</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {team.members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#111640] flex items-center justify-center text-sm text-gray-400 font-medium">
+                      {member.userId.slice(5, 7).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${ROLE_COLORS[member.role]}`}>
+                        {member.role}
+                        {member.role === 'OWNER' && ' (You)'}
+                      </p>
+                      <p className="text-gray-600 text-xs">
+                        Joined {new Date(member.joinedAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className={`text-sm font-medium ${ROLE_COLORS[member.role]}`}>
-                      {member.role}
-                      {member.role === 'OWNER' && ' (You)'}
-                    </p>
-                    <p className="text-gray-600 text-xs">
-                      Joined {new Date(member.joinedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  {member.role !== 'OWNER' && (
-                    <>
-                      <select
-                        defaultValue={member.role}
-                        onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
-                        disabled={updatingId === member.id}
-                        className="bg-[#111640] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
-                      >
-                        {ROLE_OPTIONS.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="text-red-400 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    </>
-                  )}
-                  {member.role === 'OWNER' && (
-                    <span className="text-xs text-gray-600">Owner cannot be changed</span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {member.role !== 'OWNER' && (
+                      <>
+                        <select
+                          defaultValue={member.role}
+                          onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
+                          disabled={updatingId === member.id}
+                          className="bg-[#111640] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/40 transition-colors disabled:opacity-50"
+                        >
+                          {ROLE_OPTIONS.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleRemoveMember(member.id)}
+                          className="text-red-400 hover:text-red-300 text-xs px-2 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                    {member.role === 'OWNER' && (
+                      <span className="text-xs text-gray-600">Owner cannot be changed</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

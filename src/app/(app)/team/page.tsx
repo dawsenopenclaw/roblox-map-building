@@ -54,6 +54,40 @@ const ROLE_COLORS = {
   VIEWER: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
 }
 
+// Demo data shown when the API is unreachable
+const DEMO_TEAMS: TeamSummary[] = [
+  {
+    id: 'demo-team-1',
+    name: 'Map Builders',
+    description: 'Main city construction crew',
+    slug: 'map-builders',
+    ownerId: 'demo-user',
+    memberCount: 3,
+    myRole: 'OWNER',
+    createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
+  },
+]
+
+const DEMO_DETAIL: TeamDetail = {
+  id: 'demo-team-1',
+  name: 'Map Builders',
+  description: 'Main city construction crew',
+  slug: 'map-builders',
+  ownerId: 'demo-user',
+  createdAt: new Date(Date.now() - 7 * 86400_000).toISOString(),
+  members: [
+    { id: 'm1', userId: 'user_demo_owner', role: 'OWNER', joinedAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
+    { id: 'm2', userId: 'user_demo_alice', role: 'EDITOR', joinedAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+    { id: 'm3', userId: 'user_demo_bob', role: 'VIEWER', joinedAt: new Date(Date.now() - 86400_000).toISOString() },
+  ],
+  invites: [],
+  activities: [
+    { id: 'a1', userId: 'user_demo_owner', action: 'member_joined', description: 'You created the team', createdAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
+    { id: 'a2', userId: 'user_demo_alice', action: 'member_joined', description: 'Alice joined the team', createdAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+    { id: 'a3', userId: 'user_demo_bob', action: 'zone_locked', description: 'Bob locked Zone 3 for editing', createdAt: new Date(Date.now() - 3600_000).toISOString() },
+  ],
+}
+
 export default function TeamPage() {
   const { getToken } = useAuth()
   const { user } = useUser()
@@ -64,11 +98,12 @@ export default function TeamPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
   const [createForm, setCreateForm] = useState({ name: '', description: '' })
-  const [inviteForm, setInviteForm] = useState({ email: '', role: 'EDITOR' as const })
+  const [inviteForm, setInviteForm] = useState<{ email: string; role: 'ADMIN' | 'EDITOR' | 'VIEWER' }>({ email: '', role: 'EDITOR' })
   const [inviteLink, setInviteLink] = useState('')
   const [creating, setCreating] = useState(false)
   const [inviting, setInviting] = useState(false)
   const [error, setError] = useState('')
+  const [isDemo, setIsDemo] = useState(false)
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
@@ -78,24 +113,45 @@ export default function TeamPage() {
       const res = await fetch(`${apiUrl}/api/teams`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setTeams(DEMO_TEAMS)
+        setIsDemo(true)
+        return
+      }
       const data = await res.json() as { teams: TeamSummary[] }
-      setTeams(data.teams)
+      setTeams(data.teams ?? [])
+      setIsDemo(false)
+    } catch {
+      // API unreachable — show demo data so the page is usable
+      setTeams(DEMO_TEAMS)
+      setIsDemo(true)
     } finally {
       setLoadingTeams(false)
     }
   }, [apiUrl, getToken])
 
   const fetchTeamDetail = useCallback(async (teamId: string) => {
+    // Demo shortcut
+    if (teamId === DEMO_DETAIL.id) {
+      setSelectedTeam(DEMO_DETAIL)
+      return
+    }
     setLoadingDetail(true)
     try {
       const token = await getToken()
       const res = await fetch(`${apiUrl}/api/teams/${teamId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setSelectedTeam(DEMO_DETAIL)
+        setIsDemo(true)
+        return
+      }
       const data = await res.json() as { team: TeamDetail }
       setSelectedTeam(data.team)
+    } catch {
+      setSelectedTeam(DEMO_DETAIL)
+      setIsDemo(true)
     } finally {
       setLoadingDetail(false)
     }
@@ -105,6 +161,23 @@ export default function TeamPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
+    if (isDemo) {
+      // Demo mode: optimistically add the team
+      const demoNew: TeamSummary = {
+        id: `demo-${Date.now()}`,
+        name: createForm.name,
+        description: createForm.description || null,
+        slug: createForm.name.toLowerCase().replace(/\s+/g, '-'),
+        ownerId: user?.id || 'demo-user',
+        memberCount: 1,
+        myRole: 'OWNER',
+        createdAt: new Date().toISOString(),
+      }
+      setTeams((prev) => [...prev, demoNew])
+      setShowCreate(false)
+      setCreateForm({ name: '', description: '' })
+      return
+    }
     setCreating(true)
     setError('')
     try {
@@ -120,7 +193,7 @@ export default function TeamPage() {
       setCreateForm({ name: '', description: '' })
       await fetchTeams()
     } catch {
-      setError('Network error')
+      setError('Network error — check API connection')
     } finally {
       setCreating(false)
     }
@@ -129,6 +202,13 @@ export default function TeamPage() {
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedTeam) return
+    if (isDemo) {
+      // Demo mode: generate a fake invite link
+      const fakeToken = Math.random().toString(36).slice(2)
+      setInviteLink(`${window.location.origin}/team/join/${fakeToken}`)
+      setInviteForm({ email: '', role: 'EDITOR' })
+      return
+    }
     setInviting(true)
     setError('')
     try {
@@ -143,7 +223,7 @@ export default function TeamPage() {
       setInviteLink(data.inviteUrl || '')
       setInviteForm({ email: '', role: 'EDITOR' })
     } catch {
-      setError('Network error')
+      setError('Network error — check API connection')
     } finally {
       setInviting(false)
     }
@@ -167,6 +247,13 @@ export default function TeamPage() {
           + New Team
         </button>
       </div>
+
+      {/* Demo banner */}
+      {isDemo && (
+        <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs rounded-xl px-4 py-2.5 flex items-center gap-2">
+          <span>Demo mode — API unreachable. Showing sample data.</span>
+        </div>
+      )}
 
       {/* Create modal */}
       {showCreate && (
@@ -385,26 +472,33 @@ export default function TeamPage() {
                     Members ({selectedTeam.members.length})
                   </h3>
                 </div>
-                <div className="divide-y divide-white/5">
-                  {selectedTeam.members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#111640] flex items-center justify-center text-xs text-gray-400">
-                          {member.userId.slice(0, 2).toUpperCase()}
+                {selectedTeam.members.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-gray-500 text-sm">No members yet</p>
+                    <p className="text-gray-600 text-xs mt-1">Invite someone to get started</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {selectedTeam.members.map((member) => (
+                      <div key={member.id} className="flex items-center justify-between px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#111640] flex items-center justify-center text-xs text-gray-400">
+                            {member.userId.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-white text-sm">{member.userId.slice(0, 12)}…</p>
+                            <p className="text-gray-600 text-xs">
+                              Joined {new Date(member.joinedAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-white text-sm">{member.userId.slice(0, 12)}…</p>
-                          <p className="text-gray-600 text-xs">
-                            Joined {new Date(member.joinedAt).toLocaleDateString()}
-                          </p>
-                        </div>
+                        <span className={`text-xs px-2.5 py-1 rounded-full border ${ROLE_COLORS[member.role]}`}>
+                          {member.role}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full border ${ROLE_COLORS[member.role]}`}>
-                        {member.role}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Activity feed */}
