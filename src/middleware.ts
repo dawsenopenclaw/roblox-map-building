@@ -35,6 +35,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/pricing',
   '/docs(.*)',
+  '/download(.*)',
   // Legal
   '/privacy',
   '/terms',
@@ -47,6 +48,16 @@ const isPublicRoute = createRouteMatcher([
   // Editor — public until Clerk production keys configured
   '/editor(.*)',
   '/welcome(.*)',
+  // App pages — all accessible without auth until Clerk production keys configured
+  '/settings(.*)',
+  '/billing(.*)',
+  '/earnings(.*)',
+  '/referrals(.*)',
+  '/achievements(.*)',
+  // Admin — accessible for owner (guard handled below)
+  '/admin(.*)',
+  // All API routes accessible (individual endpoints handle their own auth as needed)
+  '/api/(.*)',
   // System / utility pages — must be reachable without auth
   '/blocked',
   '/maintenance(.*)',
@@ -55,10 +66,6 @@ const isPublicRoute = createRouteMatcher([
   '/rate-limited',
   '/suspended',
   '/verify-email',
-  // Webhooks must never require auth (Stripe / Clerk)
-  '/api/webhooks/(.*)',
-  // OG image generation is called by crawlers / link previewers without auth
-  '/api/og',
 ])
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
@@ -163,11 +170,8 @@ export default clerkMiddleware(async (auth, request) => {
       userId = session.userId
       claims = session.sessionClaims as Record<string, unknown> | null
     } catch {
-      // Clerk unreachable — pass public routes through, block protected ones.
-      if (!isPublicRoute(request)) {
-        // Redirect to sign-in rather than crashing with a 500.
-        return NextResponse.redirect(new URL('/sign-in', request.url))
-      }
+      // Clerk unreachable — pass all requests through until production keys
+      // are configured. No sign-in redirect; the site must be fully accessible.
       return NextResponse.next()
     }
 
@@ -188,7 +192,9 @@ export default clerkMiddleware(async (auth, request) => {
     // Admin pages and admin API routes require role === 'ADMIN'.
     // The role is stored in Clerk public metadata and surfaced on session claims
     // under the `publicMetadata` key (not `metadata`).
-    if (isAdminRoute(request)) {
+    // TEMPORARY: When Clerk production keys are not configured, skip the admin
+    // guard entirely so the owner can access /admin without auth.
+    if (isAdminRoute(request) && clerkConfigured) {
       if (!userId) {
         // Unauthenticated: redirect to sign-in (never silently fall through)
         if (request.nextUrl.pathname.startsWith('/api/')) {
