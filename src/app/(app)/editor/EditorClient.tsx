@@ -1051,7 +1051,6 @@ export function EditorClient() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [activePanel, setActivePanel] = useState<PanelId>(null)
-  const [hasGame] = useState(false)
   const [sceneBlocks, setSceneBlocks] = useState<SceneBlock[]>([])
   const [totalTokens, setTotalTokens] = useState(0)
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
