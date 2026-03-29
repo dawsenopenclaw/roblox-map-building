@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 export default function AgeGatePage() {
   const router = useRouter()
+  const { track } = useAnalytics()
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,12 +34,15 @@ export default function AgeGatePage() {
 
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
+        track('error_encountered', { errorType: 'onboarding_age_gate', message: data.error, page: '/onboarding/age-gate' })
         return
       }
 
+      track('onboarding_step_completed', { step: 'age_gate', stepIndex: 1 })
       router.push(data.redirect)
     } catch {
       setError('Network error. Please try again.')
+      track('error_encountered', { errorType: 'network_error', page: '/onboarding/age-gate' })
     } finally {
       setLoading(false)
     }

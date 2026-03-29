@@ -27,6 +27,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",
     "@prisma/client": "^6.0.0",
+    "@react-email/components": "^1.0.10",
     "@sentry/nextjs": "^8.0.0",
     "@stripe/stripe-js": "^4.0.0",
     "@types/recharts": "^1.8.29",
@@ -40,6 +41,7 @@
     "posthog-node": "^5.28.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-email": "^5.2.10",
     "recharts": "^3.8.1",
     "resend": "^6.9.4",
     "socket.io-client": "^4.8.3",

@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <AppTopNav onMenuOpen={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
+        <main id="main-content" className="flex-1 p-4 sm:p-6 overflow-auto" tabIndex={-1}>{children}</main>
       </div>
       <AchievementToastProvider />
     </div>

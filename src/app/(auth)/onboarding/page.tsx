@@ -1,9 +1,18 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAnalytics } from '@/hooks/useAnalytics'
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { track } = useAnalytics()
+
+  useEffect(() => {
+    track('onboarding_step_completed', { step: 'welcome', stepIndex: 0 })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center">
       <div className="max-w-md w-full text-center p-8">

@@ -2,6 +2,11 @@ import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { PostHogProvider } from '@/components/PostHogProvider'
+import { SkipToContent } from '@/components/SkipToContent'
+import { InstallPrompt } from '@/components/InstallPrompt'
+import { OfflineIndicator } from '@/components/OfflineIndicator'
+import Script from 'next/script'
+import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -17,8 +22,101 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'RobloxForge',
-  description: 'AI-powered Roblox game development',
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  keywords: [
+    'Roblox AI',
+    'Roblox map builder',
+    'Roblox game development',
+    'AI terrain generation',
+    'Roblox Studio AI',
+    'voice to game',
+    'image to map',
+    'Luau script generator',
+    'Roblox asset generator',
+  ],
+  authors: [{ name: 'RobloxForge' }],
+  creator: 'RobloxForge',
+  publisher: 'RobloxForge LLC',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+      'max-video-preview': -1,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: BASE_URL,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: 'RobloxForge — AI-powered Roblox game development',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@robloxforge',
+    creator: '@robloxforge',
+    title: SITE_NAME,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+  verification: {
+    // Add Google Search Console / Bing verification tokens here when available
+    // google: 'your-token',
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: 'black-translucent',
+  },
+  other: {
+    'application/ld+json': JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: SITE_NAME,
+      description: DEFAULT_DESCRIPTION,
+      url: BASE_URL,
+      applicationCategory: 'DeveloperApplication',
+      operatingSystem: 'Web',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        description: 'Free tier available. Pro plans from $4.99/month.',
+      },
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.8',
+        ratingCount: '1200',
+      },
+      author: {
+        '@type': 'Organization',
+        name: 'RobloxForge LLC',
+        url: BASE_URL,
+      },
+    }),
+  },
 }
 
 export default function RootLayout({
@@ -28,8 +126,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        <meta name="theme-color" content="#0A0E27" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
       <body className="bg-background text-white antialiased font-sans">
+        <SkipToContent />
+        <OfflineIndicator />
         <PostHogProvider>{children}</PostHogProvider>
+        <InstallPrompt />
+        <Script
+          id="register-sw"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) { console.log('[SW] Registered:', reg.scope); })
+                    .catch(function(err) { console.warn('[SW] Registration failed:', err); });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   )

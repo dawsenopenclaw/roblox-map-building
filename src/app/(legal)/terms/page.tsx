@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { createMetadata } from '@/lib/metadata'
 
-export const metadata: Metadata = {
-  title: 'Terms of Service — RobloxForge',
-  description: 'RobloxForge Terms of Service. Read before using the platform.',
-}
+export const metadata: Metadata = createMetadata({
+  title: 'Terms of Service',
+  description: 'RobloxForge Terms of Service. Read the full terms and conditions before using the platform.',
+  path: '/terms',
+  noIndex: true,
+})
 
 const EFFECTIVE_DATE = 'March 28, 2026'
 const COMPANY = 'RobloxForge LLC'

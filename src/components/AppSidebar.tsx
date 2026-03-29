@@ -25,6 +25,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <div
           className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
 
@@ -33,6 +34,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         className={`fixed top-0 left-0 h-full w-64 bg-[#0D1231] border-r border-white/10 z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } lg:static lg:z-auto`}
+        aria-label="Main navigation"
       >
         {/* Logo */}
         <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">

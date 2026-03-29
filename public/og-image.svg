@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0A0E27;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0F1535;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFB81C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F59E0B;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- Subtle grid pattern -->
+  <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+    <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#1E2A5A" stroke-width="0.5" />
+  </pattern>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.4" />
+
+  <!-- Gold accent line top -->
+  <rect x="0" y="0" width="1200" height="3" fill="url(#gold)" />
+
+  <!-- Gold orb glow (left) -->
+  <circle cx="180" cy="315" r="180" fill="#FFB81C" opacity="0.04" />
+
+  <!-- Gold orb glow (right) -->
+  <circle cx="1020" cy="315" r="220" fill="#6366F1" opacity="0.06" />
+
+  <!-- Logo mark (hexagon) -->
+  <g transform="translate(490, 180)" filter="url(#glow)">
+    <polygon
+      points="110,0 220,63.5 220,190.5 110,254 0,190.5 0,63.5"
+      fill="none"
+      stroke="url(#gold)"
+      stroke-width="3"
+      opacity="0.9"
+    />
+    <polygon
+      points="110,30 190,75 190,179 110,224 30,179 30,75"
+      fill="#FFB81C"
+      opacity="0.08"
+    />
+    <!-- RF monogram -->
+    <text x="110" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="700" fill="url(#gold)" text-anchor="middle" dominant-baseline="middle">RF</text>
+  </g>
+
+  <!-- Main headline -->
+  <text
+    x="600"
+    y="460"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="68"
+    font-weight="700"
+    fill="white"
+    text-anchor="middle"
+    letter-spacing="-1"
+  >RobloxForge</text>
+
+  <!-- Tagline -->
+  <text
+    x="600"
+    y="528"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="26"
+    font-weight="400"
+    fill="#94A3B8"
+    text-anchor="middle"
+    letter-spacing="0.5"
+  >Build Roblox games with AI</text>
+
+  <!-- Feature pills -->
+  <g transform="translate(330, 570)">
+    <!-- Voice-to-Game pill -->
+    <rect x="0" y="0" width="160" height="32" rx="16" fill="#FFB81C" opacity="0.12" />
+    <rect x="0" y="0" width="160" height="32" rx="16" fill="none" stroke="#FFB81C" stroke-width="1" opacity="0.3" />
+    <text x="80" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#FFB81C" text-anchor="middle" font-weight="500">Voice-to-Game</text>
+
+    <!-- Image-to-Map pill -->
+    <rect x="180" y="0" width="160" height="32" rx="16" fill="#3B82F6" opacity="0.12" />
+    <rect x="180" y="0" width="160" height="32" rx="16" fill="none" stroke="#3B82F6" stroke-width="1" opacity="0.3" />
+    <text x="260" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#60A5FA" text-anchor="middle" font-weight="500">Image-to-Map</text>
+
+    <!-- AI Assets pill -->
+    <rect x="360" y="0" width="150" height="32" rx="16" fill="#8B5CF6" opacity="0.12" />
+    <rect x="360" y="0" width="150" height="32" rx="16" fill="none" stroke="#8B5CF6" stroke-width="1" opacity="0.3" />
+    <text x="435" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#A78BFA" text-anchor="middle" font-weight="500">AI Assets</text>
+  </g>
+
+  <!-- Bottom URL -->
+  <text
+    x="600"
+    y="618"
+    font-family="system-ui, -apple-system, monospace"
+    font-size="16"
+    fill="#475569"
+    text-anchor="middle"
+    letter-spacing="1"
+  >robloxforge.gg</text>
+</svg>
