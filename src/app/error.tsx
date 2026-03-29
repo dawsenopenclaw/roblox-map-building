@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import type { ReactElement } from 'react'
 import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
 
@@ -85,7 +86,7 @@ function ErrorShell({
   primaryHref,
   reportType,
 }: {
-  icon: JSX.Element
+  icon: ReactElement
   iconBg: string
   iconBorder: string
   heading: string
