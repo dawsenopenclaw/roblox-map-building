@@ -5,22 +5,22 @@ import { db } from '@/lib/db'
 type Params = { params: Promise<{ id: string }> }
 
 export async function PUT(req: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin()
-  if (error) return error
-
-  const { id } = await params
-  const body = await req.json().catch(() => ({}))
-  const { role, tier, banned, refundTokens } = body as {
-    role?: string
-    tier?: string
-    banned?: boolean
-    refundTokens?: boolean
-  }
-
-  const validRoles = ['USER', 'ADMIN', 'CREATOR', 'MODERATOR']
-  const validTiers = ['FREE', 'HOBBY', 'CREATOR', 'STUDIO']
-
   try {
+    const { error } = await requireAdmin()
+    if (error) return error
+
+    const { id } = await params
+    const body = await req.json().catch(() => ({}))
+    const { role, tier, banned, refundTokens } = body as {
+      role?: string
+      tier?: string
+      banned?: boolean
+      refundTokens?: boolean
+    }
+
+    const validRoles = ['USER', 'ADMIN', 'CREATOR', 'MODERATOR']
+    const validTiers = ['FREE', 'HOBBY', 'CREATOR', 'STUDIO']
+
     // Update role
     if (role && validRoles.includes(role)) {
       await db.user.update({
@@ -77,8 +77,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (e) {
-    console.error('Admin user update error:', e)
-    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  } catch (error) {
+    console.error('Admin user update error:', error)
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { status: 503 }
+    )
   }
 }

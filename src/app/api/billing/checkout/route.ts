@@ -23,30 +23,30 @@ const schema = z.union([
 ])
 
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const user = await db.user.findUnique({ where: { clerkId }, include: { subscription: true } })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-
-  const body = await req.json()
-  const parsed = schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
-
-  const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
-
-  // Ensure Stripe customer exists
-  let customerId = user.subscription?.stripeCustomerId
-  if (!customerId || customerId.startsWith('pending_')) {
-    const customer = await createCustomer({ email: user.email, userId: user.id })
-    customerId = customer.id
-    await db.subscription.update({
-      where: { userId: user.id },
-      data: { stripeCustomerId: customerId },
-    })
-  }
-
   try {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const user = await db.user.findUnique({ where: { clerkId }, include: { subscription: true } })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const body = await req.json()
+    const parsed = schema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+
+    const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
+
+    // Ensure Stripe customer exists
+    let customerId = user.subscription?.stripeCustomerId
+    if (!customerId || customerId.startsWith('pending_')) {
+      const customer = await createCustomer({ email: user.email, userId: user.id })
+      customerId = customer.id
+      await db.subscription.update({
+        where: { userId: user.id },
+        data: { stripeCustomerId: customerId },
+      })
+    }
+
     if (parsed.data.type === 'subscription') {
       const tier = SUBSCRIPTION_TIERS[parsed.data.tier]
       const priceId = parsed.data.yearly ? tier.stripePriceIdYearly : tier.stripePriceIdMonthly
@@ -78,8 +78,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ error: 'Invalid checkout type' }, { status: 400 })
-  } catch (e) {
-    console.error('Checkout session error:', e)
-    return NextResponse.json({ error: 'Failed to create checkout session' }, { status: 500 })
+  } catch (error) {
+    console.error('Checkout session error:', error)
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { status: 503 }
+    )
   }
 }

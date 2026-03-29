@@ -185,72 +185,80 @@ async function verifyCondition(
 
 // POST /api/gamification/achievements — unlock an achievement by slug (server-verified)
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  let body: unknown
   try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+    const { userId: clerkId } = await auth()
+    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { slug } = body as { slug?: string }
-  if (!slug) return NextResponse.json({ error: 'slug is required' }, { status: 400 })
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    }
 
-  const achievementDef = ACHIEVEMENTS.find((a) => a.slug === slug)
-  if (!achievementDef) return NextResponse.json({ error: 'Unknown achievement' }, { status: 404 })
+    const { slug } = body as { slug?: string }
+    if (!slug) return NextResponse.json({ error: 'slug is required' }, { status: 400 })
 
-  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const achievementDef = ACHIEVEMENTS.find((a) => a.slug === slug)
+    if (!achievementDef) return NextResponse.json({ error: 'Unknown achievement' }, { status: 404 })
 
-  // Server-side condition verification — prevents clients from unlocking achievements they haven't earned
-  const conditionMet = await verifyCondition(user.id, achievementDef.condition)
-  if (!conditionMet) {
-    return NextResponse.json({ error: 'Achievement condition not met' }, { status: 403 })
-  }
+    const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  // Find or create the Achievement DB record
-  const achievement = await db.achievement.upsert({
-    where: { slug },
-    create: {
-      slug: achievementDef.slug,
-      name: achievementDef.name,
-      description: achievementDef.description,
-      icon: achievementDef.icon,
-      category: achievementDef.category,
-      xpReward: achievementDef.xpReward,
-      condition: achievementDef.condition as never,
-    },
-    update: {},
-  })
+    // Server-side condition verification — prevents clients from unlocking achievements they haven't earned
+    const conditionMet = await verifyCondition(user.id, achievementDef.condition)
+    if (!conditionMet) {
+      return NextResponse.json({ error: 'Achievement condition not met' }, { status: 403 })
+    }
 
-  // Idempotent — skip if already unlocked
-  const existing = await db.userAchievement.findUnique({
-    where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
-  })
-  if (existing) {
-    return NextResponse.json({ alreadyUnlocked: true, unlockedAt: existing.unlockedAt })
-  }
+    // Find or create the Achievement DB record
+    const achievement = await db.achievement.upsert({
+      where: { slug },
+      create: {
+        slug: achievementDef.slug,
+        name: achievementDef.name,
+        description: achievementDef.description,
+        icon: achievementDef.icon,
+        category: achievementDef.category,
+        xpReward: achievementDef.xpReward,
+        condition: achievementDef.condition as never,
+      },
+      update: {},
+    })
 
-  await db.userAchievement.create({
-    data: { userId: user.id, achievementId: achievement.id },
-  })
+    // Idempotent — skip if already unlocked
+    const existing = await db.userAchievement.findUnique({
+      where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
+    })
+    if (existing) {
+      return NextResponse.json({ alreadyUnlocked: true, unlockedAt: existing.unlockedAt })
+    }
 
-  // Grant XP reward for the achievement directly (bypasses daily cap, no HTTP round-trip)
-  if (achievement.xpReward > 0) {
-    await grantXp(user.id, XPEventType.ACHIEVEMENT, {
+    await db.userAchievement.create({
+      data: { userId: user.id, achievementId: achievement.id },
+    })
+
+    // Grant XP reward for the achievement directly (bypasses daily cap, no HTTP round-trip)
+    if (achievement.xpReward > 0) {
+      await grantXp(user.id, XPEventType.ACHIEVEMENT, {
+        xpReward: achievement.xpReward,
+        achievementSlug: slug,
+      }).catch((err) => console.error('Failed to grant achievement XP:', err))
+    }
+
+    // Fire notification (best-effort)
+    notifyAchievementUnlockedClient(user.id, {
+      name: achievement.name,
+      description: achievement.description,
       xpReward: achievement.xpReward,
-      achievementSlug: slug,
-    }).catch((err) => console.error('Failed to grant achievement XP:', err))
+    }).catch((err) => console.error('Achievement notification failed:', err))
+
+    return NextResponse.json({ unlocked: true, achievement: { slug, name: achievement.name, xpReward: achievement.xpReward } }, { status: 201 })
+  } catch (error) {
+    console.error('Achievements POST error:', error)
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { status: 503 }
+    )
   }
-
-  // Fire notification (best-effort)
-  notifyAchievementUnlockedClient(user.id, {
-    name: achievement.name,
-    description: achievement.description,
-    xpReward: achievement.xpReward,
-  }).catch((err) => console.error('Achievement notification failed:', err))
-
-  return NextResponse.json({ unlocked: true, achievement: { slug, name: achievement.name, xpReward: achievement.xpReward } }, { status: 201 })
 }

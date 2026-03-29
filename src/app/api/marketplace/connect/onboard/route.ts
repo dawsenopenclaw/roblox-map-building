@@ -5,18 +5,18 @@ import { stripe } from '@/lib/stripe'
 
 // POST /api/marketplace/connect/onboard — create or retrieve Stripe Connect Express account
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    include: { creatorAccount: true },
-  })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-
-  let stripeAccountId: string
-
   try {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      include: { creatorAccount: true },
+    })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    let stripeAccountId: string
+
     if (user.creatorAccount?.stripeAccountId) {
       stripeAccountId = user.creatorAccount.stripeAccountId
     } else {
@@ -54,8 +54,11 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ url: accountLink.url })
-  } catch (e) {
-    console.error('Stripe Connect onboard error:', e)
-    return NextResponse.json({ error: 'Failed to create Stripe Connect account' }, { status: 500 })
+  } catch (error) {
+    console.error('Stripe Connect onboard error:', error)
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { status: 503 }
+    )
   }
 }

@@ -5,14 +5,14 @@ import { db } from '@/lib/db'
 type Params = { params: Promise<{ id: string }> }
 
 export async function PUT(req: NextRequest, { params }: Params) {
-  const { error } = await requireAdmin()
-  if (error) return error
-
-  const { id } = await params
-  const body = await req.json().catch(() => ({}))
-  const isDmca = body.reason === 'DMCA_TAKEDOWN'
-
   try {
+    const { error } = await requireAdmin()
+    if (error) return error
+
+    const { id } = await params
+    const body = await req.json().catch(() => ({}))
+    const isDmca = body.reason === 'DMCA_TAKEDOWN'
+
     await db.template.update({
       where: { id },
       data: {
@@ -20,8 +20,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
       },
     })
     return NextResponse.json({ ok: true })
-  } catch (e) {
-    console.error('Template reject error:', e)
-    return NextResponse.json({ error: 'Failed to reject template' }, { status: 500 })
+  } catch (error) {
+    console.error('Template reject error:', error)
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { status: 503 }
+    )
   }
 }
