@@ -18,6 +18,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.clerk.dev',
       },
+      {
+        protocol: 'https',
+        hostname: 'tr.rbxcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.rbxcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'thumbnails.roblox.com',
+      },
     ],
   },
 }

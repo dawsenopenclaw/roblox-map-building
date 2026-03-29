@@ -381,7 +381,7 @@ function Message({ msg }: { msg: ChatMessage }) {
             className="absolute top-0 left-4 right-4 h-px rounded-full"
             style={{ background: `linear-gradient(90deg, transparent, ${modelColor}40, transparent)` }}
           />
-          <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
+          <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap font-[inherit]">{msg.content}</p>
         </div>
         {msg.tokensUsed !== undefined && (
           <span className="text-[10px] text-blue-400/70 pl-1 flex items-center gap-1">
@@ -912,85 +912,231 @@ function ProjectsPanel({
   )
 }
 
-const FALLBACK_ASSETS: Array<{ name: string; price: string; category: string }> = [
-  { name: 'Castle Model',  price: 'Free',   category: 'Models'  },
-  { name: 'Tree Pack',     price: '$2.99',  category: 'Models'  },
-  { name: 'UI Kit',        price: '$4.99',  category: 'Plugins' },
-  { name: 'NPC Bundle',    price: '$9.99',  category: 'Models'  },
-  { name: 'Sound Pack',    price: 'Free',   category: 'Audio'   },
-  { name: 'Vehicle Set',   price: '$7.99',  category: 'Models'  },
-]
+// ─── Real Roblox Assets Panel ─────────────────────────────────────────────────
+
+function AssetThumbnail({ asset }: { asset: RobloxAsset }) {
+  const [imgError, setImgError] = useState(false)
+  const src =
+    asset.thumbnailUrl && !imgError
+      ? `/api/roblox/thumbnail?id=${asset.id}&size=150x150`
+      : null
+
+  if (!src) {
+    return (
+      <div className="w-full h-16 rounded-md bg-white/5 flex items-center justify-center mb-2">
+        <svg className="w-5 h-5 text-gray-700" viewBox="0 0 20 20" fill="none">
+          <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.2" />
+          <path
+            d="M7 10l2 2 4-4"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative mb-2 h-16 w-full overflow-hidden rounded-md bg-white/5">
+      <Image
+        src={src}
+        alt={asset.name}
+        fill
+        className="object-cover"
+        onError={() => setImgError(true)}
+        unoptimized
+      />
+    </div>
+  )
+}
+
+function AssetSkeleton() {
+  return (
+    <div className="animate-pulse rounded-lg border border-white/8 bg-white/[0.03] p-2.5">
+      <div className="mb-2 h-16 w-full rounded-md bg-white/[0.08]" />
+      <div className="mb-1.5 h-2.5 w-3/4 rounded bg-white/[0.08]" />
+      <div className="h-2 w-1/2 rounded bg-white/5" />
+    </div>
+  )
+}
 
 function AssetsPanel() {
   const [query, setQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string>('All')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState<AssetCategory>('All')
+  const [results, setResults] = useState<RobloxAsset[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [addingId, setAddingId] = useState<number | null>(null)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const filtered = FALLBACK_ASSETS.filter((a) => {
-    const matchesSearch = !query.trim() || a.name.toLowerCase().includes(query.toLowerCase())
-    const matchesCat = activeCategory === 'All' || a.category === activeCategory
-    return matchesSearch && matchesCat
-  })
+  // Debounce search input 400ms
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQuery(query), 400)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [query])
+
+  // Fetch from Roblox catalog API on every debounced query or category change
+  useEffect(() => {
+    let cancelled = false
+    async function fetchAssets() {
+      setLoading(true)
+      setError(null)
+      try {
+        const cat = CATEGORY_PARAM[activeCategory]
+        const endpoint = debouncedQuery.trim()
+          ? `/api/roblox/search?query=${encodeURIComponent(debouncedQuery.trim())}&category=${cat}&limit=20`
+          : `/api/roblox/trending?category=${cat}`
+        const res = await fetch(endpoint)
+        if (!res.ok) throw new Error(`API ${res.status}`)
+        const json = await res.json()
+        if (!cancelled) setResults(json.results ?? [])
+      } catch (err) {
+        if (!cancelled) setError('Could not load marketplace. Check your connection.')
+        console.error('[AssetsPanel]', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    fetchAssets()
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedQuery, activeCategory])
+
+  async function handleAddToGame(asset: RobloxAsset) {
+    setAddingId(asset.id)
+    try {
+      await fetch('/api/studio/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'insertAsset', assetId: asset.id, assetName: asset.name }),
+      })
+    } finally {
+      setAddingId(null)
+    }
+  }
+
+  function formatPrice(asset: RobloxAsset): { label: string; free: boolean } {
+    if (asset.priceStatus === 'Free' || asset.price === 0) return { label: 'Free', free: true }
+    if (asset.priceStatus === 'OffSale') return { label: 'Off Sale', free: false }
+    if (asset.price > 0) return { label: `R$ ${asset.price}`, free: false }
+    return { label: 'Free', free: true }
+  }
 
   return (
-    <div className="p-4 space-y-3">
-      <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="none">
-          <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
-          <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search marketplace..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-400/50"
-        />
-      </div>
-
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1">
-        {ASSET_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={[
-              'px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors',
-              activeCategory === cat
-                ? 'bg-[#FFB81C] text-black'
-                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-gray-200 border border-white/10',
-            ].join(' ')}
+    <div className="flex h-full flex-col">
+      {/* Controls */}
+      <div className="flex-shrink-0 space-y-3 p-3">
+        <div className="relative">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500"
+            viewBox="0 0 16 16"
+            fill="none"
           >
-            {cat}
-          </button>
-        ))}
-      </div>
+            <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search marketplace..."
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+          />
+          {loading && (
+            <div className="absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border border-[#FFB81C] border-t-transparent" />
+          )}
+        </div>
 
-      {filtered.length === 0 ? (
-        <p className="text-xs text-gray-500 text-center py-6">No assets found</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-2">
-          {filtered.map(({ name, price }) => (
-            <div key={name} className="bg-white/[0.03] border border-white/8 hover:border-white/18 rounded-lg p-2.5 transition-colors group">
-              <div className="w-full h-10 rounded-md bg-white/5 mb-2 flex items-center justify-center">
-                <svg className="w-5 h-5 text-gray-700" viewBox="0 0 20 20" fill="none">
-                  <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.2"/>
-                  <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <p className="text-[11px] text-gray-300 font-medium leading-tight">{name}</p>
-              <div className="flex items-center justify-between mt-1.5">
-                <span className={[
-                  'text-[10px] font-bold',
-                  price === 'Free' ? 'text-emerald-400' : 'text-[#FFB81C]',
-                ].join(' ')}>{price}</span>
-                <button className="text-[9px] font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors">
-                  Add
-                </button>
-              </div>
-            </div>
+        <div className="flex flex-wrap gap-1">
+          {ASSET_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={[
+                'rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors',
+                activeCategory === cat
+                  ? 'bg-[#FFB81C] text-black'
+                  : 'border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-gray-200',
+              ].join(' ')}
+            >
+              {cat}
+            </button>
           ))}
         </div>
-      )}
+      </div>
+
+      {/* Results grid */}
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {error ? (
+          <div className="py-6 text-center">
+            <p className="mb-2 text-xs text-red-400/80">{error}</p>
+            <button
+              onClick={() => setDebouncedQuery((q) => q + ' ')}
+              className="text-[10px] text-[#FFB81C] hover:underline"
+            >
+              Retry
+            </button>
+          </div>
+        ) : loading ? (
+          <div className="grid grid-cols-2 gap-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <AssetSkeleton key={i} />
+            ))}
+          </div>
+        ) : results.length === 0 ? (
+          <p className="py-8 text-center text-xs text-gray-600">
+            {debouncedQuery ? 'No results found' : 'Loading marketplace...'}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {results.map((asset) => {
+              const { label, free } = formatPrice(asset)
+              const isAdding = addingId === asset.id
+              return (
+                <div
+                  key={asset.id}
+                  className="flex flex-col rounded-lg border border-white/8 bg-white/[0.03] p-2.5 transition-colors hover:border-white/[0.18]"
+                >
+                  <AssetThumbnail asset={asset} />
+                  <p
+                    className="line-clamp-2 flex-1 text-[11px] font-medium leading-tight text-gray-300"
+                    title={asset.name}
+                  >
+                    {asset.name}
+                  </p>
+                  <p className="mt-0.5 truncate text-[9px] text-gray-600">{asset.creatorName}</p>
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span
+                      className={['text-[10px] font-bold', free ? 'text-emerald-400' : 'text-[#FFB81C]'].join(' ')}
+                    >
+                      {label}
+                    </span>
+                    <button
+                      onClick={() => handleAddToGame(asset)}
+                      disabled={isAdding}
+                      className="rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-semibold text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                    >
+                      {isAdding ? '...' : 'Add'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 border-t border-white/[0.06] px-3 py-2">
+        <p className="text-center text-[9px] text-gray-700">Powered by Roblox Marketplace</p>
+      </div>
     </div>
   )
 }
@@ -1270,7 +1416,7 @@ export function EditorClient() {
       const statusMsg: ChatMessage = {
         id: uid(),
         role: 'status',
-        content: 'Thinking...',
+        content: 'ForjeAI is thinking...',
         timestamp: new Date(),
       }
 
