@@ -31,18 +31,25 @@ function getCountryCode(request: NextRequest): string | null {
 // ─── Route matchers ───────────────────────────────────────────────────────────
 
 const isPublicRoute = createRouteMatcher([
+  // Landing + marketing
   '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
   '/pricing',
+  '/docs(.*)',
+  // Legal
   '/privacy',
   '/terms',
   '/dmca',
   '/acceptable-use',
+  // Auth flows
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/onboarding(.*)',
+  // System / utility
   '/blocked',
   '/maintenance(.*)',
-  '/api/webhooks/(.*)',
   '/error(.*)',
+  // Webhooks must never require auth (Stripe / Clerk)
+  '/api/webhooks/(.*)',
 ])
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
@@ -68,8 +75,6 @@ const isMaintenanceExempt = createRouteMatcher([
   '/favicon.ico',
 ])
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
-
 // ─── Admin e-mail list (comma-separated ADMIN_EMAILS env var) ────────────────
 function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
@@ -80,83 +85,109 @@ function isAdminEmail(email: string | null | undefined): boolean {
   return list.includes(email.toLowerCase())
 }
 
+// ─── Middleware ───────────────────────────────────────────────────────────────
+
 export default clerkMiddleware(async (auth, request) => {
-  // ── 0. Maintenance mode (runs before geo and auth checks) ────────────────────
-  const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
+  try {
+    // ── 0. Maintenance mode (runs before geo and auth checks) ──────────────────
+    const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
 
-  if (maintenanceActive && !isMaintenanceExempt(request)) {
-    // Resolve the authenticated user so admins can bypass maintenance.
-    // We call auth() without throwing so unauthenticated users are redirected
-    // to /maintenance rather than /sign-in.
-    const session = await auth()
-    const sessionClaims = session.sessionClaims as Record<string, unknown> | null
-
-    // Clerk surfaces the primary email on the session claims as `email`.
-    // This avoids a round-trip to the Clerk backend SDK.
-    const primaryEmail =
-      (sessionClaims?.email as string | undefined) ??
-      null
-
-    if (!isAdminEmail(primaryEmail)) {
-      return NextResponse.redirect(new URL('/maintenance', request.url))
-    }
-  }
-
-  // ── 1. Geo-blocking (runs before auth, before all other logic) ───────────────
-  if (!isGeoExempt(request)) {
-    const countryCode = getCountryCode(request)
-
-    if (countryCode && EMBARGOED_COUNTRIES.has(countryCode)) {
-      // RFC 7725 — HTTP 451 Unavailable For Legal Reasons.
-      // We redirect to /blocked rather than returning 451 directly so the page
-      // renders properly (Next.js edge runtime requires NextResponse.redirect).
-      return NextResponse.redirect(new URL('/blocked', request.url), {
-        status: 307,
-        headers: {
-          // RFC 7725 Link header pointing to the blocking authority
-          Link: '<https://ofac.treasury.gov/>; rel="blocked-by"',
-          'X-Legal-Reason': 'US-OFAC-IEEPA-sanctions',
-          'X-Blocked-Country': countryCode,
-        },
-      })
-    }
-  }
-
-  // ── 2. Auth routing ──────────────────────────────────────────────────────────
-  const { userId, sessionClaims: claims } = await auth()
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute(request) && userId) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // Protect non-public routes
-  if (!isPublicRoute(request) && !userId) {
-    return NextResponse.redirect(new URL('/sign-in', request.url))
-  }
-
-  // ── 3. Admin route guard ──────────────────────────────────────────────────────
-  // Admin pages and admin API routes require role === 'ADMIN'.
-  // The role is stored in Clerk public metadata and surfaced on session claims
-  // under the `publicMetadata` key (not `metadata`).
-  if (isAdminRoute(request)) {
-    if (!userId) {
-      // Unauthenticated: redirect to sign-in (never silently fall through)
-      if (request.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (maintenanceActive && !isMaintenanceExempt(request)) {
+      // Resolve the authenticated user so admins can bypass maintenance.
+      // We call auth() without throwing so unauthenticated users are redirected
+      // to /maintenance rather than /sign-in.
+      let primaryEmail: string | null = null
+      try {
+        const session = await auth()
+        const sessionClaims = session.sessionClaims as Record<string, unknown> | null
+        // Clerk surfaces the primary email on the session claims as `email`.
+        primaryEmail = (sessionClaims?.email as string | undefined) ?? null
+      } catch {
+        // Clerk unavailable — deny bypass, redirect to maintenance page.
+        primaryEmail = null
       }
+
+      if (!isAdminEmail(primaryEmail)) {
+        return NextResponse.redirect(new URL('/maintenance', request.url))
+      }
+    }
+
+    // ── 1. Geo-blocking (runs before auth, before all other logic) ─────────────
+    if (!isGeoExempt(request)) {
+      const countryCode = getCountryCode(request)
+
+      if (countryCode && EMBARGOED_COUNTRIES.has(countryCode)) {
+        // RFC 7725 — HTTP 451 Unavailable For Legal Reasons.
+        // We redirect to /blocked rather than returning 451 directly so the page
+        // renders properly (Next.js edge runtime requires NextResponse.redirect).
+        return NextResponse.redirect(new URL('/blocked', request.url), {
+          status: 307,
+          headers: {
+            // RFC 7725 Link header pointing to the blocking authority
+            Link: '<https://ofac.treasury.gov/>; rel="blocked-by"',
+            'X-Legal-Reason': 'US-OFAC-IEEPA-sanctions',
+            'X-Blocked-Country': countryCode,
+          },
+        })
+      }
+    }
+
+    // ── 2. Auth routing ────────────────────────────────────────────────────────
+    let userId: string | null = null
+    let claims: Record<string, unknown> | null = null
+
+    try {
+      const session = await auth()
+      userId = session.userId
+      claims = session.sessionClaims as Record<string, unknown> | null
+    } catch {
+      // Clerk unreachable — pass public routes through, block protected ones.
+      if (!isPublicRoute(request)) {
+        // Redirect to sign-in rather than crashing with a 500.
+        return NextResponse.redirect(new URL('/sign-in', request.url))
+      }
+      return NextResponse.next()
+    }
+
+    // Redirect authenticated users away from auth pages
+    if (isAuthRoute(request) && userId) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Protect non-public routes
+    if (!isPublicRoute(request) && !userId) {
       return NextResponse.redirect(new URL('/sign-in', request.url))
     }
 
-    const meta = (claims?.publicMetadata ?? {}) as Record<string, unknown>
-    const role = meta.role as string | undefined
-    if (role !== 'ADMIN') {
-      // For API routes return 403, for page routes redirect to dashboard
-      if (request.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    // ── 3. Admin route guard ───────────────────────────────────────────────────
+    // Admin pages and admin API routes require role === 'ADMIN'.
+    // The role is stored in Clerk public metadata and surfaced on session claims
+    // under the `publicMetadata` key (not `metadata`).
+    if (isAdminRoute(request)) {
+      if (!userId) {
+        // Unauthenticated: redirect to sign-in (never silently fall through)
+        if (request.nextUrl.pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+        return NextResponse.redirect(new URL('/sign-in', request.url))
       }
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+
+      const meta = ((claims as { publicMetadata?: Record<string, unknown> })?.publicMetadata ?? {}) as Record<string, unknown>
+      const role = meta.role as string | undefined
+      if (role !== 'ADMIN') {
+        // For API routes return 403, for page routes redirect to dashboard
+        if (request.nextUrl.pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
     }
+  } catch (err) {
+    // ── Catch-all: middleware must never crash the app ─────────────────────────
+    // Log the error for observability but pass the request through so users
+    // are not locked out by a transient Clerk or runtime failure.
+    console.error('[middleware] unhandled error — passing request through:', err)
+    return NextResponse.next()
   }
 })
 

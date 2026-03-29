@@ -260,7 +260,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     slug: 'streak-7',
     name: 'Week Warrior',
     description: 'Maintain a 7-day login streak',
-    icon: '🔥',
+    icon: '🌊',
     category: AchievementCategory.EXPLORATION,
     xpReward: 100,
     condition: { type: 'LOGIN_STREAK', threshold: 7 },

@@ -1,11 +1,15 @@
 'use client'
 import useSWR from 'swr'
-import { AchievementCategory } from '@prisma/client'
+import { ACHIEVEMENTS } from '@/lib/achievements'
 import { ShareButtons } from '@/components/ShareButtons'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return r.json()
+  })
 
 const CATEGORY_LABELS: Record<string, string> = {
   FIRST_STEPS: 'First Steps',
@@ -29,15 +33,33 @@ interface Achievement {
   unlockedAt: string | null
 }
 
-export default function AchievementsPage() {
-  const { data, isLoading } = useSWR('/api/gamification/achievements', fetcher)
+/** All 30 achievements in locked state — used as fallback when the API is unavailable */
+const LOCKED_FALLBACK: Achievement[] = ACHIEVEMENTS.map((a) => ({
+  slug: a.slug,
+  name: a.name,
+  description: a.description,
+  icon: a.icon,
+  category: a.category as string,
+  xpReward: a.xpReward,
+  unlocked: false,
+  unlockedAt: null,
+}))
 
-  const achievements: Achievement[] = data?.achievements || []
-  const unlockedCount: number = data?.unlockedCount ?? 0
-  const total: number = data?.total ?? 0
+export default function AchievementsPage() {
+  const { data, isLoading, error } = useSWR('/api/gamification/achievements', fetcher)
+
+  // On any API/network/DB error fall back to showing all achievements as locked
+  const isFallback = !!error || data?._fallback === true
+
+  const achievements: Achievement[] = isFallback
+    ? LOCKED_FALLBACK
+    : (data?.achievements ?? LOCKED_FALLBACK)
+
+  const unlockedCount: number = isFallback ? 0 : (data?.unlockedCount ?? 0)
+  const total: number = achievements.length
 
   const grouped = CATEGORY_ORDER.reduce<Record<string, Achievement[]>>((acc, cat) => {
-    acc[cat] = achievements.filter(a => a.category === cat)
+    acc[cat] = achievements.filter((a) => a.category === cat)
     return acc
   }, {})
 
@@ -56,6 +78,13 @@ export default function AchievementsPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+      {/* Fallback notice */}
+      {isFallback && (
+        <div className="mb-4 px-4 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs">
+          Achievement progress is temporarily unavailable. Showing all achievements as locked.
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -64,7 +93,7 @@ export default function AchievementsPage() {
             {unlockedCount} / {total} unlocked
           </p>
         </div>
-        {/* Progress ring */}
+        {/* Progress percentage */}
         <div className="text-right">
           <p className="text-3xl font-bold text-[#FFB81C]">
             {total > 0 ? Math.round((unlockedCount / total) * 100) : 0}%
@@ -82,35 +111,44 @@ export default function AchievementsPage() {
       </div>
 
       {/* Categories */}
-      {CATEGORY_ORDER.map(cat => {
-        const catAchievements = grouped[cat] || []
-        const catUnlocked = catAchievements.filter(a => a.unlocked).length
+      {CATEGORY_ORDER.map((cat) => {
+        const catAchievements = grouped[cat] ?? []
+        if (catAchievements.length === 0) return null
+        const catUnlocked = catAchievements.filter((a) => a.unlocked).length
         return (
           <div key={cat} className="mb-8">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-white">
-                {CATEGORY_LABELS[cat] || cat}
+                {CATEGORY_LABELS[cat] ?? cat}
               </h2>
-              <span className="text-xs text-gray-500">{catUnlocked}/{catAchievements.length}</span>
+              <span className="text-xs text-gray-500">
+                {catUnlocked}/{catAchievements.length}
+              </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {catAchievements.map(achievement => (
+              {catAchievements.map((achievement) => (
                 <div
                   key={achievement.slug}
-                  className={`bg-[#0D1231] border rounded-xl p-3 text-center transition-all ${
+                  className={`bg-[#0D1231] border rounded-xl p-3 text-center transition-all flex flex-col items-center ${
                     achievement.unlocked
                       ? 'border-[#FFB81C]/30 ring-1 ring-[#FFB81C]/10'
                       : 'border-white/10 opacity-50 grayscale'
                   }`}
                 >
                   <div className="text-3xl mb-2">{achievement.icon}</div>
-                  <p className={`text-xs font-semibold mb-1 ${achievement.unlocked ? 'text-white' : 'text-gray-400'}`}>
+                  <p
+                    className={`text-xs font-semibold mb-1 ${
+                      achievement.unlocked ? 'text-white' : 'text-gray-400'
+                    }`}
+                  >
                     {achievement.name}
                   </p>
                   <p className="text-xs text-gray-500 leading-tight">{achievement.description}</p>
                   {achievement.xpReward > 0 && (
                     <div className="mt-2 inline-flex items-center gap-1 bg-[#FFB81C]/10 px-1.5 py-0.5 rounded-full">
-                      <span className="text-[10px] text-[#FFB81C] font-bold">+{achievement.xpReward} XP</span>
+                      <span className="text-[10px] text-[#FFB81C] font-bold">
+                        +{achievement.xpReward} XP
+                      </span>
                     </div>
                   )}
                   {achievement.unlocked && achievement.unlockedAt && (
@@ -119,7 +157,7 @@ export default function AchievementsPage() {
                     </p>
                   )}
                   {achievement.unlocked && (
-                    <div className="mt-2 flex justify-center">
+                    <div className="mt-2 w-full overflow-hidden">
                       <ShareButtons
                         url={`${APP_URL}/achievements`}
                         text={`I just unlocked "${achievement.name}" on RobloxForge! ${achievement.icon} ${achievement.description}`}

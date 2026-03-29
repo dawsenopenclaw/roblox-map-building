@@ -11,32 +11,49 @@ export async function GET() {
   const { userId: clerkId } = await auth()
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const user = await db.user.findUnique({
-    where: { clerkId },
-    select: {
-      id: true,
-      userAchievements: {
-        select: {
-          unlockedAt: true,
-          achievement: { select: { slug: true } },
+  try {
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      select: {
+        id: true,
+        userAchievements: {
+          select: {
+            unlockedAt: true,
+            achievement: { select: { slug: true } },
+          },
         },
       },
-    },
-  })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const unlockedSlugs = new Set(user.userAchievements.map((ua) => ua.achievement.slug))
-  const unlockedAt = new Map(
-    user.userAchievements.map((ua) => [ua.achievement.slug, ua.unlockedAt])
-  )
+    const unlockedSlugs = new Set(user.userAchievements.map((ua) => ua.achievement.slug))
+    const unlockedAt = new Map(
+      user.userAchievements.map((ua) => [ua.achievement.slug, ua.unlockedAt])
+    )
 
-  const achievements = ACHIEVEMENTS.map((a) => ({
-    ...a,
-    unlocked: unlockedSlugs.has(a.slug),
-    unlockedAt: unlockedAt.get(a.slug) ?? null,
-  }))
+    const achievements = ACHIEVEMENTS.map((a) => ({
+      ...a,
+      unlocked: unlockedSlugs.has(a.slug),
+      unlockedAt: unlockedAt.get(a.slug) ?? null,
+    }))
 
-  return NextResponse.json({ achievements, unlockedCount: unlockedSlugs.size, total: ACHIEVEMENTS.length })
+    return NextResponse.json({ achievements, unlockedCount: unlockedSlugs.size, total: ACHIEVEMENTS.length })
+  } catch (err) {
+    console.error('[achievements GET] DB error — returning all locked fallback:', err)
+    // Return all achievements as locked so the page always renders
+    const achievements = ACHIEVEMENTS.map((a) => ({
+      ...a,
+      condition: undefined,
+      unlocked: false,
+      unlockedAt: null,
+    }))
+    return NextResponse.json({
+      achievements,
+      unlockedCount: 0,
+      total: ACHIEVEMENTS.length,
+      _fallback: true,
+    })
+  }
 }
 
 /**
