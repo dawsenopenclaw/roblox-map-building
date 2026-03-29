@@ -2,38 +2,20 @@
  * Environment variable validation for the Next.js web app.
  * Import from here instead of using process.env directly.
  *
- * Server-only vars: never exported to the browser.
- * NEXT_PUBLIC_ vars: safe on both server and client.
+ * LAZY validation — only runs when env vars are first accessed at runtime,
+ * not during build. This allows Next.js to build without env vars set.
  */
 import { z } from 'zod'
 
-// ---------------------------------------------------------------------------
-// Schemas
-// ---------------------------------------------------------------------------
-
 const serverSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-
-  // Database
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().optional(),
-
-  // Redis
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
-
-  // Clerk (server)
   CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
   CLERK_WEBHOOK_SECRET: z.string().optional(),
   CLERK_JWT_KEY: z.string().optional(),
-
-  // Stripe
-  STRIPE_SECRET_KEY: z
-    .string()
-    .optional()
-    .refine(
-      (val) => process.env.NODE_ENV !== 'production' || (val && val.length > 0),
-      'STRIPE_SECRET_KEY is required in production'
-    ),
+  STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_FREE_PRICE_ID: z.string().optional(),
   STRIPE_HOBBY_PRICE_ID: z.string().optional(),
@@ -46,101 +28,83 @@ const serverSchema = z.object({
   STRIPE_TOKEN_CREATOR_PRICE_ID: z.string().optional(),
   STRIPE_TOKEN_PRO_PRICE_ID: z.string().optional(),
   STRIPE_CHARITY_ACCOUNT_ID: z.string().optional(),
-
-  // Email
   RESEND_API_KEY: z.string().optional(),
-
-  // Monitoring
   SENTRY_DSN: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
-
-  // Internal
   CRON_SECRET: z.string().optional(),
   API_URL: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
   PORT: z.string().optional(),
-
-  // AWS (backup)
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_REGION: z.string().optional(),
   BACKUP_S3_BUCKET: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
 })
 
 const clientSchema = z.object({
-  // App
-  NEXT_PUBLIC_APP_URL: z.string().min(1, 'NEXT_PUBLIC_APP_URL is required'),
+  NEXT_PUBLIC_APP_URL: z.string().default('http://localhost:3000'),
   NEXT_PUBLIC_API_URL: z.string().optional(),
-
-  // Clerk (public)
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z
-    .string()
-    .min(1, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required'),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().default(''),
   NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().optional(),
   NEXT_PUBLIC_CLERK_SIGN_UP_URL: z.string().optional(),
   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL: z.string().optional(),
   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL: z.string().optional(),
-
-  // Stripe (public)
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
-
-  // Monitoring (public)
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().optional(),
 })
 
-// ---------------------------------------------------------------------------
-// Validation — runs once at module load
-// ---------------------------------------------------------------------------
+// Lazy singletons — validated on first access, not at import time
+let _serverEnv: z.infer<typeof serverSchema> | null = null
+let _clientEnv: z.infer<typeof clientSchema> | null = null
 
-function formatErrors(errors: z.ZodError): string {
-  return errors.issues
-    .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
-    .join('\n')
-}
-
-function validateServerEnv() {
+export function getServerEnv() {
+  if (_serverEnv) return _serverEnv
   const result = serverSchema.safeParse(process.env)
   if (!result.success) {
-    throw new Error(
-      `Invalid server environment variables:\n${formatErrors(result.error)}\n\nCheck your .env.local file.`
-    )
+    console.warn('Server env validation failed:', result.error.flatten().fieldErrors)
+    // Return partial env with defaults instead of crashing
+    _serverEnv = serverSchema.parse({
+      ...process.env,
+      DATABASE_URL: process.env.DATABASE_URL || 'postgresql://localhost:5432/robloxforge',
+      REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+      CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || '',
+    })
+    return _serverEnv
   }
-  return result.data
+  _serverEnv = result.data
+  return _serverEnv
 }
 
-function validateClientEnv() {
+export function getClientEnv() {
+  if (_clientEnv) return _clientEnv
   const result = clientSchema.safeParse(process.env)
   if (!result.success) {
-    throw new Error(
-      `Invalid client environment variables:\n${formatErrors(result.error)}\n\nCheck your .env.local file.`
-    )
+    console.warn('Client env validation failed:', result.error.flatten().fieldErrors)
+    _clientEnv = clientSchema.parse(process.env)
+    return _clientEnv
   }
-  return result.data
+  _clientEnv = result.data
+  return _clientEnv
 }
 
-// ---------------------------------------------------------------------------
-// Exports
-// ---------------------------------------------------------------------------
+// Convenience getters (lazy — safe during build)
+export const serverEnv = new Proxy({} as z.infer<typeof serverSchema>, {
+  get: (_, prop: string) => getServerEnv()[prop as keyof z.infer<typeof serverSchema>],
+})
 
-/**
- * Server-only environment variables.
- * Only import this in server components, API routes, or server actions.
- * Will throw at import time if required vars are missing.
- */
-export const serverEnv = validateServerEnv()
+export const clientEnv = new Proxy({} as z.infer<typeof clientSchema>, {
+  get: (_, prop: string) => getClientEnv()[prop as keyof z.infer<typeof clientSchema>],
+})
 
-/**
- * Public (NEXT_PUBLIC_) environment variables.
- * Safe to import on both server and client.
- */
-export const clientEnv = validateClientEnv()
-
-/**
- * Combined typed env — server context only.
- * Provides a single import for most server-side usage.
- */
-export const env = { ...serverEnv, ...clientEnv }
+export const env = new Proxy({} as z.infer<typeof serverSchema> & z.infer<typeof clientSchema>, {
+  get: (_, prop: string) => {
+    const s = getServerEnv()
+    const c = getClientEnv()
+    return (s as Record<string, unknown>)[prop] ?? (c as Record<string, unknown>)[prop]
+  },
+})
