@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
+
 type ReferralStats = {
   code: string
   referralUrl: string
@@ -21,13 +23,27 @@ type ReferralStats = {
   }>
 }
 
+// Demo data shown when API/DB is unavailable
+const DEMO_DATA: ReferralStats = {
+  code: 'YOUR-CODE',
+  referralUrl: `${APP_URL}/ref/YOUR-CODE`,
+  stats: {
+    total: 0,
+    converted: 0,
+    pending: 0,
+    totalCommissionUsd: '0.00',
+  },
+  recent: [],
+}
+
 export default function ReferralsPage() {
   const { track } = useAnalytics()
   const [data, setData] = useState<ReferralStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -36,20 +52,49 @@ export default function ReferralsPage() {
 
   async function fetchStats() {
     setLoading(true)
+    setFetchError(null)
     try {
       const res = await fetch(`${API_BASE}/api/referrals/stats`, { credentials: 'include' })
-      if (res.ok) setData(await res.json())
+      if (res.ok) {
+        setData(await res.json())
+      } else {
+        setData(DEMO_DATA)
+        setFetchError('Could not load referral stats. Showing demo view.')
+      }
+    } catch {
+      setData(DEMO_DATA)
+      setFetchError('Could not load referral stats. Showing demo view.')
     } finally {
       setLoading(false)
     }
   }
 
+  // Use real data if available, fall back to demo
+  const display = data ?? DEMO_DATA
+  const referralUrl = display.referralUrl
+
   function copyLink() {
-    if (!data) return
-    navigator.clipboard.writeText(data.referralUrl)
-    setCopied(true)
-    track('referral_link_shared', { channel: 'clipboard' })
-    setTimeout(() => setCopied(false), 2000)
+    if (!referralUrl) return
+    try {
+      navigator.clipboard.writeText(referralUrl).then(() => {
+        setCopied(true)
+        track('referral_link_shared', { channel: 'clipboard' })
+        setTimeout(() => setCopied(false), 2000)
+      }).catch(() => {
+        // Clipboard API may be denied — fallback to execCommand
+        const el = document.createElement('textarea')
+        el.value = referralUrl
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+        setCopied(true)
+        track('referral_link_shared', { channel: 'clipboard_fallback' })
+        setTimeout(() => setCopied(false), 2000)
+      })
+    } catch {
+      // Last resort: do nothing silently
+    }
   }
 
   if (loading) {
@@ -74,15 +119,28 @@ export default function ReferralsPage() {
         </p>
       </div>
 
+      {fetchError && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-amber-400 text-sm flex items-center justify-between gap-4">
+          <span>{fetchError}</span>
+          <button
+            onClick={fetchStats}
+            className="text-xs underline underline-offset-2 hover:text-amber-300 whitespace-nowrap"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Referral link */}
       <div className="bg-gradient-to-br from-[#FFB81C]/10 to-transparent border border-[#FFB81C]/20 rounded-2xl p-6 mb-8">
         <h2 className="text-white font-semibold mb-2">Your Referral Link</h2>
         <p className="text-gray-400 text-sm mb-4">
-          Share this link. When someone signs up, you both get <strong className="text-[#FFB81C]">$1 in credits</strong>.
+          Share this link. When someone signs up, you both get{' '}
+          <strong className="text-[#FFB81C]">$1 in credits</strong>.
         </p>
         <div className="flex gap-3">
           <div className="flex-1 bg-[#111640] border border-white/10 rounded-xl px-4 py-3 font-mono text-sm text-gray-300 truncate">
-            {data?.referralUrl ?? 'Loading...'}
+            {referralUrl}
           </div>
           <button
             onClick={copyLink}
@@ -92,17 +150,17 @@ export default function ReferralsPage() {
           </button>
         </div>
         <p className="text-gray-600 text-xs mt-2">
-          Code: <span className="font-mono text-gray-400">{data?.code}</span>
+          Code: <span className="font-mono text-gray-400">{display.code}</span>
         </p>
       </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Referrals', value: data?.stats.total ?? 0 },
-          { label: 'Converted', value: data?.stats.converted ?? 0 },
-          { label: 'Pending', value: data?.stats.pending ?? 0 },
-          { label: 'Total Earned', value: `$${data?.stats.totalCommissionUsd ?? '0.00'}` },
+          { label: 'Total Referrals', value: display.stats.total },
+          { label: 'Converted', value: display.stats.converted },
+          { label: 'Pending', value: display.stats.pending },
+          { label: 'Total Earned', value: `$${display.stats.totalCommissionUsd}` },
         ].map((stat) => (
           <div key={stat.label} className="bg-[#0D1231] border border-white/10 rounded-2xl p-5">
             <p className="text-gray-500 text-xs mb-1">{stat.label}</p>
@@ -151,7 +209,7 @@ export default function ReferralsPage() {
       {/* Recent referrals */}
       <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
         <h2 className="text-white font-semibold mb-4">Recent Referrals</h2>
-        {!data?.recent?.length ? (
+        {!display.recent?.length ? (
           <div className="text-center py-8">
             <p className="text-gray-500 text-sm">No referrals yet. Share your link to get started!</p>
           </div>
@@ -166,7 +224,7 @@ export default function ReferralsPage() {
                 </tr>
               </thead>
               <tbody>
-                {data.recent.map((ref) => (
+                {display.recent.map((ref) => (
                   <tr key={ref.id} className="border-b border-white/5">
                     <td className="py-3 pr-4">
                       <span

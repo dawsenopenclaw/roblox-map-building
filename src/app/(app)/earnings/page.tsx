@@ -1,7 +1,37 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import dynamic from 'next/dynamic'
 import { ShareButtons } from '@/components/ShareButtons'
+
+// Dynamic import — prevents SSR crash (recharts uses browser APIs)
+const LineChart = dynamic(
+  () => import('recharts').then(m => m.LineChart),
+  { ssr: false }
+)
+const Line = dynamic(
+  () => import('recharts').then(m => m.Line),
+  { ssr: false }
+)
+const XAxis = dynamic(
+  () => import('recharts').then(m => m.XAxis),
+  { ssr: false }
+)
+const YAxis = dynamic(
+  () => import('recharts').then(m => m.YAxis),
+  { ssr: false }
+)
+const CartesianGrid = dynamic(
+  () => import('recharts').then(m => m.CartesianGrid),
+  { ssr: false }
+)
+const Tooltip = dynamic(
+  () => import('recharts').then(m => m.Tooltip),
+  { ssr: false }
+)
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then(m => m.ResponsiveContainer),
+  { ssr: false }
+)
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://robloxforge.gg'
 
@@ -45,6 +75,20 @@ const MILESTONES = [
   { label: '$10K', cents: 1000000 },
 ]
 
+// Demo data shown when API is unavailable
+const DEMO_SUMMARY: EarningsSummary = {
+  summary: {
+    totalRevenue: '0.00',
+    netRevenue: '0.00',
+    paidOut: '0.00',
+    pending: '0.00',
+    salesCount: 0,
+  },
+  chart: [],
+  templateBreakdown: [],
+  milestones: { current: 0, next: 10000, achieved: [] },
+}
+
 function MilestoneCelebration({ achieved }: { achieved: number[] }) {
   if (achieved.length === 0) return null
   const latest = MILESTONES.filter((m) => achieved.includes(m.cents)).pop()
@@ -56,7 +100,7 @@ function MilestoneCelebration({ achieved }: { achieved: number[] }) {
       <div className="flex-1 min-w-0">
         <p className="text-[#FFB81C] font-bold text-lg">Milestone Achieved!</p>
         <p className="text-gray-300 text-sm">
-          You've earned over <strong>{latest.label}</strong> on RobloxForge!
+          You&apos;ve earned over <strong>{latest.label}</strong> on RobloxForge!
         </p>
       </div>
       <ShareButtons
@@ -76,8 +120,9 @@ export default function EarningsPage() {
   const [txLoading, setTxLoading] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -87,11 +132,20 @@ export default function EarningsPage() {
 
   async function fetchSummary() {
     setLoading(true)
+    setFetchError(null)
     try {
       const res = await fetch(`${API_BASE}/api/earnings/summary?period=${period}`, {
         credentials: 'include',
       })
-      if (res.ok) setSummary(await res.json())
+      if (res.ok) {
+        setSummary(await res.json())
+      } else {
+        setSummary(DEMO_SUMMARY)
+      }
+    } catch {
+      // API unreachable — show demo/empty state
+      setSummary(DEMO_SUMMARY)
+      setFetchError('Could not load earnings data. Showing demo view.')
     } finally {
       setLoading(false)
     }
@@ -111,17 +165,21 @@ export default function EarningsPage() {
         setHasMore(data.hasMore)
         setCursor(data.nextCursor)
       }
+    } catch {
+      // Silently fail — empty transaction list is a valid state
     } finally {
       setTxLoading(false)
     }
   }
 
+  const displaySummary = summary ?? DEMO_SUMMARY
+
   const statCards = [
-    { label: 'Gross Revenue', value: `$${summary?.summary.totalRevenue ?? '0.00'}`, color: 'text-white' },
-    { label: 'Net Revenue', value: `$${summary?.summary.netRevenue ?? '0.00'}`, color: 'text-green-400' },
-    { label: 'Paid Out', value: `$${summary?.summary.paidOut ?? '0.00'}`, color: 'text-blue-400' },
-    { label: 'Pending', value: `$${summary?.summary.pending ?? '0.00'}`, color: 'text-[#FFB81C]' },
-    { label: 'Total Sales', value: String(summary?.summary.salesCount ?? 0), color: 'text-white' },
+    { label: 'Gross Revenue', value: `$${displaySummary.summary.totalRevenue}`, color: 'text-white' },
+    { label: 'Net Revenue', value: `$${displaySummary.summary.netRevenue}`, color: 'text-green-400' },
+    { label: 'Paid Out', value: `$${displaySummary.summary.paidOut}`, color: 'text-blue-400' },
+    { label: 'Pending', value: `$${displaySummary.summary.pending}`, color: 'text-[#FFB81C]' },
+    { label: 'Total Sales', value: String(displaySummary.summary.salesCount), color: 'text-white' },
   ]
 
   return (
@@ -131,28 +189,34 @@ export default function EarningsPage() {
         <p className="text-gray-400 mt-1 text-sm">Track your marketplace revenue and payouts.</p>
       </div>
 
+      {fetchError && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-amber-400 text-sm">
+          {fetchError}
+        </div>
+      )}
+
       {/* Milestones */}
-      {summary && <MilestoneCelebration achieved={summary.milestones.achieved} />}
+      <MilestoneCelebration achieved={displaySummary.milestones.achieved} />
 
       {/* Milestone progress */}
-      {summary?.milestones.next && (
+      {displaySummary.milestones.next && (
         <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-8">
           <div className="flex items-center justify-between mb-3">
             <p className="text-white font-medium">Next Milestone</p>
             <p className="text-gray-400 text-sm">
-              ${((summary.milestones.current) / 100).toFixed(2)} / ${(summary.milestones.next / 100).toFixed(0)}
+              ${(displaySummary.milestones.current / 100).toFixed(2)} / ${(displaySummary.milestones.next / 100).toFixed(0)}
             </p>
           </div>
           <div className="w-full bg-white/10 rounded-full h-2">
             <div
               className="h-2 rounded-full bg-[#FFB81C] transition-all"
               style={{
-                width: `${Math.min(100, (summary.milestones.current / summary.milestones.next) * 100)}%`,
+                width: `${Math.min(100, (displaySummary.milestones.current / displaySummary.milestones.next) * 100)}%`,
               }}
             />
           </div>
           <p className="text-gray-500 text-xs mt-2">
-            {MILESTONES.find((m) => m.cents === summary.milestones.next)?.label} milestone
+            {MILESTONES.find((m) => m.cents === displaySummary.milestones.next)?.label} milestone
           </p>
         </div>
       )}
@@ -192,7 +256,7 @@ export default function EarningsPage() {
           <div className="h-64 flex items-center justify-center">
             <div className="text-gray-500 text-sm">Loading chart...</div>
           </div>
-        ) : !summary?.chart.length ? (
+        ) : !displaySummary.chart.length ? (
           <div className="h-64 flex items-center justify-center">
             <div className="text-center">
               <p className="text-gray-500 text-sm">No revenue data yet.</p>
@@ -203,7 +267,7 @@ export default function EarningsPage() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={256}>
-            <LineChart data={summary.chart}>
+            <LineChart data={displaySummary.chart}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis
                 dataKey="date"
@@ -224,7 +288,7 @@ export default function EarningsPage() {
                   borderRadius: 12,
                   color: '#fff',
                 }}
-                formatter={(v: number) => [`$${v}`, 'Revenue']}
+                formatter={(v) => [`$${v}`, 'Revenue']}
               />
               <Line
                 type="monotone"
@@ -240,7 +304,7 @@ export default function EarningsPage() {
       </div>
 
       {/* Template breakdown */}
-      {summary?.templateBreakdown && summary.templateBreakdown.length > 0 && (
+      {displaySummary.templateBreakdown.length > 0 && (
         <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6 mb-8">
           <h2 className="text-white font-semibold mb-4">Per-Template Breakdown</h2>
           <div className="overflow-x-auto">
@@ -253,7 +317,7 @@ export default function EarningsPage() {
                 </tr>
               </thead>
               <tbody>
-                {summary.templateBreakdown.map((t) => (
+                {displaySummary.templateBreakdown.map((t) => (
                   <tr key={t.templateId} className="border-b border-white/5">
                     <td className="py-3 pr-4 text-white font-medium">{t.name}</td>
                     <td className="py-3 pr-4 text-gray-400 text-right">{t.sales}</td>

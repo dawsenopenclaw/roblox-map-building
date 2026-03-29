@@ -2,10 +2,16 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { TOKEN_PACKS } from '@/lib/subscription-tiers'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
+
+// Safe client-side copy — no serverEnv import
+const TOKEN_PACKS_CLIENT = [
+  { slug: 'starter', name: 'Starter Pack', tokens: 1000, priceCents: 1000 },
+  { slug: 'creator', name: 'Creator Pack', tokens: 5000, priceCents: 4500 },
+  { slug: 'pro',     name: 'Pro Pack',     tokens: 15000, priceCents: 12000 },
+] as const
 
 // Stub invoice data — real data wired via Stripe API
 const STUB_INVOICES = [
@@ -43,22 +49,35 @@ function UsageChart({ data }: { data: typeof USAGE_DATA }) {
 
 export default function BillingPage() {
   const { track } = useAnalytics()
-  const { data: balance } = useSWR('/api/tokens/balance', fetcher)
+  const { data: balance } = useSWR('/api/tokens/balance', fetcher, {
+    onErrorRetry: (error, _key, _config, revalidate, { retryCount }) => {
+      if (retryCount >= 2) return
+      setTimeout(() => revalidate({ retryCount }), 3000)
+    },
+  })
   const [cancelConfirm, setCancelConfirm] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [buyingPack, setBuyingPack] = useState<string | null>(null)
+  const [portalError, setPortalError] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const handlePortal = async () => {
     setPortalLoading(true)
+    setPortalError(null)
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = await res.json()
+      if (!res.ok) {
+        setPortalError(data.error || 'Could not open billing portal. Try again.')
+        track('error_encountered', { errorType: 'billing_portal_failed', page: '/billing' })
+        return
+      }
       if (data.url) {
         track('subscription_upgraded', { fromTier: 'unknown', toTier: 'portal' })
         window.location.href = data.url
       }
     } catch {
-      alert('Could not open billing portal. Try again.')
+      setPortalError('Network error — could not open billing portal. Try again.')
       track('error_encountered', { errorType: 'billing_portal_failed', page: '/billing' })
     } finally {
       setPortalLoading(false)
@@ -67,6 +86,7 @@ export default function BillingPage() {
 
   const handleTokenPurchase = async (packSlug: string) => {
     setBuyingPack(packSlug)
+    setCheckoutError(null)
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
@@ -74,12 +94,17 @@ export default function BillingPage() {
         body: JSON.stringify({ type: 'token_pack', packSlug }),
       })
       const data = await res.json()
+      if (!res.ok) {
+        setCheckoutError(data.error || 'Could not start checkout. Try again.')
+        track('error_encountered', { errorType: 'token_checkout_failed', page: '/billing' })
+        return
+      }
       if (data.url) {
         track('token_purchased', { packSlug })
         window.location.href = data.url
       }
     } catch {
-      alert('Could not start checkout. Try again.')
+      setCheckoutError('Network error — could not start checkout. Try again.')
       track('error_encountered', { errorType: 'token_checkout_failed', page: '/billing' })
     } finally {
       setBuyingPack(null)
@@ -116,12 +141,15 @@ export default function BillingPage() {
               <button
                 onClick={handlePortal}
                 disabled={portalLoading}
-                className="text-sm bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold px-4 py-2.5 rounded-xl transition-colors"
+                className="text-sm bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-60"
               >
                 {portalLoading ? 'Loading...' : 'Manage payment'}
               </button>
             </div>
           </div>
+          {portalError && (
+            <p className="mt-3 text-sm text-red-400">{portalError}</p>
+          )}
         </div>
 
         {/* Token balance + usage */}
@@ -149,8 +177,11 @@ export default function BillingPage() {
         {/* Token packs */}
         <div className="bg-[#0D1231] border border-white/10 rounded-2xl p-6">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Buy More Tokens</h2>
+          {checkoutError && (
+            <p className="mb-4 text-sm text-red-400">{checkoutError}</p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {TOKEN_PACKS.map((pack) => {
+            {TOKEN_PACKS_CLIENT.map((pack) => {
               const discount = pack.slug !== 'starter'
                 ? Math.round((1 - pack.priceCents / (pack.tokens * 0.1)) * 100)
                 : 0
@@ -170,7 +201,7 @@ export default function BillingPage() {
                   <button
                     onClick={() => handleTokenPurchase(pack.slug)}
                     disabled={buyingPack === pack.slug}
-                    className="mt-3 w-full bg-[#FFB81C] hover:bg-[#E6A519] text-black text-sm font-bold py-2 rounded-lg transition-colors"
+                    className="mt-3 w-full bg-[#FFB81C] hover:bg-[#E6A519] text-black text-sm font-bold py-2 rounded-lg transition-colors disabled:opacity-60"
                   >
                     {buyingPack === pack.slug ? 'Loading...' : 'Buy now'}
                   </button>
@@ -213,7 +244,7 @@ export default function BillingPage() {
             onClick={handlePortal}
             className="mt-4 text-sm text-[#FFB81C] hover:underline"
           >
-            View all invoices in Stripe →
+            View all invoices in Stripe &rarr;
           </button>
         </div>
 

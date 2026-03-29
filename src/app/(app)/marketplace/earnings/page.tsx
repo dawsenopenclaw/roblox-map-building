@@ -2,15 +2,37 @@
 import useSWR from 'swr'
 import { useState } from 'react'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = (url: string) =>
+  fetch(url).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return r.json()
+  })
+
+// Demo data shown when API/DB is unavailable
+const DEMO_DATA = {
+  connected: false,
+  chargesEnabled: false,
+  pendingBalanceCents: 0,
+  totalEarnedCents: 0,
+  lastPayoutAt: null,
+  recentSales: [],
+}
 
 export default function EarningsPage() {
-  const { data, isLoading, mutate } = useSWR('/api/marketplace/earnings', fetcher)
+  const { data: raw, isLoading, error, mutate } = useSWR('/api/marketplace/earnings', fetcher, {
+    onErrorRetry: (_err, _key, _config, revalidate, { retryCount }) => {
+      if (retryCount >= 2) return
+      setTimeout(() => revalidate({ retryCount }), 3000)
+    },
+  })
   const [onboarding, setOnboarding] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [connectError, setConnectError] = useState<string | null>(null)
+
+  // Fall back to demo data if API is unreachable
+  const data = error ? DEMO_DATA : raw
 
   async function handleConnectStripe() {
-    setError(null)
+    setConnectError(null)
     setOnboarding(true)
     try {
       const res = await fetch('/api/marketplace/connect/onboard', {
@@ -18,11 +40,14 @@ export default function EarningsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Failed to start onboarding'); return }
-      window.location.href = data.url
+      const json = await res.json()
+      if (!res.ok) {
+        setConnectError(json.error || 'Failed to start onboarding')
+        return
+      }
+      window.location.href = json.url
     } catch {
-      setError('Network error')
+      setConnectError('Network error — please try again.')
     } finally {
       setOnboarding(false)
     }
@@ -44,9 +69,21 @@ export default function EarningsPage() {
         <p className="text-gray-400 text-sm mt-1">70% of every sale goes directly to you</p>
       </div>
 
+      {error && (
+        <div className="mb-6 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-amber-400 text-sm flex items-center justify-between gap-4">
+          <span>Could not load earnings data. Showing cached view.</span>
+          <button
+            onClick={() => mutate()}
+            className="text-xs underline underline-offset-2 hover:text-amber-300 whitespace-nowrap"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {!data?.connected ? (
         <div className="bg-[#0D1231] border border-white/10 rounded-xl p-8 text-center">
-          <div className="text-5xl mb-4">💳</div>
+          <div className="text-5xl mb-4">&#128179;</div>
           <h2 className="text-xl font-bold text-white mb-2">Connect Stripe to receive payouts</h2>
           <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto">
             Set up your Stripe Express account to start receiving 70% of your template sales.
@@ -59,11 +96,11 @@ export default function EarningsPage() {
           >
             {onboarding ? 'Redirecting...' : 'Connect with Stripe'}
           </button>
-          {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
+          {connectError && <p className="text-red-400 text-sm mt-3">{connectError}</p>}
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Status banner */}
+          {/* Setup incomplete banner */}
           {!data.chargesEnabled && (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
               <div>
@@ -73,7 +110,7 @@ export default function EarningsPage() {
               <button
                 onClick={handleConnectStripe}
                 disabled={onboarding}
-                className="bg-amber-500/20 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-500/30 transition-colors"
+                className="bg-amber-500/20 border border-amber-500/30 text-amber-400 px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-500/30 transition-colors disabled:opacity-60"
               >
                 Continue Setup
               </button>
