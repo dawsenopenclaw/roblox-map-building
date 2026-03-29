@@ -1,8 +1,8 @@
-﻿'use client'
+'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, Heart } from 'lucide-react'
+import { Check, ChevronDown, Heart, Zap, Rocket, Building2 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -12,10 +12,12 @@ const TIERS = [
   {
     key: 'FREE',
     name: 'Free',
+    icon: Zap,
     priceMonthly: 0,
     priceYearly: 0,
-    tagline: 'Get started for free',
+    tagline: 'Start building today',
     highlight: false,
+    badge: null,
     cta: 'Get Started Free',
     ctaHref: '/sign-up',
     features: [
@@ -27,50 +29,37 @@ const TIERS = [
     ],
   },
   {
-    key: 'STARTER',
-    name: 'Starter',
-    priceMonthly: 9.99,
-    priceYearly: 7.99,
-    tagline: 'For hobbyists leveling up',
-    highlight: false,
-    cta: 'Start Starter',
-    ctaHref: '/sign-up?plan=starter',
-    features: [
-      '100 AI generations / day',
-      '5 projects',
-      'Marketplace access',
-      'All templates',
-      'Email support',
-    ],
-  },
-  {
     key: 'PRO',
     name: 'Pro',
-    priceMonthly: 24.99,
-    priceYearly: 19.99,
+    icon: Rocket,
+    priceMonthly: 15,
+    priceYearly: 12,
     tagline: 'For serious creators',
     highlight: true,
     badge: 'Most Popular',
-    cta: 'Start Pro — Free Trial',
+    cta: 'Start Free Trial',
     ctaHref: '/sign-up?plan=pro',
     features: [
       '1,000 AI generations / day',
       'Unlimited projects',
       'Marketplace access + selling',
-      'Team collaboration',
+      'Team collaboration (up to 5)',
       'Game DNA scanner',
       'Priority support',
+      'All premium templates',
     ],
   },
   {
     key: 'STUDIO',
     name: 'Studio',
-    priceMonthly: 49.99,
-    priceYearly: 39.99,
+    icon: Building2,
+    priceMonthly: 50,
+    priceYearly: 40,
     tagline: 'For agencies & studios',
     highlight: false,
-    cta: 'Contact Sales',
-    ctaHref: '/contact?plan=studio',
+    badge: null,
+    cta: 'Start Studio Trial',
+    ctaHref: '/sign-up?plan=studio',
     features: [
       'Unlimited AI generations',
       'Unlimited projects',
@@ -79,6 +68,7 @@ const TIERS = [
       'Dedicated account manager',
       'Priority AI queue',
       'Custom integrations',
+      'Team collaboration (unlimited)',
     ],
   },
 ]
@@ -86,7 +76,7 @@ const TIERS = [
 const FAQ = [
   {
     q: 'What counts as an AI generation?',
-    a: 'Each time the AI generates something — terrain, a building, a map scene, a script — that counts as 1 generation. Free plan includes 10 per day. Starter gets 100/day, Pro 1,000/day, Studio is unlimited.',
+    a: 'Each time the AI generates something — terrain, a building, a map scene, a script — that counts as 1 generation. Free plan includes 10 per day. Pro gets 1,000/day. Studio is unlimited.',
   },
   {
     q: 'Can I cancel anytime?',
@@ -106,7 +96,7 @@ const FAQ = [
   },
   {
     q: 'Can I sell what I make?',
-    a: 'Yes. Starter, Pro, and Studio plans let you list templates and assets on the marketplace. You keep 70% of every sale.',
+    a: 'Yes. Pro and Studio plans let you list templates and assets on the marketplace. You keep 70% of every sale.',
   },
   {
     q: 'What is white-label on Studio?',
@@ -119,6 +109,44 @@ const FAQ = [
 ]
 
 // ---------------------------------------------------------------------------
+// Animated FAQ item
+// ---------------------------------------------------------------------------
+
+function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boolean; onToggle: () => void }) {
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState(0)
+
+  useEffect(() => {
+    if (!bodyRef.current) return
+    setHeight(isOpen ? bodyRef.current.scrollHeight : 0)
+  }, [isOpen])
+
+  return (
+    <div className="border border-white/10 rounded-xl overflow-hidden bg-[#0a0d19]">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/5 transition-colors"
+        aria-expanded={isOpen}
+      >
+        <span className="text-white font-semibold text-sm pr-4">{q}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      <div
+        style={{ height, overflow: 'hidden', transition: 'height 220ms ease' }}
+      >
+        <div ref={bodyRef} className="px-5 pb-5">
+          <p className="text-gray-400 text-sm leading-relaxed">{a}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -128,12 +156,15 @@ export default function PricingClient() {
 
   return (
     <div className="min-h-screen bg-[#060810] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
 
         {/* ------------------------------------------------------------------ */}
         {/* Header                                                              */}
         {/* ------------------------------------------------------------------ */}
         <div className="text-center mb-14">
+          <p className="text-xs font-bold tracking-widest uppercase text-[#FFB81C] mb-3 opacity-80">
+            Pricing
+          </p>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold mb-4 tracking-tight">
             <span
               style={{
@@ -181,16 +212,17 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Tier Cards                                                          */}
         {/* ------------------------------------------------------------------ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-14">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-14 items-start">
           {TIERS.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
+            const Icon = tier.icon
 
             return (
               <div
                 key={tier.key}
                 className={`relative flex flex-col rounded-2xl border p-7 transition-all ${
                   tier.highlight
-                    ? 'bg-[#0f1320] border-[#FFB81C]/70 shadow-[0_0_40px_rgba(255,184,28,0.18)]'
+                    ? 'bg-[#0f1320] border-[#FFB81C]/70 shadow-[0_0_50px_rgba(255,184,28,0.15)] sm:-mt-4 sm:pb-11 sm:pt-11'
                     : 'bg-[#0a0d19] border-white/10 hover:border-white/20'
                 }`}
               >
@@ -208,8 +240,17 @@ export default function PricingClient() {
                   </div>
                 )}
 
-                {/* Name + tagline */}
+                {/* Icon + Name + tagline */}
                 <div className="mb-5 mt-1">
+                  <div
+                    className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
+                      tier.highlight
+                        ? 'bg-[#FFB81C]/15 text-[#FFB81C]'
+                        : 'bg-white/5 text-gray-400'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </div>
                   <p
                     className={`text-lg font-bold mb-1 ${
                       tier.highlight ? 'text-[#FFB81C]' : 'text-white'
@@ -223,23 +264,23 @@ export default function PricingClient() {
                 {/* Price */}
                 <div className="mb-6">
                   {price === 0 ? (
-                    <p className="text-4xl font-extrabold text-white">Free</p>
+                    <p className="text-5xl font-extrabold text-white">Free</p>
                   ) : (
                     <div className="flex items-end gap-1">
-                      <p className="text-4xl font-extrabold text-white">
-                        ${price.toFixed(2)}
+                      <p className="text-5xl font-extrabold text-white">
+                        ${price}
                       </p>
-                      <span className="text-gray-500 text-sm mb-1.5">/mo</span>
+                      <span className="text-gray-500 text-sm mb-2">/mo</span>
                     </div>
                   )}
                   {annual && price > 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Billed ${(price * 12).toFixed(2)}/year
+                      Billed ${price * 12}/year
                     </p>
                   )}
                   {!annual && price > 0 && (
                     <p className="text-xs text-gray-600 mt-1">
-                      or ${tier.priceYearly.toFixed(2)}/mo billed annually
+                      or ${tier.priceYearly}/mo billed annually
                     </p>
                   )}
                 </div>
@@ -260,6 +301,9 @@ export default function PricingClient() {
                 >
                   {tier.cta}
                 </Link>
+
+                {/* Divider */}
+                <div className={`h-px mb-5 ${tier.highlight ? 'bg-[#FFB81C]/20' : 'bg-white/5'}`} />
 
                 {/* Features */}
                 <ul className="space-y-3">
@@ -318,33 +362,15 @@ export default function PricingClient() {
             Frequently asked questions
           </h2>
           <div className="space-y-2">
-            {FAQ.map(({ q, a }) => {
-              const isOpen = openFaq === q
-              return (
-                <div
-                  key={q}
-                  className="border border-white/10 rounded-xl overflow-hidden bg-[#0a0d19]"
-                >
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : q)}
-                    className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/5 transition-colors"
-                    aria-expanded={isOpen}
-                  >
-                    <span className="text-white font-semibold text-sm pr-4">{q}</span>
-                    <ChevronDown
-                      className={`w-4 h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${
-                        isOpen ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </button>
-                  {isOpen && (
-                    <div className="px-5 pb-5">
-                      <p className="text-gray-400 text-sm leading-relaxed">{a}</p>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {FAQ.map(({ q, a }) => (
+              <FaqItem
+                key={q}
+                q={q}
+                a={a}
+                isOpen={openFaq === q}
+                onToggle={() => setOpenFaq(openFaq === q ? null : q)}
+              />
+            ))}
           </div>
         </div>
 

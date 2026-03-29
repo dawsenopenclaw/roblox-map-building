@@ -66,8 +66,36 @@ const PANEL_TITLE: Record<NonNullable<PanelId>, string> = {
   settings: 'Settings',
 }
 
-const RECENT_PROJECTS = ['My First Game', 'Castle Adventure', 'Racing Sim']
-const ALL_ASSETS = ['Castle Kit', 'Forest Pack', 'City Builder', 'Dungeon Set', 'Ocean Terrain', 'Neon City']
+const DEMO_PROJECTS = [
+  { name: 'Medieval Kingdom', lastEdited: '2h ago' },
+  { name: 'Racing World',     lastEdited: 'Yesterday' },
+  { name: 'My First Game',    lastEdited: '3 days ago' },
+]
+
+interface AssetItem { name: string; price: string; category: 'Models' | 'Scripts' | 'UI' | 'Audio' | 'Vehicles' }
+const DEMO_ASSETS: AssetItem[] = [
+  { name: 'Castle Model', price: 'Free',   category: 'Models'   },
+  { name: 'Tree Pack',    price: '$2.99',  category: 'Models'   },
+  { name: 'UI Kit',       price: '$4.99',  category: 'UI'       },
+  { name: 'NPC Bundle',   price: '$9.99',  category: 'Models'   },
+  { name: 'Sound Pack',   price: 'Free',   category: 'Audio'    },
+  { name: 'Vehicle Set',  price: '$7.99',  category: 'Vehicles' },
+]
+const ASSET_CATEGORIES = ['All', 'Models', 'Scripts', 'UI', 'Audio'] as const
+
+interface DnaExample { name: string; score: number; players: string; rating: string; genre: string }
+const DNA_EXAMPLES: DnaExample[] = [
+  { name: 'Pet Simulator X', score: 92, players: '98K avg',  rating: '94%', genre: 'Pet Sim'   },
+  { name: 'Adopt Me',        score: 88, players: '145K avg', rating: '91%', genre: 'Roleplay'  },
+]
+
+const RECENT_USAGE = [
+  { cmd: 'Build castle with moat',      tokens: 42 },
+  { cmd: 'Add NPC patrol system',       tokens: 38 },
+  { cmd: 'Generate forest biome',       tokens: 51 },
+  { cmd: 'Create race track layout',    tokens: 29 },
+  { cmd: 'Design dungeon entrance',     tokens: 35 },
+]
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -466,23 +494,31 @@ function Viewport({ hasGame }: { hasGame: boolean }) {
 function ProjectsPanel() {
   return (
     <div className="p-4 space-y-3">
-      <button className="w-full flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Your Games</p>
+      </div>
+      <button className="w-full flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
           <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-        New Game
+        + New Game
       </button>
-      <div className="space-y-1 pt-2">
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium px-1 mb-2">Recent</p>
-        {RECENT_PROJECTS.map((name) => (
-          <button key={name} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 text-left transition-colors group">
-            <div className="w-8 h-8 rounded-md bg-white/5 border border-white/8 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
-                <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+      <div className="space-y-1.5 pt-1">
+        {DEMO_PROJECTS.map(({ name, lastEdited }) => (
+          <div key={name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/6 border border-white/8 hover:border-white/15 transition-colors group">
+            <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-[#FFB81C]/60" viewBox="0 0 16 16" fill="none">
+                <path d="M8 2L10 6h4l-3 2.5 1 4L8 10l-4 2.5 1-4L2 6h4L8 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
               </svg>
             </div>
-            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{name}</span>
-          </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-200 font-medium truncate group-hover:text-white transition-colors">{name}</p>
+              <p className="text-[10px] text-gray-600">{lastEdited}</p>
+            </div>
+            <button className="text-[10px] font-semibold text-[#FFB81C]/70 hover:text-[#FFB81C] bg-[#FFB81C]/10 hover:bg-[#FFB81C]/20 px-2 py-1 rounded-md transition-colors flex-shrink-0">
+              Open
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -491,13 +527,17 @@ function ProjectsPanel() {
 
 function AssetsPanel() {
   const [query, setQuery] = useState('')
-  const filtered = query.trim()
-    ? ALL_ASSETS.filter((a) => a.toLowerCase().includes(query.toLowerCase()))
-    : ALL_ASSETS
+  const [activeCategory, setActiveCategory] = useState<string>('All')
+
+  const filtered = DEMO_ASSETS.filter((a) => {
+    const matchesSearch = !query.trim() || a.name.toLowerCase().includes(query.toLowerCase())
+    const matchesCat = activeCategory === 'All' || a.category === activeCategory
+    return matchesSearch && matchesCat
+  })
 
   return (
-    <div className="p-4">
-      <div className="relative mb-4">
+    <div className="p-4 space-y-3">
+      <div className="relative">
         <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
           <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
           <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -506,18 +546,51 @@ function AssetsPanel() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search assets..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
+          placeholder="Search marketplace..."
+          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
         />
       </div>
+
+      {/* Category chips */}
+      <div className="flex flex-wrap gap-1">
+        {ASSET_CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            className={[
+              'px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors',
+              activeCategory === cat
+                ? 'bg-[#FFB81C] text-black'
+                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200 border border-white/10',
+            ].join(' ')}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       {filtered.length === 0 ? (
-        <p className="text-xs text-gray-600 text-center py-6">No assets match &ldquo;{query}&rdquo;</p>
+        <p className="text-xs text-gray-600 text-center py-6">No assets found</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
-          {filtered.map((name) => (
-            <div key={name} className="bg-white/5 border border-white/8 hover:border-white/15 rounded-lg p-2.5 cursor-pointer transition-colors">
-              <div className="w-full h-12 rounded-md bg-white/5 mb-2" />
-              <p className="text-[11px] text-gray-300 font-medium">{name}</p>
+          {filtered.map(({ name, price }) => (
+            <div key={name} className="bg-white/[0.03] border border-white/8 hover:border-white/18 rounded-lg p-2.5 transition-colors group">
+              <div className="w-full h-10 rounded-md bg-white/5 mb-2 flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-700" viewBox="0 0 20 20" fill="none">
+                  <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.2"/>
+                  <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <p className="text-[11px] text-gray-300 font-medium leading-tight">{name}</p>
+              <div className="flex items-center justify-between mt-1.5">
+                <span className={[
+                  'text-[10px] font-bold',
+                  price === 'Free' ? 'text-emerald-400' : 'text-[#FFB81C]',
+                ].join(' ')}>{price}</span>
+                <button className="text-[9px] font-semibold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors">
+                  Add
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -529,23 +602,24 @@ function AssetsPanel() {
 function DnaPanel() {
   const [url, setUrl] = useState('')
   const [scanning, setScanning] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
+  const [selectedExample, setSelectedExample] = useState<DnaExample | null>(null)
 
   const handleScan = () => {
     if (!url.trim() || scanning) return
     setScanning(true)
-    setResult(null)
+    setSelectedExample(null)
     setTimeout(() => {
       setScanning(false)
-      setResult('Analysis complete. Connect an API key in Settings to enable live DNA scanning.')
-    }, 1200)
+      setSelectedExample({ name: 'Custom Game', score: 76, players: 'N/A', rating: 'N/A', genre: 'Unknown' })
+    }, 1400)
   }
+
+  const active = selectedExample
 
   return (
     <div className="p-4 space-y-4">
-      <p className="text-xs text-gray-500 leading-relaxed">
-        Paste any Roblox game URL to analyze its core loop, retention hooks, and monetization formula.
-      </p>
+      <p className="text-[11px] text-gray-500 leading-relaxed font-medium">Analyze any Roblox game</p>
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -558,17 +632,63 @@ function DnaPanel() {
         <button
           onClick={handleScan}
           disabled={!url.trim() || scanning}
-          className="bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-50 disabled:cursor-not-allowed text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+          className="bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-40 disabled:cursor-not-allowed text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
         >
           {scanning ? '...' : 'Scan'}
         </button>
       </div>
-      {result && (
-        <div className="bg-white/5 border border-white/8 rounded-lg px-3 py-2.5">
-          <p className="text-[11px] text-gray-400 leading-relaxed">{result}</p>
+
+      {/* Example scans */}
+      <div>
+        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-2">Example Scans</p>
+        <div className="space-y-1.5">
+          {DNA_EXAMPLES.map((ex) => (
+            <button
+              key={ex.name}
+              onClick={() => setSelectedExample(selectedExample?.name === ex.name ? null : ex)}
+              className={[
+                'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-colors',
+                selectedExample?.name === ex.name
+                  ? 'bg-[#FFB81C]/10 border-[#FFB81C]/30'
+                  : 'bg-white/[0.03] border-white/8 hover:bg-white/6 hover:border-white/15',
+              ].join(' ')}
+            >
+              <div>
+                <p className="text-xs text-gray-200 font-medium">{ex.name}</p>
+                <p className="text-[10px] text-gray-600">{ex.genre}</p>
+              </div>
+              <div className="text-right">
+                <p className={[
+                  'text-sm font-bold',
+                  ex.score >= 90 ? 'text-emerald-400' : 'text-[#FFB81C]',
+                ].join(' ')}>{ex.score}/100</p>
+                <p className="text-[10px] text-gray-600">Score</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats for selected */}
+      {active && (
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3 space-y-2">
+          <p className="text-xs text-gray-300 font-semibold">{active.name}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Score',   value: `${active.score}/100` },
+              { label: 'Players', value: active.players },
+              { label: 'Rating',  value: active.rating },
+            ].map(({ label, value }) => (
+              <div key={label} className="text-center bg-white/5 rounded-md py-1.5">
+                <p className="text-[11px] text-[#FFB81C] font-bold">{value}</p>
+                <p className="text-[9px] text-gray-600">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      <Link href="/game-dna" className="block text-center text-[11px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors pt-1">
+
+      <Link href="/game-dna" className="block text-center text-[11px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors">
         View full DNA reports &rarr;
       </Link>
     </div>
@@ -577,43 +697,90 @@ function DnaPanel() {
 
 function TokensPanel({ tokensUsed }: { tokensUsed: number }) {
   const TOKEN_LIMIT = 1000
-  const remaining = Math.max(0, TOKEN_LIMIT - tokensUsed)
+  const balance = 1000
+  const remaining = Math.max(0, balance - tokensUsed)
   const usedPct = Math.min(100, (tokensUsed / TOKEN_LIMIT) * 100)
+  const barColor = usedPct > 80 ? '#ef4444' : usedPct > 60 ? '#f97316' : '#FFB81C'
 
   return (
     <div className="p-4 space-y-4">
-      <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-xl p-4 text-center">
+      {/* Balance display */}
+      <div className="bg-[#FFB81C]/8 border border-[#FFB81C]/20 rounded-xl p-4 text-center">
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Balance</p>
         <p className="text-3xl font-bold text-[#FFB81C]">{remaining.toLocaleString()}</p>
-        <p className="text-xs text-gray-500 mt-1">tokens remaining</p>
+        <p className="text-xs text-gray-500 mt-1">tokens</p>
       </div>
-      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-        <div className="h-full bg-[#FFB81C] rounded-full transition-all duration-500" style={{ width: `${usedPct}%` }} />
+
+      {/* Usage bar */}
+      <div>
+        <div className="flex justify-between mb-1.5">
+          <span className="text-[10px] text-gray-600">Used this session</span>
+          <span className="text-[10px] text-gray-400">{tokensUsed} / {TOKEN_LIMIT.toLocaleString()}</span>
+        </div>
+        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${usedPct}%`, backgroundColor: barColor }}
+          />
+        </div>
       </div>
-      <p className="text-[11px] text-gray-600 text-center">Free tier &middot; {tokensUsed.toLocaleString()} tokens used</p>
-      <Link href="/billing" className="flex items-center justify-center gap-2 w-full bg-white/5 hover:bg-white/8 border border-white/10 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors">
-        Buy more tokens
+
+      <Link href="/pricing" className="flex items-center justify-center gap-2 w-full bg-[#FFB81C] hover:bg-[#E6A519] text-black text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors">
+        Buy More
       </Link>
+
+      {/* Recent usage */}
+      <div>
+        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-2">Recent Usage</p>
+        <div className="space-y-1">
+          {RECENT_USAGE.map(({ cmd, tokens }) => (
+            <div key={cmd} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/4 transition-colors">
+              <p className="text-[11px] text-gray-400 truncate flex-1 mr-2">{cmd}</p>
+              <span className="text-[10px] text-[#FFB81C]/70 font-medium flex-shrink-0">{tokens}t</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
 
 function SettingsPanel() {
   return (
-    <div className="p-4 space-y-1">
-      {[
-        { label: 'Profile',  href: '/settings' },
-        { label: 'API Keys', href: '/settings/api-keys' },
-        { label: 'Billing',  href: '/billing' },
-        { label: 'Team',     href: '/team' },
-        { label: 'Referrals', href: '/referrals' },
-      ].map(({ label, href }) => (
-        <Link key={label} href={href} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 text-gray-300 hover:text-white transition-colors text-sm">
-          {label}
-          <svg className="w-4 h-4 text-gray-600" viewBox="0 0 16 16" fill="none">
-            <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </Link>
-      ))}
+    <div className="p-4 space-y-3">
+      {/* Inline setting row */}
+      <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/8">
+        <span className="text-xs text-gray-400">Theme</span>
+        <span className="text-xs font-semibold text-gray-300 bg-white/8 px-2 py-0.5 rounded-md">Dark</span>
+      </div>
+
+      {/* Link rows */}
+      <div className="space-y-1">
+        {[
+          { label: 'API Keys', sub: 'Configure',   href: '/settings/api-keys' },
+          { label: 'Account',  sub: 'Manage',       href: '/settings' },
+          { label: 'Billing',  sub: 'View',         href: '/billing' },
+          { label: 'Help',     sub: 'Docs',         href: '/docs' },
+        ].map(({ label, sub, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/8 transition-colors group"
+          >
+            <span className="text-xs text-gray-400 group-hover:text-gray-200 transition-colors">{label}</span>
+            <div className="flex items-center gap-1 text-[#FFB81C]/60 group-hover:text-[#FFB81C] transition-colors">
+              <span className="text-[11px] font-medium">{sub}</span>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="pt-1 border-t border-white/6">
+        <p className="text-[10px] text-gray-700 text-center">ForjeAI v0.1.0</p>
+      </div>
     </div>
   )
 }

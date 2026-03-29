@@ -11,7 +11,7 @@ interface ActivityItem {
 
 const ACTIVITY_ITEMS: ActivityItem[] = [
   {
-    href: '/dashboard',
+    href: '/editor',
     label: 'Editor',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -111,7 +111,7 @@ const SECTIONS = [
     id: 'analytics',
     label: 'Analytics',
     items: [
-      { href: '/analytics', label: 'Analytics',   Icon: IconChart },
+      { href: '/dashboard/cost-tracker', label: 'Analytics',   Icon: IconChart },
       { href: '/team',      label: 'Team',         Icon: IconUsers },
     ],
   },

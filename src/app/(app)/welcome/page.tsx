@@ -92,10 +92,11 @@ const DEMO_STEPS = [
   'Done!',
 ]
 
+// Each suggestion is the completion after "Build me a "
 const SUGGESTIONS = [
-  'Build me a medieval castle',
-  'Create a racing track',
-  'Design a tycoon game',
+  'medieval castle',
+  'racing track',
+  'tycoon game',
 ]
 
 function StepTryIt() {
@@ -144,13 +145,13 @@ function StepTryIt() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runDemo(input || SUGGESTIONS[0])}
+          onKeyDown={(e) => e.key === 'Enter' && runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
           placeholder="medieval castle"
           disabled={running}
           className="w-full bg-[#0D1231] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
         />
         <button
-          onClick={() => runDemo(input ? `Build me a ${input}` : SUGGESTIONS[0])}
+          onClick={() => runDemo(input ? `Build me a ${input}` : `Build me a ${SUGGESTIONS[0]}`)}
           disabled={running}
           className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#FFB81C] text-black text-xs font-bold rounded-lg hover:bg-[#E6A519] disabled:opacity-40 transition-all"
         >
@@ -164,10 +165,10 @@ function StepTryIt() {
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => { setInput(s.replace('Build me a ', '')); runDemo(s) }}
+              onClick={() => { setInput(s); runDemo(`Build me a ${s}`) }}
               className="text-left text-xs text-gray-500 hover:text-gray-300 transition-colors px-1"
             >
-              "{s}"
+              "Build me a {s}"
             </button>
           ))}
         </div>

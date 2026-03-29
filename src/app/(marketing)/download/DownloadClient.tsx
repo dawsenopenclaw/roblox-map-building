@@ -22,7 +22,7 @@ const COMING_SOON_FEATURES = [
       </svg>
     ),
     title: 'Offline mode',
-    desc: 'Build without an internet connection. Sync when you're back online.',
+    desc: "Build without an internet connection. Sync when you're back online.",
   },
   {
     icon: (
