@@ -368,102 +368,332 @@ function Message({ msg }: { msg: ChatMessage }) {
 
 // ─── Viewport ──────────────────────────────────────────────────────────────────
 
-function Viewport({ hasGame }: { hasGame: boolean }) {
-  return (
-    <div className="flex-1 relative bg-[#050812] overflow-hidden">
-      {/* Perspective grid */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-      {/* Radial gold glow at center */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(255,184,28,0.04) 0%, transparent 70%)',
-        }}
-      />
-      {/* Corner vignette */}
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(ellipse 120% 120% at 50% 50%, transparent 55%, rgba(5,8,18,0.8) 100%)',
-        }}
-      />
+// Static scene objects always present in the mock isometric scene
+const SCENE_BASE_OBJECTS = [
+  { id: 'b1', type: 'building', color: '#4A7CB5', darkColor: '#2E5A8E', topColor: '#5B8EC7', x: 52, y: 42, w: 60, h: 44 },
+  { id: 'b2', type: 'building', color: '#6B7280', darkColor: '#4B5563', topColor: '#9CA3AF', x: 36, y: 55, w: 44, h: 32 },
+  { id: 'b3', type: 'building', color: '#8B5E3C', darkColor: '#6B4423', topColor: '#A8784F', x: 64, y: 60, w: 36, h: 24 },
+  { id: 'b4', type: 'building', color: '#374151', darkColor: '#1F2937', topColor: '#6B7280', x: 26, y: 40, w: 28, h: 56 },
+  { id: 't1', type: 'tree', x: 20, y: 35, size: 18 },
+  { id: 't2', type: 'tree', x: 74, y: 38, size: 14 },
+  { id: 't3', type: 'tree', x: 80, y: 55, size: 16 },
+  { id: 't4', type: 'tree', x: 16, y: 62, size: 12 },
+  { id: 't5', type: 'tree', x: 72, y: 48, size: 10 },
+  { id: 't6', type: 'tree', x: 24, y: 50, size: 13 },
+]
 
-      {!hasGame && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 text-center px-8">
-          {/* 3D cube icon */}
-          <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,184,28,0.08) 0%, rgba(255,184,28,0.02) 100%)',
-              border: '1px solid rgba(255,184,28,0.15)',
-              boxShadow: '0 0 40px rgba(255,184,28,0.08)',
-            }}
-          >
-            <svg className="w-10 h-10 text-[#FFB81C]/40" viewBox="0 0 40 40" fill="none">
-              <path d="M20 5L6 13v14l14 8 14-8V13L20 5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M6 13l14 8 14-8" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-              <path d="M20 21v14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <path d="M13 9l7 4 7-4" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" strokeDasharray="2 2" opacity="0.4"/>
-            </svg>
-          </div>
-          <div>
-            <p className="text-gray-300 text-base font-semibold mb-1">3D Preview</p>
-            <p className="text-gray-600 text-xs max-w-xs leading-relaxed">
-              Your Roblox scene will render here in real-time as the AI builds it
-            </p>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="h-px w-12 bg-white/8" />
-            <span className="text-[11px] text-gray-700">Connect Studio to start</span>
-            <div className="h-px w-12 bg-white/8" />
-          </div>
-        </div>
+export const SPAWN_COLORS = [
+  { color: '#7C3AED', darkColor: '#5B21B6', topColor: '#8B5CF6' },
+  { color: '#DC2626', darkColor: '#991B1B', topColor: '#EF4444' },
+  { color: '#047857', darkColor: '#064E3B', topColor: '#10B981' },
+  { color: '#B45309', darkColor: '#78350F', topColor: '#F59E0B' },
+  { color: '#0E7490', darkColor: '#164E63', topColor: '#06B6D4' },
+  { color: '#BE185D', darkColor: '#831843', topColor: '#EC4899' },
+]
+
+export const SPAWN_SLOTS = [
+  { x: 44, y: 34 }, { x: 82, y: 44 }, { x: 30, y: 68 },
+  { x: 60, y: 70 }, { x: 14, y: 45 }, { x: 68, y: 30 },
+]
+
+export interface SceneBlock {
+  id: string
+  color: string
+  darkColor: string
+  topColor: string
+  x: number
+  y: number
+  w: number
+  h: number
+  spawned: boolean
+}
+
+function IsometricBuilding({
+  color, darkColor, topColor, x, y, w, h, spawned,
+}: {
+  color: string; darkColor: string; topColor: string
+  x: number; y: number; w: number; h: number; spawned: boolean
+}) {
+  const halfW = w / 2
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        width: `${w}px`,
+        animation: spawned ? 'block-spawn 0.55s cubic-bezier(0.22,1,0.36,1) forwards' : 'none',
+        opacity: spawned ? 0 : 1,
+      }}
+    >
+      {/* Top face */}
+      <div style={{
+        width: `${w}px`,
+        height: `${halfW * 0.5}px`,
+        background: topColor,
+        transform: 'skewX(-30deg) scaleY(0.6)',
+        transformOrigin: 'bottom left',
+        position: 'relative',
+        zIndex: 3,
+        boxShadow: 'inset 0 -2px 4px rgba(0,0,0,0.3)',
+      }} />
+      {/* Front-left face */}
+      <div style={{
+        width: `${halfW}px`,
+        height: `${h}px`,
+        background: color,
+        position: 'absolute',
+        top: `${halfW * 0.5 * 0.6 - 2}px`,
+        left: 0,
+        transform: 'skewY(15deg)',
+        transformOrigin: 'top left',
+        zIndex: 2,
+        boxShadow: 'inset -2px 0 6px rgba(0,0,0,0.2)',
+      }} />
+      {/* Front-right face */}
+      <div style={{
+        width: `${halfW}px`,
+        height: `${h * 0.85}px`,
+        background: darkColor,
+        position: 'absolute',
+        top: `${halfW * 0.5 * 0.6 - 2}px`,
+        left: `${halfW}px`,
+        transform: 'skewY(-15deg)',
+        transformOrigin: 'top right',
+        zIndex: 2,
+      }} />
+    </div>
+  )
+}
+
+function IsometricTree({ x, y, size }: { x: number; y: number; size: number }) {
+  return (
+    <div className="absolute pointer-events-none" style={{ left: `${x}%`, top: `${y}%` }}>
+      <div style={{
+        width: `${size * 0.25}px`,
+        height: `${size * 0.4}px`,
+        background: '#6B4423',
+        margin: '0 auto',
+        position: 'relative',
+        zIndex: 1,
+      }} />
+      <div style={{
+        width: 0,
+        height: 0,
+        borderLeft: `${size * 0.6}px solid transparent`,
+        borderRight: `${size * 0.6}px solid transparent`,
+        borderBottom: `${size * 0.9}px solid #16A34A`,
+        position: 'absolute',
+        top: `-${size * 0.85}px`,
+        left: `-${size * 0.475}px`,
+        zIndex: 2,
+        filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))',
+      }} />
+      <div style={{
+        width: 0,
+        height: 0,
+        borderLeft: `${size * 0.45}px solid transparent`,
+        borderRight: `${size * 0.45}px solid transparent`,
+        borderBottom: `${size * 0.7}px solid #22C55E`,
+        position: 'absolute',
+        top: `-${size * 1.1}px`,
+        left: `-${size * 0.35}px`,
+        zIndex: 3,
+      }} />
+    </div>
+  )
+}
+
+function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
+  const [activeView, setActiveView] = useState<'Perspective' | 'Top' | 'Front' | 'Side'>('Perspective')
+  const [showGrid, setShowGrid] = useState(true)
+
+  const objectCount = 24 + sceneBlocks.length * 3
+  const instanceCount = 156 + sceneBlocks.length * 12
+
+  return (
+    <div
+      className="flex-1 relative overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #0A1628 0%, #0D1F3C 35%, #111827 100%)' }}
+    >
+      {/* Sky gradient */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'linear-gradient(180deg, #0D1B38 0%, #152444 40%, transparent 70%)',
+      }} />
+
+      {/* Stars */}
+      {([
+        [8,6],[15,3],[22,8],[31,2],[38,7],[45,4],[55,3],[63,7],[70,2],[78,5],[85,8],[92,4],
+        [12,14],[28,11],[42,15],[58,12],[73,9],[88,13],
+      ] as [number,number][]).map(([sx, sy], i) => (
+        <div key={i} className="absolute rounded-full bg-white pointer-events-none" style={{
+          left: `${sx}%`, top: `${sy}%`,
+          width: i % 3 === 0 ? '2px' : '1px',
+          height: i % 3 === 0 ? '2px' : '1px',
+          opacity: 0.3 + (i % 4) * 0.12,
+        }} />
+      ))}
+
+      {/* Ground plane */}
+      <div className="absolute pointer-events-none" style={{
+        left: '5%', top: '28%',
+        width: '90%', height: '50%',
+        background: 'linear-gradient(135deg, #1A4731 0%, #14532D 40%, #166534 100%)',
+        transform: 'perspective(600px) rotateX(55deg) rotateZ(-2deg)',
+        transformOrigin: 'top center',
+        borderRadius: '4px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+      }} />
+
+      {/* Grid overlay on ground */}
+      {showGrid && (
+        <div className="absolute pointer-events-none" style={{
+          left: '5%', top: '28%',
+          width: '90%', height: '50%',
+          transform: 'perspective(600px) rotateX(55deg) rotateZ(-2deg)',
+          transformOrigin: 'top center',
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
+          backgroundSize: '10% 10%',
+        }} />
       )}
 
-      {/* Top HUD bar */}
-      <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-        {/* Scene info */}
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] text-gray-500"
-            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1"/>
-              <path d="M4 4h4M4 6h2.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-            </svg>
-            No scene loaded
-          </div>
-        </div>
-        {/* Studio connection */}
+      {/* Water / river */}
+      <div className="absolute pointer-events-none" style={{
+        left: '38%', top: '55%',
+        width: '24%', height: '7%',
+        background: 'linear-gradient(90deg, #1D4ED8 0%, #2563EB 50%, #1D4ED8 100%)',
+        transform: 'perspective(600px) rotateX(55deg) rotateZ(-2deg)',
+        transformOrigin: 'top center',
+        opacity: 0.85,
+        borderRadius: '2px',
+        boxShadow: 'inset 0 1px 4px rgba(147,197,253,0.3)',
+      }} />
+
+      {/* Scene objects */}
+      <div className="absolute pointer-events-none" style={{ left: '10%', top: '14%', width: '80%', height: '65%' }}>
+        {SCENE_BASE_OBJECTS.filter(o => o.type === 'building').map(o => (
+          <IsometricBuilding
+            key={o.id}
+            color={(o as {color:string}).color}
+            darkColor={(o as {darkColor:string}).darkColor}
+            topColor={(o as {topColor:string}).topColor}
+            x={o.x} y={o.y}
+            w={(o as {w:number}).w} h={(o as {h:number}).h}
+            spawned={false}
+          />
+        ))}
+        {sceneBlocks.map(b => (
+          <IsometricBuilding
+            key={b.id}
+            color={b.color}
+            darkColor={b.darkColor}
+            topColor={b.topColor}
+            x={b.x} y={b.y}
+            w={b.w} h={b.h}
+            spawned={b.spawned}
+          />
+        ))}
+        {SCENE_BASE_OBJECTS.filter(o => o.type === 'tree').map(o => (
+          <IsometricTree key={o.id} x={o.x} y={o.y} size={(o as {size:number}).size} />
+        ))}
+      </div>
+
+      {/* Bottom fog */}
+      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
+        height: '20%',
+        background: 'linear-gradient(0deg, rgba(6,8,15,0.7) 0%, transparent 100%)',
+      }} />
+
+      {/* TOP-LEFT: connection status */}
+      <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-auto">
         <div
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg pointer-events-auto"
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.06)' }}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px]"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-yellow-500/50" />
-          <span className="text-[10px] text-gray-500 font-medium">Studio offline</span>
+          <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+          <span className="text-gray-400 font-medium">Studio Not Connected</span>
+        </div>
+        <button
+          className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors text-left px-1"
+          style={{ lineHeight: '1' }}
+        >
+          Connect Studio &rarr;
+        </button>
+      </div>
+
+      {/* TOP-RIGHT: view mode + grid + zoom */}
+      <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end pointer-events-auto">
+        <div
+          className="flex gap-0.5 rounded-lg overflow-hidden"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          {(['Perspective', 'Top', 'Front', 'Side'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setActiveView(mode)}
+              className="px-2.5 py-1.5 text-[10px] font-medium transition-colors"
+              style={{
+                color: activeView === mode ? '#FFB81C' : '#6B7280',
+                background: activeView === mode ? 'rgba(255,184,28,0.12)' : 'transparent',
+              }}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setShowGrid(g => !g)}
+            className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors"
+            style={{
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(8px)',
+              border: `1px solid ${showGrid ? 'rgba(255,184,28,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              color: showGrid ? '#FFB81C' : '#6B7280',
+            }}
+          >
+            Show Grid
+          </button>
+          <div
+            className="flex gap-0.5 rounded-lg overflow-hidden"
+            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <button className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-white transition-colors text-sm font-bold">−</button>
+            <div className="w-px self-stretch bg-white/8" />
+            <button className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-white transition-colors text-sm font-bold">+</button>
+          </div>
         </div>
       </div>
 
-      {/* Bottom viewport toolbar */}
+      {/* BOTTOM-LEFT: stats */}
+      <div
+        className="absolute bottom-3 left-3 pointer-events-none"
+        style={{
+          background: 'rgba(0,0,0,0.55)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: '8px',
+          padding: '6px 10px',
+        }}
+      >
+        <span className="text-[10px] font-mono" style={{ color: '#9CA3AF' }}>
+          Objects: <span style={{ color: '#E5E7EB' }}>{objectCount}</span>
+          &nbsp;|&nbsp;Instances: <span style={{ color: '#E5E7EB' }}>{instanceCount}</span>
+          &nbsp;|&nbsp;FPS: <span style={{ color: '#4ADE80' }}>60</span>
+        </span>
+      </div>
+
+      {/* BOTTOM-CENTER: viewport toolbar */}
       <div
         className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-xl pointer-events-auto"
         style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         {[
-          { label: 'Pan',    icon: 'M5 1v10M1 5h10', type: 'path' },
-          { label: 'Orbit',  icon: 'M6 1a5 5 0 100 10A5 5 0 006 1zM1 6h10', type: 'path' },
-          { label: 'Zoom',   icon: 'M5 2a3 3 0 100 6A3 3 0 005 2zM9 9l2 2', type: 'path' },
-          { label: 'Reset',  icon: 'M2 6a4 4 0 014-4 4 4 0 014 4M10 2l2 2-2 2', type: 'path' },
+          { label: 'Pan',   icon: 'M5 1v10M1 5h10' },
+          { label: 'Orbit', icon: 'M6 1a5 5 0 100 10A5 5 0 006 1zM1 6h10' },
+          { label: 'Zoom',  icon: 'M5 2a3 3 0 100 6A3 3 0 005 2zM9 9l2 2' },
+          { label: 'Reset', icon: 'M2 6a4 4 0 014-4 4 4 0 014 4M10 2l2 2-2 2' },
         ].map(({ label, icon }) => (
           <button
             key={label}
@@ -822,6 +1052,7 @@ export function EditorClient() {
   const [loading, setLoading] = useState(false)
   const [activePanel, setActivePanel] = useState<PanelId>(null)
   const [hasGame] = useState(false)
+  const [sceneBlocks, setSceneBlocks] = useState<SceneBlock[]>([])
   const [totalTokens, setTotalTokens] = useState(0)
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -901,6 +1132,24 @@ export function EditorClient() {
         if (!responseText) responseText = getDemoResponse(trimmed)
 
         setTotalTokens((prev) => prev + tokensUsed)
+
+        // Spawn a new block in the viewport for each AI response
+        setSceneBlocks((prev) => {
+          const idx = prev.length % SPAWN_SLOTS.length
+          const colorIdx = prev.length % SPAWN_COLORS.length
+          const slot = SPAWN_SLOTS[idx]
+          const palette = SPAWN_COLORS[colorIdx]
+          const newBlock: SceneBlock = {
+            id: uid(),
+            ...palette,
+            x: slot.x,
+            y: slot.y,
+            w: 28 + (prev.length % 3) * 10,
+            h: 20 + (prev.length % 4) * 8,
+            spawned: true,
+          }
+          return [...prev, newBlock]
+        })
 
         setMessages((prev) => {
           const without = prev.filter((m) => m.id !== statusMsg.id)
@@ -992,11 +1241,16 @@ export function EditorClient() {
 
   return (
     <>
-      {/* Keyframe for typing bounce */}
+      {/* Keyframes */}
       <style>{`
         @keyframes typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
           30% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes block-spawn {
+          0%   { opacity: 0; transform: translateY(-20px) scale(0.7); }
+          60%  { opacity: 1; transform: translateY(4px) scale(1.04); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
 
@@ -1309,7 +1563,7 @@ export function EditorClient() {
 
             {/* ── RIGHT: Viewport ──────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-              <Viewport hasGame={hasGame} />
+              <Viewport sceneBlocks={sceneBlocks} />
             </div>
           </div>
 
