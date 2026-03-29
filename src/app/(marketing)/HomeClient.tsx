@@ -36,6 +36,26 @@ export default function HomeClient() {
       <p className="text-sm text-gray-600 mt-6">
         1,000 free tokens&nbsp;&nbsp;·&nbsp;&nbsp;No credit card&nbsp;&nbsp;·&nbsp;&nbsp;Works with Roblox Studio
       </p>
+
+      {/* Availability strip */}
+      <div className="mt-10 flex flex-col items-center gap-3">
+        <p className="text-xs text-gray-500 uppercase tracking-widest">Available as</p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/editor"
+            className="text-sm text-gray-300 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg transition-colors"
+          >
+            Web Editor
+          </Link>
+          <Link
+            href="/download"
+            className="text-sm text-gray-300 hover:text-white border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-lg transition-colors"
+          >
+            Desktop App ↓
+          </Link>
+        </div>
+        <p className="text-xs text-gray-600">Desktop connects directly to Roblox Studio.</p>
+      </div>
     </div>
   )
 }
