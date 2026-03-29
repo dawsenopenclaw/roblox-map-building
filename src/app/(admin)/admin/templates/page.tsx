@@ -161,7 +161,8 @@ export default function AdminTemplatesPage() {
         </div>
       ) : (
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl overflow-hidden">
-          <table className="w-full">
+          <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1c1c1c]">
                 {['Template', 'Creator', 'Category', 'Price', 'Submitted', 'Actions'].map((h) => (
@@ -186,6 +187,7 @@ export default function AdminTemplatesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

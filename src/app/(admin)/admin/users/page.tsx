@@ -146,8 +146,8 @@ export default function AdminUsersPage() {
 
       {/* Table */}
       <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1c1c1c]">
                 {['User', 'Tier', 'Role', 'Tokens', 'Joined', 'Status', 'Actions'].map((h) => (
