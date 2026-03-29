@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -55,6 +55,17 @@ function inferResult(text: string): string {
   return "Generated: Custom World"
 }
 
+// ─── SSR-safe browser check ───────────────────────────────────────────────────
+
+function isBrowser(): boolean {
+  return typeof window !== 'undefined'
+}
+
+function hasSpeechRecognition(): boolean {
+  if (!isBrowser()) return false
+  return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
+}
+
 // ─── Web Audio waveform ───────────────────────────────────────────────────────
 
 function AudioWaveform({
@@ -69,6 +80,9 @@ function AudioWaveform({
   const frameRef = useRef<number>(0)
 
   useEffect(() => {
+    // Guard: requestAnimationFrame is browser-only
+    if (!isBrowser()) return
+
     let running = true
 
     const tick = () => {
@@ -76,18 +90,21 @@ function AudioWaveform({
       const analyser = analyserRef.current
 
       if (analyser && active) {
-        const data = new Uint8Array(analyser.frequencyBinCount)
-        analyser.getByteFrequencyData(data)
-        const step = Math.floor(data.length / BARS)
+        try {
+          const data = new Uint8Array(analyser.frequencyBinCount)
+          analyser.getByteFrequencyData(data)
+          const step = Math.floor(data.length / BARS)
 
-        barsRef.current.forEach((el, i) => {
-          if (!el) return
-          const raw = data[i * step] ?? 0
-          // map 0-255 → 4-48px, add slight smoothing
-          const h = 4 + (raw / 255) * 44
-          el.style.height = `${h}px`
-          el.style.opacity = raw > 10 ? '1' : '0.35'
-        })
+          barsRef.current.forEach((el, i) => {
+            if (!el) return
+            const raw = data[i * step] ?? 0
+            const h = 4 + (raw / 255) * 44
+            el.style.height = `${h}px`
+            el.style.opacity = raw > 10 ? '1' : '0.35'
+          })
+        } catch {
+          // AudioContext may be closed — fall through to idle animation
+        }
       } else {
         // Breathing idle animation
         const t = Date.now() / 1000
@@ -240,7 +257,7 @@ function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
         </svg>
       ),
       title: "Describe your world",
-      desc: "Say things like \"build a medieval castle\" or \"add a dense forest\"",
+      desc: 'Say things like "build a medieval castle" or "add a dense forest"',
     },
     {
       icon: (
@@ -275,8 +292,8 @@ function TutorialOverlay({ onDismiss }: { onDismiss: () => void }) {
           {steps.map((_, i) => (
             <div
               key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i === step ? 'bg-[#FFB81C] w-6' : 'bg-white/20'
+              className={`h-2 rounded-full transition-all duration-300 ${
+                i === step ? 'bg-[#FFB81C] w-6' : 'bg-white/20 w-2'
               }`}
             />
           ))}
@@ -343,6 +360,22 @@ function TokenCounter({ live, total, running }: { live: number; total: number; r
   )
 }
 
+// ─── Demo mode banner ─────────────────────────────────────────────────────────
+
+function DemoBanner() {
+  return (
+    <div className="mx-6 mb-3 px-3 py-2 bg-amber-500/8 border border-amber-500/20 rounded-xl flex items-center gap-2">
+      <svg className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <p className="text-xs text-amber-400/80">
+        Voice input unavailable in this browser — use the text box below to demo builds.
+      </p>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VoicePage() {
@@ -355,19 +388,46 @@ export default function VoicePage() {
   const [liveTokens, setLiveTokens] = useState(0)
   const [totalTokens, setTotalTokens] = useState(0)
   const [buildStep, setBuildStep] = useState(0)
-  const [showTutorial, setShowTutorial] = useState(true)
+  // Tutorial: shown first visit, hidden once dismissed (persisted in localStorage)
+  const [showTutorial, setShowTutorial] = useState(false)
   const [typeInput, setTypeInput] = useState('')
+  // Resolved client-side after hydration to avoid SSR mismatch
+  const [speechSupported, setSpeechSupported] = useState<boolean | null>(null)
 
   const recognitionRef = useRef<any>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const tokenIntervalRef = useRef<any>(null)
-  const stepIntervalRef = useRef<any>(null)
+  const tokenIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const stepIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Client-only init (runs once after hydration) ──────────────────────────
+  useEffect(() => {
+    const supported = hasSpeechRecognition()
+    setSpeechSupported(supported)
+
+    // Show tutorial only on first visit
+    try {
+      const seen = localStorage.getItem('voice_tutorial_seen')
+      if (!seen) setShowTutorial(true)
+    } catch {
+      setShowTutorial(true)
+    }
+  }, [])
+
+  const dismissTutorial = useCallback(() => {
+    setShowTutorial(false)
+    try {
+      localStorage.setItem('voice_tutorial_seen', '1')
+    } catch {
+      // localStorage may be blocked (private browsing) — ignore
+    }
+  }, [])
 
   // ── Audio context setup ──────────────────────────────────────────────────────
   const setupAudioContext = useCallback(async () => {
+    if (!isBrowser()) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
@@ -389,11 +449,17 @@ export default function VoicePage() {
   }, [])
 
   const teardownAudioContext = useCallback(() => {
-    sourceRef.current?.disconnect()
+    try {
+      sourceRef.current?.disconnect()
+    } catch { /* ignore */ }
     analyserRef.current = null
-    audioCtxRef.current?.close()
+    try {
+      audioCtxRef.current?.close()
+    } catch { /* ignore */ }
     audioCtxRef.current = null
-    streamRef.current?.getTracks().forEach(t => t.stop())
+    try {
+      streamRef.current?.getTracks().forEach(t => t.stop())
+    } catch { /* ignore */ }
     streamRef.current = null
   }, [])
 
@@ -401,8 +467,8 @@ export default function VoicePage() {
   useEffect(() => {
     if (!isBuilding) {
       setLiveTokens(0)
-      clearInterval(tokenIntervalRef.current)
-      clearInterval(stepIntervalRef.current)
+      if (tokenIntervalRef.current) clearInterval(tokenIntervalRef.current)
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
       return
     }
 
@@ -417,19 +483,23 @@ export default function VoicePage() {
     stepIntervalRef.current = setInterval(() => {
       s++
       setBuildStep(s)
-      if (s >= BUILD_STEPS.length - 1) clearInterval(stepIntervalRef.current)
+      if (s >= BUILD_STEPS.length - 1) {
+        if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
+      }
     }, 580)
 
     return () => {
-      clearInterval(tokenIntervalRef.current)
-      clearInterval(stepIntervalRef.current)
+      if (tokenIntervalRef.current) clearInterval(tokenIntervalRef.current)
+      if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
     }
   }, [isBuilding])
 
   // ── Speech recognition ────────────────────────────────────────────────────────
   const startListening = useCallback(async () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Speech recognition requires Chrome or Edge.')
+    if (!isBrowser()) return
+
+    if (!hasSpeechRecognition()) {
+      // Don't alert — DemoBanner already explains this; just return
       return
     }
 
@@ -488,9 +558,10 @@ export default function VoicePage() {
     const buildStart = Date.now()
     track('voice_build_started', { inputType: overrideText ? 'text' : 'voice', prompt: text.slice(0, 120) })
 
-    await new Promise(resolve => setTimeout(resolve, BUILD_STEPS.length * 600 + 400))
+    // Simulate build — no real API call required for demo
+    await new Promise<void>(resolve => setTimeout(resolve, BUILD_STEPS.length * 600 + 400))
 
-    const used = liveTokens || Math.floor(Math.random() * 180 + 60)
+    const used = Math.floor(Math.random() * 180 + 60)
     const resultLabel = inferResult(text)
     const entry: CommandEntry = {
       id: Date.now().toString(),
@@ -514,7 +585,7 @@ export default function VoicePage() {
     setInterimTranscript('')
     setIsBuilding(false)
     setBuildStep(0)
-  }, [transcript, interimTranscript, isListening, liveTokens, stopListening, track])
+  }, [transcript, interimTranscript, isListening, stopListening, track])
 
   const handleUndo = (id: string) => {
     setCommands(prev => prev.filter(c => c.id !== id))
@@ -535,7 +606,7 @@ export default function VoicePage() {
       {/* Tutorial */}
       <AnimatePresence>
         {showTutorial && (
-          <TutorialOverlay onDismiss={() => setShowTutorial(false)} />
+          <TutorialOverlay onDismiss={dismissTutorial} />
         )}
       </AnimatePresence>
 
@@ -567,6 +638,9 @@ export default function VoicePage() {
               </button>
             </div>
           </div>
+
+          {/* Demo banner — only shown when speech is confirmed unsupported */}
+          {speechSupported === false && <DemoBanner />}
 
           {/* Mic section */}
           <div className="px-6 pt-8 pb-4 flex flex-col items-center">
@@ -613,9 +687,9 @@ export default function VoicePage() {
 
               <motion.button
                 onClick={micState === 'listening' ? stopListening : micState === 'idle' ? startListening : undefined}
-                disabled={micState === 'building'}
-                whileHover={micState !== 'building' ? { scale: 1.05 } : undefined}
-                whileTap={micState !== 'building' ? { scale: 0.95 } : undefined}
+                disabled={micState === 'building' || speechSupported === false}
+                whileHover={micState !== 'building' && speechSupported !== false ? { scale: 1.05 } : undefined}
+                whileTap={micState !== 'building' && speechSupported !== false ? { scale: 0.95 } : undefined}
                 animate={
                   micState === 'listening'
                     ? { boxShadow: ['0 0 0 0px rgba(255,184,28,0.3)', '0 0 0 12px rgba(255,184,28,0)'] }
@@ -625,10 +699,11 @@ export default function VoicePage() {
                 className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-colors duration-300 ${
                   micState === 'listening'
                     ? 'bg-[#FFB81C] cursor-pointer'
-                    : micState === 'building'
-                    ? 'bg-[#111640] cursor-not-allowed opacity-60'
+                    : micState === 'building' || speechSupported === false
+                    ? 'bg-[#111640] cursor-not-allowed opacity-40'
                     : 'bg-[#111640] border-2 border-[#FFB81C]/30 hover:border-[#FFB81C]/60 cursor-pointer'
                 }`}
+                title={speechSupported === false ? 'Voice not supported in this browser' : undefined}
               >
                 {micState === 'building' ? (
                   <svg className="w-9 h-9 text-[#FFB81C] animate-spin" fill="none" viewBox="0 0 24 24">
@@ -665,6 +740,8 @@ export default function VoicePage() {
                   <span className="text-[#FFB81C]">Building your world...</span>
                 ) : micState === 'listening' ? (
                   <span className="text-[#FFB81C]">Listening — tap to stop</span>
+                ) : speechSupported === false ? (
+                  <span className="text-gray-600">Type a command below</span>
                 ) : (
                   <span className="text-gray-500">Tap to speak</span>
                 )}
@@ -762,7 +839,7 @@ export default function VoicePage() {
               <p className="text-gray-700 text-sm text-center py-6">No commands yet</p>
             ) : (
               <div className="space-y-2">
-                <AnimatePresence>
+                <AnimatePresence initial={false}>
                   {commands.map((cmd) => (
                     <motion.div
                       key={cmd.id}
