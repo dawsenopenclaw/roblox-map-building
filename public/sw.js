@@ -1,4 +1,3 @@
-const CACHE_NAME = 'robloxforge-v1'
 const STATIC_CACHE = 'robloxforge-static-v1'
 const API_CACHE = 'robloxforge-api-v1'
 const OFFLINE_URL = '/offline'
@@ -22,9 +21,8 @@ self.addEventListener('install', (event) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
         console.warn('[SW] Failed to cache some static assets:', err)
       })
-    })
+    }).then(() => self.skipWaiting())
   )
-  self.skipWaiting()
 })
 
 // ─── Activate ───────────────────────────────────────────────────────────────

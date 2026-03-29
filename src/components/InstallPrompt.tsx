@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Download, X } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -8,24 +8,44 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+// Module-level ref so the event survives re-renders and route changes
+// (beforeinstallprompt fires once per browser session)
+let _captured: BeforeInstallPromptEvent | null = null
+
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null)
   const [show, setShow] = useState(false)
+  const promptRef = useRef<BeforeInstallPromptEvent | null>(_captured)
 
   useEffect(() => {
+    const dismissed = localStorage.getItem('rf-install-dismissed') === 'true'
+    if (dismissed) return
+
     // Track visit count
     const visits = parseInt(localStorage.getItem('rf-visits') ?? '0', 10) + 1
     localStorage.setItem('rf-visits', String(visits))
 
-    // Only show from 2nd visit onward, and only if not dismissed
-    const dismissed = localStorage.getItem('rf-install-dismissed') === 'true'
-    if (visits < 2 || dismissed) return
+    function tryShow(e?: BeforeInstallPromptEvent) {
+      const prompt = e ?? _captured
+      if (!prompt) return
+      promptRef.current = prompt
+      _captured = prompt
+      if (visits >= 2) {
+        setShow(true)
+      }
+    }
+
+    // If we already captured the event in a previous render/visit, show now
+    if (_captured && visits >= 2) {
+      promptRef.current = _captured
+      setShow(true)
+      return
+    }
 
     const handler = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setShow(true)
+      const bip = e as BeforeInstallPromptEvent
+      _captured = bip
+      tryShow(bip)
     }
 
     window.addEventListener('beforeinstallprompt', handler)
@@ -33,14 +53,15 @@ export function InstallPrompt() {
   }, [])
 
   async function handleInstall() {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
+    const prompt = promptRef.current
+    if (!prompt) return
+    await prompt.prompt()
+    const { outcome } = await prompt.userChoice
     if (outcome === 'accepted') {
       localStorage.setItem('rf-install-dismissed', 'true')
     }
+    _captured = null
     setShow(false)
-    setDeferredPrompt(null)
   }
 
   function handleDismiss() {
