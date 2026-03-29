@@ -1,4 +1,4 @@
-import { RobloxForge } from './client'
+import { ForjeGames } from './client'
 
 export interface TerrainGenerateOptions {
   prompt: string
@@ -16,7 +16,7 @@ export interface TerrainBuild {
 }
 
 export class TerrainClient {
-  constructor(private rf: RobloxForge) {}
+  constructor(private rf: ForjeGames) {}
 
   /**
    * Generate a terrain map from a natural language prompt.
@@ -57,8 +57,8 @@ export class TerrainClient {
 }
 
 /**
- * Attach terrain methods to a RobloxForge instance.
+ * Attach terrain methods to a ForjeGames instance.
  */
-export function terrainPlugin(rf: RobloxForge) {
+export function terrainPlugin(rf: ForjeGames) {
   return new TerrainClient(rf)
 }

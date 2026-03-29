@@ -1,7 +1,7 @@
 {
-  "name": "@robloxforge/sdk",
+  "name": "@forjegames/sdk",
   "version": "1.0.0",
-  "description": "Official TypeScript SDK for the RobloxForge API",
+  "description": "Official TypeScript SDK for the ForjeGames API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -18,8 +18,8 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["roblox", "robloxforge", "sdk", "api", "game-development"],
-  "author": "RobloxForge <dev@robloxforge.com>",
+  "keywords": ["roblox", "forjegames", "sdk", "api", "game-development"],
+  "author": "ForjeGames <dev@forjegames.com>",
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {

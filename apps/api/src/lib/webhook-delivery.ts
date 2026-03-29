@@ -53,8 +53,8 @@ export function buildSignature(secret: string, timestampSeconds: number, rawBody
  * Verify an inbound webhook signature.
  *
  * @param secret        The shared webhook secret
- * @param signature     Value of the X-RobloxForge-Signature header
- * @param timestamp     Value of the X-RobloxForge-Timestamp header (Unix seconds)
+ * @param signature     Value of the X-ForjeGames-Signature header
+ * @param timestamp     Value of the X-ForjeGames-Timestamp header (Unix seconds)
  * @param rawBody       Raw request body string (before JSON.parse)
  * @param toleranceSec  Maximum age of the request in seconds (default 300)
  */
@@ -117,13 +117,13 @@ export async function attemptDelivery(opts: SingleDeliveryOptions): Promise<Sing
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-RobloxForge-Signature': signature,
-        'X-RobloxForge-Timestamp': String(timestampSeconds),
-        'X-RobloxForge-Event': payload.event,
-        'X-RobloxForge-Delivery': payload.id,
-        'X-RobloxForge-Idempotency-Key': idempotencyKey,
-        'X-RobloxForge-Attempt': String(attempt),
-        'User-Agent': 'RobloxForge-Webhooks/1.0',
+        'X-ForjeGames-Signature': signature,
+        'X-ForjeGames-Timestamp': String(timestampSeconds),
+        'X-ForjeGames-Event': payload.event,
+        'X-ForjeGames-Delivery': payload.id,
+        'X-ForjeGames-Idempotency-Key': idempotencyKey,
+        'X-ForjeGames-Attempt': String(attempt),
+        'User-Agent': 'ForjeGames-Webhooks/1.0',
       },
       body: rawBody,
       signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),

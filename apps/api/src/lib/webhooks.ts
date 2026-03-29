@@ -37,9 +37,9 @@ async function deliverWebhook(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-RobloxForge-Signature': `sha256=${signature}`,
-        'X-RobloxForge-Event': payload.event,
-        'X-RobloxForge-Delivery': payload.id,
+        'X-ForjeGames-Signature': `sha256=${signature}`,
+        'X-ForjeGames-Event': payload.event,
+        'X-ForjeGames-Delivery': payload.id,
       },
       body,
       signal: AbortSignal.timeout(10_000),

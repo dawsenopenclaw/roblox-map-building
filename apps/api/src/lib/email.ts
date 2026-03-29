@@ -25,8 +25,8 @@ export interface SendEmailOptions {
 }
 
 const RESEND_API_URL = 'https://api.resend.com/emails'
-const FROM_ADDRESS = 'noreply@robloxforge.com'
-const FROM_NAME = 'RobloxForge'
+const FROM_ADDRESS = 'noreply@forjegames.com'
+const FROM_NAME = 'ForjeGames'
 
 /**
  * Send a single transactional email via Resend.
@@ -113,9 +113,9 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
 </head>
 <body>
   <div class="container">
-    <div class="logo">RobloxForge</div>
+    <div class="logo">ForjeGames</div>
     <div class="card">${body}</div>
-    <div class="footer">RobloxForge &bull; <a href="https://robloxforge.com/unsubscribe" style="color:#4B5563">Unsubscribe</a></div>
+    <div class="footer">ForjeGames &bull; <a href="https://forjegames.com/unsubscribe" style="color:#4B5563">Unsubscribe</a></div>
   </div>
 </body>
 </html>`
@@ -123,10 +123,10 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
   switch (template) {
     case 'welcome':
       return base(
-        'Welcome to RobloxForge',
+        'Welcome to ForjeGames',
         `<h1>Welcome, ${data.name ?? 'Creator'}!</h1>
-         <p>You're now part of the RobloxForge community. Build amazing Roblox games with AI-powered tools.</p>
-         <a href="https://robloxforge.com/dashboard" class="btn">Go to Dashboard</a>`
+         <p>You're now part of the ForjeGames community. Build amazing Roblox games with AI-powered tools.</p>
+         <a href="https://forjegames.com/dashboard" class="btn">Go to Dashboard</a>`
       )
 
     case 'verification':
@@ -142,7 +142,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
       return base(
         'Parental consent required',
         `<h1>Parental Consent Required</h1>
-         <p>Your child has signed up for RobloxForge. Please review and approve their account.</p>
+         <p>Your child has signed up for ForjeGames. Please review and approve their account.</p>
          <a href="${data.consentUrl}" class="btn">Review & Approve</a>`
       )
 
@@ -151,7 +151,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         'Your build is ready!',
         `<h1>Build Complete!</h1>
          <p>Your map "<strong>${data.buildName ?? 'Untitled'}</strong>" has finished processing.</p>
-         <a href="${data.downloadUrl ?? 'https://robloxforge.com/dashboard'}" class="btn">Download Build</a>`
+         <a href="${data.downloadUrl ?? 'https://forjegames.com/dashboard'}" class="btn">Download Build</a>`
       )
 
     case 'token-low':
@@ -159,7 +159,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         'Your token balance is low',
         `<h1>Tokens Running Low</h1>
          <p>You have <strong>${data.balance ?? 0} tokens</strong> remaining. Top up to keep building.</p>
-         <a href="https://robloxforge.com/tokens" class="btn">Buy Tokens</a>`
+         <a href="https://forjegames.com/tokens" class="btn">Buy Tokens</a>`
       )
 
     case 'sale-notification':
@@ -168,7 +168,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         `<h1>You made a sale!</h1>
          <p>"${data.templateName}" was purchased for <strong>$${data.amount}</strong>.</p>
          <p>Your earnings: <strong>$${data.net}</strong> (after platform fee).</p>
-         <a href="https://robloxforge.com/earnings" class="btn">View Earnings</a>`
+         <a href="https://forjegames.com/earnings" class="btn">View Earnings</a>`
       )
 
     case 'weekly-digest':
@@ -181,7 +181,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
            <li>${data.sales ?? 0} template sales</li>
            <li>$${data.revenue ?? '0.00'} earned</li>
          </ul>
-         <a href="https://robloxforge.com/dashboard" class="btn">View Dashboard</a>`
+         <a href="https://forjegames.com/dashboard" class="btn">View Dashboard</a>`
       )
 
     case 're-engagement-day7':
@@ -189,7 +189,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         "We miss you!",
         `<h1>It's been a week...</h1>
          <p>You haven't built anything in 7 days. Jump back in — your next map is waiting.</p>
-         <a href="https://robloxforge.com/dashboard" class="btn">Start Building</a>`
+         <a href="https://forjegames.com/dashboard" class="btn">Start Building</a>`
       )
 
     case 're-engagement-day30':
@@ -197,7 +197,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         'Come back and build something amazing',
         `<h1>Long time no see!</h1>
          <p>It's been 30 days since your last build. We've added new features you'll love.</p>
-         <a href="https://robloxforge.com/dashboard" class="btn">See What's New</a>`
+         <a href="https://forjegames.com/dashboard" class="btn">See What's New</a>`
       )
 
     case 'referral-earned':
@@ -205,15 +205,15 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         'Referral bonus earned!',
         `<h1>You earned a referral bonus!</h1>
          <p>Someone signed up using your referral link. You've received <strong>100 tokens</strong>.</p>
-         <a href="https://robloxforge.com/referrals" class="btn">View Referrals</a>`
+         <a href="https://forjegames.com/referrals" class="btn">View Referrals</a>`
       )
 
     case 'featured-creator':
       return base(
         "You're a featured creator!",
         `<h1>Congratulations!</h1>
-         <p>Your templates have been featured on the RobloxForge marketplace.</p>
-         <a href="https://robloxforge.com/marketplace" class="btn">View Marketplace</a>`
+         <p>Your templates have been featured on the ForjeGames marketplace.</p>
+         <a href="https://forjegames.com/marketplace" class="btn">View Marketplace</a>`
       )
 
     case 'charity-update':
@@ -221,10 +221,10 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
         'Your charity contribution',
         `<h1>Impact Update</h1>
          <p>Your purchase contributed <strong>$${data.amount}</strong> to <strong>${data.charity}</strong>.</p>
-         <a href="https://robloxforge.com/charity" class="btn">See Your Impact</a>`
+         <a href="https://forjegames.com/charity" class="btn">See Your Impact</a>`
       )
 
     default:
-      return base('RobloxForge', `<h1>Notification</h1><p>You have a new notification from RobloxForge.</p>`)
+      return base('ForjeGames', `<h1>Notification</h1><p>You have a new notification from ForjeGames.</p>`)
   }
 }

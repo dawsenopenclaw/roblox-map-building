@@ -1,4 +1,4 @@
-import { RobloxForge } from './client'
+import { ForjeGames } from './client'
 
 export interface MarketplaceSearchOptions {
   query?: string
@@ -31,7 +31,7 @@ export interface MarketplaceSearchResult {
 }
 
 export class MarketplaceClient {
-  constructor(private rf: RobloxForge) {}
+  constructor(private rf: ForjeGames) {}
 
   /**
    * Search templates on the marketplace.
@@ -77,6 +77,6 @@ export class MarketplaceClient {
   }
 }
 
-export function marketplacePlugin(rf: RobloxForge) {
+export function marketplacePlugin(rf: ForjeGames) {
   return new MarketplaceClient(rf)
 }

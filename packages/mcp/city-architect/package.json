@@ -1,5 +1,5 @@
 {
-  "name": "@robloxforge/mcp-city-architect",
+  "name": "@forjegames/mcp-city-architect",
   "version": "1.0.0",
   "description": "MCP server for AI-driven Roblox city layout generation",
   "main": "dist/index.js",

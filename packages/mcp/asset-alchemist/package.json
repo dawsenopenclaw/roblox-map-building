@@ -1,5 +1,5 @@
 {
-  "name": "@robloxforge/mcp-asset-alchemist",
+  "name": "@forjegames/mcp-asset-alchemist",
   "version": "1.0.0",
   "description": "MCP server for AI-driven Roblox 3D asset and texture generation",
   "main": "dist/index.js",

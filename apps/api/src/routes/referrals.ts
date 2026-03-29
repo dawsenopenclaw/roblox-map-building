@@ -43,7 +43,7 @@ referralRoutes.get('/stats', requireAuth, async (c) => {
 
   return c.json({
     code: myCode,
-    referralUrl: `https://robloxforge.com/ref/${myCode}`,
+    referralUrl: `https://forjegames.com/ref/${myCode}`,
     stats: {
       total: referrals.length,
       converted: converted.length,

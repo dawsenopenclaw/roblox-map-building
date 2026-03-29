@@ -1,5 +1,5 @@
 {
-  "name": "@robloxforge/mcp-terrain-forge",
+  "name": "@forjegames/mcp-terrain-forge",
   "version": "1.0.0",
   "description": "MCP server for AI-driven Roblox terrain generation",
   "main": "dist/index.js",

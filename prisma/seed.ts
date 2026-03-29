@@ -357,11 +357,11 @@ async function main() {
 
   // Dawsen Porter — admin, Mythic, Studio
   const dawsen = await prisma.user.upsert({
-    where: { email: 'dawsen@robloxforge.dev' },
+    where: { email: 'dawsen@forjegames.dev' },
     update: {},
     create: {
       clerkId: 'demo_clerk_dawsen_001',
-      email: 'dawsen@robloxforge.dev',
+      email: 'dawsen@forjegames.dev',
       username: 'dawsenporter',
       displayName: 'Dawsen Porter',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=dawsen',
@@ -372,11 +372,11 @@ async function main() {
 
   // Alex Chen — Creator tier, Builder rank
   const alex = await prisma.user.upsert({
-    where: { email: 'alex.chen@demo.robloxforge.dev' },
+    where: { email: 'alex.chen@demo.forjegames.dev' },
     update: {},
     create: {
       clerkId: 'demo_clerk_alexchen_002',
-      email: 'alex.chen@demo.robloxforge.dev',
+      email: 'alex.chen@demo.forjegames.dev',
       username: 'alexbuilds',
       displayName: 'Alex Chen',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alexchen',
@@ -387,11 +387,11 @@ async function main() {
 
   // Sarah Kim — Hobby tier, Apprentice rank, new
   const sarah = await prisma.user.upsert({
-    where: { email: 'sarah.kim@demo.robloxforge.dev' },
+    where: { email: 'sarah.kim@demo.forjegames.dev' },
     update: {},
     create: {
       clerkId: 'demo_clerk_sarahkim_003',
-      email: 'sarah.kim@demo.robloxforge.dev',
+      email: 'sarah.kim@demo.forjegames.dev',
       username: 'sarahkimdev',
       displayName: 'Sarah Kim',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarahkim',
@@ -402,11 +402,11 @@ async function main() {
 
   // Marcus Johnson — Studio tier, Legend rank, top creator
   const marcus = await prisma.user.upsert({
-    where: { email: 'marcus.johnson@demo.robloxforge.dev' },
+    where: { email: 'marcus.johnson@demo.forjegames.dev' },
     update: {},
     create: {
       clerkId: 'demo_clerk_marcusj_004',
-      email: 'marcus.johnson@demo.robloxforge.dev',
+      email: 'marcus.johnson@demo.forjegames.dev',
       username: 'marcusjbuilds',
       displayName: 'Marcus Johnson',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marcus',
@@ -417,11 +417,11 @@ async function main() {
 
   // Luna Rodriguez — Free tier, Novice rank
   const luna = await prisma.user.upsert({
-    where: { email: 'luna.rodriguez@demo.robloxforge.dev' },
+    where: { email: 'luna.rodriguez@demo.forjegames.dev' },
     update: {},
     create: {
       clerkId: 'demo_clerk_lunar_005',
-      email: 'luna.rodriguez@demo.robloxforge.dev',
+      email: 'luna.rodriguez@demo.forjegames.dev',
       username: 'lunarod',
       displayName: 'Luna Rodriguez',
       avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=luna',
@@ -1432,7 +1432,7 @@ async function main() {
     {
       user: sarah,
       type: 'SYSTEM' as const,
-      title: 'Welcome to RobloxForge!',
+      title: 'Welcome to ForjeGames!',
       body: 'Your account is set up and ready. Start your first build or explore the marketplace.',
       read: true,
       daysBack: 14,
@@ -1440,7 +1440,7 @@ async function main() {
     {
       user: luna,
       type: 'SYSTEM' as const,
-      title: 'Welcome to RobloxForge!',
+      title: 'Welcome to ForjeGames!',
       body: 'Your account is set up and ready. Start your first build or explore the marketplace.',
       read: false,
       daysBack: 7,

@@ -18,7 +18,7 @@ import { z } from 'zod'
 // ---------------------------------------------------------------------------
 
 export const WebhookEnvelopeSchema = z.object({
-  /** Unique delivery ID (hex string). Matches X-RobloxForge-Delivery header. */
+  /** Unique delivery ID (hex string). Matches X-ForjeGames-Delivery header. */
   id: z.string(),
   /** Event name */
   event: z.string(),
@@ -176,7 +176,7 @@ export const WEBHOOK_EVENT_CATALOG: Record<WebhookEvent, WebhookEventDefinition>
       projectId: 'proj_xyz789',
       userId: 'usr_abc123',
       durationMs: 12340,
-      outputUrl: 'https://cdn.robloxforge.com/builds/bld_abc123.rbxl',
+      outputUrl: 'https://cdn.forjegames.com/builds/bld_abc123.rbxl',
       templateId: 'tpl_abc123',
       tokensUsed: 150,
     },

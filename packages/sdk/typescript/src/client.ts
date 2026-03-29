@@ -1,4 +1,4 @@
-export interface RobloxForgeConfig {
+export interface ForjeGamesConfig {
   apiKey: string
   baseUrl?: string
   timeout?: number
@@ -10,15 +10,15 @@ export interface ApiResponse<T = unknown> {
   status: number
 }
 
-export class RobloxForge {
+export class ForjeGames {
   private apiKey: string
   private baseUrl: string
   private timeout: number
 
-  constructor(config: RobloxForgeConfig) {
+  constructor(config: ForjeGamesConfig) {
     if (!config.apiKey) throw new Error('apiKey is required')
     this.apiKey = config.apiKey
-    this.baseUrl = config.baseUrl ?? 'https://api.robloxforge.com'
+    this.baseUrl = config.baseUrl ?? 'https://api.forjegames.com'
     this.timeout = config.timeout ?? 30_000
   }
 
@@ -36,7 +36,7 @@ export class RobloxForge {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
-          'User-Agent': '@robloxforge/sdk/1.0.0',
+          'User-Agent': '@forjegames/sdk/1.0.0',
         },
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,

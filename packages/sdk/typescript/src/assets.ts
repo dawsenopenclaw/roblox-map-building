@@ -1,4 +1,4 @@
-import { RobloxForge } from './client'
+import { ForjeGames } from './client'
 
 export interface AssetGenerateOptions {
   prompt: string
@@ -17,7 +17,7 @@ export interface GeneratedAsset {
 }
 
 export class AssetsClient {
-  constructor(private rf: RobloxForge) {}
+  constructor(private rf: ForjeGames) {}
 
   /**
    * Generate an asset from a text prompt.
@@ -38,6 +38,6 @@ export class AssetsClient {
   }
 }
 
-export function assetsPlugin(rf: RobloxForge) {
+export function assetsPlugin(rf: ForjeGames) {
   return new AssetsClient(rf)
 }

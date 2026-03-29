@@ -1,5 +1,5 @@
 /**
- * RobloxForge Webhook Signature Verification Helper
+ * ForjeGames Webhook Signature Verification Helper
  *
  * Copy this file into your project to verify incoming webhook signatures.
  * No external dependencies required — uses Node.js built-in `crypto`.
@@ -8,11 +8,11 @@
  *
  *   import { verifyWebhookSignature } from './webhook-signature-verification'
  *
- *   app.post('/webhooks/robloxforge', express.raw({ type: 'application/json' }), (req, res) => {
+ *   app.post('/webhooks/forjegames', express.raw({ type: 'application/json' }), (req, res) => {
  *     const isValid = verifyWebhookSignature({
  *       secret:    process.env.ROBLOXFORGE_WEBHOOK_SECRET!,
- *       signature: req.headers['x-robloxforge-signature'] as string,
- *       timestamp: req.headers['x-robloxforge-timestamp'] as string,
+ *       signature: req.headers['x-forjegames-signature'] as string,
+ *       timestamp: req.headers['x-forjegames-timestamp'] as string,
  *       rawBody:   req.body.toString('utf-8'),   // MUST be the raw, unparsed body string
  *     })
  *
@@ -38,13 +38,13 @@ export interface VerifyOptions {
   secret: string
 
   /**
-   * Value of the `X-RobloxForge-Signature` header.
+   * Value of the `X-ForjeGames-Signature` header.
    * Format: `sha256=<64-char hex string>`
    */
   signature: string
 
   /**
-   * Value of the `X-RobloxForge-Timestamp` header.
+   * Value of the `X-ForjeGames-Timestamp` header.
    * Unix epoch in seconds (string).
    */
   timestamp: string
@@ -67,7 +67,7 @@ export interface VerifyOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Verify a RobloxForge webhook signature.
+ * Verify a ForjeGames webhook signature.
  *
  * Returns `true` if the signature is valid and the request is not older than
  * `toleranceSec` seconds.  Returns `false` otherwise — treat as unauthorized.
@@ -117,7 +117,7 @@ export type WebhookEvent =
   | 'achievement.unlocked'
 
 export interface WebhookPayload<T = Record<string, unknown>> {
-  /** Unique delivery ID — matches the X-RobloxForge-Delivery header */
+  /** Unique delivery ID — matches the X-ForjeGames-Delivery header */
   id: string
   /** Event name */
   event: WebhookEvent
@@ -218,13 +218,13 @@ export interface AchievementUnlockedData {
 /**
  * Headers sent with every webhook delivery:
  *
- * X-RobloxForge-Signature      sha256=<hmac-hex>
- * X-RobloxForge-Timestamp      Unix epoch seconds (string)
- * X-RobloxForge-Event          e.g. "build.completed"
- * X-RobloxForge-Delivery       Unique delivery ID (matches payload.id)
- * X-RobloxForge-Idempotency-Key  Stable key per delivery attempt group — use for dedup
- * X-RobloxForge-Attempt        Attempt number (1 = first, 2 = first retry, …)
- * User-Agent                   RobloxForge-Webhooks/1.0
+ * X-ForjeGames-Signature      sha256=<hmac-hex>
+ * X-ForjeGames-Timestamp      Unix epoch seconds (string)
+ * X-ForjeGames-Event          e.g. "build.completed"
+ * X-ForjeGames-Delivery       Unique delivery ID (matches payload.id)
+ * X-ForjeGames-Idempotency-Key  Stable key per delivery attempt group — use for dedup
+ * X-ForjeGames-Attempt        Attempt number (1 = first, 2 = first retry, …)
+ * User-Agent                   ForjeGames-Webhooks/1.0
  *
  * Retry schedule (on non-2xx or timeout):
  *   Attempt 1 — immediate
@@ -233,13 +233,13 @@ export interface AchievementUnlockedData {
  *   Attempt 4 — after 300 seconds
  *   After attempt 4 — delivery is dead-lettered, no more retries
  *
- * Use X-RobloxForge-Idempotency-Key to detect and discard duplicate deliveries.
+ * Use X-ForjeGames-Idempotency-Key to detect and discard duplicate deliveries.
  */
 export const WEBHOOK_HEADERS = {
-  SIGNATURE: 'x-robloxforge-signature',
-  TIMESTAMP: 'x-robloxforge-timestamp',
-  EVENT: 'x-robloxforge-event',
-  DELIVERY: 'x-robloxforge-delivery',
-  IDEMPOTENCY_KEY: 'x-robloxforge-idempotency-key',
-  ATTEMPT: 'x-robloxforge-attempt',
+  SIGNATURE: 'x-forjegames-signature',
+  TIMESTAMP: 'x-forjegames-timestamp',
+  EVENT: 'x-forjegames-event',
+  DELIVERY: 'x-forjegames-delivery',
+  IDEMPOTENCY_KEY: 'x-forjegames-idempotency-key',
+  ATTEMPT: 'x-forjegames-attempt',
 } as const

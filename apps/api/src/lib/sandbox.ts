@@ -33,7 +33,7 @@ export async function runInSandbox(
   { timeoutMs = 5000, memoryLimitMb = 128 }: { timeoutMs?: number; memoryLimitMb?: number } = {}
 ): Promise<SandboxResult> {
   // Write code to a temp file (Deno requires a file path)
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'robloxforge-sandbox-'))
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'forjegames-sandbox-'))
   const tempFile = path.join(tempDir, `${crypto.randomBytes(8).toString('hex')}.ts`)
 
   try {
