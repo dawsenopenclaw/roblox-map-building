@@ -104,9 +104,9 @@ const ASSET_DETAILS: Record<string, AssetDetail> = {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = params
+  const { id } = await params
   const detail = ASSET_DETAILS[id]
 
   if (!detail) {

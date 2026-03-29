@@ -1113,7 +1113,7 @@ function GenerateSubPanel() {
   )
 }
 
-function AssetsPanel() {
+function RobloxMarketplacePanel() {
   const [activeTab, setActiveTab] = useState<GenerateTab>('marketplace')
 
   const [query, setQuery] = useState('')
@@ -1184,6 +1184,27 @@ function AssetsPanel() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Tab switcher */}
+      <div className="flex shrink-0 border-b border-white/10">
+        {(['marketplace', 'generate'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={[
+              'flex-1 py-2.5 text-[11px] font-semibold transition-colors',
+              activeTab === tab ? 'border-b-2 border-[#FFB81C] text-[#FFB81C]' : 'text-gray-500 hover:text-gray-300',
+            ].join(' ')}
+          >
+            {tab === 'generate' ? '+ Generate' : 'Marketplace'}
+          </button>
+        ))}
+      </div>
+
+      {/* Generate tab */}
+      {activeTab === 'generate' && <GenerateSubPanel />}
+
+      {/* Marketplace tab — original marketplace content */}
+      {activeTab === 'marketplace' && <>
       {/* Controls */}
       <div className="flex-shrink-0 space-y-3 p-3">
         <div className="relative">
@@ -1289,6 +1310,294 @@ function AssetsPanel() {
       {/* Footer */}
       <div className="flex-shrink-0 border-t border-white/[0.06] px-3 py-2">
         <p className="text-center text-[9px] text-gray-700">Powered by Roblox Marketplace</p>
+      </div>
+      </>}
+    </div>
+  )
+}
+
+
+// ─── Community Assets Data ──────────────────────────────────────────────────
+
+interface CommunityAssetItem {
+  id: string
+  name: string
+  creator: string
+  downloads: number
+  rating: number
+  price: number | 'free'
+  category: 'renders' | 'models' | 'scripts' | 'ui-kits' | 'sound-packs'
+  gradientFrom: string
+  gradientTo: string
+  icon: string
+}
+
+const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
+  { id: 'render-001', name: 'Epic Castle Render',      creator: 'alexbuilds',    downloads: 1200, rating: 4.8, price: 'free', category: 'renders',      gradientFrom: '#7C3AED', gradientTo: '#4338CA', icon: '🏰' },
+  { id: 'model-001',  name: 'Neon City Pack',           creator: 'neonmaker',     downloads: 890,  rating: 4.6, price: 4.99,  category: 'models',       gradientFrom: '#0EA5E9', gradientTo: '#6366F1', icon: '🌆' },
+  { id: 'model-002',  name: 'Low-Poly Trees',            creator: 'polyart',       downloads: 3400, rating: 4.9, price: 'free', category: 'models',       gradientFrom: '#16A34A', gradientTo: '#15803D', icon: '🌲' },
+  { id: 'model-003',  name: 'Anime Character Pack',      creator: 'anime_dev',     downloads: 567,  rating: 4.7, price: 9.99,  category: 'models',       gradientFrom: '#EC4899', gradientTo: '#DB2777', icon: '🧍' },
+  { id: 'model-004',  name: 'Modern House Kit',          creator: 'arch_studio',   downloads: 2100, rating: 4.5, price: 2.99,  category: 'models',       gradientFrom: '#F59E0B', gradientTo: '#D97706', icon: '🏠' },
+  { id: 'render-002', name: 'Fantasy Forest Render',     creator: 'dreamscapes',   downloads: 780,  rating: 4.7, price: 'free', category: 'renders',      gradientFrom: '#059669', gradientTo: '#047857', icon: '🌿' },
+  { id: 'ui-001',     name: 'RPG HUD Kit',               creator: 'ui_wizard',     downloads: 1450, rating: 4.8, price: 7.99,  category: 'ui-kits',      gradientFrom: '#DC2626', gradientTo: '#B91C1C', icon: '🎮' },
+  { id: 'script-001', name: 'Advanced NPC AI',           creator: 'scriptmaster',  downloads: 620,  rating: 4.6, price: 14.99, category: 'scripts',      gradientFrom: '#2563EB', gradientTo: '#1D4ED8', icon: '🤖' },
+  { id: 'sound-001',  name: 'Fantasy Ambience Pack',     creator: 'soundforge',    downloads: 2800, rating: 4.9, price: 'free', category: 'sound-packs', gradientFrom: '#7C3AED', gradientTo: '#6D28D9', icon: '🎵' },
+  { id: 'model-005',  name: 'Sci-Fi Corridor Set',       creator: 'space_studio',  downloads: 940,  rating: 4.5, price: 5.99,  category: 'models',       gradientFrom: '#0891B2', gradientTo: '#0E7490', icon: '🚀' },
+  { id: 'render-003', name: 'Sunset Beach Scene',        creator: 'coastal_art',   downloads: 1560, rating: 4.8, price: 'free', category: 'renders',      gradientFrom: '#F97316', gradientTo: '#EA580C', icon: '🏖️' },
+  { id: 'ui-002',     name: 'Minimal Tycoon UI',         creator: 'cleandesign',   downloads: 3200, rating: 4.7, price: 3.99,  category: 'ui-kits',      gradientFrom: '#64748B', gradientTo: '#475569', icon: '💰' },
+  { id: 'script-002', name: 'Tween Animation Suite',     creator: 'tweenking',     downloads: 4100, rating: 4.9, price: 'free', category: 'scripts',      gradientFrom: '#8B5CF6', gradientTo: '#7C3AED', icon: '✨' },
+  { id: 'model-006',  name: 'Medieval Weapon Pack',      creator: 'armory_dev',    downloads: 1870, rating: 4.6, price: 6.99,  category: 'models',       gradientFrom: '#6B7280', gradientTo: '#4B5563', icon: '⚔️' },
+  { id: 'sound-002',  name: 'Retro Arcade SFX',          creator: 'chiptune_fx',   downloads: 2300, rating: 4.8, price: 2.99,  category: 'sound-packs', gradientFrom: '#10B981', gradientTo: '#059669', icon: '🕹️' },
+  { id: 'render-004', name: 'Dark Forest Atmosphere',    creator: 'moody_renders', downloads: 690,  rating: 4.5, price: 1.99,  category: 'renders',      gradientFrom: '#1F2937', gradientTo: '#111827', icon: '🌑' },
+  { id: 'ui-003',     name: 'Chat Bubble System',        creator: 'ui_wizard',     downloads: 1100, rating: 4.7, price: 'free', category: 'ui-kits',      gradientFrom: '#3B82F6', gradientTo: '#2563EB', icon: '💬' },
+  { id: 'model-007',  name: 'Tropical Island Biome',     creator: 'island_studio', downloads: 1680, rating: 4.8, price: 8.99,  category: 'models',       gradientFrom: '#F59E0B', gradientTo: '#10B981', icon: '🏝️' },
+  { id: 'script-003', name: 'Leaderboard & DataStore',   creator: 'data_guru',     downloads: 5200, rating: 4.9, price: 'free', category: 'scripts',      gradientFrom: '#EF4444', gradientTo: '#DC2626', icon: '📊' },
+  { id: 'sound-003',  name: 'Epic Battle Soundtrack',    creator: 'orchestra_dev', downloads: 1320, rating: 4.7, price: 12.99, category: 'sound-packs', gradientFrom: '#DC2626', gradientTo: '#991B1B', icon: '🥁' },
+]
+
+const COMMUNITY_CATEGORIES = ['All', 'Renders', 'Models', 'Scripts', 'UI Kits', 'Sound Packs'] as const
+type CommunityCategoryLabel = typeof COMMUNITY_CATEGORIES[number]
+
+const COMMUNITY_CATEGORY_MAP: Record<CommunityCategoryLabel, string> = {
+  'All':         'all',
+  'Renders':     'renders',
+  'Models':      'models',
+  'Scripts':     'scripts',
+  'UI Kits':     'ui-kits',
+  'Sound Packs': 'sound-packs',
+}
+
+const SORT_OPTIONS = ['Popular', 'New', 'Top Rated'] as const
+type SortLabel = typeof SORT_OPTIONS[number]
+
+function formatDownloads(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}K`
+  return String(n)
+}
+
+function StarRating({ rating }: { rating: number }) {
+  const full  = Math.floor(rating)
+  const frac  = rating - full
+  const empty = 5 - full - (frac > 0 ? 1 : 0)
+  return (
+    <span className="flex items-center gap-px">
+      {Array.from({ length: full  }).map((_, i) => <span key={`f${i}`} className="text-[#FFB81C] text-[9px]">&#9733;</span>)}
+      {frac > 0 && <span className="text-[#FFB81C]/50 text-[9px]">&#9733;</span>}
+      {Array.from({ length: empty }).map((_, i) => <span key={`e${i}`} className="text-gray-600 text-[9px]">&#9733;</span>)}
+    </span>
+  )
+}
+
+function CommunityTab() {
+  const [activeCat, setActiveCat] = useState<CommunityCategoryLabel>('All')
+  const [sort, setSort]           = useState<SortLabel>('Popular')
+  const [query, setQuery]         = useState('')
+  const [added, setAdded]         = useState<Set<string>>(new Set())
+
+  const filtered = COMMUNITY_ASSETS_DATA.filter((a) => {
+    const catKey = COMMUNITY_CATEGORY_MAP[activeCat]
+    if (catKey !== 'all' && a.category !== catKey) return false
+    if (query.trim() && !a.name.toLowerCase().includes(query.toLowerCase()) && !a.creator.toLowerCase().includes(query.toLowerCase())) return false
+    return true
+  }).sort((a, b) => {
+    if (sort === 'Popular')   return b.downloads - a.downloads
+    if (sort === 'Top Rated') return b.rating - a.rating || b.downloads - a.downloads
+    return b.id.localeCompare(a.id)
+  })
+
+  const handleUse = (id: string) => setAdded((prev) => new Set(prev).add(id))
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-shrink-0 space-y-2 p-3">
+        <div className="relative">
+          <svg className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" viewBox="0 0 16 16" fill="none">
+            <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search community assets..."
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {COMMUNITY_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCat(cat)}
+              className={[
+                'rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                activeCat === cat
+                  ? 'bg-[#FFB81C] text-black'
+                  : 'border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200',
+              ].join(' ')}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="mr-1 text-[9px] font-medium text-gray-600">Sort:</span>
+          {SORT_OPTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSort(s)}
+              className={[
+                'rounded px-2 py-0.5 text-[9px] font-semibold transition-colors',
+                sort === s ? 'bg-white/15 text-white' : 'text-gray-500 hover:text-gray-300',
+              ].join(' ')}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
+        {filtered.length === 0 ? (
+          <p className="py-8 text-center text-xs text-gray-600">No assets found</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {filtered.map((asset) => {
+              const isAdded = added.has(asset.id)
+              return (
+                <div key={asset.id} className="overflow-hidden rounded-lg border border-white/8 bg-white/[0.03] transition-colors hover:border-white/[0.18]">
+                  <div
+                    className="relative flex h-14 w-full items-center justify-center text-2xl"
+                    style={{ background: `linear-gradient(135deg, ${asset.gradientFrom}, ${asset.gradientTo})` }}
+                  >
+                    <span>{asset.icon}</span>
+                    {asset.price === 'free' && (
+                      <span className="absolute right-1 top-1 rounded-full bg-emerald-500/90 px-1.5 py-0.5 text-[7px] font-bold text-white">FREE</span>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="truncate text-[10px] font-semibold leading-tight text-gray-200">{asset.name}</p>
+                    <p className="mt-0.5 text-[9px] text-gray-500">@{asset.creator}</p>
+                    <div className="mt-1 flex items-center gap-1">
+                      <StarRating rating={asset.rating} />
+                      <span className="text-[8px] text-gray-500">{asset.rating.toFixed(1)}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <div>
+                        <p className={['text-[9px] font-bold', asset.price === 'free' ? 'text-emerald-400' : 'text-[#FFB81C]'].join(' ')}>
+                          {asset.price === 'free' ? 'Free' : `${(asset.price as number).toFixed(2)}`}
+                        </p>
+                        <p className="text-[8px] text-gray-600">{formatDownloads(asset.downloads)} dl</p>
+                      </div>
+                      <button
+                        onClick={() => handleUse(asset.id)}
+                        disabled={isAdded}
+                        className={[
+                          'rounded px-1.5 py-0.5 text-[8px] font-bold transition-colors',
+                          isAdded
+                            ? 'cursor-default bg-emerald-500/20 text-emerald-400'
+                            : 'bg-[#FFB81C]/15 text-[#FFB81C] hover:bg-[#FFB81C]/30',
+                        ].join(' ')}
+                      >
+                        {isAdded ? 'Added' : 'Use in Game'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function GenerateTab() {
+  const [prompt, setPrompt]         = useState('')
+  const [generating, setGenerating] = useState(false)
+  const [generated, setGenerated]   = useState<{ name: string; gradient: [string, string] } | null>(null)
+
+  const handleGenerate = () => {
+    if (!prompt.trim() || generating) return
+    setGenerating(true)
+    setTimeout(() => {
+      setGenerating(false)
+      setGenerated({ name: prompt.trim(), gradient: ['#7C3AED', '#4338CA'] })
+    }, 1600)
+  }
+
+  return (
+    <div className="flex h-full flex-col space-y-3 p-3">
+      <p className="text-[10px] text-gray-500">Describe an asset and AI will generate it.</p>
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="e.g. A low-poly medieval castle with four towers..."
+        rows={3}
+        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+      />
+      <button
+        onClick={handleGenerate}
+        disabled={!prompt.trim() || generating}
+        className="w-full rounded-lg bg-[#FFB81C] py-2 text-xs font-bold text-black transition-colors hover:bg-[#E6A519] disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {generating ? 'Generating...' : 'Generate Asset'}
+      </button>
+      {generated && (
+        <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.03]">
+          <div
+            className="flex h-20 w-full items-center justify-center text-3xl"
+            style={{ background: `linear-gradient(135deg, ${generated.gradient[0]}, ${generated.gradient[1]})` }}
+          >
+            &#10024;
+          </div>
+          <div className="p-2.5">
+            <p className="text-[11px] font-semibold text-gray-200">{generated.name}</p>
+            <p className="mt-0.5 text-[9px] text-gray-500">AI Generated &mdash; Ready to use</p>
+            <button className="mt-2 w-full rounded bg-[#FFB81C]/15 py-1 text-[9px] font-bold text-[#FFB81C] transition-colors hover:bg-[#FFB81C]/30">
+              Use in Game
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+type AssetTab = 'roblox' | 'generate' | 'community'
+
+function AssetsPanel() {
+  const [activeTab, setActiveTab] = useState<AssetTab>('community')
+
+  const tabs: { id: AssetTab; label: string }[] = [
+    { id: 'roblox',    label: 'Roblox'    },
+    { id: 'generate',  label: 'Generate'  },
+    { id: 'community', label: 'Community' },
+  ]
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-shrink-0 p-3 pb-0">
+        <div className="flex gap-0.5 rounded-lg bg-white/5 p-0.5">
+          {tabs.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={[
+                'flex-1 rounded-md py-1.5 text-[10px] font-semibold transition-all',
+                activeTab === id
+                  ? 'bg-[#FFB81C] text-black shadow-sm'
+                  : 'text-gray-400 hover:text-gray-200',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {activeTab === 'roblox'    && <RobloxMarketplacePanel />}
+        {activeTab === 'generate'  && <GenerateTab />}
+        {activeTab === 'community' && <CommunityTab />}
       </div>
     </div>
   )
