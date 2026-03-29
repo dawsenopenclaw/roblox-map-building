@@ -2,134 +2,78 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useUser } from '@clerk/nextjs'
-import { OnboardingStep } from '@/components/OnboardingStep'
-import { ConfettiCanvas } from '@/components/ConfettiCanvas'
 import { completeOnboarding, type OnboardingInterest } from '@/lib/onboarding'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Interest = OnboardingInterest
 
-// ─── Step 1: Welcome ─────────────────────────────────────────────────────────
+const TOTAL_STEPS = 3
 
-function StepWelcome({ firstName }: { firstName: string }) {
+// ─── Progress Bar ─────────────────────────────────────────────────────────────
+
+function ProgressBar({ step }: { step: number }) {
   return (
-    <div className="text-center">
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.1, type: 'spring', stiffness: 260, damping: 20 }}
-        className="w-20 h-20 bg-[#FFB81C]/10 border border-[#FFB81C]/30 rounded-2xl flex items-center justify-center mx-auto mb-6"
-      >
-        <svg className="w-10 h-10 text-[#FFB81C]" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            fillRule="evenodd"
-            d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </motion.div>
-
-      <motion.h1
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="text-3xl font-bold text-white mb-3"
-      >
-        Welcome to RobloxForge{firstName ? `, ${firstName}` : ''}
-      </motion.h1>
-
-      <motion.p
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        className="text-gray-400 text-lg mb-8 leading-relaxed"
-      >
-        The AI-powered platform that turns your ideas into fully-playable Roblox experiences — in minutes, not months.
-      </motion.p>
-
-      <motion.div
-        initial={{ y: 10, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="grid grid-cols-1 gap-3 text-left"
-      >
-        {[
-          { icon: '🎙️', title: 'Voice to Game', desc: 'Speak a prompt — get a working map' },
-          { icon: '🖼️', title: 'Image to Map', desc: 'Upload any image, extract terrain' },
-          { icon: '🧬', title: 'Game DNA Scanner', desc: 'Analyze top games and clone their DNA' },
-          { icon: '🛒', title: 'Asset Marketplace', desc: 'Sell your creations, earn Robux' },
-        ].map((item) => (
-          <div
-            key={item.title}
-            className="flex items-center gap-3 bg-white/5 border border-white/8 rounded-xl px-4 py-3"
-          >
-            <span className="text-xl">{item.icon}</span>
-            <div>
-              <p className="text-white text-sm font-semibold">{item.title}</p>
-              <p className="text-gray-500 text-xs">{item.desc}</p>
-            </div>
-          </div>
-        ))}
-      </motion.div>
+    <div className="flex items-center gap-2 mb-8">
+      {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+            i < step ? 'bg-[#FFB81C]' : i === step - 1 ? 'bg-[#FFB81C]' : 'bg-white/10'
+          }`}
+        />
+      ))}
+      <span className="text-gray-500 text-xs ml-1 whitespace-nowrap">
+        Step {step} of {TOTAL_STEPS}
+      </span>
     </div>
   )
 }
 
-// ─── Step 2: Interest selector ────────────────────────────────────────────────
+// ─── Step 1: Welcome ─────────────────────────────────────────────────────────
 
-const INTERESTS: { id: Interest; icon: string; title: string; desc: string }[] = [
-  { id: 'games', icon: '🎮', title: 'Full Games', desc: 'Complete experiences with gameplay loops' },
-  { id: 'maps', icon: '🗺️', title: 'Maps & Worlds', desc: 'Beautiful environments and terrain' },
-  { id: 'assets', icon: '🧱', title: 'Assets & Templates', desc: 'Sell scripts, models, and maps' },
-  { id: 'all', icon: '✨', title: 'Everything', desc: 'I want to explore all features' },
+const INTERESTS: { id: Interest; icon: string; label: string }[] = [
+  { id: 'games', icon: '🎮', label: 'Games' },
+  { id: 'maps', icon: '🗺️', label: 'Maps' },
+  { id: 'assets', icon: '🎨', label: 'Assets' },
+  { id: 'all', icon: '✨', label: 'Everything' },
 ]
 
-function StepInterest({
+function StepWelcome({
+  firstName,
   selected,
   onSelect,
 }: {
+  firstName: string
   selected: Interest | null
   onSelect: (v: Interest) => void
 }) {
   return (
     <div>
-      <h2 className="text-2xl font-bold text-white mb-2">What do you want to build?</h2>
-      <p className="text-gray-400 mb-6">
-        We will personalize your experience based on your goal. You can change this later.
+      <h1 className="text-3xl font-bold text-white mb-2">
+        Welcome to ForjeGames{firstName ? `, ${firstName}` : ''}! 🎮
+      </h1>
+      <p className="text-gray-400 mb-8">
+        What do you want to build?
       </p>
 
       <div className="grid grid-cols-2 gap-3">
         {INTERESTS.map((item) => {
           const active = selected === item.id
           return (
-            <motion.button
+            <button
               key={item.id}
               onClick={() => onSelect(item.id)}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`relative text-left p-4 rounded-xl border transition-all ${
+              className={`flex flex-col items-center justify-center gap-2 p-5 rounded-xl border text-sm font-semibold transition-all ${
                 active
-                  ? 'border-[#FFB81C] bg-[#FFB81C]/10 shadow-[0_0_20px_rgba(255,184,28,0.15)]'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
+                  ? 'border-[#FFB81C] bg-[#FFB81C]/10 text-white'
+                  : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/25 hover:text-white'
               }`}
             >
-              {active && (
-                <motion.div
-                  layoutId="interest-check"
-                  className="absolute top-2 right-2 w-5 h-5 bg-[#FFB81C] rounded-full flex items-center justify-center"
-                >
-                  <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </motion.div>
-              )}
-              <div className="text-2xl mb-2">{item.icon}</div>
-              <p className="text-white text-sm font-semibold">{item.title}</p>
-              <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
-            </motion.button>
+              <span className="text-2xl">{item.icon}</span>
+              {item.label}
+            </button>
           )
         })}
       </div>
@@ -137,19 +81,24 @@ function StepInterest({
   )
 }
 
-// ─── Step 3: Mini demo ────────────────────────────────────────────────────────
+// ─── Step 2: Try It ───────────────────────────────────────────────────────────
 
 const DEMO_STEPS = [
   'Parsing prompt...',
-  'Generating terrain mesh...',
-  'Placing castle keep...',
-  'Adding battlements & towers...',
-  'Decorating courtyard...',
-  'Generating Luau scripts...',
-  'Exporting to Roblox...',
+  'Generating terrain...',
+  'Placing structures...',
+  'Adding details...',
+  'Generating scripts...',
+  'Done!',
 ]
 
-function StepDemo() {
+const SUGGESTIONS = [
+  'Build me a medieval castle',
+  'Create a racing track',
+  'Design a tycoon game',
+]
+
+function StepTryIt() {
   const [input, setInput] = useState('')
   const [running, setRunning] = useState(false)
   const [demoStep, setDemoStep] = useState(-1)
@@ -158,8 +107,8 @@ function StepDemo() {
 
   const runDemo = (prompt: string) => {
     if (!prompt.trim() || running) return
-    setRunning(true)
     setDone(false)
+    setRunning(true)
     setDemoStep(0)
     let idx = 0
     intervalRef.current = setInterval(() => {
@@ -172,354 +121,204 @@ function StepDemo() {
       } else {
         setDemoStep(idx)
       }
-    }, 450)
+    }, 400)
   }
 
   useEffect(() => {
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
   }, [])
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-white mb-2">Try the magic</h2>
-      <p className="text-gray-400 mb-6">Type a build prompt below to see RobloxForge in action.</p>
+      <h2 className="text-2xl font-bold text-white mb-2">Let's build something right now.</h2>
+      <p className="text-gray-400 mb-6">Type what you want:</p>
 
       {/* Input */}
       <div className="relative mb-4">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
+          Build me a
+        </span>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && runDemo(input)}
-          placeholder='Try: "build a medieval castle"'
+          onKeyDown={(e) => e.key === 'Enter' && runDemo(input || SUGGESTIONS[0])}
+          placeholder="medieval castle"
           disabled={running}
-          className="w-full bg-[#0D1231] border border-white/15 rounded-xl px-4 py-3 pr-24 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
+          className="w-full bg-[#0D1231] border border-white/15 rounded-xl pl-24 pr-20 py-3 text-white placeholder-gray-600 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
         />
         <button
-          onClick={() => runDemo(input || 'build a medieval castle')}
+          onClick={() => runDemo(input ? `Build me a ${input}` : SUGGESTIONS[0])}
           disabled={running}
-          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#FFB81C] text-black text-xs font-bold rounded-lg hover:bg-[#E6A519] disabled:opacity-50 transition-all"
+          className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-[#FFB81C] text-black text-xs font-bold rounded-lg hover:bg-[#E6A519] disabled:opacity-40 transition-all"
         >
-          {running ? '...' : 'Build'}
+          {running ? '...' : 'Go →'}
         </button>
       </div>
 
-      {/* Quick-fill suggestions */}
+      {/* Suggestions */}
       {!running && !done && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {['Build a castle', 'Create a volcano island', 'Make a forest dungeon'].map((s) => (
+        <div className="flex flex-col gap-1.5 mb-4">
+          {SUGGESTIONS.map((s) => (
             <button
               key={s}
-              onClick={() => { setInput(s); runDemo(s) }}
-              className="text-xs text-gray-400 border border-white/10 rounded-full px-3 py-1 hover:border-[#FFB81C]/40 hover:text-[#FFB81C] transition-colors"
+              onClick={() => { setInput(s.replace('Build me a ', '')); runDemo(s) }}
+              className="text-left text-xs text-gray-500 hover:text-gray-300 transition-colors px-1"
             >
-              {s}
+              "{s}"
             </button>
           ))}
         </div>
       )}
 
       {/* Build log */}
-      <AnimatePresence>
-        {(running || done) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="bg-[#0A0D1A] border border-white/10 rounded-xl p-4 font-mono text-xs overflow-hidden"
-          >
-            {DEMO_STEPS.slice(0, Math.min(demoStep + 1, DEMO_STEPS.length)).map((s, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 mb-1"
-              >
-                <span className="text-[#FFB81C]">›</span>
-                <span className="text-gray-300">{s}</span>
-                {i < demoStep && (
-                  <span className="ml-auto text-emerald-400">done</span>
-                )}
-                {i === demoStep && running && (
-                  <span className="ml-auto text-[#FFB81C] animate-pulse">running</span>
-                )}
-              </motion.div>
-            ))}
-
-            {done && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-                className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-emerald-400 font-semibold">Build complete — 247 parts, 3 scripts generated</span>
-              </motion.div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {!running && !done && (
-        <p className="text-gray-600 text-xs text-center mt-4">
-          This is a live demo simulation of the AI engine
-        </p>
+      {(running || done) && (
+        <div className="bg-[#0A0D1A] border border-white/10 rounded-xl p-4 font-mono text-xs">
+          {DEMO_STEPS.slice(0, Math.min(demoStep + 1, DEMO_STEPS.length)).map((s, i) => (
+            <div key={i} className="flex items-center gap-2 mb-1">
+              <span className="text-[#FFB81C]">›</span>
+              <span className={i < demoStep ? 'text-gray-500' : 'text-gray-200'}>{s}</span>
+              {i < demoStep && <span className="ml-auto text-emerald-400">done</span>}
+              {i === demoStep && running && (
+                <span className="ml-auto text-[#FFB81C] animate-pulse">running</span>
+              )}
+            </div>
+          ))}
+          {done && (
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="text-emerald-400 font-semibold">Build complete!</span>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
-// ─── Step 4: Plan selector ────────────────────────────────────────────────────
+// ─── Step 3: Ready ────────────────────────────────────────────────────────────
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    highlight: false,
-    features: ['500 AI tokens / month', 'Voice & image builds', 'Community marketplace', '3 active projects'],
-    cta: 'Start Free',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: '$12',
-    period: '/month',
-    highlight: true,
-    badge: 'Most Popular',
-    features: ['10,000 AI tokens / month', 'Priority AI queue', 'Game DNA Scanner', 'Unlimited projects', 'Revenue sharing'],
-    cta: 'Start Free Trial',
-  },
-  {
-    id: 'studio',
-    name: 'Studio',
-    price: '$39',
-    period: '/month',
-    highlight: false,
-    features: ['50,000 AI tokens / month', 'Team collaboration', 'Dedicated support', 'Custom webhooks', 'White-label exports'],
-    cta: 'Contact Us',
-  },
-]
-
-function StepPlan({ selected, onSelect }: { selected: string; onSelect: (id: string) => void }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-white mb-2">Choose your plan</h2>
-      <p className="text-gray-400 mb-6">
-        Start free — no credit card required. Upgrade anytime as you grow.
-      </p>
-
-      <div className="space-y-3">
-        {PLANS.map((plan) => {
-          const active = selected === plan.id
-          return (
-            <motion.button
-              key={plan.id}
-              onClick={() => onSelect(plan.id)}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              className={`w-full text-left p-4 rounded-xl border transition-all ${
-                active
-                  ? 'border-[#FFB81C] bg-[#FFB81C]/8 shadow-[0_0_20px_rgba(255,184,28,0.12)]'
-                  : 'border-white/10 bg-white/5 hover:border-white/20'
-              }`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-white font-bold">{plan.name}</span>
-                    {plan.badge && (
-                      <span className="text-xs bg-[#FFB81C] text-black font-semibold px-2 py-0.5 rounded-full">
-                        {plan.badge}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-baseline gap-1 mt-0.5">
-                    <span className={`text-xl font-bold ${active ? 'text-[#FFB81C]' : 'text-white'}`}>
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-500 text-sm">{plan.period}</span>
-                  </div>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
-                    active ? 'border-[#FFB81C] bg-[#FFB81C]' : 'border-white/30'
-                  }`}
-                >
-                  {active && (
-                    <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1">
-                {plan.features.map((f) => (
-                  <span key={f} className="text-gray-400 text-xs flex items-center gap-1">
-                    <span className="text-[#FFB81C]">+</span> {f}
-                  </span>
-                ))}
-              </div>
-            </motion.button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Step 5: Done ─────────────────────────────────────────────────────────────
-
-function StepDone({ firstName }: { firstName: string }) {
+function StepReady() {
   return (
     <div className="text-center">
-      <motion.div
-        initial={{ scale: 0, rotate: -20 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-        className="w-24 h-24 bg-gradient-to-br from-[#FFB81C] to-[#E6A519] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(255,184,28,0.4)]"
-      >
-        <svg className="w-12 h-12 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
-      </motion.div>
+      <div className="text-5xl mb-5">🎉</div>
+      <h2 className="text-3xl font-bold text-white mb-3">You're Ready!</h2>
+      <p className="text-gray-400 text-lg mb-8">Welcome aboard!</p>
 
-      <motion.h2
-        initial={{ y: 12, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.25 }}
-        className="text-3xl font-bold text-white mb-3"
-      >
-        {firstName ? `${firstName}, you're` : "You're"} ready to build!
-      </motion.h2>
+      <div className="grid grid-cols-2 gap-3 mb-2">
+        <div className="bg-[#0D1231] border border-white/10 rounded-xl py-4 px-3">
+          <p className="text-[#FFB81C] text-2xl font-bold">100</p>
+          <p className="text-gray-400 text-sm mt-0.5">Free tokens</p>
+        </div>
+        <div className="bg-[#0D1231] border border-white/10 rounded-xl py-4 px-3">
+          <p className="text-[#FFB81C] text-2xl font-bold">3</p>
+          <p className="text-gray-400 text-sm mt-0.5">Free builds</p>
+        </div>
+      </div>
 
-      <motion.p
-        initial={{ y: 12, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.35 }}
-        className="text-gray-400 text-lg mb-8"
-      >
-        Your workspace is set up. Go build something amazing.
-      </motion.p>
-
-      <motion.div
-        initial={{ y: 12, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.45 }}
-        className="grid grid-cols-3 gap-3 mb-8"
-      >
-        {[
-          { num: '500', label: 'Free tokens' },
-          { num: '10+', label: 'AI tools' },
-          { num: '∞', label: 'Possibilities' },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className="bg-[#0D1231] border border-white/10 rounded-xl py-3 px-2"
-          >
-            <p className="text-[#FFB81C] text-xl font-bold">{item.num}</p>
-            <p className="text-gray-400 text-xs">{item.label}</p>
-          </div>
-        ))}
-      </motion.div>
+      <p className="text-gray-600 text-xs mt-3">Your first 3 builds are on us.</p>
     </div>
   )
 }
 
-// ─── Main wizard ──────────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function OnboardingWizardPage() {
+export default function WelcomePage() {
   const router = useRouter()
   const { user } = useUser()
-  const [step, setStep] = useState(0)
-  const [direction, setDirection] = useState(1)
+  const [step, setStep] = useState(1)
   const [interest, setInterest] = useState<Interest | null>(null)
-  const [plan, setPlan] = useState('free')
-  const [completing, setCompleting] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [finishing, setFinishing] = useState(false)
 
   const firstName =
     user?.firstName ||
     user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
     ''
 
-  const go = (next: number) => {
-    setDirection(next > step ? 1 : -1)
-    setStep(next)
-  }
+  const canNext =
+    step === 1 ? interest !== null :
+    step === 2 ? true :
+    true
 
-  const next = () => go(step + 1)
-  const back = () => go(step - 1)
-
-  const handleSkip = async () => {
-    setCompleting(true)
+  const handleNext = async () => {
+    if (step < TOTAL_STEPS) {
+      setStep(step + 1)
+      return
+    }
+    // Final step — finish onboarding
+    setFinishing(true)
     try {
-      await completeOnboarding(interest ?? 'all', true)
+      await completeOnboarding(interest ?? 'all', false)
     } catch {
-      // Non-fatal — metadata save failed but we still redirect
+      // Non-fatal
     }
     router.push('/dashboard')
   }
 
-  const handleFinish = async () => {
-    setCompleting(true)
-    setShowConfetti(true)
+  const handleSkip = async () => {
+    setFinishing(true)
     try {
-      await completeOnboarding(interest ?? 'all', false)
+      await completeOnboarding(interest ?? 'all', true)
     } catch {
-      // Non-fatal — metadata save failed but we still redirect
+      // Non-fatal
     }
-    // Short delay so confetti is visible before redirect
-    setTimeout(() => router.push('/dashboard'), 2400)
+    router.push('/dashboard')
   }
 
-  const stepProps = { step, direction, onBack: back, onSkip: handleSkip }
+  const nextLabel =
+    step === TOTAL_STEPS
+      ? finishing ? 'Launching...' : 'Go to Dashboard →'
+      : 'Next →'
 
   return (
-    <>
-      {showConfetti && <ConfettiCanvas />}
+    <div className="min-h-screen bg-[#080B1A] flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <ProgressBar step={step} />
 
-      {step === 0 && (
-        <OnboardingStep {...stepProps} onNext={next} nextLabel="Let's go" hideBack hideSkip={false}>
-          <StepWelcome firstName={firstName} />
-        </OnboardingStep>
-      )}
+        <div className="bg-[#0D1231] border border-white/8 rounded-2xl p-7">
+          {step === 1 && (
+            <StepWelcome
+              firstName={firstName}
+              selected={interest}
+              onSelect={setInterest}
+            />
+          )}
+          {step === 2 && <StepTryIt />}
+          {step === 3 && <StepReady />}
 
-      {step === 1 && (
-        <OnboardingStep
-          {...stepProps}
-          onNext={next}
-          nextDisabled={interest === null}
-          nextLabel="Continue"
-        >
-          <StepInterest selected={interest} onSelect={setInterest} />
-        </OnboardingStep>
-      )}
+          {/* Navigation */}
+          <div className="flex items-center justify-between mt-8">
+            <button
+              onClick={handleSkip}
+              disabled={finishing}
+              className="text-gray-500 text-sm hover:text-gray-300 transition-colors disabled:opacity-40"
+            >
+              Skip
+            </button>
 
-      {step === 2 && (
-        <OnboardingStep {...stepProps} onNext={next} nextLabel="Next">
-          <StepDemo />
-        </OnboardingStep>
-      )}
-
-      {step === 3 && (
-        <OnboardingStep {...stepProps} onNext={next} nextLabel="Almost there">
-          <StepPlan selected={plan} onSelect={setPlan} />
-        </OnboardingStep>
-      )}
-
-      {step === 4 && (
-        <OnboardingStep
-          {...stepProps}
-          onNext={handleFinish}
-          nextLabel={completing ? 'Launching...' : 'Go to Dashboard'}
-          nextDisabled={completing}
-          hideSkip
-        >
-          <StepDone firstName={firstName} />
-        </OnboardingStep>
-      )}
-    </>
+            <div className="flex items-center gap-3">
+              {step > 1 && (
+                <button
+                  onClick={() => setStep(step - 1)}
+                  disabled={finishing}
+                  className="text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-40"
+                >
+                  ← Back
+                </button>
+              )}
+              <button
+                onClick={handleNext}
+                disabled={!canNext || finishing}
+                className="px-5 py-2.5 bg-[#FFB81C] text-black text-sm font-bold rounded-xl hover:bg-[#E6A519] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {nextLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
