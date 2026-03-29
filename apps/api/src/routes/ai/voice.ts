@@ -140,12 +140,14 @@ voiceRoutes.post('/', async (c) => {
       }, 502)
     }
   } else {
-    // JSON body with text
-    const body = await c.req.json<{ text?: string }>().catch(() => ({}))
-    if (!body.text?.trim()) {
-      return c.json({ error: 'Provide audio file (multipart) or text in JSON body' }, 400)
+    // JSON body with text — validated with Zod
+    const rawBody = await c.req.json().catch(() => ({}))
+    const parsed = voiceInputSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return c.json({ error: 'Provide audio file (multipart) or text/transcript in JSON body' }, 400)
     }
-    transcript = body.text.trim()
+    const data = parsed.data as { text?: string; transcript?: string }
+    transcript = (data.text ?? data.transcript ?? '').trim()
     reqLog.debug('ai voice-to-game: using text input', { transcriptLength: transcript.length })
   }
 

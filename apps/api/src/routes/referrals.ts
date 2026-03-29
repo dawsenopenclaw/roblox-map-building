@@ -1,7 +1,10 @@
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../lib/db'
 import { randomBytes } from 'crypto'
+import { referralTrackSchema } from '../lib/validators'
+import { notifyReferralConverted } from '../lib/notifications'
 
 export const referralRoutes = new Hono()
 
@@ -52,12 +55,8 @@ referralRoutes.get('/stats', requireAuth, async (c) => {
 })
 
 // POST /api/referrals/track — track a referral conversion on signup
-referralRoutes.post('/track', async (c) => {
-  const body = await c.req.json().catch(() => null)
-  if (!body) return c.json({ error: 'Invalid JSON body' }, 400)
-
-  const { code, newUserId } = body as { code?: string; newUserId?: string }
-  if (!code || !newUserId) return c.json({ error: 'code and newUserId are required' }, 400)
+referralRoutes.post('/track', zValidator('json', referralTrackSchema), async (c) => {
+  const { code, newUserId } = c.req.valid('json')
 
   const referral = await db.referral.findUnique({ where: { code } })
   if (!referral) return c.json({ error: 'Invalid referral code' }, 404)
@@ -104,6 +103,9 @@ referralRoutes.post('/track', async (c) => {
       },
     })
   }
+
+  // Fire notification to referrer (best-effort)
+  notifyReferralConverted(referral.referrerId, { commissionCents: 100 }).catch(() => {})
 
   return c.json({ success: true })
 })

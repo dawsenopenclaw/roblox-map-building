@@ -17,6 +17,7 @@ import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../lib/db'
+import { notifyTeamInvite } from '../lib/notifications'
 
 export const teamRoutes = new Hono()
 
@@ -191,6 +192,26 @@ teamRoutes.post('/:id/invite', zValidator('json', inviteSchema), async (c) => {
   })
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/team/join/${invite.token}`
+
+  // If invitee is an existing user, send in-app notification
+  if (email) {
+    const invitee = await db.user.findUnique({ where: { email }, select: { id: true } })
+    if (invitee) {
+      const team = await db.team.findUnique({ where: { id: teamId }, select: { name: true } })
+      const inviterUser = await db.user.findUnique({
+        where: { id: user.id },
+        select: { displayName: true, username: true },
+      })
+      const inviterName = inviterUser?.displayName ?? inviterUser?.username ?? 'A team member'
+
+      notifyTeamInvite(invitee.id, {
+        teamName: team?.name ?? 'a team',
+        inviterName,
+        inviteToken: invite.token,
+        role,
+      }).catch(() => {})
+    }
+  }
 
   return c.json({ invite, inviteUrl }, 201)
 })

@@ -1,8 +1,12 @@
 import { Hono } from 'hono'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../lib/db'
+import { notificationSSERoutes } from './notifications/sse'
 
 export const notificationRoutes = new Hono()
+
+// Mount SSE sub-router — handles GET /api/notifications/stream
+notificationRoutes.route('/', notificationSSERoutes)
 
 // GET /api/notifications — list notifications
 notificationRoutes.get('/', requireAuth, async (c) => {
@@ -66,5 +70,21 @@ notificationRoutes.put('/read-all', requireAuth, async (c) => {
     data: { read: true },
   })
 
+  return c.json({ success: true })
+})
+
+// DELETE /api/notifications/:id — dismiss (delete) a notification
+notificationRoutes.delete('/:id', requireAuth, async (c) => {
+  const clerkId = (c as any).get('clerkId') as string
+  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
+  if (!user) return c.json({ error: 'User not found' }, 404)
+
+  const id = c.req.param('id')
+  const notification = await db.notification.findFirst({
+    where: { id, userId: user.id },
+  })
+  if (!notification) return c.json({ error: 'Notification not found' }, 404)
+
+  await db.notification.delete({ where: { id } })
   return c.json({ success: true })
 })

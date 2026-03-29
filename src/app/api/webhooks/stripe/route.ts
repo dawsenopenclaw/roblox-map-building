@@ -7,6 +7,8 @@ import { processDonation } from '@/lib/charity'
 import { getTierTokenAllowance } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
 
+import { notifyTemplateSoldClient } from '@/lib/notifications-client'
+
 export async function POST(req: NextRequest) {
   const body = await req.text()
   const headerPayload = await headers()
@@ -35,6 +37,63 @@ export async function POST(req: NextRequest) {
           const pack = getTokenPackBySlug(session.metadata.tokenPackSlug)
           if (pack) {
             await earnTokens(userId, pack.tokens, 'PURCHASE', `Purchased ${pack.name}`, { sessionId: session.id })
+          }
+        }
+
+        // Template purchase — record DB purchase + notify creator
+        if (session.metadata?.type === 'template_purchase' && session.metadata.templateId) {
+          const { templateId, buyerId, platformFeeCents, creatorPayoutCents } = session.metadata
+          const amountCents = session.amount_total ?? 0
+
+          // Fetch template to get creator + title
+          const template = await db.template.findUnique({
+            where: { id: templateId },
+            select: { id: true, title: true, creatorId: true },
+          })
+
+          if (template && buyerId) {
+            // Upsert purchase record
+            await db.templatePurchase.upsert({
+              where: { templateId_buyerId: { templateId, buyerId } },
+              create: {
+                templateId,
+                buyerId,
+                stripePaymentIntentId: session.payment_intent as string ?? null,
+                amountCents,
+                platformFeeCents: parseInt(platformFeeCents ?? '0', 10),
+                creatorPayoutCents: parseInt(creatorPayoutCents ?? '0', 10),
+                payoutStatus: 'PENDING',
+              },
+              update: {
+                stripePaymentIntentId: session.payment_intent as string ?? null,
+                payoutStatus: 'PENDING',
+              },
+            })
+
+            // Increment downloads
+            await db.template.update({
+              where: { id: templateId },
+              data: { downloads: { increment: 1 } },
+            })
+
+            // Record creator earning
+            await db.creatorEarning.create({
+              data: {
+                userId: template.creatorId,
+                templateId,
+                templateName: template.title,
+                amountCents,
+                netCents: parseInt(creatorPayoutCents ?? '0', 10),
+                buyerId,
+                status: 'PENDING',
+              },
+            })
+
+            // Notify creator (best-effort)
+            notifyTemplateSoldClient(template.creatorId, {
+              templateTitle: template.title,
+              amountCents,
+            }).catch((err) => console.error('Sale notification failed:', err))
           }
         }
 

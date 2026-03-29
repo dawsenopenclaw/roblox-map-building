@@ -29,6 +29,7 @@ import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/secu
 import { requestIdMiddleware } from './middleware/requestId'
 import { createLogger } from './lib/logger'
 import { getMetricsText, getMetricsJson, incrementCounter, recordDuration } from './lib/metrics'
+import { errorHandler, AppError } from './lib/errors'
 
 const appLog = createLogger('app')
 
@@ -111,7 +112,8 @@ app.get('/api/metrics', (c) => {
 app.onError((err, c) => {
   const requestId = c.get('requestId') as string | undefined
   const userId = c.get('userId') as string | undefined
-  appLog.error('unhandled error', {
+  const status = err instanceof AppError ? err.status : 500
+  appLog[status >= 500 ? 'error' : 'warn']('request error', {
     requestId,
     userId,
     error: err.message,
@@ -119,9 +121,9 @@ app.onError((err, c) => {
     path: c.req.path,
     method: c.req.method,
   })
-  incrementCounter('http_errors_total', { method: c.req.method, path: c.req.path, status: '500' })
-  captureException(err, { path: c.req.path, method: c.req.method })
-  return c.json({ error: 'Internal server error' }, 500)
+  incrementCounter('http_errors_total', { method: c.req.method, path: c.req.path, status: String(status) })
+  if (status >= 500) captureException(err, { path: c.req.path, method: c.req.method })
+  return errorHandler(err, c)
 })
 
 const port = parseInt(process.env.PORT || '3001')
