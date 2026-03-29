@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npx next build",
-  "installCommand": "npm install --ignore-scripts",
+  "buildCommand": "npx prisma generate && npx next build",
+  "installCommand": "npm install",
   "crons": [
     {
       "path": "/api/internal/cost-snapshot",
