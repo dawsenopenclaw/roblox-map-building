@@ -5,6 +5,8 @@
  */
 
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 import { requireAuth } from '../../middleware/auth'
 import { aiRateLimit } from '../../middleware/security'
 import { transcribeAudio } from '../../lib/ai/providers/deepgram'
@@ -14,6 +16,7 @@ import { buildCacheKey, withCache } from '../../lib/ai/cache'
 import { estimateCost, usdToTokens } from '../../lib/ai/cost-estimator'
 import { validateTranscript, validateAIResponse } from '../../lib/ai/quality-gate'
 import { db } from '../../lib/db'
+import { voiceInputSchema } from '../../lib/validators'
 import { createLogger } from '../../lib/logger'
 import { incrementCounter, recordDuration } from '../../lib/metrics'
 

@@ -4,6 +4,7 @@
  */
 
 import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../../middleware/auth'
 import { aiRateLimit } from '../../middleware/security'
 import { claudeVision } from '../../lib/ai/providers/anthropic'
@@ -12,6 +13,7 @@ import { buildCacheKey, withCache } from '../../lib/ai/cache'
 import { estimateCost, usdToTokens } from '../../lib/ai/cost-estimator'
 import { validateAIResponse } from '../../lib/ai/quality-gate'
 import { db } from '../../lib/db'
+import { imageUploadSchema } from '../../lib/validators'
 import { createLogger } from '../../lib/logger'
 import { incrementCounter, recordDuration } from '../../lib/metrics'
 
@@ -129,13 +131,15 @@ imageRoutes.post('/', async (c) => {
 
     userPrompt = (formData.get('prompt') as string | null) ?? ''
   } else {
-    const body = await c.req.json<{ imageUrl?: string; prompt?: string }>().catch(() => ({}))
-    if (!body.imageUrl) {
+    const rawBody = await c.req.json().catch(() => ({}))
+    const parsed = imageUploadSchema.safeParse(rawBody)
+    if (!parsed.success || !parsed.data.imageUrl) {
       return c.json({ error: 'Provide image file (multipart) or imageUrl in JSON body' }, 400)
     }
-    imageData = { url: body.imageUrl }
-    imageHash = Buffer.from(body.imageUrl).toString('base64').slice(0, 20)
-    userPrompt = body.prompt ?? ''
+    const { imageUrl, prompt: jsonPrompt } = parsed.data
+    imageData = { url: imageUrl! }
+    imageHash = Buffer.from(imageUrl!).toString('base64').slice(0, 20)
+    userPrompt = jsonPrompt ?? ''
   }
 
   // --- Cost estimate + balance check ---
