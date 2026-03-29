@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +28,16 @@ interface ModelOption {
 }
 
 type PanelId = 'projects' | 'assets' | 'dna' | 'tokens' | 'settings' | null
+
+interface RobloxGame {
+  id: string
+  name: string
+  thumbnailUrl: string
+  visits: number
+  updated: string
+  isPublished: boolean
+  genre: string
+}
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -66,22 +77,42 @@ const PANEL_TITLE: Record<NonNullable<PanelId>, string> = {
   settings: 'Settings',
 }
 
-const DEMO_PROJECTS = [
-  { name: 'Medieval Kingdom', lastEdited: '2h ago' },
-  { name: 'Racing World',     lastEdited: 'Yesterday' },
-  { name: 'My First Game',    lastEdited: '3 days ago' },
+const DEMO_GAMES: RobloxGame[] = [
+  { id: 'demo-1', name: 'Medieval Kingdom', thumbnailUrl: '', visits: 15200, updated: '2h ago',      isPublished: true,  genre: 'RPG'     },
+  { id: 'demo-2', name: 'Speed Racing',     thumbnailUrl: '', visits: 8700,  updated: 'Yesterday',   isPublished: true,  genre: 'Racing'  },
+  { id: 'demo-3', name: 'Tycoon Master',    thumbnailUrl: '', visits: 42100, updated: '3 days ago',  isPublished: true,  genre: 'Tycoon'  },
+  { id: 'demo-4', name: 'Obby Challenge',   thumbnailUrl: '', visits: 3200,  updated: '1 week ago',  isPublished: true,  genre: 'Obby'    },
+  { id: 'demo-5', name: 'My First Game',    thumbnailUrl: '', visits: 156,   updated: '2 weeks ago', isPublished: false, genre: 'Sandbox' },
 ]
 
-interface AssetItem { name: string; price: string; category: 'Models' | 'Scripts' | 'UI' | 'Audio' | 'Vehicles' }
-const DEMO_ASSETS: AssetItem[] = [
-  { name: 'Castle Model', price: 'Free',   category: 'Models'   },
-  { name: 'Tree Pack',    price: '$2.99',  category: 'Models'   },
-  { name: 'UI Kit',       price: '$4.99',  category: 'UI'       },
-  { name: 'NPC Bundle',   price: '$9.99',  category: 'Models'   },
-  { name: 'Sound Pack',   price: 'Free',   category: 'Audio'    },
-  { name: 'Vehicle Set',  price: '$7.99',  category: 'Vehicles' },
-]
-const ASSET_CATEGORIES = ['All', 'Models', 'Scripts', 'UI', 'Audio'] as const
+function formatVisits(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return String(n)
+}
+
+// ─── Roblox Marketplace Types ──────────────────────────────────────────────────
+
+interface RobloxAsset {
+  id: number
+  name: string
+  description: string
+  creatorName: string
+  price: number
+  priceStatus: string | null
+  thumbnailUrl: string | null
+}
+
+const ASSET_CATEGORIES = ['All', 'Models', 'Meshes', 'Audio', 'Images', 'Plugins'] as const
+type AssetCategory = typeof ASSET_CATEGORIES[number]
+
+const CATEGORY_PARAM: Record<AssetCategory, string> = {
+  All:     'all',
+  Models:  'models',
+  Meshes:  'meshes',
+  Audio:   'audio',
+  Images:  'images',
+  Plugins: 'plugins',
+}
 
 interface DnaExample { name: string; score: number; players: string; rating: string; genre: string }
 const DNA_EXAMPLES: DnaExample[] = [
@@ -200,15 +231,15 @@ function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: Mod
           style={{ backgroundColor: current.color }}
         />
         <span className="font-medium">{current.label}</span>
-        <svg className="w-3 h-3 text-gray-500" viewBox="0 0 12 12" fill="none">
+        <svg className="w-3 h-3 text-gray-400" viewBox="0 0 12 12" fill="none">
           <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
 
       {open && (
-        <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#242424] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute left-0 bottom-full mb-2 w-52 bg-[#141414] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="px-3 py-2 border-b border-white/8">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Select Model</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium">Select Model</p>
           </div>
           {MODELS.map((m) => (
             <button
@@ -229,7 +260,7 @@ function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: Mod
                     </span>
                   )}
                 </div>
-                <span className="text-[11px] text-gray-500">{m.provider}</span>
+                <span className="text-[11px] text-gray-400">{m.provider}</span>
               </div>
               {value === m.id && (
                 <svg className="w-3.5 h-3.5 text-[#FFB81C] flex-shrink-0" viewBox="0 0 14 14" fill="none">
@@ -287,7 +318,7 @@ function Message({ msg }: { msg: ChatMessage }) {
   if (msg.role === 'system') {
     return (
       <div className="flex justify-center my-2">
-        <span className="text-[11px] text-gray-600 bg-white/5 border border-white/8 rounded-full px-3 py-0.5">
+        <span className="text-[11px] text-gray-500 bg-white/5 border border-white/8 rounded-full px-3 py-0.5">
           {msg.content}
         </span>
       </div>
@@ -311,7 +342,7 @@ function Message({ msg }: { msg: ChatMessage }) {
           <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
         </div>
         <div className="w-7 h-7 rounded-full flex-shrink-0 bg-white/10 border border-white/15 flex items-center justify-center self-end">
-          <svg className="w-3.5 h-3.5 text-gray-400" viewBox="0 0 14 14" fill="none">
+          <svg className="w-3.5 h-3.5 text-gray-300" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
             <path d="M1.5 12.5c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
@@ -353,7 +384,7 @@ function Message({ msg }: { msg: ChatMessage }) {
           <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
         </div>
         {msg.tokensUsed !== undefined && (
-          <span className="text-[10px] text-gray-600 pl-1 flex items-center gap-1">
+          <span className="text-[10px] text-blue-400/70 pl-1 flex items-center gap-1">
             <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1"/>
               <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
@@ -515,7 +546,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
   return (
     <div
       className="flex-1 relative overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #0A1628 0%, #0D1F3C 35%, #242424 100%)' }}
+      style={{ background: 'linear-gradient(180deg, #0A1628 0%, #0D1F3C 35%, #141414 100%)' }}
     >
       {/* Sky gradient */}
       <div className="absolute inset-0 pointer-events-none" style={{
@@ -612,7 +643,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-          <span className="text-gray-400 font-medium">Studio Not Connected</span>
+          <span className="text-gray-300 font-medium">Studio Not Connected</span>
         </div>
         <button
           className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors text-left px-1"
@@ -659,9 +690,9 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
             className="flex gap-0.5 rounded-lg overflow-hidden"
             style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            <button className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-white transition-colors text-sm font-bold">−</button>
+            <button className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold">−</button>
             <div className="w-px self-stretch bg-white/8" />
-            <button className="w-7 h-7 flex items-center justify-center text-gray-500 hover:text-white transition-colors text-sm font-bold">+</button>
+            <button className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold">+</button>
           </div>
         </div>
       </div>
@@ -698,7 +729,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
           <button
             key={label}
             title={label}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/8 transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/8 transition-colors"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
               <path d={icon} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -708,7 +739,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
         <div className="w-px h-4 bg-white/10 mx-0.5" />
         <button
           title="Fullscreen"
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/8 transition-colors"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/8 transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
             <path d="M1 4V1h3M8 1h3v3M11 8v3H8M4 11H1V8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -721,45 +752,180 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
 
 // ─── Panel sub-components ──────────────────────────────────────────────────────
 
-function ProjectsPanel() {
+function ProjectsPanel({
+  activeGameId,
+  onSelectGame,
+}: {
+  activeGameId: string | null
+  onSelectGame: (game: RobloxGame) => void
+}) {
+  const [showConnect, setShowConnect] = useState(false)
+  const [placeInput, setPlaceInput]   = useState('')
+  const [games, setGames]             = useState<RobloxGame[]>(DEMO_GAMES)
+
+  // Genre colour dots
+  const GENRE_COLORS: Record<string, string> = {
+    RPG: '#8B5CF6', Racing: '#3B82F6', Tycoon: '#F59E0B',
+    Obby: '#10B981', Sandbox: '#6B7280',
+  }
+
+  const handleConnectGame = () => {
+    const raw = placeInput.trim()
+    if (!raw) return
+    // Extract numeric ID from URL or raw input
+    const match = raw.match(/(\d{6,})/)
+    const id = match ? match[1] : `custom-${Date.now()}`
+    const newGame: RobloxGame = {
+      id,
+      name: `Game ${id}`,
+      thumbnailUrl: '',
+      visits: 0,
+      updated: 'Just now',
+      isPublished: false,
+      genre: 'Unknown',
+    }
+    setGames((prev) => [newGame, ...prev])
+    onSelectGame(newGame)
+    setPlaceInput('')
+    setShowConnect(false)
+  }
+
   return (
     <div className="p-4 space-y-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Your Games</p>
+      {/* Header buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowConnect((s) => !s)}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-white/5 hover:bg-white/8 border border-white/10 hover:border-[#FFB81C]/30 text-gray-300 hover:text-[#FFB81C] text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+            <path d="M2 7h10M7 2v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          Connect Game
+        </button>
+        <button className="flex-1 flex items-center justify-center gap-1.5 bg-[#FFB81C] hover:bg-[#E6A519] text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+            <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          New Game
+        </button>
       </div>
-      <button className="w-full flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors">
-        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-          <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        + New Game
-      </button>
-      <div className="space-y-1.5 pt-1">
-        {DEMO_PROJECTS.map(({ name, lastEdited }) => (
-          <div key={name} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white/[0.03] hover:bg-white/6 border border-white/8 hover:border-white/15 transition-colors group">
-            <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-[#FFB81C]/60" viewBox="0 0 16 16" fill="none">
-                <path d="M8 2L10 6h4l-3 2.5 1 4L8 10l-4 2.5 1-4L2 6h4L8 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-gray-200 font-medium truncate group-hover:text-white transition-colors">{name}</p>
-              <p className="text-[10px] text-gray-600">{lastEdited}</p>
-            </div>
-            <button className="text-[10px] font-semibold text-[#FFB81C]/70 hover:text-[#FFB81C] bg-[#FFB81C]/10 hover:bg-[#FFB81C]/20 px-2 py-1 rounded-md transition-colors flex-shrink-0">
-              Open
+
+      {/* Connect dialog inline */}
+      {showConnect && (
+        <div className="bg-white/[0.03] border border-[#FFB81C]/20 rounded-xl p-3 space-y-2">
+          <p className="text-[10px] text-gray-400 font-medium">Enter Place ID or game URL</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={placeInput}
+              onChange={(e) => setPlaceInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleConnectGame()}
+              placeholder="e.g. 12345678 or roblox.com/games/..."
+              className="flex-1 bg-black/30 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-400/50"
+            />
+            <button
+              onClick={handleConnectGame}
+              disabled={!placeInput.trim()}
+              className="bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-40 text-black text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              Add
             </button>
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Section label */}
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium pt-1">Connected Games</p>
+
+      {/* Game cards */}
+      <div className="space-y-2">
+        {games.map((game) => {
+          const isActive = game.id === activeGameId
+          return (
+            <button
+              key={game.id}
+              onClick={() => onSelectGame(game)}
+              className="w-full text-left group"
+            >
+              <div
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all"
+                style={{
+                  background: isActive ? 'rgba(255,184,28,0.06)' : 'rgba(255,255,255,0.02)',
+                  borderColor: isActive ? 'rgba(255,184,28,0.5)' : 'rgba(255,255,255,0.08)',
+                  boxShadow: isActive ? '0 0 0 1px rgba(255,184,28,0.2)' : 'none',
+                }}
+              >
+                {/* Thumbnail / placeholder */}
+                <div
+                  className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden"
+                  style={{
+                    background: isActive
+                      ? 'linear-gradient(135deg, rgba(255,184,28,0.2) 0%, rgba(255,107,53,0.15) 100%)'
+                      : 'rgba(255,255,255,0.05)',
+                    border: isActive ? '1px solid rgba(255,184,28,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {game.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <svg className="w-5 h-5" style={{ color: isActive ? '#FFB81C' : '#4B5563' }} viewBox="0 0 20 20" fill="none">
+                      <path d="M10 2L12.5 7H17l-4 3 1.5 5L10 12 5.5 15 7 10 3 7h4.5L10 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className={`text-sm font-semibold truncate transition-colors ${isActive ? 'text-[#FFB81C]' : 'text-gray-200 group-hover:text-white'}`}>
+                      {game.name}
+                    </p>
+                    {!game.isPublished && (
+                      <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gray-700/60 text-gray-400 border border-gray-600/50">
+                        PRIVATE
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: GENRE_COLORS[game.genre] ?? '#6B7280' }}
+                    />
+                    <p className="text-[10px] text-gray-500">
+                      {formatVisits(game.visits)} visits &middot; {game.updated}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Active indicator */}
+                {isActive && (
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] flex-shrink-0" style={{ boxShadow: '0 0 6px #FFB81C' }} />
+                )}
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
+const FALLBACK_ASSETS: Array<{ name: string; price: string; category: string }> = [
+  { name: 'Castle Model',  price: 'Free',   category: 'Models'  },
+  { name: 'Tree Pack',     price: '$2.99',  category: 'Models'  },
+  { name: 'UI Kit',        price: '$4.99',  category: 'Plugins' },
+  { name: 'NPC Bundle',    price: '$9.99',  category: 'Models'  },
+  { name: 'Sound Pack',    price: 'Free',   category: 'Audio'   },
+  { name: 'Vehicle Set',   price: '$7.99',  category: 'Models'  },
+]
+
 function AssetsPanel() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('All')
 
-  const filtered = DEMO_ASSETS.filter((a) => {
+  const filtered = FALLBACK_ASSETS.filter((a) => {
     const matchesSearch = !query.trim() || a.name.toLowerCase().includes(query.toLowerCase())
     const matchesCat = activeCategory === 'All' || a.category === activeCategory
     return matchesSearch && matchesCat
@@ -768,7 +934,7 @@ function AssetsPanel() {
   return (
     <div className="p-4 space-y-3">
       <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" viewBox="0 0 16 16" fill="none">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="none">
           <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="1.5"/>
           <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
@@ -777,7 +943,7 @@ function AssetsPanel() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search marketplace..."
-          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
+          className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-400/50"
         />
       </div>
 
@@ -791,7 +957,7 @@ function AssetsPanel() {
               'px-2.5 py-1 rounded-full text-[10px] font-semibold transition-colors',
               activeCategory === cat
                 ? 'bg-[#FFB81C] text-black'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200 border border-white/10',
+                : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-gray-200 border border-white/10',
             ].join(' ')}
           >
             {cat}
@@ -800,7 +966,7 @@ function AssetsPanel() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-xs text-gray-600 text-center py-6">No assets found</p>
+        <p className="text-xs text-gray-500 text-center py-6">No assets found</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {filtered.map(({ name, price }) => (
@@ -817,7 +983,7 @@ function AssetsPanel() {
                   'text-[10px] font-bold',
                   price === 'Free' ? 'text-emerald-400' : 'text-[#FFB81C]',
                 ].join(' ')}>{price}</span>
-                <button className="text-[9px] font-semibold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors">
+                <button className="text-[9px] font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors">
                   Add
                 </button>
               </div>
@@ -848,7 +1014,7 @@ function DnaPanel() {
 
   return (
     <div className="p-4 space-y-4">
-      <p className="text-[11px] text-gray-500 leading-relaxed font-medium">Analyze any Roblox game</p>
+      <p className="text-[11px] text-gray-400 leading-relaxed font-medium">Analyze any Roblox game</p>
 
       <div className="flex gap-2">
         <input
@@ -857,7 +1023,7 @@ function DnaPanel() {
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleScan()}
           placeholder="https://roblox.com/games/..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50"
+          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:outline-none focus:border-blue-400/50"
         />
         <button
           onClick={handleScan}
@@ -870,7 +1036,7 @@ function DnaPanel() {
 
       {/* Example scans */}
       <div>
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-2">Example Scans</p>
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Example Scans</p>
         <div className="space-y-1.5">
           {DNA_EXAMPLES.map((ex) => (
             <button
@@ -885,14 +1051,14 @@ function DnaPanel() {
             >
               <div>
                 <p className="text-xs text-gray-200 font-medium">{ex.name}</p>
-                <p className="text-[10px] text-gray-600">{ex.genre}</p>
+                <p className="text-[10px] text-gray-500">{ex.genre}</p>
               </div>
               <div className="text-right">
                 <p className={[
                   'text-sm font-bold',
                   ex.score >= 90 ? 'text-emerald-400' : 'text-[#FFB81C]',
                 ].join(' ')}>{ex.score}/100</p>
-                <p className="text-[10px] text-gray-600">Score</p>
+                <p className="text-[10px] text-gray-500">Score</p>
               </div>
             </button>
           ))}
@@ -910,8 +1076,8 @@ function DnaPanel() {
               { label: 'Rating',  value: active.rating },
             ].map(({ label, value }) => (
               <div key={label} className="text-center bg-white/5 rounded-md py-1.5">
-                <p className="text-[11px] text-[#FFB81C] font-bold">{value}</p>
-                <p className="text-[9px] text-gray-600">{label}</p>
+                <p className="text-[11px] text-blue-400 font-bold">{value}</p>
+                <p className="text-[9px] text-gray-500">{label}</p>
               </div>
             ))}
           </div>
@@ -930,22 +1096,22 @@ function TokensPanel({ tokensUsed }: { tokensUsed: number }) {
   const balance = 1000
   const remaining = Math.max(0, balance - tokensUsed)
   const usedPct = Math.min(100, (tokensUsed / TOKEN_LIMIT) * 100)
-  const barColor = usedPct > 80 ? '#ef4444' : usedPct > 60 ? '#f97316' : '#FFB81C'
+  const barColor = usedPct > 80 ? '#ef4444' : usedPct > 60 ? '#f97316' : '#60A5FA'
 
   return (
     <div className="p-4 space-y-4">
       {/* Balance display */}
-      <div className="bg-[#FFB81C]/8 border border-[#FFB81C]/20 rounded-xl p-4 text-center">
-        <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Balance</p>
-        <p className="text-3xl font-bold text-[#FFB81C]">{remaining.toLocaleString()}</p>
-        <p className="text-xs text-gray-500 mt-1">tokens</p>
+      <div className="bg-blue-400/8 border border-blue-400/20 rounded-xl p-4 text-center">
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Balance</p>
+        <p className="text-3xl font-bold text-blue-400">{remaining.toLocaleString()}</p>
+        <p className="text-xs text-gray-400 mt-1">tokens</p>
       </div>
 
       {/* Usage bar */}
       <div>
         <div className="flex justify-between mb-1.5">
-          <span className="text-[10px] text-gray-600">Used this session</span>
-          <span className="text-[10px] text-gray-400">{tokensUsed} / {TOKEN_LIMIT.toLocaleString()}</span>
+          <span className="text-[10px] text-gray-500">Used this session</span>
+          <span className="text-[10px] text-blue-400">{tokensUsed} / {TOKEN_LIMIT.toLocaleString()}</span>
         </div>
         <div className="h-2 bg-white/5 rounded-full overflow-hidden">
           <div
@@ -961,12 +1127,12 @@ function TokensPanel({ tokensUsed }: { tokensUsed: number }) {
 
       {/* Recent usage */}
       <div>
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider font-medium mb-2">Recent Usage</p>
+        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Recent Usage</p>
         <div className="space-y-1">
           {RECENT_USAGE.map(({ cmd, tokens }) => (
             <div key={cmd} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/4 transition-colors">
-              <p className="text-[11px] text-gray-400 truncate flex-1 mr-2">{cmd}</p>
-              <span className="text-[10px] text-[#FFB81C]/70 font-medium flex-shrink-0">{tokens}t</span>
+              <p className="text-[11px] text-gray-300 truncate flex-1 mr-2">{cmd}</p>
+              <span className="text-[10px] text-blue-400/70 font-medium flex-shrink-0">{tokens}t</span>
             </div>
           ))}
         </div>
@@ -980,7 +1146,7 @@ function SettingsPanel() {
     <div className="p-4 space-y-3">
       {/* Inline setting row */}
       <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/8">
-        <span className="text-xs text-gray-400">Theme</span>
+        <span className="text-xs text-gray-300">Theme</span>
         <span className="text-xs font-semibold text-gray-300 bg-white/8 px-2 py-0.5 rounded-md">Dark</span>
       </div>
 
@@ -997,7 +1163,7 @@ function SettingsPanel() {
             href={href}
             className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-white/5 border border-transparent hover:border-white/8 transition-colors group"
           >
-            <span className="text-xs text-gray-400 group-hover:text-gray-200 transition-colors">{label}</span>
+            <span className="text-xs text-gray-300 group-hover:text-gray-200 transition-colors">{label}</span>
             <div className="flex items-center gap-1 text-[#FFB81C]/60 group-hover:text-[#FFB81C] transition-colors">
               <span className="text-[11px] font-medium">{sub}</span>
               <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
@@ -1029,7 +1195,7 @@ function IconBtn({
       aria-label={label}
       className={[
         'w-10 h-10 rounded-xl flex items-center justify-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C]',
-        active ? 'bg-[#FFB81C]/15 text-[#FFB81C]' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5',
+        active ? 'bg-[#FFB81C]/15 text-[#FFB81C]' : 'text-gray-400 hover:text-gray-300 hover:bg-white/5',
       ].join(' ')}
     >
       {children}
@@ -1055,6 +1221,7 @@ export function EditorClient() {
   const [totalTokens, setTotalTokens] = useState(0)
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [activeGame, setActiveGame] = useState<RobloxGame | null>(DEMO_GAMES[0])
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -1117,7 +1284,13 @@ export function EditorClient() {
           const res = await fetch('/api/ai/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: trimmed, model: selectedModel }),
+            body: JSON.stringify({
+              message: trimmed,
+              model: selectedModel,
+              gameContext: activeGame
+                ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre }
+                : null,
+            }),
           })
           if (res.ok) {
             const data = await res.json() as { message?: string; tokensUsed?: number }
@@ -1183,7 +1356,7 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel],
+    [loading, selectedModel, activeGame],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1257,7 +1430,7 @@ export function EditorClient() {
 
         {/* ── Left icon bar ──────────────────────────────────────────────── */}
         <div className="hidden md:flex flex-col items-center gap-1 py-3 px-1 bg-[#090C1A] border-r border-white/6 w-14 flex-shrink-0">
-          <Link href="/" title="Home" className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors mb-2">
+          <Link href="/" title="Home" className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors mb-2">
             <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
               <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -1272,14 +1445,14 @@ export function EditorClient() {
           <div className="hidden md:flex w-56 bg-[#090C1A] border-r border-white/6 flex-col flex-shrink-0 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
               <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-              <button onClick={() => setActivePanel(null)} className="text-gray-600 hover:text-gray-400 transition-colors" aria-label="Close panel">
+              <button onClick={() => setActivePanel(null)} className="text-gray-500 hover:text-gray-300 transition-colors" aria-label="Close panel">
                 <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                   <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto min-h-0">
-              {activePanel === 'projects' && <ProjectsPanel />}
+              {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
               {activePanel === 'assets'   && <AssetsPanel />}
               {activePanel === 'dna'      && <DnaPanel />}
               {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
@@ -1294,14 +1467,14 @@ export function EditorClient() {
             <div className="absolute left-0 right-0 bottom-0 bg-[#090C1A] border-t border-white/8 rounded-t-2xl max-h-[70dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
                 <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-                <button onClick={() => setActivePanel(null)} className="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-gray-400 transition-colors" aria-label="Close panel">
+                <button onClick={() => setActivePanel(null)} className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors" aria-label="Close panel">
                   <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto min-h-0">
-                {activePanel === 'projects' && <ProjectsPanel />}
+                {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
                 {activePanel === 'assets'   && <AssetsPanel />}
                 {activePanel === 'dna'      && <DnaPanel />}
                 {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
@@ -1316,14 +1489,14 @@ export function EditorClient() {
 
           {/* Mobile top bar */}
           <div className="md:hidden flex items-center gap-3 px-3 py-2 bg-[#090C1A] border-b border-white/6 flex-shrink-0">
-            <Link href="/" className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors" aria-label="Home">
+            <Link href="/" className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors" aria-label="Home">
               <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
                 <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
                 <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </Link>
             <span className="text-sm font-semibold text-white flex-1">AI Editor</span>
-            <span className="text-[10px] text-gray-600">{totalTokens} tokens</span>
+            <span className="text-[10px] text-blue-400">{totalTokens} tokens</span>
           </div>
 
           {/* Two-column layout */}
@@ -1340,17 +1513,31 @@ export function EditorClient() {
             >
               {/* Chat header */}
               <div
-                className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+                className="flex-shrink-0"
                 style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
               >
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: 'radial-gradient(circle, #FFB81C 30%, #FFB81C44 100%)', boxShadow: '0 0 6px #FFB81C80' }}
-                  />
-                  <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Build Chat</span>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ background: 'radial-gradient(circle, #FFB81C 30%, #FFB81C44 100%)', boxShadow: '0 0 6px #FFB81C80' }}
+                    />
+                    <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Build Chat</span>
+                  </div>
+                  <span className="text-[10px] text-blue-400 hidden md:block">{totalTokens} tokens used</span>
                 </div>
-                <span className="text-[10px] text-gray-600 hidden md:block">{totalTokens} tokens used</span>
+                {activeGame && (
+                  <div
+                    className="flex items-center gap-2 mx-4 mb-3 px-3 py-1.5 rounded-lg"
+                    style={{ background: 'rgba(255,184,28,0.06)', border: '1px solid rgba(255,184,28,0.18)' }}
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] flex-shrink-0" style={{ boxShadow: '0 0 4px #FFB81C' }} />
+                    <span className="text-[11px] text-[#FFB81C]/80 font-medium truncate">
+                      Working on: <span className="text-[#FFB81C] font-semibold">{activeGame.name}</span>
+                    </span>
+                    <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">{activeGame.genre}</span>
+                  </div>
+                )}
               </div>
 
               {/* Messages */}
@@ -1358,7 +1545,7 @@ export function EditorClient() {
                 {/* Quick action chips — visible when empty */}
                 {messages.length === 1 && (
                   <div className="space-y-3">
-                    <p className="text-[11px] text-gray-600 uppercase tracking-wider">Quick start</p>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wider">Quick start</p>
                     <div className="grid grid-cols-2 gap-2">
                       {QUICK_ACTIONS.map(({ label, icon, prompt }) => (
                         <button
@@ -1377,7 +1564,7 @@ export function EditorClient() {
                           }}
                         >
                           <span className="text-base">{icon}</span>
-                          <span className="text-xs text-gray-400 font-medium">{label}</span>
+                          <span className="text-xs text-gray-300 font-medium">{label}</span>
                         </button>
                       ))}
                     </div>
@@ -1403,8 +1590,8 @@ export function EditorClient() {
                       <circle cx="5.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1"/>
                       <path d="M1 11l4-3 3 2.5 2-2 5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                     </svg>
-                    <span className="text-xs text-gray-400 flex-1 min-w-0 truncate">{imageFile.name}</span>
-                    <button onClick={() => setImageFile(null)} className="text-gray-600 hover:text-gray-400">
+                    <span className="text-xs text-gray-300 flex-1 min-w-0 truncate">{imageFile.name}</span>
+                    <button onClick={() => setImageFile(null)} className="text-gray-500 hover:text-gray-300">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
                         <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
@@ -1446,7 +1633,7 @@ export function EditorClient() {
                             'w-8 h-8 rounded-lg flex items-center justify-center transition-all',
                             listening
                               ? 'bg-red-500/20 text-red-400 scale-110'
-                              : 'text-gray-600 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10',
+                              : 'text-gray-500 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10',
                           ].join(' ')}
                         >
                           {listening ? (
@@ -1468,7 +1655,7 @@ export function EditorClient() {
                         onClick={() => fileInputRef.current?.click()}
                         title="Upload image"
                         aria-label="Upload image"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10 transition-all"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10 transition-all"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                           <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -1494,7 +1681,7 @@ export function EditorClient() {
                         'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all',
                         input.trim() && !loading
                           ? 'bg-[#FFB81C] text-black hover:bg-[#E6A519] shadow-lg'
-                          : 'bg-white/5 text-gray-600 cursor-not-allowed',
+                          : 'bg-white/5 text-gray-500 cursor-not-allowed',
                       ].join(' ')}
                       style={input.trim() && !loading ? { boxShadow: '0 4px 16px rgba(255,184,28,0.3)' } : {}}
                     >
@@ -1527,7 +1714,7 @@ export function EditorClient() {
                   {/* Templates */}
                   <button
                     title="Templates"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/8 border border-white/8 hover:border-white/15 text-xs text-gray-500 hover:text-gray-300 transition-all"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/8 border border-white/8 hover:border-white/15 text-xs text-gray-400 hover:text-gray-300 transition-all"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
                       <rect x="1" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
@@ -1548,7 +1735,7 @@ export function EditorClient() {
                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: currentModel.color }}
                   />
-                  <span className="text-[11px] text-gray-600">
+                  <span className="text-[11px] text-gray-500">
                     {currentModel.label} by {currentModel.provider}
                   </span>
                   {currentModel.badge && (
