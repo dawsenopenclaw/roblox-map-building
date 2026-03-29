@@ -11,7 +11,14 @@ import {
   ReEngagementEmail,
 } from './email-templates'
 
-const resend = new Resend(serverEnv.RESEND_API_KEY)
+let _resend: Resend | null = null
+function getResend(): Resend {
+  if (!_resend) {
+    _resend = new Resend(serverEnv.RESEND_API_KEY || '')
+  }
+  return _resend
+}
+
 const FROM = 'RobloxForge <noreply@robloxforge.com>'
 const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
 
@@ -29,7 +36,7 @@ export async function sendParentalConsentEmail({
   const approveUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=approve`
   const denyUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=deny`
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: parentEmail,
     subject: `Parental consent required for ${childName}'s RobloxForge account`,
@@ -51,7 +58,7 @@ export async function sendWelcomeEmail({
   email: string
   name: string
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `Welcome to RobloxForge, ${name}! Here are 100 free tokens`,
@@ -74,7 +81,7 @@ export async function sendBuildCompleteEmail({
   buildId: string
   thumbnailUrl?: string
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `Your ${buildType} "${buildName}" is ready!`,
@@ -94,7 +101,7 @@ export async function sendTokenLowEmail({
   tokenCount: number
 }) {
   const isVeryLow = tokenCount <= 5
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: isVeryLow
@@ -128,7 +135,7 @@ export async function sendSaleNotificationEmail({
     currency: 'USD',
   }).format(net)
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `${formatted} earned from "${templateName}"`,
@@ -163,7 +170,7 @@ export async function sendWeeklyDigestEmail({
   trendingTemplates?: Array<{ name: string; category: string; sales: number; thumbnailUrl?: string }>
   communityHighlight?: string
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `Your RobloxForge weekly digest — ${buildsThisWeek} builds this week`,
@@ -209,7 +216,7 @@ export async function sendCharityUpdateEmail({
     currency: 'USD',
   }).format(totalDonatedThisMonth)
 
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `Together we've donated ${formatted} this month — your charity update`,
@@ -240,7 +247,7 @@ export async function sendReEngagementEmail({
   daysInactive: number
   bonusTokens?: number
 }) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: email,
     subject: `We miss you, ${name} — come back and get ${bonusTokens} free tokens`,
