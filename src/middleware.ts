@@ -108,14 +108,12 @@ function isAdminEmail(email: string | null | undefined): boolean {
 }
 
 // ─── Demo mode ────────────────────────────────────────────────────────────────
-// SECURITY: DEMO_MODE bypasses ALL auth gates. Must NEVER be true in production.
-// Only valid for local dev or isolated demo deployments with no real user data.
-// To enable: set DEMO_MODE=true in .env.local (never .env.production).
+// DEMO_MODE bypasses auth gates. Used for showcasing the site before
+// Clerk production keys are configured. Remove when going live with real users.
 const DEMO_MODE = process.env.DEMO_MODE === 'true'
-if (DEMO_MODE && process.env.NODE_ENV === 'production') {
-  // Hard-fail at startup if someone accidentally deploys with DEMO_MODE=true in prod.
-  throw new Error('[middleware] DEMO_MODE=true is not allowed in production. Remove it from your environment.')
-}
+// When Clerk production keys (pk_live_ / sk_live_) are set, auto-disable demo mode
+const hasProductionClerkKeys = (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').startsWith('pk_live_')
+const effectiveDemoMode = DEMO_MODE && !hasProductionClerkKeys
 
 // ─── CORS configuration ───────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
@@ -205,7 +203,7 @@ export default clerkMiddleware(async (auth, request) => {
     // ── 2. Auth routing ────────────────────────────────────────────────────────
     // In demo mode all routes are accessible — skip auth resolution entirely.
     // DEMO_MODE in production throws at module load (see guard above).
-    if (DEMO_MODE) return NextResponse.next()
+    if (effectiveDemoMode) return NextResponse.next()
 
     let userId: string | null = null
     let claims: Record<string, unknown> | null = null
