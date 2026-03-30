@@ -124,7 +124,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#0a0a0a" />
@@ -136,8 +136,20 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
+        {/* Runs synchronously before CSS/React — locks in dark background instantly */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var d=document.documentElement;d.style.backgroundColor='#0a0a0a';d.style.colorScheme='dark';d.setAttribute('data-loading','');})();`,
+          }}
+        />
+        {/* Suppress all transitions during initial render — removed once hydrated */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `[data-loading],[data-loading] *{transition:none!important;animation-duration:0.01ms!important;}`,
+          }}
+        />
       </head>
-      <body className="bg-background text-white antialiased font-sans">
+      <body className="bg-background text-white antialiased font-sans" suppressHydrationWarning>
         <SplashScreen>
         <ClerkProvider
           signInUrl="/sign-in"

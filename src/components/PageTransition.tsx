@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { usePathname } from 'next/navigation'
+import { useRef } from 'react'
 
 interface PageTransitionProps {
   children: React.ReactNode
@@ -33,6 +34,13 @@ const pageVariants: Variants = {
   },
 }
 
+// Variant for immediate render (no animation) — used on initial page load
+const noAnimVariants: Variants = {
+  initial: { opacity: 1, y: 0 },
+  enter:   { opacity: 1, y: 0, transition: { duration: 0 } },
+  exit:    { opacity: 0, y: -6, transition: { duration: 0.15, ease: [0.55, 0, 1, 0.45] as [number, number, number, number] } },
+}
+
 /**
  * Attach this variant to any direct child component you want to slide up.
  * Usage (in a page component):
@@ -52,12 +60,16 @@ export const cardVariants: Variants = {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname()
+  // Track whether this is the very first render — skip animation on initial load
+  const isFirstRender = useRef(true)
+  const variants = isFirstRender.current ? noAnimVariants : pageVariants
+  if (isFirstRender.current) isFirstRender.current = false
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={pathname}
-        variants={pageVariants}
+        variants={variants}
         initial="initial"
         animate="enter"
         exit="exit"

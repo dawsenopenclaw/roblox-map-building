@@ -32,17 +32,25 @@ function scrambleChar(final: string, progress: number, index: number): string {
 }
 
 export function SplashScreen({ children }: { children: React.ReactNode }) {
-  const [visible, setVisible] = useState(false)
+  // Start as null — stays null until useEffect resolves sessionStorage check.
+  // null = undecided (show nothing), false = show splash, true = skip splash.
+  const [splashState, setSplashState] = useState<'pending' | 'showing' | 'done'>('pending')
   const [progress, setProgress] = useState(0)
   const [displayText, setDisplayText] = useState(TARGET_TEXT)
   const [exiting, setExiting] = useState(false)
-  const [done, setDone] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   const startTimeRef = useRef<number | null>(null)
   const rafRef = useRef<number | null>(null)
   const scrambleRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Derived booleans for readability
+  const visible = splashState === 'showing'
+  const done = splashState === 'done'
+
   useEffect(() => {
+    // Remove data-loading to re-enable transitions now that React has hydrated
+    document.documentElement.removeAttribute('data-loading')
+
     // Check reduced motion preference
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     setReducedMotion(mq.matches)
@@ -50,11 +58,11 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     // sessionStorage gate — only show once per session
     const seen = sessionStorage.getItem('fj_splash_seen')
     if (seen) {
-      setDone(true)
+      setSplashState('done')
       return
     }
     sessionStorage.setItem('fj_splash_seen', '1')
-    setVisible(true)
+    setSplashState('showing')
   }, [])
 
   useEffect(() => {
@@ -87,7 +95,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
         setProgress(100)
         setDisplayText(TARGET_TEXT)
         setTimeout(() => setExiting(true), 200)
-        setTimeout(() => setDone(true), 900)
+        setTimeout(() => setSplashState('done'), 900)
       }
     }
 
@@ -106,9 +114,11 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     setProgress(100)
     setDisplayText(TARGET_TEXT)
     setExiting(true)
-    setTimeout(() => setDone(true), 600)
+    setTimeout(() => setSplashState('done'), 600)
   }
 
+  // pending = waiting for sessionStorage check — render nothing to avoid flash
+  if (splashState === 'pending') return null
   if (done) return <>{children}</>
 
   const stageLabel = getStageLabel(progress)
