@@ -6,6 +6,7 @@ import {
   type BuildAssetPlan,
   type MarketplaceAsset,
 } from '@/lib/roblox-asset-search'
+import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import Anthropic from '@anthropic-ai/sdk'
 
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
@@ -797,6 +798,8 @@ interface ChatResponsePayload {
     totalCustom: number
     estimatedCustomCost: number
   }
+  /** Auto-triggered MCP tool result when Claude response implies generation */
+  mcpResult?: McpCallResult
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -831,11 +834,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
       const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
 
+      // Auto-trigger MCP tools based on what Claude said it's doing
+      let mcpResult: McpCallResult | undefined
+      const mcpIntent = detectMcpIntent(message, responseText)
+      if (mcpIntent) {
+        mcpResult = await callTool(mcpIntent.server, mcpIntent.tool, mcpIntent.args)
+      }
+
       return NextResponse.json({
         message: responseText,
         tokensUsed,
         intent,
         model: aiResponse.model,
+        ...(mcpResult ? { mcpResult } : {}),
       } satisfies ChatResponsePayload & { model: string })
     } catch (err: unknown) {
       // Rate limit — surface a clean error, don't fall through to demo
@@ -925,6 +936,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Leave default demo message, no textureResult attached
     }
     return NextResponse.json(payload)
+  }
+
+  // ── Auto-trigger MCP for terrain/city/asset intents in demo path ─────────
+  {
+    const mcpIntent = detectMcpIntent(message, DEMO_RESPONSES[intent] ?? '')
+    if (mcpIntent) {
+      try {
+        payload.mcpResult = await callTool(mcpIntent.server, mcpIntent.tool, mcpIntent.args)
+      } catch {
+        // MCP errors are non-fatal — demo response stands
+      }
+    }
   }
 
   // ── Marketplace-first building pipeline ──────────────────────────────────
