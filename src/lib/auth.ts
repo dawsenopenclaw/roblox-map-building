@@ -12,5 +12,10 @@ export function isUnder13(dateOfBirth: Date): boolean {
     today.getMonth(),
     today.getDate()
   )
-  return dateOfBirth >= thirteenYearsAgo
+  const dobDateOnly = new Date(
+    dateOfBirth.getFullYear(),
+    dateOfBirth.getMonth(),
+    dateOfBirth.getDate()
+  )
+  return dobDateOnly > thirteenYearsAgo
 }
