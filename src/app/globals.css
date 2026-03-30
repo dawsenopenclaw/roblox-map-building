@@ -497,6 +497,29 @@ body {
   100% { background-position: -200% 0; }
 }
 
+/* ─── Loading State Transition ──────────────────────────────────────────────── */
+/*
+ * Apply to the root element of every loading.tsx to make skeleton states
+ * fade in at the same speed as the page transition (200ms). This prevents
+ * the jarring "instant skeleton → animated page" jump.
+ *
+ * Usage: <div className="loading-enter"> ... </div>
+ */
+.loading-enter {
+  animation: loading-fade-in 200ms cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes loading-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ─── Page Transition Stagger Utility ───────────────────────────────────────── */
 /*
  * Opt-in stagger for direct children of a page.
