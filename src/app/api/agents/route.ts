@@ -31,6 +31,7 @@ import {
   getCachedOutput,
   type FeedbackRating,
 } from '@/lib/agents/self-improve'
+import { agentCallSchema, parseBody } from '@/lib/validations'
 
 // ─── Demo fallback data ───────────────────────────────────────────────────────
 
@@ -170,18 +171,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (isNextResponse(authResult)) return authResult
   const { userId, dbUser } = authResult
 
-  let body: CallRequestBody
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  const parsed = await parseBody(req, agentCallSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
-
+  const body = parsed.data as CallRequestBody
   const { action, prompt, dryRun = false } = body
-
-  if (!prompt?.trim()) {
-    return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
-  }
 
   // ── Feedback recording (fire-and-forget) ─────────────────────────────────
   if (body.feedback) {

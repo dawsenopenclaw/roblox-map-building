@@ -127,9 +127,9 @@ Initialize a new Next.js 15 App Router project with TypeScript and Tailwind CSS 
 
 **src/app/globals.css** — set :root CSS variables. body { background-color: var(--background); color: white; font-family: Inter, sans-serif; }. Define utility classes .text-accent { color: #FFB81C } and .bg-surface { background: #0D1231 }.
 
-**src/app/layout.tsx** — RootLayout with Inter (weights 400,600,700) and JetBrains Mono from next/font/google. Apply font.variable to <html>. Include <body className="bg-background text-white antialiased">. Export metadata: { title: 'RobloxForge', description: 'AI-powered Roblox game development' }.
+**src/app/layout.tsx** — RootLayout with Inter (weights 400,600,700) and JetBrains Mono from next/font/google. Apply font.variable to <html>. Include <body className="bg-background text-white antialiased">. Export metadata: { title: 'ForjeGames', description: 'AI-powered Roblox game development' }.
 
-**src/app/page.tsx** — minimal placeholder: a centered div with "RobloxForge" heading in gold (#FFB81C) and "Coming soon" subtitle. This gets replaced in Phase 4.
+**src/app/page.tsx** — minimal placeholder: a centered div with "ForjeGames" heading in gold (#FFB81C) and "Coming soon" subtitle. This gets replaced in Phase 4.
 
 **src/lib/db.ts** — Prisma singleton pattern safe for Next.js hot reload:
 ```typescript
@@ -157,8 +157,8 @@ export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 **.env.example** — list all required environment variables with placeholder values (never real secrets):
 ```
 # Database
-DATABASE_URL="postgresql://user:pass@localhost:5432/robloxforge"
-DIRECT_URL="postgresql://user:pass@localhost:5432/robloxforge"
+DATABASE_URL="postgresql://user:pass@localhost:5432/forjegames"
+DIRECT_URL="postgresql://user:pass@localhost:5432/forjegames"
 
 # Redis
 REDIS_URL="redis://localhost:6379"
@@ -199,7 +199,7 @@ Install shadcn/ui via `npx shadcn@latest init` in action, or manually add compon
   <verify>
     <automated>cd "C:/Users/Dawse/OneDrive/Desktop/roblox-map-building" && npm run typecheck 2>&1 | tail -5</automated>
   </verify>
-  <done>TypeScript compiles without errors. `next dev` starts and http://localhost:3000 shows dark page with gold "RobloxForge" heading. `src/lib/db.ts` and `src/lib/redis.ts` compile cleanly.</done>
+  <done>TypeScript compiles without errors. `next dev` starts and http://localhost:3000 shows dark page with gold "ForjeGames" heading. `src/lib/db.ts` and `src/lib/redis.ts` compile cleanly.</done>
 </task>
 
 <task type="auto">
@@ -451,7 +451,7 @@ Add a `prisma/seed.ts` script that creates a test user with FREE subscription an
     .github/workflows/deploy-production.yml
   </files>
   <action>
-**apps/api/package.json** — Hono backend package. Name: "@robloxforge/api". Scripts: dev (tsx watch src/index.ts), build (tsc), start (node dist/index.js). Dependencies: hono@4, @hono/node-server, @prisma/client, ioredis, @sentry/node, zod. DevDependencies: typescript, tsx, @types/node, prisma.
+**apps/api/package.json** — Hono backend package. Name: "@forjegames/api". Scripts: dev (tsx watch src/index.ts), build (tsc), start (node dist/index.js). Dependencies: hono@4, @hono/node-server, @prisma/client, ioredis, @sentry/node, zod. DevDependencies: typescript, tsx, @types/node, prisma.
 
 **apps/api/src/index.ts** — Hono app entry:
 ```typescript
@@ -588,7 +588,7 @@ CMD ["node", "apps/api/dist/index.js"]
 
 **fly.toml** — Fly.io app config:
 ```toml
-app = "robloxforge-api"
+app = "forjegames-api"
 primary_region = "sjc"
 
 [build]
@@ -662,7 +662,7 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: test
-          POSTGRES_DB: robloxforge_test
+          POSTGRES_DB: forjegames_test
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -680,8 +680,8 @@ jobs:
         ports:
           - 6379:6379
     env:
-      DATABASE_URL: postgresql://postgres:test@localhost:5432/robloxforge_test
-      DIRECT_URL: postgresql://postgres:test@localhost:5432/robloxforge_test
+      DATABASE_URL: postgresql://postgres:test@localhost:5432/forjegames_test
+      DIRECT_URL: postgresql://postgres:test@localhost:5432/forjegames_test
       REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
@@ -721,7 +721,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only --app robloxforge-api-staging
+      - run: flyctl deploy --remote-only --app forjegames-api-staging
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 ```
@@ -754,7 +754,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only --app robloxforge-api
+      - run: flyctl deploy --remote-only --app forjegames-api
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 ```

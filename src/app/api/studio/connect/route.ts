@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createSession } from '@/lib/studio-session'
+import { studioConnectSchema, parseBody } from '@/lib/validations'
 
 interface ConnectBody {
   /** Auth token — must match STUDIO_PLUGIN_SECRET env var */
@@ -31,23 +32,11 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  let body: ConnectBody
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json(
-      { error: 'invalid_json' },
-      { status: 400, headers: CORS_HEADERS },
-    )
+  const parsedBody = await parseBody(req, studioConnectSchema)
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
   }
-
-  // Validate required fields
-  if (!body.token || !body.placeId) {
-    return NextResponse.json(
-      { error: 'token and placeId are required' },
-      { status: 400, headers: CORS_HEADERS },
-    )
-  }
+  const body = parsedBody.data
 
   // Token validation — compare against env secret (or allow any non-empty token
   // in development when STUDIO_PLUGIN_SECRET is not set)

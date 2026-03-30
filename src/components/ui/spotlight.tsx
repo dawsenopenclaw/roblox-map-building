@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useEffect } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 
 interface SpotlightProps {
   children: React.ReactNode
@@ -28,10 +28,14 @@ export function Spotlight({
   const containerRef = useRef<HTMLDivElement>(null)
   const overlayRef = useRef<HTMLDivElement>(null)
 
-  const prefersReduced =
-    typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false
+  const [prefersReduced, setPrefersReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {

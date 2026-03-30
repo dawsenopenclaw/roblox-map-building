@@ -88,7 +88,7 @@ Circuit breakers: 3-failure threshold, 30s reset, per-provider (meshyBreaker, fa
 ### PLUG-01: Plugin Shell (`packages/studio-plugin/Plugin.lua` + `UI.lua`)
 
 - `Plugin.lua`: Creates toolbar button + `DockWidgetPluginGuiInfo` docked right (380px wide). Module-safe loading via `pcall(require, ...)`. Persists auth token via `plugin:SetSetting`. Builds fallback inline UI if UI.lua not loaded. Wires quick action buttons.
-- `UI.lua`: Full panel — header with gold "RobloxForge" branding + status dot, scrollable content area, auth card (connected state/email/button), sync status card (connected/last sync/ping), quick actions card (gold buttons), recent builds card with dynamic entries.
+- `UI.lua`: Full panel — header with gold "ForjeGames" branding + status dot, scrollable content area, auth card (connected state/email/button), sync status card (connected/last sync/ping), quick actions card (gold buttons), recent builds card with dynamic entries.
 
 Dark theme: `#1a1a1a` background, `#c9a227` gold, `#2e2e2e` cards, `#f0f0f0` text.
 
@@ -162,7 +162,7 @@ All routes protected by `requireAuth` (Clerk JWT middleware from Phase 1).
 
 ## Known Stubs
 
-- `BUTTON_ICON = "rbxassetid://0"` in Plugin.lua — placeholder asset ID. Requires uploading the RobloxForge icon to Roblox and replacing with real ID.
+- `BUTTON_ICON = "rbxassetid://0"` in Plugin.lua — placeholder asset ID. Requires uploading the ForjeGames icon to Roblox and replacing with real ID.
 - Studio OAuth browser opening: Plugin.lua logs the URL to output but cannot programmatically open a browser without a ScreenGui link button. Functional but requires developer to copy-paste URL.
 - `Auth.openDashboard()` logs URL to output only — same limitation.
 

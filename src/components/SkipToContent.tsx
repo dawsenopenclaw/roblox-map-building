@@ -2,6 +2,7 @@
  * SkipToContent — Skip navigation link for keyboard users.
  * Renders visually hidden until focused, then jumps to #main-content.
  * Place this as the very first element inside <body>.
+ * Server Component — no interactivity
  */
 export function SkipToContent() {
   return (

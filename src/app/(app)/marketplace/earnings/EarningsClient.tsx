@@ -2,16 +2,14 @@
 
 import useSWR from 'swr'
 import { useState } from 'react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import { DollarSign, Clock, ShoppingBag, TrendingUp, Zap } from 'lucide-react'
+
+// Lazy-load recharts (~300 KB)
+const RevenueBarChart = dynamic(
+  () => import('@/components/charts/RevenueBarChart').then(m => ({ default: m.RevenueBarChart })),
+  { ssr: false, loading: () => <div className="h-[220px] bg-white/5 rounded-xl animate-pulse" /> },
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -59,6 +59,8 @@ const isPublicRoute = createRouteMatcher([
   '/rate-limited',
   '/suspended',
   '/verify-email',
+  '/unsubscribe',
+  '/api/email/unsubscribe',
 ])
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])

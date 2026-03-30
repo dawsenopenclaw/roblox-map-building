@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToast } from '@/components/ui/toast-notification'
 import {
@@ -275,6 +276,7 @@ export default function MarketplacePage() {
   const [error, setError]                 = useState<string | null>(null)
   const [showFilters, setShowFilters]     = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
+  const [featuredPaused, setFeaturedPaused] = useState(false)
 
   // First-visit info toast
   useEffect(() => {
@@ -289,13 +291,14 @@ export default function MarketplacePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-advance featured banner
+  // Auto-advance featured banner (paused on hover/focus)
   useEffect(() => {
+    if (featuredPaused) return
     const id = setInterval(() => {
       setFeaturedIndex((i) => (i + 1) % FEATURED.length)
     }, 5000)
     return () => clearInterval(id)
-  }, [])
+  }, [featuredPaused])
 
   // Track whether filter change (vs pagination) triggered the fetch
   const filterVersion = useRef(0)
@@ -418,8 +421,8 @@ export default function MarketplacePage() {
               )}
             </div>
 
-            {/* Price filter */}
-            <div className="relative">
+            {/* Price filter — always visible on sm+, hidden on mobile until showFilters */}
+            <div className={`relative ${showFilters ? '' : 'hidden sm:block'}`}>
               <select
                 value={priceFilter}
                 onChange={(e) => setPriceFilter(e.target.value)}
@@ -439,8 +442,8 @@ export default function MarketplacePage() {
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 pointer-events-none" />
             </div>
 
-            {/* Sort */}
-            <div className="relative">
+            {/* Sort — always visible on sm+, hidden on mobile until showFilters */}
+            <div className={`relative ${showFilters ? '' : 'hidden sm:block'}`}>
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortOption)}
@@ -482,7 +485,13 @@ export default function MarketplacePage() {
 
         {/* ── Featured Banner ────────────────────────────────────────────── */}
         {featured && <section aria-label="Featured templates">
-          <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#1c1c1c] shadow-[0_0_60px_rgba(245,158,11,0.08)]">
+          <div
+            className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#1c1c1c] shadow-[0_0_60px_rgba(245,158,11,0.08)]"
+            onMouseEnter={() => setFeaturedPaused(true)}
+            onMouseLeave={() => setFeaturedPaused(false)}
+            onFocus={() => setFeaturedPaused(true)}
+            onBlur={() => setFeaturedPaused(false)}
+          >
             {/* Gold top border accent */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/80 to-transparent" />
             {/* Subtle glow overlay */}
@@ -772,7 +781,7 @@ function TemplateCard({
   const catLabel = categoryLabel(template.category)
 
   return (
-    <a
+    <Link
       href={`/marketplace/${template.id}`}
       className="
         group flex flex-col bg-[#141414] border border-white/8 rounded-xl overflow-hidden
@@ -887,7 +896,7 @@ function TemplateCard({
           Use Template
         </div>
       </div>
-    </a>
+    </Link>
   )
 }
 

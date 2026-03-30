@@ -2,7 +2,7 @@
 
 **Document:** Privacy Policy v1.0 (production-ready)
 **Date:** 2026-03-28
-**Owner:** Dawsen Porter, RobloxForge LLC
+**Owner:** Dawsen Porter, ForjeGames LLC
 
 ---
 
@@ -57,7 +57,7 @@
 
 - [ ] **Parental Consent Email #1** — Consent request with token link
   - [ ] Template: see PRIVACY_POLICY.md Section 7.8
-  - [ ] Send via Resend (legal@robloxforge.app)
+  - [ ] Send via Resend (legal@forjegames.com)
   - [ ] Test token generation (cryptographically unique)
   - [ ] Test token expiry (48 hours)
   - [ ] Test one-time use (delete token after first click)
@@ -184,7 +184,7 @@
 - [ ] **DMCA Agent Registration** (Free, Copyright Office)
   - [ ] File Form HAL (Notification of Agent to Receive Notification of Claimed Infringement)
   - [ ] Register at copyright.gov/dmca-agent
-  - [ ] Include legal@robloxforge.app as agent email
+  - [ ] Include legal@forjegames.com as agent email
   - [ ] Publish DMCA policy in ToS (reference already in Privacy Policy)
 
 - [ ] **Insurance Update** — Add COPPA violation coverage
@@ -325,7 +325,7 @@
 If something goes wrong:
 
 **Privacy Breach or COPPA Violation:**
-- Email: legal@robloxforge.app (immediate)
+- Email: legal@forjegames.com (immediate)
 - CC: insurance broker (cyber + E&O)
 - Contact: Incident response lawyer
 
@@ -383,4 +383,4 @@ If something goes wrong:
 3. **Week 3:** Implement data deletion jobs + parental consent flow
 4. **Week 4:** Full testing + staff training + launch
 
-**Questions?** Email legal@robloxforge.app
+**Questions?** Email legal@forjegames.com

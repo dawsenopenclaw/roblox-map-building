@@ -5,6 +5,8 @@ import { ACHIEVEMENTS } from '@/lib/achievements'
 import { notifyAchievementUnlockedClient } from '@/lib/notifications-client'
 import { XPEventType } from '@prisma/client'
 import { grantXp } from '@/lib/xp-server'
+import { achievementUnlockSchema, parseBody } from '@/lib/validations'
+import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 
 // GET /api/gamification/achievements — all achievements with user unlock status
 export async function GET() {
@@ -97,7 +99,7 @@ async function verifyCondition(
       return count >= (threshold ?? 1)
     }
     case 'PUBLISH_COUNT': {
-      const count = await db.template.count({ where: { creatorId: userId, status: 'PUBLISHED' } })
+      const count = await db.template.count({ where: { creatorId: userId, status: 'PUBLISHED', deletedAt: null } })
       return count >= (threshold ?? 1)
     }
     case 'SALE_COUNT': {
@@ -146,7 +148,7 @@ async function verifyCondition(
     case 'PERFECT_RATING': {
       const minReviews = (condition.minReviews as number) ?? 10
       const template = await db.template.findFirst({
-        where: { creatorId: userId, reviewCount: { gte: minReviews }, averageRating: 5 },
+        where: { creatorId: userId, reviewCount: { gte: minReviews }, averageRating: 5, deletedAt: null },
         select: { id: true },
       })
       return template !== null
@@ -194,7 +196,7 @@ async function verifyCondition(
     case 'ALL_CATEGORIES': {
       const ALL_CATS = ['GAME_TEMPLATE', 'MAP_TEMPLATE', 'UI_KIT', 'SCRIPT', 'ASSET', 'SOUND']
       const published = await db.template.findMany({
-        where: { creatorId: userId, status: 'PUBLISHED' },
+        where: { creatorId: userId, status: 'PUBLISHED', deletedAt: null },
         select: { category: true },
         distinct: ['category'],
       })
@@ -213,15 +215,11 @@ export async function POST(req: NextRequest) {
     const { userId: clerkId } = await auth()
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, achievementUnlockSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    const { slug } = body as { slug?: string }
-    if (!slug) return NextResponse.json({ error: 'slug is required' }, { status: 400 })
+    const { slug } = parsed.data
 
     const achievementDef = ACHIEVEMENTS.find((a) => a.slug === slug)
     if (!achievementDef) return NextResponse.json({ error: 'Unknown achievement' }, { status: 404 })
@@ -235,7 +233,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Achievement condition not met' }, { status: 403 })
     }
 
-    // Find or create the Achievement DB record
+    // Upsert the Achievement DB record (idempotent on slug)
     const achievement = await db.achievement.upsert({
       where: { slug },
       create: {
@@ -258,16 +256,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ alreadyUnlocked: true, unlockedAt: existing.unlockedAt })
     }
 
-    await db.userAchievement.create({
-      data: { userId: user.id, achievementId: achievement.id },
-    })
+    // Atomically create the UserAchievement record.
+    // Wrapped in $transaction so a concurrent duplicate request cannot double-grant.
+    try {
+      await db.$transaction(async (tx) => {
+        // Re-check inside the transaction to prevent TOCTOU race
+        const doubleCheck = await tx.userAchievement.findUnique({
+          where: { userId_achievementId: { userId: user.id, achievementId: achievement.id } },
+        })
+        if (doubleCheck) return // already unlocked by a concurrent request
 
-    // Grant XP reward for the achievement directly (bypasses daily cap, no HTTP round-trip)
+        await tx.userAchievement.create({
+          data: { userId: user.id, achievementId: achievement.id },
+        })
+      })
+    } catch (txErr: unknown) {
+      // P2002 = unique constraint — concurrent request already unlocked; treat as success
+      if ((txErr as { code?: string })?.code === 'P2002') {
+        return NextResponse.json({ alreadyUnlocked: true })
+      }
+      throw txErr
+    }
+
+    // Grant XP reward using the server-side xpReward from the DB achievement record.
+    // baseXpOverride is passed directly — never sourced from client metadata.
     if (achievement.xpReward > 0) {
-      await grantXp(user.id, XPEventType.ACHIEVEMENT, {
-        xpReward: achievement.xpReward,
-        achievementSlug: slug,
-      }).catch(() => {
+      await grantXp(
+        user.id,
+        XPEventType.ACHIEVEMENT,
+        { achievementSlug: slug }, // metadata stored for audit; NOT used for XP calculation
+        achievement.xpReward,       // baseXpOverride — trusted server-side value
+      ).catch(() => {
         // Non-critical side effect
       })
     }
@@ -280,6 +299,16 @@ export async function POST(req: NextRequest) {
     }).catch(() => {
       // Non-critical side effect
     })
+
+    // Dispatch achievement.unlocked webhook (best-effort)
+    dispatchWebhookEvent(user.id, 'achievement.unlocked', {
+      userId: user.id,
+      achievementId: achievement.id,
+      achievementName: achievement.name,
+      category: achievementDef.category,
+      xpAwarded: achievement.xpReward,
+      unlockedAt: new Date().toISOString(),
+    }).catch(() => {})
 
     return NextResponse.json({ unlocked: true, achievement: { slug, name: achievement.name, xpReward: achievement.xpReward } }, { status: 201 })
   } catch (error) {

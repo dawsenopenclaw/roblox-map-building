@@ -242,7 +242,7 @@ export default function BillingClient() {
           )}
 
           <Link
-            href="/pricing"
+            href="/billing#tokens"
             className="inline-flex items-center gap-2 text-sm font-semibold border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/5 text-[#FFB81C] px-4 py-2.5 rounded-xl transition-colors"
           >
             <Zap size={14} />
@@ -301,7 +301,7 @@ export default function BillingClient() {
           ) : payments.length === 0 ? (
             <p className="text-gray-400 text-sm py-4">No payment history yet.</p>
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
+            <div className="overflow-x-auto -mx-4 px-4">
               <table className="w-full text-sm min-w-[400px]">
                 <thead>
                   <tr className="border-b border-white/5">

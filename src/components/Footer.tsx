@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+// Server Component — no interactivity
 const PRODUCT_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/pricing', label: 'Pricing' },
@@ -113,7 +114,7 @@ function FooterColumn({
   )
 }
 
-export function Footer() {
+export default function Footer() {
   return (
     <footer className="border-t border-white/10 bg-[#141414] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
@@ -211,5 +212,3 @@ export function Footer() {
     </footer>
   )
 }
-
-export default Footer

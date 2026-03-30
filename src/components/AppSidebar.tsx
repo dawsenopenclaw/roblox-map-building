@@ -148,7 +148,7 @@ function SectionGroup({
     <div>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 group"
+        className="w-full flex items-center justify-between px-3 py-3 mb-0.5 group"
         aria-expanded={open}
       >
         <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-400 group-hover:text-gray-300 transition-colors">
@@ -169,7 +169,7 @@ function SectionGroup({
                 href={href}
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`group relative flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ${
                   active
                     ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
                     : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'

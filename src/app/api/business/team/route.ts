@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { teamInviteSchema, teamUpdateMemberSchema, parseBody } from '@/lib/validations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -168,19 +169,11 @@ export async function POST(req: NextRequest) {
     } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, teamInviteSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    if (!validateInvite(body)) {
-      return NextResponse.json(
-        { error: 'Required: email (string), role (OWNER|ADMIN|DEVELOPER|VIEWER)' },
-        { status: 422 },
-      )
-    }
-
-    const { email, role, tokensAllotment } = body
+    const { email, role, tokensAllotment } = parsed.data
 
     // Real impl: send invite email via Resend, create pending TeamMember row
     const invited: TeamMember = {
@@ -214,16 +207,11 @@ export async function PATCH(req: NextRequest) {
     } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, teamUpdateMemberSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    if (!validateUpdate(body)) {
-      return NextResponse.json({ error: 'Required: memberId (string)' }, { status: 422 })
-    }
-
-    const { memberId, role, tokensAllotment, status } = body
+    const { memberId, role, tokensAllotment, status } = parsed.data
 
     // Find member in demo data and apply patch
     const member = DEMO_MEMBERS.find((m) => m.id === memberId)

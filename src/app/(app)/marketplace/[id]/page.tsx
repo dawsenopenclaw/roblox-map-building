@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Metadata } from 'next'
 import { db } from '@/lib/db'
 import { getAuthUser } from '@/lib/clerk'
@@ -367,9 +368,25 @@ export async function generateMetadata({
   // Demo template metadata
   if (id.startsWith('demo-')) {
     const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
+    const ogUrl = new URL(`${APP_URL}/api/og`)
+    ogUrl.searchParams.set('type', 'template')
+    ogUrl.searchParams.set('name', demo.title)
+    const description = demo.description.slice(0, 160)
     return {
       title: `${demo.title} - ForjeGames Marketplace`,
-      description: demo.description.slice(0, 160),
+      description,
+      openGraph: {
+        title: `${demo.title} - ForjeGames Marketplace`,
+        description,
+        images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${demo.title} - ForjeGames Marketplace`,
+        description,
+        images: [ogUrl.toString()],
+      },
     }
   }
 
@@ -592,20 +609,20 @@ function TemplateDetail({
           {/* Screenshot gallery */}
           {template.screenshots.length > 0 ? (
             <div className="space-y-3">
-              <div className="aspect-video bg-[#1c1c1c] rounded-xl overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative aspect-video bg-[#1c1c1c] rounded-xl overflow-hidden">
+                <Image
                   src={template.screenshots[0].url}
                   alt={template.screenshots[0].altText || template.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  unoptimized
+                  className="object-cover"
                 />
               </div>
               {template.screenshots.length > 1 && (
                 <div className="flex gap-3 overflow-x-auto pb-1">
                   {template.screenshots.map((s) => (
-                    <div key={s.id} className="w-24 h-16 flex-shrink-0 bg-[#1c1c1c] rounded-lg overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={s.url} alt={s.altText || ''} className="w-full h-full object-cover" />
+                    <div key={s.id} className="relative w-24 h-16 flex-shrink-0 bg-[#1c1c1c] rounded-lg overflow-hidden">
+                      <Image src={s.url} alt={s.altText || ''} fill unoptimized className="object-cover" />
                     </div>
                   ))}
                 </div>
@@ -705,8 +722,7 @@ function TemplateDetail({
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
                             {review.reviewer.avatarUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={review.reviewer.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                              <Image src={review.reviewer.avatarUrl} alt="" width={32} height={32} className="w-full h-full rounded-full object-cover" />
                             ) : (
                               <span className="text-[#D4AF37] text-xs font-bold">{initial}</span>
                             )}
@@ -859,8 +875,7 @@ function TemplateDetail({
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
                 {template.creator.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={template.creator.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                  <Image src={template.creator.avatarUrl} alt="" width={44} height={44} className="w-full h-full rounded-full object-cover" />
                 ) : (
                   <span className="text-[#D4AF37] font-bold text-base">
                     {(template.creator.displayName ?? template.creator.username ?? 'C')[0]?.toUpperCase()}

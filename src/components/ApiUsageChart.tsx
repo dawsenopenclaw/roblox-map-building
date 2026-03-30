@@ -1,15 +1,16 @@
 'use client'
 import { useState } from 'react'
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceLine,
-  ResponsiveContainer,
-} from 'recharts'
+import dynamic from 'next/dynamic'
+
+// Lazy-load the recharts inner component to keep recharts (~300 KB) out of
+// the initial bundle — it only loads once this component is first rendered.
+const ApiUsageChartInner = dynamic(
+  () => import('./ApiUsageChartInner').then(m => ({ default: m.ApiUsageChartInner })),
+  {
+    ssr: false,
+    loading: () => <div className="h-48 bg-white/5 rounded-xl animate-pulse" />,
+  },
+)
 
 export type UsageBucket = {
   /** ISO timestamp for the bucket start */
@@ -29,39 +30,7 @@ const RANGE_LABELS: Record<TimeRange, string> = {
   '7d': '7 Days',
 }
 
-function formatHour(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDay(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-}
-
-type CustomTooltipProps = {
-  active?: boolean
-  payload?: Array<{ name: string; value: number; color: string }>
-  label?: string
-  range: TimeRange
-}
-
-function CustomTooltip({ active, payload, label, range }: CustomTooltipProps) {
-  if (!active || !payload?.length || !label) return null
-  const formatter = range === '7d' ? formatDay : formatHour
-  return (
-    <div className="bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm shadow-xl">
-      <p className="text-gray-300 mb-2">{formatter(label)}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color }} className="font-medium">
-          {p.name}: <span className="text-white">{p.value.toLocaleString()}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
-type ApiUsageChartProps = {
+export type ApiUsageChartProps = {
   data: UsageBucket[]
   /** Rate limit cap to show as dashed threshold line */
   rateLimit?: number
@@ -77,8 +46,6 @@ export function ApiUsageChart({
   onRangeChange,
   loading = false,
 }: ApiUsageChartProps) {
-  const labelFormatter = range === '7d' ? formatDay : formatHour
-
   return (
     <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -102,78 +69,8 @@ export function ApiUsageChart({
 
       {loading ? (
         <div className="h-48 bg-white/5 rounded-xl animate-pulse" />
-      ) : data.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
-          No usage data for this period
-        </div>
       ) : (
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#FFB81C" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#FFB81C" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis
-              dataKey="hour"
-              tickFormatter={labelFormatter}
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={false}
-              tickLine={false}
-              allowDecimals={false}
-            />
-            <Tooltip
-              content={<CustomTooltip range={range} />}
-              cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-            />
-            {rateLimit !== undefined && (
-              <ReferenceLine
-                y={rateLimit}
-                stroke="#ef4444"
-                strokeDasharray="6 3"
-                strokeWidth={1.5}
-                label={{
-                  value: `Limit: ${rateLimit}`,
-                  position: 'insideTopRight',
-                  fill: '#ef4444',
-                  fontSize: 10,
-                }}
-              />
-            )}
-            <Area
-              type="monotone"
-              dataKey="requests"
-              name="Requests"
-              stroke="#FFB81C"
-              strokeWidth={2}
-              fill="url(#goldGradient)"
-              dot={false}
-              activeDot={{ r: 4, fill: '#FFB81C', stroke: '#0a0a0a', strokeWidth: 2 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="errors"
-              name="Errors"
-              stroke="#ef4444"
-              strokeWidth={2}
-              fill="url(#redGradient)"
-              dot={false}
-              activeDot={{ r: 4, fill: '#ef4444', stroke: '#0a0a0a', strokeWidth: 2 }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <ApiUsageChartInner data={data} rateLimit={rateLimit} range={range} />
       )}
 
       <div className="flex gap-4 mt-4">

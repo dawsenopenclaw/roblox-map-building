@@ -575,7 +575,7 @@ export default function WelcomePage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
+      className="flex flex-col items-center justify-center px-4 py-12"
       style={{ background: '#0a0a0a' }}
     >
       {showConfetti && <Confetti />}

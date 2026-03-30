@@ -57,9 +57,44 @@ export default function SubmitTemplatePage() {
     set('screenshots', form.screenshots.filter((_, idx) => idx !== i))
   }
 
+  const ALLOWED_URL_HOSTS = [/\.rbxcdn\.com$/, /\.amazonaws\.com$/, /\.cloudflare\.com$/, /\.r2\.dev$/]
+
+  function isAllowedUrl(raw: string): boolean {
+    if (!raw) return true
+    try {
+      const host = new URL(raw).hostname.toLowerCase()
+      return ALLOWED_URL_HOSTS.some((re) => re.test(host))
+    } catch {
+      return false
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+
+    if (form.title.length > 100) {
+      setError('Title must be 100 characters or fewer')
+      return
+    }
+    if (form.description.length > 2000) {
+      setError('Description must be 2000 characters or fewer')
+      return
+    }
+    const priceCentsValue = Math.round(form.priceCents * 100)
+    if (priceCentsValue > 99999) {
+      setError('Price cannot exceed $999.99')
+      return
+    }
+    if (form.rbxmFileUrl && !isAllowedUrl(form.rbxmFileUrl)) {
+      setError('File URL must be from an allowed domain (rbxcdn.com, amazonaws.com, cloudflare.com, r2.dev)')
+      return
+    }
+    if (form.thumbnailUrl && !isAllowedUrl(form.thumbnailUrl)) {
+      setError('Thumbnail URL must be from an allowed domain (rbxcdn.com, amazonaws.com, cloudflare.com, r2.dev)')
+      return
+    }
+
     setSubmitting(true)
 
     try {
@@ -70,7 +105,7 @@ export default function SubmitTemplatePage() {
           title: form.title,
           description: form.description,
           category: form.category,
-          priceCents: Math.round(form.priceCents * 100),
+          priceCents: priceCentsValue,
           rbxmFileUrl: form.rbxmFileUrl || null,
           thumbnailUrl: form.thumbnailUrl || null,
           tags: form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
@@ -91,7 +126,7 @@ export default function SubmitTemplatePage() {
       }
 
       setSuccess(true)
-      setTimeout(() => router.push('/editor'), 2000)
+      setTimeout(() => router.push('/marketplace/earnings'), 2000)
     } catch {
       setError('Network error — please try again')
     } finally {

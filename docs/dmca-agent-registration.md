@@ -1,6 +1,6 @@
 # DMCA Designated Agent Registration — Form HAL
 
-**Company:** RobloxForge LLC
+**Company:** ForjeGames LLC
 **Owner:** Dawsen Porter
 **Status:** PENDING — must complete before public launch
 **Priority:** HIGH (safe harbor requires registered agent per 17 U.S.C. § 512(c)(2))
@@ -14,7 +14,7 @@ To qualify for DMCA safe harbor protection (17 U.S.C. § 512), service providers
 1. Register a designated copyright agent with the U.S. Copyright Office
 2. Make agent contact information publicly available on the website
 
-Without registration, the platform **cannot** claim DMCA safe harbor, exposing RobloxForge LLC to
+Without registration, the platform **cannot** claim DMCA safe harbor, exposing ForjeGames LLC to
 full copyright liability for user-uploaded content.
 
 ---
@@ -45,16 +45,16 @@ Fill in the following fields:
 
 | Field | Value |
 |---|---|
-| **Full legal name of service provider** | RobloxForge LLC |
-| **Alternative names (dba)** | RobloxForge |
+| **Full legal name of service provider** | ForjeGames LLC |
+| **Alternative names (dba)** | ForjeGames |
 | **Address of service provider** | [your registered LLC address] |
 | **Name of agent** | Dawsen Porter |
 | **Agent's full address** | [your address] |
 | **Agent's phone number** | [your phone] |
-| **Agent's email address** | dmca@robloxforge.gg |
-| **Agent's website URL (for notices)** | https://robloxforge.gg/dmca |
+| **Agent's email address** | dmca@forjegames.com |
+| **Agent's website URL (for notices)** | https://forjegames.com/dmca |
 
-**Service Provider URL:** https://robloxforge.gg
+**Service Provider URL:** https://forjegames.com
 
 ---
 
@@ -81,8 +81,8 @@ The Copyright Office will:
 ### 6. Publish Agent Info
 
 Agent contact information is already published at:
-- `https://robloxforge.gg/dmca` (the DMCA policy page)
-- `https://robloxforge.gg/terms` (Section 10)
+- `https://forjegames.com/dmca` (the DMCA policy page)
+- `https://forjegames.com/terms` (Section 10)
 
 This satisfies the 17 U.S.C. § 512(c)(2) public disclosure requirement.
 
@@ -103,7 +103,7 @@ send a reminder but do not rely on it — set independent reminders.
 
 ## Ongoing Requirements
 
-To maintain safe harbor, RobloxForge must also:
+To maintain safe harbor, ForjeGames must also:
 
 1. **Adopt and reasonably implement** a repeat-infringer policy (documented in Terms of Service §10 and DMCA Policy)
 2. **Accommodate standard technical measures** used by copyright owners (e.g., Content ID-style systems if adopted)

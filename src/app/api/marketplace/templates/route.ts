@@ -2,8 +2,21 @@
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { TemplateCategory, TemplateStatus } from '@prisma/client'
+import { templateSubmitSchema, parseBody } from '@/lib/validations'
 
 const VALID_CATEGORIES = Object.values(TemplateCategory)
+
+const ALLOWED_URL_HOSTS = [/\.rbxcdn\.com$/, /\.amazonaws\.com$/, /\.cloudflare\.com$/, /\.r2\.dev$/]
+
+function isAllowedUrl(raw: string | null | undefined): boolean {
+  if (!raw) return true
+  try {
+    const host = new URL(raw).hostname.toLowerCase()
+    return ALLOWED_URL_HOSTS.some((re) => re.test(host))
+  } catch {
+    return false
+  }
+}
 
 // Demo templates shown when the database is unavailable
 const DEMO_TEMPLATES = [
@@ -229,6 +242,7 @@ export async function GET(req: NextRequest) {
   try {
     const where: Record<string, unknown> = {
       status: TemplateStatus.PUBLISHED,
+      deletedAt: null,
       priceCents: { gte: minPrice, lte: maxPrice },
       averageRating: { gte: minRating },
     }
@@ -339,35 +353,21 @@ export async function POST(req: NextRequest) {
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  const parsed = await parseBody(req, templateSubmitSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
 
-  const { title, description, category, priceCents, rbxmFileUrl, thumbnailUrl, tags, screenshots } =
-    body as {
-      title?: string
-      description?: string
-      category?: string
-      priceCents?: number
-      rbxmFileUrl?: string
-      thumbnailUrl?: string
-      tags?: string[]
-      screenshots?: Array<{ url: string; altText?: string; sortOrder?: number }>
-    }
+  const { title, description, category, priceCents, rbxmFileUrl, thumbnailUrl, tags, screenshots } = parsed.data
 
-  if (!title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
-  if (!description?.trim()) return NextResponse.json({ error: 'Description is required' }, { status: 400 })
-  if (!category || !VALID_CATEGORIES.includes(category as TemplateCategory)) {
+  if (!VALID_CATEGORIES.includes(category as TemplateCategory)) {
     return NextResponse.json({ error: 'Invalid category' }, { status: 400 })
   }
-  if (typeof priceCents !== 'number' || !Number.isInteger(priceCents) || priceCents < 0) {
-    return NextResponse.json({ error: 'Invalid price — must be a non-negative integer (cents)' }, { status: 400 })
+  if (rbxmFileUrl && !isAllowedUrl(rbxmFileUrl)) {
+    return NextResponse.json({ error: 'File URL must be from an allowed domain (rbxcdn.com, amazonaws.com, cloudflare.com, r2.dev)' }, { status: 400 })
   }
-  if (screenshots && screenshots.length > 5) {
-    return NextResponse.json({ error: 'Maximum 5 screenshots allowed' }, { status: 400 })
+  if (thumbnailUrl && !isAllowedUrl(thumbnailUrl)) {
+    return NextResponse.json({ error: 'Thumbnail URL must be from an allowed domain (rbxcdn.com, amazonaws.com, cloudflare.com, r2.dev)' }, { status: 400 })
   }
 
   try {

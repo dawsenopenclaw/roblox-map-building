@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
+import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -451,7 +452,7 @@ export default function DocsClient() {
                 </div>
                 <p className="text-gray-400 text-sm leading-relaxed ml-10">
                   Create an account at{' '}
-                  <a href="/sign-up" className="text-[#FFB81C] hover:underline">forjegames.com/sign-up</a>.
+                  <Link href="/sign-up" className="text-[#FFB81C] hover:underline">forjegames.com/sign-up</Link>.
                   No credit card required. You get 10 free AI calls per day on the Free plan immediately after sign-up.
                 </p>
               </div>
@@ -746,7 +747,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                         </li>
                       ))}
                     </ul>
-                    <a
+                    <Link
                       href="/sign-up"
                       className={`mt-5 block text-center text-xs font-semibold py-2 rounded-lg transition-colors ${
                         plan.highlight
@@ -755,7 +756,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                       }`}
                     >
                       {plan.name === 'Free' ? 'Get started' : 'Start free trial'}
-                    </a>
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -795,9 +796,9 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                 <SectionLabel>1. Get an API key</SectionLabel>
                 <p className="text-gray-300 text-sm mb-4">
                   Sign in to your dashboard and navigate to{' '}
-                  <a href="/settings/api-keys" className="text-[#FFB81C] hover:underline">
+                  <Link href="/settings/api-keys" className="text-[#FFB81C] hover:underline">
                     Settings &rarr; API Keys
-                  </a>{' '}
+                  </Link>{' '}
                   to create a key. The raw key is shown once — save it immediately.
                 </p>
               </div>

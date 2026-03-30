@@ -1,7 +1,22 @@
 /**
  * Email sending via Resend with BullMQ queue for batch operations.
  * Templates live in src/lib/email-templates/ (React Email).
+ * IMPORTANT: This file is legacy. Prefer src/lib/email.ts instead.
  */
+
+/**
+ * Escape HTML special characters to prevent injection
+ */
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }
+  return text.replace(/[&<>"']/g, (char) => map[char])
+}
 
 export type EmailTemplate =
   | 'welcome'
@@ -124,7 +139,7 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
     case 'welcome':
       return base(
         'Welcome to ForjeGames',
-        `<h1>Welcome, ${data.name ?? 'Creator'}!</h1>
+        `<h1>Welcome, ${escapeHtml(String(data.name ?? 'Creator'))}!</h1>
          <p>You're now part of the ForjeGames community. Build amazing Roblox games with AI-powered tools.</p>
          <a href="https://forjegames.com/dashboard" class="btn">Go to Dashboard</a>`
       )
@@ -150,8 +165,8 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
       return base(
         'Your build is ready!',
         `<h1>Build Complete!</h1>
-         <p>Your map "<strong>${data.buildName ?? 'Untitled'}</strong>" has finished processing.</p>
-         <a href="${data.downloadUrl ?? 'https://forjegames.com/dashboard'}" class="btn">Download Build</a>`
+         <p>Your map "<strong>${escapeHtml(String(data.buildName ?? 'Untitled'))}</strong>" has finished processing.</p>
+         <a href="${escapeHtml(String(data.downloadUrl ?? 'https://forjegames.com/dashboard'))}" class="btn">Download Build</a>`
       )
 
     case 'token-low':
@@ -166,8 +181,8 @@ function renderTemplate(template: EmailTemplate, data: Record<string, unknown>):
       return base(
         'You made a sale!',
         `<h1>You made a sale!</h1>
-         <p>"${data.templateName}" was purchased for <strong>$${data.amount}</strong>.</p>
-         <p>Your earnings: <strong>$${data.net}</strong> (after platform fee).</p>
+         <p>"${escapeHtml(String(data.templateName))}" was purchased for <strong>$${escapeHtml(String(data.amount))}</strong>.</p>
+         <p>Your earnings: <strong>$${escapeHtml(String(data.net))}</strong> (after platform fee).</p>
          <a href="https://forjegames.com/earnings" class="btn">View Earnings</a>`
       )
 

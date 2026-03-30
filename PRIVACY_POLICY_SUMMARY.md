@@ -1,4 +1,4 @@
-# RobloxForge Privacy Policy — Executive Summary
+# ForjeGames Privacy Policy — Executive Summary
 
 **Date:** 2026-03-28
 **Status:** Production-ready v1.0
@@ -266,31 +266,31 @@ Why we take this seriously:
 ## COMPLIANCE CONTACTS
 
 **Privacy questions:**
-- Email: legal@robloxforge.app
+- Email: legal@forjegames.com
 - Response: 15 business days
 
 **Data subject requests (access, delete, port):**
 - Web form: [your-app-url]/privacy/request
-- Email: legal@robloxforge.app
+- Email: legal@forjegames.com
 - Response: 15-45 days (per regulation)
 
 **Parental requests (COPPA):**
 - Web form: [your-app-url]/family/dashboard
-- Email: legal@robloxforge.app
+- Email: legal@forjegames.com
 - Response: 15 business days
 
 **Data Protection Officer (GDPR):**
-- Email: dpo@robloxforge.app
+- Email: dpo@forjegames.com
 
 **Security/Breach notification:**
-- Email: security@robloxforge.app
+- Email: security@forjegames.com
 - Response: 24 hours acknowledgment
 
 ---
 
 ## KEY TAKEAWAY
 
-This Privacy Policy puts RobloxForge in the **top 10% of compliance** for SaaS platforms. It covers COPPA (children under 13), GDPR (EU users), CCPA/CPRA (25+ US states), and UK law comprehensively. With proper implementation and annual audits, we can withstand FTC enforcement scrutiny.
+This Privacy Policy puts ForjeGames in the **top 10% of compliance** for SaaS platforms. It covers COPPA (children under 13), GDPR (EU users), CCPA/CPRA (25+ US states), and UK law comprehensively. With proper implementation and annual audits, we can withstand FTC enforcement scrutiny.
 
 **Ready for production deployment.**
 

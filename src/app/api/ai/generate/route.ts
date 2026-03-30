@@ -11,6 +11,15 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { spendTokens } from '@/lib/tokens-server'
+import { requireTier } from '@/lib/tier-guard'
+import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
+import { z } from 'zod'
+
+const bodySchema = z.object({
+  prompt: z.string().min(1, 'prompt is required').max(4000),
+})
+
 
 // ── Demo responses (mirrors EditorClient.tsx) ────────────────────────────────
 
@@ -99,19 +108,33 @@ async function tryHonoGenerate(
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  if (process.env.DEMO_MODE !== 'true') {
+  const isDemo = process.env.DEMO_MODE === 'true'
+  let authedUserId: string | null = null
+
+  if (!isDemo) {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Generate requires at minimum a FREE tier account with a token balance.
+    // The spendTokens call below will enforce the actual balance limit, but we
+    // do a tier check here to keep the guard pattern consistent and to block
+    // users whose subscriptions are in a terminal state (CANCELED, etc.).
+    const tierDenied = await requireTier(userId, 'FREE')
+    if (tierDenied) return tierDenied
+    authedUserId = userId
   }
 
   let prompt: string
 
   try {
-    const body = (await req.json()) as { prompt?: unknown }
-    if (typeof body.prompt !== 'string' || !body.prompt.trim()) {
-      return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
+    const raw = await req.json()
+    const parsed = bodySchema.safeParse(raw)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
     }
-    prompt = body.prompt.trim()
+    prompt = parsed.data.prompt.trim()
+    if (!prompt) {
+      return NextResponse.json({ error: 'prompt must not be empty' }, { status: 400 })
+    }
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
@@ -124,8 +147,27 @@ export async function POST(req: NextRequest) {
   const hasApiKey = Boolean(process.env.ANTHROPIC_API_KEY)
 
   if (hasApiKey) {
+    // Deduct tokens before calling the AI — prevents free-riding when billing fails.
+    // Cost: 50 tokens per generate request. Skipped in demo mode (no real user).
+    if (!isDemo && authedUserId) {
+      try {
+        await spendTokens(authedUserId, 50, 'AI generate request', { prompt: prompt.slice(0, 100) })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Token error'
+        return NextResponse.json({ error: message }, { status: 402 })
+      }
+    }
+
     const honoResult = await tryHonoGenerate(prompt, authHeader)
     if (honoResult) {
+      // Fire build.completed webhook (best-effort) — only for authenticated users
+      if (authedUserId) {
+        dispatchWebhookEvent(authedUserId, 'build.completed', {
+          prompt: prompt.slice(0, 200),
+          tokensUsed: honoResult.tokensUsed,
+          completedAt: new Date().toISOString(),
+        }).catch(() => {})
+      }
       return NextResponse.json(honoResult)
     }
   }

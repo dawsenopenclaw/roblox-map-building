@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { requireTier } from '@/lib/tier-guard'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -168,12 +169,10 @@ function buildDemoAnalysis(filename: string): ImageAnalysisResult {
 
 export async function POST(req: NextRequest) {
   if (process.env.DEMO_MODE !== 'true') {
-    let userId: string | null = null
-    try {
-      const session = await auth()
-      userId = session?.userId ?? null
-    } catch { /* demo mode */ }
+    const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const tierDenied = await requireTier(userId, 'HOBBY')
+    if (tierDenied) return tierDenied
   }
 
   try {

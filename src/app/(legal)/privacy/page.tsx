@@ -394,8 +394,11 @@ export default function PrivacyPage() {
           </table>
         </div>
         <p className="mt-4">
-          EU/UK users are shown a cookie consent banner on first visit. You can update your
-          preferences at any time by contacting privacy@forjegames.com.
+          EU/UK users are shown a cookie consent banner on first visit. Cookie preferences can be
+          managed via the consent banner shown on your first visit, or by contacting{' '}
+          <a href="mailto:privacy@forjegames.com" className="text-[#FFB81C] hover:underline">
+            privacy@forjegames.com
+          </a>.
         </p>
       </section>
 
@@ -410,6 +413,7 @@ export default function PrivacyPage() {
         <div className="bg-white/5 border border-white/10 rounded-lg p-4 mt-4 not-prose text-sm text-gray-300 space-y-1">
           <p><strong className="text-white">Company:</strong> {COMPANY}</p>
           <p><strong className="text-white">Owner:</strong> Dawsen Porter</p>
+          <p><strong className="text-white">Registered address:</strong> [Your Business Address] (GDPR Art. 13 — update before launch)</p>
           <p><strong className="text-white">Privacy inquiries:</strong>{' '}
             <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">{EMAIL}</a>
           </p>

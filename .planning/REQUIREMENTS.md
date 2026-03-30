@@ -1,4 +1,4 @@
-# Requirements: RobloxForge
+# Requirements: ForjeGames
 
 **Defined:** 2026-03-28
 **Core Value:** Simple input → professional output. Speak or upload → get a playable Roblox game element in seconds.
@@ -49,7 +49,7 @@
 
 ### Roblox Studio Plugin
 
-- [ ] **PLUG-01**: DockWidgetPluginGui with RobloxForge toolbar button and auth flow
+- [ ] **PLUG-01**: DockWidgetPluginGui with ForjeGames toolbar button and auth flow
 - [ ] **PLUG-02**: HTTP polling sync (2-5s) between Studio and web platform
 - [ ] **PLUG-03**: Asset injection — insert generated models, terrain, scripts into workspace
 - [ ] **PLUG-04**: ChangeHistoryService integration for undo/redo on all operations
@@ -101,7 +101,7 @@
 
 - [ ] **API-01**: API key generation — personal/team/service keys with scoping (terrain-only, full, read-only)
 - [ ] **API-02**: API documentation site — auto-generated from OpenAPI spec, interactive playground
-- [ ] **API-03**: npm SDK (@robloxforge/sdk) + Python SDK (pip install robloxforge)
+- [ ] **API-03**: npm SDK (@forjegames/sdk) + Python SDK (pip install forjegames)
 - [ ] **API-04**: Webhook support — send async job results to user's URL, HMAC-SHA256 signatures
 
 ### Gamification
@@ -114,7 +114,7 @@
 ### Growth & Notifications
 
 - [ ] **GROW-01**: Referral program — unique link, $1 free signup + 20% lifetime commission
-- [ ] **GROW-02**: "Built with RobloxForge" credit system in published games
+- [ ] **GROW-02**: "Built with ForjeGames" credit system in published games
 - [ ] **GROW-03**: Email system — 18 templates (welcome, verification, COPPA, sales, re-engagement)
 - [ ] **GROW-04**: Notification system — push, in-app, email with frequency caps and priority levels
 - [ ] **GROW-05**: Creator earnings dashboard — revenue charts, sales breakdown, payout schedule
@@ -134,7 +134,7 @@
 
 ### Advanced Platform
 - **PLAT-01**: Plugin ecosystem — third-party MCP submissions, sandboxed execution, rev share
-- **PLAT-02**: OAuth app registration — "Login with RobloxForge" for third parties
+- **PLAT-02**: OAuth app registration — "Login with ForjeGames" for third parties
 - **PLAT-03**: Embed widget — "Build with AI" on third-party sites
 - **PLAT-04**: Branching/merging for game versions (git-like)
 - **PLAT-05**: Voice/video chat during collaboration (WebRTC)

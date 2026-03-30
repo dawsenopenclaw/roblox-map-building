@@ -42,11 +42,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Idempotency gate — check the svix-id before any event-specific processing.
+    // Svix retries deliver the same svix-id, so a hit here means the event was
+    // already fully processed and we can safely short-circuit.
+    const alreadyProcessed = await db.auditLog.findFirst({
+      where: { action: 'CLERK_WEBHOOK_PROCESSED', resourceId: svixId },
+      select: { id: true },
+    })
+    if (alreadyProcessed) {
+      console.warn('[clerk-webhook] duplicate svix-id — skipping', { svixId, eventType: event.type })
+      return NextResponse.json({ ok: true })
+    }
+
     if (event.type === 'user.created') {
       const clerkId = event.data.id
       if (!clerkId) return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
 
-      // Idempotency: if Svix retries this webhook, avoid creating a duplicate user
+      // Secondary guard: also check by clerkId to handle partially-committed
+      // transactions that never recorded the processed-webhook audit entry.
       const existing = await db.user.findUnique({ where: { clerkId } })
       if (existing) {
         console.warn('[clerk-webhook] user.created already processed — skipping duplicate', { clerkId, svixId })
@@ -134,6 +147,17 @@ export async function POST(req: NextRequest) {
         const user = await tx.user.findUnique({ where: { clerkId: event.data.id } })
         if (!user) return // Already deleted or never synced
 
+        // Audit log BEFORE PII wipe so the record exists if the update fails
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'USER_DELETED',
+            resource: 'user',
+            resourceId: user.id,
+            metadata: { source: 'clerk_webhook', clerkId: event.data.id },
+          },
+        })
+
         await tx.user.update({
           where: { clerkId: event.data.id },
           data: {
@@ -147,21 +171,26 @@ export async function POST(req: NextRequest) {
             deletedAt: new Date(),
           },
         })
-
-        await tx.auditLog.create({
-          data: {
-            userId: user.id,
-            action: 'USER_DELETED',
-            resource: 'user',
-            resourceId: user.id,
-            metadata: { source: 'clerk_webhook', clerkId: event.data.id },
-          },
-        })
       })
     }
+
+    // Mark this svix-id as fully processed so retries are no-ops.
+    await db.auditLog.create({
+      data: {
+        action: 'CLERK_WEBHOOK_PROCESSED',
+        resource: 'clerk_webhook',
+        resourceId: svixId,
+        metadata: { eventType: event.type },
+      },
+    })
   } catch (error) {
+    console.error('[clerk-webhook] Unhandled error processing event', {
+      eventType: event.type,
+      svixId,
+      error,
+    })
     return NextResponse.json(
-      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { error: 'Service temporarily unavailable' },
       { status: 503 }
     )
   }

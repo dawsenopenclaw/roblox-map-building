@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock redis before importing cache module
-const mockGet = vi.fn()
-const mockSet = vi.fn()
-const mockDel = vi.fn()
-const mockKeys = vi.fn()
-const mockTtl = vi.fn()
+const { mockGet, mockSet, mockDel, mockKeys, mockTtl } = vi.hoisted(() => ({
+  mockGet: vi.fn(),
+  mockSet: vi.fn(),
+  mockDel: vi.fn(),
+  mockKeys: vi.fn(),
+  mockTtl: vi.fn(),
+}))
 
 vi.mock('../../../lib/redis', () => ({
   redis: {

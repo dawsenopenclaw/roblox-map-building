@@ -193,14 +193,14 @@ export function isUnder13(dateOfBirth: Date): boolean {
 }
 ```
 
-**src/app/(auth)/layout.tsx** — centered layout with dark background, RobloxForge logo, and gold accent:
+**src/app/(auth)/layout.tsx** — centered layout with dark background, ForjeGames logo, and gold accent:
 ```tsx
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#FFB81C]">RobloxForge</h1>
+          <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
           <p className="text-gray-400 text-sm mt-1">AI-powered game development</p>
         </div>
         {children}
@@ -293,19 +293,19 @@ export async function sendParentalConsentEmail({
 }) {
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/onboarding/parental-consent/verify?token=${token}`
   return resend.emails.send({
-    from: 'RobloxForge <noreply@robloxforge.com>',
+    from: 'ForjeGames <noreply@forjegames.com>',
     to: parentEmail,
-    subject: `Parental consent required for ${childName}'s RobloxForge account`,
+    subject: `Parental consent required for ${childName}'s ForjeGames account`,
     html: `
       <div style="font-family:Inter,sans-serif;max-width:600px;margin:0 auto;background:#0A0E27;color:white;padding:32px;border-radius:12px">
         <h1 style="color:#FFB81C;margin-bottom:16px">Parental Consent Required</h1>
-        <p>Your child <strong>${childName}</strong> (under 13) has signed up for RobloxForge, an AI-powered Roblox game development platform.</p>
+        <p>Your child <strong>${childName}</strong> (under 13) has signed up for ForjeGames, an AI-powered Roblox game development platform.</p>
         <p>Under the Children's Online Privacy Protection Act (COPPA), we need your consent before ${childName} can use our service.</p>
         <p style="margin:24px 0">
           <a href="${verifyUrl}" style="background:#FFB81C;color:black;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Approve Account</a>
         </p>
         <p style="color:#9ca3af;font-size:14px">This link expires in 48 hours. If you did not create this account, you can safely ignore this email.</p>
-        <p style="color:#9ca3af;font-size:12px">RobloxForge collects only the minimum data necessary to provide the service. We never sell data. See our <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color:#FFB81C">Privacy Policy</a>.</p>
+        <p style="color:#9ca3af;font-size:12px">ForjeGames collects only the minimum data necessary to provide the service. We never sell data. See our <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color:#FFB81C">Privacy Policy</a>.</p>
       </div>
     `,
   })
@@ -427,7 +427,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-[#0A0E27] flex items-center justify-center">
       <div className="max-w-md w-full text-center p-8">
-        <h1 className="text-3xl font-bold text-white mb-4">Welcome to RobloxForge</h1>
+        <h1 className="text-3xl font-bold text-white mb-4">Welcome to ForjeGames</h1>
         <p className="text-gray-400 mb-8">Let's set up your account. This takes 30 seconds.</p>
         <button onClick={() => router.push('/onboarding/age-gate')} className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors">
           Get Started

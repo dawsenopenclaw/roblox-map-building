@@ -22,6 +22,7 @@ import { parseIntent } from '../../lib/agents/intent-parser'
 import { db } from '../../lib/db'
 import { createLogger } from '../../lib/logger'
 import { incrementCounter, recordDuration } from '../../lib/metrics'
+import { dispatchWebhookEvent } from '../../lib/webhook-delivery'
 import type { StreamEvent } from '../../lib/agents/types'
 
 // ---------------------------------------------------------------------------
@@ -215,6 +216,42 @@ chatRoutes.post('/', zValidator('json', chatSchema), async (c) => {
             tokensUsed,
             `chat: "${message.slice(0, 60)}" [${intent.intent}]`
           )
+        }
+
+        // Dispatch build.completed webhook and check token thresholds (best-effort, non-blocking)
+        if (!DEMO_MODE) {
+          dispatchWebhookEvent(userId, 'build.completed', {
+            buildId: conversationId,
+            projectId: gameId ?? conversationId,
+            userId,
+            durationMs: Date.now() - start,
+            tokensUsed,
+          }).catch(() => {})
+
+          db.tokenBalance.findUnique({ where: { userId }, select: { balance: true } })
+            .then(async (bal) => {
+              if (!bal) return
+              const sub = await db.subscription.findUnique({ where: { userId }, select: { tier: true } })
+              const TIER_QUOTAS: Record<string, number> = { FREE: 1000, HOBBY: 2000, CREATOR: 7000, STUDIO: 20000 }
+              const planQuota = TIER_QUOTAS[sub?.tier ?? 'FREE'] ?? 1000
+              const percentRemaining = Math.round((bal.balance / planQuota) * 100)
+
+              if (bal.balance === 0) {
+                dispatchWebhookEvent(userId, 'token.depleted', {
+                  userId,
+                  planQuota,
+                  depletedAt: new Date().toISOString(),
+                }).catch(() => {})
+              } else if (percentRemaining < 20) {
+                dispatchWebhookEvent(userId, 'token.low', {
+                  userId,
+                  remainingTokens: bal.balance,
+                  planQuota,
+                  percentRemaining,
+                }).catch(() => {})
+              }
+            })
+            .catch(() => {})
         }
 
         // Final completion event with full result

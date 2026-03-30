@@ -1,11 +1,11 @@
 """
-RobloxForge Python SDK
-Official client library for the RobloxForge API.
+ForjeGames Python SDK
+Official client library for the ForjeGames API.
 
 Usage:
-    import robloxforge
+    import forjegames
 
-    rf = robloxforge.Client(api_key="rf_sk_your_key")
+    rf = forjegames.Client(api_key="rf_sk_your_key")
     build = rf.terrain.generate(prompt="Dense jungle with ancient ruins")
 """
 

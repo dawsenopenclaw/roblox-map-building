@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../_adminGuard'
 import { db } from '@/lib/db'
+import { adminCharityCreateSchema, parseBody } from '@/lib/validations'
 
 // In-memory charity rotation store (persisted via env/config in production)
 // In a real implementation this would be a DB table. For now we use a JSON env var
@@ -81,17 +82,11 @@ export async function POST(req: NextRequest) {
     const { error } = await requireAdmin()
     if (error) return error
 
-    const body = await req.json().catch(() => ({}))
-    const { slug, name, description = '', url = '' } = body as {
-      slug?: string
-      name?: string
-      description?: string
-      url?: string
+    const parsed = await parseBody(req, adminCharityCreateSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    if (!slug || !name) {
-      return NextResponse.json({ error: 'slug and name are required' }, { status: 400 })
-    }
+    const { slug, name, description, url } = parsed.data
 
     // NOTE: In production, persist to DB. For now returns 200 with instruction.
     // The ACTIVE_CHARITIES env var must be updated via deployment config.

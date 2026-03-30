@@ -108,11 +108,14 @@ app.route('/api/admin', adminRoutes)
 
 // ---------------------------------------------------------------------------
 // Metrics endpoint — Prometheus text format + optional JSON
+// Always requires Authorization: Bearer <METRICS_SECRET>.
+// If METRICS_SECRET is not set the server will refuse all metrics requests
+// rather than silently exposing internal counters to the public internet.
 // ---------------------------------------------------------------------------
 app.get('/api/metrics', (c) => {
   const authHeader = c.req.header('authorization')
   const metricsSecret = process.env.METRICS_SECRET
-  if (metricsSecret && authHeader !== `Bearer ${metricsSecret}`) {
+  if (!metricsSecret || authHeader !== `Bearer ${metricsSecret}`) {
     return c.json({ error: 'Unauthorized' }, 401)
   }
   const accept = c.req.header('accept') ?? ''
@@ -140,6 +143,11 @@ app.onError((err, c) => {
 })
 
 const port = parseInt(process.env.PORT || '3001')
-serve({ fetch: app.fetch, port }, () => appLog.info(`API running on :${port}`))
+// Bind to localhost only — never expose the internal Hono API directly to the
+// public internet. Inbound traffic must arrive via the Next.js proxy or a
+// reverse proxy (Nginx/Caddy/Vercel edge). Setting hostname here prevents
+// @hono/node-server from defaulting to 0.0.0.0.
+const hostname = process.env.API_HOSTNAME ?? '127.0.0.1'
+serve({ fetch: app.fetch, port, hostname }, () => appLog.info(`API running on ${hostname}:${port}`))
 
 export { app }

@@ -20,17 +20,20 @@ interface TokenData {
   planLimit: number
 }
 
-// ─── Demo Data ────────────────────────────────────────────────────────────────
+interface DashboardStats {
+  buildsThisWeek: number
+  activeProjects: number
+  streakDays: number
+  buildActivity: number[]
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const GOLD = '#FFB81C'
 
-const SPARKLINE_TOKEN   = [210, 190, 320, 280, 410, 390, 460]
-const SPARKLINE_BUILDS  = [1, 3, 2, 5, 4, 6, 7]
-const SPARKLINE_PROJ    = [3, 3, 4, 4, 3, 4, 5]
-const SPARKLINE_STREAK  = [3, 4, 4, 5, 5, 6, 7]
+const SPARKLINE_TOKEN = [210, 190, 320, 280, 410, 390, 460]
 
 const BUILD_ACTIVITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const BUILD_ACTIVITY_VALS = [4, 7, 3, 9, 6, 2, 8]
 const ACTIVITY_MAX = 9
 
 interface RecentBuild {
@@ -42,13 +45,9 @@ interface RecentBuild {
   tokens: number
 }
 
-const RECENT_BUILDS: RecentBuild[] = [
-  { id: '1', typeIcon: '🏔️', typeLabel: 'Terrain',    description: 'Rolling hills biome — medieval kingdom zone', ts: Date.now() - 1000 * 60 * 8,   tokens: 14 },
-  { id: '2', typeIcon: '🏛️', typeLabel: 'Structure',  description: 'Stone castle entrance arch with portcullis',  ts: Date.now() - 1000 * 60 * 34,  tokens: 28 },
-  { id: '3', typeIcon: '🎨', typeLabel: 'Texture',    description: 'Mossy cobblestone PBR texture set 4K',        ts: Date.now() - 1000 * 60 * 90,  tokens: 8  },
-  { id: '4', typeIcon: '⚙️', typeLabel: 'Script',     description: 'Enemy patrol AI with LOS detection',          ts: Date.now() - 1000 * 60 * 180, tokens: 32 },
-  { id: '5', typeIcon: '🌲', typeLabel: 'Asset',      description: 'Fantasy tree pack — 6 variants',              ts: Date.now() - 1000 * 60 * 340, tokens: 19 },
-]
+interface RecentBuildsData {
+  builds: RecentBuild[]
+}
 
 interface Achievement {
   id: string
@@ -59,12 +58,6 @@ interface Achievement {
   target: number
   xp: number
 }
-
-const NEXT_ACHIEVEMENTS: Achievement[] = [
-  { id: 'a1', icon: '⚡', name: 'Speed Builder',  description: 'Complete 10 AI builds in a single day',      current: 7,  target: 10, xp: 150 },
-  { id: 'a2', icon: '🔥', name: 'On Fire',        description: 'Maintain a 14-day build streak',              current: 7,  target: 14, xp: 300 },
-  { id: 'a3', icon: '🛒', name: 'Market Maven',   description: 'Purchase 5 marketplace assets',               current: 2,  target: 5,  xp: 100 },
-]
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -168,7 +161,9 @@ function StatCard({
 
 // ─── Activity Bar Chart ───────────────────────────────────────────────────────
 
-function ActivityChart() {
+function ActivityChart({ activityVals }: { activityVals: number[] }) {
+  const actMax = Math.max(...activityVals, 1)
+  const total = activityVals.reduce((s, v) => s + v, 0)
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -180,7 +175,7 @@ function ActivityChart() {
           className="text-[11px] font-bold px-2.5 py-1 rounded-full"
           style={{ color: GOLD, background: `${GOLD}12`, border: `1px solid ${GOLD}20` }}
         >
-          {BUILD_ACTIVITY_VALS.reduce((s, v) => s + v, 0)} total builds
+          {total} total builds
         </span>
       </div>
       <div
@@ -188,13 +183,13 @@ function ActivityChart() {
         style={{ background: '#111111' }}
       >
         <div className="flex items-end gap-2 h-28">
-          {BUILD_ACTIVITY_VALS.map((v, i) => {
-            const heightPct = (v / ACTIVITY_MAX) * 100
-            const isToday = i === BUILD_ACTIVITY_VALS.length - 1
+          {activityVals.map((v, i) => {
+            const heightPct = (v / actMax) * 100
+            const isToday = i === activityVals.length - 1
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <span className="text-[10px] text-gray-600 tabular-nums">{v}</span>
-                <div className="w-full rounded-t-md relative overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 4 }}>
+                <div className="w-full rounded-t-md relative overflow-hidden" style={{ height: `${Math.max(heightPct, v > 0 ? 4 : 0)}%`, minHeight: v > 0 ? 4 : 0 }}>
                   <div
                     className="absolute inset-0 rounded-t-md"
                     style={{
@@ -227,7 +222,7 @@ function ActivityChart() {
 
 // ─── Recent Builds ────────────────────────────────────────────────────────────
 
-function RecentBuilds() {
+function RecentBuilds({ builds }: { builds: RecentBuild[] }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -244,41 +239,61 @@ function RecentBuilds() {
         className="rounded-2xl border border-white/[0.08] overflow-hidden"
         style={{ background: '#111111' }}
       >
-        {RECENT_BUILDS.map((build, idx) => (
-          <div
-            key={build.id}
-            className={`flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.04] ${
-              idx < RECENT_BUILDS.length - 1 ? 'border-b border-white/[0.06]' : ''
-            }`}
-          >
+        {builds.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3"
               style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}15` }}
             >
-              {build.typeIcon}
+              ⚡
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold text-white mb-1">No builds yet</p>
+            <p className="text-[12px] text-gray-500 mb-4">Your AI-generated assets will appear here.</p>
+            <Link
+              href="/editor"
+              className="text-xs font-bold px-4 py-2 rounded-lg text-black transition-all hover:opacity-90"
+              style={{ background: GOLD }}
+            >
+              Start building
+            </Link>
+          </div>
+        ) : (
+          builds.map((build, idx) => (
+            <div
+              key={build.id}
+              className={`flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.04] ${
+                idx < builds.length - 1 ? 'border-b border-white/[0.06]' : ''
+              }`}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
+                style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}15` }}
+              >
+                {build.typeIcon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ color: GOLD, background: `${GOLD}12` }}
+                  >
+                    {build.typeLabel}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-200 mt-0.5 truncate">{build.description}</p>
+              </div>
+              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                <span className="text-[11px] text-gray-500 tabular-nums">{timeAgo(build.ts)}</span>
                 <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
-                  style={{ color: GOLD, background: `${GOLD}12` }}
+                  className="text-[10px] font-semibold tabular-nums"
+                  style={{ color: GOLD }}
                 >
-                  {build.typeLabel}
+                  -{build.tokens} tkn
                 </span>
               </div>
-              <p className="text-sm text-gray-200 mt-0.5 truncate">{build.description}</p>
             </div>
-            <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-              <span className="text-[11px] text-gray-500 tabular-nums">{timeAgo(build.ts)}</span>
-              <span
-                className="text-[10px] font-semibold tabular-nums"
-                style={{ color: GOLD }}
-              >
-                -{build.tokens} tkn
-              </span>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </section>
   )
@@ -353,7 +368,9 @@ function QuickActions() {
 
 // ─── Achievement Progress ─────────────────────────────────────────────────────
 
-function AchievementProgress() {
+function AchievementProgress({ achievements }: { achievements: Achievement[] }) {
+  if (achievements.length === 0) return null
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
@@ -363,7 +380,7 @@ function AchievementProgress() {
         </Link>
       </div>
       <div className="space-y-3">
-        {NEXT_ACHIEVEMENTS.map((a) => {
+        {achievements.map((a) => {
           const pct = Math.round((a.current / a.target) * 100)
           return (
             <div
@@ -414,6 +431,8 @@ function AchievementProgress() {
 
 export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent }: Props) {
   const { data: tokenData } = useSWR<TokenData>('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
+  const { data: statsData } = useSWR<DashboardStats>('/api/dashboard/stats', fetcher, { refreshInterval: 60000 })
+  const { data: buildsData } = useSWR<RecentBuildsData>('/api/dashboard/recent-builds', fetcher, { refreshInterval: 60000 })
   const { show: showToast } = useToast()
   const [currentDate, setCurrentDate] = useState('')
 
@@ -437,6 +456,13 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
   const liveBalance = tokenData?.balance ?? tokenBalance
   const liveSpent = tokenData?.lifetimeSpent ?? lifetimeSpent
+
+  const buildsThisWeek = statsData?.buildsThisWeek ?? 0
+  const activeProjects = statsData?.activeProjects ?? 0
+  const streakDays = statsData?.streakDays ?? 0
+  const activityVals = statsData?.buildActivity ?? Array(7).fill(0)
+
+  const recentBuilds = buildsData?.builds ?? []
 
   const tierLabel = subscription === 'FREE' ? 'Free' : subscription === 'PRO' ? 'Pro' : subscription
 
@@ -481,39 +507,26 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             label="Token Balance"
             value={liveBalance}
             icon="⚡"
-            trend="12%"
-            trendUp
             sub={`${liveSpent.toLocaleString()} spent lifetime`}
             sparkline={SPARKLINE_TOKEN}
           />
           <StatCard
             label="Builds This Week"
-            value={BUILD_ACTIVITY_VALS.reduce((s, v) => s + v, 0)}
+            value={buildsThisWeek}
             icon="🔨"
-            trend="23%"
-            trendUp
             sub="Across all projects"
-            sparkline={SPARKLINE_BUILDS}
             sparkColor="#34D399"
           />
           <StatCard
             label="Active Projects"
-            value={3}
+            value={activeProjects}
             icon="🗂️"
-            trend="1 new"
-            trendUp
-            sub="2 updated this week"
-            sparkline={SPARKLINE_PROJ}
             sparkColor="#60A5FA"
           />
           <StatCard
             label="Streak Days"
-            value={7}
+            value={streakDays}
             icon="🔥"
-            trend="3 days"
-            trendUp
-            sub="Personal best: 14 days"
-            sparkline={SPARKLINE_STREAK}
             sparkColor="#F59E0B"
           />
         </div>
@@ -523,14 +536,14 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
           {/* Left 2/3 */}
           <div className="xl:col-span-2 space-y-6">
-            <ActivityChart />
-            <RecentBuilds />
+            <ActivityChart activityVals={activityVals} />
+            <RecentBuilds builds={recentBuilds} />
           </div>
 
           {/* Right 1/3 */}
           <div className="space-y-6">
             <QuickActions />
-            <AchievementProgress />
+            <AchievementProgress achievements={[]} />
 
             {/* Token CTA for FREE users */}
             {subscription === 'FREE' && (

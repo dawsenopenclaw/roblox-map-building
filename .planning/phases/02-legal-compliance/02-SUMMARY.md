@@ -42,7 +42,7 @@ metrics:
 
 # Phase 02: Legal & Compliance Summary
 
-**One-liner:** Full legal stack for RobloxForge — 18-section ToS, GDPR/CCPA/COPPA privacy policy, DMCA agent process, AUP, edge geo-blocking for OFAC embargoed countries, HTTP 451 blocked page, and Footer.
+**One-liner:** Full legal stack for ForjeGames — 18-section ToS, GDPR/CCPA/COPPA privacy policy, DMCA agent process, AUP, edge geo-blocking for OFAC embargoed countries, HTTP 451 blocked page, and Footer.
 
 ---
 
@@ -76,7 +76,7 @@ metrics:
 - Data collection table, usage/legal basis table, retention periods table, cookie table
 
 ### 3. DMCA Policy (`/dmca`)
-- Designated agent: Dawsen Porter — dmca@robloxforge.gg
+- Designated agent: Dawsen Porter — dmca@forjegames.com
 - **48-hour acknowledgment SLA** prominently displayed
 - 6-element takedown notice requirements (17 U.S.C. § 512(c)(3))
 - 5-step takedown process with timeline
@@ -102,7 +102,7 @@ metrics:
 - Displays embargoed country list
 - Legal citations: IEEPA (50 U.S.C. § 1701), AECA (22 U.S.C. § 2778), EAR (15 C.F.R. Part 730)
 - Instructions for false-positive VPN users
-- Contact: legal@robloxforge.gg
+- Contact: legal@forjegames.com
 
 ### 7. Footer Component (`src/components/Footer.tsx`)
 - Product links, Legal links (ToS, Privacy, DMCA, AUP), Company/contact links

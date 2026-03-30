@@ -176,17 +176,50 @@ export function CommandPalette({
     }
   }, [isOpen])
 
-  // Focus trap — keep focus inside the dialog while open
+  // Focus trap — keep focus inside the dialog while open, cycle on Tab, close on Escape
   useEffect(() => {
     if (!isOpen) return
-    const handleFocusOut = (e: FocusEvent) => {
-      if (dialogRef.current && !dialogRef.current.contains(e.relatedTarget as Node | null)) {
-        inputRef.current?.focus()
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    // Restore focus to whatever triggered the dialog when it closes
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    // Auto-focus the first focusable element (the search input)
+    focusable()[0]?.focus()
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const nodes = focusable()
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
       }
     }
-    document.addEventListener('focusout', handleFocusOut)
-    return () => document.removeEventListener('focusout', handleFocusOut)
-  }, [isOpen])
+
+    dialog.addEventListener('keydown', handler)
+    return () => {
+      dialog.removeEventListener('keydown', handler)
+      previouslyFocused?.focus()
+    }
+  }, [isOpen, onClose])
 
   const navigate = useCallback(
     (href: string) => {
@@ -574,10 +607,13 @@ export function CommandPalette({
               ref={dialogRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Command palette"
+              aria-labelledby="cp-title"
               className="bg-[#141414] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
               style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06)' }}
             >
+              {/* Visually-hidden title for aria-labelledby */}
+              <span id="cp-title" className="sr-only">Command palette</span>
+
               {/* Search input */}
               <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.07]">
                 <svg

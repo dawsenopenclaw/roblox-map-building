@@ -38,15 +38,15 @@ until all three are confirmed.
 
 ```bash
 # 1. GitHub Actions secrets
-gh secret set SECRET_NAME --body "new_value" --repo robloxforge/robloxforge
+gh secret set SECRET_NAME --body "new_value" --repo forjegames/forjegames
 
 # 2. Vercel environment variables
 vercel env rm SECRET_NAME production
 vercel env add SECRET_NAME production <<< "new_value"
 
 # 3. Fly.io secrets
-flyctl secrets set SECRET_NAME="new_value" --app robloxforge-api
-flyctl secrets set SECRET_NAME="new_value" --app robloxforge-api-staging
+flyctl secrets set SECRET_NAME="new_value" --app forjegames-api
+flyctl secrets set SECRET_NAME="new_value" --app forjegames-api-staging
 ```
 
 ### Step 3: Verify

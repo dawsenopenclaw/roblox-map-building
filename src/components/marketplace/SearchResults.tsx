@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { Package, RefreshCw, TrendingUp, Search } from 'lucide-react'
 import { Star } from 'lucide-react'
 import type { TemplateSearchItem } from './types'
@@ -273,12 +274,12 @@ function TemplateCard({ template }: { template: TemplateSearchItem }) {
       {/* Thumbnail */}
       <div className="relative aspect-video bg-white/5 overflow-hidden">
         {template.thumbnailUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={template.thumbnailUrl}
             alt={`${template.title} template thumbnail`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
+            fill
+            unoptimized
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -323,12 +324,12 @@ function TemplateCard({ template }: { template: TemplateSearchItem }) {
         {/* Creator */}
         <div className="flex items-center gap-1.5 mt-auto pt-1">
           {template.creator.avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={template.creator.avatarUrl}
               alt={`${template.creator.displayName ?? template.creator.username ?? 'Unknown creator'} avatar`}
-              className="w-4 h-4 rounded-full object-cover"
-              loading="lazy"
+              width={16}
+              height={16}
+              className="rounded-full object-cover"
             />
           ) : (
             <div className="w-4 h-4 rounded-full bg-violet-500/30 flex items-center justify-center">

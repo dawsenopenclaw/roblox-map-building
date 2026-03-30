@@ -4,6 +4,7 @@ import Link from 'next/link'
 export const metadata: Metadata = {
   title: 'Community — ForjeGames',
   description: 'Meet the creators behind the best Roblox templates. Leaderboards, spotlights, and stats from the ForjeGames creator community.',
+  robots: { index: false, follow: false },
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

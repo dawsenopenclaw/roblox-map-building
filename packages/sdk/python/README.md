@@ -1,19 +1,19 @@
-# robloxforge
+# forjegames
 
-Official Python SDK for the [RobloxForge](https://robloxforge.com) API.
+Official Python SDK for the [ForjeGames](https://forjegames.com) API.
 
 ## Installation
 
 ```bash
-pip install robloxforge
+pip install forjegames
 ```
 
 ## Quick Start
 
 ```python
-import robloxforge
+import forjegames
 
-rf = robloxforge.Client(api_key="rf_sk_your_key")
+rf = forjegames.Client(api_key="rf_sk_your_key")
 
 # Generate terrain
 build = rf.terrain.generate(
@@ -35,8 +35,8 @@ for t in templates:
 
 ## API Keys
 
-Generate keys at [robloxforge.com/settings/api-keys](https://robloxforge.com/settings/api-keys).
+Generate keys at [forjegames.com/settings/api-keys](https://forjegames.com/settings/api-keys).
 
 ## Documentation
 
-Full API reference at [robloxforge.com/docs](https://robloxforge.com/docs).
+Full API reference at [forjegames.com/docs](https://forjegames.com/docs).

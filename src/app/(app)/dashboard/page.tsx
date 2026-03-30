@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { requireAuthUser } from '@/lib/clerk'
 import { getTokenBalance } from '@/lib/tokens-server'
 import { DashboardHomeClient } from '@/components/DashboardHomeClient'

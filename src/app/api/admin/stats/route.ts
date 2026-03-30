@@ -19,11 +19,11 @@ export async function GET() {
       signupData,
       recentActivity,
     ] = await Promise.all([
-      db.user.count({ where: { deletedAt: null } }),
+      db.user.count({ where: { deletedAt: null, createdAt: { gte: thirtyDaysAgo } } }),
       db.subscription.count({
         where: { status: { in: ['ACTIVE', 'TRIALING'] } },
       }),
-      db.apiUsageRecord.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+      db.apiUsageRecord.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
       db.dailyCostSnapshot.findMany({
         where: { date: { gte: thirtyDaysAgo } },
         orderBy: { date: 'asc' },

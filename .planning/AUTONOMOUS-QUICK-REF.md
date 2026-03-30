@@ -200,6 +200,6 @@ Week 1 → Foundation (PQueue, Redis, routing)
 
 **Supporting docs:**
 - Multi-agent patterns: `multi-agent-orchestration-2026.md`
-- RobloxForge architecture: `robloxforge_architecture.md`
+- ForjeGames architecture: `robloxforge_architecture.md`
 - Stripe integration: `stripe-latest-2025-2026-patterns.md`
 

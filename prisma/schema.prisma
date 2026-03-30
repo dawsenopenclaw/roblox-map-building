@@ -28,6 +28,11 @@ model User {
   deletedAt             DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  // Referral code — server-generated UUID, stored for stable link sharing
+  referralCode          String?   @unique
+  // Monthly referral reward cap — tracks count + billing month (YYYY-MM)
+  monthlyReferralCount  Int       @default(0)
+  monthlyReferralMonth  String    @default("")
 
   subscription  Subscription?
   tokenBalance  TokenBalance?
@@ -58,6 +63,7 @@ model User {
   // Notifications & Earnings
   notifications   Notification[]
   creatorEarnings CreatorEarning[]
+  buyerEarnings   CreatorEarning[] @relation("BuyerEarnings")
 
   // Game DNA Scanner
   gameScans GameScan[]
@@ -69,9 +75,8 @@ model User {
   teamActivities  TeamActivity[]   @relation("TeamActivities")
   projectVersions ProjectVersion[] @relation("ProjectVersions")
 
-  @@index([clerkId])
-  @@index([email])
   @@index([deletedAt])
+  @@index([parentConsentTokenExp])
 }
 
 enum UserRole {
@@ -100,7 +105,6 @@ model Subscription {
   updatedAt            DateTime           @updatedAt
 
   @@index([stripeCustomerId])
-  @@index([userId])
   @@index([status])
   @@index([status, currentPeriodEnd])
 }
@@ -168,20 +172,20 @@ enum TokenTransactionType {
 // ─── Charity ───────────────────────────────────────────────────────────────
 
 model CharityDonation {
-  id               String         @id @default(cuid())
+  id               String            @id @default(cuid())
   userId           String
-  user             User           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  stripeTransferId String?        @unique
+  user             User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  stripeTransferId String?           @unique
   charitySlug      String
   charityName      String
   amountCents      Int
-  sourcePurchaseId String?
-  status           DonationStatus @default(PENDING)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  sourcePurchaseId String?           @unique
+  sourcePurchase   TemplatePurchase? @relation(fields: [sourcePurchaseId], references: [id], onDelete: SetNull)
+  status           DonationStatus    @default(PENDING)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   processedAt      DateTime?
 
-  @@unique([sourcePurchaseId])
   @@index([userId])
   @@index([createdAt])
   @@index([status])
@@ -245,6 +249,7 @@ model ApiUsageRecord {
   @@index([createdAt])
   @@index([userId, createdAt])
   @@index([apiKeyId, createdAt])
+  @@index([httpPath, createdAt])
 }
 
 // ─── Cost Tracking (aggregated daily) ──────────────────────────────────────
@@ -260,7 +265,6 @@ model DailyCostSnapshot {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@index([date])
 }
 
 // ─── Marketplace ────────────────────────────────────────────────────────────
@@ -307,9 +311,10 @@ model Template {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  screenshots TemplateScreenshot[]
-  reviews     TemplateReview[]
-  purchases   TemplatePurchase[]
+  screenshots     TemplateScreenshot[]
+  reviews         TemplateReview[]
+  purchases       TemplatePurchase[]
+  creatorEarnings CreatorEarning[]
 
   @@index([creatorId])
   @@index([category])
@@ -317,7 +322,6 @@ model Template {
   @@index([createdAt])
   @@index([averageRating])
   @@index([downloads])
-  @@index([slug])
   @@index([deletedAt])
   @@index([featuredAt])
   @@index([priceCents])
@@ -340,6 +344,7 @@ model TemplateScreenshot {
   createdAt  DateTime @default(now())
 
   @@index([templateId])
+  @@index([templateId, sortOrder])
 }
 
 model TemplateReview {
@@ -379,7 +384,8 @@ model TemplatePurchase {
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
-  review TemplateReview?
+  review          TemplateReview?
+  charityDonation CharityDonation?
 
   @@unique([templateId, buyerId])
   @@index([templateId])
@@ -396,6 +402,7 @@ enum PayoutStatus {
   PAID
   FAILED
   REFUNDED
+  FROZEN
 }
 
 model CreatorAccount {
@@ -412,7 +419,6 @@ model CreatorAccount {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  @@index([userId])
   @@index([stripeAccountId])
 }
 
@@ -431,7 +437,6 @@ model UserXP {
 
   xpEvents XPEvent[]
 
-  @@index([userId])
   @@index([totalXp])
   @@index([tier])
 }
@@ -502,7 +507,7 @@ model UserAchievement {
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   achievementId String
-  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Restrict)
   unlockedAt    DateTime    @default(now())
 
   @@unique([userId, achievementId])
@@ -522,6 +527,9 @@ model Streak {
   lastBuildDate      DateTime @default(now()) @db.Date
   totalLogins        Int      @default(0)
   totalBuilds        Int      @default(0)
+  // JSON array of milestone day-counts already rewarded e.g. [7, 30]
+  // Prevents re-earning the same milestone if streak drops and rebuilds.
+  claimedMilestones  Json     @default("[]")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -550,6 +558,7 @@ model GameScan {
   @@index([status])
   @@index([userId, status])
   @@index([userId, createdAt])
+  @@index([robloxPlaceId, status])
 }
 
 enum ScanStatus {
@@ -592,11 +601,25 @@ model GameGenome {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([scanId])
 }
 
 // ─── Team Collaboration ────────────────────────────────────────────────────
+//
+// SOFT-DELETE CONSISTENCY: Every query against `Team` must include
+// `where: { deletedAt: null }` to exclude soft-deleted teams.
+//
+// TODO: Replace manual filters with a Prisma $extends global query filter:
+//   prisma.$extends({
+//     query: {
+//       team: {
+//         async findMany({ args, query }) {
+//           args.where = { ...args.where, deletedAt: null }
+//           return query(args)
+//         },
+//       },
+//     },
+//   })
+// This eliminates the risk of accidentally reading deleted teams.
 
 model Team {
   id          String    @id @default(cuid())
@@ -697,6 +720,7 @@ model ZoneLock {
   zoneName     String?
   lockedAt     DateTime   @default(now())
   expiresAt    DateTime
+  updatedAt    DateTime   @updatedAt
 
   @@index([teamMemberId])
   @@index([expiresAt])
@@ -756,6 +780,8 @@ model ApiKey {
   // Rotation: if set, this key was created by rotating rotatedFromId; that old key
   // remains valid until rotatedFromGraceEndsAt (24-hour window) then is auto-revoked.
   rotatedFromId          String?    @unique
+  rotatedFrom            ApiKey?    @relation("ApiKeyRotation", fields: [rotatedFromId], references: [id], onDelete: SetNull)
+  rotatedTo              ApiKey?    @relation("ApiKeyRotation")
   rotatedFromGraceEndsAt DateTime?
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
@@ -767,6 +793,7 @@ model ApiKey {
   @@index([revokedAt])
   // Composite: look up active (non-revoked) keys for a user
   @@index([userId, revokedAt])
+  @@index([rotatedFromGraceEndsAt])
 }
 
 enum ApiKeyTier {
@@ -783,6 +810,10 @@ model WebhookEndpoint {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   url       String
+  // SECURITY: `secret` must be stored as an HMAC-SHA256 hash, never in plaintext.
+  // On creation: hash with crypto.createHmac('sha256', WEBHOOK_SECRET_SALT).update(rawSecret).digest('hex')
+  // On delivery: sign the payload with the raw secret obtained at creation time (never re-read from DB).
+  // The raw secret is shown to the user exactly once at creation and never stored.
   secret    String
   events    String[]
   active    Boolean  @default(true)
@@ -807,6 +838,7 @@ model WebhookDelivery {
   success      Boolean         @default(false)
   nextRetryAt  DateTime?
   createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([endpointId])
   @@index([createdAt])
@@ -852,8 +884,8 @@ model Waitlist {
   email     String   @unique
   source    String   @default("download_page")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([email])
   @@index([source])
   @@index([createdAt])
 }
@@ -900,10 +932,12 @@ model CreatorEarning {
   userId       String
   user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   templateId   String?
+  template     Template?     @relation(fields: [templateId], references: [id], onDelete: SetNull)
   templateName String?
   amountCents  Int
   netCents     Int
   buyerId      String?
+  buyer        User?         @relation("BuyerEarnings", fields: [buyerId], references: [id], onDelete: SetNull)
   status       EarningStatus @default(PENDING)
   paidAt       DateTime?
   createdAt    DateTime      @default(now())
@@ -916,7 +950,6 @@ model CreatorEarning {
   @@index([status])
   @@index([templateId])
   @@index([buyerId])
-  @@index([templateId, buyerId])
   @@index([userId, createdAt])
 }
 
@@ -926,4 +959,67 @@ enum EarningStatus {
   PAID
   FAILED
   REFUNDED
+  FROZEN
+}
+
+// ─── Token Grant Jobs (async webhook processing) ────────────────────────────
+
+model TokenGrantJob {
+  id          String                @id @default(cuid())
+  userId      String
+  amount      Int
+  type        TokenTransactionType
+  description String
+  metadata    Json?
+  invoiceId   String?
+  sessionId   String?
+  status      TokenGrantJobStatus   @default(PENDING)
+  attempts    Int                   @default(0)
+  lastError   String?
+  processedAt DateTime?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([invoiceId])
+  @@index([sessionId])
+  @@index([status, createdAt])
+}
+
+enum TokenGrantJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ─── Builds ──────────────────────────────────────────────────────────────────
+
+model Build {
+  id         String   @id @default(cuid())
+  userId     String
+  buildType  String   @default("general")
+  prompt     String   @db.Text
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+
+model Project {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, archived])
 }

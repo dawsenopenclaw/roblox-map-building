@@ -19,38 +19,41 @@ interface DashboardStats {
   }[]
 }
 
-const DEMO_STATS: DashboardStats = {
-  totalUsers: 1284,
-  mrrCents: 489500,
-  totalBuilds: 9731,
-  activeBuilds: 427,
-  pendingReviews: 12,
-  revenueChart: [
-    { date: '2026-02-27', revenueCents: 38000 },
-    { date: '2026-02-28', revenueCents: 42000 },
-    { date: '2026-03-01', revenueCents: 35000 },
-    { date: '2026-03-02', revenueCents: 51000 },
-    { date: '2026-03-03', revenueCents: 46000 },
-    { date: '2026-03-04', revenueCents: 39000 },
-    { date: '2026-03-05', revenueCents: 55000 },
-    { date: '2026-03-06', revenueCents: 60000 },
-    { date: '2026-03-07', revenueCents: 48000 },
-    { date: '2026-03-08', revenueCents: 52000 },
-    { date: '2026-03-09', revenueCents: 58000 },
-    { date: '2026-03-10', revenueCents: 44000 },
-    { date: '2026-03-11', revenueCents: 62000 },
-    { date: '2026-03-12', revenueCents: 57000 },
-    { date: '2026-03-13', revenueCents: 71000 },
-    { date: '2026-03-14', revenueCents: 65000 },
-    { date: '2026-03-15', revenueCents: 49500 },
-  ],
-  recentActivity: [
-    { id: '1', action: 'POST /api/templates', resource: 'template', createdAt: new Date(Date.now() - 3 * 60000).toISOString(), user: { email: 'alice@example.com' } },
-    { id: '2', action: 'PUT /api/users/123', resource: 'user', createdAt: new Date(Date.now() - 12 * 60000).toISOString(), user: { email: 'bob@example.com' } },
-    { id: '3', action: 'DELETE /api/builds/456', resource: 'build', createdAt: new Date(Date.now() - 35 * 60000).toISOString(), user: { email: 'carol@example.com' } },
-    { id: '4', action: 'POST /api/subscriptions', resource: 'subscription', createdAt: new Date(Date.now() - 2 * 3600000).toISOString(), user: { email: 'dave@example.com' } },
-    { id: '5', action: 'GET /api/templates', resource: 'template', createdAt: new Date(Date.now() - 4 * 3600000).toISOString(), user: { email: 'eve@example.com' } },
-  ],
+function makeDemoStats(): DashboardStats {
+  const now = Date.now()
+  return {
+    totalUsers: 1284,
+    mrrCents: 489500,
+    totalBuilds: 9731,
+    activeBuilds: 427,
+    pendingReviews: 12,
+    revenueChart: [
+      { date: '2026-02-27', revenueCents: 38000 },
+      { date: '2026-02-28', revenueCents: 42000 },
+      { date: '2026-03-01', revenueCents: 35000 },
+      { date: '2026-03-02', revenueCents: 51000 },
+      { date: '2026-03-03', revenueCents: 46000 },
+      { date: '2026-03-04', revenueCents: 39000 },
+      { date: '2026-03-05', revenueCents: 55000 },
+      { date: '2026-03-06', revenueCents: 60000 },
+      { date: '2026-03-07', revenueCents: 48000 },
+      { date: '2026-03-08', revenueCents: 52000 },
+      { date: '2026-03-09', revenueCents: 58000 },
+      { date: '2026-03-10', revenueCents: 44000 },
+      { date: '2026-03-11', revenueCents: 62000 },
+      { date: '2026-03-12', revenueCents: 57000 },
+      { date: '2026-03-13', revenueCents: 71000 },
+      { date: '2026-03-14', revenueCents: 65000 },
+      { date: '2026-03-15', revenueCents: 49500 },
+    ],
+    recentActivity: [
+      { id: '1', action: 'POST /api/templates', resource: 'template', createdAt: new Date(now - 3 * 60000).toISOString(), user: { email: 'alice@example.com' } },
+      { id: '2', action: 'PUT /api/users/123', resource: 'user', createdAt: new Date(now - 12 * 60000).toISOString(), user: { email: 'bob@example.com' } },
+      { id: '3', action: 'DELETE /api/builds/456', resource: 'build', createdAt: new Date(now - 35 * 60000).toISOString(), user: { email: 'carol@example.com' } },
+      { id: '4', action: 'POST /api/subscriptions', resource: 'subscription', createdAt: new Date(now - 2 * 3600000).toISOString(), user: { email: 'dave@example.com' } },
+      { id: '5', action: 'GET /api/templates', resource: 'template', createdAt: new Date(now - 4 * 3600000).toISOString(), user: { email: 'eve@example.com' } },
+    ],
+  }
 }
 
 function timeAgo(iso: string) {
@@ -86,7 +89,7 @@ function StatCard({ title, value, icon }: { title: string; value: string; icon: 
 }
 
 export default function AdminOverviewPage() {
-  const [stats, setStats] = useState<DashboardStats>(DEMO_STATS)
+  const [stats, setStats] = useState<DashboardStats>(() => makeDemoStats())
   const [isDemo, setIsDemo] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -101,7 +104,7 @@ export default function AdminOverviewPage() {
         setIsDemo(false)
       })
       .catch(() => {
-        setStats(DEMO_STATS)
+        setStats(makeDemoStats())
         setIsDemo(true)
       })
       .finally(() => setLoading(false))

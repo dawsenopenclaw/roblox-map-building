@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { streakSchema, parseBody } from '@/lib/validations'
 
 const STREAK_BONUSES: Array<{ days: number; tokens: number }> = [
   { days: 7, tokens: 50 },
@@ -8,9 +9,11 @@ const STREAK_BONUSES: Array<{ days: number; tokens: number }> = [
   { days: 100, tokens: 1000 },
 ]
 
-function getBonusForStreak(streak: number): number {
+function getBonusForStreak(streak: number, claimedMilestones: number[]): number {
   for (const { days, tokens } of STREAK_BONUSES) {
-    if (streak === days) return tokens
+    // Only grant if the streak just reached this milestone AND it hasn't been claimed before.
+    // This prevents re-earning when a streak resets and rebuilds to the same day count.
+    if (streak === days && !claimedMilestones.includes(days)) return tokens
   }
   return 0
 }
@@ -86,17 +89,11 @@ export async function POST(req: NextRequest) {
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    let body: unknown
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsedBody = await parseBody(req, streakSchema)
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status })
     }
-
-    const { type } = body as { type?: 'login' | 'build' }
-    if (type !== 'login' && type !== 'build') {
-      return NextResponse.json({ error: 'type must be "login" or "build"' }, { status: 400 })
-    }
+    const { type } = parsedBody.data
 
     const today = new Date()
     today.setUTCHours(0, 0, 0, 0)
@@ -108,17 +105,20 @@ export async function POST(req: NextRequest) {
     let streakIncremented = false
 
     if (!streak) {
+      const initialStreak = type === 'login' ? 1 : 0
+      const buildStreak   = type === 'build' ? 1 : 0
       streak = await db.streak.create({
         data: {
           userId: user.id,
-          loginStreak: type === 'login' ? 1 : 0,
-          buildStreak: type === 'build' ? 1 : 0,
-          longestLoginStreak: type === 'login' ? 1 : 0,
-          longestBuildStreak: type === 'build' ? 1 : 0,
+          loginStreak: initialStreak,
+          buildStreak,
+          longestLoginStreak: initialStreak,
+          longestBuildStreak: buildStreak,
           totalLogins: type === 'login' ? 1 : 0,
           totalBuilds: type === 'build' ? 1 : 0,
           lastLoginDate: today,
           lastBuildDate: today,
+          claimedMilestones: [],
         },
       })
       streakIncremented = true
@@ -135,7 +135,15 @@ export async function POST(req: NextRequest) {
         const longestField = type === 'login' ? 'longestLoginStreak' : 'longestBuildStreak'
         const currentLongest = type === 'login' ? streak.longestLoginStreak : streak.longestBuildStreak
 
-        bonusTokens = getBonusForStreak(newStreak)
+        // Parse claimed milestones — stored as JSON array of day-counts
+        const claimed: number[] = Array.isArray(streak.claimedMilestones)
+          ? (streak.claimedMilestones as number[])
+          : []
+
+        bonusTokens = getBonusForStreak(newStreak, claimed)
+
+        // If a bonus is being awarded, add the milestone to the claimed set
+        const newClaimed = bonusTokens > 0 ? [...claimed, newStreak] : claimed
 
         streak = await db.streak.update({
           where: { id: streak.id },
@@ -147,6 +155,7 @@ export async function POST(req: NextRequest) {
             lastBuildDate: type === 'build' ? today : streak.lastBuildDate,
             totalLogins: type === 'login' ? { increment: 1 } : undefined,
             totalBuilds: type === 'build' ? { increment: 1 } : undefined,
+            claimedMilestones: newClaimed,
           },
         })
         streakIncremented = true

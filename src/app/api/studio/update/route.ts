@@ -21,6 +21,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { updateSessionState } from '@/lib/studio-session'
+import { studioUpdateSchema, parseBody } from '@/lib/validations'
 
 interface PluginChange {
   type: string
@@ -52,34 +53,21 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
-  let body: UpdateBody
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json(
-      { error: 'invalid_json' },
-      { status: 400, headers: CORS_HEADERS },
-    )
+  const parsedBody = await parseBody(req, studioUpdateSchema)
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
   }
+  const rawBody = parsedBody.data
 
   // Support legacy plugin versions that send sessionToken instead of sessionId
-  const sessionId = body.sessionId ?? body.sessionToken
+  const sessionId = rawBody.sessionId ?? rawBody.sessionToken
   if (!sessionId) {
     return NextResponse.json(
       { error: 'sessionId is required' },
       { status: 400, headers: CORS_HEADERS },
     )
   }
-  body.sessionId = sessionId
-
-  // changes is optional — heartbeat pings send no changes
-  if (body.changes !== undefined && !Array.isArray(body.changes)) {
-    return NextResponse.json(
-      { error: 'changes must be an array' },
-      { status: 400, headers: CORS_HEADERS },
-    )
-  }
-  body.changes = body.changes ?? []
+  const body: UpdateBody = { ...rawBody, sessionId, changes: rawBody.changes ?? [] }
 
   // Store the latest state snapshot on the session
   const statePayload: Record<string, unknown> = {

@@ -1,4 +1,4 @@
-"""Terrain generation methods for the RobloxForge SDK."""
+"""Terrain generation methods for the ForjeGames SDK."""
 
 import time
 from typing import TYPE_CHECKING, Optional, Literal

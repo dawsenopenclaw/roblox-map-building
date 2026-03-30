@@ -12,6 +12,9 @@ const schema = z.object({
     .datetime()
     .refine((val) => new Date(val) < new Date(), {
       message: 'Date of birth must be in the past',
+    })
+    .refine((val) => new Date(val).getUTCFullYear() >= 1900, {
+      message: 'Date of birth must be 1900 or later',
     }),
 })
 

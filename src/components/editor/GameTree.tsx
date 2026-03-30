@@ -227,7 +227,7 @@ function TreeNode({
             : 'text-gray-300 hover:text-gray-200 hover:bg-white/5'
         }`}
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: '8px' }}
-        aria-selected={isSelected}
+        aria-pressed={isSelected}
       >
         {/* Expand arrow */}
         {hasChildren ? (

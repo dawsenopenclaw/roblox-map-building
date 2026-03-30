@@ -26,44 +26,47 @@ interface QueueResponse {
   total: number
 }
 
-const DEMO_QUEUE: PendingTemplate[] = [
-  {
-    id: 'd1',
-    title: 'Modern City Block',
-    description: 'A fully detailed city block with roads, sidewalks, and storefronts. Ready to drop into any urban map.',
-    category: 'MAP_TEMPLATE',
-    priceCents: 499,
-    thumbnailUrl: null,
-    rbxmFileUrl: null,
-    tags: ['city', 'urban', 'roads', 'storefronts'],
-    createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-    creator: { id: 'u1', email: 'alice@example.com', displayName: 'Alice Smith', username: 'alice' },
-  },
-  {
-    id: 'd2',
-    title: 'Tropical Island Pack',
-    description: 'Palm trees, beach terrain, and ocean props. Includes 12 unique assets.',
-    category: 'ASSET',
-    priceCents: 999,
-    thumbnailUrl: null,
-    rbxmFileUrl: null,
-    tags: ['tropical', 'beach', 'island', 'nature'],
-    createdAt: new Date(Date.now() - 5 * 3600000).toISOString(),
-    creator: { id: 'u2', email: 'bob@example.com', displayName: 'Bob Jones', username: 'bob99' },
-  },
-  {
-    id: 'd3',
-    title: 'Medieval Castle Walls',
-    description: 'Stone castle walls with battlements, towers, and a drawbridge. High quality, low poly.',
-    category: 'GAME_TEMPLATE',
-    priceCents: 0,
-    thumbnailUrl: null,
-    rbxmFileUrl: null,
-    tags: ['medieval', 'castle', 'fantasy', 'free'],
-    createdAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-    creator: { id: 'u3', email: 'carol@example.com', displayName: 'Carol Dev', username: 'caroldev' },
-  },
-]
+function makeDemoQueue(): PendingTemplate[] {
+  const now = Date.now()
+  return [
+    {
+      id: 'd1',
+      title: 'Modern City Block',
+      description: 'A fully detailed city block with roads, sidewalks, and storefronts. Ready to drop into any urban map.',
+      category: 'MAP_TEMPLATE',
+      priceCents: 499,
+      thumbnailUrl: null,
+      rbxmFileUrl: null,
+      tags: ['city', 'urban', 'roads', 'storefronts'],
+      createdAt: new Date(now - 2 * 3600000).toISOString(),
+      creator: { id: 'u1', email: 'alice@example.com', displayName: 'Alice Smith', username: 'alice' },
+    },
+    {
+      id: 'd2',
+      title: 'Tropical Island Pack',
+      description: 'Palm trees, beach terrain, and ocean props. Includes 12 unique assets.',
+      category: 'ASSET',
+      priceCents: 999,
+      thumbnailUrl: null,
+      rbxmFileUrl: null,
+      tags: ['tropical', 'beach', 'island', 'nature'],
+      createdAt: new Date(now - 5 * 3600000).toISOString(),
+      creator: { id: 'u2', email: 'bob@example.com', displayName: 'Bob Jones', username: 'bob99' },
+    },
+    {
+      id: 'd3',
+      title: 'Medieval Castle Walls',
+      description: 'Stone castle walls with battlements, towers, and a drawbridge. High quality, low poly.',
+      category: 'GAME_TEMPLATE',
+      priceCents: 0,
+      thumbnailUrl: null,
+      rbxmFileUrl: null,
+      tags: ['medieval', 'castle', 'fantasy', 'free'],
+      createdAt: new Date(now - 24 * 3600000).toISOString(),
+      creator: { id: 'u3', email: 'carol@example.com', displayName: 'Carol Dev', username: 'caroldev' },
+    },
+  ]
+}
 
 export default function AdminTemplatesPage() {
   const [data, setData] = useState<QueueResponse | null>(null)
@@ -80,7 +83,8 @@ export default function AdminTemplatesPage() {
       setData(await res.json())
       setIsDemo(false)
     } catch {
-      setData({ templates: DEMO_QUEUE, total: DEMO_QUEUE.length })
+      const demoQueue = makeDemoQueue()
+      setData({ templates: demoQueue, total: demoQueue.length })
       setIsDemo(true)
     } finally {
       setLoading(false)
@@ -99,7 +103,9 @@ export default function AdminTemplatesPage() {
     if (isDemo) {
       // Optimistically remove from demo queue
       setData((prev) =>
-        prev ? { ...prev, templates: prev.templates.filter((t) => t.id !== templateId), total: prev.total - 1 } : prev
+        prev
+          ? { ...prev, templates: prev.templates.filter((t) => t.id !== templateId), total: prev.total - 1 }
+          : prev
       )
       return
     }

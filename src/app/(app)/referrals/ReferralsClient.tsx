@@ -4,23 +4,13 @@ import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Users, Copy, Check, Gift, Link2, Twitter, MessageCircle, Zap } from 'lucide-react'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function deriveCode(userId: string): string {
-  // Deterministic 4-digit suffix from clerkId — stable across sessions
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
-  }
-  return `FG-${(hash % 9000 + 1000).toString()}`
-}
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ReferralStats = {
   invitesSent: number
   signups: number
   tokensEarned: number
+  referralCode?: string
   demo: boolean
 }
 
@@ -52,7 +42,7 @@ const DEMO_STATS: ReferralStats = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReferralsClient() {
-  const { user, isLoaded } = useUser()
+  const { isLoaded } = useUser()
 
   const [stats, setStats]             = useState<ReferralStats | null>(null)
   const [referrals, setReferrals]     = useState<ReferralRow[]>([])
@@ -60,10 +50,12 @@ export default function ReferralsClient() {
   const [linkCopied, setLinkCopied]   = useState(false)
   const [codeCopied, setCodeCopied]   = useState(false)
 
-  // Derive stable referral code + canonical link from Clerk user id
-  const referralCode = isLoaded && user ? deriveCode(user.id) : '...'
-  const referralLink = isLoaded && user
-    ? `https://forjegames.com/sign-up?ref=${deriveCode(user.id)}`
+  // Referral code is fetched from the server — never derived client-side.
+  // The server generates a cryptographically random code on first request and
+  // persists it, guaranteeing it cannot be predicted from the Clerk user ID.
+  const referralCode = stats?.referralCode ?? '...'
+  const referralLink = stats?.referralCode
+    ? `https://forjegames.com/sign-up?ref=${stats.referralCode}`
     : 'https://forjegames.com/sign-up?ref=...'
 
   useEffect(() => {
@@ -71,7 +63,13 @@ export default function ReferralsClient() {
     fetch('/api/referrals')
       .then((r) => r.json())
       .then((data: ReferralStats & { referrals?: ReferralRow[] }) => {
-        setStats({ invitesSent: data.invitesSent, signups: data.signups, tokensEarned: data.tokensEarned, demo: data.demo })
+        setStats({
+          invitesSent: data.invitesSent,
+          signups: data.signups,
+          tokensEarned: data.tokensEarned,
+          referralCode: data.referralCode,
+          demo: data.demo,
+        })
         setReferrals(data.referrals ?? DEMO_REFERRALS)
       })
       .catch(() => {

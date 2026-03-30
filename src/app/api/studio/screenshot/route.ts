@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { storeScreenshot, getSession } from '@/lib/studio-session'
+import { studioScreenshotSchema, parseBody } from '@/lib/validations'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -51,22 +52,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let body: ScreenshotPostBody
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json(
-      { error: 'invalid_json' },
-      { status: 400, headers: CORS_HEADERS },
-    )
+  const parsedBody = await parseBody(req, studioScreenshotSchema)
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
   }
-
-  if (!body.sessionId || !body.image) {
-    return NextResponse.json(
-      { error: 'sessionId and image are required' },
-      { status: 400, headers: CORS_HEADERS },
-    )
-  }
+  const body = parsedBody.data
 
   // Strip data URI prefix if the plugin sends one
   const base64 = body.image.replace(/^data:image\/\w+;base64,/, '')

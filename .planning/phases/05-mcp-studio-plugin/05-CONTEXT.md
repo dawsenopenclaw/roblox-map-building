@@ -18,7 +18,7 @@ Requirements: MCP-01 through MCP-03, PLUG-01 through PLUG-04 (7 total)
 
 ### MCP Servers (from research)
 - Use @modelcontextprotocol/server SDK
-- Each MCP server is an npm package (@robloxforge/mcp-terrain, etc.)
+- Each MCP server is an npm package (@forjegames/mcp-terrain, etc.)
 - Stateless design for terrain/assets, stateful for city planning
 - Token metering middleware for billing
 - Docker sandboxing per MCP for security

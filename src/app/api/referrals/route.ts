@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { generateReferralCode } from '@/lib/growth/referral'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,11 +34,15 @@ export async function GET() {
     try {
       const { db } = await import('@/lib/db')
 
+      // Fetch user with referral code and referrals made in a single query
       const user = await db.user.findUnique({
         where: { clerkId },
         select: {
+          id: true,
+          referralCode: true,
           referralsMade: {
             orderBy: { createdAt: 'desc' },
+            take: 1000,
             select: {
               id: true,
               referred: { select: { username: true } },
@@ -50,6 +55,17 @@ export async function GET() {
       })
 
       if (user) {
+        // Ensure the user has a server-generated referral code persisted in the DB.
+        // If not yet assigned, generate one and persist it now.
+        let referralCode = user.referralCode
+        if (!referralCode) {
+          referralCode = generateReferralCode()
+          await db.user.update({
+            where: { id: user.id },
+            data: { referralCode },
+          })
+        }
+
         const rows: ReferralRow[] = (user.referralsMade ?? []).map((r) => ({
           id: r.id,
           user: r.referred?.username ?? 'unknown',
@@ -66,6 +82,7 @@ export async function GET() {
           signups,
           tokensEarned,
           referrals: rows,
+          referralCode,
           demo: false,
         })
       }

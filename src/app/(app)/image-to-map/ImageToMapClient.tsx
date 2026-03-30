@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, DragEvent } from 'react'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { GlowCard } from '@/components/ui/glow-card'
 import { AnimatedCard } from '@/components/ui/animated-card'
@@ -157,13 +158,13 @@ function UploadZone({
       />
 
       {preview ? (
-        <div className="relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+        <div className="relative w-full" style={{ minHeight: 220, maxHeight: 280 }}>
+          <Image
             src={preview}
             alt="Uploaded image preview"
-            className="w-full object-cover rounded-xl"
-            style={{ maxHeight: 280 }}
+            fill
+            unoptimized
+            className="object-cover rounded-xl"
           />
           {!disabled && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-xl">
@@ -369,10 +370,9 @@ function ResultPreview({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">Your Image</p>
-          <div className="rounded-xl overflow-hidden border border-white/10 bg-[#080B16]" style={{ minHeight: 140 }}>
+          <div className="relative rounded-xl overflow-hidden border border-white/10 bg-[#080B16]" style={{ minHeight: 140 }}>
             {inputImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={inputImage} alt="Input" className="w-full h-full object-cover" style={{ maxHeight: 180 }} />
+              <Image src={inputImage} alt="Input" fill unoptimized className="object-cover" />
             ) : (
               <div className="h-36 flex items-center justify-center">
                 <span className="text-gray-500 text-sm">No image</span>

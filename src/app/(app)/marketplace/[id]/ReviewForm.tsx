@@ -70,6 +70,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
         onChange={e => setBody(e.target.value)}
         placeholder="Share your experience (optional)..."
         rows={3}
+        maxLength={2000}
         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-400/50 resize-none mb-3"
       />
 

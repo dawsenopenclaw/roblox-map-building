@@ -29,10 +29,13 @@ export const stripe = new Proxy({} as Stripe, {
 })
 
 export async function createCustomer({ email, userId }: { email: string; userId: string }) {
-  return stripe.customers.create({
-    email,
-    metadata: { userId },
-  })
+  return stripe.customers.create(
+    {
+      email,
+      metadata: { userId },
+    },
+    { idempotencyKey: `customer_create_${userId}` },
+  )
 }
 
 export async function createSubscriptionCheckoutSession({
@@ -48,21 +51,24 @@ export async function createSubscriptionCheckoutSession({
   successUrl: string
   cancelUrl: string
 }) {
-  return stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'subscription',
-    payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    subscription_data: {
-      metadata: { userId },
-      trial_period_days: 14,
+  return stripe.checkout.sessions.create(
+    {
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      subscription_data: {
+        metadata: { userId },
+        trial_period_days: 14,
+      },
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
+      metadata: { userId, type: 'subscription' },
     },
-    automatic_tax: { enabled: true },
-    customer_update: { address: 'auto' },
-    metadata: { userId, type: 'subscription' },
-  })
+    { idempotencyKey: `checkout_subscription_${userId}_${priceId}` },
+  )
 }
 
 export async function createTokenPackCheckoutSession({
@@ -80,17 +86,20 @@ export async function createTokenPackCheckoutSession({
   successUrl: string
   cancelUrl: string
 }) {
-  return stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: 'payment',
-    payment_method_types: ['card'],
-    line_items: [{ price: priceId, quantity: 1 }],
-    success_url: successUrl,
-    cancel_url: cancelUrl,
-    automatic_tax: { enabled: true },
-    customer_update: { address: 'auto' },
-    metadata: { userId, type: 'token_pack', tokenPackSlug },
-  })
+  return stripe.checkout.sessions.create(
+    {
+      customer: customerId,
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
+      metadata: { userId, type: 'token_pack', tokenPackSlug },
+    },
+    { idempotencyKey: `checkout_tokenpack_${userId}_${tokenPackSlug}` },
+  )
 }
 
 export async function createBillingPortalSession({ customerId, returnUrl }: { customerId: string; returnUrl: string }) {

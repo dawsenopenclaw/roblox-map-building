@@ -2,7 +2,16 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
-const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? ''
+// ADMIN_EMAILS is a comma-separated list (e.g. "alice@example.com,bob@example.com").
+// A single address is also valid. Matches are case-insensitive.
+function isOwnerEmail(email: string | null): boolean {
+  if (!email) return false
+  const list = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  return list.includes(email.toLowerCase())
+}
 
 /**
  * Verifies the request is from an ADMIN user.
@@ -28,7 +37,7 @@ export async function requireAdmin() {
       where: { clerkId: userId },
       select: { id: true, email: true, role: true },
     })
-    if (user && (user.role === 'ADMIN' || user.email === OWNER_EMAIL)) {
+    if (user && (user.role === 'ADMIN' || isOwnerEmail(user.email))) {
       return { error: null, user }
     }
     if (user) {
@@ -45,7 +54,7 @@ export async function requireAdmin() {
     const clerkUser = await client.users.getUser(userId)
     const email =
       clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ?? null
-    if (email === OWNER_EMAIL) {
+    if (isOwnerEmail(email)) {
       return { error: null, user: { id: userId, email, role: 'ADMIN' } }
     }
   } catch {

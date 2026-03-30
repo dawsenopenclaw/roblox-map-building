@@ -381,8 +381,8 @@ export default function PricingClient() {
                   {tier.cta}
                 </Link>
                 {tier.priceMonthly > 0 && (
-                  <p className="text-center text-xs text-gray-500 mt-2 mb-5">
-                    After 14-day free trial, you will be charged {formatPrice(annual ? tier.priceYearly : tier.priceMonthly)}/month automatically. Cancel anytime.
+                  <p className="text-center text-xs text-muted-foreground mt-2 mb-5">
+                    After 14-day trial, you will be charged {formatPrice(annual ? tier.priceYearly : tier.priceMonthly)}/month automatically. Cancel anytime.
                   </p>
                 )}
                 {tier.priceMonthly === 0 && <div className="mb-7" />}

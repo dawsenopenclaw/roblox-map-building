@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../../_adminGuard'
 import { db } from '@/lib/db'
+import { adminUserUpdateSchema, parseBody } from '@/lib/validations'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -10,36 +11,31 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (error) return error
 
     const { id } = await params
-    const body = await req.json().catch(() => ({}))
-    const { role, tier, banned, refundTokens } = body as {
-      role?: string
-      tier?: string
-      banned?: boolean
-      refundTokens?: boolean
+    const parsed = await parseBody(req, adminUserUpdateSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    const validRoles = ['USER', 'ADMIN', 'CREATOR', 'MODERATOR']
-    const validTiers = ['FREE', 'HOBBY', 'CREATOR', 'STUDIO']
+    const { role, tier, banned, refundTokens } = parsed.data
 
     // Update role
-    if (role && validRoles.includes(role)) {
+    if (role) {
       await db.user.update({
         where: { id },
-        data: { role: role as 'USER' | 'ADMIN' | 'CREATOR' | 'MODERATOR' },
+        data: { role },
       })
     }
 
     // Update subscription tier
-    if (tier && validTiers.includes(tier)) {
+    if (tier) {
       await db.subscription.upsert({
         where: { userId: id },
         create: {
           userId: id,
           stripeCustomerId: `admin_override_${id}`,
-          tier: tier as 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO',
+          tier,
           status: 'ACTIVE',
         },
-        update: { tier: tier as 'FREE' | 'HOBBY' | 'CREATOR' | 'STUDIO' },
+        update: { tier },
       })
     }
 

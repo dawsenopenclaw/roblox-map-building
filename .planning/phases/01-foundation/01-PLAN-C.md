@@ -854,7 +854,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-[#0A0E27]">
       <nav className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
-        <span className="text-[#FFB81C] font-bold text-lg">RobloxForge</span>
+        <span className="text-[#FFB81C] font-bold text-lg">ForjeGames</span>
         <div className="flex items-center gap-4">
           <span className="text-gray-400 text-sm">{user.email}</span>
         </div>

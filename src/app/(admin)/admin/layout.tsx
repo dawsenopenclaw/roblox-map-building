@@ -7,8 +7,16 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
-// Owner bypass: set ADMIN_EMAIL in .env.local to always grant access regardless of DB role.
-const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? ''
+// Owner bypass: set ADMIN_EMAILS in .env.local (comma-separated) to always grant access
+// regardless of DB role. Matches are case-insensitive.
+function isOwnerEmail(email: string | null): boolean {
+  if (!email) return false
+  const list = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  return list.includes(email.toLowerCase())
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Require a valid Clerk session — no demo fallback for admin routes.
@@ -40,7 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // DB user found — enforce ADMIN role strictly.
   if (dbUser) {
-    if (dbUser.role !== 'ADMIN' && dbUser.email !== OWNER_EMAIL) {
+    if (dbUser.role !== 'ADMIN' && !isOwnerEmail(dbUser.email)) {
       redirect('/sign-in')
     }
     return (
@@ -63,7 +71,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // Clerk SDK unavailable
   }
 
-  if (clerkEmail === OWNER_EMAIL && OWNER_EMAIL !== '') {
+  if (isOwnerEmail(clerkEmail)) {
     return (
       <AdminShell user={{ id: clerkUserId, email: clerkEmail, role: 'ADMIN' }}>
         {children}

@@ -28,10 +28,16 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { z } from 'zod'
+import { meshGenerateSchema, parseBody } from '@/lib/validations'
+import { requireTier } from '@/lib/tier-guard'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Quality = 'draft' | 'standard' | 'premium'
+
+// postBodySchema lives in @/lib/validations — see meshGenerateSchema
+
 
 interface MeshyTask {
   id: string
@@ -309,6 +315,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const tierDenied = await requireTier(userId, 'HOBBY')
+    if (tierDenied) return tierDenied
   }
   const taskId = req.nextUrl.searchParams.get('taskId')
   if (!taskId) {
@@ -353,26 +361,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const tierDenied = await requireTier(userId, 'HOBBY')
+    if (tierDenied) return tierDenied
   }
 
-  // Parse body
-  let prompt: string
-  let quality: Quality
-  let withTextures: boolean
-
-  try {
-    const body = (await req.json()) as { prompt?: unknown; quality?: unknown; withTextures?: unknown }
-
-    if (typeof body.prompt !== 'string' || !body.prompt.trim()) {
-      return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
-    }
-
-    prompt = body.prompt.trim()
-    quality = body.quality === 'draft' || body.quality === 'premium' ? (body.quality as Quality) : 'standard'
-    withTextures = body.withTextures !== false  // default true
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  // Parse + validate body
+  const parsed = await parseBody(req, meshGenerateSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
+
+  const prompt = parsed.data.prompt.trim()
+  const quality: Quality = parsed.data.quality ?? 'standard'
+  const withTextures = parsed.data.withTextures ?? true
 
   const meshyKey = process.env.MESHY_API_KEY
   const falKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY

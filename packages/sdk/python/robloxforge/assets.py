@@ -1,4 +1,4 @@
-"""Asset generation methods for the RobloxForge SDK."""
+"""Asset generation methods for the ForjeGames SDK."""
 
 from typing import TYPE_CHECKING, Optional, Literal
 

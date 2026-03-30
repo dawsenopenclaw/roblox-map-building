@@ -59,18 +59,21 @@ export async function processDonation({
   }
 
   try {
-    const transfer = await stripe.transfers.create({
-      amount: donationAmountCents,
-      currency: 'usd',
-      destination: charityAccountId,
-      transfer_group: `donation_${donationRecord.id}`,
-      metadata: {
-        donationId: donationRecord.id,
-        userId,
-        charitySlug: charity.slug,
-        sourcePurchaseId,
+    const transfer = await stripe.transfers.create(
+      {
+        amount: donationAmountCents,
+        currency: 'usd',
+        destination: charityAccountId,
+        transfer_group: `donation_${donationRecord.id}`,
+        metadata: {
+          donationId: donationRecord.id,
+          userId,
+          charitySlug: charity.slug,
+          sourcePurchaseId,
+        },
       },
-    })
+      { idempotencyKey: `donation_transfer_${donationRecord.id}` },
+    )
 
     await db.charityDonation.update({
       where: { id: donationRecord.id },

@@ -93,9 +93,22 @@ export async function apiKeyAuth(c: Context, next: Next) {
     return c.json({ error: 'Invalid API key' }, 401)
   }
 
-  // Check revocation
+  // Check revocation — honour grace period for keys that were rotated.
+  // When a key is rotated, `rotatedFromGraceEndsAt` is set to allow a short
+  // overlap window (e.g. 24 h) so callers can migrate without downtime.
+  // After the grace period ends the old key must be treated as revoked.
   if (apiKey.revokedAt) {
-    return c.json({ error: 'API key has been revoked' }, 401)
+    const now = new Date()
+    const withinGrace =
+      apiKey.rotatedFromGraceEndsAt !== null && apiKey.rotatedFromGraceEndsAt > now
+    if (!withinGrace) {
+      return c.json({ error: 'API key has been revoked' }, 401)
+    }
+    // Key is still within its rotation grace period — allow the request but
+    // add a deprecation header so the caller knows to update their key.
+    c.header('Deprecation', 'true')
+    c.header('Sunset', apiKey.rotatedFromGraceEndsAt!.toUTCString())
+    c.header('X-API-Key-Warning', 'This key has been rotated. Please update to the new key before the Sunset date.')
   }
 
   // Check expiry

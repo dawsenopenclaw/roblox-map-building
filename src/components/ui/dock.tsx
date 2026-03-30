@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion, useSpring, useTransform, MotionValue } from 'framer-motion'
 
 interface DockItem {
@@ -41,10 +41,14 @@ function DockItemComponent({
 }) {
   const ref = useRef<HTMLDivElement>(null)
 
-  const prefersReduced =
-    typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false
+  const [prefersReduced, setPrefersReduced] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const center = useTransform(mouseX, (pos) => {
     if (!ref.current || prefersReduced) return 0

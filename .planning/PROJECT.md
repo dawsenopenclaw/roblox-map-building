@@ -1,8 +1,8 @@
-# RobloxForge
+# ForjeGames
 
 ## What This Is
 
-RobloxForge is an AI-powered game development platform that lets anyone build Roblox games using voice commands, image references, and autonomous AI agents. It's the all-in-one toolkit for Roblox creators — from a 13-year-old building their first game to professional studios shipping hits. Built by Dawsen Porter. 10% of all revenue donated to charity.
+ForjeGames is an AI-powered game development platform that lets anyone build Roblox games using voice commands, image references, and autonomous AI agents. It's the all-in-one toolkit for Roblox creators — from a 13-year-old building their first game to professional studios shipping hits. Built by Dawsen Porter. 10% of all revenue donated to charity.
 
 ## Core Value
 

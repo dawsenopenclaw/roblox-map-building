@@ -30,23 +30,35 @@ export async function POST(req: NextRequest) {
       stripeAccountId = user.creatorAccount.stripeAccountId
     } else {
       // Create new Express account
-      const account = await stripe.accounts.create({
-        type: 'express',
-        email: user.email,
-        metadata: { userId: user.id },
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
+      const account = await stripe.accounts.create(
+        {
+          type: 'express',
+          email: user.email,
+          metadata: { userId: user.id },
+          capabilities: {
+            card_payments: { requested: true },
+            transfers: { requested: true },
+          },
         },
-      })
+        { idempotencyKey: `connect_account_create_${user.id}` },
+      )
       stripeAccountId = account.id
 
-      await db.creatorAccount.create({
-        data: {
-          userId: user.id,
-          stripeAccountId,
-        },
-      })
+      try {
+        await db.creatorAccount.create({
+          data: {
+            userId: user.id,
+            stripeAccountId,
+          },
+        })
+      } catch (dbErr) {
+        // Rollback the Stripe account to avoid orphaned accounts
+        await stripe.accounts.del(stripeAccountId).catch(() => {
+          // Best-effort — log if deletion also fails
+          console.error('[connect/onboard] Failed to delete orphaned Stripe account', { stripeAccountId })
+        })
+        throw dbErr
+      }
     }
 
     // Generate onboarding link

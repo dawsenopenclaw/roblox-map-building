@@ -88,26 +88,7 @@ marketplaceSearchRoutes.get('/', async (c) => {
     const where = buildSearchQuery(searchParams)
 
     // ── Resolve cursor offset ────────────────────────────────────────────────
-
-    let cursorOffset = 0
-    if (afterCursor) {
-      // Find the position of the cursor template in the sorted result set
-      // We count how many templates come before it in the current ordering
-      const cursorTemplate = await db.template.findUnique({
-        where: { id: afterCursor },
-        select: { id: true, createdAt: true, downloads: true, averageRating: true, priceCents: true },
-      })
-      if (!cursorTemplate) {
-        return c.json({ error: 'Invalid pagination cursor' }, 400)
-      }
-      // Count templates that would appear before this one
-      // This is an approximation — for production use keyset pagination per sort field
-      cursorOffset = await db.template.count({ where })
-      // Re-derive offset using cursor position; simpler: we store page position in cursor
-      // For now parse cursor as "offset:id" encoded as base64
-    }
-
-    // Better approach: encode cursor as base64("offset:id")
+    // Cursor is encoded as base64("offset:id")
     let pageOffset = 0
     if (afterCursor) {
       try {

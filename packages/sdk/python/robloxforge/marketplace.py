@@ -1,4 +1,4 @@
-"""Marketplace search and purchase methods for the RobloxForge SDK."""
+"""Marketplace search and purchase methods for the ForjeGames SDK."""
 
 from typing import TYPE_CHECKING, Optional, List
 

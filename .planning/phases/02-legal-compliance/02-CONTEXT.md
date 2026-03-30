@@ -50,8 +50,8 @@ Key legal decisions from research:
 
 <specifics>
 ## Specific Ideas
-- Use comprehensive ToS template from research agent (robloxforge_tos_comprehensive_draft.md)
-- COPPA implementation details from research agent (robloxforge-coppa-implementation.md)
+- Use comprehensive ToS template from research agent (forjegames_tos_comprehensive_draft.md)
+- COPPA implementation details from research agent (forjegames-coppa-implementation.md)
 - Charity disclosure must be transparent about non-tax-deductible status
 
 </specifics>

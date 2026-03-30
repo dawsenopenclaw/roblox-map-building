@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { earnXpSchema, parseBody } from '@/lib/validations'
 
 const DEMO_XP_RESULT = {
   demo: true,
@@ -45,26 +46,21 @@ export async function POST(req: NextRequest) {
     })
     if (!user) return NextResponse.json(DEMO_XP_RESULT)
 
-    let body: unknown
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, earnXpSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
 
-    const { type } = body as { type?: string }
-    if (!type || !(type in XPEventType)) {
+    const { type } = parsed.data
+
+    // Verify the type is a real XPEventType (schema already restricts to allowed values)
+    if (!(type in XPEventType)) {
       return NextResponse.json({ error: 'Invalid XP event type' }, { status: 400 })
     }
 
-    // Block server-internal types from direct API calls
-    if (!PUBLIC_API_ALLOWED_TYPES.has(type)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
-
     // Never trust client-supplied metadata — use no metadata for public API calls.
-    // Variable-XP types like ACHIEVEMENT and SALE are blocked above, so all
-    // remaining allowed types have fixed XP amounts in XP_AMOUNTS.
+    // Variable-XP types like ACHIEVEMENT and SALE are blocked above by the schema enum,
+    // so all remaining allowed types have fixed XP amounts in XP_AMOUNTS.
     const result = await grantXp(user.id, type as typeof XPEventType[keyof typeof XPEventType])
     return NextResponse.json(result)
   } catch {

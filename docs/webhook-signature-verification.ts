@@ -10,7 +10,7 @@
  *
  *   app.post('/webhooks/forjegames', express.raw({ type: 'application/json' }), (req, res) => {
  *     const isValid = verifyWebhookSignature({
- *       secret:    process.env.ROBLOXFORGE_WEBHOOK_SECRET!,
+ *       secret:    process.env.FORJEGAMES_WEBHOOK_SECRET!,
  *       signature: req.headers['x-forjegames-signature'] as string,
  *       timestamp: req.headers['x-forjegames-timestamp'] as string,
  *       rawBody:   req.body.toString('utf-8'),   // MUST be the raw, unparsed body string

@@ -173,6 +173,8 @@ export const ParentalConsentEmail = ({
             <Link href={`${baseUrl}/coppa`} style={footerLink}>COPPA</Link>
             {' · '}
             <Link href={`${baseUrl}/terms`} style={footerLink}>Terms of Service</Link>
+            {' · '}
+            <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
           </Text>
           <Text style={footerAddress}>
             ForjeGames Inc. · All rights reserved

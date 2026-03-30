@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // ---------------------------------------------------------------------------
@@ -53,6 +53,51 @@ interface ShortcutsDialogProps {
 
 export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
   const mod = useModKey()
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap — Tab cycling, Escape to close, restore focus on unmount
+  useEffect(() => {
+    if (!isOpen) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    // Auto-focus first focusable element (the close button in the header)
+    focusable()[0]?.focus()
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const nodes = focusable()
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog.addEventListener('keydown', handler)
+    return () => {
+      dialog.removeEventListener('keydown', handler)
+      previouslyFocused?.focus()
+    }
+  }, [isOpen, onClose])
 
   const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     {
@@ -96,16 +141,6 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
     },
   ]
 
-  // Close on Escape
-  useEffect(() => {
-    if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -132,9 +167,10 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
             className="fixed inset-0 z-[201] flex items-center justify-center p-4"
           >
             <div
+              ref={dialogRef}
               role="dialog"
               aria-modal="true"
-              aria-label="Keyboard shortcuts"
+              aria-labelledby="sd-title"
               className="bg-[#141414] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
               style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)' }}
             >
@@ -148,7 +184,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
                   >
                     ⌨
                   </div>
-                  <h2 className="text-sm font-semibold text-white tracking-tight">Keyboard Shortcuts</h2>
+                  <h2 id="sd-title" className="text-sm font-semibold text-white tracking-tight">Keyboard Shortcuts</h2>
                 </div>
                 <button
                   onClick={onClose}

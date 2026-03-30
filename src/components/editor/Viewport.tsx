@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,11 +98,12 @@ export function Viewport({ forceDemo = false, onObjectClick: _onObjectClick, cla
       {isConnected && imageSrc ? (
         /* ── Live screenshot from Studio ─────────────────────────────────── */
         <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={imageSrc}
             alt="Live Roblox Studio viewport showing game build preview"
-            className="absolute inset-0 w-full h-full object-contain z-10"
+            fill
+            unoptimized
+            className="object-contain z-10"
             draggable={false}
           />
 

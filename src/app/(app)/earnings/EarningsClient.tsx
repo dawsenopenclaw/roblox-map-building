@@ -2,17 +2,15 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+import dynamic from 'next/dynamic'
 import { TrendingUp, DollarSign, Clock, ShoppingBag, Download, Zap, ArrowUpRight, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
+
+// Lazy-load recharts (~300 KB) — deferred until chart section renders
+const RevenueBarChart = dynamic(
+  () => import('@/components/charts/RevenueBarChart').then(m => ({ default: m.RevenueBarChart })),
+  { ssr: false, loading: () => <div className="h-[220px] bg-white/5 rounded-xl animate-pulse" /> },
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -116,26 +114,6 @@ function buildChartData(sales: Sale[]) {
   return Object.entries(months).map(([name, value]) => ({ name, value: +value.toFixed(2) }))
 }
 
-// ─── Custom tooltip ───────────────────────────────────────────────────────────
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: { value: number }[]
-  label?: string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs">
-      <p className="text-gray-400 mb-0.5">{label}</p>
-      <p className="text-[#FFB81C] font-bold">${payload[0].value.toFixed(2)}</p>
-    </div>
-  )
-}
-
 // ─── Status pill styles ───────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
@@ -214,13 +192,16 @@ export default function EarningsClient() {
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Earnings</h1>
           <p className="text-gray-400 text-sm mt-1">Your marketplace revenue and payout history.</p>
         </div>
-        <button
-          onClick={() => window.open('/api/earnings/export', '_blank')}
-          className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/25 text-gray-300 hover:text-blue-400 px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Download size={14} />
-          Export CSV
-        </button>
+        {/* Export CSV — endpoint not yet implemented; hidden until available */}
+        {false && (
+          <button
+            onClick={() => window.open('/api/earnings/export', '_blank')}
+            className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/25 text-gray-300 hover:text-blue-400 px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
+        )}
       </div>
 
       {/* ── Demo mode banner ── */}
@@ -363,39 +344,7 @@ export default function EarningsClient() {
               <h2 className="text-white font-semibold text-base">Revenue — Last 6 Months</h2>
               <p className="text-gray-500 text-xs mt-0.5">Your 70% creator share per month</p>
             </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#ffffff08"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={v => `$${v}`}
-                  domain={[0, Math.ceil(chartMax * 1.2)]}
-                  width={50}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: '#ffffff06' }} />
-                <Bar
-                  dataKey="value"
-                  fill="#D4AF37"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={48}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <RevenueBarChart data={chartData} chartMax={chartMax} barColor="#D4AF37" />
           </div>
 
           {/* ── Per-Template Breakdown ── */}

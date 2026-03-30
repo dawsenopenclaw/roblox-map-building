@@ -1,5 +1,7 @@
 import { db } from './db'
 import { Prisma } from '@prisma/client'
+import { sendTokenLowEmail } from './email'
+import { dispatchWebhookEvent } from './webhook-dispatch'
 
 export async function earnTokens(
   userId: string,
@@ -63,6 +65,40 @@ export async function spendTokens(
         metadata: (metadata ?? Prisma.DbNull) as Prisma.InputJsonValue,
       },
     })
+    return balance
+  }).then(async (balance) => {
+    const TIER_QUOTAS: Record<string, number> = { FREE: 1000, HOBBY: 2000, CREATOR: 7000, STUDIO: 20000 }
+    const sub = await db.subscription.findUnique({ where: { userId }, select: { tier: true } })
+    const planQuota = TIER_QUOTAS[sub?.tier ?? 'FREE'] ?? 1000
+    const percentRemaining = Math.round((balance.balance / planQuota) * 100)
+
+    // token.depleted — balance hit 0
+    if (balance.balance === 0) {
+      dispatchWebhookEvent(userId, 'token.depleted', {
+        userId,
+        planQuota,
+        depletedAt: new Date().toISOString(),
+      }).catch(() => {})
+    }
+    // token.low — balance fell below 20% of plan quota but not yet depleted
+    if (balance.balance > 0 && percentRemaining < 20) {
+      dispatchWebhookEvent(userId, 'token.low', {
+        userId,
+        remainingTokens: balance.balance,
+        planQuota,
+        percentRemaining,
+      }).catch(() => {})
+      const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, displayName: true } })
+      if (user?.email) {
+        sendTokenLowEmail({
+          email: user.email,
+          name: user.displayName || 'Creator',
+          tokenCount: balance.balance,
+        }).catch((err) => {
+          console.warn('[tokens] Failed to send low token email:', err)
+        })
+      }
+    }
     return balance
   })
 }

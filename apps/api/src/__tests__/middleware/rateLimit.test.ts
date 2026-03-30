@@ -1,13 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock redis pipeline before importing middleware
-const mockExec = vi.fn()
-const mockPipeline = vi.fn(() => ({
-  zremrangebyscore: vi.fn().mockReturnThis(),
-  zadd: vi.fn().mockReturnThis(),
-  zcard: vi.fn().mockReturnThis(),
-  expire: vi.fn().mockReturnThis(),
-  exec: mockExec,
+const { mockExec, mockPipeline } = vi.hoisted(() => ({
+  mockExec: vi.fn(),
+  mockPipeline: vi.fn(),
 }))
 
 vi.mock('../../lib/redis', () => ({
@@ -47,6 +43,14 @@ function buildContext({
 describe('rateLimit middleware', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Restore default pipeline factory after each clearAllMocks
+    mockPipeline.mockImplementation(() => ({
+      zremrangebyscore: vi.fn().mockReturnThis(),
+      zadd: vi.fn().mockReturnThis(),
+      zcard: vi.fn().mockReturnThis(),
+      expire: vi.fn().mockReturnThis(),
+      exec: mockExec,
+    }))
   })
 
   describe('requests under the limit', () => {

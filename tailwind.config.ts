@@ -59,25 +59,9 @@ const config: Config = {
         '2xl':  '16px',
         '3xl':  '24px',
       },
-      keyframes: {
-        'gold-pulse': {
-          '0%, 100%': { boxShadow: '0 0 10px rgba(212,175,55,0.15)' },
-          '50%':       { boxShadow: '0 0 24px rgba(212,175,55,0.40)' },
-        },
-        'fade-in': {
-          from: { opacity: '0', transform: 'translateY(6px)' },
-          to:   { opacity: '1', transform: 'translateY(0)' },
-        },
-        'shimmer': {
-          '0%':   { backgroundPosition: '-200% center' },
-          '100%': { backgroundPosition: '200% center' },
-        },
-      },
-      animation: {
-        'gold-pulse': 'gold-pulse 2s ease-in-out infinite',
-        'fade-in':    'fade-in 0.3s ease forwards',
-        'shimmer':    'shimmer 2.5s linear infinite',
-      },
+      // keyframes + animation tokens intentionally omitted here.
+      // gold-pulse, fade-in, shimmer are defined in globals.css alongside
+      // their .animate-* utility classes — single source of truth.
     },
   },
   plugins: [require('@tailwindcss/typography')],

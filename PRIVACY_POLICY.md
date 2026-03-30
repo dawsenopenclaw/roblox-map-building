@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**RobloxForge LLC**
+**ForjeGames LLC**
 Effective Date: March 28, 2026
 Last Updated: March 28, 2026
 
@@ -8,7 +8,7 @@ Last Updated: March 28, 2026
 
 ## OVERVIEW
 
-RobloxForge ("**Company**," "**we**," "**us**," "**our**") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard information when you use our website, mobile application, and platform (collectively, the "**Service**").
+ForjeGames ("**Company**," "**we**," "**us**," "**our**") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard information when you use our website, mobile application, and platform (collectively, the "**Service**").
 
 **Key Principles:**
 - We collect minimal data necessary to provide the Service
@@ -52,7 +52,7 @@ We collect information about how you use the Service:
 - Keystroke-by-keystroke activity
 - Individual mouse movements
 - Behavioral profiles for targeted advertising
-- Your Roblox game play outside RobloxForge
+- Your Roblox game play outside ForjeGames
 
 ### 1.3 Device and Access Data
 
@@ -81,7 +81,7 @@ When you make a purchase, we collect:
 
 ### 1.5 AI Generation Data
 
-When you use RobloxForge's AI features (game generation, asset creation, code suggestions):
+When you use ForjeGames's AI features (game generation, asset creation, code suggestions):
 - Your text prompts
 - Generated game files and assets
 - Model version used (e.g., Claude 3.5 Sonnet, Meshy, etc.)
@@ -229,7 +229,7 @@ We will not voluntarily disclose information to third parties without a legal or
 
 ### 3.5 Business Transfers
 
-If RobloxForge is acquired, merged, or dissolved:
+If ForjeGames is acquired, merged, or dissolved:
 - Your information may transfer to the acquiring entity
 - We will provide notice and the opportunity to opt out (where legally required)
 - The acquiring entity must agree to the same privacy obligations
@@ -293,7 +293,7 @@ If you are located in the European Union, European Economic Area, or United King
 You have the right to request a copy of all personal data we hold about you.
 
 **How to exercise:**
-- Email legal@robloxforge.app with subject "GDPR Data Access Request"
+- Email legal@forjegames.com with subject "GDPR Data Access Request"
 - Include your name, email, and account ID (if available)
 - Response deadline: 15 calendar days
 
@@ -308,7 +308,7 @@ You have the right to correct inaccurate or incomplete personal data.
 
 **How to exercise:**
 - Update profile information directly in your account settings
-- Email legal@robloxforge.app for data you cannot update yourself
+- Email legal@forjegames.com for data you cannot update yourself
 - Response deadline: 15 calendar days
 
 ### 5.3 Right to Erasure ("Right to Be Forgotten")
@@ -317,7 +317,7 @@ You have the right to request deletion of your personal data, except where we ha
 
 **How to exercise:**
 - Click "Delete Account" in Account Settings → Delete Account
-- OR email legal@robloxforge.app with subject "GDPR Erasure Request"
+- OR email legal@forjegames.com with subject "GDPR Erasure Request"
 - Response deadline: 30 calendar days
 
 **Exceptions (we will retain):**
@@ -330,7 +330,7 @@ You have the right to request deletion of your personal data, except where we ha
 You have the right to request that we limit how we use your data (e.g., restrict to legal purposes only).
 
 **How to exercise:**
-- Email legal@robloxforge.app with subject "GDPR Restrict Processing Request"
+- Email legal@forjegames.com with subject "GDPR Restrict Processing Request"
 - Specify which processing activities to restrict
 - Response deadline: 15 calendar days
 
@@ -343,7 +343,7 @@ You have the right to request that we limit how we use your data (e.g., restrict
 You have the right to request your data in a portable, machine-readable format.
 
 **How to exercise:**
-- Email legal@robloxforge.app with subject "GDPR Data Portability Request"
+- Email legal@forjegames.com with subject "GDPR Data Portability Request"
 - Response deadline: 15 calendar days
 
 **What you'll receive:**
@@ -357,7 +357,7 @@ You have the right to request your data in a portable, machine-readable format.
 You have the right to object to processing of your personal data.
 
 **How to exercise:**
-- Email legal@robloxforge.app with subject "GDPR Objection Request"
+- Email legal@forjegames.com with subject "GDPR Objection Request"
 - Specify which processing activities you object to
 - Response deadline: 15 calendar days
 
@@ -382,7 +382,7 @@ You have the right to request what personal information we collect, use, and dis
 
 **How to exercise:**
 - Submit request at [your-app-url]/privacy/request
-- OR email legal@robloxforge.app with subject "CCPA Know Request"
+- OR email legal@forjegames.com with subject "CCPA Know Request"
 - Include name, email, account ID
 - Response deadline: 45 calendar days (may extend 45 more)
 
@@ -425,7 +425,7 @@ You have the right to correct inaccurate personal information.
 
 **How to exercise:**
 - Update in Account Settings
-- OR email legal@robloxforge.app with subject "CCPA Correction Request"
+- OR email legal@forjegames.com with subject "CCPA Correction Request"
 - Response deadline: 45 calendar days
 
 ### 6.6 Right to Limit Use and Disclosure
@@ -443,7 +443,7 @@ You have the right to limit how we use and disclose your sensitive personal info
 - Biometric data (we don't collect)
 
 **How to exercise:**
-- Email legal@robloxforge.app with subject "CCPA Limit Use Request"
+- Email legal@forjegames.com with subject "CCPA Limit Use Request"
 - Response deadline: 15 calendar days
 
 ### 6.7 Right to Non-Discrimination
@@ -462,7 +462,7 @@ We will NOT:
 
 ### 7.1 Our Commitment
 
-RobloxForge complies fully with the Children's Online Privacy Protection Act (COPPA), 16 CFR Part 312. We understand the heightened privacy concerns for children under 13.
+ForjeGames complies fully with the Children's Online Privacy Protection Act (COPPA), 16 CFR Part 312. We understand the heightened privacy concerns for children under 13.
 
 ### 7.2 Age Verification
 
@@ -517,19 +517,19 @@ A parent must affirmatively consent before:
 Parents can, at any time:
 
 **Review Data** — Request a copy of all data collected about their child
-- Email legal@robloxforge.app with subject "COPPA Data Review Request"
+- Email legal@forjegames.com with subject "COPPA Data Review Request"
 - Response deadline: 15 business days
 - Provide child's name, account email, DOB
 
 **Request Deletion** — Delete all data about their child
-- Email legal@robloxforge.app with subject "COPPA Deletion Request"
+- Email legal@forjegames.com with subject "COPPA Deletion Request"
 - OR click "Delete Account" in Parental Dashboard
 - Completion deadline: 30 days
 - Child's account is disabled immediately
 - All data deleted except legal holds (see 4.1)
 
 **Withdraw Consent** — Disable the child's account anytime
-- Email legal@robloxforge.app with subject "Withdraw Parental Consent"
+- Email legal@forjegames.com with subject "Withdraw Parental Consent"
 - OR use Parental Dashboard
 - Effect: Account is disabled; access revoked
 - Parent can re-enable anytime
@@ -559,11 +559,11 @@ We do NOT share children's personal information with third parties, except:
 
 **Email 1: Initial Consent Request**
 ```
-Subject: Permission Required: [CHILD_NAME]'s RobloxForge Account
+Subject: Permission Required: [CHILD_NAME]'s ForjeGames Account
 
 Hi [PARENT_NAME],
 
-[CHILD_NAME] requested a RobloxForge account. Under COPPA (a law that protects children online), we need your written permission before [CHILD_NAME] can use the platform.
+[CHILD_NAME] requested a ForjeGames account. Under COPPA (a law that protects children online), we need your written permission before [CHILD_NAME] can use the platform.
 
 WHAT DATA WE COLLECT:
 ✓ Account info (username, email, password)
@@ -588,14 +588,14 @@ You can:
 - Withdraw permission anytime
 - Manage privacy settings in your Parent Dashboard
 
-Questions? Email legal@robloxforge.app
+Questions? Email legal@forjegames.com
 
-— RobloxForge Legal Team
+— ForjeGames Legal Team
 ```
 
 **Email 2: Confirmation of Consent**
 ```
-Subject: [CHILD_NAME]'s RobloxForge Account is Active ✓
+Subject: [CHILD_NAME]'s ForjeGames Account is Active ✓
 
 Account Status: ACTIVE ✓
 Account ID: [ACCOUNT_ID]
@@ -618,9 +618,9 @@ Your Rights (FTC COPPA):
 - Withdraw: Disable account anytime
 - Opt-out: Disable specific features anytime
 
-Questions? Email legal@robloxforge.app
+Questions? Email legal@forjegames.com
 
-— RobloxForge Legal Team
+— ForjeGames Legal Team
 ```
 
 ### 7.9 COPPA Enforcement History
@@ -692,7 +692,7 @@ We may use pixels (1×1 images) to:
 - Understand what content resonates
 
 You can disable pixel tracking:
-- Email legal@robloxforge.app to opt-out
+- Email legal@forjegames.com to opt-out
 - Most email clients block pixels by default
 
 ### 8.5 Do Not Track
@@ -804,7 +804,7 @@ For US cloud hosting of EU data:
 **You can:**
 - Request our TIA (technical measures documentation)
 - Opt for EU-only storage (may affect performance)
-- Email legal@robloxforge.app for concerns
+- Email legal@forjegames.com for concerns
 
 ### 10.3 International Compliance Frameworks
 
@@ -849,7 +849,7 @@ Non-material changes (housekeeping):
 
 ### 11.2 Your Consent
 
-By continuing to use RobloxForge after updates, you accept the new policy.
+By continuing to use ForjeGames after updates, you accept the new policy.
 
 If you disagree with changes:
 - You can request your data and leave
@@ -859,7 +859,7 @@ If you disagree with changes:
 ### 11.3 Archive of Previous Versions
 
 Previous versions of this Privacy Policy are available:
-- [Version 1.0](https://robloxforge.app/privacy/archive/v1.0) — March 28, 2026 (current)
+- [Version 1.0](https://forjegames.com/privacy/archive/v1.0) — March 28, 2026 (current)
 
 ---
 
@@ -868,36 +868,36 @@ Previous versions of this Privacy Policy are available:
 ### 12.1 Privacy Questions and Requests
 
 **For general privacy questions:**
-- Email: legal@robloxforge.app
+- Email: legal@forjegames.com
 - Response time: 15 business days
 
 **For data requests (access, deletion, portability):**
-- Email: legal@robloxforge.app with subject "Data Request"
+- Email: legal@forjegames.com with subject "Data Request"
 - Include: Name, email, account ID, type of request
 - Response time: 45 days (may extend 45 more)
 
 **For COPPA issues (parents):**
-- Email: legal@robloxforge.app with subject "COPPA Request"
+- Email: legal@forjegames.com with subject "COPPA Request"
 - Include: Child's name, account email, parent name
 - Response time: 15 business days
 
 **For California consumer requests (CCPA):**
 - Web form: [your-app-url]/privacy/request
-- OR email: legal@robloxforge.app with subject "CCPA Request"
+- OR email: legal@forjegames.com with subject "CCPA Request"
 - Response time: 45 days
 
 **For data breaches or security concerns:**
-- Email: security@robloxforge.app (urgent)
+- Email: security@forjegames.com (urgent)
 - Include: Suspected vulnerability, date, details
 - Response time: 24 hours acknowledgment
 
 ### 12.2 Company Information
 
-**RobloxForge LLC**
+**ForjeGames LLC**
 Owner: Dawsen Porter
 Jurisdiction: California
-Email: legal@robloxforge.app
-Website: https://robloxforge.app
+Email: legal@forjegames.com
+Website: https://forjegames.com
 
 ### 12.3 Regulatory Contacts
 
@@ -924,7 +924,7 @@ If you believe we've violated your privacy rights:
 ### 12.4 Data Protection Officer
 
 We have appointed a Data Protection Officer (DPO):
-- Contact: dpo@robloxforge.app
+- Contact: dpo@forjegames.com
 - Handles GDPR and privacy complaints
 - Available in English, Spanish, French
 

@@ -27,11 +27,11 @@ key_files:
     - packages/sdk/typescript/src/marketplace.ts
     - packages/sdk/typescript/package.json
     - packages/sdk/typescript/tsconfig.json
-    - packages/sdk/python/robloxforge/__init__.py
-    - packages/sdk/python/robloxforge/client.py
-    - packages/sdk/python/robloxforge/terrain.py
-    - packages/sdk/python/robloxforge/assets.py
-    - packages/sdk/python/robloxforge/marketplace.py
+    - packages/sdk/python/forjegames/__init__.py
+    - packages/sdk/python/forjegames/client.py
+    - packages/sdk/python/forjegames/terrain.py
+    - packages/sdk/python/forjegames/assets.py
+    - packages/sdk/python/forjegames/marketplace.py
     - packages/sdk/python/setup.py
     - src/app/(app)/settings/api-keys/page.tsx
     - src/app/(app)/settings/webhooks/page.tsx
@@ -45,7 +45,7 @@ key_files:
     - prisma/schema.prisma (added 6 new models + enums, extended User relations)
 decisions:
   - API keys hashed with SHA-256; raw key shown once at creation only — prefix stored for UI display
-  - Webhook HMAC-SHA256 signing with X-RobloxForge-Signature header; secret shown once at creation
+  - Webhook HMAC-SHA256 signing with X-ForjeGames-Signature header; secret shown once at creation
   - Webhook retry: 3 attempts with 5^attempt exponential backoff (5s, 25s)
   - Referral commission stored in cents; $1 credit = 100 token bonus on conversion
   - Notification polling at 30s interval via setInterval; SSE/WebSocket deferred to future phase
@@ -72,7 +72,7 @@ metrics:
 | API-03 | SDKs | Done | `packages/sdk/typescript/`, `packages/sdk/python/` |
 | API-04 | Webhooks | Done | `lib/webhooks.ts`, `routes/webhooks.ts`, `settings/webhooks/page.tsx` |
 | GROW-01 | Referral Program | Done | `routes/referrals.ts`, `(app)/referrals/page.tsx` |
-| GROW-02 | Built with RobloxForge | Done | `components/BuiltWithBadge.tsx` |
+| GROW-02 | Built with ForjeGames | Done | `components/BuiltWithBadge.tsx` |
 | GROW-03 | Email System | Done | `lib/email.ts` (12 templates, Resend, BullMQ-ready queue) |
 | GROW-04 | Notification System | Done | `routes/notifications.ts`, `components/NotificationCenter.tsx` |
 | GROW-05 | Creator Earnings Dashboard | Done | `routes/earnings.ts`, `(app)/earnings/page.tsx` |
@@ -90,7 +90,7 @@ metrics:
 
 **API Key Security:** Keys are generated with `randomBytes(32)` producing 64-char hex secrets prefixed `rf_sk_`. Only the SHA-256 hash is stored in the database. The `prefix` field stores the first 8 chars for UI identification. Raw key returned once at creation and never retrievable.
 
-**Webhook Signing:** HMAC-SHA256 over the raw JSON body using endpoint's unique secret. Signature delivered in `X-RobloxForge-Signature: sha256=<hex>` header. Secret shown once at endpoint creation. `timingSafeEqual` recommended for verification (documented in UI).
+**Webhook Signing:** HMAC-SHA256 over the raw JSON body using endpoint's unique secret. Signature delivered in `X-ForjeGames-Signature: sha256=<hex>` header. Secret shown once at endpoint creation. `timingSafeEqual` recommended for verification (documented in UI).
 
 **Webhook Retry:** 3 attempts with exponential backoff: 1st retry at 5s, 2nd at 25s. Delivery record created after each attempt. Failures tracked in `WebhookDelivery` for observability.
 
@@ -140,7 +140,7 @@ Files created (spot check):
 - `apps/api/src/routes/api-keys.ts` — exists
 - `apps/api/src/lib/webhooks.ts` — exists
 - `packages/sdk/typescript/src/client.ts` — exists
-- `packages/sdk/python/robloxforge/client.py` — exists
+- `packages/sdk/python/forjegames/client.py` — exists
 - `src/app/(app)/earnings/page.tsx` — exists
 - `src/components/NotificationCenter.tsx` — exists
 - `.planning/phases/08-api-growth/08-SUMMARY.md` — this file

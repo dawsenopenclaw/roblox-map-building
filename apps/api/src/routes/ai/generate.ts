@@ -4,6 +4,7 @@
  * Cost estimation → confirmation → pipeline execution
  */
 
+import { randomBytes } from 'crypto'
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../../middleware/auth'
@@ -26,6 +27,7 @@ import {
   notifyTokenLow,
   notifyTokenDepleted,
 } from '../../lib/notifications'
+import { dispatchWebhookEvent } from '../../lib/webhook-delivery'
 import { aiGenerateSchema } from '../../lib/validators'
 
 const log = createLogger('ai:generate')
@@ -222,6 +224,16 @@ generateRoutes.post('/', zValidator('json', aiGenerateSchema), async (c) => {
       error: err instanceof Error ? err.message : String(err),
     }).catch(() => {})
 
+    // Dispatch build.failed webhook (best-effort)
+    dispatchWebhookEvent(userId, 'build.failed', {
+      buildId: requestId ?? randomBytes(8).toString('hex'),
+      projectId: body.options ? JSON.stringify(body.options) : body.mode,
+      userId,
+      errorCode: 'PIPELINE_ERROR',
+      errorMessage: err instanceof Error ? err.message : String(err),
+      tokensUsed: 0,
+    }).catch(() => {})
+
     return c.json({
       error: 'Generation pipeline failed',
       detail: err instanceof Error ? err.message : String(err),
@@ -266,13 +278,42 @@ generateRoutes.post('/', zValidator('json', aiGenerateSchema), async (c) => {
     durationMs,
   }).catch((err) => reqLog.error('build-complete notification failed', { error: String(err) }))
 
-  // Check token balance and send low/depleted alerts
-  db.tokenBalance.findUnique({ where: { userId } }).then((bal) => {
+  // Dispatch build.completed webhook (best-effort)
+  dispatchWebhookEvent(userId, 'build.completed', {
+    buildId: requestId ?? randomBytes(8).toString('hex'),
+    projectId: body.mode,
+    userId,
+    durationMs,
+    tokensUsed: tokensToCharge,
+  }).catch(() => {})
+
+  // Check token balance — send low/depleted alerts and dispatch webhooks
+  db.tokenBalance.findUnique({
+    where: { userId },
+    select: { balance: true },
+  }).then(async (bal) => {
     if (!bal) return
+    // Derive plan quota from subscription tier; fall back to a conservative default
+    const sub = await db.subscription.findUnique({ where: { userId }, select: { tier: true } })
+    const TIER_QUOTAS: Record<string, number> = { FREE: 1000, HOBBY: 2000, CREATOR: 7000, STUDIO: 20000 }
+    const planQuota = TIER_QUOTAS[sub?.tier ?? 'FREE'] ?? 1000
+    const percentRemaining = Math.round((bal.balance / planQuota) * 100)
+
     if (bal.balance === 0) {
       notifyTokenDepleted(userId).catch(() => {})
-    } else if (bal.balance < 50) {
+      dispatchWebhookEvent(userId, 'token.depleted', {
+        userId,
+        planQuota,
+        depletedAt: new Date().toISOString(),
+      }).catch(() => {})
+    } else if (percentRemaining < 20) {
       notifyTokenLow(userId, bal.balance).catch(() => {})
+      dispatchWebhookEvent(userId, 'token.low', {
+        userId,
+        remainingTokens: bal.balance,
+        planQuota,
+        percentRemaining,
+      }).catch(() => {})
     }
   }).catch(() => {})
 

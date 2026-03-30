@@ -1,8 +1,10 @@
 import { auth } from '@clerk/nextjs/server'
 import { requireAuthUser } from '@/lib/clerk'
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
+import { AppLoadingFallback } from '@/components/AppLoadingFallback'
 
 /**
  * Server component layout — handles auth guard.
@@ -46,7 +48,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       createdAt={(user as { createdAt?: Date } | null)?.createdAt?.toISOString()}
       displayName={(user as { displayName?: string | null } | null)?.displayName ?? undefined}
     >
-      <AppShell>{children}</AppShell>
+      <AppShell>
+        <Suspense fallback={<AppLoadingFallback />}>{children}</Suspense>
+      </AppShell>
     </AnalyticsProvider>
   )
 }

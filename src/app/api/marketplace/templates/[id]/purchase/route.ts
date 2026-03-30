@@ -140,10 +140,13 @@ export async function POST(
     // Get or create Stripe customer for buyer
     let stripeCustomerId = user.subscription?.stripeCustomerId
     if (!stripeCustomerId || stripeCustomerId.startsWith('pending_')) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { userId: user.id },
-      })
+      const customer = await stripe.customers.create(
+        {
+          email: user.email,
+          metadata: { userId: user.id },
+        },
+        { idempotencyKey: `customer_create_${user.id}` },
+      )
       stripeCustomerId = customer.id
       // Persist so future purchases reuse the same customer
       await db.subscription.upsert({
@@ -159,6 +162,7 @@ export async function POST(
       customer: stripeCustomerId,
       mode: 'payment',
       automatic_tax: { enabled: true },
+      customer_update: { address: 'auto' },
       payment_method_types: ['card'],
       line_items: [
         {
@@ -194,7 +198,10 @@ export async function POST(
       }
     }
 
-    const session = await stripe.checkout.sessions.create(sessionParams)
+    const session = await stripe.checkout.sessions.create(
+      sessionParams,
+      { idempotencyKey: `checkout_template_${templateId}_${user.id}` },
+    )
 
     return NextResponse.json({ checkoutUrl: session.url })
   } catch (err) {

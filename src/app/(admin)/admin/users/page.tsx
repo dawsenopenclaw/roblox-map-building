@@ -92,7 +92,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const t = setTimeout(fetchUsers, search ? 300 : 0)
     return () => clearTimeout(t)
-  }, [fetchUsers])
+  }, [fetchUsers, search])
 
   const handleBan = async (userId: string) => {
     if (isDemo) return

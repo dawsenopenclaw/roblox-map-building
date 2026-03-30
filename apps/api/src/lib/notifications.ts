@@ -310,13 +310,14 @@ export async function notifyReferralConverted(referrerUserId: string, opts: {
   })
 }
 
-// ─── Email queue stub ────────────────────────────────────────────────────────
+// ─── Email queue ────────────────────────────────────────────────────────────────
 
 /**
- * Placeholder for email delivery.
- * Extend to call Resend / SendGrid / SES.
+ * Queue an email notification by type.
+ * Maps notification types to their corresponding email template functions.
+ * This should be called asynchronously and is best-effort — failures are logged but not thrown.
  */
-async function queueEmailNotification(_opts: {
+async function queueEmailNotification(opts: {
   userId: string
   type: NotificationType
   title: string
@@ -324,6 +325,51 @@ async function queueEmailNotification(_opts: {
   actionUrl?: string
   metadata?: Record<string, unknown>
 }): Promise<void> {
-  // TODO: look up user email from DB, then send via email.ts
-  // Intentionally a no-op stub — wire when email templates for notifications are ready.
+  try {
+    const user = await db.user.findUnique({
+      where: { id: opts.userId },
+      select: { email: true, displayName: true },
+    })
+    if (!user?.email) return
+
+    // Lazy-load email functions to avoid circular dependencies
+    const {
+      sendBuildCompleteEmail,
+      sendTokenLowEmail,
+      sendParentalConsentEmail,
+    } = await import('./email')
+
+    const metadata = opts.metadata as Record<string, unknown> | undefined
+
+    switch (opts.type) {
+      case 'BUILD_COMPLETE':
+        await sendBuildCompleteEmail({
+          email: user.email,
+          buildType: String(metadata?.mode ?? 'map'),
+          buildName: String(metadata?.prompt ?? 'Untitled').slice(0, 60),
+          buildId: String(metadata?.buildId ?? ''),
+          thumbnailUrl: metadata?.thumbnailUrl ? String(metadata.thumbnailUrl) : undefined,
+        })
+        break
+
+      case 'TOKEN_LOW':
+        await sendTokenLowEmail({
+          email: user.email,
+          name: user.displayName || 'Creator',
+          tokenCount: Number(metadata?.balance ?? 0),
+        })
+        break
+
+      case 'SALE':
+      case 'TEAM_INVITE':
+      case 'REFERRAL_EARNED':
+      case 'ACHIEVEMENT_UNLOCKED':
+      case 'TOKEN_DEPLETED':
+      case 'BUILD_FAILED':
+        // These notifications don't have email templates yet
+        break
+    }
+  } catch (err) {
+    console.error('[notifications] queueEmailNotification failed:', err)
+  }
 }

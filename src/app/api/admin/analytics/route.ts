@@ -37,8 +37,10 @@ export async function GET() {
       }),
       db.apiUsageRecord.groupBy({
         by: ['userId'],
+        where: { createdAt: { gte: ninetyDaysAgo } },
         _count: { userId: true },
         having: { userId: { _count: { gt: 0 } } },
+        take: 500,
       }),
       db.subscription.groupBy({
         by: ['tier'],

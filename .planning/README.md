@@ -212,7 +212,7 @@ Can be parallelized: Week 1 complete → Weeks 2-4 run concurrently after Day 2
 
 ### Related Research
 - Multi-Agent Orchestration Patterns 2026
-- RobloxForge Technical Architecture
+- ForjeGames Technical Architecture
 - Stripe Latest 2025-2026 Patterns
 - Claude Code Agent Upgrade Guide 2026
 

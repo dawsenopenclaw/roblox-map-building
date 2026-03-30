@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Footer } from '@/components/Footer'
+// Footer rendered by marketing layout
 
 /* ─── Scroll Reveal Hook ─────────────────────────────────────────────────── */
 
@@ -503,8 +503,9 @@ export default function HomeClient() {
       </section>
 
       {/* ── Social proof — animated stat counters ──────────────────────────── */}
-      <section className="py-12 border-y border-white/[0.04]">
+      <section className="py-12 border-y border-white/[0.04]" aria-label="Platform stats">
         <div className="max-w-5xl mx-auto px-6">
+          <h2 className="sr-only">Platform stats</h2>
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-center">
             <div>
               <p className="text-2xl font-bold text-white">

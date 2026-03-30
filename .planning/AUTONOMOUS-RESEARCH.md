@@ -1013,5 +1013,5 @@ const dispatchRules = {
 - Context7: Fetch latest Anthropic SDK patterns
 - OpenClaw setup reference: `C:\Users\Dawse\OneDrive\Desktop\roblox-map-building`
 - Multi-agent patterns: `C:\Users\Dawse\.claude\agent-memory\researcher\multi-agent-orchestration-2026.md`
-- RobloxForge architecture: `C:\Users\Dawse\.claude\agent-memory\researcher\robloxforge_architecture.md`
+- ForjeGames architecture: `C:\Users\Dawse\.claude\agent-memory\researcher\robloxforge_architecture.md`
 

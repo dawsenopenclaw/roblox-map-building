@@ -14,8 +14,12 @@ export const XP_AMOUNTS: Record<XPEventType, number | ((meta: Record<string, unk
     return 50
   },
   REFERRAL: 200,
-  ACHIEVEMENT: (meta) => (meta?.xpReward as number) || 0,
-  STREAK_BONUS: (meta) => (meta?.bonus as number) || 0,
+  // ACHIEVEMENT and STREAK_BONUS XP is always supplied via the baseXpOverride param
+  // from server-internal callers (achievements/route.ts, streak/route.ts).
+  // The map entry is 0 so that any path that forgets the override grants nothing
+  // rather than trusting attacker-controlled metadata.
+  ACHIEVEMENT: 0,
+  STREAK_BONUS: 0,
   DAILY_LOGIN: 5,
   PURCHASE: 25,
   REVIEW_GIVEN: 15,
@@ -49,28 +53,36 @@ export interface EarnXpResult {
 
 /**
  * Core XP-earning logic. Can be called directly from server code without going through HTTP.
- * @param userId  The internal DB user id (not clerkId)
- * @param type    The XP event type
- * @param metadata  Optional metadata for variable-XP events
+ * @param userId          The internal DB user id (not clerkId)
+ * @param type            The XP event type
+ * @param metadata        Optional metadata stored on the XPEvent record (never used for XP calculation)
+ * @param baseXpOverride  Trusted server-side XP amount for ACHIEVEMENT and STREAK_BONUS events.
+ *                        Must be sourced from the DB record, never from client input.
  */
 export async function grantXp(
   userId: string,
   type: XPEventType,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  baseXpOverride?: number,
 ): Promise<EarnXpResult> {
   const rawAmount = XP_AMOUNTS[type]
-  let baseXp = typeof rawAmount === 'function' ? rawAmount(metadata || {}) : rawAmount
+  // baseXpOverride is used for ACHIEVEMENT and STREAK_BONUS — their map entries are 0
+  // to prevent any metadata-sourced XP. All other types resolve from the static map.
+  let baseXp = baseXpOverride !== undefined
+    ? Math.max(0, Math.floor(baseXpOverride))
+    : (typeof rawAmount === 'function' ? rawAmount(metadata || {}) : rawAmount)
 
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
 
-  // Get or create UserXP record
-  let userXp = await db.userXP.findUnique({
-    where: { userId },
-    select: { id: true, totalXp: true, tier: true, dailyXpToday: true, dailyXpDate: true },
-  })
-  if (!userXp) {
-    userXp = await db.userXP.create({
+  // Get or create UserXP record — wrapped in transaction to prevent create race
+  const userXp = await db.$transaction(async (tx) => {
+    const existing = await tx.userXP.findUnique({
+      where: { userId },
+      select: { id: true, totalXp: true, tier: true, dailyXpToday: true, dailyXpDate: true },
+    })
+    if (existing) return existing
+    return tx.userXP.create({
       data: {
         userId,
         totalXp: 0,
@@ -79,7 +91,7 @@ export async function grantXp(
         dailyXpDate: today,
       },
     })
-  }
+  })
 
   const lastDate = new Date(userXp.dailyXpDate)
   lastDate.setUTCHours(0, 0, 0, 0)
@@ -111,7 +123,7 @@ export async function grantXp(
   const updatedXp = await db.userXP.update({
     where: { id: userXp.id },
     data: {
-      // Use atomic increment to avoid read-then-write race condition
+      // Atomic increments avoid read-then-write race on concurrent XP grants
       totalXp: { increment: baseXp },
       tier: newTier,
       // For cap-subject events: increment on same day, reset to baseXp on new day

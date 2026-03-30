@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock db and redis before importing the route
-const mockQueryRaw = vi.fn()
-const mockRedisPing = vi.fn()
+const { mockQueryRaw, mockRedisPing } = vi.hoisted(() => ({
+  mockQueryRaw: vi.fn(),
+  mockRedisPing: vi.fn(),
+}))
 
 vi.mock('../../lib/db', () => ({
   db: {

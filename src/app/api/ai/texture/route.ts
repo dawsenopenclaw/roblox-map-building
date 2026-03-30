@@ -21,6 +21,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { requireTier } from '@/lib/tier-guard'
+import { textureGenerateSchema, parseBody } from '@/lib/validations'
 
 type Resolution = '512' | '1024' | '2048'
 
@@ -163,25 +165,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const tierDenied = await requireTier(userId, 'HOBBY')
+    if (tierDenied) return tierDenied
   }
 
-  let prompt: string
-  let resolution: Resolution
-  let seamless: boolean
-
-  try {
-    const body = (await req.json()) as { prompt?: unknown; resolution?: unknown; seamless?: unknown }
-
-    if (typeof body.prompt !== 'string' || !body.prompt.trim()) {
-      return NextResponse.json({ error: 'prompt is required' }, { status: 400 })
-    }
-
-    prompt = body.prompt.trim()
-    resolution = body.resolution === '512' || body.resolution === '2048' ? (body.resolution as Resolution) : '1024'
-    seamless = body.seamless !== false  // default true
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  // Parse + validate body
+  const parsed = await parseBody(req, textureGenerateSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
+
+  const prompt = parsed.data.prompt.trim()
+  const resolution: Resolution = parsed.data.resolution ?? '1024'
+  const seamless = parsed.data.seamless ?? true
 
   const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY
 

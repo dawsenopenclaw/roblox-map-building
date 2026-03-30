@@ -1,19 +1,19 @@
-# @robloxforge/sdk
+# @forjegames/sdk
 
-Official TypeScript/JavaScript SDK for the [RobloxForge](https://robloxforge.com) API.
+Official TypeScript/JavaScript SDK for the [ForjeGames](https://forjegames.com) API.
 
 ## Installation
 
 ```bash
-npm install @robloxforge/sdk
+npm install @forjegames/sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { RobloxForge, terrainPlugin, assetsPlugin, marketplacePlugin } from '@robloxforge/sdk'
+import { ForjeGames, terrainPlugin, assetsPlugin, marketplacePlugin } from '@forjegames/sdk'
 
-const rf = new RobloxForge({ apiKey: 'rf_sk_your_key' })
+const rf = new ForjeGames({ apiKey: 'rf_sk_your_key' })
 
 // Generate terrain
 const terrain = terrainPlugin(rf)
@@ -34,8 +34,8 @@ const templates = await market.search({ query: 'tycoon', category: 'GAME_TEMPLAT
 
 ## API Keys
 
-Generate keys at [robloxforge.com/settings/api-keys](https://robloxforge.com/settings/api-keys).
+Generate keys at [forjegames.com/settings/api-keys](https://forjegames.com/settings/api-keys).
 
 ## Documentation
 
-Full API reference at [robloxforge.com/docs](https://robloxforge.com/docs).
+Full API reference at [forjegames.com/docs](https://forjegames.com/docs).

@@ -4,14 +4,14 @@ with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name="robloxforge",
+    name="forjegames",
     version="1.0.0",
-    description="Official Python SDK for the RobloxForge API",
+    description="Official Python SDK for the ForjeGames API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author="RobloxForge",
-    author_email="dev@robloxforge.com",
-    url="https://github.com/robloxforge/sdk-python",
+    author="ForjeGames",
+    author_email="dev@forjegames.com",
+    url="https://github.com/forjegames/sdk-python",
     license="MIT",
     packages=find_packages(),
     python_requires=">=3.8",
@@ -31,5 +31,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Games/Entertainment",
     ],
-    keywords=["roblox", "robloxforge", "sdk", "api", "game-development"],
+    keywords=["roblox", "forjegames", "sdk", "api", "game-development"],
 )

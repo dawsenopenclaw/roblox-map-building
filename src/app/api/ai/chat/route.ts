@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { requireTier } from '@/lib/tier-guard'
+import { chatMessageSchema, parseBody } from '@/lib/validations'
 import {
   planBuildAssets,
   extractSearchTerms,
@@ -726,12 +728,6 @@ function estimateTokens(text: string): number {
   return Math.max(8, Math.ceil(text.split(/\s+/).length * 1.3))
 }
 
-// ─── Simulated thinking delay ─────────────────────────────────────────────────
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
 // ─── Internal API callers ─────────────────────────────────────────────────────
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
@@ -811,35 +807,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isDemo) {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Basic chat is available on FREE tier. Mesh/texture sub-actions within
+    // chat will be gated by their own routes when the client calls them.
+    const tierDenied = await requireTier(userId, 'FREE')
+    if (tierDenied) return tierDenied
     authedUserId = userId
   }
 
-  let body: { message?: unknown; conversationId?: unknown }
-
-  try {
-    body = (await req.json()) as { message?: unknown; conversationId?: unknown }
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  const parsed = await parseBody(req, chatMessageSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
 
-  const message = typeof body.message === 'string' ? body.message.trim() : ''
-
-  if (!message || message.length > 4000) {
-    return NextResponse.json({ error: 'message is required (max 4000 chars)' }, { status: 400 })
-  }
+  const message = parsed.data.message.trim()
 
   const intent = detectIntent(message)
 
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
   if (anthropic) {
-    try {
-      // Deduct tokens before calling the AI — prevents free-riding when billing fails.
-      // Cost: 50 tokens per chat request. Skipped in demo mode (no real user).
-      if (!isDemo && authedUserId) {
+    // Deduct tokens before calling the AI — outside the inner try so insufficient
+    // balance returns 402 rather than silently falling through to demo mode.
+    if (!isDemo && authedUserId) {
+      try {
         await spendTokens(authedUserId, 50, 'AI chat request', { prompt: message.slice(0, 100) })
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Token error'
+        return NextResponse.json({ error: errMsg }, { status: 402 })
       }
+    }
 
+    try {
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,

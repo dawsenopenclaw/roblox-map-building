@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useUser } from '@clerk/nextjs'
 import {
   User,
@@ -21,6 +22,7 @@ import {
   Upload,
   TrendingUp,
   Zap,
+  ChevronDown,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -121,14 +123,13 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
   return (
     <div className="flex items-center gap-5">
       <div className="relative group">
-          <label
+        <label
           htmlFor="avatar-upload"
           className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFB81C]/30 to-[#FFB81C]/10 border border-[#FFB81C]/20 cursor-pointer"
           aria-label="Upload avatar image"
         >
           {preview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Avatar preview" className="w-full h-full object-cover" />
+            <Image src={preview} alt="Avatar preview" width={64} height={64} unoptimized className="w-full h-full object-cover" />
           ) : (
             <span className="text-[#FFB81C] font-bold text-lg" aria-hidden="true">{initials}</span>
           )}
@@ -282,16 +283,20 @@ function ProfileTab() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await fetch('/api/user/update', {
+      const res = await fetch('/api/user/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName, bio, charity }),
       })
+      if (res.ok) {
+        show('Changes saved')
+      } else {
+        show('Failed to save changes', 'error')
+      }
     } catch {
-      // API not wired yet — optimistic
+      show('Failed to save changes', 'error')
     } finally {
       setSaving(false)
-      show('Changes saved')
     }
   }
 
@@ -361,18 +366,21 @@ function ProfileTab() {
 
           <div>
             <label htmlFor="profile-charity" className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
-            <select
-              id="profile-charity"
-              value={charity}
-              onChange={(e) => setCharity(e.target.value)}
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors appearance-none"
-            >
-              {charities.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="profile-charity"
+                value={charity}
+                onChange={(e) => setCharity(e.target.value)}
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors appearance-none"
+              >
+                {charities.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
             <p className="text-gray-500 text-xs mt-1.5">
               A portion of revenue is donated to this organisation.
             </p>
@@ -529,7 +537,7 @@ function BillingTab() {
         </div>
 
         <Link
-          href="/pricing"
+          href="/billing#tokens"
           className="inline-flex items-center gap-2 text-sm font-semibold border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/5 text-[#FFB81C] px-4 py-2.5 rounded-xl transition-colors"
         >
           <Zap size={14} />
@@ -757,7 +765,9 @@ function ApiKeysTab() {
         {showCreate && (
           <div className="mb-5 p-4 bg-white/5 border border-white/10 rounded-xl">
             <p className="text-white text-sm font-medium mb-3">New API Key</p>
+            <label htmlFor="new-key-name" className="sr-only">Key name</label>
             <input
+              id="new-key-name"
               type="text"
               value={newKeyName}
               onChange={(e) => setNewKeyName(e.target.value)}
@@ -767,8 +777,8 @@ function ApiKeysTab() {
               autoFocus
             />
             <div className="mb-3">
-              <label className="block text-xs text-gray-400 mb-1.5">Permissions</label>
-              <div className="flex gap-2">
+              <p id="key-permissions-label" className="block text-xs text-gray-400 mb-1.5">Permissions</p>
+              <div className="flex gap-2" role="group" aria-labelledby="key-permissions-label">
                 {(['read', 'write', 'admin'] as const).map((scope) => (
                   <button
                     key={scope}

@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createSession } from '@/lib/studio-session'
+import { studioAuthClaimSchema, parseBody } from '@/lib/validations'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -164,12 +165,11 @@ interface ClaimBody {
 export async function POST(req: NextRequest) {
   pruneExpired()
 
-  let body: ClaimBody
-  try {
-    body = (await req.json()) as ClaimBody
-  } catch {
-    return NextResponse.json({ error: 'invalid_json' }, { status: 400, headers: CORS })
+  const parsedBody = await parseBody(req, studioAuthClaimSchema)
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS })
   }
+  const body = parsedBody.data
 
   const code = (body.code ?? '').toUpperCase().replace(/\s/g, '')
   if (code.length < 6) {

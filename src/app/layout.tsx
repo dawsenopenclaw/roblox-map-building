@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
-import { PostHogProvider } from '@/components/PostHogProvider'
+import { PostHogConsentWrapper } from '@/components/PostHogConsentWrapper'
 import { SkipToContent } from '@/components/SkipToContent'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
@@ -156,7 +156,7 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/editor"
+          signInFallbackRedirectUrl="/dashboard"
           signUpFallbackRedirectUrl="/onboarding"
           appearance={{
             variables: {
@@ -189,7 +189,11 @@ export default function RootLayout({
               <OfflineIndicator />
               <GlobalShortcuts />
               <ToastProvider>
-                <PostHogProvider>{children}</PostHogProvider>
+                <PostHogConsentWrapper>
+                  <main id="main-content">
+                    {children}
+                  </main>
+                </PostHogConsentWrapper>
               </ToastProvider>
               <InstallPrompt />
               <CookieBanner />

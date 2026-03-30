@@ -97,7 +97,7 @@ Agent memory: C:\Users\Dawse\.claude\agent-memory\researcher\autonomous-self-evo
 
 Companion research:
 - Multi-Agent Orchestration Patterns 2026
-- RobloxForge Technical Architecture
+- ForjeGames Technical Architecture
 - Stripe Latest 2025-2026 Patterns
 - Claude Code Agent Upgrade Guide 2026
 

@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock the db module before importing tokens-server
-const mockTransaction = vi.fn()
-const mockFindUnique = vi.fn()
-const mockUpdate = vi.fn()
-const mockCreate = vi.fn()
+const { mockTransaction, mockFindUnique, mockUpdate, mockCreate } = vi.hoisted(() => ({
+  mockTransaction: vi.fn(),
+  mockFindUnique: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockCreate: vi.fn(),
+}))
 
 vi.mock('@/lib/db', () => ({
   db: {

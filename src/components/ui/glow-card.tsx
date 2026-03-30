@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
 interface GlowCardProps {
@@ -19,12 +19,17 @@ interface GlowCardProps {
 export function GlowCard({ children, className = '', glow = true }: GlowCardProps) {
   const [angle, setAngle] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
+  const [prefersReduced, setPrefersReduced] = useState(false)
   const rafRef = useRef<number | null>(null)
   const lastRef = useRef<number | null>(null)
-  const prefersReduced =
-    typeof window !== 'undefined'
-      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      : false
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReduced(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
 
   const startAnimation = useCallback(() => {
     if (prefersReduced) return

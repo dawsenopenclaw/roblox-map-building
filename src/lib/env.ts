@@ -97,6 +97,7 @@ const serverSchema = z.object({
 
   // ── Security / Infra ──────────────────────────────────────────────────────
   CRON_SECRET: prodRequired('CRON_SECRET'),
+  WORKER_SECRET: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
 

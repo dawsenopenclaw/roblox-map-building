@@ -124,12 +124,14 @@ export async function GET() {
       const minus7d  = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000)
       const minus30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-      // Use createdAt as a proxy for activity — lastActiveAt is not in schema
+      // Use updatedAt as an activity proxy — it is bumped on any profile or session
+      // mutation (settings save, build, purchase, etc.) and is always present.
+      // createdAt would only count new sign-ups, not returning users.
       const [dau, wau, mau, newUsers7d] = await Promise.all([
-        db.user.count({ where: { createdAt: { gte: minus1d  } } }),
-        db.user.count({ where: { createdAt: { gte: minus7d  } } }),
-        db.user.count({ where: { createdAt: { gte: minus30d } } }),
-        db.user.count({ where: { createdAt: { gte: minus7d  } } }),
+        db.user.count({ where: { deletedAt: null, updatedAt: { gte: minus1d  } } }),
+        db.user.count({ where: { deletedAt: null, updatedAt: { gte: minus7d  } } }),
+        db.user.count({ where: { deletedAt: null, updatedAt: { gte: minus30d } } }),
+        db.user.count({ where: { deletedAt: null, createdAt: { gte: minus7d  } } }), // new signups — keep createdAt
       ])
 
       // If DB returns any data, build partial live response + fill gaps with demo
@@ -146,7 +148,7 @@ export async function GET() {
           dauMauRatio: mau > 0 ? +(dau / mau).toFixed(3) : 0,
           newUsersLast7Days: newUsers7d,
           kFactor,
-          demo: false,
+          demo: true, // synthetic values still fill marketplace, referral, retention fields
         } satisfies GrowthMetricsResponse)
       }
     } catch {

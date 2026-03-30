@@ -1,7 +1,7 @@
 # Vendor Data Processing Agreements (DPAs)
 
 **Last updated:** 2026-03-28
-**Owner:** Dawsen Porter / RobloxForge LLC
+**Owner:** Dawsen Porter / ForjeGames LLC
 **Purpose:** Track DPA status with all third-party data processors per GDPR Art. 28
 
 ---
@@ -10,7 +10,7 @@
 
 Under GDPR Article 28, data controllers must have a Data Processing Agreement (DPA) with every
 data processor that handles personal data on their behalf. This document tracks DPA status for all
-RobloxForge vendors.
+ForjeGames vendors.
 
 **GDPR requirement:** DPA must specify:
 - Subject matter and duration of processing

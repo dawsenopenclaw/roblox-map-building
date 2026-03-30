@@ -1,4 +1,4 @@
-"""Core HTTP client for the RobloxForge API."""
+"""Core HTTP client for the ForjeGames API."""
 
 import json
 import urllib.request
@@ -10,7 +10,7 @@ from .assets import AssetsClient
 from .marketplace import MarketplaceClient
 
 
-class RobloxForgeError(Exception):
+class ForjeGamesError(Exception):
     """Raised when the API returns an error response."""
 
     def __init__(self, message: str, status: int = 0):
@@ -20,18 +20,18 @@ class RobloxForgeError(Exception):
 
 class Client:
     """
-    Main entry point for the RobloxForge SDK.
+    Main entry point for the ForjeGames SDK.
 
     Args:
-        api_key: Your RobloxForge API key (rf_sk_...)
-        base_url: Override the API base URL (default: https://api.robloxforge.com)
+        api_key: Your ForjeGames API key (rf_sk_...)
+        base_url: Override the API base URL (default: https://api.forjegames.com)
         timeout: Request timeout in seconds (default: 30)
     """
 
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://api.robloxforge.com",
+        base_url: str = "https://api.forjegames.com",
         timeout: int = 30,
     ):
         if not api_key:
@@ -62,7 +62,7 @@ class Client:
             Parsed JSON response
 
         Raises:
-            RobloxForgeError: On API or HTTP error
+            ForjeGamesError: On API or HTTP error
         """
         url = f"{self._base_url}{path}"
         body = json.dumps(data).encode("utf-8") if data else None
@@ -74,7 +74,7 @@ class Client:
             headers={
                 "Authorization": f"Bearer {self._api_key}",
                 "Content-Type": "application/json",
-                "User-Agent": "robloxforge-python/1.0.0",
+                "User-Agent": "forjegames-python/1.0.0",
             },
         )
 
@@ -87,6 +87,6 @@ class Client:
                 msg = err_body.get("error", str(e))
             except Exception:
                 msg = str(e)
-            raise RobloxForgeError(msg, status=e.code) from e
+            raise ForjeGamesError(msg, status=e.code) from e
         except urllib.error.URLError as e:
-            raise RobloxForgeError(str(e.reason)) from e
+            raise ForjeGamesError(str(e.reason)) from e

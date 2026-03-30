@@ -15,6 +15,7 @@ let _captured: BeforeInstallPromptEvent | null = null
 export function InstallPrompt() {
   const [show, setShow] = useState(false)
   const promptRef = useRef<BeforeInstallPromptEvent | null>(_captured)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const dismissed = localStorage.getItem('rf-install-dismissed') === 'true'
@@ -69,6 +70,50 @@ export function InstallPrompt() {
     setShow(false)
   }
 
+  // Focus trap — Tab cycling, Escape to close, restore focus on unmount
+  useEffect(() => {
+    if (!show) return
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    // Auto-focus first focusable element (the Install button)
+    focusable()[0]?.focus()
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleDismiss()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const nodes = focusable()
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog.addEventListener('keydown', handler)
+    return () => {
+      dialog.removeEventListener('keydown', handler)
+      previouslyFocused?.focus()
+    }
+  }, [show])
+
   if (!show) return null
 
   return (
@@ -80,8 +125,10 @@ export function InstallPrompt() {
         aria-hidden="true"
       />
       <div
+        ref={dialogRef}
         role="dialog"
-        aria-label="Install ForjeGames"
+        aria-modal="true"
+        aria-labelledby="ip-title"
         className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:w-80 rounded-2xl bg-[#0F1535] border border-[#F5A623]/30 shadow-2xl shadow-black/50 p-4 animate-in slide-in-from-bottom-4 duration-300"
       >
       {/* Header */}
@@ -110,7 +157,7 @@ export function InstallPrompt() {
             </svg>
           </div>
           <div>
-            <p className="text-sm font-semibold text-white">
+            <p id="ip-title" className="text-sm font-semibold text-white">
               Add to home screen
             </p>
             <p className="text-xs text-white/50">ForjeGames</p>

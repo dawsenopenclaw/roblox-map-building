@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
+import { reviewSchema, reviewResponseSchema, parseBody } from '@/lib/validations'
+import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 
 // POST /api/marketplace/templates/[id]/reviews — verified purchase only
 export async function POST(
@@ -50,46 +52,73 @@ export async function POST(
       return NextResponse.json({ error: 'You have already reviewed this template' }, { status: 409 })
     }
 
-    let body: unknown
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, reviewSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
 
-    const { rating, body: reviewBody } = body as { rating?: number; body?: string }
+    const { rating, body: reviewBody } = parsed.data
 
-    if (typeof rating !== 'number' || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
-      return NextResponse.json({ error: 'Rating must be an integer 1-5' }, { status: 400 })
-    }
+    // Wrap review creation and aggregate update in a transaction so a concurrent
+    // duplicate request cannot create two reviews or leave aggregate counts stale.
+    const review = await db.$transaction(async (tx) => {
+      // Re-check inside the transaction to prevent TOCTOU race on duplicate submissions
+      const txExisting = await tx.templateReview.findUnique({
+        where: { purchaseId: purchase.id },
+        select: { id: true },
+      })
+      if (txExisting) throw Object.assign(new Error('ALREADY_REVIEWED'), { code: 'ALREADY_REVIEWED' })
 
-    const review = await db.templateReview.create({
-      data: {
-        templateId,
-        reviewerId: user.id,
-        purchaseId: purchase.id,
-        rating,
-        body: reviewBody?.trim() || null,
-      },
+      const created = await tx.templateReview.create({
+        data: {
+          templateId,
+          reviewerId: user.id,
+          purchaseId: purchase.id,
+          rating,
+          body: reviewBody?.trim() || null,
+        },
+      })
+
+      // Recompute averageRating and reviewCount within the same transaction
+      const agg = await tx.templateReview.aggregate({
+        where: { templateId },
+        _avg: { rating: true },
+        _count: { rating: true },
+      })
+
+      await tx.template.update({
+        where: { id: templateId },
+        data: {
+          averageRating: agg._avg.rating ?? 0,
+          reviewCount: agg._count.rating,
+        },
+      })
+
+      return created
     })
 
-    // Recompute averageRating and reviewCount
-    const agg = await db.templateReview.aggregate({
-      where: { templateId },
-      _avg: { rating: true },
-      _count: { rating: true },
-    })
-
-    await db.template.update({
+    // Notify the template creator and fire outbound webhook — both best-effort
+    const template = await db.template.findUnique({
       where: { id: templateId },
-      data: {
-        averageRating: agg._avg.rating ?? 0,
-        reviewCount: agg._count.rating,
-      },
-    })
+      select: { creatorId: true, title: true },
+    }).catch(() => null)
+
+    if (template) {
+      dispatchWebhookEvent(template.creatorId, 'template.reviewed', {
+        templateId,
+        templateTitle: template.title,
+        reviewerId: user.id,
+        rating,
+        reviewId: review.id,
+        createdAt: review.createdAt.toISOString(),
+      }).catch(() => {})
+    }
 
     return NextResponse.json({ review }, { status: 201 })
   } catch (err) {
+    if (err instanceof Error && (err as NodeJS.ErrnoException & { code?: string }).code === 'ALREADY_REVIEWED') {
+      return NextResponse.json({ error: 'You have already reviewed this template' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
 }
@@ -166,16 +195,12 @@ export async function PATCH(
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  const parsed = await parseBody(req, reviewResponseSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
 
-  const { reviewId, response } = body as { reviewId?: string; response?: string }
-  if (!reviewId) return NextResponse.json({ error: 'reviewId required' }, { status: 400 })
-  if (!response?.trim()) return NextResponse.json({ error: 'Response text required' }, { status: 400 })
+  const { reviewId, response } = parsed.data
 
   try {
     // Verify the user is the template creator — select only needed fields

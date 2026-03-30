@@ -8,8 +8,12 @@ import { notifyReferralConverted } from '../lib/notifications'
 
 export const referralRoutes = new Hono()
 
+/**
+ * Generate a cryptographically random referral code.
+ * Format: FG-XXXXXXXX (8 hex chars = 4 294 967 296 possible values).
+ */
 function generateReferralCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase()
+  return `FG-${randomBytes(4).toString('hex').toUpperCase()}`
 }
 
 // GET /api/referrals/stats — dashboard stats
@@ -24,7 +28,7 @@ referralRoutes.get('/stats', requireAuth, async (c) => {
   })
 
   const converted = referrals.filter((r) => r.status !== 'PENDING')
-  const totalCommission = referrals.reduce((sum, r) => sum + r.commission, 0)
+  const totalCommission = referrals.reduce((sum, r) => sum + r.commissionCents, 0)
 
   // Get or create the user's referral code
   let myCode = referrals[0]?.code ?? null
@@ -54,6 +58,9 @@ referralRoutes.get('/stats', requireAuth, async (c) => {
   })
 })
 
+// Monthly referral reward cap — max 50 rewarded referrals per calendar month
+const MONTHLY_REFERRAL_CAP = 50
+
 // POST /api/referrals/track — track a referral conversion on signup (internal, requires auth)
 referralRoutes.post('/track', requireAuth, zValidator('json', referralTrackSchema), async (c) => {
   const { code, newUserId } = c.req.valid('json')
@@ -73,39 +80,65 @@ referralRoutes.post('/track', requireAuth, zValidator('json', referralTrackSchem
     return c.json({ error: 'Cannot refer yourself' }, 400)
   }
 
+  // Monthly cap check — load referrer's monthly counters
+  const referrer = await db.user.findUnique({
+    where: { id: referral.referrerId },
+    select: { id: true, monthlyReferralCount: true, monthlyReferralMonth: true },
+  })
+  if (!referrer) return c.json({ error: 'Referrer not found' }, 404)
+
+  const currentMonth = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+  const isNewMonth = referrer.monthlyReferralMonth !== currentMonth
+  const monthlyCount = isNewMonth ? 0 : referrer.monthlyReferralCount
+
+  const rewardEligible = monthlyCount < MONTHLY_REFERRAL_CAP
+
+  // Mark referral converted regardless of cap (conversion still counts, reward may be skipped)
   await db.referral.update({
     where: { code },
     data: {
       referredId: newUserId,
       status: 'CONVERTED',
-      commission: 100, // $1.00 in cents
+      commissionCents: rewardEligible ? 100 : 0,
       convertedAt: new Date(),
     },
   })
 
-  // Credit $1 (100 tokens) to referring user's token balance
-  const referrerBalance = await db.tokenBalance.findUnique({
-    where: { userId: referral.referrerId },
+  // Update referrer's monthly counter (always, regardless of reward eligibility)
+  await db.user.update({
+    where: { id: referral.referrerId },
+    data: {
+      monthlyReferralCount: isNewMonth ? 1 : { increment: 1 },
+      monthlyReferralMonth: currentMonth,
+    },
   })
-  if (referrerBalance) {
-    await db.tokenBalance.update({
+
+  // Credit 100 tokens only when under the monthly cap
+  if (rewardEligible) {
+    const referrerBalance = await db.tokenBalance.findUnique({
       where: { userId: referral.referrerId },
-      data: {
-        balance: { increment: 100 },
-        lifetimeEarned: { increment: 100 },
-        transactions: {
-          create: {
-            type: 'BONUS',
-            amount: 100,
-            description: 'Referral bonus - new user signed up',
+    })
+    if (referrerBalance) {
+      await db.tokenBalance.update({
+        where: { userId: referral.referrerId },
+        data: {
+          balance: { increment: 100 },
+          lifetimeEarned: { increment: 100 },
+          transactions: {
+            create: {
+              type: 'BONUS',
+              amount: 100,
+              description: 'Referral bonus - new user signed up',
+            },
           },
         },
-      },
-    })
+      })
+    }
   }
 
   // Fire notification to referrer (best-effort)
-  notifyReferralConverted(referral.referrerId, { commissionCents: 100 }).catch(() => {})
+  const commissionCents = rewardEligible ? 100 : 0
+  notifyReferralConverted(referral.referrerId, { commissionCents }).catch(() => {})
 
-  return c.json({ success: true })
+  return c.json({ success: true, rewardGranted: rewardEligible })
 })

@@ -1,8 +1,8 @@
-# Roadmap: RobloxForge
+# Roadmap: ForjeGames
 
 ## Overview
 
-RobloxForge ships in 8 phases that follow a strict dependency chain: infrastructure before logic, logic before interfaces, interfaces before ecosystem features. Phase 1 stands up the platform skeleton. Phase 2 makes it legally operable. Phase 3 delivers the core AI magic. Phase 4 wraps it in a usable web product. Phase 5 extends it into Roblox Studio. Phases 6-8 layer on the creator economy, analysis tools, team features, and growth systems that turn the tool into a platform.
+ForjeGames ships in 8 phases that follow a strict dependency chain: infrastructure before logic, logic before interfaces, interfaces before ecosystem features. Phase 1 stands up the platform skeleton. Phase 2 makes it legally operable. Phase 3 delivers the core AI magic. Phase 4 wraps it in a usable web product. Phase 5 extends it into Roblox Studio. Phases 6-8 layer on the creator economy, analysis tools, team features, and growth systems that turn the tool into a platform.
 
 ## Phases
 
@@ -66,7 +66,7 @@ Plans:
 **Plans**: TBD
 
 ### Phase 4: Web Platform
-**Goal**: Users have a complete web product — they can discover RobloxForge, sign up, use the AI interfaces, manage billing, and the whole experience is responsive and handles errors gracefully
+**Goal**: Users have a complete web product — they can discover ForjeGames, sign up, use the AI interfaces, manage billing, and the whole experience is responsive and handles errors gracefully
 **Depends on**: Phase 2, Phase 3
 **Requirements**: WEB-01, WEB-02, WEB-03, WEB-04, WEB-05, WEB-06, WEB-07, WEB-08, WEB-09, WEB-10
 **Success Criteria** (what must be TRUE):
@@ -79,14 +79,14 @@ Plans:
 **UI hint**: yes
 
 ### Phase 5: MCP Servers + Studio Plugin
-**Goal**: Developers can use RobloxForge AI capabilities directly inside Roblox Studio via a plugin, and three MCP servers expose terrain, city, and asset generation as tool calls
+**Goal**: Developers can use ForjeGames AI capabilities directly inside Roblox Studio via a plugin, and three MCP servers expose terrain, city, and asset generation as tool calls
 **Depends on**: Phase 3
 **Requirements**: MCP-01, MCP-02, MCP-03, PLUG-01, PLUG-02, PLUG-03, PLUG-04
 **Success Criteria** (what must be TRUE):
   1. terrain-forge MCP accepts a biome description and returns heightmap data usable by Roblox Studio terrain APIs
   2. city-architect MCP generates a road network and building placement layout from a zone description
   3. asset-alchemist MCP runs the Meshy + Fal pipeline and returns a model asset reference
-  4. RobloxForge plugin appears in Roblox Studio toolbar, authenticates the user, and syncs with the web platform on a 2-5s polling interval
+  4. ForjeGames plugin appears in Roblox Studio toolbar, authenticates the user, and syncs with the web platform on a 2-5s polling interval
   5. Generated assets are injected into the Studio workspace and every operation is undoable via ChangeHistoryService
 **Plans**: TBD
 
@@ -117,7 +117,7 @@ Plans:
 **UI hint**: yes
 
 ### Phase 8: API System + Growth
-**Goal**: The platform has a public API with SDKs, a referral program, email and notification systems, and a creator earnings dashboard — turning RobloxForge from a tool into a growing platform
+**Goal**: The platform has a public API with SDKs, a referral program, email and notification systems, and a creator earnings dashboard — turning ForjeGames from a tool into a growing platform
 **Depends on**: Phase 6
 **Requirements**: API-01, API-02, API-03, API-04, GROW-01, GROW-02, GROW-03, GROW-04, GROW-05
 **Success Criteria** (what must be TRUE):

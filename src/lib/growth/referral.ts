@@ -64,6 +64,65 @@ export type ReferralLeaderboardEntry = {
   badge?: string
 }
 
+// ─── Referral creation (server-side only) ─────────────────────────────────────
+
+/** Maximum referral rewards granted per referrer per calendar month. */
+export const MONTHLY_REFERRAL_REWARD_CAP = 20
+
+/**
+ * Create a referral record in the database.
+ *
+ * Guards:
+ *  - Throws if referrerId === referredId (self-referral).
+ *  - Throws if the referrer has already earned MONTHLY_REFERRAL_REWARD_CAP
+ *    rewards this calendar month.
+ *
+ * Must be called server-side only (Clerk webhook, sign-up handler, etc.).
+ */
+export async function createReferral(referrerId: string, referredId: string): Promise<void> {
+  if (referrerId === referredId) {
+    throw new Error('Self-referral is not allowed')
+  }
+
+  const { db } = await import('@/lib/db')
+
+  // Monthly cap: check and increment atomically using a transaction.
+  await db.$transaction(async (tx) => {
+    const currentMonth = new Date().toISOString().slice(0, 7) // "YYYY-MM"
+
+    const referrer = await tx.user.findUnique({
+      where: { id: referrerId },
+      select: { monthlyReferralCount: true, monthlyReferralMonth: true },
+    })
+
+    if (!referrer) throw new Error('Referrer not found')
+
+    // Reset counter if we're in a new month
+    const effectiveCount =
+      referrer.monthlyReferralMonth === currentMonth ? referrer.monthlyReferralCount : 0
+
+    if (effectiveCount >= MONTHLY_REFERRAL_REWARD_CAP) {
+      throw new Error(`Monthly referral reward cap (${MONTHLY_REFERRAL_REWARD_CAP}) reached`)
+    }
+
+    await tx.user.update({
+      where: { id: referrerId },
+      data: {
+        monthlyReferralCount: effectiveCount + 1,
+        monthlyReferralMonth: currentMonth,
+      },
+    })
+
+    // Referral.code is a required unique field — generate a cryptographically random token
+    const { randomBytes } = await import('crypto')
+    const code = randomBytes(8).toString('hex').toUpperCase()
+
+    await tx.referral.create({
+      data: { referrerId, referredId, code },
+    })
+  })
+}
+
 // ─── Code generation ──────────────────────────────────────────────────────────
 
 /**

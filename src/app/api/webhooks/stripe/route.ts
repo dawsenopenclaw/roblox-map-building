@@ -8,7 +8,14 @@ import { processDonation } from '@/lib/charity'
 import { getTierTokenAllowance, getTokenPackBySlug, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
 
-import { notifyTemplateSoldClient } from '@/lib/notifications-client'
+import { notifyTemplateSoldClient, sendNotification } from '@/lib/notifications-client'
+import {
+  sendSaleNotificationEmail,
+  sendDunningEmail,
+  sendTrialEndingEmail,
+  sendPaymentActionRequiredEmail,
+} from '@/lib/email'
+import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -52,8 +59,11 @@ export async function POST(req: NextRequest) {
 
         // Template purchase — record DB purchase + notify creator
         if (isPaid && session.metadata?.type === 'template_purchase' && session.metadata.templateId) {
-          const { templateId, buyerId, platformFeeCents, creatorPayoutCents } = session.metadata
+          const { templateId, buyerId } = session.metadata
           const amountCents = session.amount_total ?? 0
+          // Recompute fee split server-side from the authoritative amount_total — never trust client metadata
+          const platformFeeCentsComputed = Math.round(amountCents * 0.30)
+          const creatorPayoutCentsComputed = amountCents - platformFeeCentsComputed
 
           // Fetch template to get creator + title
           const template = await db.template.findUnique({
@@ -70,8 +80,8 @@ export async function POST(req: NextRequest) {
                 buyerId,
                 stripePaymentIntentId: (session.payment_intent as string) ?? null,
                 amountCents,
-                platformFeeCents: parseInt(platformFeeCents ?? '0', 10),
-                creatorPayoutCents: parseInt(creatorPayoutCents ?? '0', 10),
+                platformFeeCents: platformFeeCentsComputed,
+                creatorPayoutCents: creatorPayoutCentsComputed,
                 payoutStatus: 'PENDING',
               },
               update: {
@@ -101,20 +111,47 @@ export async function POST(req: NextRequest) {
                   templateId,
                   templateName: template.title,
                   amountCents,
-                  netCents: parseInt(creatorPayoutCents ?? '0', 10),
+                  netCents: creatorPayoutCentsComputed,
                   buyerId,
                   status: 'PENDING',
                 },
               })
             }
 
-            // Notify creator (best-effort)
+            // Notify creator via WebSocket (best-effort)
             notifyTemplateSoldClient(template.creatorId, {
               templateTitle: template.title,
               amountCents,
             }).catch(() => {
               // Best-effort notification
             })
+
+            // Send email notification to creator (best-effort)
+            const creator = await db.user.findUnique({
+              where: { id: template.creatorId },
+              select: { email: true },
+            })
+            if (creator?.email) {
+              sendSaleNotificationEmail({
+                email: creator.email,
+                templateName: template.title,
+                saleAmount: amountCents / 100, // Convert cents to dollars
+                platformFee: platformFeeCentsComputed / 100,
+              }).catch((err) => {
+                console.warn('[stripe-webhook] Failed to send sale notification email:', err)
+              })
+            }
+
+            // Dispatch template.sold webhook to the seller (best-effort)
+            dispatchWebhookEvent(template.creatorId, 'template.sold', {
+              templateId,
+              templateName: template.title,
+              buyerId: buyerId ?? '',
+              sellerId: template.creatorId,
+              priceCents: amountCents,
+              earningsCents: creatorPayoutCentsComputed,
+              currency: 'USD',
+            }).catch(() => {})
           }
         }
 
@@ -201,6 +238,13 @@ export async function POST(req: NextRequest) {
 
         const normalizedStatus = normalizeStatus(subscription.status)
 
+        // Read existing tier before upsert so we can compute the changeType
+        const existingSub = await db.subscription.findUnique({
+          where: { stripeSubscriptionId: subscription.id },
+          select: { tier: true },
+        })
+        const previousPlan = existingSub?.tier ?? 'FREE'
+
         await db.subscription.upsert({
           where: { stripeSubscriptionId: subscription.id },
           create: {
@@ -223,29 +267,86 @@ export async function POST(req: NextRequest) {
             stripePriceId: priceId,
           },
         })
+
+        // Determine change type for the webhook payload
+        const tierOrder: Record<string, number> = { FREE: 0, HOBBY: 1, CREATOR: 2, STUDIO: 3 }
+        const prevOrder = tierOrder[previousPlan] ?? 0
+        const newOrder = tierOrder[tier] ?? 0
+        const isNew = !existingSub
+        const changeType =
+          isNew && subscription.status === 'trialing' ? 'trial_started'
+          : isNew ? 'upgrade'
+          : subscription.cancel_at_period_end ? 'cancel'
+          : newOrder > prevOrder ? 'upgrade'
+          : newOrder < prevOrder ? 'downgrade'
+          : 'reactivate'
+
+        // Dispatch subscription.changed webhook (best-effort)
+        dispatchWebhookEvent(userId, 'subscription.changed', {
+          userId,
+          previousPlan,
+          newPlan: tier,
+          changeType,
+          effectiveAt: new Date().toISOString(),
+          billingCycleEnd: new Date(subscription.current_period_end * 1000).toISOString(),
+        }).catch(() => {})
         break
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
+        const deletedUserId = subscription.metadata?.userId
+
+        // Read tier before we mark canceled so we can populate previousPlan
+        const deletedSub = deletedUserId
+          ? await db.subscription.findUnique({
+              where: { stripeSubscriptionId: subscription.id },
+              select: { tier: true },
+            })
+          : null
+
         await db.subscription.update({
           where: { stripeSubscriptionId: subscription.id },
           data: { status: 'CANCELED', cancelAtPeriodEnd: false },
         })
+
+        // Dispatch subscription.changed webhook (best-effort)
+        if (deletedUserId) {
+          dispatchWebhookEvent(deletedUserId, 'subscription.changed', {
+            userId: deletedUserId,
+            previousPlan: deletedSub?.tier ?? 'FREE',
+            newPlan: 'FREE',
+            changeType: 'cancel',
+            effectiveAt: new Date().toISOString(),
+          }).catch(() => {})
+        }
         break
       }
 
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string
-        // Find user by stripeCustomerId and update subscription status
-        const user = await db.user.findFirst({ where: { subscription: { stripeCustomerId: customerId } } })
+        const user = await db.user.findFirst({
+          where: { subscription: { stripeCustomerId: customerId } },
+          select: { id: true, email: true, displayName: true },
+        })
         if (user) {
           await db.subscription.update({
             where: { userId: user.id },
             data: { status: 'PAST_DUE' },
           })
-          // TODO: Send dunning email when email function is wired
+          // Send dunning email (best-effort)
+          sendDunningEmail({
+            email: user.email,
+            name: user.displayName ?? 'Creator',
+            invoiceUrl: (invoice.hosted_invoice_url as string | null) ?? undefined,
+            amountDueCents: invoice.amount_due,
+            nextAttemptAt: invoice.next_payment_attempt
+              ? new Date(invoice.next_payment_attempt * 1000)
+              : undefined,
+          }).catch((err) => {
+            console.warn('[stripe-webhook] Failed to send dunning email:', err)
+          })
         }
         break
       }
@@ -258,9 +359,42 @@ export async function POST(req: NextRequest) {
             action: 'CHARGE_DISPUTED',
             resource: 'stripe',
             resourceId: dispute.id,
-            metadata: { amount: dispute.amount, reason: dispute.reason },
+            metadata: { amount: dispute.amount, reason: dispute.reason, status: dispute.status },
           },
         })
+        // Alert admin via Sentry so on-call is paged
+        Sentry.captureMessage(`[stripe] Dispute created: ${dispute.id}`, {
+          level: 'warning',
+          tags: { webhook: 'stripe', eventType: 'charge.dispute.created' },
+          extra: { disputeId: dispute.id, amount: dispute.amount, reason: dispute.reason },
+        })
+        // Freeze creator payouts linked to the disputed charge
+        if (dispute.charge) {
+          const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id
+          const charge = await stripe.charges.retrieve(chargeId)
+          const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+          if (paymentIntentId) {
+            await db.templatePurchase.updateMany({
+              where: { stripePaymentIntentId: paymentIntentId, payoutStatus: 'PENDING' },
+              data: { payoutStatus: 'FROZEN' },
+            })
+            // Find the purchase to get templateId + buyerId for the earnings filter
+            const purchase = await db.templatePurchase.findFirst({
+              where: { stripePaymentIntentId: paymentIntentId },
+              select: { templateId: true, buyerId: true },
+            })
+            if (purchase) {
+              await db.creatorEarning.updateMany({
+                where: {
+                  templateId: purchase.templateId,
+                  buyerId: purchase.buyerId,
+                  status: 'PENDING',
+                },
+                data: { status: 'FROZEN' },
+              })
+            }
+          }
+        }
         break
       }
 
@@ -285,9 +419,75 @@ export async function POST(req: NextRequest) {
       }
 
       case 'customer.subscription.trial_will_end': {
-        // Log for future email notification
         const sub = event.data.object as Stripe.Subscription
-        console.info(`[stripe-webhook] Trial ending for subscription ${sub.id}`)
+        const userId = sub.metadata?.userId
+        if (!userId) break
+
+        const user = await db.user.findFirst({
+          where: { id: userId },
+          select: { email: true, displayName: true },
+        })
+        if (user) {
+          const trialEndDate = sub.trial_end ? new Date(sub.trial_end * 1000) : undefined
+          sendTrialEndingEmail({
+            email: user.email,
+            name: user.displayName ?? 'Creator',
+            trialEndDate,
+            upgradeUrl: `${process.env.NEXT_PUBLIC_APP_URL}/billing`,
+          }).catch((err) => {
+            console.warn('[stripe-webhook] Failed to send trial-ending email:', err)
+          })
+        }
+        break
+      }
+
+      case 'invoice.payment_action_required': {
+        // Fires when SCA / 3D Secure authentication is required before an invoice can be paid.
+        const invoice = event.data.object as Stripe.Invoice
+        const customerId = invoice.customer as string
+        const user = await db.user.findFirst({
+          where: { subscription: { stripeCustomerId: customerId } },
+          select: { id: true, email: true, displayName: true },
+        })
+        if (user) {
+          const paymentUrl = (invoice.hosted_invoice_url as string | null) ?? undefined
+          sendPaymentActionRequiredEmail({
+            email: user.email,
+            name: user.displayName ?? 'Creator',
+            paymentUrl,
+            amountDueCents: invoice.amount_due,
+          }).catch((err) => {
+            console.warn('[stripe-webhook] Failed to send payment-action-required email:', err)
+          })
+          // Also send an in-app notification so the dashboard banner shows
+          sendNotification({
+            userId: user.id,
+            type: 'PAYMENT_REQUIRED',
+            title: 'Action required: complete your payment',
+            body: 'Your subscription requires 3D Secure authentication. Click to complete payment.',
+            actionUrl: paymentUrl ?? '/billing',
+            priority: 'critical',
+          }).catch(() => {})
+        }
+        break
+      }
+
+      case 'customer.deleted': {
+        // Stripe customer was deleted — nullify stripeCustomerId on our subscription row
+        // so no future billing operations target a non-existent customer.
+        const customer = event.data.object as Stripe.Customer
+        await db.subscription.updateMany({
+          where: { stripeCustomerId: customer.id },
+          data: { stripeCustomerId: `deleted_${customer.id}` },
+        })
+        await db.auditLog.create({
+          data: {
+            action: 'STRIPE_CUSTOMER_DELETED',
+            resource: 'stripe',
+            resourceId: customer.id,
+            metadata: { email: customer.email },
+          },
+        })
         break
       }
 
