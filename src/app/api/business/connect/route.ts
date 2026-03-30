@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { parseBody } from '@/lib/validations'
+import { z } from 'zod'
+
+const connectPayloadSchema = z.object({
+  name:    z.string().min(2).max(120),
+  type:    z.enum(['LLC', 'CORPORATION', 'SOLE_PROPRIETOR', 'PARTNERSHIP', 'NONPROFIT']),
+  ein:     z.string().regex(/^\d{2}-\d{7}$/, 'EIN must be in format XX-XXXXXXX').optional(),
+  website: z.string().url().optional(),
+})
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,21 +121,13 @@ export async function POST(req: NextRequest) {
       clerkId = session?.userId ?? null
     } catch { /* demo mode */ }
 
-    let body: unknown
-    try {
-      body = await req.json()
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    const parsed = await parseBody(req, connectPayloadSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
 
     if (!clerkId) {
-      if (!validatePayload(body)) {
-        return NextResponse.json(
-          { error: 'Missing or invalid fields. Required: name (string), type (LLC|CORPORATION|SOLE_PROPRIETOR|PARTNERSHIP|NONPROFIT)' },
-          { status: 422 },
-        )
-      }
-      const { name, ein, type, website } = body as ConnectPayload
+      const { name, ein, type, website } = parsed.data
       const nameSlug = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 16)
       const apiKey = generateApiKey(nameSlug)
       const demo: BusinessProfile = {

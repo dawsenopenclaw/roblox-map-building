@@ -35,19 +35,6 @@ export type TeamData = {
   seats: { used: number; max: number }
 }
 
-type InvitePayload = {
-  email: string
-  role: TeamRole
-  tokensAllotment?: number
-}
-
-type UpdateMemberPayload = {
-  memberId: string
-  role?: TeamRole
-  tokensAllotment?: number
-  status?: 'ACTIVE' | 'SUSPENDED'
-}
-
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 const DEMO_MEMBERS: TeamMember[] = [
@@ -105,29 +92,6 @@ const DEMO_TEAM: TeamData = {
   members:    DEMO_MEMBERS,
   tokenPool:  DEMO_TOKEN_POOL,
   seats:      { used: 3, max: 10 },
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const VALID_ROLES: TeamRole[] = ['OWNER', 'ADMIN', 'DEVELOPER', 'VIEWER']
-
-function validateInvite(body: unknown): body is InvitePayload {
-  if (!body || typeof body !== 'object') return false
-  const b = body as Record<string, unknown>
-  if (typeof b.email !== 'string' || !b.email.includes('@')) return false
-  if (!VALID_ROLES.includes(b.role as TeamRole)) return false
-  if (b.tokensAllotment !== undefined && typeof b.tokensAllotment !== 'number') return false
-  return true
-}
-
-function validateUpdate(body: unknown): body is UpdateMemberPayload {
-  if (!body || typeof body !== 'object') return false
-  const b = body as Record<string, unknown>
-  if (typeof b.memberId !== 'string') return false
-  if (b.role !== undefined && !VALID_ROLES.includes(b.role as TeamRole)) return false
-  if (b.tokensAllotment !== undefined && typeof b.tokensAllotment !== 'number') return false
-  if (b.status !== undefined && !['ACTIVE', 'SUSPENDED'].includes(b.status as string)) return false
-  return true
 }
 
 // ─── GET — fetch team roster + token pool ────────────────────────────────────

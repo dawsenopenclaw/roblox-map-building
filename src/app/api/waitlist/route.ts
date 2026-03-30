@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { parseBody } from '@/lib/validations'
+import { z } from 'zod'
 
-// Basic email validation — no external dependency needed
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-}
+const waitlistSchema = z.object({
+  email: z.string().email('Please provide a valid email address.').max(254),
+})
 
 /**
  * POST /api/waitlist
@@ -14,37 +15,15 @@ function isValidEmail(value: string): boolean {
  * Persists email to Prisma Waitlist table.
  */
 export async function POST(req: NextRequest) {
-  let body: unknown
-
-  try {
-    body = await req.json()
-  } catch {
+  const parsed = await parseBody(req, waitlistSchema)
+  if (!parsed.ok) {
     return NextResponse.json(
-      { success: false, message: 'Invalid JSON body.' },
-      { status: 400 }
+      { success: false, message: parsed.error },
+      { status: parsed.status }
     )
   }
 
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    !('email' in body) ||
-    typeof (body as Record<string, unknown>).email !== 'string'
-  ) {
-    return NextResponse.json(
-      { success: false, message: 'email is required.' },
-      { status: 400 }
-    )
-  }
-
-  const email = ((body as Record<string, unknown>).email as string).trim()
-
-  if (!isValidEmail(email)) {
-    return NextResponse.json(
-      { success: false, message: 'Please provide a valid email address.' },
-      { status: 422 }
-    )
-  }
+  const { email } = parsed.data
 
   try {
     await db.waitlist.upsert({

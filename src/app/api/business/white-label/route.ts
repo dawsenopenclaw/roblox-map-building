@@ -52,8 +52,6 @@ export type WhiteLabelConfig = {
   updatedAt:    string
 }
 
-type BrandingUpdatePayload = Partial<WhiteLabelBranding>
-
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 const DEMO_BRANDING: WhiteLabelBranding = {
@@ -122,19 +120,6 @@ const DEMO_CONFIG: WhiteLabelConfig = {
   rateLimits:  DEMO_RATE_LIMITS,
   apiVersion:  'v1',
   updatedAt:   '2026-03-01T00:00:00.000Z',
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const HEX_RE = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/
-
-function validateBrandingUpdate(body: unknown): body is BrandingUpdatePayload {
-  if (!body || typeof body !== 'object') return false
-  const b = body as Record<string, unknown>
-  if (b.primaryColor !== undefined && (typeof b.primaryColor !== 'string' || !HEX_RE.test(b.primaryColor))) return false
-  if (b.accentColor  !== undefined && (typeof b.accentColor  !== 'string' || !HEX_RE.test(b.accentColor)))  return false
-  if (b.companyName  !== undefined && (typeof b.companyName  !== 'string' || b.companyName.trim().length < 2)) return false
-  return true
 }
 
 // ─── GET — fetch white-label config ──────────────────────────────────────────

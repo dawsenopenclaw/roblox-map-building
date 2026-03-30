@@ -4,14 +4,18 @@ import { useEffect, useState, Suspense } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import {
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  Radar,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
+import dynamic from 'next/dynamic'
+import type { RadarDataPoint } from '@/components/charts/DnaRadarChart'
+
+const DnaSingleRadarChart = dynamic(
+  () => import('@/components/charts/DnaRadarChart').then(m => ({ default: m.DnaSingleRadarChart })),
+  { ssr: false, loading: () => <div className="h-[260px] bg-white/5 rounded-xl animate-pulse" /> },
+)
+
+const DnaOverlayRadarChart = dynamic(
+  () => import('@/components/charts/DnaRadarChart').then(m => ({ default: m.DnaOverlayRadarChart })),
+  { ssr: false, loading: () => <div className="h-[320px] bg-white/5 rounded-xl animate-pulse" /> },
+)
 
 interface ScanSummary {
   id: string
@@ -207,12 +211,11 @@ function CompareContent() {
   const canCompare = !!scanA && !!scanB && !!scanA.genome && !!scanB.genome
 
   // Build radar data for comparison
-  const radarData = canCompare
+  const radarData: RadarDataPoint[] = canCompare
     ? Object.entries(GENOME_LABELS).map(([key, name]) => ({
         subject: name,
         a: scanA!.genome!.scores[key] ?? 0,
         b: scanB!.genome!.scores[key] ?? 0,
-        fullMark: 100,
       }))
     : []
 
@@ -300,13 +303,14 @@ function CompareContent() {
                 {scanA!.gameName || 'Game A'}
               </h2>
               <p className="text-xs text-gray-500 mb-4">vs Genre Average</p>
-              <ResponsiveContainer width="100%" height={260}>
-                <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                  <PolarGrid stroke="#ffffff15" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                  <Radar name={scanA!.gameName || 'A'} dataKey="a" stroke="#FFB81C" fill="#FFB81C" fillOpacity={0.2} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
+              <DnaSingleRadarChart
+                data={radarData}
+                dataKey="a"
+                label={scanA!.gameName || 'A'}
+                stroke="#FFB81C"
+                fill="#FFB81C"
+                height={260}
+              />
             </div>
 
             <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
@@ -314,13 +318,14 @@ function CompareContent() {
                 {scanB!.gameName || 'Game B'}
               </h2>
               <p className="text-xs text-gray-500 mb-4">vs Genre Average</p>
-              <ResponsiveContainer width="100%" height={260}>
-                <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                  <PolarGrid stroke="#ffffff15" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                  <Radar name={scanB!.gameName || 'B'} dataKey="b" stroke="#60A5FA" fill="#60A5FA" fillOpacity={0.2} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
+              <DnaSingleRadarChart
+                data={radarData}
+                dataKey="b"
+                label={scanB!.gameName || 'B'}
+                stroke="#60A5FA"
+                fill="#60A5FA"
+                height={260}
+              />
             </div>
           </div>
 
@@ -329,15 +334,11 @@ function CompareContent() {
             <h2 className="text-sm font-semibold text-white uppercase tracking-wide mb-4">
               Overlay Comparison
             </h2>
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart data={radarData} margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
-                <PolarGrid stroke="#ffffff15" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-                <Radar name={scanA!.gameName || 'Game A'} dataKey="a" stroke="#FFB81C" fill="#FFB81C" fillOpacity={0.2} strokeWidth={2} />
-                <Radar name={scanB!.gameName || 'Game B'} dataKey="b" stroke="#60A5FA" fill="#60A5FA" fillOpacity={0.15} strokeWidth={2} />
-                <Legend wrapperStyle={{ fontSize: 12, color: '#9CA3AF' }} />
-              </RadarChart>
-            </ResponsiveContainer>
+            <DnaOverlayRadarChart
+              data={radarData}
+              labelA={scanA!.gameName || 'Game A'}
+              labelB={scanB!.gameName || 'Game B'}
+            />
           </div>
 
           {/* Difference table */}
