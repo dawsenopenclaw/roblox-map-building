@@ -24,7 +24,7 @@
     },
     {
       "path": "/api/internal/cron/webhook-retry",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 */6 * * *"
     },
     {
       "path": "/api/internal/cron/notification-archive",
