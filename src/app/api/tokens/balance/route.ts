@@ -1,17 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 
-// ─── Demo balance seeded per-user via clerkId hash ───────────────────────────
-// Deterministic so the same user always sees the same starting balance.
-function seedDemoBalance(clerkId: string): number {
-  let hash = 0
-  for (let i = 0; i < clerkId.length; i++) {
-    hash = (hash * 31 + clerkId.charCodeAt(i)) >>> 0
-  }
-  // Range: 650 – 1,000
-  return 650 + (hash % 351)
-}
-
 const DEMO_TRANSACTIONS = [
   { id: 'tx_d1', type: 'CREDIT', amount: 1000, description: 'Monthly token refresh — Pro plan', createdAt: new Date('2026-03-01').toISOString() },
   { id: 'tx_d2', type: 'DEBIT',  amount:   45, description: 'Terrain generation (volcanic island)', createdAt: new Date('2026-03-05').toISOString() },
@@ -62,11 +51,8 @@ export async function GET() {
       // DB not connected — fall through to demo mode
     }
 
-    // Demo mode: deterministic balance starting at ~1,000
+    // Demo mode: 1,000 starting tokens minus what the demo transactions spent
     const spent = DEMO_TRANSACTIONS.filter((t) => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
-    const seed = seedDemoBalance(clerkId)
-    const balance = Math.max(0, seed + (1000 - 650) - spent + (seed - 650))
-    // Simpler: just compute remaining = 1000 - spent, jittered slightly
     const demoBalance = Math.max(0, 1000 - spent)
 
     return NextResponse.json({

@@ -172,8 +172,7 @@ export function getServerEnv(): ServerEnv {
       )
     }
 
-    // Dev / test / build — warn and continue with best-effort fallback values
-    console.warn(`[env] Server env validation warnings (non-fatal outside production):\n${errorMessages}`)
+    // Dev / test / build — continue with best-effort fallback values
     _serverEnv = {
       ...Object.fromEntries(
         Object.keys(serverSchema.shape).map((k) => [k, process.env[k]])
@@ -214,7 +213,6 @@ export function getClientEnv(): ClientEnv {
       )
     }
 
-    console.warn(`[env] Client env validation warnings (non-fatal outside production):\n${errorMessages}`)
     _clientEnv = {
       ...Object.fromEntries(
         Object.keys(clientSchema.shape).map((k) => [k, process.env[k]])

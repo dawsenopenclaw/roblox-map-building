@@ -56,8 +56,6 @@ export async function GET(req: NextRequest) {
     })
 
     if (!res.ok) {
-      const text = await res.text()
-      console.error('[roblox/search] catalog error:', res.status, text.slice(0, 300))
       return NextResponse.json(
         { error: 'Roblox catalog unavailable', status: res.status },
         { status: 502 },

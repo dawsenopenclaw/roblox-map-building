@@ -4,7 +4,7 @@ import { stripe, constructWebhookEvent } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { earnTokens, spendTokens } from '@/lib/tokens-server'
 import { processDonation } from '@/lib/charity'
-import { getTierTokenAllowance, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
+import { getTierTokenAllowance, getTokenPackBySlug, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
 
 import { notifyTemplateSoldClient } from '@/lib/notifications-client'
@@ -36,7 +36,6 @@ export async function POST(req: NextRequest) {
 
         // Token pack purchase — idempotent via sessionId in metadata check
         if (isPaid && session.metadata?.type === 'token_pack' && session.metadata.tokenPackSlug) {
-          const { getTokenPackBySlug } = await import('@/lib/subscription-tiers')
           const pack = getTokenPackBySlug(session.metadata.tokenPackSlug)
           if (pack) {
             // Idempotency: check if we already credited this session
@@ -112,7 +111,9 @@ export async function POST(req: NextRequest) {
             notifyTemplateSoldClient(template.creatorId, {
               templateTitle: template.title,
               amountCents,
-            }).catch((err) => console.error('Sale notification failed:', err))
+            }).catch(() => {
+              // Best-effort notification
+            })
           }
         }
 
@@ -122,7 +123,9 @@ export async function POST(req: NextRequest) {
             userId,
             paymentAmountCents: session.amount_total,
             sourcePurchaseId: session.id,
-          }).catch(err => console.error('Donation failed (non-blocking):', err))
+          }).catch(() => {
+            // Non-blocking side effect
+          })
         }
         break
       }
@@ -158,7 +161,9 @@ export async function POST(req: NextRequest) {
           userId,
           paymentAmountCents: invoice.amount_paid,
           sourcePurchaseId: invoice.id,
-        }).catch(err => console.error('Recurring donation failed (non-blocking):', err))
+        }).catch(() => {
+          // Non-blocking side effect
+        })
         break
       }
 
@@ -259,7 +264,6 @@ export async function POST(req: NextRequest) {
         const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 })
         const session = sessions.data[0]
         if (session?.metadata?.type === 'token_pack' && session.metadata.userId && session.metadata.tokenPackSlug) {
-          const { getTokenPackBySlug } = await import('@/lib/subscription-tiers')
           const pack = getTokenPackBySlug(session.metadata.tokenPackSlug)
           if (pack) {
             // Reverse the token grant — use spendTokens so balance can't go below 0
@@ -268,7 +272,9 @@ export async function POST(req: NextRequest) {
               pack.tokens,
               `Refund: ${pack.name} token pack reversed`,
               { paymentIntentId, refundedCents }
-            ).catch(err => console.error('Token reversal on refund failed (balance may already be spent):', err))
+            ).catch(() => {
+              // Balance may already be spent — non-critical
+            })
           }
         }
         break

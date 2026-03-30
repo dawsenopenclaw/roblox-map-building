@@ -16,6 +16,7 @@ interface CharityStats {
   monthlyHistory: {
     month: string
     totalCents: number
+    revenueCents?: number
     count: number
   }[]
   activeCharities: {
@@ -36,12 +37,12 @@ const DEMO_DATA: CharityStats = {
     { charitySlug: 'charity-water', charityName: 'Charity: Water', totalCents: 74150, count: 153 },
   ],
   monthlyHistory: [
-    { month: 'Oct 2025', totalCents: 31200, count: 78 },
-    { month: 'Nov 2025', totalCents: 44800, count: 112 },
-    { month: 'Dec 2025', totalCents: 58300, count: 146 },
-    { month: 'Jan 2026', totalCents: 62100, count: 155 },
-    { month: 'Feb 2026', totalCents: 70000, count: 175 },
-    { month: 'Mar 2026', totalCents: 18420, count: 46 },
+    { month: 'Oct 2025', totalCents: 31200, revenueCents: 210000, count: 78 },
+    { month: 'Nov 2025', totalCents: 44800, revenueCents: 268000, count: 112 },
+    { month: 'Dec 2025', totalCents: 58300, revenueCents: 315000, count: 146 },
+    { month: 'Jan 2026', totalCents: 62100, revenueCents: 382000, count: 155 },
+    { month: 'Feb 2026', totalCents: 70000, revenueCents: 441000, count: 175 },
+    { month: 'Mar 2026', totalCents: 18420, revenueCents: 489500, count: 46 },
   ],
   activeCharities: [
     { slug: 'save-the-children', name: 'Save the Children', description: 'Helping children in need worldwide.', url: 'https://savethechildren.org' },
@@ -296,20 +297,32 @@ export default function AdminCharityPage() {
               <tbody className="divide-y divide-[#1c1c1c]">
                 {data.monthlyHistory.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="py-4 text-center text-[#B0B0B0]">
+                    <td colSpan={4} className="py-4 text-center text-[#B0B0B0]">
                       No history
                     </td>
                   </tr>
                 ) : (
-                  data.monthlyHistory.map((row) => (
-                    <tr key={row.month}>
-                      <td className="py-2.5 text-[#B0B0B0]">{row.month}</td>
-                      <td className="py-2.5 text-right text-white">{row.count}</td>
-                      <td className="py-2.5 text-right text-[#FFB81C] font-medium">
-                        ${(row.totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))
+                  data.monthlyHistory.map((row) => {
+                    // 10% of that month's revenue = the pledge target
+                    const pledgeCents = row.revenueCents != null
+                      ? Math.round(row.revenueCents * 0.1)
+                      : null
+                    const fulfilled = pledgeCents != null && row.totalCents >= pledgeCents
+                    return (
+                      <tr key={row.month}>
+                        <td className="py-2.5 text-[#B0B0B0]">{row.month}</td>
+                        <td className="py-2.5 text-right text-white">{row.count}</td>
+                        <td className="py-2.5 text-right text-[#FFB81C] font-medium">
+                          ${(row.totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className={`py-2.5 text-right text-xs font-medium ${fulfilled ? 'text-green-400' : 'text-[#FFB81C]/60'}`}>
+                          {pledgeCents != null
+                            ? `$${(pledgeCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+                            : '—'}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>

@@ -72,11 +72,18 @@ export function InstallPrompt() {
   if (!show) return null
 
   return (
-    <div
-      role="dialog"
-      aria-label="Install ForjeGames"
-      className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:w-80 rounded-2xl bg-[#0F1535] border border-[#F5A623]/30 shadow-2xl shadow-black/50 p-4 animate-in slide-in-from-bottom-4 duration-300"
-    >
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        onClick={handleDismiss}
+        role="presentation"
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-label="Install ForjeGames"
+        className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:w-80 rounded-2xl bg-[#0F1535] border border-[#F5A623]/30 shadow-2xl shadow-black/50 p-4 animate-in slide-in-from-bottom-4 duration-300"
+      >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
@@ -140,6 +147,7 @@ export function InstallPrompt() {
           Not now
         </button>
       </div>
-    </div>
+      </div>
+    </>
   )
 }

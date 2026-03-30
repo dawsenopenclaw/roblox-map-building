@@ -260,7 +260,7 @@ function TemplateCard({ template }: { template: TemplateSearchItem }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={template.thumbnailUrl}
-            alt={template.title}
+            alt={`${template.title} template thumbnail`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
@@ -310,7 +310,7 @@ function TemplateCard({ template }: { template: TemplateSearchItem }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={template.creator.avatarUrl}
-              alt={template.creator.displayName ?? template.creator.username ?? 'Creator'}
+              alt={`${template.creator.displayName ?? template.creator.username ?? 'Unknown creator'} avatar`}
               className="w-4 h-4 rounded-full object-cover"
               loading="lazy"
             />

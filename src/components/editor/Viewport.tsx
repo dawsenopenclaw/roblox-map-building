@@ -100,7 +100,7 @@ export function Viewport({ forceDemo = false, onObjectClick: _onObjectClick, cla
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageSrc}
-            alt="Roblox Studio live preview"
+            alt="Live Roblox Studio viewport showing game build preview"
             className="absolute inset-0 w-full h-full object-contain z-10"
             draggable={false}
           />
