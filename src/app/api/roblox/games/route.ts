@@ -111,6 +111,7 @@ export async function GET() {
 
     return NextResponse.json(games)
   } catch (err) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: 'Failed to fetch games from Roblox API', detail: message }, { status: 502 })
   }
 }

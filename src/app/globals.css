@@ -171,21 +171,7 @@ button, a, [role="button"] {
 .hover-icon-scale:hover { transform: scale(1.1); color: var(--gold); }
 
 /* ─── Enhanced Button Hover States ──────────────────────────────────────────── */
-
-/* Gold CTA buttons: lift + stronger glow + slight darken */
-.btn-primary:hover {
-  background: var(--gold-light);
-  box-shadow: 0 0 24px rgba(212,175,55,0.45), 0 4px 16px rgba(0,0,0,0.3);
-  transform: translateY(-2px);
-}
-.btn-primary:active { transform: translateY(0); box-shadow: none; }
-
-/* Ghost / secondary buttons: border turns gold on hover */
-.btn-ghost:hover {
-  color: var(--foreground);
-  border-color: rgba(212,175,55,0.5);
-  background: rgba(212,175,55,0.05);
-}
+/* REMOVED: Duplicate definitions moved to main .btn-primary/.btn-ghost rules (lines 664-682) */
 
 /* ─── Card Hover Effects ─────────────────────────────────────────────────────── */
 
@@ -226,12 +212,7 @@ button, a, [role="button"] {
 .nav-link:hover { color: var(--gold); }
 
 /* ─── Input Focus Gold Ring ──────────────────────────────────────────────────── */
-
-.input-base:focus {
-  outline: none;
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(212,175,55,0.2), 0 0 12px rgba(212,175,55,0.1);
-}
+/* REMOVED: Duplicate definition moved to main .input-base:focus rule (line 696) */
 
 /* ─── Sidebar Active Bar Animation ──────────────────────────────────────────── */
 
@@ -563,6 +544,7 @@ body {
   background-image:
     radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 175, 55, 0.06) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 90% 110%, rgba(59, 130, 246, 0.04)  0%, transparent 50%);
+  /* MERGED: Consolidated 3 body rules (lines 15, 550, 555) into single definition */
 }
 
 /* ─── Tailwind Utilities ─────────────────────────────────────────────────────── */

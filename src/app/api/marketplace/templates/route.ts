@@ -324,7 +324,11 @@ export async function GET(req: NextRequest) {
 
 // POST /api/marketplace/templates — create listing
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth()
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let user: { id: string } | null = null

@@ -69,7 +69,11 @@ export async function GET() {
 // POST /api/gamification/streak — record login or build activity
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode — Clerk not configured */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const user = await db.user.findUnique({

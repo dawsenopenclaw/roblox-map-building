@@ -472,6 +472,16 @@ function BuildResultCard({ result }: { result: BuildResult }) {
   const [copied, setCopied]     = useState(false)
   const [importDone, setImportDone] = useState(false)
   const { show: showToast } = useToast()
+  const copyTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const importTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cancel pending reset timers on unmount to avoid setState on dead component
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current)   clearTimeout(copyTimerRef.current)
+      if (importTimerRef.current) clearTimeout(importTimerRef.current)
+    }
+  }, [])
 
   // Rough part/time estimates based on code line count
   const lineCount = result.luauCode.split('\n').length
@@ -482,14 +492,16 @@ function BuildResultCard({ result }: { result: BuildResult }) {
     await navigator.clipboard.writeText(result.luauCode)
     setCopied(true)
     showToast({ variant: 'success', title: 'Copied to clipboard!', description: 'Paste the Luau code into Roblox Studio to import.', duration: 4000 })
-    setTimeout(() => setCopied(false), 2000)
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
   const handleImport = () => {
     // Copy code to clipboard and signal done
     navigator.clipboard.writeText(result.luauCode).catch(() => {})
     setImportDone(true)
-    setTimeout(() => setImportDone(false), 3000)
+    if (importTimerRef.current) clearTimeout(importTimerRef.current)
+    importTimerRef.current = setTimeout(() => setImportDone(false), 3000)
   }
 
   return (
