@@ -1,6 +1,6 @@
 --[[
-  RobloxForge Studio Plugin — UI.lua
-  PLUG-01: Plugin panel with status, recent builds, quick actions
+  ForjeGames Studio Plugin — UI.lua
+  Plugin panel with status, recent builds, quick actions
   Dark theme: #1a1a1a bg, #c9a227 gold accent
 --]]
 
@@ -130,7 +130,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   -- Left: logo text + subtitle
   local logoText = label(
-    header, "LogoText", "RobloxForge",
+    header, "LogoText", "ForjeGames",
     UDim2.new(0, 140, 0, 24), UDim2.new(0, 12, 0, 6),
     COLORS.gold, 16, Enum.Font.GothamBold
   )
@@ -201,7 +201,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local authStatus = label(
     authCard, "AuthStatus",
-    state.authenticated and "Connected to RobloxForge" or "Not connected",
+    state.authenticated and "Connected to ForjeGames" or "Not connected",
     UDim2.new(1, -24, 0, 18), UDim2.new(0, 12, 0, 12),
     state.authenticated and COLORS.success or COLORS.textDim, 12
   )
@@ -214,7 +214,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local authBtn = goldButton(
     authCard, "AuthBtn",
-    state.authenticated and "Open Dashboard" or "Connect Account",
+    state.authenticated and "Open Dashboard" or "Enter Code",
     UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 48), COLORS
   )
 
@@ -357,7 +357,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   function refs.setDisconnected()
     authStatus.Text      = "Not connected"
     authStatus.TextColor3 = COLORS.textDim
-    authBtn.Text         = "Connect Account"
+    authBtn.Text         = "Enter Code"
     statusDot.BackgroundColor3 = COLORS.textDim
     authEmailLabel.Text  = ""
   end

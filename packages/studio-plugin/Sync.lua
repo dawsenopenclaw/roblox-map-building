@@ -1,15 +1,17 @@
 --[[
-  RobloxForge Studio Plugin — Sync.lua
-  PLUG-02: HTTP polling sync (2-5 second interval)
+  ForjeGames Studio Plugin — Sync.lua
+  HTTP polling sync (2-5 second interval)
 
-  GET  /api/studio/sync?lastSync=<timestamp>  → pending changes
-  POST /api/studio/update                     → push local changes
-  GET  /api/studio/status                     → connection health
+  GET  /api/studio/sync?lastSync=<timestamp>&sessionId=<id>  → pending changes
+  POST /api/studio/update                                     → push local changes
+  POST /api/studio/connect                                    → announce connection
+  POST /api/studio/screenshot                                 → push screenshot data
 
   Features:
   - Exponential backoff on failures (2s → 4s → 8s → max 30s)
   - Graceful degradation: retries silently, never crashes plugin
   - Change queue: batches local changes before pushing
+  - execute_luau command handler with loadstring + pcall
 --]]
 
 local HttpService = game:GetService("HttpService")
@@ -20,38 +22,38 @@ local Sync = {}
 -- ============================================================
 -- Config
 -- ============================================================
-local BASE_URL       = "https://robloxforge.app"
-local LOCAL_URL      = "http://localhost:3001"
-local MIN_INTERVAL   = 2   -- seconds
-local MAX_INTERVAL   = 30  -- seconds (backoff ceiling)
-local STATUS_TIMEOUT = 5   -- seconds between status checks
+local BASE_URL     = "https://forjegames.com"
+local LOCAL_URL    = "http://localhost:3000"
+local MIN_INTERVAL = 2    -- seconds
+local MAX_INTERVAL = 30   -- seconds (backoff ceiling)
 
 -- ============================================================
 -- Internal state
 -- ============================================================
-local _running        = false
-local _heartbeatConn  = nil
-local _token          = nil
-local _onStatusChange = nil
-local _lastSync       = 0
-local _lastStatusCheck = 0
-local _backoffInterval = MIN_INTERVAL
+local _running           = false
+local _heartbeatConn     = nil
+local _token             = nil
+local _sessionId         = nil
+local _onStatusChange    = nil
+local _lastSync          = 0
+local _backoffInterval   = MIN_INTERVAL
 local _timeSinceLastPoll = 0
-local _changeQueue    = {}
-local _pendingPush    = false
+local _changeQueue       = {}
+local _pendingPush       = false
+local _baseUrl           = nil
 
 -- ============================================================
--- Detect API base URL
+-- Resolve base URL (prefer local dev if reachable)
 -- ============================================================
-local _baseUrl = nil
-
 local function resolveBaseUrl()
   if _baseUrl then return _baseUrl end
 
-  -- game:HttpGetAsync does not exist — the correct API is HttpService:GetAsync
   local ok = pcall(function()
-    local res = HttpService:GetAsync(LOCAL_URL .. "/health", true)
-    if res and #res > 0 then
+    local res = HttpService:RequestAsync({
+      Url    = LOCAL_URL .. "/api/health",
+      Method = "GET",
+    })
+    if res and res.StatusCode and res.StatusCode < 500 then
       _baseUrl = LOCAL_URL
     end
   end)
@@ -64,13 +66,18 @@ local function resolveBaseUrl()
 end
 
 -- ============================================================
--- HTTP helpers
+-- HTTP helpers (all pcall-wrapped — never crash the plugin)
 -- ============================================================
 local function authHeaders()
-  local headers = { ["Content-Type"] = "application/json" }
+  local headers = {
+    ["Content-Type"]    = "application/json",
+    ["X-Plugin-Version"] = "1.0.0",
+  }
   if _token then
     headers["Authorization"] = "Bearer " .. _token
-    headers["X-Plugin-Version"] = "1.0.0"
+  end
+  if _sessionId then
+    headers["X-Session-Id"] = _sessionId
   end
   return headers
 end
@@ -89,7 +96,15 @@ end
 
 local function httpPost(path, body)
   local url = resolveBaseUrl() .. path
-  local encoded = HttpService:JSONEncode(body)
+  local encoded
+  local encOk, encErr = pcall(function()
+    encoded = HttpService:JSONEncode(body)
+  end)
+  if not encOk then
+    warn("[ForjeGames Sync] JSON encode error: " .. tostring(encErr))
+    return nil
+  end
+
   local ok, result = pcall(function()
     return HttpService:RequestAsync({
       Url     = url,
@@ -102,7 +117,73 @@ local function httpPost(path, body)
 end
 
 -- ============================================================
--- Apply incoming changes from API
+-- execute_luau handler
+-- loadstring is available in Studio plugin context.
+-- If disabled by FFlag, falls back to structured command parse.
+-- ============================================================
+local function executeStructuredCommand(data)
+  -- Fallback: interpret a structured {action, ...} table instead of raw Luau.
+  local action = data.action
+  if action == "create_part" then
+    local part = Instance.new("Part")
+    part.Name     = data.name or "FJ_Part"
+    part.Size     = Vector3.new(
+      data.sizeX or 4,
+      data.sizeY or 4,
+      data.sizeZ or 4
+    )
+    part.CFrame   = CFrame.new(
+      data.posX or 0,
+      data.posY or 5,
+      data.posZ or 0
+    )
+    part.Anchored = true
+    part:SetAttribute("fj_generated", true)
+    part.Parent   = workspace
+  elseif action == "delete_named" then
+    local inst = workspace:FindFirstChild(data.name or "", true)
+    if inst then inst:Destroy() end
+  elseif action == "set_property" then
+    local inst = workspace:FindFirstChild(data.instancePath or "", true)
+    if inst and data.property and data.value ~= nil then
+      pcall(function()
+        inst[data.property] = data.value
+      end)
+    end
+  end
+end
+
+local function handleExecuteLuau(data)
+  if not data or not data.code then return end
+
+  -- Attempt loadstring (available in Studio plugin scripts)
+  local loadOk = false
+  pcall(function()
+    -- loadstring returns fn, err
+    local fn, parseErr = loadstring(data.code)
+    if fn then
+      loadOk = true
+      local ok, execErr = pcall(fn)
+      if not ok then
+        warn("[ForjeGames] Execution error: " .. tostring(execErr))
+      end
+    else
+      warn("[ForjeGames] Parse error: " .. tostring(parseErr))
+      -- Fall through to structured command if loadstring gave us nil
+      if data.structured then
+        executeStructuredCommand(data.structured)
+      end
+    end
+  end)
+
+  if not loadOk and data.structured then
+    -- loadstring itself errored (security restricted) — use structured fallback
+    executeStructuredCommand(data.structured)
+  end
+end
+
+-- ============================================================
+-- Apply incoming changes from the server
 -- ============================================================
 local function applyChanges(changes)
   if not changes or type(changes) ~= "table" then return end
@@ -112,22 +193,24 @@ local function applyChanges(changes)
       local changeType = change.type
       local data       = change.data
 
-      if changeType == "insert_model" and data then
-        -- Signal AssetManager to insert the model
+      if changeType == "execute_luau" then
+        handleExecuteLuau(data)
+
+      elseif changeType == "insert_model" and data then
         local assetOk, assetErr = pcall(function()
           local AssetManager = require(script.Parent.AssetManager)
           AssetManager.insertFromChange(change)
         end)
         if not assetOk then
-          warn("[RobloxForge Sync] insert_model failed: " .. tostring(assetErr))
+          warn("[ForjeGames Sync] insert_model failed: " .. tostring(assetErr))
         end
+
       elseif changeType == "delete_model" and data and data.name then
         local instance = workspace:FindFirstChild(data.name, true)
-        if instance then
-          instance:Destroy()
-        end
+        if instance then instance:Destroy() end
+
       elseif changeType == "update_property" and data then
-        local instance = workspace:FindFirstChild(data.instancePath, true)
+        local instance = workspace:FindFirstChild(data.instancePath or "", true)
         if instance and data.property and data.value ~= nil then
           pcall(function()
             instance[data.property] = data.value
@@ -137,7 +220,31 @@ local function applyChanges(changes)
     end)
 
     if not ok then
-      warn("[RobloxForge Sync] Failed to apply change: " .. tostring(err))
+      warn("[ForjeGames Sync] Failed to apply change: " .. tostring(err))
+    end
+  end
+end
+
+-- ============================================================
+-- Announce connection to the server
+-- ============================================================
+local function sendConnect()
+  if not _token then return end
+
+  local payload = {
+    placeId   = game.PlaceId,
+    jobId     = game.JobId,
+    pluginVer = "1.0.0",
+    sessionId = _sessionId,
+  }
+
+  local result = httpPost("/api/studio/connect", payload)
+  if result and result.StatusCode == 200 then
+    local ok, data = pcall(function()
+      return HttpService:JSONDecode(result.Body)
+    end)
+    if ok and data and data.sessionId then
+      _sessionId = data.sessionId
     end
   end
 end
@@ -146,48 +253,48 @@ end
 -- Poll for pending server changes
 -- ============================================================
 local function pollSync()
+  if not _token then return end
+
   local path = "/api/studio/sync?lastSync=" .. tostring(math.floor(_lastSync))
+  if _sessionId then
+    path = path .. "&sessionId=" .. _sessionId
+  end
 
   local result = httpGet(path)
 
   if not result then
-    -- Failure: increase backoff
     _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
-    if _onStatusChange then
-      _onStatusChange(false, _lastSync)
-    end
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
     return
   end
 
-  -- Success: reset backoff
-  _backoffInterval = MIN_INTERVAL
-
   local status = result.StatusCode
+
   if status == 200 then
+    _backoffInterval = MIN_INTERVAL
     local ok, data = pcall(function()
       return HttpService:JSONDecode(result.Body)
     end)
-
     if ok and data then
       _lastSync = data.serverTime or os.time()
-
       if data.changes and #data.changes > 0 then
         applyChanges(data.changes)
       end
     end
+    if _onStatusChange then _onStatusChange(true, _lastSync) end
 
-    if _onStatusChange then
-      _onStatusChange(true, _lastSync)
-    end
   elseif status == 401 then
-    warn("[RobloxForge Sync] Auth expired — please reconnect")
+    warn("[ForjeGames Sync] Auth expired — please reconnect in the plugin")
     _backoffInterval = MAX_INTERVAL
-    if _onStatusChange then
-      _onStatusChange(false, _lastSync)
-    end
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
+
   elseif status == 429 then
-    -- Rate limited: back off
+    -- Rate limited: aggressive backoff
     _backoffInterval = math.min(_backoffInterval * 3, MAX_INTERVAL)
+
+  else
+    _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
   end
 end
 
@@ -196,13 +303,14 @@ end
 -- ============================================================
 local function pushChanges()
   if #_changeQueue == 0 then return end
+  if not _token then return end
 
   local batch = {}
   for _, c in ipairs(_changeQueue) do
     table.insert(batch, c)
   end
-  _changeQueue = {}
-  _pendingPush = false
+  _changeQueue  = {}
+  _pendingPush  = false
 
   local payload = {
     timestamp = os.time(),
@@ -210,18 +318,16 @@ local function pushChanges()
     source    = "studio-plugin",
     placeId   = game.PlaceId,
     jobId     = game.JobId,
+    sessionId = _sessionId,
   }
 
   local result = httpPost("/api/studio/update", payload)
-
-  if result and result.StatusCode == 200 then
-    -- Changes accepted
-  else
-    -- Re-queue on failure (don't lose changes)
+  if not (result and result.StatusCode == 200) then
+    -- Re-queue on failure
     for _, c in ipairs(batch) do
       table.insert(_changeQueue, c)
     end
-    warn("[RobloxForge Sync] Failed to push changes, will retry")
+    warn("[ForjeGames Sync] Failed to push changes, will retry")
   end
 end
 
@@ -236,12 +342,25 @@ local function onHeartbeat(dt)
   if _timeSinceLastPoll >= _backoffInterval then
     _timeSinceLastPoll = 0
     pollSync()
-
-    -- Push any queued local changes
     if _pendingPush then
       pushChanges()
     end
   end
+end
+
+-- ============================================================
+-- Public: push a screenshot payload
+-- ============================================================
+function Sync.pushScreenshot(imageData)
+  if not _token then return end
+  local payload = {
+    image     = imageData,
+    placeId   = game.PlaceId,
+    sessionId = _sessionId,
+    timestamp = os.time(),
+  }
+  local result = httpPost("/api/studio/screenshot", payload)
+  return result and result.StatusCode == 200
 end
 
 -- ============================================================
@@ -262,20 +381,25 @@ end
 function Sync.start(opts)
   if _running then return end
 
-  _token          = opts.token
-  _onStatusChange = opts.onStatusChange
-  _backoffInterval = MIN_INTERVAL
+  _token             = opts.token
+  _sessionId         = opts.sessionId or nil
+  _onStatusChange    = opts.onStatusChange
+  _backoffInterval   = MIN_INTERVAL
   _timeSinceLastPoll = 0
-  _running        = true
+  _running           = true
 
-  -- Resolve base URL on startup
-  task.spawn(resolveBaseUrl)
+  -- Resolve base URL on startup (background — doesn't block)
+  task.spawn(function()
+    resolveBaseUrl()
+    -- Announce connection once base URL is known
+    sendConnect()
+  end)
 
   -- Attach heartbeat
   _heartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
 
-  -- Initial sync immediately
-  task.delay(0.1, pollSync)
+  -- Initial poll after a short delay (give connect time to register)
+  task.delay(1, pollSync)
 end
 
 -- ============================================================
@@ -290,11 +414,13 @@ function Sync.stop()
 end
 
 -- ============================================================
--- Public: update auth token (e.g. after re-login)
+-- Public: update auth token (after re-login)
 -- ============================================================
 function Sync.setToken(token)
-  _token = token
-  _backoffInterval = MIN_INTERVAL  -- reset backoff
+  _token           = token
+  _backoffInterval = MIN_INTERVAL
+  -- Re-announce connection with new token
+  task.spawn(sendConnect)
 end
 
 -- ============================================================
@@ -302,11 +428,12 @@ end
 -- ============================================================
 function Sync.getStatus()
   return {
-    running          = _running,
-    connected        = _backoffInterval == MIN_INTERVAL,
-    lastSync         = _lastSync,
-    backoffInterval  = _backoffInterval,
-    pendingChanges   = #_changeQueue,
+    running         = _running,
+    connected       = _backoffInterval == MIN_INTERVAL,
+    lastSync        = _lastSync,
+    backoffInterval = _backoffInterval,
+    pendingChanges  = #_changeQueue,
+    sessionId       = _sessionId,
   }
 end
 

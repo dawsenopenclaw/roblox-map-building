@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, memo } from 'react'
 import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppTopNav } from '@/components/AppTopNav'
@@ -14,7 +14,73 @@ import { Spotlight } from '@/components/ui/spotlight'
  *
  * /editor — renders children directly (full-screen, zero chrome)
  * everything else — standard top nav + sidebar + padded main
+ *
+ * AppShell lives in layout.tsx (persists across navigations). usePathname()
+ * causes a re-render on every route change, so the chrome tree (sidebar, nav)
+ * is memo-isolated. Only the <main> children slot updates between pages.
  */
+
+// ── Memoised chrome — only re-renders when modal state changes, never on navigation ──
+const AppChrome = memo(function AppChrome({
+  children,
+  sidebarOpen,
+  paletteOpen,
+  shortcutsOpen,
+  onSidebarOpen,
+  onSidebarClose,
+  onPaletteOpen,
+  onPaletteClose,
+  onShortcutsOpen,
+  onShortcutsClose,
+  onNewProject,
+}: {
+  children: React.ReactNode
+  sidebarOpen: boolean
+  paletteOpen: boolean
+  shortcutsOpen: boolean
+  onSidebarOpen: () => void
+  onSidebarClose: () => void
+  onPaletteOpen: () => void
+  onPaletteClose: () => void
+  onShortcutsOpen: () => void
+  onShortcutsClose: () => void
+  onNewProject: () => void
+}) {
+  return (
+    <>
+      {/* ── Standard layout: top nav + left sidebar + padded main ── */}
+      <div className="min-h-screen bg-[#141414] flex">
+        <AppSidebar isOpen={sidebarOpen} onClose={onSidebarClose} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <AppTopNav
+            onMenuOpen={onSidebarOpen}
+            onCommandPalette={onPaletteOpen}
+          />
+          <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
+            <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
+              {children}
+            </main>
+          </Spotlight>
+        </div>
+      </div>
+
+      <AchievementToastProvider />
+
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={onPaletteClose}
+        onNewProject={onNewProject}
+        onShowShortcuts={onShortcutsOpen}
+      />
+
+      <ShortcutsDialog
+        isOpen={shortcutsOpen}
+        onClose={onShortcutsClose}
+      />
+    </>
+  )
+})
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isNewEditor = pathname === '/editor'
@@ -51,36 +117,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
-      {/* ── Standard layout: top nav + left sidebar + padded main ── */}
-      <div className="min-h-screen bg-[#141414] flex">
-        <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex-1 flex flex-col min-w-0">
-          <AppTopNav
-            onMenuOpen={() => setSidebarOpen(true)}
-            onCommandPalette={() => setPaletteOpen(true)}
-          />
-          <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
-            <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
-              {children}
-            </main>
-          </Spotlight>
-        </div>
-      </div>
-
-      <AchievementToastProvider />
-
-      <CommandPalette
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        onNewProject={handleNewProject}
-        onShowShortcuts={() => setShortcutsOpen(true)}
-      />
-
-      <ShortcutsDialog
-        isOpen={shortcutsOpen}
-        onClose={() => setShortcutsOpen(false)}
-      />
-    </>
+    <AppChrome
+      sidebarOpen={sidebarOpen}
+      paletteOpen={paletteOpen}
+      shortcutsOpen={shortcutsOpen}
+      onSidebarOpen={() => setSidebarOpen(true)}
+      onSidebarClose={() => setSidebarOpen(false)}
+      onPaletteOpen={() => setPaletteOpen(true)}
+      onPaletteClose={() => setPaletteOpen(false)}
+      onShortcutsOpen={() => setShortcutsOpen(true)}
+      onShortcutsClose={() => setShortcutsOpen(false)}
+      onNewProject={handleNewProject}
+    >
+      {children}
+    </AppChrome>
   )
 }

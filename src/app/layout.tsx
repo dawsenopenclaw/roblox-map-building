@@ -8,6 +8,7 @@ import { InstallPrompt } from '@/components/InstallPrompt'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ToastProvider } from '@/components/ui/toast-notification'
 import Script from 'next/script'
+import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 import { SplashScreen } from '@/components/SplashScreen'
 
@@ -150,7 +151,6 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-background text-white antialiased font-sans" suppressHydrationWarning>
-        <SplashScreen>
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
@@ -172,14 +172,26 @@ export default function RootLayout({
             },
           }}
         >
-          <SkipToContent />
-          <OfflineIndicator />
-          <ToastProvider>
-            <PostHogProvider>{children}</PostHogProvider>
-          </ToastProvider>
-          <InstallPrompt />
+          {/*
+            SplashScreen wraps the entire app tree INSIDE ClerkProvider so Clerk
+            can initialize in the background while the splash plays — but the
+            children are rendered visibility:hidden until the splash completes.
+
+            Suspense with null fallback prevents Clerk's internal lazy auth
+            boundaries from rendering any intermediate loading state that
+            could produce a white flash or unstyled content.
+          */}
+          <SplashScreen>
+            <Suspense fallback={null}>
+              <SkipToContent />
+              <OfflineIndicator />
+              <ToastProvider>
+                <PostHogProvider>{children}</PostHogProvider>
+              </ToastProvider>
+              <InstallPrompt />
+            </Suspense>
+          </SplashScreen>
         </ClerkProvider>
-        </SplashScreen>
         <Script
           id="register-sw"
           strategy="afterInteractive"

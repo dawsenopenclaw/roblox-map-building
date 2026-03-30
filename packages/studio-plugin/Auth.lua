@@ -1,177 +1,117 @@
 --[[
-  RobloxForge Studio Plugin — Auth.lua
-  PLUG-01: Browser-based OAuth flow
+  ForjeGames Studio Plugin — Auth.lua
 
-  Flow:
-  1. Plugin opens system browser to RobloxForge OAuth URL with a short-lived state token
-  2. User signs in, browser redirects to localhost callback
-  3. Plugin polls for the token (written to a temp file or local server)
-  4. Token stored in plugin:SetSetting (persisted across sessions)
+  Simple 6-character code auth flow:
+  1. User visits forjegames.com/settings/studio → sees a 6-character code
+  2. User enters the code in the plugin TextBox
+  3. Plugin POSTs /api/studio/auth with { code }
+  4. Server returns { token, sessionId, expiresAt }
+  5. Token stored via plugin:SetSetting (persisted across Studio sessions)
 --]]
 
-local HttpService   = game:GetService("HttpService")
-local RunService    = game:GetService("RunService")
-local StudioService = game:GetService("StudioService")
+local HttpService = game:GetService("HttpService")
 
 local Auth = {}
 
 -- ============================================================
 -- Config
 -- ============================================================
-local BASE_URL      = "https://robloxforge.app"          -- production
-local LOCAL_URL     = "http://localhost:3000"             -- local dev
-local CALLBACK_PORT = 7842                                -- plugin auth callback port
-local POLL_INTERVAL = 1.5                                -- seconds between polls
-local POLL_TIMEOUT  = 120                               -- seconds before giving up
+local BASE_URL   = "https://forjegames.com"
+local LOCAL_URL  = "http://localhost:3000"
 
--- Detect environment
+-- Detect environment: prefer local dev server if reachable
+local _baseUrl = nil
 local function getBaseUrl()
-  -- Check if local API is reachable
+  if _baseUrl then return _baseUrl end
   local ok = pcall(function()
-    local res = game:HttpGet(LOCAL_URL .. "/health", true)
-    return res ~= nil
+    local res = HttpService:RequestAsync({
+      Url    = LOCAL_URL .. "/api/health",
+      Method = "GET",
+    })
+    if res and res.StatusCode and res.StatusCode < 500 then
+      _baseUrl = LOCAL_URL
+    end
   end)
-  return ok and LOCAL_URL or BASE_URL
+  if not _baseUrl then _baseUrl = BASE_URL end
+  return _baseUrl
 end
 
 -- ============================================================
--- State token generation (random hex string)
+-- Public: exchange a 6-character code for a session token
+-- callback(token, sessionId, err)
 -- ============================================================
-local function generateStateToken()
-  local chars = "0123456789abcdef"
-  local token = ""
-  for i = 1, 32 do
-    local idx = math.random(1, #chars)
-    token = token .. chars:sub(idx, idx)
+function Auth.exchangeCode(code, pluginRef, callback)
+  if not code or #code < 6 then
+    callback(nil, nil, "Please enter the 6-character code from forjegames.com/settings/studio")
+    return
   end
-  return token
-end
 
--- ============================================================
--- Open browser to OAuth URL
--- ============================================================
-local function openBrowser(url)
-  -- Studio's built-in open URL (opens system default browser)
-  local ok = pcall(function()
-    -- StudioService:OpenInBrowser does not exist in all versions
-    -- Fallback: use print so developer can copy-paste
-  end)
+  -- Run in a separate thread so we don't block the heartbeat
+  task.spawn(function()
+    local url = getBaseUrl() .. "/api/studio/auth"
 
-  -- Primary method: plugin-level open URL
-  -- This requires the plugin to have HttpService access
-  warn("[RobloxForge Auth] Opening browser: " .. url)
-  warn("[RobloxForge Auth] If browser does not open, paste this URL manually:")
-  warn(url)
-
-  -- Try to open via Studio's built-in method
-  pcall(function()
-    -- plugin:OpenScript opens .lua files, not URLs
-    -- Best approach in Studio: display URL prominently in output
-    -- Real implementations use a ScreenGui with a clickable link button
-  end)
-end
-
--- ============================================================
--- Poll for auth token from local callback server
--- ============================================================
-local function pollForToken(stateToken, callback)
-  local elapsed    = 0
-  local connection = nil
-
-  connection = RunService.Heartbeat:Connect(function(dt)
-    elapsed = elapsed + dt
-
-    if elapsed > POLL_TIMEOUT then
-      connection:Disconnect()
-      callback(nil, "Auth timeout — please try again")
+    local encoded
+    local encOk = pcall(function()
+      encoded = HttpService:JSONEncode({ code = code:upper():gsub("%s+", "") })
+    end)
+    if not encOk then
+      callback(nil, nil, "Failed to encode request")
       return
     end
-
-    -- Poll every POLL_INTERVAL seconds
-    if elapsed % POLL_INTERVAL > dt then return end
 
     local ok, result = pcall(function()
-      return HttpService:GetAsync(
-        "http://localhost:" .. CALLBACK_PORT .. "/auth/poll?state=" .. stateToken,
-        true -- bypass cache
-      )
+      return HttpService:RequestAsync({
+        Url    = url,
+        Method = "POST",
+        Headers = {
+          ["Content-Type"] = "application/json",
+        },
+        Body   = encoded,
+      })
     end)
 
-    if ok and result then
-      -- pcall returns (success, value) — capture both so we don't call JSONDecode
-      -- a second time unprotected (original code discarded the decoded value and
-      -- re-called JSONDecode outside the pcall, which could throw on malformed JSON)
-      local decodeOk, data = pcall(function() return HttpService:JSONDecode(result) end)
-      if decodeOk and data then
-        if data.token then
-          connection:Disconnect()
-          callback(data.token, nil)
-          return
-        end
-        if data.error then
-          connection:Disconnect()
-          callback(nil, data.error)
-          return
-        end
-      end
-    end
-  end)
-
-  return connection
-end
-
--- ============================================================
--- Public: begin OAuth flow
--- ============================================================
-function Auth.beginOAuthFlow(pluginRef, onSuccess, onError)
-  local stateToken = generateStateToken()
-  local baseUrl    = BASE_URL -- always point to production for OAuth
-
-  local authUrl = baseUrl
-    .. "/api/auth/studio?"
-    .. "state=" .. stateToken
-    .. "&callback=http://localhost:" .. CALLBACK_PORT .. "/auth/callback"
-    .. "&plugin=true"
-
-  openBrowser(authUrl)
-
-  -- Start polling for the token
-  pollForToken(stateToken, function(token, err)
-    if err then
-      if onError then onError(err) end
-      warn("[RobloxForge Auth] Failed: " .. tostring(err))
+    if not ok or not result then
+      callback(nil, nil, "Could not reach ForjeGames. Check your internet and try again.")
       return
     end
 
-    if onSuccess then onSuccess(token) end
+    local status = result.StatusCode
+
+    if status == 200 then
+      local decodeOk, data = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+      end)
+      if decodeOk and data and data.token then
+        -- Persist token
+        pcall(function() pluginRef:SetSetting("fj_auth_token",   data.token)    end)
+        pcall(function() pluginRef:SetSetting("fj_session_id",   data.sessionId or "") end)
+        callback(data.token, data.sessionId, nil)
+      else
+        callback(nil, nil, "Invalid response from server")
+      end
+
+    elseif status == 400 then
+      callback(nil, nil, "Invalid or expired code. Get a fresh code from forjegames.com/settings/studio")
+
+    elseif status == 429 then
+      callback(nil, nil, "Too many attempts. Wait a moment and try again.")
+
+    else
+      callback(nil, nil, "Server error (" .. tostring(status) .. "). Try again shortly.")
+    end
   end)
 end
 
 -- ============================================================
--- Public: open dashboard in browser
--- ============================================================
-function Auth.openDashboard()
-  local url = BASE_URL .. "/dashboard"
-  warn("[RobloxForge] Open dashboard: " .. url)
-end
-
--- ============================================================
--- Public: sign out
--- ============================================================
-function Auth.signOut(pluginRef, onComplete)
-  pcall(function() pluginRef:SetSetting("rf_auth_token", nil) end)
-  if onComplete then onComplete() end
-end
-
--- ============================================================
--- Public: validate existing token
+-- Public: validate an existing stored token
+-- Returns true/false (synchronous pcall — fine for startup)
 -- ============================================================
 function Auth.validateToken(token)
   if not token or token == "" then return false end
 
   local ok, result = pcall(function()
     return HttpService:RequestAsync({
-      Url    = BASE_URL .. "/api/auth/validate",
+      Url    = getBaseUrl() .. "/api/studio/auth/validate",
       Method = "GET",
       Headers = {
         ["Authorization"] = "Bearer " .. token,
@@ -180,13 +120,36 @@ function Auth.validateToken(token)
     })
   end)
 
-  if not ok then return false end
+  if not ok or not result then return false end
+  return result.StatusCode == 200
+end
 
-  if result and result.StatusCode == 200 then
-    return true
-  end
+-- ============================================================
+-- Public: sign out — clears stored credentials
+-- ============================================================
+function Auth.signOut(pluginRef, onComplete)
+  pcall(function() pluginRef:SetSetting("fj_auth_token", nil) end)
+  pcall(function() pluginRef:SetSetting("fj_session_id", nil) end)
+  if onComplete then onComplete() end
+end
 
-  return false
+-- ============================================================
+-- Public: open dashboard URL (prints to Output for now;
+-- future: plugin:OpenBrowserWindow when Roblox exposes it)
+-- ============================================================
+function Auth.openDashboard()
+  local url = BASE_URL .. "/dashboard"
+  print("[ForjeGames] Open dashboard: " .. url)
+  warn("[ForjeGames] Copy the URL above and paste into your browser")
+end
+
+-- ============================================================
+-- Public: open settings page so user can get a fresh code
+-- ============================================================
+function Auth.openCodePage()
+  local url = BASE_URL .. "/settings/studio"
+  print("[ForjeGames] Get your connection code at: " .. url)
+  warn("[ForjeGames] Copy the URL above and paste into your browser")
 end
 
 return Auth

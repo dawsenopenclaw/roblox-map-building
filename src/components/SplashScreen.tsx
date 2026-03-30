@@ -117,21 +117,49 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     setTimeout(() => setSplashState('done'), 600)
   }
 
-  // pending = waiting for sessionStorage check — render nothing to avoid flash
-  if (splashState === 'pending') return null
-  if (done) return <>{children}</>
-
-  const stageLabel = getStageLabel(progress)
+  const stageLabel = splashState === 'pending' ? STAGES[0].label : getStageLabel(progress)
 
   return (
     <>
-      {/* Page content hidden behind splash */}
-      <div aria-hidden style={{ visibility: 'hidden', position: 'fixed', inset: 0 }}>
+      {/*
+        Children ALWAYS stay mounted in the same wrapper — no remounting.
+        Clerk, PostHog, and other providers initialize in the background
+        while the splash plays.
+
+        'pending'  → invisible, inert, height-clipped (sessionStorage check in flight)
+        'showing'  → invisible, inert, height-clipped (splash animating)
+        'done'     → visible, interactive, full height
+      */}
+      <div
+        style={
+          done
+            ? undefined // no wrapper styles needed — fully natural layout
+            : {
+                visibility: 'hidden',
+                pointerEvents: 'none',
+                overflow: 'hidden',
+                height: '100vh',
+              }
+        }
+      >
         {children}
       </div>
 
-      {/* Splash overlay */}
-      <div
+      {/* During 'pending' cover the screen while sessionStorage check runs */}
+      {splashState === 'pending' && (
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: '#0a0a0a',
+          }}
+        />
+      )}
+
+      {/* Animated splash overlay — only during 'showing' */}
+      {splashState === 'showing' && <div
         role="status"
         aria-label="Loading ForjeGames"
         aria-live="polite"
@@ -382,7 +410,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
             <div aria-hidden style={{ position: 'absolute', bottom: '24px', right: '24px', width: '20px', height: '20px', borderBottom: '1.5px solid rgba(212,175,55,0.4)', borderRight: '1.5px solid rgba(212,175,55,0.4)' }} />
           </>
         )}
-      </div>
+      </div>}
     </>
   )
 }

@@ -1,11 +1,11 @@
 --[[
-  RobloxForge Studio Plugin — History.lua
+  ForjeGames Studio Plugin — History.lua
   PLUG-04: ChangeHistoryService wrapper
 
   Every AI operation gets:
   1. beginWaypoint() call before changes
   2. endWaypoint() call after changes
-  3. Named waypoints so Studio's undo stack shows "Undo: RF_GenerateTerrain"
+  3. Named waypoints so Studio's undo stack shows "Undo: FJ_GenerateTerrain"
 
   Users can undo/redo ALL AI operations via Ctrl+Z / Ctrl+Y in Studio.
 --]]
@@ -28,8 +28,8 @@ local MAX_HISTORY = 100
 -- ============================================================
 local function formatWaypointName(operationName)
   -- Studio displays this in the undo menu
-  -- Format: "RF_OperationName" (prefix RF_ makes them identifiable)
-  return "RF_" .. tostring(operationName):gsub("%s+", "_")
+  -- Format: "FJ_OperationName" (prefix FJ_ makes them identifiable)
+  return "FJ_" .. tostring(operationName):gsub("%s+", "_")
 end
 
 -- ============================================================
@@ -40,7 +40,7 @@ function History.beginWaypoint(operationName)
 
   -- Close any previously open waypoint for this operation
   if _openWaypoints[operationName] then
-    warn("[RobloxForge History] Waypoint already open for " .. operationName .. " — closing it first")
+    warn("[ForjeGames History] Waypoint already open for " .. operationName .. " — closing it first")
     ChangeHistoryService:SetWaypoint(wpName .. "_AutoClose")
   end
 
@@ -56,7 +56,7 @@ function History.beginWaypoint(operationName)
   end)
 
   if not ok then
-    warn("[RobloxForge History] Failed to set begin waypoint: " .. tostring(err))
+    warn("[ForjeGames History] Failed to set begin waypoint: " .. tostring(err))
   end
 end
 
@@ -83,7 +83,7 @@ function History.endWaypoint(operationName)
   end)
 
   if not ok then
-    warn("[RobloxForge History] Failed to set end waypoint: " .. tostring(err))
+    warn("[ForjeGames History] Failed to set end waypoint: " .. tostring(err))
     return
   end
 
@@ -114,7 +114,7 @@ function History.wrap(operationName, fn)
   History.endWaypoint(operationName)
 
   if not ok then
-    error("[RobloxForge History] Operation '" .. operationName .. "' failed: " .. tostring(result))
+    error("[ForjeGames History] Operation '" .. operationName .. "' failed: " .. tostring(result))
   end
 
   return result
@@ -154,7 +154,7 @@ function History.undoLast()
   end)
 
   if not ok then
-    warn("[RobloxForge History] Undo failed: " .. tostring(err))
+    warn("[ForjeGames History] Undo failed: " .. tostring(err))
     return false
   end
 
@@ -170,7 +170,7 @@ function History.redoLast()
   end)
 
   if not ok then
-    warn("[RobloxForge History] Redo failed: " .. tostring(err))
+    warn("[ForjeGames History] Redo failed: " .. tostring(err))
     return false
   end
 

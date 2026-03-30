@@ -52,6 +52,23 @@ interface ModelOption {
 
 type PanelId = 'projects' | 'assets' | 'dna' | 'tokens' | 'settings' | null
 
+// ─── Studio connection types ───────────────────────────────────────────────────
+
+interface StudioStatus {
+  connected: boolean
+  placeName?: string
+  placeId?: number
+  screenshotUrl?: string
+  lastActivity?: string
+  sessionId?: string
+}
+
+interface StudioActivity {
+  id: string
+  message: string
+  timestamp: Date
+}
+
 interface RobloxGame {
   id: string
   name: string
@@ -2343,10 +2360,13 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
   )
 }
 
-function SettingsPanel() {
+function SettingsPanel({ studioStatus }: { studioStatus: StudioStatus }) {
   const [notifications, setNotifications] = useState(true)
   const [autoSave, setAutoSave]           = useState(true)
   const [streamingText, setStreamingText] = useState(true)
+  const [connectionCode, setConnectionCode] = useState<string | null>(null)
+  const [loadingCode, setLoadingCode]       = useState(false)
+  const [codeCopied, setCodeCopied]         = useState(false)
 
   const toggleRows = [
     { label: 'Notifications',  sub: 'Build & asset alerts',        value: notifications, set: setNotifications },
@@ -2354,9 +2374,99 @@ function SettingsPanel() {
     { label: 'Streaming text', sub: 'Animated word fade-in',       value: streamingText, set: setStreamingText  },
   ]
 
+  async function handleGenerateCode() {
+    setLoadingCode(true)
+    try {
+      const res = await fetch('/api/studio/auth?action=generate')
+      if (res.ok) {
+        const data = await res.json() as { code?: string }
+        setConnectionCode(data.code ?? null)
+      }
+    } catch {
+      // silently fail — code stays null
+    } finally {
+      setLoadingCode(false)
+    }
+  }
+
+  async function handleCopyCode() {
+    if (!connectionCode) return
+    await navigator.clipboard.writeText(connectionCode).catch(() => {})
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }
+
   return (
     <div className="p-4 space-y-3" style={{ animation: 'panel-slide-in 0.2s ease-out forwards' }}>
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Preferences</p>
+
+      {/* Studio Connection Section */}
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-1">Studio Connection</p>
+      <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 space-y-3">
+        {/* Status row */}
+        <div className="flex items-center gap-2">
+          <span
+            className="w-2 h-2 rounded-full flex-shrink-0"
+            style={{
+              backgroundColor: studioStatus.connected ? '#10B981' : '#6B7280',
+              boxShadow: studioStatus.connected ? '0 0 6px #10B981' : 'none',
+              animation: studioStatus.connected ? 'pulse-ring 2s infinite' : 'none',
+            }}
+          />
+          <span className="text-xs font-semibold text-gray-200">
+            {studioStatus.connected ? 'Connected' : 'Not Connected'}
+          </span>
+          {studioStatus.connected && studioStatus.placeName && (
+            <span className="text-[10px] text-[#FFB81C] truncate">{studioStatus.placeName}</span>
+          )}
+        </div>
+
+        {studioStatus.connected && studioStatus.placeId && (
+          <div className="text-[10px] text-gray-500">
+            Place ID: <span className="text-gray-300 font-mono">{studioStatus.placeId}</span>
+          </div>
+        )}
+
+        {/* Connection code */}
+        <div>
+          <p className="text-[10px] text-gray-500 mb-1.5">Plugin connection code</p>
+          {connectionCode ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-[11px] font-mono text-[#FFB81C] tracking-wider">
+                {connectionCode}
+              </code>
+              <button
+                onClick={handleCopyCode}
+                className="px-2 py-1.5 rounded text-[10px] font-semibold transition-colors flex-shrink-0"
+                style={{
+                  background: codeCopied ? 'rgba(74,222,128,0.12)' : 'rgba(255,184,28,0.1)',
+                  border: `1px solid ${codeCopied ? 'rgba(74,222,128,0.3)' : 'rgba(255,184,28,0.25)'}`,
+                  color: codeCopied ? '#4ADE80' : '#FFB81C',
+                }}
+              >
+                {codeCopied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGenerateCode}
+              disabled={loadingCode}
+              className="w-full py-1.5 rounded-lg text-[10px] font-semibold transition-colors disabled:opacity-50"
+              style={{ background: 'rgba(255,184,28,0.08)', border: '1px solid rgba(255,184,28,0.2)', color: '#FFB81C' }}
+            >
+              {loadingCode ? 'Generating...' : 'Generate Connection Code'}
+            </button>
+          )}
+        </div>
+
+        {/* Instructions */}
+        <div className="text-[10px] text-gray-600 space-y-0.5 leading-relaxed">
+          <p>1. Install the ForjeGames plugin from the Creator Store</p>
+          <p>2. Open your place in Roblox Studio</p>
+          <p>3. Enter this code in the plugin toolbar</p>
+        </div>
+      </div>
+
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold pt-1">Preferences</p>
 
       {/* Theme row — always dark */}
       <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-white/[0.025] border border-white/[0.07]">
@@ -2652,6 +2762,41 @@ export function EditorClient() {
           }
           return msgs
         })
+
+        // If Studio is actually connected (not demo), send Luau code to Studio for execution
+        if (studioStatus.connected) {
+          // Extract Luau from buildResult or mesh data
+          const luauToExecute = buildResult?.luauCode ?? meshData?.luauCode ?? null
+          if (luauToExecute) {
+            setExecuteStatus('sending')
+            setStudioActivity((prev) => [
+              { id: uid(), message: `Sending build commands to Studio...`, timestamp: new Date() },
+              ...prev.slice(0, 19),
+            ])
+            fetch('/api/studio/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code: luauToExecute, prompt: trimmed }),
+            })
+              .then((r) => {
+                setExecuteStatus(r.ok ? 'done' : 'error')
+                setStudioActivity((prev) => [
+                  { id: uid(), message: r.ok ? `Executed in Studio` : `Studio execution failed`, timestamp: new Date() },
+                  ...prev.slice(0, 19),
+                ])
+              })
+              .catch(() => {
+                setExecuteStatus('error')
+                setStudioActivity((prev) => [
+                  { id: uid(), message: `Studio unreachable`, timestamp: new Date() },
+                  ...prev.slice(0, 19),
+                ])
+              })
+              .finally(() => {
+                setTimeout(() => setExecuteStatus('idle'), 3000)
+              })
+          }
+        }
       } catch {
         setMessages((prev) => {
           const without = prev.filter((m) => m.id !== statusMsg.id)
@@ -2726,7 +2871,68 @@ export function EditorClient() {
     </>
   )
 
-  const [studioConnected, setStudioConnected] = useState(false)
+  const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
+  const [studioPolling, setStudioPolling]   = useState(false)
+  const [demoMode, setDemoMode]             = useState(false)
+  const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
+  const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const studioIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Studio status polling
+  const pollStudioStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/studio/status')
+      if (!res.ok) return
+      const data = await res.json() as StudioStatus
+      setStudioStatus(data)
+    } catch {
+      // Network error — don't crash, just keep polling
+    }
+  }, [])
+
+  // Screenshot polling (only when connected)
+  const pollScreenshot = useCallback(async () => {
+    try {
+      const res = await fetch('/api/studio/screenshot')
+      if (!res.ok) return
+      const data = await res.json() as { screenshotUrl?: string }
+      if (data.screenshotUrl) {
+        setStudioStatus((prev) => ({ ...prev, screenshotUrl: data.screenshotUrl }))
+      }
+    } catch {
+      // silently ignore
+    }
+  }, [])
+
+  // Start polling when user clicks "Connect to Studio"
+  const handleStartPolling = useCallback(() => {
+    setStudioPolling(true)
+    // Immediately poll once
+    pollStudioStatus()
+  }, [pollStudioStatus])
+
+  // Set up polling interval
+  useEffect(() => {
+    if (!studioPolling) return
+    studioIntervalRef.current = setInterval(() => {
+      pollStudioStatus()
+      if (studioStatus.connected) pollScreenshot()
+    }, 3000)
+    return () => {
+      if (studioIntervalRef.current) clearInterval(studioIntervalRef.current)
+    }
+  }, [studioPolling, studioStatus.connected, pollStudioStatus, pollScreenshot])
+
+  // Stop polling if we enter demo mode
+  useEffect(() => {
+    if (demoMode && studioIntervalRef.current) {
+      clearInterval(studioIntervalRef.current)
+      studioIntervalRef.current = null
+    }
+  }, [demoMode])
+
+  // Derived: show connected viewport if actually connected OR in demo mode
+  const studioConnected = studioStatus.connected || demoMode
 
   return (
     <>

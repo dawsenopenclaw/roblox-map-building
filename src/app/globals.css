@@ -139,51 +139,127 @@ button, a, [role="button"] {
 
 /* ─── Splash Screen Glitch ───────────────────────────────────────────────────── */
 
-@keyframes glitch {
-  0%, 100% { clip-path: inset(0 0 0 0);    transform: translate(0); }
-  20%       { clip-path: inset(20% 0 60% 0); transform: translate(-5px, 2px); }
-  40%       { clip-path: inset(60% 0 10% 0); transform: translate(5px, -2px); }
-  60%       { clip-path: inset(40% 0 40% 0); transform: translate(-3px, 1px); }
-  80%       { clip-path: inset(10% 0 80% 0); transform: translate(3px, -1px); }
+/* Gold chromatic aberration layer — smooth sine-wave-like oscillation */
+@keyframes glitch-aberration-gold {
+  0%   { transform: translateX(0);    opacity: 0.7; }
+  25%  { transform: translateX(3px);  opacity: 0.4; }
+  50%  { transform: translateX(0);    opacity: 0.8; }
+  75%  { transform: translateX(-2px); opacity: 0.3; }
+  100% { transform: translateX(0);    opacity: 0.7; }
 }
 
-@keyframes glitch-main {
-  0%, 89%, 100% { clip-path: inset(0 0 0 0); transform: translate(0); }
-  90%           { clip-path: inset(30% 0 50% 0); transform: translate(-2px, 1px); }
-  92%           { clip-path: inset(55% 0 5% 0);  transform: translate(3px, -1px); }
-  94%           { clip-path: inset(10% 0 70% 0); transform: translate(-4px, 2px); }
-  96%           { clip-path: inset(70% 0 15% 0); transform: translate(2px, -2px); }
-  98%           { clip-path: inset(0 0 0 0);     transform: translate(0); }
+/* Blue chromatic aberration layer — mirror of gold, opposite direction */
+@keyframes glitch-aberration-blue {
+  0%   { transform: translateX(0);   opacity: 0.7; }
+  25%  { transform: translateX(-3px); opacity: 0.4; }
+  50%  { transform: translateX(0);   opacity: 0.8; }
+  75%  { transform: translateX(2px); opacity: 0.3; }
+  100% { transform: translateX(0);   opacity: 0.7; }
 }
 
-@keyframes glitch-red {
-  0%, 100%  { transform: translate(0); opacity: 0; }
-  10%, 30%  { transform: translate(-4px, 1px); opacity: 0.7; clip-path: inset(15% 0 55% 0); }
-  20%       { transform: translate(-6px, -1px); opacity: 0.5; clip-path: inset(50% 0 20% 0); }
-  50%, 70%  { transform: translate(-3px, 2px); opacity: 0.6; clip-path: inset(35% 0 35% 0); }
-  60%       { transform: translate(-5px, 0px); opacity: 0.4; clip-path: inset(5% 0 75% 0); }
-  85%       { transform: translate(-4px, 1px); opacity: 0.7; clip-path: inset(60% 0 10% 0); }
+/* Horizontal slice reveal — smooth clip-path transitions between bands */
+@keyframes glitch-clip {
+  0%   { clip-path: inset(0% 0 85% 0); }
+  20%  { clip-path: inset(20% 0 55% 0); }
+  40%  { clip-path: inset(50% 0 25% 0); }
+  60%  { clip-path: inset(70% 0 10% 0); }
+  80%  { clip-path: inset(35% 0 45% 0); }
+  100% { clip-path: inset(0% 0 85% 0); }
 }
 
-@keyframes glitch-blue {
-  0%, 100%  { transform: translate(0); opacity: 0; }
-  15%, 35%  { transform: translate(4px, -1px); opacity: 0.7; clip-path: inset(20% 0 50% 0); }
-  25%       { transform: translate(6px, 1px);  opacity: 0.5; clip-path: inset(55% 0 15% 0); }
-  55%, 75%  { transform: translate(3px, -2px); opacity: 0.6; clip-path: inset(40% 0 30% 0); }
-  65%       { transform: translate(5px, 0px);  opacity: 0.4; clip-path: inset(10% 0 70% 0); }
-  90%       { transform: translate(4px, -1px); opacity: 0.7; clip-path: inset(65% 0 5% 0); }
+/* Subtle screen vibration — transform only, GPU composited */
+@keyframes screen-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-1px); }
+  40%  { transform: translateX(2px); }
+  60%  { transform: translateX(-2px); }
+  80%  { transform: translateX(1px); }
+  100% { transform: translateX(0); }
 }
 
-.splash-glitch-main {
-  animation: glitch-main 3.5s steps(1) infinite;
+/* Progress bar glow pulse — box-shadow oscillation */
+@keyframes progress-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(212, 175, 55, 0.6), 0 0 20px rgba(212, 175, 55, 0.3); }
+  50%       { box-shadow: 0 0 25px rgba(212, 175, 55, 0.9), 0 0 50px rgba(212, 175, 55, 0.5); }
 }
 
-.splash-glitch-red {
-  animation: glitch-red 2.8s steps(1) infinite;
+/* Splash exit — fade and subtle scale-up */
+@keyframes fade-scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.02); }
+}
+
+/* Background grid appearance */
+@keyframes grid-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 0.12; }
+}
+
+/* Text shadow breathing */
+@keyframes text-glow-pulse {
+  0%, 100% { text-shadow: 0 0 10px rgba(212, 175, 55, 0.3), 0 0 20px rgba(212, 175, 55, 0.1); }
+  50%       { text-shadow: 0 0 30px rgba(212, 175, 55, 0.6), 0 0 60px rgba(212, 175, 55, 0.3); }
+}
+
+/* Animation utility classes */
+.splash-glitch-gold {
+  animation: glitch-aberration-gold 400ms ease-in-out;
 }
 
 .splash-glitch-blue {
-  animation: glitch-blue 2.8s steps(1) 0.12s infinite;
+  animation: glitch-aberration-blue 400ms ease-in-out;
+}
+
+.splash-glitch-clip {
+  animation: glitch-clip 400ms ease-in-out;
+}
+
+.splash-screen-shake {
+  animation: screen-shake 300ms ease-in-out;
+}
+
+.splash-progress-glow {
+  animation: progress-glow 1.5s ease-in-out infinite;
+}
+
+.splash-fade-out {
+  animation: fade-scale-out 400ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.splash-grid-in {
+  animation: grid-fade-in 600ms ease forwards;
+}
+
+.splash-text-glow {
+  animation: text-glow-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Splash Overlay Utility Classes ────────────────────────────────────────── */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #0a0a0a;
+}
+
+.splash-grid {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(212, 175, 55, 0.04) 0%, transparent 60%),
+    linear-gradient(rgba(212, 175, 55, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 175, 55, 0.06) 1px, transparent 1px);
+  background-size: 100% 100%, 48px 48px, 48px 48px;
+}
+
+.splash-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.15) 3px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  pointer-events: none;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────────── */
@@ -419,6 +495,28 @@ body {
 @keyframes shimmer-move {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ─── Page Transition Stagger Utility ───────────────────────────────────────── */
+/*
+ * Opt-in stagger for direct children of a page.
+ * Add class="page-stagger-child" and --stagger-i CSS variable (0-5) to any
+ * element you want to cascade in after the parent PageTransition completes.
+ *
+ *   <div className="page-stagger-child" style={{ '--stagger-i': 0 }}>
+ */
+.page-stagger-child {
+  opacity: 0;
+  transform: translateY(12px);
+  animation: page-stagger-enter 240ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: calc(200ms + var(--stagger-i, 0) * 40ms);
+}
+
+@keyframes page-stagger-enter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ─── Top Loading Bar ─────────────────────────────────────────────────────────── */
