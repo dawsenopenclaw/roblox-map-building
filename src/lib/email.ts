@@ -37,17 +37,21 @@ export async function sendParentalConsentEmail({
   const approveUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=approve`
   const denyUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=deny`
 
-  return getResend().emails.send({
-    from: FROM,
-    to: parentEmail,
-    subject: `Parental consent required for ${childName}'s ForjeGames account`,
-    react: ParentalConsentEmail({
-      childName,
-      parentEmail,
-      approveUrl,
-      denyUrl,
-    }),
-  })
+  try {
+    return await getResend().emails.send({
+      from: FROM,
+      to: parentEmail,
+      subject: `Parental consent required for ${childName}'s ForjeGames account`,
+      react: ParentalConsentEmail({
+        childName,
+        parentEmail,
+        approveUrl,
+        denyUrl,
+      }),
+    })
+  } catch (err) {
+    console.error('[email] sendParentalConsentEmail failed:', err)
+  }
 }
 
 // ─── Welcome ──────────────────────────────────────────────────────────────────
@@ -59,12 +63,16 @@ export async function sendWelcomeEmail({
   email: string
   name: string
 }) {
-  return getResend().emails.send({
-    from: FROM,
-    to: email,
-    subject: `Welcome to ForjeGames, ${name}! Here are 100 free tokens`,
-    react: WelcomeEmail({ name }),
-  })
+  try {
+    return await getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `Welcome to ForjeGames, ${name}! Here are 1,000 free tokens`,
+      react: WelcomeEmail({ name }),
+    })
+  } catch (err) {
+    console.error('[email] sendWelcomeEmail failed:', err)
+  }
 }
 
 // ─── Build Complete ───────────────────────────────────────────────────────────
@@ -82,12 +90,16 @@ export async function sendBuildCompleteEmail({
   buildId: string
   thumbnailUrl?: string
 }) {
-  return getResend().emails.send({
-    from: FROM,
-    to: email,
-    subject: `Your ${buildType} "${buildName}" is ready!`,
-    react: BuildCompleteEmail({ buildType, buildName, buildId, thumbnailUrl }),
-  })
+  try {
+    return await getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `Your ${buildType} "${buildName}" is ready!`,
+      react: BuildCompleteEmail({ buildType, buildName, buildId, thumbnailUrl }),
+    })
+  } catch (err) {
+    console.error('[email] sendBuildCompleteEmail failed:', err)
+  }
 }
 
 // ─── Token Low ────────────────────────────────────────────────────────────────

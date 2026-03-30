@@ -8,6 +8,7 @@ import {
   type MarketplaceAsset,
 } from '@/lib/roblox-asset-search'
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
+import { spendTokens } from '@/lib/tokens-server'
 import Anthropic from '@anthropic-ai/sdk'
 
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
@@ -804,13 +805,13 @@ interface ChatResponsePayload {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (process.env.DEMO_MODE !== 'true') {
-    let userId: string | null = null
-    try {
-      const session = await auth()
-      userId = session?.userId ?? null
-    } catch { /* demo mode — Clerk not configured */ }
+  const isDemo = process.env.DEMO_MODE === 'true'
+  let authedUserId: string | null = null
+
+  if (!isDemo) {
+    const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    authedUserId = userId
   }
 
   let body: { message?: unknown; conversationId?: unknown }
@@ -833,6 +834,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const anthropic = getAnthropicClient()
   if (anthropic) {
     try {
+      // Deduct tokens before calling the AI — prevents free-riding when billing fails.
+      // Cost: 50 tokens per chat request. Skipped in demo mode (no real user).
+      if (!isDemo && authedUserId) {
+        await spendTokens(authedUserId, 50, 'AI chat request', { prompt: message.slice(0, 100) })
+      }
+
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
@@ -877,13 +884,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const communityAssets = searchCommunityAssets(message)
   const communityBlock  = buildCommunityAssetSection(communityAssets)
 
-  // Simulated thinking delay: 1000–1800ms scaled by message complexity
-  // Gated behind DEMO_SLEEP=true so production can disable it without a code change.
-  // Skipped for mesh/texture/building intents which have real async API calls.
-  if (process.env.DEMO_SLEEP === 'true' && intent !== 'mesh' && intent !== 'texture' && intent !== 'building') {
-    const delayMs = Math.min(1800, 1000 + Math.floor(message.length * 1.5))
-    await sleep(delayMs)
-  }
 
   // Augment the demo response with community asset findings when relevant
   const baseResponse = DEMO_RESPONSES[intent]

@@ -206,13 +206,9 @@ export async function getRankedTemplateIds(
 ): Promise<string[]> {
   const trendingFormula = calculateTrending()
 
-  // Collect parameterized filter values
-  const params: (string | number)[] = []
-
-  // Build safe category filter using $queryRaw tagged template + dynamic fragment
-  // We accumulate typed params and use Prisma.sql for the dynamic fragment.
+  // Build safe category filter using $queryRaw tagged template + dynamic fragment.
   // Because the trendingFormula and per-filter fragments are all developer-authored
-  // SQL (no user input), only user-supplied VALUES go into params.
+  // SQL (no user input), only user-supplied VALUES go into Prisma.sql bindings.
 
   let categoryClause = Prisma.sql``
   if (where.category) {
@@ -249,18 +245,25 @@ export async function getRankedTemplateIds(
 
   let searchClause = Prisma.sql``
   if (where.OR) {
-    const orClauses = where.OR as Array<{ title?: { contains: string } }>
-    const firstContains = orClauses.find((c) => c.title?.contains)?.title?.contains
-    if (firstContains) {
-      const pattern = `%${firstContains}%`
-      searchClause = Prisma.sql`AND (t.title ILIKE ${pattern} OR t.description ILIKE ${pattern})`
+    const orClauses = where.OR as Array<{ title?: { contains: string }; description?: { contains: string }; tags?: { has: string } }>
+    // Extract the search term from whichever OR clause shape is present.
+    // Previously only checked title.contains — silently dropping description/tags
+    // search terms if no title clause existed in the OR array.
+    const searchTerm =
+      orClauses.find((c) => c.title?.contains)?.title?.contains ??
+      orClauses.find((c) => c.description?.contains)?.description?.contains ??
+      orClauses.find((c) => c.tags?.has)?.tags?.has
+    if (searchTerm) {
+      const pattern = `%${searchTerm}%`
+      searchClause = Prisma.sql`AND (t.title ILIKE ${pattern} OR t.description ILIKE ${pattern} OR ${searchTerm} = ANY(t.tags))`
     }
   }
 
   // trendingFormula is a developer-authored string with no user input — safe to embed
   const trendingRaw = Prisma.raw(trendingFormula)
-  const limitVal = Prisma.raw(String(Math.max(1, Math.floor(limit))))
-  const offsetVal = Prisma.raw(String(Math.max(0, Math.floor(offset))))
+  // Clamp and floor to integers before binding so the DB receives clean numerics
+  const limitVal = Math.max(1, Math.floor(limit))
+  const offsetVal = Math.max(0, Math.floor(offset))
 
   const rows = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT t.id FROM "Template" t

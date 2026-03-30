@@ -6,17 +6,18 @@ import { usePathname, useSearchParams } from 'next/navigation'
 // This prevents it from being included in the initial JS bundle AND ensures
 // COPPA compliance: under-13 users are never tracked.
 
-function PageViewTracker({ isUnder13 }: { isUnder13?: boolean }) {
+function PageViewTracker({ isUnder13, cookieConsent }: { isUnder13?: boolean; cookieConsent?: boolean }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   useEffect(() => {
     if (isUnder13 === true) return
+    if (cookieConsent !== true) return
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return
     import('posthog-js').then(({ default: posthog }) => {
       posthog.capture('$pageview', { $current_url: window.location.href })
     }).catch(() => {/* silent */})
-  }, [pathname, searchParams, isUnder13])
+  }, [pathname, searchParams, isUnder13, cookieConsent])
 
   return null
 }
@@ -25,15 +26,19 @@ interface PostHogProviderProps {
   children: React.ReactNode
   /** COPPA: when true, PostHog is never initialised for this session */
   isUnder13?: boolean
+  /** Cookie consent banner: PostHog is only initialised when the user has explicitly accepted */
+  cookieConsent?: boolean
 }
 
-export function PostHogProvider({ children, isUnder13 }: PostHogProviderProps) {
+export function PostHogProvider({ children, isUnder13, cookieConsent }: PostHogProviderProps) {
   const [PHProvider, setPHProvider] = useState<React.ComponentType<{ client: unknown; children: React.ReactNode }> | null>(null)
   const [phClient, setPhClient] = useState<unknown>(null)
 
   useEffect(() => {
     // COPPA guard — never initialise PostHog for under-13 users
     if (isUnder13 === true) return
+    // Cookie consent guard — must have explicit consent before any tracking
+    if (cookieConsent !== true) return
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return
     Promise.all([
       import('posthog-js'),
@@ -49,7 +54,7 @@ export function PostHogProvider({ children, isUnder13 }: PostHogProviderProps) {
       setPhClient(posthog)
       setPHProvider(() => PHProv as React.ComponentType<{ client: unknown; children: React.ReactNode }>)
     }).catch(() => {/* silent */})
-  }, [isUnder13])
+  }, [isUnder13, cookieConsent])
 
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY || !PHProvider || !phClient) {
     return <>{children}</>
@@ -57,7 +62,7 @@ export function PostHogProvider({ children, isUnder13 }: PostHogProviderProps) {
 
   return (
     <PHProvider client={phClient}>
-      <PageViewTracker isUnder13={isUnder13} />
+      <PageViewTracker isUnder13={isUnder13} cookieConsent={cookieConsent} />
       {children}
     </PHProvider>
   )

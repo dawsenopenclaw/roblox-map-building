@@ -1659,7 +1659,17 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
             <span className="text-[8px]">No preview</span>
           </div>
         )}
-        {isError && <span className="text-[10px] text-red-400">Failed</span>}
+        {isError && (
+          <div className="flex flex-col items-center gap-1.5">
+            <span className="text-[10px] text-red-400">Generation failed</span>
+            <button
+              onClick={() => {/* retry handled by parent */}}
+              className="text-[9px] font-semibold px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {isDemo && <span className="absolute right-1 top-1 rounded bg-[#FFB81C]/20 px-1 py-0.5 text-[8px] font-bold text-[#FFB81C]">DEMO</span>}
         {asset.status === 'complete' && asset.meshUrl && <span className="absolute left-1 top-1 rounded bg-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400">GLB READY</span>}
         {isPending && <span className="absolute left-1 top-1 rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">PENDING</span>}
@@ -3433,10 +3443,10 @@ export function EditorClient() {
               </svg>
             </Link>
 
-            {/* Logo */}
-            <div className="hidden md:flex items-center gap-2">
-              <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}>F</div>
-            </div>
+            {/* Logo — links to dashboard */}
+            <Link href="/dashboard" className="hidden md:flex items-center gap-2 group" aria-label="ForjeGames home">
+              <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black transition-opacity group-hover:opacity-80" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}>F</div>
+            </Link>
 
             {/* Project name */}
             <div className="flex items-center gap-2 flex-1 min-w-0">

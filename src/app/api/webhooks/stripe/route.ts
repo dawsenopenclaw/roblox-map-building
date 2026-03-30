@@ -264,6 +264,26 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        const userId = paymentIntent.metadata?.userId
+        const tokenPackSlug = paymentIntent.metadata?.tokenPackSlug
+        if (!userId || !tokenPackSlug) break
+
+        const pack = getTokenPackBySlug(tokenPackSlug)
+        if (!pack) break
+
+        // Idempotency: check if tokens were already credited via checkout.session.completed
+        const alreadyCredited = await db.tokenTransaction.findFirst({
+          where: { metadata: { path: ['paymentIntentId'], equals: paymentIntent.id } },
+          select: { id: true },
+        })
+        if (!alreadyCredited) {
+          await earnTokens(userId, pack.tokens, 'PURCHASE', `Purchased ${pack.name}`, { paymentIntentId: paymentIntent.id })
+        }
+        break
+      }
+
       case 'customer.subscription.trial_will_end': {
         // Log for future email notification
         const sub = event.data.object as Stripe.Subscription

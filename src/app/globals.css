@@ -54,10 +54,10 @@ button, a, [role="button"] {
   --warning:             #F59E0B;
   --info:                #60A5FA;
 
-  /* Text — slightly off-white (matches Tailwind foreground token) */
-  --foreground:          #F9FAFB;   /* off-white — headings (aligned with Tailwind) */
+  /* Text — pure white (single source of truth; Tailwind tokens reference these vars) */
+  --foreground:          #FFFFFF;   /* pure white — headings */
   --foreground-soft:     #E5E7EB;   /* soft white — body text            */
-  --muted:               #9CA3AF;   /* grey — secondary text (aligned with Tailwind) */
+  --muted:               #B0B0B0;   /* grey — secondary text */
   --muted-subtle:        #6B7280;   /* medium grey — placeholders        */
 
   /* Legacy aliases */

@@ -64,6 +64,13 @@ export default function AgeGatePage() {
         return
       }
 
+      // COPPA: immediately opt out of capturing before any further track() calls
+      if (data.isUnder13 === true) {
+        import('posthog-js').then(({ default: posthog }) => {
+          posthog.opt_out_capturing()
+        }).catch(() => {/* silent */})
+      }
+
       // Skip analytics for under-13 users (COPPA compliance)
       if (!data.isUnder13) {
         track('onboarding_step_completed', { step: 'age_gate', stepIndex: 1 })

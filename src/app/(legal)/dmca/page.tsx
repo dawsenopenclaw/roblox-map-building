@@ -12,7 +12,7 @@ const EFFECTIVE_DATE = 'March 28, 2026'
 const AGENT_EMAIL = 'dmca@forjegames.com'
 const AGENT_NAME = 'Dawsen Porter'
 const COMPANY = 'ForjeGames LLC'
-const ADDRESS = 'ForjeGames LLC, Wyoming, United States'
+const ADDRESS = 'ForjeGames LLC, 30 N Gould St Ste R, Sheridan, WY 82801, United States'
 
 export default function DmcaPage() {
   return (

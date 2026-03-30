@@ -17,5 +17,5 @@ export function isUnder13(dateOfBirth: Date): boolean {
     dateOfBirth.getMonth(),
     dateOfBirth.getDate()
   )
-  return dobDateOnly > thirteenYearsAgo
+  return dobDateOnly >= thirteenYearsAgo
 }

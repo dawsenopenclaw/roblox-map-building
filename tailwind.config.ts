@@ -27,8 +27,8 @@ const config: Config = {
         info:              '#3B82F6',
 
         /* ── Text ── */
-        foreground:        'var(--foreground)',
-        muted:             'var(--muted)',
+        foreground:        '#FFFFFF',   // pure white — matches --foreground CSS var
+        muted:             '#B0B0B0',   // grey — matches --muted CSS var
         'muted-subtle':    '#6B7280',
 
         /* ── Legacy aliases (keep for existing component compat) ── */

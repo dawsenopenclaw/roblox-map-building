@@ -102,25 +102,33 @@ export async function POST(
   // Free template — create purchase record directly
   if (template.priceCents === 0) {
     try {
-      const purchase = await db.templatePurchase.create({
-        data: {
-          templateId,
-          buyerId: user.id,
-          amountCents: 0,
-          platformFeeCents: 0,
-          creatorPayoutCents: 0,
-          payoutStatus: 'PAID',
-        },
-      })
+      const purchase = await db.$transaction(async (tx) => {
+        const newPurchase = await tx.templatePurchase.create({
+          data: {
+            templateId,
+            buyerId: user.id,
+            amountCents: 0,
+            platformFeeCents: 0,
+            creatorPayoutCents: 0,
+            payoutStatus: 'PAID',
+          },
+        })
 
-      // Increment download count
-      await db.template.update({
-        where: { id: templateId },
-        data: { downloads: { increment: 1 } },
+        // Increment download count
+        await tx.template.update({
+          where: { id: templateId },
+          data: { downloads: { increment: 1 } },
+        })
+
+        return newPurchase
       })
 
       return NextResponse.json({ success: true, purchaseId: purchase.id })
-    } catch (err) {
+    } catch (err: unknown) {
+      // P2002 = unique constraint violation — concurrent duplicate purchase attempt
+      if ((err as { code?: string })?.code === 'P2002') {
+        return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
+      }
       return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
     }
   }
@@ -150,6 +158,7 @@ export async function POST(
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: stripeCustomerId,
       mode: 'payment',
+      automatic_tax: { enabled: true },
       payment_method_types: ['card'],
       line_items: [
         {

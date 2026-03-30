@@ -128,9 +128,7 @@ function getCorsHeaders(request: NextRequest): HeadersInit {
   const origin = request.headers.get('origin') ?? ''
   const isAllowed =
     origin === APP_URL ||
-    ALLOWED_ORIGINS.includes(origin) ||
-    // Allow same-origin requests (no Origin header)
-    origin === ''
+    ALLOWED_ORIGINS.includes(origin)
 
   return isAllowed
     ? {
@@ -154,7 +152,10 @@ function handleCorsPreFlight(request: NextRequest): NextResponse | null {
 export default clerkMiddleware(async (auth, request) => {
   // ── DEMO_MODE production guard ─────────────────────────────────────────────
   if (process.env.DEMO_MODE === 'true' && process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_PROD !== 'true') {
-    // DEMO_MODE is enabled in production — auth bypassed
+    throw new Error(
+      '[SECURITY] DEMO_MODE=true is not permitted in production. ' +
+      'Set DEMO_MODE=false or set ALLOW_DEMO_PROD=true to explicitly override.'
+    )
   }
 
   try {
@@ -222,9 +223,19 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.next()
     }
 
-    // Redirect authenticated users away from auth pages → go straight to editor
+    // Age-gate guard: authenticated users who have not completed the age gate
+    // must be redirected to /onboarding/age-gate before accessing any protected route.
+    const dateOfBirth = (claims as { dateOfBirth?: string | null } | null)?.dateOfBirth ?? null
+    if (userId && dateOfBirth === null && !isPublicRoute(request)) {
+      const ageGateUrl = new URL('/onboarding/age-gate', request.url)
+      if (request.nextUrl.pathname !== '/onboarding/age-gate') {
+        return NextResponse.redirect(ageGateUrl)
+      }
+    }
+
+    // Redirect authenticated users away from auth pages → go straight to welcome
     if (isAuthRoute(request) && userId) {
-      return NextResponse.redirect(new URL('/editor', request.url))
+      return NextResponse.redirect(new URL('/welcome', request.url))
     }
 
     // Protect non-public routes — isPublicRoute is the single source of truth.
@@ -256,7 +267,13 @@ export default clerkMiddleware(async (auth, request) => {
     }
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────
-    // Pass request through so users are not locked out by a transient Clerk or runtime failure.
+    // Admin routes return 503 on transient failure — never silently pass through
+    // to protected admin UI when auth state is unknown.
+    if (isAdminRoute(request)) {
+      return new NextResponse('Service Unavailable', { status: 503 })
+    }
+    // For all other routes, pass through so users are not locked out by a
+    // transient Clerk or runtime failure.
     return NextResponse.next()
   }
 })
