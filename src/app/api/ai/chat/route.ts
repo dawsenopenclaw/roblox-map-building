@@ -6,6 +6,38 @@ import {
   type BuildAssetPlan,
   type MarketplaceAsset,
 } from '@/lib/roblox-asset-search'
+import Anthropic from '@anthropic-ai/sdk'
+
+// ─── Lazy Anthropic client (only created when API key is present) ──────────────
+
+let _anthropic: Anthropic | null = null
+function getAnthropicClient(): Anthropic | null {
+  if (!process.env.ANTHROPIC_API_KEY) return null
+  if (!_anthropic) {
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  }
+  return _anthropic
+}
+
+const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI, an expert Roblox game development assistant embedded in the ForjeGames platform. You help users build games by generating terrain, placing assets, writing Luau scripts, and managing game elements.
+
+Your expertise:
+- Luau scripting (ServerScripts, LocalScripts, ModuleScripts, RemoteEvents, RemoteFunctions)
+- Roblox Studio APIs: Instance.new, CFrame, Vector3, Color3, Material enum, Enum.Material, Terrain:FillBlock/FillBall/WriteVoxels
+- Performance: keep parts < 20,000, use unions sparingly, anchor static parts
+- Marketplace-first: suggest real Roblox asset IDs when possible before generating custom
+- All 25 Roblox Materials and when to use each
+- DataStore / ProfileStore for persistence
+- Tycoon, simulator, obby, RPG game patterns
+- Economy design for 8-16 year old players
+
+Response style:
+- Always give specific numbers: part counts, stud dimensions, polygon counts, token costs
+- Include Luau code blocks (in triple backticks) for any scripting request
+- Use the checkmark prefix format: "✓ [Action] Complete" as header
+- Keep responses concise but dense with specifics — no padding
+- Suggest the next logical build step at the end as a "Tip:"
+- When suggesting marketplace assets, include realistic asset IDs and creator names`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -783,6 +815,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const intent = detectIntent(message)
+
+  // ── Real Claude API path ──────────────────────────────────────────────────
+  const anthropic = getAnthropicClient()
+  if (anthropic) {
+    try {
+      const aiResponse = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: FORJEAI_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: message }],
+      })
+
+      const textBlock = aiResponse.content.find((b) => b.type === 'text')
+      const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
+      const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
+
+      return NextResponse.json({
+        message: responseText,
+        tokensUsed,
+        intent,
+        model: aiResponse.model,
+      } satisfies ChatResponsePayload & { model: string })
+    } catch (err: unknown) {
+      // Rate limit — surface a clean error, don't fall through to demo
+      if (err instanceof Anthropic.RateLimitError) {
+        return NextResponse.json(
+          { error: 'Rate limit reached. Please wait a moment and try again.' },
+          { status: 429 },
+        )
+      }
+      // Any other API error — fall through to demo responses below
+    }
+  }
+
   const tokensUsed = estimateTokens(message)
 
   // ── Community asset search (runs for all build-related intents) ───────────

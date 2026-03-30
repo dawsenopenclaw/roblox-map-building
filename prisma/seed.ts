@@ -624,7 +624,7 @@ async function main() {
     xpRecords[cfg.user.id] = xp.id
 
     // XP events for context
-    const events = [
+    const events: Array<{ type: XPEventType; amount: number; daysBack: number }> = [
       { type: XPEventType.DAILY_LOGIN, amount: 10, daysBack: 3 },
       { type: XPEventType.BUILD, amount: 100, daysBack: 5 },
       { type: XPEventType.ACHIEVEMENT, amount: 150, daysBack: 8 },
