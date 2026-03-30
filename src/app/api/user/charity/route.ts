@@ -7,9 +7,18 @@ const VALID_SLUGS = ['code-org', 'girls-who-code', 'khan-academy'] as const
 const schema = z.object({ charitySlug: z.enum(VALID_SLUGS) })
 
 export async function POST(req: NextRequest) {
+  // Demo mode: if auth() throws (no Clerk keys), return demo response
+  let clerkId: string | null = null
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, ok: true })
+  }
+
+  try {
 
     const body = await req.json()
     const parsed = schema.safeParse(body)

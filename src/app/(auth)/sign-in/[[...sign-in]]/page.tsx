@@ -10,10 +10,10 @@ const clerkAppearance = {
     colorBackground: '#141414',
     colorText: '#F9FAFB',
     colorTextSecondary: '#9CA3AF',
-    colorInputBackground: '#1a2236',
+    colorInputBackground: '#1c1c1c',
     colorInputText: '#F9FAFB',
     colorInputPlaceholder: '#B0B0B0',
-    colorNeutral: '#374151',
+    colorNeutral: '#2a2a2a',
     colorDanger: '#EF4444',
     colorSuccess: '#10B981',
     borderRadius: '10px',
@@ -42,7 +42,7 @@ const clerkAppearance = {
     /* Form body */
     formFieldLabel: 'text-muted text-xs font-medium tracking-wide uppercase',
     formFieldInput: [
-      'bg-[#0d1117]',
+      'bg-[#1c1c1c]',
       'border border-border-subtle',
       'text-foreground',
       'placeholder-muted-subtle',

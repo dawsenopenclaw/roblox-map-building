@@ -8,8 +8,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: templateId } = await params
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, message: 'Reviews are not available in demo mode' }, { status: 200 })
+  }
 
   if (templateId.startsWith('demo-')) {
     return NextResponse.json({ error: 'Reviews are not available for demo templates' }, { status: 400 })
@@ -135,8 +143,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: templateId } = await params
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, message: 'Creator responses are not available in demo mode' }, { status: 200 })
+  }
 
   if (templateId.startsWith('demo-')) {
     return NextResponse.json({ error: 'Not available for demo templates' }, { status: 400 })

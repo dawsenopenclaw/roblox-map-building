@@ -12,8 +12,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: templateId } = await params
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, message: 'Purchases are not available in demo mode' }, { status: 200 })
+  }
 
   // Block purchases on demo templates (no DB)
   if (templateId.startsWith('demo-')) {

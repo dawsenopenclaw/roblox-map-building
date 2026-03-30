@@ -910,9 +910,11 @@ function IsometricTree({ x, y, size }: { x: number; y: number; size: number }) {
   )
 }
 
-function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
+function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; onConnectClick?: () => void }) {
   const [activeView, setActiveView] = useState<'Perspective' | 'Top' | 'Front' | 'Side'>('Perspective')
   const [showGrid, setShowGrid] = useState(true)
+  const [zoom, setZoom] = useState(100)
+  const [activeTool, setActiveTool] = useState<'Pan' | 'Orbit' | 'Zoom' | null>(null)
 
   const objectCount = 24 + sceneBlocks.length * 3
   const instanceCount = 156 + sceneBlocks.length * 12
@@ -1020,6 +1022,7 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
           <span className="text-gray-300 font-medium">Studio Not Connected</span>
         </div>
         <button
+          onClick={onConnectClick}
           className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors text-left px-1"
           style={{ lineHeight: '1' }}
         >
@@ -1061,12 +1064,21 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
             Show Grid
           </button>
           <div
-            className="flex gap-0.5 rounded-lg overflow-hidden"
+            className="flex gap-0.5 rounded-lg overflow-hidden items-center"
             style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            <button className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold">−</button>
-            <div className="w-px self-stretch bg-white/8" />
-            <button className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold">+</button>
+            <button
+              onClick={() => setZoom((z) => Math.max(25, z - 25))}
+              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
+              title="Zoom out"
+            >−</button>
+            <span className="text-[9px] text-gray-500 w-8 text-center font-mono">{zoom}%</span>
+            <div className="w-px self-stretch bg-white/[0.08]" />
+            <button
+              onClick={() => setZoom((z) => Math.min(400, z + 25))}
+              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
+              title="Zoom in"
+            >+</button>
           </div>
         </div>
       </div>
@@ -1094,26 +1106,40 @@ function Viewport({ sceneBlocks }: { sceneBlocks: SceneBlock[] }) {
         className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-xl pointer-events-auto"
         style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
-        {[
+        {([
           { label: 'Pan',   icon: 'M5 1v10M1 5h10' },
           { label: 'Orbit', icon: 'M6 1a5 5 0 100 10A5 5 0 006 1zM1 6h10' },
           { label: 'Zoom',  icon: 'M5 2a3 3 0 100 6A3 3 0 005 2zM9 9l2 2' },
-          { label: 'Reset', icon: 'M2 6a4 4 0 014-4 4 4 0 014 4M10 2l2 2-2 2' },
-        ].map(({ label, icon }) => (
+        ] as { label: 'Pan' | 'Orbit' | 'Zoom'; icon: string }[]).map(({ label, icon }) => (
           <button
             key={label}
             title={label}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/8 transition-colors"
+            onClick={() => setActiveTool((t) => (t === label ? null : label))}
+            className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+            style={{
+              color: activeTool === label ? '#FFB81C' : '#9CA3AF',
+              background: activeTool === label ? 'rgba(255,184,28,0.12)' : 'transparent',
+            }}
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
               <path d={icon} stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         ))}
+        <button
+          title="Reset view"
+          onClick={() => { setZoom(100); setActiveTool(null) }}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6a4 4 0 014-4 4 4 0 014 4M10 2l2 2-2 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
         <div className="w-px h-4 bg-white/10 mx-0.5" />
         <button
           title="Fullscreen"
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/8 transition-colors"
+          onClick={() => document.documentElement.requestFullscreen?.()}
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.08] transition-colors"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
             <path d="M1 4V1h3M8 1h3v3M11 8v3H8M4 11H1V8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1244,7 +1270,7 @@ function ProjectsPanel({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={game.thumbnailUrl} alt={game.name} className="w-full h-full object-cover rounded-lg" />
                   ) : (
-                    <svg className="w-5 h-5" style={{ color: isActive ? '#FFB81C' : '#4B5563' }} viewBox="0 0 20 20" fill="none">
+                    <svg className="w-5 h-5" style={{ color: isActive ? '#FFB81C' : '#808080' }} viewBox="0 0 20 20" fill="none">
                       <path d="M10 2L12.5 7H17l-4 3 1.5 5L10 12 5.5 15 7 10 3 7h4.5L10 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
                     </svg>
                   )}
@@ -1866,9 +1892,9 @@ interface CommunityAssetItem {
 
 const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
   // Buildings
-  { id: 'bld-001', name: 'Medieval Castle Tower', creator: 'StoneForge3D',   description: 'Tall stone tower with crenellations and arrow slits.',    downloads: 4820,  rating: 4.9, category: 'Buildings',  polyCount: 2100, style: 'realistic',  tags: ['castle','medieval','tower'],    gradientFrom: '#4B5563', gradientTo: '#1F2937' },
+  { id: 'bld-001', name: 'Medieval Castle Tower', creator: 'StoneForge3D',   description: 'Tall stone tower with crenellations and arrow slits.',    downloads: 4820,  rating: 4.9, category: 'Buildings',  polyCount: 2100, style: 'realistic',  tags: ['castle','medieval','tower'],    gradientFrom: '#2a2a2a', gradientTo: '#1c1c1c' },
   { id: 'bld-002', name: 'Modern House',          creator: 'ArchViz3D',      description: 'Contemporary house with flat roof and large windows.',   downloads: 6340,  rating: 4.7, category: 'Buildings',  polyCount:  820, style: 'low-poly',   tags: ['house','modern','residential'], gradientFrom: '#475569', gradientTo: '#334155' },
-  { id: 'bld-004', name: 'Ruined Stone Wall',     creator: 'RuinsWorkshop',  description: 'Crumbled ancient wall with moss and weathering.',        downloads: 3210,  rating: 4.6, category: 'Buildings',  polyCount:  940, style: 'realistic',  tags: ['ruins','wall','stone'],         gradientFrom: '#B0B0B0', gradientTo: '#374151' },
+  { id: 'bld-004', name: 'Ruined Stone Wall',     creator: 'RuinsWorkshop',  description: 'Crumbled ancient wall with moss and weathering.',        downloads: 3210,  rating: 4.6, category: 'Buildings',  polyCount:  940, style: 'realistic',  tags: ['ruins','wall','stone'],         gradientFrom: '#B0B0B0', gradientTo: '#2a2a2a' },
   { id: 'bld-005', name: 'Fantasy Tavern',        creator: 'TavernCraft',    description: 'Cozy medieval tavern with thatched roof and warm glow.', downloads: 5570,  rating: 4.9, category: 'Buildings',  polyCount: 1650, style: 'stylized',   tags: ['tavern','inn','medieval'],      gradientFrom: '#92400E', gradientTo: '#78350F' },
   // Vehicles
   { id: 'veh-001', name: 'Sports Car (Red)',      creator: 'AutoMesh3D',     description: 'Sleek sports car with separate wheel meshes.',           downloads: 7120,  rating: 4.8, category: 'Vehicles',   polyCount: 3200, style: 'realistic',  tags: ['car','sports','racing'],        gradientFrom: '#DC2626', gradientTo: '#991B1B' },
@@ -1884,7 +1910,7 @@ const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
   { id: 'prp-002', name: 'Market Stall',          creator: 'TavernCraft',    description: 'Medieval stall with canopy and hanging goods.',          downloads: 4780,  rating: 4.7, category: 'Props',      polyCount:  560, style: 'stylized',   tags: ['market','stall','shop'],        gradientFrom: '#D97706', gradientTo: '#B45309' },
   { id: 'prp-003', name: 'Wooden Barrel',         creator: 'PropFactory',    description: 'Classic barrel with metal hoops, four size variants.',  downloads: 11300, rating: 4.8, category: 'Props',      polyCount:  160, style: 'realistic',  tags: ['barrel','wood','tavern'],       gradientFrom: '#78350F', gradientTo: '#451A03' },
   { id: 'prp-004', name: 'Campfire',              creator: 'OutdoorKit',     description: 'Fire pit with particle-ready pivot points.',            downloads: 8850,  rating: 4.9, category: 'Props',      polyCount:  240, style: 'stylized',   tags: ['campfire','fire','camp'],       gradientFrom: '#C2410C', gradientTo: '#9A3412' },
-  { id: 'prp-005', name: 'Street Lamp (Iron)',    creator: 'PropFactory',    description: 'Victorian iron lamp post for city streets.',            downloads: 8900,  rating: 4.8, category: 'Props',      polyCount:  210, style: 'realistic',  tags: ['lamp','street','urban'],        gradientFrom: '#374151', gradientTo: '#1F2937' },
+  { id: 'prp-005', name: 'Street Lamp (Iron)',    creator: 'PropFactory',    description: 'Victorian iron lamp post for city streets.',            downloads: 8900,  rating: 4.8, category: 'Props',      polyCount:  210, style: 'realistic',  tags: ['lamp','street','urban'],        gradientFrom: '#2a2a2a', gradientTo: '#1c1c1c' },
   // Characters
   { id: 'chr-001', name: 'Knight Warrior',        creator: 'CharacterForge', description: 'Full-plate knight rigged for humanoid animations.',    downloads: 6720,  rating: 4.8, category: 'Characters', polyCount: 2800, style: 'stylized',   tags: ['knight','warrior','armor'],     gradientFrom: '#3730A3', gradientTo: '#312E81' },
   { id: 'chr-002', name: 'Village Merchant',      creator: 'NPCStudio',      description: 'Friendly NPC with idle and talking animations.',       downloads: 4120,  rating: 4.6, category: 'Characters', polyCount: 1900, style: 'cartoon',    tags: ['npc','merchant','villager'],    gradientFrom: '#B45309', gradientTo: '#92400E' },
@@ -1894,7 +1920,7 @@ const COMMUNITY_ASSETS_DATA: CommunityAssetItem[] = [
   // Weapons
   { id: 'wpn-001', name: 'Broad Sword',           creator: 'ArmoryForge',    description: 'One-handed broadsword, grip point clearly marked.',    downloads: 13800, rating: 4.8, category: 'Weapons',    polyCount:  340, style: 'realistic',  tags: ['sword','medieval','combat'],    gradientFrom: '#475569', gradientTo: '#0F172A' },
   { id: 'wpn-002', name: 'Magic Staff',           creator: 'MagicProps',     description: 'Wizard staff with separate glowing crystal orb.',     downloads: 8230,  rating: 4.9, category: 'Weapons',    polyCount:  460, style: 'stylized',   tags: ['staff','magic','wizard'],       gradientFrom: '#5B21B6', gradientTo: '#4C1D95' },
-  { id: 'wpn-003', name: 'Crossbow',              creator: 'ArmoryForge',    description: 'Medieval crossbow with carved stock and bolt mesh.',  downloads: 5910,  rating: 4.7, category: 'Weapons',    polyCount:  580, style: 'realistic',  tags: ['crossbow','ranged','medieval'], gradientFrom: '#4B5563', gradientTo: '#1F2937' },
+  { id: 'wpn-003', name: 'Crossbow',              creator: 'ArmoryForge',    description: 'Medieval crossbow with carved stock and bolt mesh.',  downloads: 5910,  rating: 4.7, category: 'Weapons',    polyCount:  580, style: 'realistic',  tags: ['crossbow','ranged','medieval'], gradientFrom: '#2a2a2a', gradientTo: '#1c1c1c' },
   { id: 'wpn-004', name: 'Battle Axe',            creator: 'ArmoryForge',    description: 'Double-headed axe with runic engravings.',            downloads: 7460,  rating: 4.8, category: 'Weapons',    polyCount:  490, style: 'stylized',   tags: ['axe','battle-axe','warrior'],   gradientFrom: '#7C3AED', gradientTo: '#5B21B6' },
 ]
 
@@ -2634,6 +2660,12 @@ export function EditorClient() {
     setActivePanel((prev) => (prev === id ? null : id))
   }, [])
 
+  // Studio state — must be declared before submit so the callback closes over them
+  const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
+  const [demoMode, setDemoMode]             = useState(false)
+  const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
+  const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+
   const submit = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
@@ -2831,7 +2863,7 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, activeGame],
+    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2886,11 +2918,7 @@ export function EditorClient() {
     </>
   )
 
-  const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
-  const [studioPolling, setStudioPolling]   = useState(false)
-  const [demoMode, setDemoMode]             = useState(false)
-  const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
-  const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const [studioPolling, setStudioPolling] = useState(false)
   const studioIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Studio status polling
@@ -2981,6 +3009,10 @@ export function EditorClient() {
           70% { box-shadow: 0 0 0 6px rgba(212,175,55,0); }
           100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); }
         }
+        @keyframes panel-slide-in {
+          from { opacity: 0; transform: translateX(-8px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
         .forge-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .forge-scroll::-webkit-scrollbar-track { background: transparent; }
         .forge-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.2); border-radius: 99px; }
@@ -2993,7 +3025,7 @@ export function EditorClient() {
         {/* ── Left icon bar (desktop) ─────────────────────────────────────── */}
         <div className="hidden md:flex flex-col items-center gap-1 py-3 px-1 w-12 flex-shrink-0" style={{ background: '#0e0e0e', borderRight: '1px solid #1a1a1a' }}>
           <Link href="/" title="Home" className="w-9 h-9 rounded-lg flex items-center justify-center mb-2 transition-colors text-[#6B7280] hover:text-white hover:bg-white/5">
-            <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="none">
+            <svg className="w-[18px] h-[18px]" viewBox="0 0 20 20" fill="none">
               <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
             </svg>
@@ -3018,7 +3050,7 @@ export function EditorClient() {
               {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
               {activePanel === 'dna'      && <DnaPanel />}
               {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
-              {activePanel === 'settings' && <SettingsPanel />}
+              {activePanel === 'settings' && <SettingsPanel studioStatus={studioStatus} />}
             </div>
           </div>
         )}
@@ -3040,7 +3072,7 @@ export function EditorClient() {
                 {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
                 {activePanel === 'dna'      && <DnaPanel />}
                 {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
-                {activePanel === 'settings' && <SettingsPanel />}
+                {activePanel === 'settings' && <SettingsPanel studioStatus={studioStatus} />}
               </div>
             </div>
           </div>
@@ -3182,7 +3214,7 @@ export function EditorClient() {
                     placeholder={listening ? 'Listening...' : 'Describe what to build...'}
                     disabled={loading}
                     rows={1}
-                    className="flex-1 bg-transparent text-sm text-white placeholder-[#4B5563] focus:outline-none resize-none py-1.5 disabled:opacity-50"
+                    className="flex-1 bg-transparent text-sm text-white placeholder-[#808080] focus:outline-none resize-none py-1.5 disabled:opacity-50"
                     style={{ minHeight: '32px', maxHeight: '120px' }}
                   />
 
@@ -3191,7 +3223,7 @@ export function EditorClient() {
                     onClick={() => submit(input)}
                     disabled={!input.trim() || loading}
                     aria-label="Send message"
-                    className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() && !loading ? 'bg-[#D4AF37] text-black hover:bg-[#FFB81C]' : 'bg-white/[0.04] text-[#4B5563]'}`}
+                    className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() && !loading ? 'bg-[#D4AF37] text-black hover:bg-[#FFB81C]' : 'bg-white/[0.04] text-[#808080]'}`}
                     style={input.trim() && !loading ? { boxShadow: '0 0 12px rgba(212,175,55,0.3)' } : {}}
                   >
                     {loading ? (
@@ -3268,7 +3300,7 @@ export function EditorClient() {
 
                       {/* Connect button */}
                       <button
-                        onClick={() => setStudioConnected(true)}
+                        onClick={() => setDemoMode(true)}
                         className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:-translate-y-0.5"
                         style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712', boxShadow: '0 0 24px rgba(212,175,55,0.2)' }}
                       >
@@ -3276,7 +3308,7 @@ export function EditorClient() {
                       </button>
 
                       <button
-                        onClick={() => setStudioConnected(true)}
+                        onClick={() => setDemoMode(true)}
                         className="mt-3 text-xs text-[#6B7280] hover:text-[#D4AF37] transition-colors"
                       >
                         Skip — use demo viewport instead

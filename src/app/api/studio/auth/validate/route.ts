@@ -46,8 +46,7 @@ export async function GET(req: NextRequest) {
   // We use the same in-memory global set in auth/route.ts.
   // @ts-expect-error
   const store: Map<string, { token: string | null; sessionId: string | null; createdAt: number }> =
-    // @ts-expect-error
-    globalThis.__fjStudioAuthCodes ?? new Map()
+    (globalThis as Record<string, unknown>).__fjStudioAuthCodes ?? new Map()
 
   let matchedSessionId: string | null = null
   for (const entry of store.values()) {

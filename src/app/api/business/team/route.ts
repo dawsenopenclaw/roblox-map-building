@@ -133,8 +133,12 @@ function validateUpdate(body: unknown): body is UpdateMemberPayload {
 
 export async function GET() {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
+    if (!clerkId) return NextResponse.json({ ...DEMO_TEAM, demo: true })
 
     try {
       const { db } = await import('@/lib/db')
@@ -157,7 +161,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     let body: unknown
@@ -199,7 +207,11 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     let body: unknown
@@ -237,7 +249,11 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { searchParams } = new URL(req.url)

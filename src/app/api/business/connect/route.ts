@@ -75,8 +75,12 @@ function validatePayload(body: unknown): body is ConnectPayload {
 
 export async function GET() {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
+    if (!clerkId) return NextResponse.json({ business: DEMO_BUSINESS, demo: true })
 
     try {
       const { db } = await import('@/lib/db')
@@ -102,14 +106,37 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
 
     let body: unknown
     try {
       body = await req.json()
     } catch {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    if (!clerkId) {
+      if (!validatePayload(body)) {
+        return NextResponse.json(
+          { error: 'Missing or invalid fields. Required: name (string), type (LLC|CORPORATION|SOLE_PROPRIETOR|PARTNERSHIP|NONPROFIT)' },
+          { status: 422 },
+        )
+      }
+      const { name, ein, type, website } = body as ConnectPayload
+      const nameSlug = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 16)
+      const apiKey = generateApiKey(nameSlug)
+      const demo: BusinessProfile = {
+        id: `biz_${nameSlug}_demo`,
+        name, ein: ein ? maskEin(ein) : null, type, website: website ?? null,
+        verificationStatus: 'PENDING', stripeConnectId: null, stripeConnectEnabled: false,
+        apiKey, apiKeyPrefix: `fj_biz_${nameSlug}`,
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      }
+      return NextResponse.json({ business: demo, demo: true }, { status: 201 })
     }
 
     if (!validatePayload(body)) {
@@ -176,8 +203,12 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH() {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
+    if (!clerkId) return NextResponse.json({ onboardingUrl: 'https://connect.stripe.com/setup/s/demo_onboarding', demo: true })
 
     // Real impl: create Stripe Connect account link via stripe.accountLinks.create()
     // and return the onboarding URL for redirect.

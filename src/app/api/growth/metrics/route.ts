@@ -105,9 +105,13 @@ function buildDemoMetrics(): GrowthMetricsResponse {
 
 export async function GET() {
   try {
-    const { userId: clerkId } = await auth()
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
     if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json(buildDemoMetrics())
     }
 
     // Attempt live DB query

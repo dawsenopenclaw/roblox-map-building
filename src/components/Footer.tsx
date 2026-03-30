@@ -95,14 +95,14 @@ function FooterColumn({
                 href={l.href}
                 target={l.href.startsWith('http') ? '_blank' : undefined}
                 rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
+                className="text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
               >
                 {l.label}
               </a>
             ) : (
               <Link
                 href={l.href}
-                className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
+                className="text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
               >
                 {l.label}
               </Link>
@@ -166,7 +166,7 @@ export function Footer() {
                 Not tax-deductible. See{' '}
                 <Link
                   href="/terms#charity"
-                  className="text-blue-400 hover:text-blue-300 transition-colors underline underline-offset-2"
+                  className="text-[#D4AF37] hover:text-[#F5CC5A] transition-colors underline underline-offset-2"
                 >
                   Terms §12
                 </Link>
@@ -186,7 +186,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <p className="text-sm text-gray-400">
-            &copy; 2026 ForjeGames. All rights reserved.
+            &copy; {new Date().getFullYear()} ForjeGames LLC. All rights reserved.
           </p>
 
           {/* Social icon row */}
@@ -198,7 +198,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 transition-colors"
               >
                 {s.icon}
               </a>

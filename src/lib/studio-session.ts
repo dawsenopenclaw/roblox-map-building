@@ -241,6 +241,19 @@ export function getSessionByPlaceId(
 }
 
 /**
+ * Find a session by its auth token.
+ * The plugin stores the bearer token from /api/studio/auth and uses it
+ * to identify itself on sync/update calls.
+ */
+export function getSessionByToken(token: string): StudioSession | undefined {
+  pruneStale()
+  for (const session of sessions.values()) {
+    if (session.authToken === token) return session
+  }
+  return undefined
+}
+
+/**
  * Return a lightweight summary of all live sessions (for admin/debug use).
  */
 export function listSessions(): Array<

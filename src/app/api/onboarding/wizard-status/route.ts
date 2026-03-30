@@ -2,8 +2,15 @@ import { NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 
 export async function GET() {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let userId: string | null = null
+  try {
+    const session = await auth()
+    userId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!userId) {
+    return NextResponse.json({ demo: true, completed: false, interest: null, skipped: false })
+  }
 
   try {
     const client = await clerkClient()

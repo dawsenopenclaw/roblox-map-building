@@ -98,12 +98,13 @@ export default function BillingClient() {
   const openBillingPortal = useCallback(async () => {
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
-      if (!res.ok) throw new Error('Portal request failed')
-      const { url } = await res.json() as { url: string }
-      window.location.href = url
+      const data = await res.json() as { url: string; demo?: boolean }
+      if (data.url) {
+        window.location.href = data.url
+      }
     } catch {
-      // Fallback: open in new tab if POST+redirect fails
-      window.open('/api/billing/portal', '_blank')
+      // Fallback: stay on billing page
+      window.location.href = '/billing'
     }
   }, [])
 

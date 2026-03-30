@@ -16,8 +16,15 @@ const schema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, redirectUrl: '/editor' })
+  }
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })

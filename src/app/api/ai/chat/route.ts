@@ -805,7 +805,11 @@ interface ChatResponsePayload {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
-    const { userId } = await auth()
+    let userId: string | null = null
+    try {
+      const session = await auth()
+      userId = session?.userId ?? null
+    } catch { /* demo mode — Clerk not configured */ }
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

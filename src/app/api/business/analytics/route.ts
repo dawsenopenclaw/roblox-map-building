@@ -134,8 +134,12 @@ const DEMO_ANALYTICS: BusinessAnalytics = {
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let clerkId: string | null = null
+    try {
+      const session = await auth()
+      clerkId = session?.userId ?? null
+    } catch { /* demo mode */ }
+    if (!clerkId) return NextResponse.json({ analytics: DEMO_ANALYTICS, demo: true })
 
     const { searchParams } = new URL(req.url)
     const period = searchParams.get('period') ?? 'current_month'

@@ -823,11 +823,11 @@ model Referral {
   createdAt       DateTime       @default(now())
   convertedAt     DateTime?
 
+  @@unique([referrerId, referredId])
   @@index([referrerId])
   @@index([code])
   @@index([referredId])
   @@index([referrerId, status])
-  @@unique([referrerId, referredId])
 }
 
 enum ReferralStatus {

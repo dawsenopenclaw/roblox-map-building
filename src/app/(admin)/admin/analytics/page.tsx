@@ -329,7 +329,7 @@ export default function AdminAnalyticsPage() {
                           key={i}
                           className="py-2.5 text-right text-sm font-medium"
                           style={{
-                            color: pct === 0 ? '#374151' : `rgba(255,184,28,${0.4 + (pct / 100) * 0.6})`,
+                            color: pct === 0 ? '#808080' : `rgba(255,184,28,${0.4 + (pct / 100) * 0.6})`,
                           }}
                         >
                           {pct === 0 ? '—' : `${pct.toFixed(0)}%`}

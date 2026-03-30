@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { drainCommands, getSession } from '@/lib/studio-session'
+import { drainCommands, getSession, getSessionByToken } from '@/lib/studio-session'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',

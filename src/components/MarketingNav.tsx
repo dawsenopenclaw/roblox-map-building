@@ -77,7 +77,7 @@ export function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-4 py-2 text-sm text-gray-300 hover:text-blue-400 rounded-lg hover:bg-white/5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="px-4 py-2 text-sm text-gray-300 hover:text-[#D4AF37] rounded-lg hover:bg-white/5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
               {link.label}
             </Link>
@@ -88,13 +88,13 @@ export function MarketingNav() {
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           <Link
             href={signInHref}
-            className="text-sm text-gray-300 hover:text-blue-400 transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+            className="text-sm text-gray-300 hover:text-[#D4AF37] transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
           >
             Sign In
           </Link>
           <Link
             href={signUpHref}
-            className="text-sm font-bold px-4 py-2 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+            className="text-sm font-bold px-4 py-2 rounded-lg transition-all hover:brightness-110 hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
               color: '#0a0a0a',
@@ -139,7 +139,7 @@ export function MarketingNav() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors"
+                className="px-3 py-3 text-sm text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors"
               >
                 {link.label}
               </Link>
@@ -148,14 +148,14 @@ export function MarketingNav() {
               <Link
                 href={signInHref}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors"
+                className="px-3 py-3 text-sm text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 href={signUpHref}
                 onClick={() => setMenuOpen(false)}
-                className="text-center text-sm font-bold px-4 py-3 rounded-lg transition-colors"
+                className="text-center text-sm font-bold px-4 py-3 rounded-lg transition-all hover:brightness-110"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
                   color: '#0a0a0a',

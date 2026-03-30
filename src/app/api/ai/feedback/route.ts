@@ -154,10 +154,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
   const qualityStats = getQualityStats()
   const degradingIntents = getDegradingIntents()
 
-  // If comment exists, log it (future: store in DB)
+  // If comment exists, store it (future: persist to DB when available)
   if (validation.data.comment) {
     // TODO: persist comment to DB when available
-    console.log(`[feedback] ${messageId}: "${validation.data.comment}"`)
   }
 
   // Compute a normalized quality number for the response

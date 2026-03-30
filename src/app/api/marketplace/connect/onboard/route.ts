@@ -5,9 +5,18 @@ import { stripe } from '@/lib/stripe'
 
 // POST /api/marketplace/connect/onboard — create or retrieve Stripe Connect Express account
 export async function POST(req: NextRequest) {
+  // Demo mode: if auth() throws (no Clerk keys), return a demo response
+  let clerkId: string | null = null
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({ demo: true, url: '/marketplace' })
+  }
+
+  try {
 
     const user = await db.user.findUnique({
       where: { clerkId },

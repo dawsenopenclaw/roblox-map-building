@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Link from 'next/link'
+import { useUser } from '@clerk/nextjs'
 import {
   User,
   Key,
@@ -148,6 +149,7 @@ function AvatarUpload({ name }: { name: string }) {
 
 function ProfileTab() {
   const { toast, show } = useToast()
+  const { user } = useUser()
   const [displayName, setDisplayName] = useState('Dawsen')
   const [bio, setBio] = useState('Building Roblox games autonomously.')
   const [charity, setCharity] = useState('Code.org')
@@ -207,7 +209,7 @@ function ProfileTab() {
             <input
               id="profile-email"
               type="email"
-              value="dawsen@forjegames.gg"
+              value={user?.primaryEmailAddress?.emailAddress || ''}
               disabled
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-400 text-sm cursor-not-allowed"
             />

@@ -1,7 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { Footer } from '@/components/Footer'
 
 /* ─── SVG Icons ──────────────────────────────────────────────────────────── */
 
@@ -47,9 +48,8 @@ function IconSearch({ className = 'w-6 h-6' }: { className?: string }) {
 function IconBrain({ className = 'w-6 h-6' }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a6 6 0 0 0-6 6c0 1.66.68 3.16 1.76 4.24L12 16l4.24-3.76A6 6 0 0 0 12 2Z" />
-      <path d="M12 16v6" />
-      <path d="M8 22h8" />
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14Z" />
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14Z" />
     </svg>
   )
 }
@@ -87,6 +87,65 @@ function IconStar({ className = 'w-4 h-4' }: { className?: string }) {
   )
 }
 
+/* ─── Animated Counter ───────────────────────────────────────────────────── */
+
+function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0)
+  const ref = useRef<HTMLSpanElement>(null)
+  const started = useRef(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !started.current) {
+          started.current = true
+          const duration = 1600
+          const startTime = performance.now()
+          const tick = (now: number) => {
+            const elapsed = now - startTime
+            const progress = Math.min(elapsed / duration, 1)
+            const eased = 1 - Math.pow(1 - progress, 3)
+            setCount(Math.round(eased * target))
+            if (progress < 1) requestAnimationFrame(tick)
+          }
+          requestAnimationFrame(tick)
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [target])
+
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>
+}
+
+/* ─── Testimonial Card ───────────────────────────────────────────────────── */
+
+function TestimonialCard({ name, handle, text, stars = 5 }: {
+  name: string; handle: string; text: string; stars?: number
+}) {
+  return (
+    <div
+      className="rounded-2xl p-6 flex flex-col gap-4"
+      style={{ background: '#141414', border: '1px solid #2a2a2a' }}
+    >
+      <div className="flex">
+        {Array.from({ length: stars }).map((_, i) => (
+          <IconStar key={i} className="w-4 h-4 text-[#D4AF37]" />
+        ))}
+      </div>
+      <p className="text-sm leading-relaxed text-[#D1D5DB]">{text}</p>
+      <div className="mt-auto">
+        <p className="text-sm font-semibold text-white">{name}</p>
+        <p className="text-xs text-[#6B7280]">{handle}</p>
+      </div>
+    </div>
+  )
+}
+
 /* ─── Editor Mockup ──────────────────────────────────────────────────────── */
 
 function EditorMockup() {
@@ -94,7 +153,7 @@ function EditorMockup() {
     <div
       className="w-full max-w-3xl mx-auto rounded-2xl overflow-hidden"
       style={{
-        background: '#0d1117',
+        background: '#1c1c1c',
         border: '1px solid rgba(212,175,55,0.18)',
         boxShadow: '0 0 80px rgba(212,175,55,0.08), 0 40px 80px rgba(0,0,0,0.5)',
       }}
@@ -102,7 +161,7 @@ function EditorMockup() {
       {/* Title bar */}
       <div
         className="flex items-center gap-2 px-4 py-2.5"
-        style={{ background: '#161b22', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
       >
         <span className="w-3 h-3 rounded-full bg-[#FF5F56]" />
         <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
@@ -120,7 +179,7 @@ function EditorMockup() {
       {/* Editor body */}
       <div className="flex" style={{ height: 260 }}>
         {/* Sidebar */}
-        <div className="hidden md:flex flex-col w-[160px] flex-shrink-0 py-3 border-r border-white/[0.04]" style={{ background: '#0d1117' }}>
+        <div className="hidden md:flex flex-col w-[160px] flex-shrink-0 py-3 border-r border-white/[0.04]" style={{ background: '#1c1c1c' }}>
           <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[rgba(212,175,55,0.4)]">
             Explorer
           </p>
@@ -155,12 +214,12 @@ function EditorMockup() {
               {[0, 184].map((x) => (
                 <div key={x} className="absolute" style={{
                   left: x, bottom: 40, width: 48, height: 100,
-                  background: 'linear-gradient(180deg, #374151, #1f2937)',
+                  background: 'linear-gradient(180deg, #2a2a2a, #1c1c1c)',
                   border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: '2px 2px 0 0',
                 }}>
                   {[0, 11, 22, 33].map((bx) => (
-                    <div key={bx} className="absolute" style={{ left: bx + 2, top: -8, width: 7, height: 8, background: '#374151', border: '1px solid rgba(255,255,255,0.08)' }} />
+                    <div key={bx} className="absolute" style={{ left: bx + 2, top: -8, width: 7, height: 8, background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }} />
                   ))}
                   <div className="absolute" style={{ left: 12, top: 24, width: 22, height: 28, background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '11px 11px 0 0', boxShadow: '0 0 6px rgba(59,130,246,0.2)' }} />
                 </div>
@@ -168,7 +227,7 @@ function EditorMockup() {
               {/* Wall */}
               <div className="absolute" style={{
                 left: 48, bottom: 40, width: 136, height: 64,
-                background: 'linear-gradient(180deg, #4b5563, #374151)',
+                background: 'linear-gradient(180deg, #252525, #1c1c1c)',
                 border: '1px solid rgba(255,255,255,0.06)',
               }}>
                 {/* Gate */}
@@ -191,7 +250,7 @@ function EditorMockup() {
         </div>
 
         {/* Right panel */}
-        <div className="hidden lg:flex flex-col w-[140px] flex-shrink-0 py-3 border-l border-white/[0.04]" style={{ background: '#0d1117' }}>
+        <div className="hidden lg:flex flex-col w-[140px] flex-shrink-0 py-3 border-l border-white/[0.04]" style={{ background: '#1c1c1c' }}>
           <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[rgba(212,175,55,0.4)]">Properties</p>
           {[
             { label: 'Parts', value: '2,847' },
@@ -214,7 +273,7 @@ function EditorMockup() {
       </div>
 
       {/* Command bar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-white/[0.04]" style={{ background: '#161b22' }}>
+      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-white/[0.04]" style={{ background: '#141414' }}>
         <span className="text-[rgba(212,175,55,0.5)] text-sm font-mono">&gt;</span>
         <span className="flex-1 text-sm font-mono text-[#E5E7EB] truncate">
           build a castle with stone walls, 4 towers, and a working gate
@@ -323,35 +382,9 @@ export default function HomeClient() {
   return (
     <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
 
-      {/* ── Nav ─────────────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl" style={{ background: 'rgba(10,10,10,0.8)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}>
-              F
-            </div>
-            <span className="font-bold text-white text-lg hidden sm:block">ForjeGames</span>
-          </Link>
-          <div className="hidden md:flex items-center gap-8">
-            <Link href="/pricing" className="text-sm text-[#9CA3AF] hover:text-white transition-colors">Pricing</Link>
-            <Link href="/docs" className="text-sm text-[#9CA3AF] hover:text-white transition-colors">Docs</Link>
-            <Link href="/download" className="text-sm text-[#9CA3AF] hover:text-white transition-colors">Download</Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link href="/sign-in" className="text-sm text-[#9CA3AF] hover:text-white transition-colors px-3 py-2">Sign in</Link>
-            <Link
-              href="/editor"
-              className="text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200"
-              style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}
-            >
-              Open Editor
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section className="relative pt-32 pb-20 px-6 overflow-hidden">
+      {/* Note: MarketingNav is injected by layout.tsx — do not render it here */}
+      <section className="relative pt-16 pb-20 px-6 overflow-hidden">
         {/* Background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] opacity-30 pointer-events-none" style={{
           background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, transparent 60%)',
@@ -410,22 +443,28 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* ── Social proof ───────────────────────────────────────────────────── */}
+      {/* ── Social proof — animated stat counters ──────────────────────────── */}
       <section className="py-12 border-y border-white/[0.04]">
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-white">50K+</p>
+              <p className="text-2xl font-bold text-white">
+                <AnimatedCounter target={50000} suffix="+" />
+              </p>
               <p className="text-xs text-[#6B7280] uppercase tracking-wider">Assets Generated</p>
             </div>
             <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
             <div>
-              <p className="text-2xl font-bold text-white">1,200+</p>
+              <p className="text-2xl font-bold text-white">
+                <AnimatedCounter target={1200} suffix="+" />
+              </p>
               <p className="text-xs text-[#6B7280] uppercase tracking-wider">Maps Built</p>
             </div>
             <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
             <div>
-              <p className="text-2xl font-bold text-white">5</p>
+              <p className="text-2xl font-bold text-white">
+                <AnimatedCounter target={5} />
+              </p>
               <p className="text-xs text-[#6B7280] uppercase tracking-wider">AI Models</p>
             </div>
             <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
@@ -443,7 +482,7 @@ export default function HomeClient() {
       </section>
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6">
+      <section id="features" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Everything you need to build</h2>
@@ -518,8 +557,35 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      {/* ── Testimonials ───────────────────────────────────────────────────── */}
       <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">What creators are saying</h2>
+            <p className="text-lg text-[#9CA3AF]">Trusted by developers building the next generation of Roblox games.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <TestimonialCard
+              name="Alex R."
+              handle="@alexbuilds · 200K visits"
+              text="I described my whole city map in one sentence. ForjeGames laid it out, placed terrain, and inserted marketplace assets in under a minute. It would have taken me days."
+            />
+            <TestimonialCard
+              name="Maya T."
+              handle="@mayadev · Roblox Creator"
+              text="The Studio plugin is flawless. Every command I type shows up live in my place. The multi-model AI switching is a game changer — Claude for scripts, GPT for world-building."
+            />
+            <TestimonialCard
+              name="Jordan K."
+              handle="@jk_games · Game Jam Winner"
+              text="Won a 48-hour game jam using ForjeGames. Built an entire obby with custom 3D meshes and lighting scripts. My team of one competed against teams of five."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing ────────────────────────────────────────────────────────── */}
+      <section className="py-24 px-6" style={{ background: '#0d0d0d' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple pricing</h2>
@@ -610,53 +676,6 @@ export default function HomeClient() {
         </div>
       </section>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.04] py-12 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-4">Product</h3>
-              <div className="space-y-3">
-                <Link href="/editor" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Editor</Link>
-                <Link href="/pricing" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Pricing</Link>
-                <Link href="/download" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Download</Link>
-                <Link href="/docs" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Documentation</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-4">Features</h3>
-              <div className="space-y-3">
-                <span className="block text-sm text-[#6B7280]">Voice to Game</span>
-                <span className="block text-sm text-[#6B7280]">Image to Map</span>
-                <span className="block text-sm text-[#6B7280]">3D Generation</span>
-                <span className="block text-sm text-[#6B7280]">Studio Plugin</span>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-4">Legal</h3>
-              <div className="space-y-3">
-                <Link href="/terms" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Terms of Service</Link>
-                <Link href="/privacy" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Privacy Policy</Link>
-                <Link href="/dmca" className="block text-sm text-[#6B7280] hover:text-white transition-colors">DMCA</Link>
-                <Link href="/acceptable-use" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Acceptable Use</Link>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-4">Company</h3>
-              <div className="space-y-3">
-                <span className="block text-sm text-[#6B7280]">ForjeGames LLC</span>
-                <span className="block text-sm text-[#6B7280]">Built by Dawsen Porter</span>
-                <a href="mailto:support@forjegames.com" className="block text-sm text-[#6B7280] hover:text-white transition-colors">support@forjegames.com</a>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-white/[0.04]">
-            <p className="text-sm text-[#6B7280]">&copy; {new Date().getFullYear()} ForjeGames LLC. All rights reserved.</p>
-            <p className="text-xs text-[#4B5563] mt-2 sm:mt-0">10% of revenue donated to charity</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

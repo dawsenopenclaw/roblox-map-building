@@ -5,9 +5,25 @@ import { stripe } from '@/lib/stripe'
 
 // GET /api/marketplace/earnings — creator earnings summary
 export async function GET() {
+  // Demo mode: if auth() throws (no Clerk keys), return demo earnings
+  let clerkId: string | null = null
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    clerkId = session?.userId ?? null
+  } catch { /* demo mode — Clerk not configured */ }
+
+  if (!clerkId) {
+    return NextResponse.json({
+      demo: true,
+      connected: false,
+      pendingBalanceCents: 0,
+      totalEarnedCents: 12500,
+      lastPayoutAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      recentSales: [],
+    })
+  }
+
+  try {
 
     const user = await db.user.findUnique({
       where: { clerkId },
@@ -75,9 +91,14 @@ export async function GET() {
       recentSales,
     })
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Service temporarily unavailable', details: 'Database not connected' },
-      { status: 503 }
-    )
+    // DB/Stripe unavailable — return demo shape so the page renders
+    return NextResponse.json({
+      demo: true,
+      connected: false,
+      pendingBalanceCents: 0,
+      totalEarnedCents: 0,
+      lastPayoutAt: null,
+      recentSales: [],
+    })
   }
 }

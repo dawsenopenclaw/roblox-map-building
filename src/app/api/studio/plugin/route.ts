@@ -186,8 +186,8 @@ local function promptForCode()
             pluginVersion = PLUGIN_VER,
         })
 
-        if ok and data and data.sessionToken then
-            sessionToken = data.sessionToken
+        if ok and data and (data.token or data.sessionToken) then
+            sessionToken = data.token or data.sessionToken
             connectionCode = code
             setStatus("Connected — " .. placeName, true)
             gui:Destroy()

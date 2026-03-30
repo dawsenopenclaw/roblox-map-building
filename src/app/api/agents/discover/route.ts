@@ -23,22 +23,53 @@ import {
   generateImprovedSystemPrompt,
 } from '@/lib/agents/self-improve'
 
+// ─── Demo data ────────────────────────────────────────────────────────────────
+
+const DEMO_DISCOVER = {
+  demo: true,
+  recommendations: [],
+  suggestedChains: [],
+  untappedAgents: getAllAgents().slice(0, 5).map((a) => ({
+    id: a.id,
+    name: a.name,
+    category: a.category,
+    description: a.description,
+    costPerCall: a.costPerCall,
+  })),
+  newAgentSuggestions: [],
+  improvementMetrics: {
+    totalPatternsCached: 0,
+    cacheHitRate: 0,
+    avgQualityScore: 0,
+    topAgents: [],
+    underperformingAgents: [],
+  },
+  improvedPrompts: [],
+  growthOpportunities: [],
+  meta: { totalAgentsAvailable: 0, totalAgentsCalled: 0, explorationRate: 0 },
+}
+
 // ─── Auth helper ──────────────────────────────────────────────────────────────
 
 async function requireUser() {
-  const { userId: clerkId } = await auth()
+  let clerkId: string | null = null
+  try {
+    const { userId } = await auth()
+    clerkId = userId ?? null
+  } catch { /* demo mode */ }
   if (!clerkId) return null
 
-  const raw = await db.user.findUnique({
-    where: { clerkId },
-    select: { id: true, subscription: { select: { tier: true } } },
-  })
-  if (!raw) return null
-
-  return {
-    clerkId,
-    dbUser: { id: raw.id, subscriptionTier: raw.subscription?.tier ?? 'FREE' },
-  }
+  try {
+    const raw = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true, subscription: { select: { tier: true } } },
+    })
+    if (!raw) return null
+    return {
+      clerkId,
+      dbUser: { id: raw.id, subscriptionTier: raw.subscription?.tier ?? 'FREE' },
+    }
+  } catch { return null }
 }
 
 // ─── GET /api/agents/discover ─────────────────────────────────────────────────
@@ -46,7 +77,7 @@ async function requireUser() {
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await requireUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json(DEMO_DISCOVER)
   }
 
   const { searchParams } = new URL(req.url)

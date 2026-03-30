@@ -49,6 +49,31 @@ const SHATTER_TRANSFORMS = [
   'translate(150px, 100px) rotate(22deg) scale(0.74)',
 ]
 
+// Stable random particle data — generated once at module level, never regenerated
+const PARTICLE_DATA = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+  const angle = (i / PARTICLE_COUNT) * 360
+  const radius = 40 + Math.random() * 180
+  const dx = Math.cos((angle * Math.PI) / 180) * radius * (0.5 + Math.random() * 0.5)
+  const dy = -(30 + Math.random() * 120)
+  const size = 1.5 + Math.random() * 3
+  const delay = Math.random() * 3
+  const duration = 1.5 + Math.random() * 2.5
+  const opacity = 0.3 + Math.random() * 0.7
+  const left = 30 + Math.random() * 40
+  const top = 40 + Math.random() * 20
+  return { i, dx, dy, size, delay, duration, opacity, left, top }
+})
+
+// Stable random spark data — generated once at module level
+const SPARK_DATA = Array.from({ length: 8 }, (_, i) => ({
+  i,
+  width: 2 + Math.random() * 2,
+  height: 2 + Math.random() * 2,
+  color: i % 3 === 0 ? '#FFFFFF' : i % 3 === 1 ? '#FFB81C' : '#D4AF37',
+  dx: (Math.random() - 0.5) * 20,
+  duration: 0.4 + Math.random() * 0.6,
+}))
+
 function getStageLabel(pct: number): string {
   let label = STAGE_LABELS[0].label
   for (const s of STAGE_LABELS) {
@@ -130,21 +155,6 @@ const KEYFRAMES = `
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Particles({ active }: { active: boolean }) {
-  const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    const angle = (i / PARTICLE_COUNT) * 360
-    const radius = 40 + Math.random() * 180
-    const dx = Math.cos((angle * Math.PI) / 180) * radius * (0.5 + Math.random() * 0.5)
-    const dy = -(30 + Math.random() * 120)
-    const size = 1.5 + Math.random() * 3
-    const delay = Math.random() * 3
-    const duration = 1.5 + Math.random() * 2.5
-    const opacity = 0.3 + Math.random() * 0.7
-    const left = 30 + Math.random() * 40 // % — spread around center
-    const top = 40 + Math.random() * 20
-
-    return { i, dx, dy, size, delay, duration, opacity, left, top }
-  })
-
   if (!active) return null
 
   return (
@@ -152,7 +162,7 @@ function Particles({ active }: { active: boolean }) {
       aria-hidden
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
     >
-      {particles.map((p) => (
+      {PARTICLE_DATA.map((p) => (
         <div
           key={p.i}
           style={{
@@ -182,19 +192,19 @@ function BarSparks({ active }: { active: boolean }) {
       aria-hidden
       style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
     >
-      {Array.from({ length: 8 }, (_, i) => (
+      {SPARK_DATA.map((s) => (
         <div
-          key={i}
+          key={s.i}
           style={{
             position: 'absolute',
             right: 0,
             top: '50%',
-            width: 2 + Math.random() * 2,
-            height: 2 + Math.random() * 2,
+            width: s.width,
+            height: s.height,
             borderRadius: '50%',
-            backgroundColor: i % 3 === 0 ? '#FFFFFF' : i % 3 === 1 ? '#FFB81C' : '#D4AF37',
-            '--spark-dx': (Math.random() - 0.5) * 20,
-            animation: `fj-bar-ember ${0.4 + Math.random() * 0.6}s ease-out ${i * 0.08}s infinite`,
+            backgroundColor: s.color,
+            '--spark-dx': s.dx,
+            animation: `fj-bar-ember ${s.duration}s ease-out ${s.i * 0.08}s infinite`,
             willChange: 'transform, opacity',
           } as React.CSSProperties}
         />
@@ -206,13 +216,12 @@ function BarSparks({ active }: { active: boolean }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function SplashScreen({ children }: { children: React.ReactNode }) {
+  // SSR guard — render nothing until client hydration
+  const [isMounted, setIsMounted] = useState(false)
   const [splashState, setSplashState] = useState<'pending' | 'active' | 'done'>('pending')
-  const [reducedMotion, setReducedMotion] = useState(false)
   const [phase, setPhase] = useState(0) // 0=void, 1=scanline, 2=holo, 3=progress, 4=exit
   const [revealedCount, setRevealedCount] = useState(0)
   const [showScanLine, setShowScanLine] = useState(false)
-  const [progressPct, setProgressPct] = useState(0)
-  const [stageLabel, setStageLabel] = useState('Heating the forge...')
   const [showShatter, setShowShatter] = useState(false)
   const [shatterActive, setShatterActive] = useState(false)
   const [quench, setQuench] = useState(false)
@@ -227,13 +236,27 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   const letterRefs       = useRef<(HTMLSpanElement | null)[]>([])
   const holoTextRef      = useRef<HTMLDivElement>(null)
 
-  const rafRef           = useRef<number>(0)
-  const startTimeRef     = useRef<number>(-1)
-  const exitStartedRef   = useRef(false)
-  const lastPctIntRef    = useRef(-1)
-  const lastStageRef     = useRef('')
-  const stageFadingRef   = useRef(false)
-  const lettersRevealedRef = useRef(0) // track without re-render
+  const rafRef             = useRef<number>(0)
+  const startTimeRef       = useRef<number>(-1)
+  const exitStartedRef     = useRef(false)
+  const lastPctIntRef      = useRef(-1)
+  const lastStageRef       = useRef('')
+  const stageFadingRef     = useRef(false)
+  const lettersRevealedRef = useRef(0)
+  // Track phase in a ref so the rAF loop always reads the current value
+  const phaseRef           = useRef(0)
+  // Pending timeout handles for cleanup on unmount
+  const pendingTimersRef   = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  // Helper to register a timeout that is auto-cancelled on unmount
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      pendingTimersRef.current = pendingTimersRef.current.filter((t) => t !== id)
+      fn()
+    }, ms)
+    pendingTimersRef.current.push(id)
+    return id
+  }, [])
 
   // ── Inject CSS keyframes once ────────────────────────────────────────────
   useEffect(() => {
@@ -244,25 +267,57 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     document.head.appendChild(el)
   }, [])
 
-  // ── Session gate + reduced-motion ────────────────────────────────────────
+  // ── Mount flag + remove data-loading attribute ────────────────────────────
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const rm = mq.matches
-    setReducedMotion(rm)
-    const seen = sessionStorage.getItem('fj_df_splash')
-    if (seen) { setSplashState('done'); return }
-    sessionStorage.setItem('fj_df_splash', '1')
-    if (rm) { setSplashState('done'); return }
-    setSplashState('active')
+    setIsMounted(true)
+    // Remove the data-loading attribute set by the inline script in layout.tsx
+    // so the animation-suppression style rule no longer applies.
+    document.documentElement.removeAttribute('data-loading')
   }, [])
 
-  // ── Letter reveal: stamp each revealed letter's gradient style ───────────
+  // ── Session gate + reduced-motion ────────────────────────────────────────
+  useEffect(() => {
+    if (!isMounted) return
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const rm = mq.matches
+
+    // Listen for OS-level preference changes during the session
+    const handleMqChange = (e: MediaQueryListEvent) => {
+      if (e.matches && splashState === 'active') {
+        // User turned on reduced-motion mid-splash — bail immediately
+        setSplashState('done')
+      }
+    }
+    mq.addEventListener('change', handleMqChange)
+
+    const seen = sessionStorage.getItem('fj_df_splash')
+    if (seen || rm) {
+      setSplashState('done')
+    } else {
+      sessionStorage.setItem('fj_df_splash', '1')
+      setSplashState('active')
+    }
+
+    return () => mq.removeEventListener('change', handleMqChange)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted])
+
+  // ── Cleanup all pending timers on unmount ────────────────────────────────
+  useEffect(() => {
+    return () => {
+      for (const id of pendingTimersRef.current) clearTimeout(id)
+      pendingTimersRef.current = []
+      cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
+
+  // ── Letter reveal: stamp each revealed letter's visibility ───────────────
   useEffect(() => {
     if (splashState !== 'active') return
     letterRefs.current.forEach((el, i) => {
       if (!el) return
       if (i < revealedCount) {
-        // Revealed: holographic gradient text (visible)
         el.style.opacity = '1'
         el.style.visibility = 'visible'
       } else {
@@ -279,29 +334,31 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
 
     // Phase 5: white quench flash
     setQuench(true)
-    setTimeout(() => setQuench(false), 120)
+    safeTimeout(() => setQuench(false), 120)
 
-    // Shatter
-    setTimeout(() => {
+    // Shatter — two rAF frames ensure CSS transition detects the state change
+    safeTimeout(() => {
       setShowShatter(true)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setShatterActive(true))
       })
     }, 100)
 
-    // Reveal children
+    // Reveal children behind the shatter
     if (childrenWrapRef.current) {
       childrenWrapRef.current.style.opacity = '1'
       childrenWrapRef.current.style.pointerEvents = ''
     }
 
-    setTimeout(() => setSplashState('done'), EXIT_COMPLETE - PHASE5_START + 50)
-  }, [])
+    safeTimeout(() => setSplashState('done'), EXIT_COMPLETE - PHASE5_START + 50)
+  }, [safeTimeout])
 
   // ── Click to skip ─────────────────────────────────────────────────────────
   const handleSkip = useCallback(() => {
     if (splashState !== 'active' || exitStartedRef.current) return
     cancelAnimationFrame(rafRef.current)
+    // Cancel any pending stage-label fade timeout by clearing stageFadingRef
+    stageFadingRef.current = false
     triggerExit()
   }, [splashState, triggerExit])
 
@@ -309,15 +366,13 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (splashState !== 'active') return
 
-    // Initialize letter refs array
-    letterRefs.current = Array(LETTERS.length).fill(null)
-
     const animate = (ts: number) => {
       if (startTimeRef.current < 0) startTimeRef.current = ts
       const elapsed = ts - startTimeRef.current
 
       // Phase 0 → 1: activate scan line
-      if (elapsed >= PHASE2_START && phase === 0) {
+      if (elapsed >= PHASE2_START && phaseRef.current === 0) {
+        phaseRef.current = 1
         setPhase(1)
         setShowScanLine(true)
       }
@@ -325,7 +380,6 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       // Phase 1: reveal letters as scan line sweeps (500ms → 1800ms)
       if (elapsed >= PHASE2_START && elapsed < PHASE2_END) {
         const scanT = (elapsed - PHASE2_START) / (PHASE2_END - PHASE2_START)
-        // Letter reveals: stagger across 1300ms window
         const targetRevealed = Math.min(
           Math.floor(scanT * (LETTERS.length + 1)),
           LETTERS.length
@@ -337,15 +391,17 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       }
 
       // Phase 2: holographic pulse (1800ms → 2500ms)
-      if (elapsed >= PHASE3_START && phase < 2) {
+      if (elapsed >= PHASE3_START && phaseRef.current < 2) {
+        phaseRef.current = 2
         setPhase(2)
         setShowScanLine(false)
-        setRevealedCount(LETTERS.length) // ensure all letters shown
+        setRevealedCount(LETTERS.length)
         lettersRevealedRef.current = LETTERS.length
       }
 
       // Phase 3: progress forge (2500ms → 3500ms)
-      if (elapsed >= PHASE4_START && phase < 3) {
+      if (elapsed >= PHASE4_START && phaseRef.current < 3) {
+        phaseRef.current = 3
         setPhase(3)
       }
 
@@ -375,7 +431,8 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           const el = stageLabelRef.current
           if (el) {
             el.style.opacity = '0'
-            setTimeout(() => {
+            safeTimeout(() => {
+              if (!stageFadingRef.current) return // skip was triggered
               if (el) { el.textContent = label; el.style.opacity = '1' }
               stageFadingRef.current = false
             }, 200)
@@ -386,6 +443,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       // Phase 4 end → exit
       if (elapsed >= PHASE4_END && !exitStartedRef.current) {
         cancelAnimationFrame(rafRef.current)
+        phaseRef.current = 4
         setPhase(4)
         triggerExit()
         return
@@ -400,7 +458,9 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   }, [splashState])
 
   // ── Guard renders ─────────────────────────────────────────────────────────
-  if (splashState === 'pending') return null
+  // Before mount (SSR and first paint) render children directly so there is
+  // no blank frame — the inline script in layout.tsx already set the dark bg.
+  if (!isMounted || splashState === 'pending') return null
   if (splashState === 'done') return <>{children}</>
 
   const isHolo = phase >= 2
@@ -408,7 +468,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Children behind splash */}
+      {/* Children behind splash — hidden until exit begins */}
       <div
         ref={childrenWrapRef}
         aria-hidden
@@ -629,7 +689,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                       display: 'inline-block',
                       fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                       fontWeight: 900,
-                      fontSize: '6rem',
+                      fontSize: 'clamp(3rem, 10vw, 6rem)',
                       letterSpacing: '0.05em',
                       textTransform: 'uppercase',
                       lineHeight: 1,
@@ -768,7 +828,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                 transition: 'opacity 200ms ease',
               }}
             >
-              {stageLabel}
+              Heating the forge...
             </span>
           </div>
 

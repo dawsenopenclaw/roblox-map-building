@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Search,
   X,
@@ -12,6 +12,8 @@ import {
   Package,
   RefreshCw,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Filter,
 } from 'lucide-react'
 
@@ -152,6 +154,8 @@ export default function MarketplacePage() {
   const [priceFilter, setPriceFilter]     = useState('')
   const [templates, setTemplates]         = useState<Template[]>([])
   const [total, setTotal]                 = useState(0)
+  const [page, setPage]                   = useState(1)
+  const [totalPages, setTotalPages]       = useState(1)
   const [isLoading, setIsLoading]         = useState(true)
   const [error, setError]                 = useState<string | null>(null)
   const [showFilters, setShowFilters]     = useState(false)
@@ -165,7 +169,10 @@ export default function MarketplacePage() {
     return () => clearInterval(id)
   }, [])
 
-  const fetchTemplates = useCallback(async () => {
+  // Track whether filter change (vs pagination) triggered the fetch
+  const filterVersion = useRef(0)
+
+  const doFetch = useCallback(async (pageNum: number) => {
     setIsLoading(true)
     setError(null)
     try {
@@ -173,6 +180,8 @@ export default function MarketplacePage() {
       if (activeTab !== 'all') params.set('category', activeTab)
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
       params.set('sort', sort)
+      params.set('page', String(pageNum))
+      params.set('limit', '12')
       if (priceFilter === 'free') {
         params.set('maxPrice', '0')
       } else if (priceFilter === 'under5') {
@@ -182,12 +191,12 @@ export default function MarketplacePage() {
       } else if (priceFilter === 'premium') {
         params.set('minPrice', '1500')
       }
-
       const res = await fetch(`/api/marketplace/templates?${params.toString()}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as { templates: Template[]; pagination: { total: number } }
+      const data = await res.json() as { templates: Template[]; pagination: { total: number; totalPages: number } }
       setTemplates(data.templates)
       setTotal(data.pagination?.total ?? data.templates.length)
+      setTotalPages(data.pagination?.totalPages ?? 1)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load templates')
     } finally {
@@ -195,10 +204,27 @@ export default function MarketplacePage() {
     }
   }, [activeTab, searchQuery, sort, priceFilter])
 
+  // When filters change: reset page to 1 then fetch
   useEffect(() => {
-    const debounce = setTimeout(fetchTemplates, searchQuery ? 300 : 0)
-    return () => clearTimeout(debounce)
-  }, [fetchTemplates, searchQuery])
+    filterVersion.current += 1
+    const version = filterVersion.current
+    const delay = searchQuery ? 350 : 0
+    const timer = setTimeout(() => {
+      if (version !== filterVersion.current) return
+      setPage(1)
+      void doFetch(1)
+    }, delay)
+    return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, searchQuery, sort, priceFilter])
+
+  // When page changes (via pagination buttons), fetch immediately
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    void doFetch(page)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   const featured = FEATURED[featuredIndex]!
 
@@ -275,7 +301,7 @@ export default function MarketplacePage() {
                 "
               >
                 {PRICE_FILTERS.map((p) => (
-                  <option key={p.value} value={p.value} className="bg-[#0d1117]">
+                  <option key={p.value} value={p.value} className="bg-[#1c1c1c]">
                     {p.label}
                   </option>
                 ))}
@@ -296,7 +322,7 @@ export default function MarketplacePage() {
                 "
               >
                 {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value} className="bg-[#0d1117]">
+                  <option key={o.value} value={o.value} className="bg-[#1c1c1c]">
                     {o.label}
                   </option>
                 ))}
@@ -326,7 +352,7 @@ export default function MarketplacePage() {
 
         {/* ── Featured Banner ────────────────────────────────────────────── */}
         <section aria-label="Featured templates">
-          <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#0d1117] shadow-[0_0_60px_rgba(245,158,11,0.08)]">
+          <div className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#1c1c1c] shadow-[0_0_60px_rgba(245,158,11,0.08)]">
             {/* Gold top border accent */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/80 to-transparent" />
             {/* Subtle glow overlay */}
@@ -397,20 +423,20 @@ export default function MarketplacePage() {
 
                 {/* CTA row */}
                 <div className="flex items-center gap-3 pt-1">
-                  <button
-                    type="button"
+                  <a
+                    href={`/marketplace/${featured.id}`}
                     className="
                       inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm
                       bg-gradient-to-r from-amber-500 to-yellow-400 text-black
                       hover:from-amber-400 hover:to-yellow-300
                       shadow-[0_0_20px_rgba(245,158,11,0.25)]
                       hover:shadow-[0_0_30px_rgba(245,158,11,0.45)]
-                      transition-all duration-200
+                      transition-all duration-200 no-underline
                     "
                   >
                     <Sparkles className="w-4 h-4" />
                     Use Template — {formatPrice(featured.priceCents)}
-                  </button>
+                  </a>
                   <span className="text-xs text-white/25">
                     {FEATURED.length} featured templates
                   </span>
@@ -488,7 +514,7 @@ export default function MarketplacePage() {
 
         {/* ── Grid ───────────────────────────────────────────────────────── */}
         {error ? (
-          <ErrorState message={error} onRetry={fetchTemplates} />
+          <ErrorState message={error} onRetry={() => doFetch(page)} />
         ) : isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 9 }, (_, i) => <SkeletonCard key={i} />)}
@@ -498,6 +524,74 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {templates.map((t) => <TemplateCard key={t.id} template={t} />)}
+          </div>
+        )}
+
+        {/* ── Pagination ─────────────────────────────────────────────────── */}
+        {!isLoading && !error && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-4">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="
+                flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
+                bg-white/5 border border-white/10 text-white/60
+                hover:text-white hover:bg-white/8 hover:border-white/20
+                disabled:opacity-30 disabled:cursor-not-allowed
+                transition-all duration-150
+              "
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Prev
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                let pageNum: number
+                if (totalPages <= 7) {
+                  pageNum = i + 1
+                } else if (page <= 4) {
+                  pageNum = i + 1
+                } else if (page >= totalPages - 3) {
+                  pageNum = totalPages - 6 + i
+                } else {
+                  pageNum = page - 3 + i
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setPage(pageNum)}
+                    className={`
+                      w-9 h-9 rounded-xl text-sm font-medium transition-all duration-150
+                      ${pageNum === page
+                        ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
+                        : 'bg-white/5 border border-transparent text-white/50 hover:text-white/80 hover:bg-white/8'
+                      }
+                    `}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="
+                flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium
+                bg-white/5 border border-white/10 text-white/60
+                hover:text-white hover:bg-white/8 hover:border-white/20
+                disabled:opacity-30 disabled:cursor-not-allowed
+                transition-all duration-150
+              "
+            >
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
@@ -513,11 +607,14 @@ function TemplateCard({ template }: { template: Template }) {
   const catLabel = categoryLabel(template.category)
 
   return (
-    <article className="
-      group flex flex-col bg-[#141414] border border-white/8 rounded-xl overflow-hidden
-      hover:border-amber-500/25 hover:shadow-[0_0_30px_rgba(245,158,11,0.06)]
-      transition-all duration-200 cursor-pointer
-    ">
+    <a
+      href={`/marketplace/${template.id}`}
+      className="
+        group flex flex-col bg-[#141414] border border-white/8 rounded-xl overflow-hidden
+        hover:border-amber-500/25 hover:shadow-[0_0_30px_rgba(245,158,11,0.06)]
+        transition-all duration-200 cursor-pointer no-underline
+      "
+    >
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gradient-to-br from-white/5 to-white/2 overflow-hidden">
         {template.thumbnailUrl ? (
@@ -607,21 +704,20 @@ function TemplateCard({ template }: { template: Template }) {
         </div>
 
         {/* Gold CTA */}
-        <button
-          type="button"
+        <div
           className="
-            mt-1 w-full py-2 rounded-lg font-semibold text-xs
+            mt-1 w-full py-2 rounded-lg font-semibold text-xs text-center
             bg-gradient-to-r from-amber-500 to-yellow-400 text-black
-            hover:from-amber-400 hover:to-yellow-300
+            group-hover:from-amber-400 group-hover:to-yellow-300
             shadow-[0_0_12px_rgba(245,158,11,0.15)]
             group-hover:shadow-[0_0_20px_rgba(245,158,11,0.35)]
             transition-all duration-200
           "
         >
           Use Template
-        </button>
+        </div>
       </div>
-    </article>
+    </a>
   )
 }
 

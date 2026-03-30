@@ -32,25 +32,42 @@ import {
   type FeedbackRating,
 } from '@/lib/agents/self-improve'
 
+// ─── Demo fallback data ───────────────────────────────────────────────────────
+
+const DEMO_AGENTS_RESPONSE = {
+  demo: true,
+  agents: getAllAgents().map((a) => ({ ...a, available: a.minTier === 'FREE' })),
+  total: getAllAgents().length,
+  categories: ['build', 'analyze', 'optimize', 'research', 'business', 'growth'],
+}
+
 // ─── Auth helper ──────────────────────────────────────────────────────────────
 
 async function requireUser(): Promise<{ userId: string; dbUser: { id: string; subscriptionTier: string } } | NextResponse> {
-  const { userId: clerkId } = await auth()
+  let clerkId: string | null = null
+  try {
+    const { userId } = await auth()
+    clerkId = userId ?? null
+  } catch { /* demo mode */ }
+
   if (!clerkId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json(DEMO_AGENTS_RESPONSE)
   }
 
-  const dbUser = await db.user.findUnique({
-    where: { clerkId },
-    select: { id: true, subscription: { select: { tier: true } } },
-  })
-  if (!dbUser) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  }
-
-  return {
-    userId: clerkId,
-    dbUser: { id: dbUser.id, subscriptionTier: dbUser.subscription?.tier ?? 'FREE' },
+  try {
+    const dbUser = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true, subscription: { select: { tier: true } } },
+    })
+    if (!dbUser) {
+      return NextResponse.json(DEMO_AGENTS_RESPONSE)
+    }
+    return {
+      userId: clerkId,
+      dbUser: { id: dbUser.id, subscriptionTier: dbUser.subscription?.tier ?? 'FREE' },
+    }
+  } catch {
+    return NextResponse.json(DEMO_AGENTS_RESPONSE)
   }
 }
 

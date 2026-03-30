@@ -30,11 +30,15 @@ interface PluginChange {
 
 interface UpdateBody {
   sessionId: string
-  timestamp: number
-  changes: PluginChange[]
+  timestamp?: number
+  changes?: PluginChange[]
   source?: string
   placeId?: string
   jobId?: string
+  /** Heartbeat-only pings (no changes) use event: "heartbeat" */
+  event?: string
+  /** Legacy: some plugin versions send sessionToken instead of sessionId */
+  sessionToken?: string
 }
 
 const CORS_HEADERS = {
@@ -58,19 +62,24 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (!body.sessionId) {
+  // Support legacy plugin versions that send sessionToken instead of sessionId
+  const sessionId = body.sessionId ?? body.sessionToken
+  if (!sessionId) {
     return NextResponse.json(
       { error: 'sessionId is required' },
       { status: 400, headers: CORS_HEADERS },
     )
   }
+  body.sessionId = sessionId
 
-  if (!Array.isArray(body.changes)) {
+  // changes is optional — heartbeat pings send no changes
+  if (body.changes !== undefined && !Array.isArray(body.changes)) {
     return NextResponse.json(
       { error: 'changes must be an array' },
       { status: 400, headers: CORS_HEADERS },
     )
   }
+  body.changes = body.changes ?? []
 
   // Store the latest state snapshot on the session
   const statePayload: Record<string, unknown> = {
