@@ -1618,6 +1618,12 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
   const isError   = asset.status === 'error'
   const isWorking = isLoading || isPending
   const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cancel reset timer on unmount
+  useEffect(() => {
+    return () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current) }
+  }, [])
 
   const previewImg = asset.thumbnailUrl ?? asset.textures?.albedo ?? asset.textureUrl ?? null
 
@@ -1625,7 +1631,8 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
     if (!asset.luauCode) return
     navigator.clipboard.writeText(asset.luauCode).then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
     }).catch(() => {})
   }
 

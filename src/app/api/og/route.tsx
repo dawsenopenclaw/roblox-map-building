@@ -1,6 +1,8 @@
 ﻿import { ImageResponse } from '@vercel/og'
 import { NextRequest } from 'next/server'
 
+export const runtime = 'edge'
+
 const BG = '#0a0a0a'
 const GOLD = '#FFB81C'
 const DARK_CARD = '#141414'

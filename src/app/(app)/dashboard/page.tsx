@@ -4,7 +4,7 @@ import { DashboardHomeClient } from '@/components/DashboardHomeClient'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Dashboard — ForjeGames',
   description: 'Your ForjeGames dashboard. Track token usage, recent builds, and project activity.',
   robots: { index: false, follow: false },

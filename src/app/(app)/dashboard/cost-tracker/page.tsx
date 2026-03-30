@@ -1,4 +1,10 @@
+import type { Metadata } from 'next'
 import { CostDashboard } from '@/components/CostDashboard'
+
+export const metadata: Metadata = {
+  title: 'Cost Dashboard — ForjeGames',
+  robots: { index: false, follow: false },
+}
 
 export default function CostTrackerPage() {
   return (
