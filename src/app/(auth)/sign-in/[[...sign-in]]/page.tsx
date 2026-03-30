@@ -97,6 +97,70 @@ const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 export default function SignInPage() {
   const router = useRouter()
 
+  // In demo mode, show demo login options instead of Clerk (which fails with test keys on prod)
+  if (IS_DEMO) {
+    return (
+      <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Welcome to ForjeGames
+          </h1>
+          <p className="text-[#B0B0B0] text-sm mt-2">
+            Choose how you want to explore
+          </p>
+        </div>
+
+        <div className="w-full space-y-3">
+          <button
+            onClick={() => router.push('/editor')}
+            className="w-full flex items-center justify-center gap-3 rounded-xl bg-[#D4AF37] hover:bg-[#FFB81C] text-[#0a0a0a] font-bold py-3.5 text-base transition-all duration-150 shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/40 hover:-translate-y-0.5"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <polygon points="5,3 19,12 5,21 5,3" />
+            </svg>
+            Open AI Editor
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="w-full flex items-center justify-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#141414] hover:bg-[#1c1c1c] text-white font-semibold py-3 text-sm transition-all duration-150"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
+            </svg>
+            View Dashboard
+          </button>
+
+          <button
+            onClick={() => router.push('/marketplace')}
+            className="w-full flex items-center justify-center gap-3 rounded-xl border border-[#2a2a2a] bg-[#141414] hover:bg-[#1c1c1c] text-white font-semibold py-3 text-sm transition-all duration-150"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" /><line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
+            </svg>
+            Browse Marketplace
+          </button>
+        </div>
+
+        <div className="mt-6 px-4 py-3 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 text-center">
+          <p className="text-xs text-[#D4AF37]">
+            Demo Mode — No account needed. Full access to all features.
+          </p>
+        </div>
+
+        <p className="mt-4 text-xs text-[#808080] text-center">
+          <Link href="/pricing" className="text-[#60A5FA] hover:text-[#93C5FD] transition-colors">
+            View pricing plans
+          </Link>
+          {' · '}
+          <Link href="/" className="text-[#60A5FA] hover:text-[#93C5FD] transition-colors">
+            Back to home
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center">
 
@@ -117,29 +181,6 @@ export default function SignInPage() {
           appearance={clerkAppearance}
         />
       </div>
-
-      {/* Demo bypass — shown when DEMO_MODE is active (test keys on prod) */}
-      {IS_DEMO && (
-        <div className="mt-5 w-full">
-          <div className="relative flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-border-subtle" />
-            <span className="text-xs text-muted uppercase tracking-widest shrink-0">or</span>
-            <div className="flex-1 h-px bg-border-subtle" />
-          </div>
-          <button
-            onClick={() => router.push('/editor')}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gold/30 bg-gold/8 hover:bg-gold/15 text-gold font-semibold py-2.5 text-sm transition-colors duration-150"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <polygon points="5,3 19,12 5,21 5,3" />
-            </svg>
-            Try Demo — Go to Editor
-          </button>
-          <p className="mt-2 text-center text-xs text-muted-subtle">
-            No account needed in demo mode
-          </p>
-        </div>
-      )}
 
       {/* Custom footer */}
       <p className="mt-4 text-sm text-muted text-center">

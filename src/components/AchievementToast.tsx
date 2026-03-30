@@ -8,7 +8,7 @@ async function fireAnalytics(event: string, props: Record<string, unknown>) {
   try {
     if (!_captureClientEvent) {
       const mod = await import('@/lib/analytics-client')
-      _captureClientEvent = mod.captureClientEvent as typeof _captureClientEvent
+      _captureClientEvent = mod.captureClientEvent as (event: string, props: Record<string, unknown>) => void
     }
     _captureClientEvent?.(event as Parameters<typeof _captureClientEvent>[0], props)
   } catch {

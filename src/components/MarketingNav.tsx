@@ -10,9 +10,13 @@ const NAV_LINKS = [
   { href: '/download', label: 'Download' },
 ]
 
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
+
 export function MarketingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const signInHref = IS_DEMO ? '/editor' : '/sign-in'
+  const signUpHref = IS_DEMO ? '/editor' : '/sign-up'
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -83,13 +87,13 @@ export function MarketingNav() {
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           <Link
-            href="/sign-in"
+            href={signInHref}
             className="text-sm text-gray-300 hover:text-blue-400 transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
           >
             Sign In
           </Link>
           <Link
-            href="/sign-up"
+            href={signUpHref}
             className="text-sm font-bold px-4 py-2 rounded-lg transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
@@ -142,14 +146,14 @@ export function MarketingNav() {
             ))}
             <div className="border-t border-white/10 mt-2 pt-3 flex flex-col gap-2">
               <Link
-                href="/sign-in"
+                href={signInHref}
                 onClick={() => setMenuOpen(false)}
                 className="px-3 py-3 text-sm text-gray-400 hover:text-blue-400 hover:bg-white/5 rounded-lg transition-colors"
               >
                 Sign In
               </Link>
               <Link
-                href="/sign-up"
+                href={signUpHref}
                 onClick={() => setMenuOpen(false)}
                 className="text-center text-sm font-bold px-4 py-3 rounded-lg transition-colors"
                 style={{

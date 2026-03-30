@@ -20,11 +20,12 @@ async function runSnapshot(req: NextRequest): Promise<NextResponse> {
     const records = await db.apiUsageRecord.groupBy({
       by: ['provider'],
       where: { createdAt: { gte: yesterday, lte: dayEnd } },
-      _sum: { costUsd: true },
+      _sum: { costUsdMicro: true },
     })
 
+    // costUsdMicro is stored as micro-dollars; divide by 1_000_000 for USD
     const providerCosts: Record<string, number> = Object.fromEntries(
-      records.map((r) => [r.provider, r._sum.costUsd || 0])
+      records.map((r) => [r.provider, (r._sum?.costUsdMicro ?? 0) / 1_000_000])
     )
     const totalCostUsd = Object.values(providerCosts).reduce((a, b) => a + b, 0)
 

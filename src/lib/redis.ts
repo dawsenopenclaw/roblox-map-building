@@ -12,7 +12,9 @@ export function getRedis(): Redis {
     _redis = existing
     return _redis
   }
-  const instance = new Redis(serverEnv.REDIS_URL, {
+  const redisUrl = serverEnv.REDIS_URL
+  if (!redisUrl) throw new Error('REDIS_URL is not configured')
+  const instance = new Redis(redisUrl, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
   })

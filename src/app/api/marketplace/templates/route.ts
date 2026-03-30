@@ -217,9 +217,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
+
     const template = await db.template.create({
       data: {
         creatorId: user.id,
+        slug,
         title: title.trim(),
         description: description.trim(),
         category: category as TemplateCategory,

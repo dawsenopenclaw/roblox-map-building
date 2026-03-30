@@ -2726,6 +2726,8 @@ export function EditorClient() {
     </>
   )
 
+  const [studioConnected, setStudioConnected] = useState(false)
+
   return (
     <>
       {/* Keyframes + global polish */}
@@ -2733,11 +2735,6 @@ export function EditorClient() {
         @keyframes typing-bounce {
           0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
           30% { transform: translateY(-5px); opacity: 1; }
-        }
-        @keyframes block-spawn {
-          0%   { opacity: 0; transform: translateY(-20px) scale(0.7); }
-          60%  { opacity: 1; transform: translateY(4px) scale(1.04); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes block-spawn-smooth {
           0%   { opacity: 0; transform: translateY(-20px) scale(0.7); }
@@ -2748,77 +2745,54 @@ export function EditorClient() {
           from { opacity: 0; transform: translateY(3px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes build-overlay-in {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes build-overlay-out {
-          from { opacity: 1; }
-          to   { opacity: 0; }
-        }
-        @keyframes panel-slide-in {
-          from { opacity: 0; transform: translateX(-8px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,28,0.4); }
-          50%       { box-shadow: 0 0 0 4px rgba(255,184,28,0); }
-        }
         @keyframes float-particle {
           0%   { transform: translateY(0px) translateX(0px); opacity: 0.4; }
           33%  { transform: translateY(-8px) translateX(4px); opacity: 0.8; }
           66%  { transform: translateY(-4px) translateX(-3px); opacity: 0.5; }
           100% { transform: translateY(0px) translateX(0px); opacity: 0.4; }
         }
-        @keyframes grid-drift {
-          0%   { background-position: 0 0; }
-          100% { background-position: 10% 10%; }
-        }
         @keyframes timestamp-fade {
           from { opacity: 0; transform: translateY(-4px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        /* Thin scrollbar — gold-tinted */
+        @keyframes pulse-ring {
+          0% { box-shadow: 0 0 0 0 rgba(212,175,55,0.4); }
+          70% { box-shadow: 0 0 0 6px rgba(212,175,55,0); }
+          100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+        }
         .forge-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .forge-scroll::-webkit-scrollbar-track { background: transparent; }
-        .forge-scroll::-webkit-scrollbar-thumb {
-          background: rgba(212,175,55,0.2);
-          border-radius: 99px;
-        }
+        .forge-scroll::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.2); border-radius: 99px; }
         .forge-scroll::-webkit-scrollbar-thumb:hover { background: rgba(212,175,55,0.4); }
-        /* Focus ring — gold */
-        .forge-focus:focus-visible {
-          outline: 2px solid #D4AF37;
-          outline-offset: 2px;
-        }
+        .forge-focus:focus-visible { outline: 2px solid #D4AF37; outline-offset: 2px; }
       `}</style>
 
-      <div className="flex h-screen bg-[#06080F] overflow-hidden" style={{ height: '100dvh' }}>
+      <div className="flex h-screen overflow-hidden" style={{ height: '100dvh', background: '#0a0a0a' }}>
 
-        {/* ── Left icon bar ──────────────────────────────────────────────── */}
-        <div className="hidden md:flex flex-col items-center gap-1 py-3 px-1 bg-[#090C1A] border-r border-white/6 w-14 flex-shrink-0">
-          <Link href="/" title="Home" className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors mb-2">
-            <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
+        {/* ── Left icon bar (desktop) ─────────────────────────────────────── */}
+        <div className="hidden md:flex flex-col items-center gap-1 py-3 px-1 w-12 flex-shrink-0" style={{ background: '#0e0e0e', borderRight: '1px solid #1a1a1a' }}>
+          <Link href="/" title="Home" className="w-9 h-9 rounded-lg flex items-center justify-center mb-2 transition-colors text-[#6B7280] hover:text-white hover:bg-white/5">
+            <svg className="w-4.5 h-4.5" viewBox="0 0 20 20" fill="none">
               <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
             </svg>
           </Link>
-          <div className="w-6 h-px bg-white/8 mb-1" />
+          <div className="w-5 h-px bg-white/[0.06] mb-1" />
           {iconBarButtons}
         </div>
 
         {/* ── Left slide-out panel ────────────────────────────────────────── */}
         {activePanel && (
-          <div className="hidden md:flex w-56 bg-[#090C1A] border-r border-white/6 flex-col flex-shrink-0 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+          <div className="hidden md:flex w-56 flex-col flex-shrink-0 overflow-hidden" style={{ background: '#0e0e0e', borderRight: '1px solid #1a1a1a' }}>
+            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
               <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-              <button onClick={() => setActivePanel(null)} className="text-gray-500 hover:text-gray-300 transition-colors" aria-label="Close panel">
+              <button onClick={() => setActivePanel(null)} className="text-[#6B7280] hover:text-white transition-colors" aria-label="Close panel">
                 <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                   <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="flex-1 overflow-y-auto forge-scroll min-h-0">
               {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
               {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
               {activePanel === 'dna'      && <DnaPanel />}
@@ -2831,16 +2805,16 @@ export function EditorClient() {
         {/* ── Mobile panel overlay ────────────────────────────────────────── */}
         {activePanel && (
           <div className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setActivePanel(null)}>
-            <div className="absolute left-0 right-0 bottom-0 bg-[#090C1A] border-t border-white/8 rounded-t-2xl max-h-[70dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 flex-shrink-0">
+            <div className="absolute left-0 right-0 bottom-0 rounded-t-2xl max-h-[70dvh] flex flex-col" style={{ background: '#0e0e0e', borderTop: '1px solid #1a1a1a' }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
                 <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-                <button onClick={() => setActivePanel(null)} className="w-9 h-9 flex items-center justify-center text-gray-500 hover:text-gray-300 transition-colors" aria-label="Close panel">
+                <button onClick={() => setActivePanel(null)} className="w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-white transition-colors" aria-label="Close panel">
                   <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="flex-1 overflow-y-auto forge-scroll min-h-0">
                 {activePanel === 'projects' && <ProjectsPanel activeGameId={activeGame?.id ?? null} onSelectGame={(g) => { setActiveGame(g); setActivePanel(null) }} />}
                 {activePanel === 'assets'   && <AssetsPanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
                 {activePanel === 'dna'      && <DnaPanel />}
@@ -2851,292 +2825,251 @@ export function EditorClient() {
           </div>
         )}
 
-        {/* ── Main two-column area ────────────────────────────────────────── */}
+        {/* ── Main content area ───────────────────────────────────────────── */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-          {/* Mobile top bar */}
-          <div className="md:hidden flex items-center gap-3 px-3 py-2 bg-[#090C1A] border-b border-white/6 flex-shrink-0">
-            <Link href="/" className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-300 hover:bg-white/5 transition-colors" aria-label="Home">
-              <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
+          {/* ── Top bar ──────────────────────────────────────────────────── */}
+          <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0" style={{ background: '#0e0e0e', borderBottom: '1px solid #1a1a1a' }}>
+            {/* Mobile home */}
+            <Link href="/" className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-white transition-colors" aria-label="Home">
+              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none">
                 <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </Link>
-            <span className="text-sm font-semibold text-white flex-1">AI Editor</span>
-            <span className="text-[10px] text-blue-400">{totalTokens} tokens</span>
+
+            {/* Logo */}
+            <div className="hidden md:flex items-center gap-2">
+              <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}>F</div>
+            </div>
+
+            {/* Project name */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {editingProjectName ? (
+                <input
+                  ref={projectNameInputRef}
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  onBlur={() => setEditingProjectName(false)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') setEditingProjectName(false) }}
+                  className="text-sm font-semibold text-white bg-transparent border-b border-[#D4AF37] focus:outline-none px-0 py-0 w-40"
+                />
+              ) : (
+                <button onClick={() => setEditingProjectName(true)} className="text-sm font-semibold text-white hover:text-[#D4AF37] transition-colors truncate">
+                  {projectName}
+                </button>
+              )}
+              {activeGame && (
+                <span className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] text-[#6B7280] hidden sm:block">{activeGame.genre}</span>
+              )}
+            </div>
+
+            {/* Connection status */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: studioConnected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${studioConnected ? 'rgba(16,185,129,0.2)' : '#1a1a1a'}` }}>
+                <span className={`w-1.5 h-1.5 rounded-full ${studioConnected ? 'bg-[#10B981]' : 'bg-[#6B7280]'}`} style={studioConnected ? { boxShadow: '0 0 4px #10B981' } : {}} />
+                <span className="text-[11px] text-[#9CA3AF]">{studioConnected ? 'Studio Connected' : 'Demo Mode'}</span>
+              </div>
+              <span className="text-[11px] text-[#D4AF37] font-medium">{1000 - totalTokens} tokens</span>
+            </div>
           </div>
 
-          {/* Two-column layout */}
+          {/* ── Two-column content ───────────────────────────────────────── */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
 
-            {/* ── LEFT: Chat column ────────────────────────────────────────── */}
-            <div
-              className="flex flex-col min-h-0 overflow-hidden flex-shrink-0"
-              style={{
-                width: 'min(420px, 40vw)',
-                borderRight: '1px solid rgba(255,255,255,0.06)',
-                background: 'linear-gradient(180deg, #090C1A 0%, #06080F 100%)',
-              }}
-            >
-              {/* Chat header */}
-              <div
-                className="flex-shrink-0"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ background: 'radial-gradient(circle, #FFB81C 30%, #FFB81C44 100%)', boxShadow: '0 0 6px #FFB81C80' }}
-                    />
-                    <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">Build Chat</span>
-                  </div>
-                  <span className="text-[10px] text-blue-400 hidden md:block">{totalTokens} tokens used</span>
-                </div>
-                {activeGame && (
-                  <div
-                    className="flex items-center gap-2 mx-4 mb-3 px-3 py-1.5 rounded-lg"
-                    style={{ background: 'rgba(255,184,28,0.06)', border: '1px solid rgba(255,184,28,0.18)' }}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] flex-shrink-0" style={{ boxShadow: '0 0 4px #FFB81C' }} />
-                    <span className="text-[11px] text-[#FFB81C]/80 font-medium truncate">
-                      Working on: <span className="text-[#FFB81C] font-semibold">{activeGame.name}</span>
-                    </span>
-                    <span className="ml-auto text-[10px] text-gray-600 flex-shrink-0">{activeGame.genre}</span>
-                  </div>
-                )}
-              </div>
+            {/* ── LEFT: Chat ─────────────────────────────────────────────── */}
+            <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0" style={{ width: 'min(400px, 38vw)', borderRight: '1px solid #1a1a1a' }}>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
-                {/* Quick action chips — visible when empty */}
+              <div className="flex-1 overflow-y-auto forge-scroll px-4 py-4 space-y-4 min-h-0">
                 {messages.length === 1 && (
                   <div className="space-y-3">
-                    <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Quick start</p>
+                    <p className="text-[10px] text-[#6B7280] uppercase tracking-widest font-semibold">Quick start</p>
                     <div className="grid grid-cols-2 gap-2">
                       {QUICK_ACTIONS.map(({ label, icon, prompt }) => (
                         <button
                           key={label}
                           onClick={() => submit(prompt)}
-                          className="forge-focus group flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-[0.97]"
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.08)',
-                          }}
-                          onMouseEnter={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.background = 'rgba(255,184,28,0.06)'
-                            el.style.border = '1px solid rgba(255,184,28,0.28)'
-                            el.style.boxShadow = '0 0 14px rgba(255,184,28,0.08)'
-                            el.style.transform = 'translateY(-1px)'
-                          }}
-                          onMouseLeave={(e) => {
-                            const el = e.currentTarget as HTMLButtonElement
-                            el.style.background = 'rgba(255,255,255,0.03)'
-                            el.style.border = '1px solid rgba(255,255,255,0.08)'
-                            el.style.boxShadow = 'none'
-                            el.style.transform = 'none'
-                          }}
+                          className="forge-focus group flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-[0.97] hover:-translate-y-px"
+                          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1a1a1a' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'; e.currentTarget.style.background = 'rgba(212,175,55,0.04)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
                         >
-                          <span className="text-base transition-transform duration-200 group-hover:scale-110">{icon}</span>
-                          <div className="flex flex-col">
-                            <span className="text-xs text-gray-200 font-semibold">{label}</span>
-                          </div>
+                          <span className="text-sm">{icon}</span>
+                          <span className="text-xs text-[#E5E7EB] font-medium">{label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
-
                 {messages.map((msg) => (
                   <Message key={msg.id} msg={msg} />
                 ))}
                 <div ref={chatEndRef} />
               </div>
 
-              {/* ── Input area ─────────────────────────────────────────────── */}
-              <div
-                className="px-4 py-4 flex-shrink-0 space-y-3"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                {/* Image preview */}
+              {/* ── Flat input bar ───────────────────────────────────────── */}
+              <div className="flex-shrink-0" style={{ borderTop: '1px solid #1a1a1a' }}>
                 {imageFile && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
-                    <svg className="w-4 h-4 text-[#FFB81C] flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                  <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid #1a1a1a' }}>
+                    <svg className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" viewBox="0 0 16 16" fill="none">
                       <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
-                      <circle cx="5.5" cy="7" r="1.5" stroke="currentColor" strokeWidth="1"/>
-                      <path d="M1 11l4-3 3 2.5 2-2 5 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
                     </svg>
-                    <span className="text-xs text-gray-300 flex-1 min-w-0 truncate">{imageFile.name}</span>
-                    <button onClick={() => setImageFile(null)} className="text-gray-500 hover:text-gray-300">
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                    <span className="text-xs text-[#9CA3AF] flex-1 min-w-0 truncate">{imageFile.name}</span>
+                    <button onClick={() => setImageFile(null)} className="text-[#6B7280] hover:text-white transition-colors">
+                      <svg className="w-3 h-3" viewBox="0 0 14 14" fill="none">
                         <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
                     </button>
                   </div>
                 )}
 
-                {/* Textarea bubble */}
-                <div
-                  className="relative rounded-2xl transition-all duration-200"
-                  style={{
-                    background: 'rgba(5,8,18,0.8)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: loading ? '0 0 0 2px rgba(255,184,28,0.15)' : 'none',
-                  }}
-                >
+                <div className="flex items-end gap-2 px-3 py-2.5" style={{ background: '#0e0e0e' }}>
+                  {/* Left tools */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    {supported && (
+                      <button
+                        onClick={() => listening ? stop() : start()}
+                        aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${listening ? 'bg-red-500/20 text-red-400' : 'text-[#6B7280] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10'}`}
+                      >
+                        {listening ? (
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        ) : (
+                          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                            <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
+                            <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                            <path d="M8 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                    <button onClick={() => fileInputRef.current?.click()} aria-label="Upload image" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all">
+                      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                        <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+                        <circle cx="5.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/>
+                      </svg>
+                    </button>
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                  </div>
+
+                  {/* Textarea */}
                   <textarea
                     ref={textareaRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={listening ? 'Listening...' : 'Describe what you want to build...'}
+                    placeholder={listening ? 'Listening...' : 'Describe what to build...'}
                     disabled={loading}
                     rows={1}
-                    className="w-full bg-transparent text-sm text-gray-100 placeholder-gray-600 focus:outline-none resize-none px-4 pt-3.5 pb-2 disabled:opacity-50"
-                    style={{ minHeight: '52px', maxHeight: '160px' }}
+                    className="flex-1 bg-transparent text-sm text-white placeholder-[#4B5563] focus:outline-none resize-none py-1.5 disabled:opacity-50"
+                    style={{ minHeight: '32px', maxHeight: '120px' }}
                   />
 
-                  {/* Action row inside textarea */}
-                  <div className="flex items-center justify-between px-3 pb-3">
-                    <div className="flex items-center gap-1">
-                      {/* Voice */}
-                      {supported && (
-                        <button
-                          onClick={() => listening ? stop() : start()}
-                          aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-                          title={listening ? 'Stop recording' : 'Voice input'}
-                          className={[
-                            'relative w-8 h-8 rounded-lg flex items-center justify-center transition-all',
-                            listening
-                              ? 'bg-red-500/20 text-red-400 scale-110 ring-2 ring-red-500/50 animate-pulse'
-                              : 'text-gray-500 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10',
-                          ].join(' ')}
-                        >
-                          {listening ? (
-                            /* Pulsing red dot while recording */
-                            <span className="flex items-center justify-center">
-                              <span className="absolute inline-flex h-3 w-3 rounded-full bg-red-500 opacity-75 animate-ping" />
-                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-                            </span>
-                          ) : (
-                            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                              <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                              <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                              <path d="M8 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                            </svg>
-                          )}
-                        </button>
-                      )}
-
-                      {/* Image upload */}
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Upload image"
-                        aria-label="Upload image"
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#FFB81C] hover:bg-[#FFB81C]/10 transition-all"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-                          <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                          <circle cx="5.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/>
-                          <path d="M1 11.5l4-3.5 3 2.5 2-2 5 3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageUpload}
-                      />
-                    </div>
-
-                    {/* Send button */}
-                    <button
-                      onClick={() => submit(input)}
-                      disabled={!input.trim() || loading}
-                      aria-label="Send message"
-                      className={[
-                        'flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all',
-                        input.trim() && !loading
-                          ? 'bg-[#FFB81C] text-black hover:bg-[#E6A519] shadow-lg'
-                          : 'bg-white/5 text-gray-500 cursor-not-allowed',
-                      ].join(' ')}
-                      style={input.trim() && !loading ? { boxShadow: '0 4px 16px rgba(255,184,28,0.3)' } : {}}
-                    >
-                      {loading ? (
-                        <>
-                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 14 14" fill="none">
-                            <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 8"/>
-                          </svg>
-                          <span>Building</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
-                            <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                          <span>Build</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bottom toolbar row */}
-                <div className="flex items-center gap-2">
-                  {/* Model selector */}
-                  <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-
-                  <div className="flex-1" />
-
-                  {/* Templates */}
+                  {/* Send */}
                   <button
-                    title="Templates"
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/8 border border-white/8 hover:border-white/15 text-xs text-gray-400 hover:text-gray-300 transition-all"
+                    onClick={() => submit(input)}
+                    disabled={!input.trim() || loading}
+                    aria-label="Send message"
+                    className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() && !loading ? 'bg-[#D4AF37] text-black hover:bg-[#FFB81C]' : 'bg-white/[0.04] text-[#4B5563]'}`}
+                    style={input.trim() && !loading ? { boxShadow: '0 0 12px rgba(212,175,55,0.3)' } : {}}
                   >
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
-                      <rect x="1" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                      <rect x="7.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                      <rect x="1" y="7.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                      <rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                    </svg>
-                    Templates
+                    {loading ? (
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 14 14" fill="none">
+                        <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 8"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 14 14" fill="none">
+                        <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
                   </button>
-
-                  {/* Shift+Enter hint */}
-                  <span className="text-[10px] text-gray-700 hidden lg:block">Shift+Enter for newline</span>
                 </div>
 
-                {/* Model indicator strip */}
-                <div className="flex items-center gap-2 px-1">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: currentModel.color }}
-                  />
-                  <span className="text-[11px] text-gray-500">
-                    {currentModel.label} by {currentModel.provider}
-                  </span>
-                  {currentModel.badge && (
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#FFB81C]/15 text-[#FFB81C]">
-                      {currentModel.badge}
-                    </span>
-                  )}
+                {/* Model + hint row */}
+                <div className="flex items-center gap-2 px-3 pb-2">
+                  <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+                  <div className="flex-1" />
+                  <span className="text-[10px] text-[#3a3a3a] hidden lg:block">Shift+Enter for newline</span>
                 </div>
               </div>
             </div>
 
-            {/* ── RIGHT: Viewport ──────────────────────────────────────────── */}
+            {/* ── RIGHT: Studio Viewport ──────────────────────────────────── */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-              <Viewport sceneBlocks={sceneBlocks} />
+
+              {/* Viewport area */}
+              <div className="flex-1 relative min-h-0 overflow-hidden">
+                {studioConnected ? (
+                  /* Connected — show viewport */
+                  <Viewport sceneBlocks={sceneBlocks} />
+                ) : (
+                  /* Not connected — show connection guide */
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'radial-gradient(ellipse at center, #111 0%, #0a0a0a 70%)' }}>
+                    {/* Subtle grid */}
+                    <div className="absolute inset-0 opacity-30" style={{
+                      backgroundImage: 'linear-gradient(rgba(212,175,55,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.02) 1px, transparent 1px)',
+                      backgroundSize: '32px 32px',
+                    }} />
+
+                    <div className="relative z-10 max-w-md w-full text-center">
+                      {/* Roblox Studio icon */}
+                      <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.15)' }}>
+                        <svg className="w-8 h-8 text-[#D4AF37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <path d="M3 9h18"/>
+                          <path d="M9 21V9"/>
+                        </svg>
+                      </div>
+
+                      <h2 className="text-xl font-bold text-white mb-2">Connect Roblox Studio</h2>
+                      <p className="text-sm text-[#9CA3AF] mb-8 leading-relaxed">
+                        Your game will appear here in real-time once connected. AI commands will build directly in your place.
+                      </p>
+
+                      {/* Steps */}
+                      <div className="space-y-4 text-left mb-8">
+                        {[
+                          { step: '1', title: 'Install the ForjeGames Plugin', desc: 'Download from Settings > Plugin, or get it from the Roblox Creator Store', icon: '📥' },
+                          { step: '2', title: 'Open your place in Roblox Studio', desc: 'The plugin auto-detects when Studio is running on this machine', icon: '🎮' },
+                          { step: '3', title: 'Click "Connect" in the plugin toolbar', desc: 'The viewport will show your live game — start building with AI', icon: '🔗' },
+                        ].map((s) => (
+                          <div key={s.step} className="flex items-start gap-3 p-3 rounded-xl transition-colors" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1a1a1a' }}>
+                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm" style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.15)' }}>
+                              {s.icon}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{s.title}</p>
+                              <p className="text-xs text-[#6B7280] mt-0.5">{s.desc}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Connect button */}
+                      <button
+                        onClick={() => setStudioConnected(true)}
+                        className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:-translate-y-0.5"
+                        style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712', boxShadow: '0 0 24px rgba(212,175,55,0.2)' }}
+                      >
+                        Connect to Studio
+                      </button>
+
+                      <button
+                        onClick={() => setStudioConnected(true)}
+                        className="mt-3 text-xs text-[#6B7280] hover:text-[#D4AF37] transition-colors"
+                      >
+                        Skip — use demo viewport instead
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
           </div>
 
           {/* ── Mobile bottom icon bar ───────────────────────────────────── */}
-          <div
-            className="md:hidden flex items-center justify-around px-2 py-1 bg-[#090C1A] border-t border-white/6 flex-shrink-0"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
-          >
+          <div className="md:hidden flex items-center justify-around px-2 py-1 flex-shrink-0" style={{ background: '#0e0e0e', borderTop: '1px solid #1a1a1a', paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}>
             {iconBarButtons}
           </div>
         </div>

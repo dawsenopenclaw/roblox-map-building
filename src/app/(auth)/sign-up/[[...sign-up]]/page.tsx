@@ -96,6 +96,41 @@ const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 export default function SignUpPage() {
   const router = useRouter()
 
+  // In demo mode, redirect to the demo login flow
+  if (IS_DEMO) {
+    return (
+      <div className="flex flex-col items-center w-full max-w-sm mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
+            Get Started with ForjeGames
+          </h1>
+          <p className="text-[#B0B0B0] text-sm mt-2">
+            Start building Roblox games with AI — no account needed in demo mode
+          </p>
+        </div>
+
+        <div className="mb-5 flex items-center gap-1.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-3 py-1">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="#D4AF37" aria-hidden>
+            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+          </svg>
+          <span className="text-[#D4AF37] text-xs font-medium">1,000 free tokens included</span>
+        </div>
+
+        <button
+          onClick={() => router.push('/editor')}
+          className="w-full flex items-center justify-center gap-3 rounded-xl bg-[#D4AF37] hover:bg-[#FFB81C] text-[#0a0a0a] font-bold py-3.5 text-base transition-all duration-150 shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/40 hover:-translate-y-0.5"
+        >
+          Start Building Free
+        </button>
+
+        <p className="mt-4 text-xs text-[#808080] text-center">
+          Already have an account?{' '}
+          <Link href="/sign-in" className="text-[#60A5FA] hover:text-[#93C5FD] transition-colors">Sign in</Link>
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center">
 
@@ -111,13 +146,7 @@ export default function SignUpPage() {
 
       {/* Feature pill */}
       <div className="mb-5 flex items-center gap-1.5 bg-gold/10 border border-gold/20 rounded-full px-3 py-1">
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="#D4AF37"
-          aria-hidden
-        >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="#D4AF37" aria-hidden>
           <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
         </svg>
         <span className="text-gold text-xs font-medium">

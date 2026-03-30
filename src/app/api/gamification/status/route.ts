@@ -2,12 +2,28 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 
+// Demo data returned when DB or auth is unavailable
+const DEMO_STATUS = {
+  xp: { totalXp: 2450, tier: 'APPRENTICE', dailyXpToday: 120 },
+  streak: { loginStreak: 7, buildStreak: 3, longestLoginStreak: 12, longestBuildStreak: 8 },
+  recentAchievements: [],
+  demo: true,
+}
+
 // GET /api/gamification/status — combined XP + streak + achievements status
 export async function GET() {
+  // Demo mode: auth() may throw or return null when Clerk keys are absent
+  let clerkId: string | null = null
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    clerkId = session.userId ?? null
+  } catch {
+    // Clerk not configured — return demo data
+    return NextResponse.json(DEMO_STATUS)
+  }
+  if (!clerkId) return NextResponse.json(DEMO_STATUS)
 
+  try {
     const user = await db.user.findUnique({
       where: { clerkId },
       select: {
@@ -37,10 +53,8 @@ export async function GET() {
       streak: user.streak ?? { loginStreak: 0, buildStreak: 0 },
       recentAchievements: user.userAchievements,
     })
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Service temporarily unavailable', details: 'Database not connected' },
-      { status: 503 }
-    )
+  } catch {
+    // DB unavailable — return demo data so the UI renders
+    return NextResponse.json(DEMO_STATUS)
   }
 }

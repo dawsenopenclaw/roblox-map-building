@@ -8,8 +8,30 @@ import { grantXp } from '@/lib/xp-server'
 
 // GET /api/gamification/achievements — all achievements with user unlock status
 export async function GET() {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Demo mode: auth() may throw or return null when Clerk keys are absent
+  let clerkId: string | null = null
+  try {
+    const session = await auth()
+    clerkId = session.userId ?? null
+  } catch {
+    // Clerk not configured — fall through to demo response below
+  }
+
+  if (!clerkId) {
+    // Return all achievements as locked in demo mode
+    const achievements = ACHIEVEMENTS.map((a) => ({
+      ...a,
+      condition: undefined,
+      unlocked: false,
+      unlockedAt: null,
+    }))
+    return NextResponse.json({
+      achievements,
+      unlockedCount: 0,
+      total: ACHIEVEMENTS.length,
+      demo: true,
+    })
+  }
 
   try {
     const user = await db.user.findUnique({
@@ -70,7 +92,7 @@ async function verifyCondition(
 
   switch (type) {
     case 'BUILD_COUNT': {
-      const count = await db.gameBuild.count({ where: { userId } })
+      const count = await db.gameScan.count({ where: { userId } })
       return count >= (threshold ?? 1)
     }
     case 'PUBLISH_COUNT': {
@@ -130,7 +152,7 @@ async function verifyCondition(
     }
     case 'BUILDS_IN_DAY': {
       // Check if user has threshold+ builds on any single calendar day (UTC)
-      const builds = await db.gameBuild.findMany({
+      const builds = await db.gameScan.findMany({
         where: { userId },
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
@@ -144,7 +166,7 @@ async function verifyCondition(
       return false
     }
     case 'WEEKEND_BUILDS': {
-      const builds = await db.gameBuild.findMany({
+      const builds = await db.gameScan.findMany({
         where: { userId },
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },

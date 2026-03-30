@@ -36,13 +36,13 @@ export async function GET() {
       const user = await db.user.findUnique({
         where: { clerkId },
         select: {
-          referrals: {
+          referralsMade: {
             orderBy: { createdAt: 'desc' },
             select: {
               id: true,
-              referee: { select: { username: true } },
+              referred: { select: { username: true } },
               createdAt: true,
-              tokensAwarded: true,
+              commissionCents: true,
               status: true,
             },
           },
@@ -50,12 +50,12 @@ export async function GET() {
       })
 
       if (user) {
-        const rows: ReferralRow[] = (user.referrals ?? []).map((r) => ({
+        const rows: ReferralRow[] = (user.referralsMade ?? []).map((r) => ({
           id: r.id,
-          user: r.referee?.username ?? 'unknown',
+          user: r.referred?.username ?? 'unknown',
           joinedAt: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          status: r.status === 'SIGNED_UP' ? 'Signed Up' : 'Pending',
-          tokensAwarded: r.tokensAwarded ?? 0,
+          status: r.status === 'CONVERTED' ? 'Signed Up' : 'Pending',
+          tokensAwarded: r.commissionCents ?? 0,
         }))
 
         const signups     = rows.filter((r) => r.status === 'Signed Up').length

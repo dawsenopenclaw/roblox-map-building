@@ -5,7 +5,7 @@
 
 export type AnalyticsEvent =
   | 'signup_started' | 'signup_completed'
-  | 'onboarding_step_completed' | 'onboarding_skipped'
+  | 'onboarding_step_started' | 'onboarding_step_completed' | 'onboarding_step_skipped' | 'onboarding_skipped' | 'onboarding_completed'
   | 'voice_build_started' | 'voice_build_completed' | 'voice_build_failed'
   | 'image_map_started' | 'image_map_completed'
   | 'template_viewed' | 'template_purchased' | 'template_submitted'

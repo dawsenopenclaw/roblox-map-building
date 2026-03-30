@@ -15,12 +15,30 @@ function getBonusForStreak(streak: number): number {
   return 0
 }
 
+// Demo streak returned when auth or DB is unavailable
+const DEMO_STREAK = {
+  loginStreak: 7,
+  buildStreak: 3,
+  longestLoginStreak: 12,
+  longestBuildStreak: 8,
+  totalLogins: 42,
+  totalBuilds: 18,
+  demo: true,
+}
+
 // GET /api/gamification/streak — get current streak data
 export async function GET() {
+  // Demo mode: auth() may throw or return null when Clerk keys are absent
+  let clerkId: string | null = null
   try {
-    const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth()
+    clerkId = session.userId ?? null
+  } catch {
+    return NextResponse.json(DEMO_STREAK)
+  }
+  if (!clerkId) return NextResponse.json(DEMO_STREAK)
 
+  try {
     const user = await db.user.findUnique({
       where: { clerkId },
       select: {
@@ -42,11 +60,9 @@ export async function GET() {
     }
 
     return NextResponse.json(user.streak)
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Service temporarily unavailable', details: 'Database not connected' },
-      { status: 503 }
-    )
+  } catch {
+    // DB unavailable — return demo data so the UI renders
+    return NextResponse.json(DEMO_STREAK)
   }
 }
 

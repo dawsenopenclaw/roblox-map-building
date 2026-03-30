@@ -201,6 +201,7 @@ export async function POST(req: NextRequest) {
           where: { stripeSubscriptionId: subscription.id },
           create: {
             userId,
+            stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
             stripeSubscriptionId: subscription.id,
             tier,
             status: normalizedStatus,

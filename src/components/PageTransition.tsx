@@ -1,13 +1,13 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 
 interface PageTransitionProps {
   children: React.ReactNode
 }
 
-const pageVariants = {
+const pageVariants: Variants = {
   initial: {
     opacity: 0,
     y: 10,
@@ -17,7 +17,7 @@ const pageVariants = {
     y: 0,
     transition: {
       duration: 0.22,
-      ease: [0.25, 0.46, 0.45, 0.94],
+      ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
       // Stagger direct children (cards) in after page fades in
       staggerChildren: 0.04,
       delayChildren: 0.08,
@@ -28,7 +28,7 @@ const pageVariants = {
     y: -6,
     transition: {
       duration: 0.15,
-      ease: [0.55, 0, 1, 0.45],
+      ease: [0.55, 0, 1, 0.45] as [number, number, number, number],
     },
   },
 }
@@ -40,12 +40,12 @@ const pageVariants = {
  *   import { cardVariants } from '@/components/PageTransition'
  *   <motion.div variants={cardVariants}> ... </motion.div>
  */
-export const cardVariants = {
+export const cardVariants: Variants = {
   initial: { opacity: 0, y: 16 },
   enter: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
   },
   exit: { opacity: 0, y: -8 },
 }

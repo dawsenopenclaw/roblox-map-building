@@ -15,7 +15,18 @@ const DEMO_TRANSACTIONS = [
 export async function GET() {
   try {
     const { userId: clerkId } = await auth()
-    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // In demo mode (no Clerk keys) clerkId will be null — skip straight to demo data
+    if (!clerkId) {
+      const spent = DEMO_TRANSACTIONS.filter((t) => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
+      return NextResponse.json({
+        balance: Math.max(0, 1000 - spent),
+        lifetimeEarned: 1000,
+        lifetimeSpent: spent,
+        transactions: DEMO_TRANSACTIONS.slice().reverse(),
+        demo: true,
+      })
+    }
 
     // Try real database first
     try {

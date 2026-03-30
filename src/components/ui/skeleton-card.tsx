@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 
 interface SkeletonCardProps {
   /** Height of the image/thumbnail area in px */
@@ -10,7 +10,7 @@ interface SkeletonCardProps {
   className?: string
 }
 
-const shimmerVariants = {
+const shimmerVariants: Variants = {
   initial: { x: '-100%' },
   animate: {
     x: '100%',
@@ -18,7 +18,7 @@ const shimmerVariants = {
       repeat: Infinity,
       repeatType: 'loop' as const,
       duration: 1.4,
-      ease: 'easeInOut',
+      ease: 'easeInOut' as const,
     },
   },
 }
