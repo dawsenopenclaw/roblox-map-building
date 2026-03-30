@@ -22,7 +22,7 @@ export function getStripe(): Stripe {
 export const stripe = new Proxy({} as Stripe, {
   get: (_, prop) => {
     const s = getStripe()
-    const val = (s as Record<string, unknown>)[prop as string]
+    const val = (s as unknown as Record<string, unknown>)[prop as string]
     return typeof val === 'function' ? val.bind(s) : val
   },
 })

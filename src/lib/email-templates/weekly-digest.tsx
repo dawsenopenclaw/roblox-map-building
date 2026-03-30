@@ -62,8 +62,7 @@ export const WeeklyDigestEmail = ({
         `}</style>
       </Head>
       <Preview>
-        Your weekly ForjeGames summary — {buildsThisWeek} builds, {tokensUsed} tokens used
-        {hasStreak ? `, ${streakDays}-day streak!` : ''}
+        {`Your weekly ForjeGames summary — ${buildsThisWeek} builds, ${tokensUsed} tokens used${hasStreak ? `, ${streakDays}-day streak!` : ''}`}
       </Preview>
       <Body style={body}>
         <Container style={container}>

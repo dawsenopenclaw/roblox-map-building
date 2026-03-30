@@ -65,7 +65,7 @@ export const ReEngagementEmail = ({
       `}</style>
     </Head>
     <Preview>
-      We miss you, {name} — come back and claim {bonusTokens} free tokens
+      {`We miss you, ${name} — come back and claim ${bonusTokens} free tokens`}
     </Preview>
     <Body style={body}>
       <Container style={container}>
