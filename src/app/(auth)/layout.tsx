@@ -2,26 +2,19 @@ import Link from 'next/link'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden" style={{ background: '#09090b' }}>
 
-      {/* Subtle dot-grid background */}
+      {/* Subtle gold glow behind the form */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0"
+        className="pointer-events-none absolute z-0"
         style={{
-          backgroundImage:
-            'radial-gradient(circle, rgba(212,175,55,0.08) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-        }}
-      />
-
-      {/* Ambient gold glow at top */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-64 z-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 60% 40% at 50% -10%, rgba(212,175,55,0.12) 0%, transparent 70%)',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '600px',
+          height: '400px',
+          background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.07) 0%, transparent 70%)',
         }}
       />
 
@@ -55,49 +48,25 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </svg>
 
             <span className="text-2xl font-bold tracking-tight">
-              <span className="text-foreground">Forje</span>
-              <span className="text-gold">Games</span>
+              <span className="text-white">Forje</span>
+              <span style={{ color: '#D4AF37' }}>Games</span>
             </span>
           </div>
-          <p className="text-muted text-xs mt-1 tracking-widest uppercase">
-            AI-Powered Roblox Development
-          </p>
         </Link>
 
         {/* Demo mode banner */}
         {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
-          <div className="mb-5 flex items-center gap-2 bg-gold/10 border border-gold/25 rounded-xl px-4 py-2.5 text-sm">
+          <div className="mb-5 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm border" style={{ background: 'rgba(212,175,55,0.06)', borderColor: 'rgba(212,175,55,0.18)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="#D4AF37" aria-hidden>
               <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
             </svg>
-            <span className="text-gold font-medium">Demo Mode</span>
-            <span className="text-muted">— sign in with test credentials or skip straight to the editor.</span>
+            <span style={{ color: '#D4AF37' }} className="font-medium">Demo Mode</span>
+            <span className="text-zinc-500">— sign in with test credentials or skip straight to the editor.</span>
           </div>
         )}
 
         {/* Page content (Clerk card + headings) */}
         {children}
-
-        {/* Trust badge */}
-        <div className="mt-6 flex items-center justify-center gap-2 text-center">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#D4AF37"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className="shrink-0"
-          >
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <p className="text-xs text-muted">
-            <span className="text-gold font-semibold">10%</span> of all revenue is donated to charity
-          </p>
-        </div>
 
       </div>
     </div>

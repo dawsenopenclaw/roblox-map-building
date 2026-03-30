@@ -31,13 +31,6 @@ export type BusinessProfile = {
   updatedAt: string
 }
 
-type ConnectPayload = {
-  name: string
-  ein?: string
-  type: BusinessType
-  website?: string
-}
-
 // ─── Demo data ────────────────────────────────────────────────────────────────
 
 const DEMO_BUSINESS: BusinessProfile = {
@@ -66,18 +59,6 @@ function generateApiKey(prefix: string): string {
 
 function maskEin(ein: string): string {
   return ein.replace(/^\d{2}/, '**').replace(/\d(?=\d{4}$)/, '*')
-}
-
-function validatePayload(body: unknown): body is ConnectPayload {
-  if (!body || typeof body !== 'object') return false
-  const b = body as Record<string, unknown>
-  if (typeof b.name !== 'string' || b.name.trim().length < 2) return false
-  if (typeof b.type !== 'string') return false
-  const validTypes: BusinessType[] = ['LLC', 'CORPORATION', 'SOLE_PROPRIETOR', 'PARTNERSHIP', 'NONPROFIT']
-  if (!validTypes.includes(b.type as BusinessType)) return false
-  if (b.ein !== undefined && typeof b.ein !== 'string') return false
-  if (b.website !== undefined && typeof b.website !== 'string') return false
-  return true
 }
 
 // ─── GET — fetch current business profile ────────────────────────────────────
@@ -140,14 +121,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ business: demo, demo: true }, { status: 201 })
     }
 
-    if (!validatePayload(body)) {
-      return NextResponse.json(
-        { error: 'Missing or invalid fields. Required: name (string), type (LLC|CORPORATION|SOLE_PROPRIETOR|PARTNERSHIP|NONPROFIT)' },
-        { status: 422 },
-      )
-    }
-
-    const { name, ein, type, website } = body
+    const { name, ein, type, website } = parsed.data
 
     try {
       const { db } = await import('@/lib/db')

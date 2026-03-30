@@ -202,7 +202,7 @@ function AccountStatsCard() {
     { label: 'Member Since', value: s.memberSince,                  icon: '📅' },
   ]
   return (
-    <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+    <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
       <h3 className="text-white font-semibold mb-5">Account Stats</h3>
       {/* Tier badge row */}
       <div
@@ -319,7 +319,7 @@ function ProfileTab() {
   return (
     <div className="space-y-4">
       {/* Profile card */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Profile</h3>
 
         {/* Avatar */}
@@ -473,7 +473,7 @@ function BillingTab() {
   return (
     <div className="space-y-4">
       {/* Plan */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -509,7 +509,7 @@ function BillingTab() {
       </div>
 
       {/* Token Balance */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
         <div className="flex items-end gap-3 mb-1">
           <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
@@ -546,7 +546,7 @@ function BillingTab() {
       </div>
 
       {/* Usage Breakdown */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
@@ -580,7 +580,7 @@ function BillingTab() {
       </div>
 
       {/* Payment History */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payment History</p>
         <div className="overflow-x-auto -mx-6 px-6">
           <table className="w-full text-sm min-w-[400px]">
@@ -720,7 +720,7 @@ function ApiKeysTab() {
     <div className="space-y-4">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
           <div>
             <h3 className="text-white font-semibold">API Keys</h3>
@@ -980,7 +980,7 @@ function NotificationsTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {groups.map((group) => (
-        <div key={group.section} className="bg-[#141414] border border-white/10 rounded-xl p-6">
+        <div key={group.section} className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
           <h3 className="text-white font-semibold mb-5">{group.section}</h3>
           <div className="space-y-5">
             {group.rows.map((row) => (
@@ -1031,7 +1031,7 @@ function AppearanceTab() {
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {/* Theme */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Theme</h3>
         <div className="grid grid-cols-2 gap-3">
           {(
@@ -1072,7 +1072,7 @@ function AppearanceTab() {
       </div>
 
       {/* Accent Color */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Accent Color</h3>
         <div className="flex gap-3 flex-wrap">
           {ACCENTS.map(({ key, label, color }) => (
@@ -1096,7 +1096,7 @@ function AppearanceTab() {
       </div>
 
       {/* Compact Mode */}
-      <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-white font-medium text-sm">Compact Mode</p>
@@ -1173,7 +1173,7 @@ function ConnectedTab() {
       {items.map((item) => {
         const conn = connections[item.key]
         return (
-          <div key={item.key} className="bg-[#141414] border border-white/10 rounded-xl p-6">
+          <div key={item.key} className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
                 <div

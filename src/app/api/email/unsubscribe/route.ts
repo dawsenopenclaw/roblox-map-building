@@ -29,7 +29,7 @@ function signUserId(userId: string): string {
 }
 
 /** Build an unsubscribe token for outbound emails. */
-export function createUnsubscribeToken(userId: string): string {
+function createUnsubscribeToken(userId: string): string {
   const sig = signUserId(userId)
   return Buffer.from(`${userId}.${sig}`).toString('base64url')
 }

@@ -5,6 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { parseBody } from '@/lib/validations'
+import { z } from 'zod'
 import {
   suggestTemplates,
   getTemplatesByCategory,
@@ -28,6 +30,21 @@ const VALID_INTENTS = new Set<Intent>([
 function isValidIntent(s: string): s is Intent {
   return VALID_INTENTS.has(s as Intent)
 }
+
+// ---------------------------------------------------------------------------
+// Zod schema for POST body
+// ---------------------------------------------------------------------------
+
+const createTemplateSchema = z.object({
+  name:         z.string().min(3, 'name min 3 chars').max(80).transform((s) => s.trim()),
+  description:  z.string().min(10, 'description min 10 chars').max(200).transform((s) => s.trim()),
+  prompt:       z.string().min(10, 'prompt min 10 chars').max(2000).transform((s) => s.trim()),
+  intent:       z.string().refine((s) => isValidIntent(s), {
+    message: `intent must be one of: ${Array.from(VALID_INTENTS).join(', ')}`,
+  }).optional(),
+  sourcePrompt: z.string().max(500).optional(),
+  quality:      z.number().min(0).max(1).optional(),
+})
 
 // ---------------------------------------------------------------------------
 // GET /api/ai/templates
@@ -76,67 +93,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 // If intent is not provided, it is auto-classified from sourcePrompt or prompt.
 // ---------------------------------------------------------------------------
 
-interface CreateTemplateBody {
-  name: string
-  description: string
-  prompt: string
-  intent?: string
-  sourcePrompt?: string
-  quality?: number
-}
-
-function validateCreateBody(body: unknown): { valid: true; data: CreateTemplateBody } | { valid: false; error: string } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: 'Body must be a JSON object' }
-  }
-  const b = body as Record<string, unknown>
-
-  if (typeof b.name !== 'string' || b.name.trim().length < 3) {
-    return { valid: false, error: 'name is required (min 3 chars)' }
-  }
-  if (typeof b.description !== 'string' || b.description.trim().length < 10) {
-    return { valid: false, error: 'description is required (min 10 chars)' }
-  }
-  if (typeof b.prompt !== 'string' || b.prompt.trim().length < 10) {
-    return { valid: false, error: 'prompt is required (min 10 chars)' }
-  }
-  if (b.intent !== undefined && !isValidIntent(b.intent as string)) {
-    return { valid: false, error: `intent must be one of: ${Array.from(VALID_INTENTS).join(', ')}` }
-  }
-  if (b.quality !== undefined) {
-    const q = Number(b.quality)
-    if (isNaN(q) || q < 0 || q > 1) {
-      return { valid: false, error: 'quality must be a number between 0 and 1' }
-    }
-  }
-
-  return {
-    valid: true,
-    data: {
-      name: (b.name as string).trim().slice(0, 80),
-      description: (b.description as string).trim().slice(0, 200),
-      prompt: (b.prompt as string).trim().slice(0, 2000),
-      intent: b.intent as string | undefined,
-      sourcePrompt: typeof b.sourcePrompt === 'string' ? b.sourcePrompt.slice(0, 500) : undefined,
-      quality: b.quality !== undefined ? Number(b.quality) : undefined,
-    },
-  }
-}
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+  const parsed = await parseBody(req, createTemplateSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ success: false, error: parsed.error }, { status: parsed.status })
   }
 
-  const validation = validateCreateBody(body)
-  if (!validation.valid) {
-    return NextResponse.json({ success: false, error: validation.error }, { status: 422 })
-  }
-
-  const { name, description, prompt, intent: intentParam, sourcePrompt, quality } = validation.data
+  const { name, description, prompt, intent: intentParam, sourcePrompt, quality } = parsed.data
 
   // Determine intent
   let intent: Intent

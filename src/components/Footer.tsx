@@ -9,10 +9,11 @@ const PRODUCT_LINKS = [
   { href: '/download', label: 'Download' },
 ]
 
-const COMPANY_LINKS = [
-  { href: 'mailto:support@forjegames.com', label: 'Support' },
-  { href: 'mailto:legal@forjegames.gg', label: 'Legal' },
-  { href: 'mailto:abuse@forjegames.gg', label: 'Report Abuse' },
+const FEATURES_LINKS = [
+  { href: '/#features', label: 'AI Editor' },
+  { href: '/#features', label: 'Map Builder' },
+  { href: '/#features', label: 'Asset Library' },
+  { href: '/#features', label: 'Playtesting' },
 ]
 
 const LEGAL_LINKS = [
@@ -20,15 +21,14 @@ const LEGAL_LINKS = [
   { href: '/privacy', label: 'Privacy Policy' },
   { href: '/dmca', label: 'DMCA' },
   { href: '/acceptable-use', label: 'Acceptable Use' },
-  { href: '/terms#charity', label: 'Charity Policy' },
-  { href: '/privacy#ccpa', label: 'Do Not Sell My Personal Information' },
+  { href: '/privacy#ccpa', label: 'Do Not Sell My Info' },
 ]
 
-const COMMUNITY_LINKS = [
-  { href: 'https://discord.gg/forjegames', label: 'Discord Server' },
+const COMPANY_LINKS = [
+  { href: 'mailto:support@forjegames.com', label: 'Support' },
+  { href: 'https://discord.gg/forjegames', label: 'Discord' },
   { href: 'https://github.com/forjegames', label: 'GitHub' },
   { href: 'https://twitter.com/forjegames', label: 'Twitter / X' },
-  { href: 'https://youtube.com/@forjegames', label: 'YouTube' },
 ]
 
 const SOCIAL_LINKS = [
@@ -83,7 +83,7 @@ function FooterColumn({
     <div>
       <p
         id={id}
-        className="text-xs font-semibold uppercase tracking-widest mb-4 text-gold"
+        className="text-xs font-semibold uppercase tracking-widest mb-4 text-zinc-300"
       >
         {title}
       </p>
@@ -95,14 +95,14 @@ function FooterColumn({
                 href={l.href}
                 target={l.href.startsWith('http') ? '_blank' : undefined}
                 rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 {l.label}
               </a>
             ) : (
               <Link
                 href={l.href}
-                className="text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
+                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 {l.label}
               </Link>
@@ -116,10 +116,10 @@ function FooterColumn({
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#141414] mt-auto">
+    <footer className="border-t border-white/[0.06] bg-[#111113] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
 
-        {/* Brand + charity badge row */}
+        {/* Brand row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-12">
           <div>
             <Link
@@ -127,64 +127,26 @@ export default function Footer() {
               className="inline-block font-extrabold text-2xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
               aria-label="ForjeGames home"
             >
-              <span className="text-gold">Forje</span>
+              <span style={{ color: '#D4AF37' }}>Forje</span>
               <span className="text-white">Games</span>
             </Link>
-            <p className="text-gray-300 text-sm mt-2 max-w-xs leading-relaxed">
-              AI-powered Roblox game development. Build professional games faster than ever.
+            <p className="text-zinc-500 text-sm mt-2 max-w-xs leading-relaxed">
+              AI-powered Roblox game development.
             </p>
-          </div>
-
-          {/* Charity badge */}
-          <div
-            className="flex items-center gap-3 self-start rounded-xl px-4 py-3 border"
-            style={{
-              background: 'rgba(212, 175, 55, 0.07)',
-              borderColor: 'rgba(212, 175, 55, 0.22)',
-            }}
-          >
-            <svg
-              className="w-5 h-5 flex-shrink-0 text-gold"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-            <div>
-              <p className="text-sm font-semibold text-gold">
-                10% donated to charity
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Not tax-deductible. See{' '}
-                <Link
-                  href="/terms#charity"
-                  className="text-[#D4AF37] hover:text-[#F5CC5A] transition-colors underline underline-offset-2"
-                >
-                  Terms §12
-                </Link>
-              </p>
-            </div>
           </div>
         </div>
 
         {/* 4-column link grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           <FooterColumn id="footer-product" title="Product" links={PRODUCT_LINKS} />
-          <FooterColumn id="footer-company" title="Company" links={COMPANY_LINKS} />
+          <FooterColumn id="footer-features" title="Features" links={FEATURES_LINKS} />
           <FooterColumn id="footer-legal" title="Legal" links={LEGAL_LINKS} />
-          <FooterColumn id="footer-community" title="Community" links={COMMUNITY_LINKS} />
+          <FooterColumn id="footer-company" title="Company" links={COMPANY_LINKS} />
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="text-sm text-gray-400">
+        <div className="border-t border-white/[0.06] pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <p className="text-sm text-zinc-500">
             &copy; {new Date().getFullYear()} ForjeGames LLC. All rights reserved.
           </p>
 
@@ -197,14 +159,14 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="p-2 rounded-lg text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
               >
                 {s.icon}
               </a>
             ))}
           </nav>
 
-          <p className="text-xs text-gray-500 sm:text-right">
+          <p className="text-xs text-zinc-600 sm:text-right">
             Not affiliated with Roblox Corporation.
           </p>
         </div>

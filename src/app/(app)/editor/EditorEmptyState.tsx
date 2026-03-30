@@ -93,17 +93,16 @@ function SuggestionPill({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => onSelect(chip.prompt)}
-      className="flex items-center gap-2 px-3 py-2 rounded-full text-left transition-all duration-200 active:scale-95 flex-shrink-0"
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-left transition-colors active:scale-95 flex-shrink-0"
       style={{
-        background: hovered ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${hovered ? 'rgba(212,175,55,0.6)' : 'rgba(212,175,55,0.2)'}`,
-        boxShadow: hovered ? '0 0 12px rgba(212,175,55,0.2)' : 'none',
-        color: hovered ? '#FFD700' : '#D4AF37',
+        background: hovered ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`,
+        color: hovered ? '#fafafa' : '#a1a1aa',
         opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(8px)',
-        transition: `opacity 0.3s ease-out ${delay}ms, transform 0.3s ease-out ${delay}ms, background 0.2s, border-color 0.2s, box-shadow 0.2s`,
+        transform: visible ? 'translateY(0)' : 'translateY(6px)',
+        transition: `opacity 0.25s ease-out ${delay}ms, transform 0.25s ease-out ${delay}ms, background 0.15s, border-color 0.15s, color 0.15s`,
         fontSize: '12px',
-        fontWeight: 500,
+        fontWeight: 400,
         whiteSpace: 'nowrap',
       }}
     >
@@ -130,59 +129,26 @@ function GlowBorderCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={() => onSelect(template.prompt)}
-      className="group relative flex flex-col gap-3 p-4 rounded-xl text-left w-full transition-all duration-300 active:scale-[0.97]"
+      className="group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-left w-full transition-colors active:scale-[0.98]"
       style={{
-        background: hovered ? 'rgba(212,175,55,0.06)' : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${hovered ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.07)'}`,
-        boxShadow: hovered ? '0 0 24px rgba(212,175,55,0.15), inset 0 0 20px rgba(212,175,55,0.03)' : 'none',
-        transition: 'all 0.3s ease-out',
+        background: hovered ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.02)',
+        border: `1px solid ${hovered ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.06)'}`,
+        transition: 'background 0.15s, border-color 0.15s',
       }}
     >
-      {/* Animated glow sweep on hover */}
-      {hovered && (
-        <div
-          className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-          aria-hidden
-        >
-          <div
-            className="absolute inset-x-0 top-0 h-px"
-            style={{
-              background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.6) 50%, transparent 100%)',
-              animation: 'fg-shimmer 2s ease-in-out infinite',
-            }}
-          />
-        </div>
-      )}
+      <span className="text-xl select-none flex-shrink-0">{template.icon}</span>
 
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-2xl select-none">{template.icon}</span>
-        <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5"
-          style={{ background: diff.bg, color: diff.text }}
-        >
-          {template.difficulty}
-        </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-zinc-200">{template.title}</p>
+        <p className="text-[11px] text-zinc-600 leading-relaxed truncate">{template.description}</p>
       </div>
 
-      <div>
-        <p className="text-sm font-semibold text-white mb-0.5">{template.title}</p>
-        <p className="text-[11px] text-gray-500 leading-relaxed">{template.description}</p>
-      </div>
-
-      <div
-        className="flex items-center gap-1 text-[11px] font-semibold mt-auto transition-colors"
-        style={{ color: hovered ? '#D4AF37' : '#6B7280' }}
+      <span
+        className="text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0"
+        style={{ background: diff.bg, color: diff.text }}
       >
-        <span
-          className="inline-block w-3.5 h-3.5 rounded-full flex-shrink-0 flex items-center justify-center"
-          style={{ background: hovered ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)' }}
-        >
-          <svg width="8" height="8" viewBox="0 0 8 8" fill="none" className="ml-[1px]">
-            <path d="M2 1.5l3.5 2.5L2 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        Build this
-      </div>
+        {template.difficulty}
+      </span>
     </button>
   )
 }
@@ -264,45 +230,21 @@ export function EditorEmptyState({ firstName, onSelectPrompt }: EditorEmptyState
         }}
       >
         {/* Hero card */}
-        <div
-          className="rounded-xl p-5"
-          style={{
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(255,255,255,0.02) 100%)',
-            border: '1px solid rgba(212,175,55,0.2)',
-            boxShadow: '0 0 30px rgba(212,175,55,0.06)',
-          }}
-        >
-          {/* Logo mark */}
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-            style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
-              boxShadow: '0 0 16px rgba(212,175,55,0.4)',
-              animation: 'fg-pulse-ring 2.5s ease-out infinite',
-            }}
-          >
-            <svg className="w-4 h-4 text-black" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1L10.47 5.53L15.51 6.38L11.76 10.03L12.71 15.06L8 12.47L3.29 15.06L4.24 10.03L0.49 6.38L5.53 5.53L8 1Z" />
-            </svg>
-          </div>
-
-          <h3 className="text-base font-bold text-white mb-1">
-            Welcome to ForjeGames{firstName ? `, ${firstName}` : ''}
+        <div className="pb-1">
+          <h3 className="text-sm font-medium text-zinc-200 mb-1">
+            {firstName ? `Welcome, ${firstName}` : 'ForjeAI'}
           </h3>
-          <p className="text-[12px] text-gray-500 leading-relaxed mb-3">
-            Describe your Roblox game in plain English — ForjeAI writes the Luau code,
-            places the assets, and connects to Studio in one shot.
+          <p className="text-xs text-zinc-500 leading-relaxed mb-4">
+            Describe your game in plain English — ForjeAI writes the Luau, places the assets, connects to Studio.
           </p>
 
-          {/* Try saying prompt */}
+          {/* Typewriter example */}
           <div
-            className="flex items-center gap-2 p-3 rounded-lg"
-            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
-            <span className="text-[10px] text-gray-600 flex-shrink-0 uppercase tracking-widest font-semibold">
-              Try:
-            </span>
-            <span className="text-[12px]">
+            <span className="text-[10px] text-zinc-600 flex-shrink-0 uppercase tracking-widest">Try:</span>
+            <span className="text-xs">
               <TypewriterExample />
             </span>
           </div>
@@ -310,31 +252,31 @@ export function EditorEmptyState({ firstName, onSelectPrompt }: EditorEmptyState
 
         {/* Suggestion chips */}
         <div>
-          <p className="text-[10px] text-[#6B7280] uppercase tracking-widest font-semibold mb-2.5">
-            Try one of these to get started:
+          <p className="text-[10px] text-zinc-600 uppercase tracking-widest mb-2">
+            Quick starts
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {SUGGESTION_CHIPS.map((chip, i) => (
               <SuggestionPill
                 key={chip.label}
                 chip={chip}
                 onSelect={onSelectPrompt}
-                delay={i * 60}
+                delay={i * 50}
               />
             ))}
           </div>
         </div>
 
         {/* Template section header */}
-        <div className="flex items-center gap-2">
-          <p className="text-[10px] text-[#6B7280] uppercase tracking-widest font-semibold">
-            Featured templates
+        <div className="flex items-center gap-2 pt-1">
+          <p className="text-[10px] text-zinc-600 uppercase tracking-widest flex-shrink-0">
+            Templates
           </p>
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
         </div>
 
         {/* Template cards */}
-        <div className="space-y-2">
+        <div className="space-y-1">
           {TEMPLATES.map((t) => (
             <GlowBorderCard
               key={t.id}
@@ -345,8 +287,8 @@ export function EditorEmptyState({ firstName, onSelectPrompt }: EditorEmptyState
         </div>
 
         {/* Footer hint */}
-        <p className="text-[10px] text-gray-700 text-center pb-2">
-          Your first 1,000 tokens are free — no credit card needed
+        <p className="text-[10px] text-zinc-700 text-center pb-2">
+          First 1,000 tokens free — no card needed
         </p>
       </div>
     </>

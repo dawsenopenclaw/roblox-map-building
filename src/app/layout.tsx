@@ -130,7 +130,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#0a0a0a" />
+        <meta name="theme-color" content="#09090b" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -142,7 +142,7 @@ export default function RootLayout({
         {/* Runs synchronously before CSS/React — locks in dark background instantly */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement;d.style.backgroundColor='#0a0a0a';d.style.colorScheme='dark';d.setAttribute('data-loading','');})();`,
+            __html: `(function(){var d=document.documentElement;d.style.backgroundColor='#09090b';d.style.colorScheme='dark';d.setAttribute('data-loading','');})();`,
           }}
         />
         {/* Suppress all transitions during initial render — removed once hydrated */}
@@ -160,17 +160,17 @@ export default function RootLayout({
           signUpFallbackRedirectUrl="/onboarding"
           appearance={{
             variables: {
-              colorPrimary: '#FFB81C',
-              colorBackground: '#141414',
-              colorText: '#ffffff',
-              colorTextSecondary: '#9ca3af',
-              colorInputBackground: '#141414',
-              colorInputText: '#ffffff',
+              colorPrimary: '#D4AF37',
+              colorBackground: '#111113',
+              colorText: '#FAFAFA',
+              colorTextSecondary: '#A1A1AA',
+              colorInputBackground: '#111113',
+              colorInputText: '#FAFAFA',
             },
             elements: {
-              card: 'shadow-xl border border-white/10 bg-[#141414]',
-              formButtonPrimary: 'bg-[#FFB81C] text-black hover:bg-[#E6A519]',
-              footerActionLink: 'text-[#FFB81C] hover:text-[#E6A519]',
+              card: 'shadow-xl border border-white/10 bg-[#111113]',
+              formButtonPrimary: 'bg-[#D4AF37] text-black hover:bg-[#E4C04A]',
+              footerActionLink: 'text-[#D4AF37] hover:text-[#E4C04A]',
             },
           }}
         >

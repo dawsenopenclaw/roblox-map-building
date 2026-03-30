@@ -6,34 +6,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        /* ── Core backgrounds — black + cool grey ── */
-        background:        '#0a0a0a',   // near-black
-        surface:           '#141414',   // very dark grey
-        'surface-2':       '#1c1c1c',   // slightly lighter
-        'surface-elevated':'#252525',   // elevated panels
+        /* ── Core backgrounds ── */
+        background:        '#09090b',
+        surface:           '#111113',
+        'surface-2':       '#18181b',
+        'surface-elevated':'#1c1c1f',
 
         /* ── Borders ── */
-        border:            '#2a2a2a',   // subtle grey
-        'border-subtle':   '#3a3a3a',   // focus/hover
+        border:            'rgba(255,255,255,0.06)',
+        'border-subtle':   'rgba(255,255,255,0.04)',
 
         /* ── Gold accent ── */
         gold:              '#D4AF37',
-        'gold-light':      '#FFB81C',
+        'gold-light':      '#E4C04A',
 
         /* ── Semantic ── */
-        success:           '#10B981',
+        success:           '#22C55E',
         error:             '#EF4444',
         warning:           '#F59E0B',
-        info:              '#3B82F6',
+        info:              '#60A5FA',
 
         /* ── Text ── */
-        foreground:        '#FFFFFF',   // pure white — matches --foreground CSS var
-        muted:             '#B0B0B0',   // grey — matches --muted CSS var
-        'muted-subtle':    '#6B7280',
+        foreground:        '#FAFAFA',
+        muted:             '#A1A1AA',
+        'muted-subtle':    '#71717A',
 
-        /* ── Legacy aliases (keep for existing component compat) ── */
-        accent:            '#FFB81C',
-        'accent-hover':    '#D4AF37',
+        /* ── Legacy alias (keep for existing component compat) ── */
+        accent:            '#D4AF37',
+        'accent-hover':    '#E4C04A',
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],

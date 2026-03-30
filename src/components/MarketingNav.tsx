@@ -52,7 +52,7 @@ export function MarketingNav() {
       className={[
         'fixed top-0 inset-x-0 z-50 transition-all duration-300',
         scrolled
-          ? 'bg-[#0a0a0a]/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-black/30'
+          ? 'bg-[#09090b]/80 backdrop-blur-md border-b border-white/[0.06]'
           : 'bg-transparent',
       ].join(' ')}
     >
@@ -68,16 +68,16 @@ export function MarketingNav() {
           <span className="text-white">Games</span>
         </Link>
 
-        {/* Desktop nav links */}
+        {/* Desktop nav links — centered */}
         <nav
-          className="hidden md:flex items-center gap-1"
+          className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
           aria-label="Site navigation"
         >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="link-underline px-4 py-2 text-sm text-gray-300 hover:text-[#D4AF37] rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
               {link.label}
             </Link>
@@ -88,36 +88,32 @@ export function MarketingNav() {
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           <Link
             href={signInHref}
-            className="link-underline text-sm text-gray-300 hover:text-[#D4AF37] transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+            className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
           >
-            Sign In
+            Sign in
           </Link>
           <Link
             href={signUpHref}
-            className="text-sm font-bold px-4 py-2 rounded-lg hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+            className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
-              color: '#0a0a0a',
-              transition: 'transform 150ms ease, box-shadow 150ms ease, filter 150ms ease',
-              boxShadow: '0 0 16px rgba(212,175,55,0.25)',
+              background: '#D4AF37',
+              color: '#09090b',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 28px rgba(212,175,55,0.5)'
-              ;(e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)'
+              (e.currentTarget as HTMLElement).style.background = '#C9A227'
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(212,175,55,0.25)'
-              ;(e.currentTarget as HTMLElement).style.filter = ''
+              (e.currentTarget as HTMLElement).style.background = '#D4AF37'
             }}
           >
-            Try Free
+            Get started
           </Link>
         </div>
 
         {/* Mobile hamburger */}
         <button
           onClick={() => setMenuOpen((v) => !v)}
-          className="md:hidden p-2 text-gray-300 hover:text-white transition-colors rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+          className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
@@ -139,7 +135,7 @@ export function MarketingNav() {
         <div
           id="mobile-menu"
           ref={menuRef}
-          className="md:hidden bg-[#0a0a0a]/98 backdrop-blur-md border-b border-white/10"
+          className="md:hidden bg-[#09090b]/95 backdrop-blur-md border-b border-white/[0.06]"
           role="navigation"
           aria-label="Mobile navigation"
         >
@@ -149,29 +145,29 @@ export function MarketingNav() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors"
+                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
                 {link.label}
               </Link>
             ))}
-            <div className="border-t border-white/10 mt-2 pt-3 flex flex-col gap-2">
+            <div className="border-t border-white/[0.06] mt-2 pt-3 flex flex-col gap-2">
               <Link
                 href={signInHref}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-gray-400 hover:text-[#D4AF37] hover:bg-white/5 rounded-lg transition-colors"
+                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
-                Sign In
+                Sign in
               </Link>
               <Link
                 href={signUpHref}
                 onClick={() => setMenuOpen(false)}
-                className="text-center text-sm font-bold px-4 py-3 rounded-lg transition-all hover:brightness-110"
+                className="text-center text-sm font-medium px-4 py-3 rounded-lg transition-colors"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
-                  color: '#0a0a0a',
+                  background: '#D4AF37',
+                  color: '#09090b',
                 }}
               >
-                Try Free
+                Get started
               </Link>
             </div>
           </div>

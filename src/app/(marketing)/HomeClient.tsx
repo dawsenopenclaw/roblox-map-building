@@ -4,44 +4,74 @@ import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 // Footer rendered by marketing layout
 
-/* ─── Scroll Reveal Hook ─────────────────────────────────────────────────── */
+/* ─── CSS-in-JS animation styles injected once ──────────────────────────── */
 
-function useScrollReveal(options?: IntersectionObserverInit) {
-  const containerRef = useRef<HTMLDivElement>(null)
+const GLOBAL_STYLES = `
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 600ms cubic-bezier(0.4,0,0.2,1), transform 600ms cubic-bezier(0.4,0,0.2,1);
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal-delay-1 { transition-delay: 80ms; }
+  .reveal-delay-2 { transition-delay: 160ms; }
+  .reveal-delay-3 { transition-delay: 240ms; }
+  .reveal-delay-4 { transition-delay: 320ms; }
+  .reveal-delay-5 { transition-delay: 400ms; }
+  .reveal-delay-6 { transition-delay: 480ms; }
+  .cursor-blink {
+    animation: cursor-blink 1.1s step-start infinite;
+  }
+`
+
+/* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
+
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const container = containerRef.current
+    const container = ref.current
     if (!container) return
 
-    const elements = container.querySelectorAll<HTMLElement>(
-      '.scroll-reveal, .scroll-reveal-stagger, .section-header-animate'
-    )
-    if (elements.length === 0) return
-
+    const els = container.querySelectorAll<HTMLElement>('.reveal')
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible')
+            entry.target.classList.add('visible')
             observer.unobserve(entry.target)
           }
         })
       },
-      { threshold: 0.15, rootMargin: '0px 0px -40px 0px', ...options }
+      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
     )
-
-    elements.forEach((el) => observer.observe(el))
+    els.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [])
 
-  return containerRef
+  return ref
 }
 
-/* ─── SVG Icons ──────────────────────────────────────────────────────────── */
+/* ─── SVG Icons (20px, stroke-based) ────────────────────────────────────── */
 
-function IconMic({ className = 'w-6 h-6' }: { className?: string }) {
+function IconMic() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="22" />
@@ -49,9 +79,9 @@ function IconMic({ className = 'w-6 h-6' }: { className?: string }) {
   )
 }
 
-function IconImage({ className = 'w-6 h-6' }: { className?: string }) {
+function IconImage() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <circle cx="9" cy="9" r="2" />
       <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -59,9 +89,9 @@ function IconImage({ className = 'w-6 h-6' }: { className?: string }) {
   )
 }
 
-function IconCube({ className = 'w-6 h-6' }: { className?: string }) {
+function IconCube() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
       <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
       <line x1="12" y1="22.08" x2="12" y2="12" />
@@ -69,58 +99,53 @@ function IconCube({ className = 'w-6 h-6' }: { className?: string }) {
   )
 }
 
-function IconSearch({ className = 'w-6 h-6' }: { className?: string }) {
+function IconSync() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="8" />
-      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
     </svg>
   )
 }
 
-function IconBrain({ className = 'w-6 h-6' }: { className?: string }) {
+function IconBrain() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14Z" />
       <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14Z" />
     </svg>
   )
 }
 
-function IconPlug({ className = 'w-6 h-6' }: { className?: string }) {
+function IconPlug() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
-      <path d="m9 12 2 2 4-4" />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22V12" />
+      <path d="M7 12V9a5 5 0 0 1 10 0v3" />
+      <rect x="5" y="12" width="14" height="5" rx="2" />
     </svg>
   )
 }
 
-function IconArrow({ className = 'w-5 h-5' }: { className?: string }) {
+function IconArrow() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M5 12h14M12 5l7 7-7 7" />
     </svg>
   )
 }
 
-function IconCheck({ className = 'w-4 h-4' }: { className?: string }) {
+function IconCheck() {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12" />
     </svg>
   )
 }
 
-function IconStar({ className = 'w-4 h-4' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-    </svg>
-  )
-}
-
-/* ─── Animated Counter ───────────────────────────────────────────────────── */
+/* ─── Animated counter ───────────────────────────────────────────────────── */
 
 function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0)
@@ -134,14 +159,13 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
       ([entry]) => {
         if (entry.isIntersecting && !started.current) {
           started.current = true
-          const duration = 1600
-          const startTime = performance.now()
+          const duration = 1400
+          const start = performance.now()
           const tick = (now: number) => {
-            const elapsed = now - startTime
-            const progress = Math.min(elapsed / duration, 1)
-            const eased = 1 - Math.pow(1 - progress, 3)
+            const p = Math.min((now - start) / duration, 1)
+            const eased = 1 - Math.pow(1 - p, 3)
             setCount(Math.round(eased * target))
-            if (progress < 1) requestAnimationFrame(tick)
+            if (p < 1) requestAnimationFrame(tick)
           }
           requestAnimationFrame(tick)
         }
@@ -155,164 +179,161 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>
 }
 
-/* ─── Testimonial Card ───────────────────────────────────────────────────── */
-
-function TestimonialCard({ name, handle, text, stars = 5 }: {
-  name: string; handle: string; text: string; stars?: number
-}) {
-  return (
-    <div
-      className="rounded-2xl p-6 flex flex-col gap-4 card-hover scroll-reveal-stagger"
-      style={{ background: '#141414', border: '1px solid #2a2a2a' }}
-    >
-      <div className="flex">
-        {Array.from({ length: stars }).map((_, i) => (
-          <IconStar key={i} className="w-4 h-4 text-[#D4AF37]" />
-        ))}
-      </div>
-      <p className="text-sm leading-relaxed text-[#D1D5DB]">{text}</p>
-      <div className="mt-auto">
-        <p className="text-sm font-semibold text-white">{name}</p>
-        <p className="text-xs text-[#6B7280]">{handle}</p>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Editor Mockup ──────────────────────────────────────────────────────── */
+/* ─── Editor mockup ──────────────────────────────────────────────────────── */
 
 function EditorMockup() {
   return (
     <div
-      className="w-full max-w-3xl mx-auto rounded-2xl overflow-hidden"
+      className="w-full max-w-4xl mx-auto rounded-xl overflow-hidden"
       style={{
-        background: '#1c1c1c',
-        border: '1px solid rgba(212,175,55,0.18)',
-        boxShadow: '0 0 80px rgba(212,175,55,0.08), 0 40px 80px rgba(0,0,0,0.5)',
+        background: '#111113',
+        border: '1px solid rgba(212,175,55,0.14)',
+        boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.05)',
       }}
     >
       {/* Title bar */}
       <div
-        className="flex items-center gap-2 px-4 py-2.5"
-        style={{ background: '#141414', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex items-center gap-2 px-4 py-3"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#0d0d0f' }}
       >
-        <span className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-        <span className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-        <span className="w-3 h-3 rounded-full bg-[#27C93F]" />
-        <span className="ml-3 text-xs font-mono text-[rgba(212,175,55,0.6)]">
-          ForjeGames Editor
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FF5F56' }} />
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FFBD2E' }} />
+        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#27C93F' }} />
+        <span className="ml-4 text-xs font-mono" style={{ color: 'rgba(212,175,55,0.45)' }}>
+          ForjeGames — Editor
         </span>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-[10px] px-2 py-0.5 rounded bg-[rgba(16,185,129,0.12)] text-[#10B981]">
-            Connected
-          </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+          <span className="text-[11px]" style={{ color: '#10B981' }}>Studio connected</span>
         </div>
       </div>
 
-      {/* Editor body */}
-      <div className="flex" style={{ height: 260 }}>
-        {/* Sidebar */}
-        <div className="hidden md:flex flex-col w-[160px] flex-shrink-0 py-3 border-r border-white/[0.04]" style={{ background: '#1c1c1c' }}>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[rgba(212,175,55,0.4)]">
+      {/* Body */}
+      <div className="flex" style={{ height: 272 }}>
+        {/* File tree */}
+        <div
+          className="hidden md:flex flex-col w-40 flex-shrink-0 pt-3"
+          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#111113' }}
+        >
+          <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.35)' }}>
             Explorer
           </p>
           {[
-            { indent: 0, icon: '📂', label: 'Workspace', color: '#6B7280' },
-            { indent: 1, icon: '🏰', label: 'Castle', color: '#FFB81C' },
-            { indent: 2, icon: '🧱', label: 'Walls', color: '#6B7280' },
-            { indent: 2, icon: '🗼', label: 'Towers x4', color: '#6B7280' },
-            { indent: 1, icon: '🌲', label: 'Terrain', color: '#10B981' },
-            { indent: 1, icon: '💡', label: 'Lighting', color: '#3B82F6' },
-            { indent: 0, icon: '📜', label: 'Scripts', color: '#6B7280' },
+            { depth: 0, label: 'Workspace',   color: '#52525B' },
+            { depth: 1, label: 'Castle',      color: '#A1A1AA' },
+            { depth: 2, label: 'Walls',       color: '#52525B' },
+            { depth: 2, label: 'Towers (4)',  color: '#52525B' },
+            { depth: 1, label: 'Terrain',     color: '#10B981' },
+            { depth: 1, label: 'Lighting',    color: '#60A5FA' },
+            { depth: 0, label: 'Scripts',     color: '#52525B' },
           ].map((row, i) => (
-            <div key={i} className="flex items-center gap-1.5 px-3 py-[3px] text-[11px]" style={{ paddingLeft: 12 + row.indent * 12, color: row.color }}>
-              <span className="text-[10px]">{row.icon}</span>
-              <span>{row.label}</span>
+            <div
+              key={i}
+              className="flex items-center text-[11px] py-[3px]"
+              style={{ paddingLeft: 12 + row.depth * 12, color: row.color }}
+            >
+              {row.label}
             </div>
           ))}
         </div>
 
-        {/* Main viewport */}
-        <div className="flex-1 relative overflow-hidden">
-          {/* Grid */}
+        {/* Viewport */}
+        <div className="flex-1 relative overflow-hidden" style={{ background: '#0e0e10' }}>
+          {/* Subtle grid */}
           <div className="absolute inset-0" style={{
-            backgroundImage: 'linear-gradient(rgba(212,175,55,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.025) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
+            backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
           }} />
 
-          {/* Castle CSS art */}
+          {/* Castle illustration */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative" style={{ width: 240, height: 160 }}>
-              {/* Towers */}
-              {[0, 184].map((x) => (
+            <div className="relative" style={{ width: 220, height: 150 }}>
+              {[0, 172].map((x) => (
                 <div key={x} className="absolute" style={{
-                  left: x, bottom: 40, width: 48, height: 100,
-                  background: 'linear-gradient(180deg, #2a2a2a, #1c1c1c)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  left: x, bottom: 36, width: 44, height: 90,
+                  background: 'linear-gradient(180deg, #1e1e22, #16161a)',
+                  border: '1px solid rgba(255,255,255,0.07)',
                   borderRadius: '2px 2px 0 0',
                 }}>
-                  {[0, 11, 22, 33].map((bx) => (
-                    <div key={bx} className="absolute" style={{ left: bx + 2, top: -8, width: 7, height: 8, background: '#2a2a2a', border: '1px solid rgba(255,255,255,0.08)' }} />
+                  {[0, 10, 20, 30].map((bx) => (
+                    <div key={bx} style={{ position: 'absolute', left: bx + 2, top: -7, width: 7, height: 7, background: '#1e1e22', border: '1px solid rgba(255,255,255,0.07)' }} />
                   ))}
-                  <div className="absolute" style={{ left: 12, top: 24, width: 22, height: 28, background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '11px 11px 0 0', boxShadow: '0 0 6px rgba(59,130,246,0.2)' }} />
+                  <div style={{ position: 'absolute', left: 10, top: 22, width: 22, height: 26,
+                    background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.2)',
+                    borderRadius: '11px 11px 0 0' }} />
                 </div>
               ))}
-              {/* Wall */}
               <div className="absolute" style={{
-                left: 48, bottom: 40, width: 136, height: 64,
-                background: 'linear-gradient(180deg, #252525, #1c1c1c)',
-                border: '1px solid rgba(255,255,255,0.06)',
+                left: 44, bottom: 36, width: 128, height: 58,
+                background: 'linear-gradient(180deg, #1c1c20, #16161a)',
+                border: '1px solid rgba(255,255,255,0.05)',
               }}>
-                {/* Gate */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-8 h-10 bg-black/70 border border-white/10" style={{ borderRadius: '16px 16px 0 0' }}>
-                  {[8, 14, 20].map((bx) => (
-                    <div key={bx} className="absolute" style={{ left: bx - 6, top: 3, width: 1, height: 26, background: 'rgba(212,175,55,0.4)' }} />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-7 h-9" style={{
+                  background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '14px 14px 0 0',
+                }}>
+                  {[6,12,18].map((bx) => (
+                    <div key={bx} style={{ position: 'absolute', left: bx - 5, top: 3, width: 1, height: 22, background: 'rgba(212,175,55,0.3)' }} />
                   ))}
                 </div>
               </div>
-              {/* Ground */}
-              <div className="absolute -left-2 -right-2 bottom-6 h-6 rounded bg-gradient-to-b from-green-800 to-green-900" />
+              <div className="absolute" style={{
+                left: -4, right: -4, bottom: 2, height: 36,
+                background: 'linear-gradient(180deg, #1a2e1a, #162416)',
+                borderRadius: '2px',
+              }} />
             </div>
           </div>
 
-          {/* AI status badge */}
-          <div className="absolute top-3 right-3 text-[11px] px-2.5 py-1.5 rounded-lg bg-[rgba(212,175,55,0.08)] border border-[rgba(212,175,55,0.2)] text-[#FFB81C]">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#FFB81C] mr-1.5 animate-pulse" />
+          {/* Status pill */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md"
+            style={{ background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)', color: '#D4AF37' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
             AI building...
           </div>
         </div>
 
-        {/* Right panel */}
-        <div className="hidden lg:flex flex-col w-[140px] flex-shrink-0 py-3 border-l border-white/[0.04]" style={{ background: '#1c1c1c' }}>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-[rgba(212,175,55,0.4)]">Properties</p>
+        {/* Properties panel */}
+        <div
+          className="hidden lg:flex flex-col w-36 flex-shrink-0 pt-3"
+          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#111113' }}
+        >
+          <p className="px-3 mb-3 text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.35)' }}>
+            Properties
+          </p>
           {[
-            { label: 'Parts', value: '2,847' },
+            { label: 'Parts',     value: '2,847' },
             { label: 'Triangles', value: '14.2k' },
-            { label: 'Scripts', value: '4' },
+            { label: 'Scripts',   value: '4'     },
           ].map((p) => (
-            <div key={p.label} className="px-3 mb-2">
-              <p className="text-[10px] text-white/30">{p.label}</p>
-              <p className="text-[12px] font-semibold text-white/90">{p.value}</p>
+            <div key={p.label} className="px-3 mb-3">
+              <p className="text-[10px] mb-0.5" style={{ color: '#52525B' }}>{p.label}</p>
+              <p className="text-[12px] font-semibold" style={{ color: '#E4E4E7' }}>{p.value}</p>
             </div>
           ))}
-          <div className="mx-3 mt-1 pt-2 border-t border-white/[0.06]">
-            <p className="text-[10px] text-white/30 mb-1">Tokens</p>
-            <div className="h-1 rounded-full bg-white/[0.08]">
-              <div className="h-1 rounded-full bg-[#D4AF37]" style={{ width: '62%' }} />
+          <div className="mx-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <p className="text-[10px] mb-1.5" style={{ color: '#52525B' }}>Tokens used</p>
+            <div className="h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="h-1 rounded-full" style={{ width: '62%', background: '#D4AF37' }} />
             </div>
-            <p className="text-[10px] text-[rgba(212,175,55,0.6)] mt-1">620 / 1,000</p>
+            <p className="text-[10px] mt-1" style={{ color: 'rgba(212,175,55,0.5)' }}>620 / 1,000</p>
           </div>
         </div>
       </div>
 
       {/* Command bar */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-t border-white/[0.04]" style={{ background: '#141414' }}>
-        <span className="text-[rgba(212,175,55,0.5)] text-sm font-mono">&gt;</span>
-        <span className="flex-1 text-sm font-mono text-[#E5E7EB] truncate">
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#0d0d0f' }}
+      >
+        <span className="text-sm font-mono" style={{ color: 'rgba(212,175,55,0.4)' }}>&gt;</span>
+        <span className="flex-1 text-sm font-mono truncate" style={{ color: '#E4E4E7' }}>
           build a castle with stone walls, 4 towers, and a working gate
-          <span className="inline-block w-0.5 h-4 ml-0.5 align-middle bg-[#FFB81C] animate-pulse" />
+          <span className="cursor-blink inline-block w-0.5 h-3.5 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
         </span>
-        <span className="text-[10px] px-2 py-1 rounded bg-[rgba(212,175,55,0.12)] text-[#FFB81C] border border-[rgba(212,175,55,0.2)]">
+        <span className="text-[11px] px-2 py-0.5 rounded" style={{
+          background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)', color: '#D4AF37'
+        }}>
           Enter
         </span>
       </div>
@@ -320,103 +341,74 @@ function EditorMockup() {
   )
 }
 
-/* ─── Feature Card ───────────────────────────────────────────────────────── */
+/* ─── Feature item — text-only, no card bg ───────────────────────────────── */
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div
-      className="group relative rounded-2xl p-6 scroll-reveal-stagger card-hover"
-      style={{
-        background: '#141414',
-        border: '1px solid #2a2a2a',
-        transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1), border-color 200ms cubic-bezier(0.4,0,0.2,1)',
-      }}
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-[rgba(212,175,55,0.08)] text-[#D4AF37]"
-        style={{ transition: 'transform 200ms ease, background-color 200ms ease' }}
-      >
-        <span className="group-hover:scale-110 group-hover:text-[#FFB81C] transition-all duration-200 flex items-center justify-center">
-          {icon}
-        </span>
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-[#FFB81C] transition-colors duration-200">{title}</h3>
-      <p className="text-sm leading-relaxed text-[#9CA3AF]">{description}</p>
+    <div className="reveal">
+      <div className="mb-3" style={{ color: '#71717A' }}>{icon}</div>
+      <h3 className="text-base font-medium mb-1.5" style={{ color: '#FAFAFA' }}>{title}</h3>
+      <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
     </div>
   )
 }
 
-/* ─── Step Card ──────────────────────────────────────────────────────────── */
+/* ─── Pricing card ───────────────────────────────────────────────────────── */
 
-function StepCard({ number, title, description }: { number: number; title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center text-center">
-      <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold mb-4 bg-[rgba(212,175,55,0.1)] text-[#D4AF37] border border-[rgba(212,175,55,0.2)]">
-        {number}
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-      <p className="text-sm text-[#9CA3AF] max-w-[260px]">{description}</p>
-    </div>
-  )
-}
-
-/* ─── Pricing Card ───────────────────────────────────────────────────────── */
-
-function PricingCard({ name, price, period, features, cta, featured }: {
-  name: string; price: string; period: string; features: string[]; cta: string; featured?: boolean
+function PricingCard({ name, price, period, features, cta, recommended }: {
+  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean
 }) {
   return (
     <div
-      className="relative rounded-2xl p-6 flex flex-col scroll-reveal-stagger card-hover"
+      className="reveal flex flex-col rounded-xl p-7"
       style={{
-        background: featured ? '#1c1c1c' : '#141414',
-        border: featured ? '1px solid rgba(212,175,55,0.3)' : '1px solid #2a2a2a',
-        boxShadow: featured ? '0 0 40px rgba(212,175,55,0.08)' : 'none',
-        transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1), border-color 200ms cubic-bezier(0.4,0,0.2,1)',
+        background: '#111113',
+        border: recommended ? '1px solid rgba(212,175,55,0.28)' : '1px solid rgba(255,255,255,0.06)',
+        boxShadow: recommended ? '0 0 32px rgba(212,175,55,0.06)' : 'none',
       }}
     >
-      {featured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-[#D4AF37] text-black">
-          Most Popular
-        </div>
-      )}
-      <h3 className="text-lg font-semibold text-white mb-1">{name}</h3>
-      <div className="mb-4">
-        <span className="text-3xl font-bold text-white">{price}</span>
-        <span className="text-sm text-[#6B7280]">{period}</span>
+      <p className="text-sm font-medium mb-5" style={{ color: recommended ? '#D4AF37' : '#A1A1AA' }}>{name}</p>
+      <div className="mb-6">
+        <span className="text-4xl font-semibold tracking-tight" style={{ color: '#FAFAFA' }}>{price}</span>
+        <span className="ml-1 text-sm" style={{ color: '#71717A' }}>{period}</span>
       </div>
-      <ul className="flex-1 space-y-3 mb-6">
+      <ul className="flex-1 space-y-3 mb-7">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-[#B0B0B0]">
-            <IconCheck className="w-4 h-4 text-[#D4AF37] flex-shrink-0 mt-0.5" />
-            <span>{f}</span>
+          <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: '#A1A1AA' }}>
+            <span className="mt-0.5 flex-shrink-0" style={{ color: recommended ? '#D4AF37' : '#52525B' }}>
+              <IconCheck />
+            </span>
+            {f}
           </li>
         ))}
       </ul>
       <Link
         href="/editor"
-        className="block text-center py-3 rounded-xl font-semibold text-sm hover:-translate-y-0.5 active:translate-y-0"
-        style={{
-          background: featured ? 'linear-gradient(135deg, #D4AF37, #FFB81C)' : 'transparent',
-          color: featured ? '#030712' : '#D4AF37',
-          border: featured ? 'none' : '1px solid rgba(212,175,55,0.3)',
-          transition: 'transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease',
-          boxShadow: featured ? '0 0 16px rgba(212,175,55,0.25)' : 'none',
+        className="block text-center py-2.5 rounded-lg text-sm font-medium transition-all duration-300"
+        style={recommended ? {
+          background: '#D4AF37',
+          color: '#09090b',
+        } : {
+          background: 'transparent',
+          color: '#A1A1AA',
+          border: '1px solid rgba(255,255,255,0.08)',
         }}
         onMouseEnter={(e) => {
-          if (featured) {
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 28px rgba(212,175,55,0.5)'
+          const el = e.currentTarget as HTMLElement
+          if (recommended) {
+            el.style.background = '#C4A030'
           } else {
-            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,175,55,0.6)'
-            ;(e.currentTarget as HTMLElement).style.background = 'rgba(212,175,55,0.07)'
+            el.style.borderColor = 'rgba(255,255,255,0.18)'
+            el.style.color = '#FAFAFA'
           }
         }}
         onMouseLeave={(e) => {
-          if (featured) {
-            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(212,175,55,0.25)'
+          const el = e.currentTarget as HTMLElement
+          if (recommended) {
+            el.style.background = '#D4AF37'
           } else {
-            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,175,55,0.3)'
-            ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+            el.style.borderColor = 'rgba(255,255,255,0.08)'
+            el.style.color = '#A1A1AA'
           }
         }}
       >
@@ -426,292 +418,356 @@ function PricingCard({ name, price, period, features, cta, featured }: {
   )
 }
 
-/* ─── Main Landing Page ──────────────────────────────────────────────────── */
+/* ─── Main page ──────────────────────────────────────────────────────────── */
 
 export default function HomeClient() {
-  const pageRef = useScrollReveal()
+  const pageRef = useReveal()
 
   return (
-    <div className="min-h-screen" style={{ background: '#0a0a0a' }} ref={pageRef}>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
+      <div
+        ref={pageRef}
+        className="min-h-screen"
+        style={{ background: '#09090b', color: '#FAFAFA' }}
+      >
 
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      {/* Note: MarketingNav is injected by layout.tsx — do not render it here */}
-      <section className="relative pt-16 pb-20 px-6 overflow-hidden">
-        {/* Background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] opacity-30 pointer-events-none" style={{
-          background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, transparent 60%)',
-        }} />
+        {/* ── Hero ──────────────────────────────────────────────────────── */}
+        <section
+          className="relative flex flex-col items-center justify-center text-center px-6"
+          style={{ minHeight: '100vh', paddingTop: '10vh', paddingBottom: '8vh' }}
+        >
+          {/* Very faint radial glow — not a gradient, just depth */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,175,55,0.055) 0%, transparent 60%)',
+            }}
+          />
 
-        <div className="relative max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 text-sm bg-[rgba(212,175,55,0.08)] border border-[rgba(212,175,55,0.15)] text-[#D4AF37]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-            Now in open beta
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            <span className="text-white">Build Roblox Games</span>
-            <br />
-            <span style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C, #FFF0A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              with AI
-            </span>
-          </h1>
-
-          <p className="text-lg sm:text-xl text-[#9CA3AF] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Describe what you want to build. ForjeGames generates terrain, assets, scripts, and full game worlds — directly in Roblox Studio.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Link
-              href="/editor"
-              className="inline-flex items-center gap-2.5 font-bold text-lg px-8 py-4 rounded-xl hover:-translate-y-1 active:translate-y-0"
+          <div className="relative max-w-3xl mx-auto w-full">
+            {/* Status pill */}
+            <div
+              className="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13px] mb-10"
               style={{
-                background: 'linear-gradient(135deg, #D4AF37, #FFB81C)',
-                color: '#030712',
-                boxShadow: '0 0 30px rgba(212,175,55,0.3), 0 8px 24px rgba(0,0,0,0.4)',
-                transition: 'transform 150ms ease, box-shadow 150ms ease',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 48px rgba(212,175,55,0.55), 0 12px 32px rgba(0,0,0,0.5)'
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(212,175,55,0.3), 0 8px 24px rgba(0,0,0,0.4)'
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: '#A1A1AA',
               }}
             >
-              Open Editor — Free
-              <IconArrow className="w-5 h-5 transition-transform duration-150 group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 font-semibold text-base px-8 py-4 rounded-xl text-[#D4AF37] border border-[rgba(212,175,55,0.25)] hover:bg-[rgba(212,175,55,0.07)] hover:border-[rgba(212,175,55,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10B981' }} />
+              Open beta — free to start
+            </div>
+
+            {/* Headline */}
+            <h1
+              className="reveal reveal-delay-1 font-semibold leading-[1.08] tracking-tight mb-6"
+              style={{ fontSize: 'clamp(2.6rem, 7vw, 4.5rem)', color: '#FAFAFA' }}
             >
-              View Pricing
-            </Link>
-          </div>
+              Build games{' '}
+              <span style={{
+                background: 'linear-gradient(135deg, #D4AF37 0%, #e8c84a 50%, #D4AF37 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>
+                with AI
+              </span>
+            </h1>
 
-          <p className="text-sm text-[#6B7280]">
-            No credit card required &middot; 1,000 free tokens &middot; Cancel anytime
-          </p>
+            <p
+              className="reveal reveal-delay-2 text-lg leading-relaxed max-w-xl mx-auto mb-10"
+              style={{ color: '#71717A' }}
+            >
+              Describe your game. ForjeGames generates terrain, assets, and scripts — live in Roblox Studio.
+            </p>
 
-          {/* Editor mockup */}
-          <div className="mt-16">
-            <EditorMockup />
-          </div>
-        </div>
-      </section>
+            {/* CTA row */}
+            <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
+              <Link
+                href="/editor"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-300"
+                style={{
+                  background: '#D4AF37',
+                  color: '#09090b',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#C4A030' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#D4AF37' }}
+              >
+                Start building
+                <IconArrow />
+              </Link>
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300"
+                style={{
+                  color: '#A1A1AA',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.color = '#FAFAFA'
+                  el.style.borderColor = 'rgba(255,255,255,0.16)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.color = '#A1A1AA'
+                  el.style.borderColor = 'rgba(255,255,255,0.08)'
+                }}
+              >
+                View pricing
+              </Link>
+            </div>
 
-      {/* ── Social proof — animated stat counters ──────────────────────────── */}
-      <section className="py-12 border-y border-white/[0.04]" aria-label="Platform stats">
-        <div className="max-w-5xl mx-auto px-6">
-          <h2 className="sr-only">Platform stats</h2>
-          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-white">
-                <AnimatedCounter target={50000} suffix="+" />
-              </p>
-              <p className="text-xs text-[#6B7280] uppercase tracking-wider">Assets Generated</p>
-            </div>
-            <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
-            <div>
-              <p className="text-2xl font-bold text-white">
-                <AnimatedCounter target={1200} suffix="+" />
-              </p>
-              <p className="text-xs text-[#6B7280] uppercase tracking-wider">Maps Built</p>
-            </div>
-            <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
-            <div>
-              <p className="text-2xl font-bold text-white">
-                <AnimatedCounter target={5} />
-              </p>
-              <p className="text-xs text-[#6B7280] uppercase tracking-wider">AI Models</p>
-            </div>
-            <div className="w-px h-8 bg-white/[0.06] hidden sm:block" />
-            <div className="flex items-center gap-1">
-              <div className="flex">
-                {[1,2,3,4,5].map((i) => (
-                  <IconStar key={i} className="w-4 h-4 text-[#D4AF37]" />
-                ))}
-              </div>
-              <p className="text-sm font-semibold text-white ml-1">4.9</p>
-              <p className="text-xs text-[#6B7280] ml-1">rating</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ───────────────────────────────────────────────────────── */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 section-header-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Everything you need to build</h2>
-            <p className="text-lg text-[#9CA3AF] max-w-xl mx-auto">
-              From a single command to a full game world. Every tool, one platform.
+            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#52525B' }}>
+              No credit card required &middot; 1,000 free tokens
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: <IconMic />, title: 'Voice to Game', description: 'Speak your vision — terrain, buildings, NPCs. ForjeGames translates your words into playable game elements in seconds.' },
-              { icon: <IconImage />, title: 'Image to Map', description: 'Upload a photo, sketch, or reference image. AI analyzes it and generates a matching terrain layout with assets placed.' },
-              { icon: <IconCube />, title: '3D Mesh Generation', description: 'Generate custom 3D models with Meshy AI. PBR textures applied automatically via Fal. Game-ready in one click.' },
-              { icon: <IconSearch />, title: '500K+ Marketplace Assets', description: 'Search the entire Roblox asset marketplace. Browse, preview, and insert models directly into your scene.' },
-              { icon: <IconBrain />, title: 'Multi-Model AI', description: 'Choose your engine — Claude, GPT-4o, Gemini, Grok. Each optimized for different tasks. Switch models mid-conversation.' },
-              { icon: <IconPlug />, title: 'Studio Plugin', description: 'Real-time sync with Roblox Studio. Changes appear in your place instantly. Every operation is undoable.' },
-            ].map(({ icon, title, description }, i) => (
-              <div key={title} style={{ '--reveal-delay': `${i * 60}ms` } as React.CSSProperties}>
-                <FeatureCard icon={icon} title={title} description={description} />
-              </div>
-            ))}
+          {/* Editor mockup */}
+          <div className="reveal reveal-delay-5 relative w-full max-w-4xl mx-auto mt-16 px-2">
+            <EditorMockup />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── How it works ───────────────────────────────────────────────────── */}
-      <section className="py-24 px-6" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16 section-header-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">How it works</h2>
-            <p className="text-lg text-[#9CA3AF]">Three steps. Zero friction.</p>
+        {/* ── Social proof strip ────────────────────────────────────────── */}
+        <section
+          className="py-14 px-6"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="max-w-4xl mx-auto">
+            <p className="text-center text-[13px] mb-8 reveal" style={{ color: '#52525B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Powering the next generation of Roblox creators
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-14 gap-y-6 text-center">
+              {[
+                { value: 50000, suffix: '+', label: 'Assets generated' },
+                { value: 1200,  suffix: '+', label: 'Games built'      },
+                { value: 5,     suffix: '',  label: 'AI models'        },
+                { value: 99,    suffix: '%', label: 'Uptime'           },
+              ].map(({ value, suffix, label }, i) => (
+                <div key={label} className={`reveal reveal-delay-${i + 1}`}>
+                  <p className="text-2xl font-semibold mb-0.5 tabular-nums" style={{ color: '#FAFAFA' }}>
+                    <AnimatedCounter target={value} suffix={suffix} />
+                  </p>
+                  <p className="text-xs" style={{ color: '#52525B' }}>{label}</p>
+                </div>
+              ))}
+            </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            {/* Connecting lines (hidden on mobile) */}
-            <div className="hidden md:block absolute top-6 left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] h-px bg-gradient-to-r from-[rgba(212,175,55,0.3)] via-[rgba(212,175,55,0.15)] to-[rgba(212,175,55,0.3)]" />
+        {/* ── Features ──────────────────────────────────────────────────── */}
+        <section id="features" className="py-32 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-20 reveal">
+              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
+                Every tool you need.
+              </h2>
+              <p className="text-lg max-w-md" style={{ color: '#71717A' }}>
+                From a single sentence to a full game world.
+              </p>
+            </div>
 
-            <StepCard
-              number={1}
-              title="Describe"
-              description="Type, speak, or upload an image of what you want to build. Be as specific or vague as you want."
-            />
-            <StepCard
-              number={2}
-              title="AI Builds"
-              description="ForjeGames generates terrain, places assets, writes scripts, and configures lighting — all automatically."
-            />
-            <StepCard
-              number={3}
-              title="Play"
-              description="Your game is ready. Test it in Studio, iterate with AI, or publish directly to Roblox."
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12">
+              {[
+                {
+                  icon: <IconMic />,
+                  title: 'Voice input',
+                  description: 'Speak your vision. ForjeGames translates natural language into game elements in seconds.',
+                },
+                {
+                  icon: <IconImage />,
+                  title: 'Image to map',
+                  description: 'Upload a photo or sketch. AI analyzes it and generates a matching terrain layout with assets placed.',
+                },
+                {
+                  icon: <IconCube />,
+                  title: '3D generation',
+                  description: 'Generate custom models with Meshy AI. PBR textures applied automatically. Game-ready in one click.',
+                },
+                {
+                  icon: <IconSync />,
+                  title: 'Live Studio sync',
+                  description: 'Changes appear in your Roblox Studio place instantly. Every operation is undoable.',
+                },
+                {
+                  icon: <IconBrain />,
+                  title: 'AI agents',
+                  description: 'Claude, GPT-4o, Gemini. Each model optimized for different tasks. Switch mid-conversation.',
+                },
+                {
+                  icon: <IconPlug />,
+                  title: 'Marketplace',
+                  description: 'Search 500K+ Roblox assets. Browse, preview, and insert models directly into your scene.',
+                },
+              ].map(({ icon, title, description }, i) => (
+                <div key={title} style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
+                  className={`reveal reveal-delay-${Math.min(i + 1, 6)}`}>
+                  <Feature icon={icon} title={title} description={description} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Testimonials ───────────────────────────────────────────────────── */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 section-header-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">What creators are saying</h2>
-            <p className="text-lg text-[#9CA3AF]">Trusted by developers building the next generation of Roblox games.</p>
+        {/* ── How it works ──────────────────────────────────────────────── */}
+        <section className="py-32 px-6" style={{ background: '#0c0c0e' }}>
+          <div className="max-w-5xl mx-auto">
+            <div className="mb-20 reveal">
+              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
+                How it works.
+              </h2>
+              <p className="text-lg" style={{ color: '#71717A' }}>
+                Three steps. No setup.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+              {[
+                {
+                  n: '01',
+                  title: 'Describe',
+                  description: 'Type, speak, or upload an image. Be as specific or as vague as you want.',
+                },
+                {
+                  n: '02',
+                  title: 'AI builds',
+                  description: 'Terrain, assets, scripts, lighting — all generated automatically and pushed to Studio.',
+                },
+                {
+                  n: '03',
+                  title: 'Play',
+                  description: 'Test in Studio, iterate with AI, or publish directly to Roblox.',
+                },
+              ].map(({ n, title, description }, i) => (
+                <div key={n} className={`reveal reveal-delay-${i + 1} flex gap-5`}>
+                  <span
+                    className="flex-shrink-0 text-5xl font-light leading-none select-none"
+                    style={{ color: 'rgba(255,255,255,0.07)', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {n}
+                  </span>
+                  <div className="pt-1">
+                    <h3 className="text-lg font-medium mb-2" style={{ color: '#FAFAFA' }}>{title}</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { name: 'Alex R.', handle: '@alexbuilds · 200K visits', text: 'I described my whole city map in one sentence. ForjeGames laid it out, placed terrain, and inserted marketplace assets in under a minute. It would have taken me days.' },
-              { name: 'Maya T.', handle: '@mayadev · Roblox Creator', text: 'The Studio plugin is flawless. Every command I type shows up live in my place. The multi-model AI switching is a game changer — Claude for scripts, GPT for world-building.' },
-              { name: 'Jordan K.', handle: '@jk_games · Game Jam Winner', text: 'Won a 48-hour game jam using ForjeGames. Built an entire obby with custom 3D meshes and lighting scripts. My team of one competed against teams of five.' },
-            ].map(({ name, handle, text }, i) => (
-              <div key={name} style={{ '--reveal-delay': `${i * 80}ms` } as React.CSSProperties}>
-                <TestimonialCard name={name} handle={handle} text={text} />
-              </div>
-            ))}
+        </section>
+
+        {/* ── Editor preview (full-width showcase) ──────────────────────── */}
+        <section className="py-32 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-16 reveal">
+              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
+                The editor.
+              </h2>
+              <p className="text-lg max-w-md mx-auto" style={{ color: '#71717A' }}>
+                Chat on the left. Your Roblox world on the right. Changes are live.
+              </p>
+            </div>
+            <div className="reveal">
+              <EditorMockup />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Pricing ────────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16 section-header-animate">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple pricing</h2>
-            <p className="text-lg text-[#9CA3AF]">Start free. Scale when you need to.</p>
+        {/* ── Pricing ───────────────────────────────────────────────────── */}
+        <section id="pricing" className="py-32 px-6" style={{ background: '#0c0c0e' }}>
+          <div className="max-w-5xl mx-auto">
+            <div className="mb-16 reveal">
+              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
+                Pricing.
+              </h2>
+              <p className="text-lg" style={{ color: '#71717A' }}>
+                Start free. Scale when you&rsquo;re ready.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl">
+              <PricingCard
+                name="Free"
+                price="$0"
+                period="/forever"
+                features={[
+                  '1,000 tokens',
+                  'All AI models',
+                  'Marketplace access',
+                  'Community support',
+                ]}
+                cta="Get started"
+              />
+              <PricingCard
+                name="Creator"
+                price="$15"
+                period="/month"
+                features={[
+                  '50,000 tokens / month',
+                  'Priority AI processing',
+                  'Custom mesh generation',
+                  'Studio plugin sync',
+                  'Email support',
+                ]}
+                cta="Start creating"
+                recommended
+              />
+              <PricingCard
+                name="Studio"
+                price="$50"
+                period="/month"
+                features={[
+                  '200,000 tokens / month',
+                  'Team collaboration',
+                  'API access + SDKs',
+                  'Game DNA analysis',
+                  'Priority support',
+                ]}
+                cta="Go pro"
+              />
+            </div>
+
+            <p className="mt-8 text-[13px] reveal" style={{ color: '#52525B' }}>
+              10% of every payment goes to charity.{' '}
+              <Link href="/pricing" className="transition-colors duration-200 hover:underline" style={{ color: '#A1A1AA' }}>
+                Full pricing details
+              </Link>
+            </p>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            <PricingCard
-              name="Free"
-              price="$0"
-              period="/forever"
-              features={[
-                '1,000 tokens',
-                'All AI models',
-                'Marketplace access',
-                'Community support',
-              ]}
-              cta="Get Started"
-            />
-            <PricingCard
-              name="Creator"
-              price="$15"
-              period="/month"
-              features={[
-                '50,000 tokens/month',
-                'Priority AI processing',
-                'Custom mesh generation',
-                'Studio plugin sync',
-                'Email support',
-              ]}
-              cta="Start Creating"
-              featured
-            />
-            <PricingCard
-              name="Studio"
-              price="$50"
-              period="/month"
-              features={[
-                '200,000 tokens/month',
-                'Team collaboration',
-                'API access + SDKs',
-                'Game DNA analysis',
-                'Priority support',
-              ]}
-              cta="Go Pro"
-            />
-          </div>
-
-          <p className="text-center text-sm text-[#6B7280] mt-8">
-            10% of every payment goes to charity. <Link href="/pricing" className="text-[#D4AF37] hover:underline">See full pricing details</Link>
-          </p>
-        </div>
-      </section>
-
-      {/* ── Bottom CTA ─────────────────────────────────────────────────────── */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        {/* Glow */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[600px] h-[300px] opacity-20" style={{
-            background: 'radial-gradient(ellipse, rgba(212,175,55,0.3) 0%, transparent 60%)',
-          }} />
-        </div>
-
-        <div className="relative max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Ready to build?
-          </h2>
-          <p className="text-lg text-[#9CA3AF] mb-8">
-            Join thousands of creators building Roblox games faster with AI.
-          </p>
-
-          <Link
-            href="/editor"
-            className="inline-flex items-center gap-2.5 font-bold text-lg px-10 py-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+        {/* ── Bottom CTA ────────────────────────────────────────────────── */}
+        <section className="py-40 px-6 relative overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'linear-gradient(135deg, #D4AF37, #FFB81C)',
-              color: '#030712',
-              boxShadow: '0 0 40px rgba(212,175,55,0.3), 0 8px 24px rgba(0,0,0,0.4)',
+              background: 'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(212,175,55,0.05) 0%, transparent 60%)',
             }}
-          >
-            Get Started Free
-            <IconArrow className="w-5 h-5" />
-          </Link>
+          />
+          <div className="relative max-w-lg mx-auto text-center">
+            <h2 className="reveal text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
+              Ready to build?
+            </h2>
+            <p className="reveal reveal-delay-1 text-lg mb-10" style={{ color: '#71717A' }}>
+              Your first 1,000 tokens are free.
+            </p>
+            <Link
+              href="/editor"
+              className="reveal reveal-delay-2 inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold transition-all duration-300"
+              style={{ background: '#D4AF37', color: '#09090b' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#C4A030' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#D4AF37' }}
+            >
+              Start building
+              <IconArrow />
+            </Link>
+          </div>
+        </section>
 
-          <p className="text-sm text-[#6B7280] mt-4">
-            No credit card required
-          </p>
-        </div>
-      </section>
-
-    </div>
+      </div>
+    </>
   )
 }

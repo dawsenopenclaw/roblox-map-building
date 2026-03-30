@@ -702,8 +702,8 @@ function Message({ msg }: { msg: ChatMessage }) {
 
   if (msg.role === 'system') {
     return (
-      <div className="flex justify-center my-2">
-        <span className="text-[11px] text-gray-500 bg-white/5 border border-white/8 rounded-full px-3 py-0.5">
+      <div className="flex justify-center my-1.5">
+        <span className="text-[11px] text-zinc-500 px-3 py-0.5">
           {msg.content}
         </span>
       </div>
@@ -723,22 +723,15 @@ function Message({ msg }: { msg: ChatMessage }) {
       >
         <div className="flex flex-col items-end gap-1">
           <div
-            className="max-w-[80%] px-4 py-3 rounded-2xl rounded-tr-sm transition-all duration-200"
+            className="max-w-[80%] px-3.5 py-2.5 rounded-2xl rounded-tr-sm"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,184,28,0.14) 0%, rgba(255,107,53,0.09) 100%)',
-              border: '1px solid rgba(255,184,28,0.28)',
-              boxShadow: '0 2px 12px rgba(255,184,28,0.08)',
+              background: 'rgba(212,175,55,0.07)',
+              border: '1px solid rgba(212,175,55,0.14)',
             }}
           >
-            <p className="text-sm text-gray-100 leading-relaxed">{msg.content}</p>
+            <p className="text-sm text-zinc-100 leading-relaxed">{msg.content}</p>
           </div>
           {showTs && <MessageTimestamp ts={msg.timestamp} />}
-        </div>
-        <div className="w-7 h-7 rounded-full flex-shrink-0 bg-white/10 border border-white/15 flex items-center justify-center self-end">
-          <svg className="w-3.5 h-3.5 text-gray-300" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
-            <path d="M1.5 12.5c0-2.5 2.5-4 5.5-4s5.5 1.5 5.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
         </div>
       </div>
     )
@@ -756,30 +749,24 @@ function Message({ msg }: { msg: ChatMessage }) {
     >
       {/* AI Avatar */}
       <div
-        className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-        style={{ background: `linear-gradient(135deg, ${modelColor} 0%, ${modelColor}88 100%)` }}
+        className="w-6 h-6 rounded-md flex-shrink-0 flex items-center justify-center mt-0.5"
+        style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)' }}
       >
-        <svg className="w-3.5 h-3.5 text-black" viewBox="0 0 14 14" fill="currentColor">
-          <path d="M7 2L8.5 5.5H12L9 7.5l1 3.5L7 9l-3 2 1-3.5-3-2h3.5L7 2z"/>
+        <svg className="w-3 h-3" viewBox="0 0 14 14" fill="none" style={{ color: '#D4AF37' }}>
+          <path d="M7 2L8.5 5.5H12L9 7.5l1 3.5L7 9l-3 2 1-3.5-3-2h3.5L7 2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
         </svg>
       </div>
 
       {/* Bubble */}
       <div className="flex flex-col gap-1.5 max-w-[82%]">
         <div
-          className="relative px-4 py-3 rounded-2xl rounded-tl-sm"
+          className="relative px-3.5 py-2.5 rounded-2xl rounded-tl-sm"
           style={{
-            background: 'linear-gradient(135deg, rgba(13,18,49,1) 0%, rgba(17,24,64,1) 100%)',
-            border: '1px solid rgba(255,184,28,0.15)',
-            boxShadow: '0 0 24px rgba(255,184,28,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.07)',
           }}
         >
-          {/* Top gradient line */}
-          <div
-            className="absolute top-0 left-4 right-4 h-px rounded-full"
-            style={{ background: `linear-gradient(90deg, transparent, ${modelColor}40, transparent)` }}
-          />
-          <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap font-[inherit]">
+          <p className="text-sm text-zinc-100 leading-relaxed whitespace-pre-wrap font-[inherit]">
             {words.map((word, i) => (
               <span
                 key={i}
@@ -799,11 +786,7 @@ function Message({ msg }: { msg: ChatMessage }) {
         {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
         <div className="flex items-center gap-2 pl-1">
           {msg.tokensUsed !== undefined && (
-            <span className="text-[10px] text-blue-400/70 flex items-center gap-1">
-              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1"/>
-                <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-              </svg>
+            <span className="text-[10px] text-zinc-600 flex items-center gap-1">
               {msg.tokensUsed} tokens
             </span>
           )}
@@ -2801,19 +2784,17 @@ function IconBtn({
       title={label}
       aria-label={label}
       className={[
-        'forge-focus relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200',
+        'forge-focus relative w-9 h-9 rounded-lg flex items-center justify-center transition-colors duration-150',
         active
-          ? 'bg-[#FFB81C]/15 text-[#FFB81C]'
-          : 'text-gray-500 hover:text-gray-200 hover:bg-white/6',
+          ? 'text-[#D4AF37]'
+          : 'text-zinc-600 hover:text-zinc-300',
       ].join(' ')}
-      style={active ? { boxShadow: '0 0 12px rgba(255,184,28,0.18)' } : {}}
     >
       {children}
-      {/* Gold underline indicator when active */}
       {active && (
         <span
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full"
-          style={{ background: '#FFB81C', boxShadow: '0 0 4px #FFB81C' }}
+          className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-3 h-px rounded-full"
+          style={{ background: '#D4AF37' }}
         />
       )}
     </button>
@@ -3366,27 +3347,27 @@ export function EditorClient() {
         .forge-focus:focus-visible { outline: 2px solid #D4AF37; outline-offset: 2px; }
       `}</style>
 
-      <div className="flex h-screen overflow-hidden" style={{ height: '100dvh', background: '#0a0a0a' }}>
+      <div className="flex h-screen overflow-hidden" style={{ height: '100dvh', background: '#09090b' }}>
 
         {/* ── Left icon bar (desktop) ─────────────────────────────────────── */}
-        <div className="hidden md:flex flex-col items-center gap-1 py-3 px-1 w-12 flex-shrink-0" style={{ background: '#0e0e0e', borderRight: '1px solid #1a1a1a' }}>
-          <Link href="/" title="Home" className="w-9 h-9 rounded-lg flex items-center justify-center mb-2 transition-colors text-[#6B7280] hover:text-white hover:bg-white/5">
-            <svg className="w-[18px] h-[18px]" viewBox="0 0 20 20" fill="none">
+        <div className="hidden md:flex flex-col items-center gap-0.5 py-3 px-1 w-11 flex-shrink-0" style={{ background: '#09090b', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link href="/" title="Home" className="w-9 h-9 rounded-lg flex items-center justify-center mb-1 transition-colors text-zinc-600 hover:text-zinc-300">
+            <svg className="w-[16px] h-[16px]" viewBox="0 0 20 20" fill="none">
               <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               <path d="M7 18v-6h6v6" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
             </svg>
           </Link>
-          <div className="w-5 h-px bg-white/[0.06] mb-1" />
+          <div className="w-4 h-px mb-1" style={{ background: 'rgba(255,255,255,0.06)' }} />
           {iconBarButtons}
         </div>
 
         {/* ── Left slide-out panel ────────────────────────────────────────── */}
         {activePanel && (
-          <div className="hidden md:flex w-56 flex-col flex-shrink-0 overflow-hidden" style={{ background: '#0e0e0e', borderRight: '1px solid #1a1a1a' }}>
-            <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
-              <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-              <button onClick={() => setActivePanel(null)} className="text-[#6B7280] hover:text-white transition-colors" aria-label="Close panel">
-                <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <div className="hidden md:flex w-56 flex-col flex-shrink-0 overflow-hidden" style={{ background: '#111113', borderRight: '1px solid rgba(255,255,255,0.06)', animation: 'panel-slide-in 0.15s ease-out' }}>
+            <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <span className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">{PANEL_TITLE[activePanel]}</span>
+              <button onClick={() => setActivePanel(null)} className="text-zinc-600 hover:text-zinc-300 transition-colors" aria-label="Close panel">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
                   <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                 </svg>
               </button>
@@ -3403,12 +3384,12 @@ export function EditorClient() {
 
         {/* ── Mobile panel overlay ────────────────────────────────────────── */}
         {activePanel && (
-          <div className="md:hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onClick={() => setActivePanel(null)}>
-            <div className="absolute left-0 right-0 bottom-0 rounded-t-2xl max-h-[70dvh] flex flex-col" style={{ background: '#0e0e0e', borderTop: '1px solid #1a1a1a' }} onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
-                <span className="text-sm font-semibold text-white">{PANEL_TITLE[activePanel]}</span>
-                <button onClick={() => setActivePanel(null)} className="w-9 h-9 flex items-center justify-center text-[#6B7280] hover:text-white transition-colors" aria-label="Close panel">
-                  <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setActivePanel(null)}>
+            <div className="absolute left-0 right-0 bottom-0 rounded-t-xl max-h-[70dvh] flex flex-col" style={{ background: '#111113', borderTop: '1px solid rgba(255,255,255,0.06)' }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-4 py-2.5 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <span className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">{PANEL_TITLE[activePanel]}</span>
+                <button onClick={() => setActivePanel(null)} className="w-8 h-8 flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-colors" aria-label="Close panel">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
                 </button>
@@ -3428,18 +3409,13 @@ export function EditorClient() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
           {/* ── Top bar ──────────────────────────────────────────────────── */}
-          <div className="flex items-center gap-3 px-4 h-12 flex-shrink-0" style={{ background: '#0e0e0e', borderBottom: '1px solid #1a1a1a' }}>
+          <div className="flex items-center gap-3 px-4 h-10 flex-shrink-0" style={{ background: '#09090b', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
             {/* Mobile home */}
-            <Link href="/" className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-white transition-colors" aria-label="Home">
+            <Link href="/" className="md:hidden w-7 h-7 flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-colors" aria-label="Home">
               <svg className="w-4 h-4" viewBox="0 0 20 20" fill="none">
                 <path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
               </svg>
             </Link>
-
-            {/* Logo */}
-            <div className="hidden md:flex items-center gap-2">
-              <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black" style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712' }}>F</div>
-            </div>
 
             {/* Project name */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -3451,25 +3427,31 @@ export function EditorClient() {
                   onBlur={() => setEditingProjectName(false)}
                   onKeyDown={(e) => { if (e.key === 'Enter') setEditingProjectName(false) }}
                   maxLength={100}
-                  className="text-sm font-semibold text-white bg-transparent border-b border-[#D4AF37] focus:outline-none px-0 py-0 w-40"
+                  className="text-sm font-medium text-zinc-100 bg-transparent border-b border-[#D4AF37]/50 focus:outline-none px-0 py-0 w-40"
                 />
               ) : (
-                <button onClick={() => setEditingProjectName(true)} className="text-sm font-semibold text-white hover:text-[#D4AF37] transition-colors truncate">
+                <button onClick={() => setEditingProjectName(true)} className="text-sm font-medium text-zinc-200 hover:text-white transition-colors truncate">
                   {projectName}
                 </button>
               )}
               {activeGame && (
-                <span className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] text-[#6B7280] hidden sm:block">{activeGame.genre}</span>
+                <span className="text-[10px] text-zinc-600 hidden sm:block">{activeGame.genre}</span>
               )}
+              <span
+                className="text-[10px] px-1.5 py-0.5 rounded font-medium hidden sm:block"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: '#71717a' }}
+              >
+                Demo
+              </span>
             </div>
 
-            {/* Connection status */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: studioConnected ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${studioConnected ? 'rgba(16,185,129,0.2)' : '#1a1a1a'}` }}>
-                <span className={`w-1.5 h-1.5 rounded-full ${studioConnected ? 'bg-[#10B981]' : 'bg-[#6B7280]'}`} style={studioConnected ? { boxShadow: '0 0 4px #10B981' } : {}} />
-                <span className="text-[11px] text-[#9CA3AF]">{studioConnected ? 'Studio Connected' : 'Demo Mode'}</span>
+            {/* Right: status + tokens */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${studioConnected ? 'bg-emerald-500' : 'bg-zinc-600'}`} style={studioConnected ? { boxShadow: '0 0 4px #10B981' } : {}} />
+                <span className="text-[11px] text-zinc-500 hidden sm:block">{studioConnected ? 'Connected' : 'Not connected'}</span>
               </div>
-              <span className="text-[11px] text-[#D4AF37] font-medium">{1000 - totalTokens} tokens</span>
+              <span className="text-[11px] font-medium" style={{ color: '#D4AF37' }}>{1000 - totalTokens} tokens</span>
             </div>
           </div>
 
@@ -3477,10 +3459,10 @@ export function EditorClient() {
           <div className="flex-1 flex min-h-0 overflow-hidden">
 
             {/* ── LEFT: Chat ─────────────────────────────────────────────── */}
-            <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0" style={{ width: 'min(400px, 38vw)', borderRight: '1px solid #1a1a1a' }}>
+            <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0" style={{ width: 'min(420px, 40vw)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto forge-scroll px-4 py-4 space-y-4 min-h-0">
+              <div className="flex-1 overflow-y-auto forge-scroll px-4 py-5 space-y-4 min-h-0">
                 {messages.length === 1 && (
                   <EditorEmptyState
                     firstName={editorFirstName}
@@ -3494,14 +3476,14 @@ export function EditorClient() {
               </div>
 
               {/* ── Flat input bar ───────────────────────────────────────── */}
-              <div className="flex-shrink-0" style={{ borderTop: '1px solid #1a1a1a' }}>
+              <div className="flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {imageFile && (
-                  <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid #1a1a1a' }}>
-                    <svg className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" viewBox="0 0 16 16" fill="none">
+                  <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <svg className="w-3 h-3 text-zinc-500 flex-shrink-0" viewBox="0 0 16 16" fill="none">
                       <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
                     </svg>
-                    <span className="text-xs text-[#9CA3AF] flex-1 min-w-0 truncate">{imageFile.name}</span>
-                    <button onClick={() => setImageFile(null)} className="text-[#6B7280] hover:text-white transition-colors">
+                    <span className="text-xs text-zinc-400 flex-1 min-w-0 truncate">{imageFile.name}</span>
+                    <button onClick={() => setImageFile(null)} className="text-zinc-600 hover:text-zinc-300 transition-colors">
                       <svg className="w-3 h-3" viewBox="0 0 14 14" fill="none">
                         <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                       </svg>
@@ -3509,19 +3491,19 @@ export function EditorClient() {
                   </div>
                 )}
 
-                <div className="flex items-end gap-2 px-3 py-2.5" style={{ background: '#0e0e0e' }}>
+                <div className="flex items-end gap-2 px-3 py-2.5">
                   {/* Left tools */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     {supported && (
                       <button
                         onClick={() => listening ? stop() : start()}
                         aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${listening ? 'bg-red-500/20 text-red-400' : 'text-[#6B7280] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10'}`}
+                        className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${listening ? 'text-red-400' : 'text-zinc-600 hover:text-zinc-300'}`}
                       >
                         {listening ? (
                           <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                         ) : (
-                          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
                             <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
                             <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                             <path d="M8 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -3529,8 +3511,8 @@ export function EditorClient() {
                         )}
                       </button>
                     )}
-                    <button onClick={() => fileInputRef.current?.click()} aria-label="Upload image" className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6B7280] hover:text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-all">
-                      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+                    <button onClick={() => fileInputRef.current?.click()} aria-label="Upload image" className="w-7 h-7 rounded-md flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-colors">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
                         <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
                         <circle cx="5.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1.2"/>
                       </svg>
@@ -3548,13 +3530,13 @@ export function EditorClient() {
                     disabled={loading}
                     rows={1}
                     maxLength={4000}
-                    className="flex-1 bg-transparent text-sm text-white placeholder-[#808080] focus:outline-none resize-none py-1.5 disabled:opacity-50"
+                    className="flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none resize-none py-1.5 disabled:opacity-50"
                     style={{ minHeight: '32px', maxHeight: '120px' }}
                   />
 
                   {/* Character counter */}
                   {input.length > 0 && (
-                    <span className={`flex-shrink-0 text-[10px] tabular-nums ${input.length >= 3800 ? 'text-red-400' : 'text-[#4a4a4a]'}`}>
+                    <span className={`flex-shrink-0 text-[10px] tabular-nums ${input.length >= 3800 ? 'text-red-400' : 'text-zinc-700'}`}>
                       {input.length}/4000
                     </span>
                   )}
@@ -3564,15 +3546,15 @@ export function EditorClient() {
                     onClick={() => submit(input)}
                     disabled={!input.trim() || loading}
                     aria-label="Send message"
-                    className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all ${input.trim() && !loading ? 'bg-[#D4AF37] text-black hover:bg-[#FFB81C]' : 'bg-white/[0.04] text-[#808080]'}`}
-                    style={input.trim() && !loading ? { boxShadow: '0 0 12px rgba(212,175,55,0.3)' } : {}}
+                    className={`flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center transition-colors ${input.trim() && !loading ? 'text-black' : 'text-zinc-700'}`}
+                    style={input.trim() && !loading ? { background: '#D4AF37' } : { background: 'rgba(255,255,255,0.04)' }}
                   >
                     {loading ? (
-                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 14 14" fill="none">
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 14 14" fill="none">
                         <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 8"/>
                       </svg>
                     ) : (
-                      <svg className="w-4 h-4" viewBox="0 0 14 14" fill="none">
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
                         <path d="M2 7h10M7 2l5 5-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     )}
@@ -3583,7 +3565,7 @@ export function EditorClient() {
                 <div className="flex items-center gap-2 px-3 pb-2">
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
                   <div className="flex-1" />
-                  <span className="text-[10px] text-[#3a3a3a] hidden lg:block">Shift+Enter for newline</span>
+                  <span className="text-[10px] text-zinc-700 hidden lg:block">Enter to send</span>
                 </div>
               </div>
             </div>
@@ -3617,35 +3599,33 @@ export function EditorClient() {
                       className="absolute inset-0"
                     />
 
-                    <div className="relative z-10 max-w-md w-full text-center">
+                    <div className="relative z-10 max-w-sm w-full text-center">
                       {/* Roblox Studio icon */}
-                      <div className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.15)' }}>
-                        <svg className="w-8 h-8 text-[#D4AF37]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <div className="w-12 h-12 mx-auto mb-5 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <svg className="w-5 h-5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="3" width="18" height="18" rx="2"/>
                           <path d="M3 9h18"/>
                           <path d="M9 21V9"/>
                         </svg>
                       </div>
 
-                      <h2 className="text-xl font-bold text-white mb-2">Connect Roblox Studio</h2>
-                      <p className="text-sm text-[#9CA3AF] mb-8 leading-relaxed">
-                        Your game will appear here in real-time once connected. AI commands will build directly in your place.
+                      <h2 className="text-base font-semibold text-zinc-100 mb-1.5">Connect Roblox Studio</h2>
+                      <p className="text-sm text-zinc-500 mb-7 leading-relaxed">
+                        Your game appears here in real-time once connected. AI commands build directly in your place.
                       </p>
 
                       {/* Steps */}
-                      <div className="space-y-4 text-left mb-8">
+                      <div className="space-y-2 text-left mb-6">
                         {[
-                          { step: '1', title: 'Install the ForjeGames Plugin', desc: 'Download from Settings > Plugin, or get it from the Roblox Creator Store', icon: '📥' },
-                          { step: '2', title: 'Open your place in Roblox Studio', desc: 'The plugin auto-detects when Studio is running on this machine', icon: '🎮' },
-                          { step: '3', title: 'Click "Connect" in the plugin toolbar', desc: 'The viewport will show your live game — start building with AI', icon: '🔗' },
+                          { n: '1', title: 'Install the ForjeGames Plugin', desc: 'Get it from Settings > Plugin or the Roblox Creator Store' },
+                          { n: '2', title: 'Open your place in Roblox Studio', desc: 'The plugin auto-detects Studio on this machine' },
+                          { n: '3', title: 'Click Connect in the plugin toolbar', desc: 'Viewport goes live — start building with AI' },
                         ].map((s) => (
-                          <div key={s.step} className="flex items-start gap-3 p-3 rounded-xl transition-colors" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1a1a1a' }}>
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-sm" style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.15)' }}>
-                              {s.icon}
-                            </div>
+                          <div key={s.n} className="flex items-start gap-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span className="text-[10px] font-semibold text-zinc-600 mt-0.5 w-4 flex-shrink-0">{s.n}</span>
                             <div>
-                              <p className="text-sm font-semibold text-white">{s.title}</p>
-                              <p className="text-xs text-[#6B7280] mt-0.5">{s.desc}</p>
+                              <p className="text-xs font-medium text-zinc-200">{s.title}</p>
+                              <p className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">{s.desc}</p>
                             </div>
                           </div>
                         ))}
@@ -3654,17 +3634,17 @@ export function EditorClient() {
                       {/* Connect button */}
                       <button
                         onClick={() => setDemoMode(true)}
-                        className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-200 hover:-translate-y-0.5"
-                        style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#030712', boxShadow: '0 0 24px rgba(212,175,55,0.2)' }}
+                        className="w-full py-2.5 rounded-lg font-medium text-sm transition-colors"
+                        style={{ background: '#D4AF37', color: '#030712' }}
                       >
                         Connect to Studio
                       </button>
 
                       <button
                         onClick={() => setDemoMode(true)}
-                        className="mt-3 text-xs text-[#6B7280] hover:text-[#D4AF37] transition-colors"
+                        className="mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
                       >
-                        Skip — use demo viewport instead
+                        Use demo viewport instead
                       </button>
                     </div>
                   </div>
@@ -3675,7 +3655,7 @@ export function EditorClient() {
           </div>
 
           {/* ── Mobile bottom icon bar ───────────────────────────────────── */}
-          <div className="md:hidden flex items-center justify-around px-2 py-1 flex-shrink-0" style={{ background: '#0e0e0e', borderTop: '1px solid #1a1a1a', paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}>
+          <div className="md:hidden flex items-center justify-around px-2 py-1 flex-shrink-0" style={{ background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}>
             {iconBarButtons}
           </div>
         </div>
@@ -3714,41 +3694,33 @@ export function EditorClient() {
           }}
         >
           <div
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm"
             style={{
-              background: 'rgba(14,14,14,0.95)',
-              border: '1px solid rgba(212,175,55,0.3)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(212,175,55,0.1)',
+              background: '#111113',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
               backdropFilter: 'blur(12px)',
-              color: '#D1D5DB',
             }}
           >
-            <span
-              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-[11px]"
-              style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.2)' }}
-            >
-              💡
-            </span>
-            <span className="text-[12px]">
-              <span className="text-[#FFB81C] font-semibold">Tip:</span>
-              {' '}Press{' '}
+            <span className="text-[12px] text-zinc-400">
+              Press{' '}
               <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#E5E7EB' }}>
-                Ctrl+Enter
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                Ctrl+K
               </kbd>
-              {' '}to send, or click the{' '}
-              <svg className="inline w-3 h-3 mx-0.5 text-[#D4AF37]" viewBox="0 0 16 16" fill="none">
-                <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-              {' '}mic for voice input
+              {' '}for command palette, or{' '}
+              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                Ctrl+/
+              </kbd>
+              {' '}for shortcuts
             </span>
             <button
               onClick={() => { setTipToastVisible(false); setTimeout(() => setShowTipToast(false), 400) }}
-              className="text-gray-600 hover:text-gray-300 transition-colors flex-shrink-0 ml-1"
+              className="text-zinc-700 hover:text-zinc-400 transition-colors flex-shrink-0 ml-1"
               aria-label="Dismiss tip"
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+              <svg className="w-3 h-3" viewBox="0 0 14 14" fill="none">
                 <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
             </button>
