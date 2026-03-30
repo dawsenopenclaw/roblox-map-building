@@ -3,6 +3,14 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useToast } from '@/components/ui/toast-notification'
+import { useUser } from '@clerk/nextjs'
+import { CommandPalette } from '@/components/CommandPalette'
+import { ShortcutsDialog } from '@/components/ShortcutsDialog'
+import { EditorTour, useEditorTour } from './EditorTour'
+import { EditorEmptyState } from './EditorEmptyState'
+import { ViewportPreview } from '@/components/editor/ViewportPreview'
+import type { ViewportState } from '@/components/editor/ViewportPreview'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -327,17 +335,18 @@ function TypingIndicator() {
       <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
         style={{ background: 'linear-gradient(135deg, #FFB81C 0%, #FF6B35 100%)' }}>
         <svg className="w-3.5 h-3.5 text-black" viewBox="0 0 14 14" fill="currentColor">
-          <path d="M7 1a6 6 0 110 12A6 6 0 017 1zm0 1.5a4.5 4.5 0 100 9 4.5 4.5 0 000-9zm.75 2.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm-.75 2a.75.75 0 01.75.75v2a.75.75 0 11-1.5 0v-2A.75.75 0 017 6.75z"/>
+          <path d="M7 2L8.5 5.5H12L9 7.5l1 3.5L7 9l-3 2 1-3.5-3-2h3.5L7 2z"/>
         </svg>
       </div>
-      {/* Bubble with dots */}
-      <div className="px-4 py-3 rounded-2xl rounded-tl-sm"
+      {/* Bubble with dots + label */}
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl rounded-tl-sm"
         style={{
           background: 'linear-gradient(135deg, rgba(13,18,49,1) 0%, rgba(17,24,64,1) 100%)',
           border: '1px solid rgba(255,184,28,0.15)',
           boxShadow: '0 0 20px rgba(255,184,28,0.06)',
         }}>
-        <div className="flex gap-1.5 items-center h-4">
+        <span className="text-xs text-[#FFB81C]/70 font-medium">ForjeGames is building</span>
+        <div className="flex gap-1 items-center">
           {[0, 150, 300].map((d) => (
             <div
               key={d}
@@ -399,14 +408,88 @@ function AssetPill({ asset }: { asset: MarketplaceAssetClient }) {
   )
 }
 
+// ─── Simple Luau syntax highlighter ───────────────────────────────────────────
+
+function LuauHighlighted({ code }: { code: string }) {
+  const keywords = /\b(local|function|end|if|then|else|elseif|for|do|while|repeat|until|return|and|or|not|true|false|nil|in|break|continue)\b/g
+  const builtins = /\b(print|wait|game|workspace|Instance|Vector3|CFrame|Enum|script|math|table|string|pcall|xpcall|error|tostring|tonumber|pairs|ipairs|next|select|type|typeof|unpack)\b/g
+  const strings  = /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'|\[\[[\s\S]*?\]\]/g
+  const comments = /--.*$/gm
+  const numbers  = /\b\d+(\.\d+)?\b/g
+
+  // Tokenise by running each pattern and marking ranges
+  const len = code.length
+  type TokenKind = 'keyword' | 'builtin' | 'string' | 'comment' | 'number' | 'plain'
+  interface Span { start: number; end: number; kind: TokenKind }
+  const spans: Span[] = []
+
+  const mark = (re: RegExp, kind: TokenKind) => {
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(code)) !== null) {
+      spans.push({ start: m.index, end: m.index + m[0].length, kind })
+    }
+  }
+  mark(comments, 'comment')
+  mark(strings,  'string')
+  mark(keywords, 'keyword')
+  mark(builtins, 'builtin')
+  mark(numbers,  'number')
+
+  // Sort by start; filter overlaps (first wins)
+  spans.sort((a, b) => a.start - b.start)
+  const filtered: Span[] = []
+  let cursor = 0
+  for (const s of spans) {
+    if (s.start < cursor) continue
+    filtered.push(s)
+    cursor = s.end
+  }
+
+  // Build output with interleaved plain text
+  const parts: React.ReactNode[] = []
+  let pos = 0
+  const COLOR: Record<TokenKind, string> = {
+    keyword: '#C792EA',
+    builtin: '#82AAFF',
+    string:  '#C3E88D',
+    comment: '#546E7A',
+    number:  '#F78C6C',
+    plain:   '#CDD3DE',
+  }
+  filtered.forEach((s, i) => {
+    if (pos < s.start) parts.push(<span key={`p${i}`} style={{ color: COLOR.plain }}>{code.slice(pos, s.start)}</span>)
+    parts.push(<span key={`t${i}`} style={{ color: COLOR[s.kind] }}>{code.slice(s.start, s.end)}</span>)
+    pos = s.end
+  })
+  if (pos < len) parts.push(<span key="last" style={{ color: COLOR.plain }}>{code.slice(pos)}</span>)
+
+  return <>{parts}</>
+}
+
 function BuildResultCard({ result }: { result: BuildResult }) {
   const [showCode, setShowCode] = useState(false)
   const [copied, setCopied]     = useState(false)
+  const [importDone, setImportDone] = useState(false)
+  const { show: showToast } = useToast()
+
+  // Rough part/time estimates based on code line count
+  const lineCount = result.luauCode.split('\n').length
+  const estimatedParts = Math.max(8, lineCount * 2 + result.totalMarketplace * 4)
+  const estimatedSeconds = Math.max(1, Math.round(estimatedParts / 15))
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(result.luauCode)
     setCopied(true)
+    showToast({ variant: 'success', title: 'Copied to clipboard!', description: 'Paste the Luau code into Roblox Studio to import.', duration: 4000 })
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleImport = () => {
+    // Copy code to clipboard and signal done
+    navigator.clipboard.writeText(result.luauCode).catch(() => {})
+    setImportDone(true)
+    setTimeout(() => setImportDone(false), 3000)
   }
 
   return (
@@ -478,6 +561,31 @@ function BuildResultCard({ result }: { result: BuildResult }) {
         </div>
       )}
 
+      {/* Estimated stats */}
+      <div
+        className="flex items-center gap-3 px-3 py-2"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        <svg className="w-3 h-3 text-[#FFB81C]/60 flex-shrink-0" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1"/>
+          <path d="M6 4v2.5l1.5 1.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+        </svg>
+        <span className="text-[10px] text-gray-500">
+          ~{estimatedParts} parts &nbsp;&middot;&nbsp; ~{estimatedSeconds}s to import
+        </span>
+        <div className="flex-1" />
+        <span className="text-[9px] text-gray-700 uppercase tracking-wider">Preview</span>
+        <svg className="w-14 h-6 flex-shrink-0" viewBox="0 0 56 24" fill="none" aria-hidden>
+          {/* Mini isometric build preview */}
+          <rect x="4" y="10" width="16" height="12" rx="1" fill="#1E3A5F" stroke="#3B6EA8" strokeWidth="0.8"/>
+          <rect x="4" y="4" width="16" height="8" rx="0.5" fill="#2E5A8A" stroke="#4A7DC0" strokeWidth="0.6"/>
+          <rect x="24" y="12" width="12" height="10" rx="1" fill="#3A2010" stroke="#7A5230" strokeWidth="0.8"/>
+          <rect x="40" y="8" width="13" height="14" rx="1" fill="#1A3A28" stroke="#2E6644" strokeWidth="0.8"/>
+          <circle cx="48" cy="6" r="3" fill="#166534" stroke="#22883C" strokeWidth="0.6"/>
+          <line x1="0" y1="22" x2="56" y2="22" stroke="#2a2a2a" strokeWidth="0.8"/>
+        </svg>
+      </div>
+
       {/* Luau code section */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
         <button
@@ -488,7 +596,7 @@ function BuildResultCard({ result }: { result: BuildResult }) {
             <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
               <path d="M4 3l-3 3 3 3M8 3l3 3-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            View Luau Code (InsertService:LoadAsset)
+            View Luau Code
           </span>
           <svg className={`w-3 h-3 transition-transform ${showCode ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
             <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
@@ -497,24 +605,65 @@ function BuildResultCard({ result }: { result: BuildResult }) {
         {showCode && (
           <div className="relative">
             <pre
-              className="px-3 py-2 text-[9px] font-mono text-green-300/70 overflow-x-auto leading-relaxed"
-              style={{ background: 'rgba(0,0,0,0.4)', maxHeight: '180px' }}
+              className="px-3 py-2 text-[9px] font-mono overflow-x-auto leading-relaxed"
+              style={{ background: 'rgba(0,0,0,0.5)', maxHeight: '180px', tabSize: 2 }}
             >
-              {result.luauCode}
+              <LuauHighlighted code={result.luauCode} />
             </pre>
             <button
               onClick={handleCopy}
-              className="absolute top-1.5 right-2 text-[9px] px-2 py-0.5 rounded transition-colors"
+              className="absolute top-1.5 right-2 flex items-center gap-1 text-[9px] px-2 py-0.5 rounded transition-all"
               style={{
                 background: copied ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)',
                 color: copied ? '#4ADE80' : '#B0B0B0',
                 border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
               }}
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? (
+                <>
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none"><rect x="1" y="3" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/><path d="M3 3V2a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+                  Copy to Clipboard
+                </>
+              )}
             </button>
           </div>
         )}
+      </div>
+
+      {/* Import to Studio CTA */}
+      <div className="px-3 pb-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+        <button
+          onClick={handleImport}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-xs transition-all duration-200 active:scale-[0.97]"
+          style={{
+            background: importDone
+              ? 'rgba(74,222,128,0.15)'
+              : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            color: importDone ? '#4ADE80' : '#030712',
+            border: importDone ? '1px solid rgba(74,222,128,0.3)' : 'none',
+            boxShadow: importDone ? 'none' : '0 0 16px rgba(212,175,55,0.25)',
+          }}
+        >
+          {importDone ? (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Code copied — paste in Studio Script
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <path d="M7 1v8M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 11h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+              Import to Studio
+            </>
+          )}
+        </button>
       </div>
     </div>
   )
@@ -910,6 +1059,45 @@ function IsometricTree({ x, y, size }: { x: number; y: number; size: number }) {
   )
 }
 
+function BuildPreviewSvg() {
+  return (
+    <svg
+      viewBox="0 0 200 120"
+      className="w-full h-full"
+      style={{ opacity: 0.15, filter: 'drop-shadow(0 0 8px rgba(212,175,55,0.3))' }}
+      aria-hidden
+    >
+      {/* Ground */}
+      <rect x="10" y="80" width="180" height="35" rx="2" fill="#1A4731" stroke="rgba(255,255,255,0.05)" strokeWidth="0.5"/>
+      {/* Grid on ground */}
+      {[30,50,70,90,110,130,150,170].map(x => (
+        <line key={x} x1={x} y1="80" x2={x} y2="115" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
+      ))}
+      {[88,96,104,112].map(y => (
+        <line key={y} x1="10" y1={y} x2="190" y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
+      ))}
+      {/* Buildings — isometric-ish */}
+      <rect x="30" y="45" width="30" height="35" rx="1" fill="#2E4A7A" stroke="#4A6EA8" strokeWidth="0.8"/>
+      <rect x="30" y="35" width="30" height="12" rx="0.5" fill="#3B6EA8" stroke="#5B8EC7" strokeWidth="0.5"/>
+      <rect x="75" y="52" width="24" height="28" rx="1" fill="#5A4A30" stroke="#A87850" strokeWidth="0.8"/>
+      <rect x="110" y="38" width="36" height="42" rx="1" fill="#1E3A28" stroke="#2E6644" strokeWidth="0.8"/>
+      <rect x="110" y="28" width="36" height="12" rx="0.5" fill="#2E6040" stroke="#3A8050" strokeWidth="0.5"/>
+      <rect x="155" y="58" width="20" height="22" rx="1" fill="#3A2A4A" stroke="#7A5090" strokeWidth="0.8"/>
+      {/* Trees */}
+      <circle cx="22" cy="76" r="6" fill="#166534" stroke="#22883C" strokeWidth="0.5"/>
+      <circle cx="168" cy="74" r="5" fill="#166534" stroke="#22883C" strokeWidth="0.5"/>
+      <circle cx="103" cy="78" r="4" fill="#14522A" stroke="#20703A" strokeWidth="0.5"/>
+      {/* Windows */}
+      {[[36,52],[50,52],[36,62],[50,62]].map(([wx,wy],i) => (
+        <rect key={i} x={wx} y={wy} width="5" height="4" rx="0.5" fill="rgba(255,220,120,0.5)"/>
+      ))}
+      {[[117,46],[127,46],[137,46],[117,58],[127,58],[137,58]].map(([wx,wy],i) => (
+        <rect key={i} x={wx} y={wy} width="5" height="4" rx="0.5" fill="rgba(255,220,120,0.4)"/>
+      ))}
+    </svg>
+  )
+}
+
 function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; onConnectClick?: () => void }) {
   const [activeView, setActiveView] = useState<'Perspective' | 'Top' | 'Front' | 'Side'>('Perspective')
   const [showGrid, setShowGrid] = useState(true)
@@ -1012,6 +1200,18 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
         background: 'linear-gradient(0deg, rgba(6,8,15,0.7) 0%, transparent 100%)',
       }} />
 
+      {/* Build preview SVG when scene blocks exist */}
+      {sceneBlocks.length > 0 && (
+        <div
+          className="absolute inset-0 pointer-events-none flex items-center justify-center"
+          style={{ opacity: 0, animation: 'word-fade-in 0.6s ease-out 0.2s forwards' }}
+        >
+          <div className="absolute inset-0 flex items-end justify-center pb-16 px-12">
+            <BuildPreviewSvg />
+          </div>
+        </div>
+      )}
+
       {/* TOP-LEFT: connection status */}
       <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-auto">
         <div
@@ -1019,14 +1219,14 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <div className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-          <span className="text-gray-300 font-medium">Studio Not Connected</span>
+          <span className="text-gray-300 font-medium">Demo Mode</span>
         </div>
         <button
           onClick={onConnectClick}
           className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors text-left px-1"
           style={{ lineHeight: '1' }}
         >
-          Connect Studio &rarr;
+          Connect Roblox Studio to see live preview &rarr;
         </button>
       </div>
 
@@ -2601,6 +2801,8 @@ function IconBtn({
 // ─── Main editor ───────────────────────────────────────────────────────────────
 
 export function EditorClient() {
+  const { show: showToast } = useToast()
+
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: uid(),
@@ -2660,6 +2862,84 @@ export function EditorClient() {
     setActivePanel((prev) => (prev === id ? null : id))
   }, [])
 
+  // ── User info (for empty state personalisation) ───────────────────────────
+  const { user } = useUser()
+  const editorFirstName =
+    user?.firstName ||
+    user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
+    undefined
+
+  // ── Editor tour ────────────────────────────────────────────────────────────
+  const { shouldShow: showTour, dismiss: dismissTour } = useEditorTour()
+
+  // ── Command palette + shortcuts dialog state ──────────────────────────────
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  // ── Editor-level keyboard shortcuts ──────────────────────────────────────
+  useEffect(() => {
+    const PANEL_KEYS: Record<string, PanelId> = {
+      '1': 'projects',
+      '2': 'assets',
+      '3': 'dna',
+      '4': 'tokens',
+      '5': 'settings',
+    }
+
+    function handler(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey
+
+      // Ctrl/Cmd+K — command palette (GlobalShortcuts handles it globally;
+      // this duplicate ensures it works when an editor input is focused)
+      if (mod && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+        return
+      }
+
+      // Ctrl/Cmd+/ — shortcuts dialog
+      if (mod && e.key === '/') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+        return
+      }
+
+      // Ctrl/Cmd+B — toggle active panel (sidebar visibility)
+      if (mod && e.key === 'b') {
+        e.preventDefault()
+        setActivePanel((prev) => (prev ? null : 'projects'))
+        return
+      }
+
+      // Ctrl/Cmd+1-5 — switch panels
+      if (mod && PANEL_KEYS[e.key]) {
+        e.preventDefault()
+        const id = PANEL_KEYS[e.key]
+        setActivePanel((prev) => (prev === id ? null : id))
+        return
+      }
+
+      // Ctrl+Enter — send message (textarea may or may not be focused)
+      if (mod && e.key === 'Enter') {
+        // Only fire if a textarea in this editor is NOT already handling it
+        const active = document.activeElement
+        if (!active || active.tagName !== 'TEXTAREA') {
+          e.preventDefault()
+          submit(input)
+        }
+        return
+      }
+
+      // Escape — close open panel
+      if (e.key === 'Escape' && !paletteOpen && !shortcutsOpen) {
+        setActivePanel(null)
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [paletteOpen, shortcutsOpen, input, submit])
+
   // Studio state — must be declared before submit so the callback closes over them
   const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
   const [demoMode, setDemoMode]             = useState(false)
@@ -2690,6 +2970,7 @@ export function EditorClient() {
       }
 
       setMessages((prev) => [...prev, userMsg, statusMsg])
+      showToast({ variant: 'info', title: 'Building…', description: 'ForjeAI is generating your build.', duration: 4000 })
 
       try {
         let responseText: string | null = null
@@ -2810,6 +3091,13 @@ export function EditorClient() {
           return msgs
         })
 
+        showToast({
+          variant: 'success',
+          title: 'Build complete!',
+          description: buildResult ? 'Copy the Luau code to import into Roblox Studio.' : 'AI response ready.',
+          duration: 5000,
+        })
+
         // If Studio is actually connected (not demo), send Luau code to Studio for execution
         if (studioStatus.connected) {
           // Extract Luau from buildResult or mesh data
@@ -2863,7 +3151,7 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity],
+    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast],
   )
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2977,6 +3265,31 @@ export function EditorClient() {
   // Derived: show connected viewport if actually connected OR in demo mode
   const studioConnected = studioStatus.connected || demoMode
 
+  // Derived: viewport animation state for ViewportPreview
+  const viewportState: ViewportState = showBuildOverlay
+    ? 'building'
+    : sceneBlocks.length > 0
+    ? 'complete'
+    : 'idle'
+
+  // ── Quick tip toast ───────────────────────────────────────────────────────
+  const [showTipToast, setShowTipToast] = useState(false)
+  const [tipToastVisible, setTipToastVisible] = useState(false)
+
+  useEffect(() => {
+    // Show tip toast 3 seconds after mounting
+    const showTimer = setTimeout(() => {
+      setShowTipToast(true)
+      setTimeout(() => setTipToastVisible(true), 10) // trigger CSS transition
+    }, 3000)
+    // Auto-hide after 7 seconds total (4 seconds visible)
+    const hideTimer = setTimeout(() => {
+      setTipToastVisible(false)
+      setTimeout(() => setShowTipToast(false), 400)
+    }, 7000)
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer) }
+  }, [])
+
   return (
     <>
       {/* Keyframes + global polish */}
@@ -3012,6 +3325,14 @@ export function EditorClient() {
         @keyframes panel-slide-in {
           from { opacity: 0; transform: translateX(-8px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes toast-slide-up {
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes grid-pulse {
+          0%, 100% { opacity: 0.25; }
+          50%       { opacity: 0.45; }
         }
         .forge-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
         .forge-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -3135,24 +3456,10 @@ export function EditorClient() {
               {/* Messages */}
               <div className="flex-1 overflow-y-auto forge-scroll px-4 py-4 space-y-4 min-h-0">
                 {messages.length === 1 && (
-                  <div className="space-y-3">
-                    <p className="text-[10px] text-[#6B7280] uppercase tracking-widest font-semibold">Quick start</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {QUICK_ACTIONS.map(({ label, icon, prompt }) => (
-                        <button
-                          key={label}
-                          onClick={() => submit(prompt)}
-                          className="forge-focus group flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all duration-200 active:scale-[0.97] hover:-translate-y-px"
-                          style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #1a1a1a' }}
-                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'; e.currentTarget.style.background = 'rgba(212,175,55,0.04)' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
-                        >
-                          <span className="text-sm">{icon}</span>
-                          <span className="text-xs text-[#E5E7EB] font-medium">{label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <EditorEmptyState
+                    firstName={editorFirstName}
+                    onSelectPrompt={(prompt) => submit(prompt)}
+                  />
                 )}
                 {messages.map((msg) => (
                   <Message key={msg.id} msg={msg} />
@@ -3219,6 +3526,13 @@ export function EditorClient() {
                     style={{ minHeight: '32px', maxHeight: '120px' }}
                   />
 
+                  {/* Character counter */}
+                  {input.length > 0 && (
+                    <span className={`flex-shrink-0 text-[10px] tabular-nums ${input.length >= 3800 ? 'text-red-400' : 'text-[#4a4a4a]'}`}>
+                      {input.length}/4000
+                    </span>
+                  )}
+
                   {/* Send */}
                   <button
                     onClick={() => submit(input)}
@@ -3254,16 +3568,28 @@ export function EditorClient() {
               {/* Viewport area */}
               <div className="flex-1 relative min-h-0 overflow-hidden">
                 {studioConnected ? (
-                  /* Connected — show viewport */
-                  <Viewport sceneBlocks={sceneBlocks} />
+                  /* Connected — show viewport (with animated preview backdrop during build) */
+                  <>
+                    {showBuildOverlay && (
+                      <ViewportPreview
+                        state="building"
+                        builtBlockCount={sceneBlocks.length}
+                        className="absolute inset-0 z-0"
+                      />
+                    )}
+                    <div className={showBuildOverlay ? 'absolute inset-0 z-10' : 'absolute inset-0'}>
+                      <Viewport sceneBlocks={sceneBlocks} />
+                    </div>
+                  </>
                 ) : (
-                  /* Not connected — show connection guide */
-                  <div className="absolute inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'radial-gradient(ellipse at center, #111 0%, #0a0a0a 70%)' }}>
-                    {/* Subtle grid */}
-                    <div className="absolute inset-0 opacity-30" style={{
-                      backgroundImage: 'linear-gradient(rgba(212,175,55,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.02) 1px, transparent 1px)',
-                      backgroundSize: '32px 32px',
-                    }} />
+                  /* Not connected — show animated ViewportPreview + connection guide */
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-8">
+                    {/* Animated isometric scene background */}
+                    <ViewportPreview
+                      state={viewportState}
+                      builtBlockCount={sceneBlocks.length}
+                      className="absolute inset-0"
+                    />
 
                     <div className="relative z-10 max-w-md w-full text-center">
                       {/* Roblox Studio icon */}
@@ -3328,6 +3654,81 @@ export function EditorClient() {
           </div>
         </div>
       </div>
+
+      {/* ── First-run editor tour ─────────────────────────────────────────── */}
+      {showTour && <EditorTour onDone={dismissTour} />}
+
+      {/* ── Editor-scoped command palette + shortcuts ─────────────────────── */}
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onNewProject={() => {
+          setPaletteOpen(false)
+          setActivePanel(null)
+          submit('Start a new project')
+        }}
+        onShowShortcuts={() => {
+          setPaletteOpen(false)
+          setShortcutsOpen(true)
+        }}
+      />
+      <ShortcutsDialog
+        isOpen={shortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
+
+      {/* ── Quick tip toast ────────────────────────────────────────────────── */}
+      {showTipToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto"
+          style={{
+            opacity: tipToastVisible ? 1 : 0,
+            transform: tipToastVisible ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(12px)',
+            transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
+          }}
+        >
+          <div
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm"
+            style={{
+              background: 'rgba(14,14,14,0.95)',
+              border: '1px solid rgba(212,175,55,0.3)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(212,175,55,0.1)',
+              backdropFilter: 'blur(12px)',
+              color: '#D1D5DB',
+            }}
+          >
+            <span
+              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 text-[11px]"
+              style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.2)' }}
+            >
+              💡
+            </span>
+            <span className="text-[12px]">
+              <span className="text-[#FFB81C] font-semibold">Tip:</span>
+              {' '}Press{' '}
+              <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#E5E7EB' }}>
+                Ctrl+Enter
+              </kbd>
+              {' '}to send, or click the{' '}
+              <svg className="inline w-3 h-3 mx-0.5 text-[#D4AF37]" viewBox="0 0 16 16" fill="none">
+                <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+              {' '}mic for voice input
+            </span>
+            <button
+              onClick={() => { setTipToastVisible(false); setTimeout(() => setShowTipToast(false), 400) }}
+              className="text-gray-600 hover:text-gray-300 transition-colors flex-shrink-0 ml-1"
+              aria-label="Dismiss tip"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

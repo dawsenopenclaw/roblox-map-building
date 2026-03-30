@@ -46,6 +46,110 @@ type DemoTemplate = {
   creatorId: string
 }
 
+// ─── Demo reviews (3 per template) ───────────────────────────────────────────
+
+type DemoReview = DemoTemplate['reviews'][0]
+
+const makeReview = (
+  id: string,
+  reviewer: { id: string; displayName: string; username: string },
+  rating: number,
+  body: string,
+  daysAgo: number,
+  creatorResponse?: string,
+): DemoReview => ({
+  id,
+  rating,
+  body,
+  creatorResponse: creatorResponse ?? null,
+  createdAt: new Date(Date.now() - daysAgo * 86_400_000),
+  reviewer: { ...reviewer, avatarUrl: null },
+})
+
+const DEMO_REVIEWS: Record<string, DemoReview[]> = {
+  'demo-1': [
+    makeReview('r1a', { id: 'u1', displayName: 'RpgKing99', username: 'rpgking99' }, 5,
+      'Incredibly polished — the enemy AI alone would take me weeks to write from scratch. Saved my project.',
+      7, 'Thank you! The AI uses a simple state machine — happy to share docs if you need to customize it.'),
+    makeReview('r1b', { id: 'u2', displayName: 'MegaDev', username: 'megadev' }, 4,
+      'Great starting point. The quest tracker UI needed some tweaks for mobile but the scripting is clean.', 14),
+    makeReview('r1c', { id: 'u3', displayName: 'Nova_Studio', username: 'nova_studio' }, 5,
+      'Shipped a full game in 3 days using this. The loot table system is surprisingly flexible.', 22),
+  ],
+  'demo-2': [
+    makeReview('r2a', { id: 'u4', displayName: 'CityFan', username: 'cityfan' }, 5,
+      'Free and better than paid alternatives I\'ve tried. Road snapping just works.', 3),
+    makeReview('r2b', { id: 'u5', displayName: 'TechDev_LX', username: 'techdev_lx' }, 5,
+      'The modular blocks make it trivial to expand. Added 20 new block types in an afternoon.', 18),
+    makeReview('r2c', { id: 'u6', displayName: 'Pixel_Maps', username: 'pixel_maps' }, 5,
+      'Used this as the base for a city sim game, runs at 60fps with 300 players. Optimized well.', 30),
+  ],
+  'demo-3': [
+    makeReview('r3a', { id: 'u7', displayName: 'TycoonFan', username: 'tycoonfan' }, 4,
+      'Solid foundation. The ProfileStore integration saved hours. Would love a multi-plot version.', 5),
+    makeReview('r3b', { id: 'u8', displayName: 'BloxBuilder', username: 'bloxbuilder' }, 4,
+      'Good architecture. The upgrade tree UI is clean and the prestige system is well thought out.', 12),
+    makeReview('r3c', { id: 'u9', displayName: 'SimDev', username: 'simdev' }, 4,
+      'Works exactly as described. A few edge cases in the conveyor timing but minor issues.', 25),
+  ],
+  'demo-4': [
+    makeReview('r4a', { id: 'u10', displayName: 'UIDesigner', username: 'ui_designer' }, 5,
+      'Best UI kit on the platform. Consistent styling, great documentation, easy to theme.', 4),
+    makeReview('r4b', { id: 'u11', displayName: 'NewDev101', username: 'newdev101' }, 4,
+      'As a beginner the components made my game look professional instantly. Well worth $9.99.', 9),
+    makeReview('r4c', { id: 'u12', displayName: 'ProSripts', username: 'proscripts' }, 5,
+      'Saved my team 2 weeks. The settings screen alone would have taken days to design from scratch.', 20),
+  ],
+  'demo-5': [
+    makeReview('r5a', { id: 'u13', displayName: 'FightGame', username: 'fightgame' }, 5,
+      'Hitbox accuracy is exceptional. Combo chains feel tight. This is the standard for Roblox combat.', 2),
+    makeReview('r5b', { id: 'u14', displayName: 'ActionDev', username: 'actiondev' }, 5,
+      'Networked perfectly out of the box. Zero desync issues in playtests with 60 players.', 8),
+    makeReview('r5c', { id: 'u15', displayName: 'PVP_Master', username: 'pvp_master' }, 5,
+      'Replaced my old combat system in a day. Players immediately noticed the improvement.', 16),
+  ],
+  'demo-6': [
+    makeReview('r6a', { id: 'u16', displayName: 'MapArtist', username: 'map_artist' }, 4,
+      'Beautiful hand-crafted terrain. The biome transitions are natural looking.', 11),
+    makeReview('r6b', { id: 'u17', displayName: 'RPGDev_X', username: 'rpgdev_x' }, 4,
+      'Great value for 5 biomes. I added a snow biome on top and it blended seamlessly.', 19),
+    makeReview('r6c', { id: 'u18', displayName: 'WorldSmith', username: 'worldsmith' }, 4,
+      'Dungeon entrance props are particularly well made. Particle effects are optimized.', 27),
+  ],
+  'demo-7': [
+    makeReview('r7a', { id: 'u19', displayName: 'GameAdmin', username: 'gameadmin' }, 5,
+      'Every game I make uses this. The audit log alone justifies it. Free is unbeatable value.', 1),
+    makeReview('r7b', { id: 'u20', displayName: 'StudioOwner', username: 'studio_owner' }, 4,
+      'The permission system is flexible enough for our 5-person mod team. Solid tool.', 6),
+    makeReview('r7c', { id: 'u21', displayName: 'SafetyFirst', username: 'safety_first' }, 5,
+      'Ban/unban system works perfectly. The in-game GUI looks professional.', 13),
+  ],
+  'demo-8': [
+    makeReview('r8a', { id: 'u22', displayName: 'ItemSystem', username: 'item_system' }, 4,
+      'Drag-and-drop is buttery smooth. The equipment slots cover every RPG archetype I needed.', 10),
+    makeReview('r8b', { id: 'u23', displayName: 'RPGCreator', username: 'rpg_creator' }, 4,
+      'Well-documented code made customizing the hotbar keybinds trivial.', 17),
+    makeReview('r8c', { id: 'u24', displayName: 'MobileFirst', username: 'mobile_first' }, 4,
+      'Works great on mobile too — the animated open/close is a nice touch.', 24),
+  ],
+  'demo-9': [
+    makeReview('r9a', { id: 'u25', displayName: 'IslandGame', username: 'island_game' }, 5,
+      'Palm tree variants are gorgeous. The animated water shader alone is worth the price.', 3),
+    makeReview('r9b', { id: 'u26', displayName: 'BeachVibes', username: 'beach_vibes' }, 5,
+      '60+ assets and every single one is high quality. The seagull NPC is a charming detail.', 9),
+    makeReview('r9c', { id: 'u27', displayName: 'TropicalDev', username: 'tropical_dev' }, 5,
+      'Built a full beach resort game using this. Players love the atmosphere it creates.', 21),
+  ],
+  'demo-10': [
+    makeReview('r10a', { id: 'u28', displayName: 'RogueFan', username: 'rogue_fan' }, 5,
+      'Procedural dungeon gen is solid — rooms feel varied and interesting every run.', 4),
+    makeReview('r10b', { id: 'u29', displayName: 'DungeonDev', username: 'dungeon_dev' }, 4,
+      'Pathfinding enemies are challenging but not unfair. Boss room logic is a great template.', 11),
+    makeReview('r10c', { id: 'u30', displayName: 'LoopGames', username: 'loop_games' }, 5,
+      'The minimap UI is clean and the loot system is easy to extend with new item types.', 23),
+  ],
+}
+
 // Demo templates — one per demo-* id used in the marketplace listing
 const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
   'demo-1': {
@@ -330,7 +434,11 @@ export default async function TemplateDetailPage({
   // Serve demo template when id is a demo id
   if (id.startsWith('demo-')) {
     const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
-    return <TemplateDetail template={demo} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
+    const demoWithReviews: DemoTemplate = {
+      ...demo,
+      reviews: DEMO_REVIEWS[id] ?? DEMO_REVIEWS['demo-1'] ?? [],
+    }
+    return <TemplateDetail template={demoWithReviews} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 
   let template: DemoTemplate | null = null
@@ -442,6 +550,34 @@ function TemplateDetail({
     SOUND: 'Sound',
   }
 
+  const PREVIEW_GRADIENTS: Record<string, string> = {
+    'demo-1':  'bg-gradient-to-br from-orange-900/70 via-stone-900 to-yellow-900/60',
+    'demo-2':  'bg-gradient-to-br from-sky-900/70 via-slate-900 to-blue-900/60',
+    'demo-3':  'bg-gradient-to-br from-emerald-900/70 via-teal-900 to-cyan-900/60',
+    'demo-4':  'bg-gradient-to-br from-violet-900/70 via-purple-900 to-indigo-900/60',
+    'demo-5':  'bg-gradient-to-br from-red-900/70 via-rose-900 to-pink-900/60',
+    'demo-6':  'bg-gradient-to-br from-green-900/70 via-emerald-900 to-lime-900/60',
+    'demo-7':  'bg-gradient-to-br from-blue-900/70 via-indigo-900 to-violet-900/60',
+    'demo-8':  'bg-gradient-to-br from-fuchsia-900/70 via-purple-900 to-pink-900/60',
+    'demo-9':  'bg-gradient-to-br from-amber-900/70 via-orange-900 to-yellow-900/60',
+    'demo-10': 'bg-gradient-to-br from-slate-900/70 via-gray-900 to-zinc-900/60',
+  }
+
+  const PREVIEW_ICONS: Record<string, string> = {
+    'demo-1': '🏰', 'demo-2': '🏙', 'demo-3': '⚙',
+    'demo-4': '🎨', 'demo-5': '⚔', 'demo-6': '🌿',
+    'demo-7': '🛡', 'demo-8': '🎒', 'demo-9': '🌴', 'demo-10': '⚗',
+  }
+
+  // Sibling demos: same category, different id — for "More from creator" / related
+  const relatedDemos = Object.values(DEMO_TEMPLATES)
+    .filter(t => t.id !== template.id && t.category === template.category)
+    .slice(0, 3)
+
+  const moreFromCreator = Object.values(DEMO_TEMPLATES)
+    .filter(t => t.id !== template.id && t.creatorId === template.creatorId)
+    .slice(0, 3)
+
   return (
     <div className="max-w-6xl mx-auto">
       {isDemo && (
@@ -476,8 +612,19 @@ function TemplateDetail({
               )}
             </div>
           ) : (
-            <div className="aspect-video bg-[#1c1c1c] rounded-xl flex items-center justify-center">
-              <span className="text-6xl opacity-20">🎮</span>
+            /* CSS gradient art preview placeholder */
+            <div className={`aspect-video rounded-xl overflow-hidden flex flex-col items-center justify-center gap-3 ${PREVIEW_GRADIENTS[id] ?? 'bg-gradient-to-br from-[#1c1c1c] to-[#141414]'}`}>
+              <span className="text-7xl opacity-40 select-none" aria-hidden="true">
+                {PREVIEW_ICONS[id] ?? '🎮'}
+              </span>
+              <span className="text-xs text-white/20 uppercase tracking-widest font-semibold">
+                {categoryLabels[template.category] ?? template.category}
+              </span>
+              <div className="flex gap-1.5 mt-1">
+                {template.tags.slice(0, 3).map(tag => (
+                  <span key={tag} className="text-[10px] text-white/15 bg-white/5 px-2 py-0.5 rounded-full">#{tag}</span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -522,7 +669,20 @@ function TemplateDetail({
 
           {/* Reviews */}
           <div>
-            <h2 className="text-lg font-semibold text-white mb-4">Reviews</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                Reviews
+                {template.reviews.length > 0 && (
+                  <span className="ml-2 text-sm text-white/30 font-normal">({template.reviews.length})</span>
+                )}
+              </h2>
+              {template.reviewCount > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <StarDisplay rating={template.averageRating} />
+                  <span className="text-sm text-white/60 font-semibold">{template.averageRating.toFixed(1)}</span>
+                </div>
+              )}
+            </div>
 
             {/* Leave a review */}
             {!isDemo && user && hasPurchased && !hasReviewed && !isCreator && (
@@ -530,77 +690,149 @@ function TemplateDetail({
             )}
 
             {template.reviews.length === 0 ? (
-              <p className="text-gray-400 text-sm">No reviews yet. Be the first!</p>
+              <div className="bg-[#141414] border border-white/8 rounded-xl p-8 text-center">
+                <p className="text-white/50 text-sm">No reviews yet.</p>
+                <p className="text-white/25 text-xs mt-1">Purchase this template to leave the first review.</p>
+              </div>
             ) : (
-              <div className="space-y-4">
-                {template.reviews.map((review) => (
-                  <div key={review.id} className="bg-[#141414] border border-white/10 rounded-xl p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-[#1c1c1c] flex items-center justify-center text-sm">
-                          {review.reviewer.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={review.reviewer.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            '👤'
-                          )}
+              <div className="space-y-3">
+                {template.reviews.map((review) => {
+                  const name = review.reviewer.displayName || review.reviewer.username || 'Anonymous'
+                  const initial = name[0]?.toUpperCase() ?? '?'
+                  return (
+                    <div key={review.id} className="bg-[#141414] border border-white/8 rounded-xl p-5">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
+                            {review.reviewer.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={review.reviewer.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              <span className="text-[#D4AF37] text-xs font-bold">{initial}</span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-white leading-none">{name}</p>
+                            <p className="text-xs text-white/30 mt-0.5">
+                              {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">
-                            {review.reviewer.displayName || review.reviewer.username || 'Anonymous'}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(review.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
+                        <StarDisplay rating={review.rating} />
                       </div>
-                      <StarDisplay rating={review.rating} />
+                      {review.body && (
+                        <p className="text-sm text-white/65 leading-relaxed">{review.body}</p>
+                      )}
+                      {review.creatorResponse && (
+                        <div className="mt-3 bg-[#0a0a0a] rounded-lg p-3.5 border-l-2 border-[#D4AF37]/40">
+                          <p className="text-xs text-[#D4AF37] font-semibold mb-1.5">Creator response</p>
+                          <p className="text-sm text-white/55 leading-relaxed">{review.creatorResponse}</p>
+                        </div>
+                      )}
                     </div>
-                    {review.body && (
-                      <p className="text-sm text-gray-300">{review.body}</p>
-                    )}
-                    {review.creatorResponse && (
-                      <div className="mt-3 bg-[#1c1c1c] rounded-lg p-3 border-l-2 border-[#FFB81C]/40">
-                        <p className="text-xs text-[#FFB81C] font-medium mb-1">Creator response</p>
-                        <p className="text-sm text-gray-300">{review.creatorResponse}</p>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
+
+          {/* More from this creator */}
+          {moreFromCreator.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">
+                  More from {template.creator.displayName ?? template.creator.username ?? 'this creator'}
+                </h2>
+                <Link href="/marketplace" className="text-xs text-[#D4AF37] hover:text-[#c49b2f] transition-colors">
+                  View all
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {moreFromCreator.map(t => (
+                  <MiniTemplateCard key={t.id} template={t} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Related templates */}
+          {relatedDemos.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Related Templates</h2>
+                <Link href="/marketplace" className="text-xs text-[#D4AF37] hover:text-[#c49b2f] transition-colors">
+                  Browse all
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {relatedDemos.map(t => (
+                  <MiniTemplateCard key={t.id} template={t} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Purchase card */}
-          <div className="bg-[#141414] border border-white/10 rounded-xl p-5 sticky top-6">
-            <p className="text-3xl font-bold text-white mb-1">
-              {isFree ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
-            </p>
-            {!isFree && (
-              <p className="text-xs text-gray-400 mb-4">One-time purchase, lifetime access</p>
-            )}
+          <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-6 sticky top-6 shadow-[0_0_40px_rgba(212,175,55,0.05)]">
+            {/* Price display */}
+            <div className="mb-5">
+              {isFree ? (
+                <p className="text-4xl font-black text-emerald-400 leading-none">Free</p>
+              ) : (
+                <>
+                  <p className="text-4xl font-black text-white leading-none">
+                    ${(template.priceCents / 100).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-white/30 mt-1.5">One-time · lifetime access</p>
+                </>
+              )}
+            </div>
 
+            {/* Quick stats */}
+            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-white/8">
+              <div className="text-center flex-1">
+                <p className="text-white font-bold text-lg tabular-nums">
+                  {template._count.purchases.toLocaleString()}
+                </p>
+                <p className="text-white/30 text-[10px] uppercase tracking-wide mt-0.5">Downloads</p>
+              </div>
+              <div className="w-px h-8 bg-white/8" />
+              <div className="text-center flex-1">
+                <p className="text-white font-bold text-lg tabular-nums">{template.averageRating > 0 ? template.averageRating.toFixed(1) : '—'}</p>
+                <p className="text-white/30 text-[10px] uppercase tracking-wide mt-0.5">Rating</p>
+              </div>
+              <div className="w-px h-8 bg-white/8" />
+              <div className="text-center flex-1">
+                <p className="text-white font-bold text-lg tabular-nums">{template.reviewCount}</p>
+                <p className="text-white/30 text-[10px] uppercase tracking-wide mt-0.5">Reviews</p>
+              </div>
+            </div>
+
+            {/* CTA area */}
             {isDemo ? (
-              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-gray-300">
-                Preview only — connect DB to enable purchases
+              <div className="space-y-3">
+                <div className="w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] text-black font-bold py-3.5 rounded-xl text-sm text-center cursor-not-allowed opacity-70">
+                  Use Template — {isFree ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
+                </div>
+                <p className="text-xs text-white/25 text-center">Sign in to purchase</p>
               </div>
             ) : isCreator ? (
-              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-gray-300">
+              <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-white/50">
                 This is your template
               </div>
             ) : hasPurchased ? (
               <div className="space-y-3">
-                <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-center text-sm text-green-400">
-                  Purchased
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-center text-sm text-emerald-400 font-semibold">
+                  Purchased — you own this
                 </div>
                 {template.rbxmFileUrl && (
                   <a
                     href={template.rbxmFileUrl}
                     download
-                    className="block w-full bg-[#FFB81C] hover:bg-[#E6A618] text-black font-semibold py-3 rounded-xl text-sm text-center transition-colors"
+                    className="block w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] hover:from-[#c49b2f] hover:to-[#b38a28] text-black font-bold py-3.5 rounded-xl text-sm text-center transition-all duration-200"
                   >
                     Download .rbxm
                   </a>
@@ -615,37 +847,105 @@ function TemplateDetail({
               />
             )}
 
-            {template.rbxmFileUrl && (hasPurchased || isFree) && !isCreator && !isDemo && (
-              <p className="text-xs text-gray-400 text-center mt-3">
-                Compatible with Roblox Studio
-              </p>
-            )}
+            {/* Compatibility note */}
+            <p className="text-xs text-white/20 text-center mt-4">
+              Compatible with Roblox Studio · Instant download
+            </p>
           </div>
 
           {/* Creator card */}
-          <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
-            <h3 className="text-sm font-medium text-white uppercase tracking-wide mb-3">Creator</h3>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1c1c1c] flex items-center justify-center">
+          <div className="bg-[#141414] border border-white/8 rounded-2xl p-5">
+            <h3 className="text-xs text-white/30 uppercase tracking-widest font-semibold mb-4">Created by</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
                 {template.creator.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={template.creator.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
                 ) : (
-                  '👤'
+                  <span className="text-[#D4AF37] font-bold text-base">
+                    {(template.creator.displayName ?? template.creator.username ?? 'C')[0]?.toUpperCase()}
+                  </span>
                 )}
               </div>
               <div>
-                <p className="text-white font-medium text-sm">
+                <p className="text-white font-semibold text-sm">
                   {template.creator.displayName || template.creator.username || 'Creator'}
                 </p>
+                {template.creator.username && (
+                  <p className="text-white/30 text-xs">@{template.creator.username}</p>
+                )}
                 {template.creator.userXp && (
-                  <TierBadge tier={template.creator.userXp.tier} size="sm" />
+                  <div className="mt-1">
+                    <TierBadge tier={template.creator.userXp.tier} size="sm" />
+                  </div>
                 )}
               </div>
             </div>
+            <Link
+              href="/marketplace"
+              className="block w-full text-center text-xs text-[#D4AF37] hover:text-[#c49b2f] border border-[#D4AF37]/20 hover:border-[#D4AF37]/40 py-2 rounded-xl transition-all duration-150"
+            >
+              View all templates by this creator
+            </Link>
           </div>
+
+          {/* Tags */}
+          {template.tags.length > 0 && (
+            <div className="bg-[#141414] border border-white/8 rounded-2xl p-5">
+              <h3 className="text-xs text-white/30 uppercase tracking-widest font-semibold mb-3">Tags</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {template.tags.map(tag => (
+                  <span key={tag} className="text-xs text-white/40 bg-white/5 border border-white/8 px-2.5 py-1 rounded-full">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── MiniTemplateCard ─────────────────────────────────────────────────────────
+
+const MINI_GRADIENTS: Record<string, string> = {
+  'demo-1':  'from-orange-900/50 to-yellow-900/40',
+  'demo-2':  'from-sky-900/50 to-blue-900/40',
+  'demo-3':  'from-emerald-900/50 to-cyan-900/40',
+  'demo-4':  'from-violet-900/50 to-indigo-900/40',
+  'demo-5':  'from-red-900/50 to-pink-900/40',
+  'demo-6':  'from-green-900/50 to-lime-900/40',
+  'demo-7':  'from-blue-900/50 to-violet-900/40',
+  'demo-8':  'from-fuchsia-900/50 to-pink-900/40',
+  'demo-9':  'from-amber-900/50 to-yellow-900/40',
+  'demo-10': 'from-slate-900/50 to-zinc-900/40',
+}
+const MINI_ICONS: Record<string, string> = {
+  'demo-1': '🏰', 'demo-2': '🏙', 'demo-3': '⚙',
+  'demo-4': '🎨', 'demo-5': '⚔', 'demo-6': '🌿',
+  'demo-7': '🛡', 'demo-8': '🎒', 'demo-9': '🌴', 'demo-10': '⚗',
+}
+
+function MiniTemplateCard({ template }: { template: DemoTemplate }) {
+  const isFree = template.priceCents === 0
+  const grad = MINI_GRADIENTS[template.id] ?? 'from-gray-900/50 to-zinc-900/40'
+  const icon = MINI_ICONS[template.id] ?? '🎮'
+  return (
+    <Link
+      href={`/marketplace/${template.id}`}
+      className="group block bg-[#141414] border border-white/8 rounded-xl overflow-hidden hover:border-[#D4AF37]/25 hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] transition-all duration-200"
+    >
+      <div className={`aspect-video bg-gradient-to-br ${grad} flex items-center justify-center`}>
+        <span className="text-3xl opacity-50 group-hover:opacity-70 transition-opacity select-none" aria-hidden="true">{icon}</span>
+      </div>
+      <div className="p-3">
+        <p className="text-xs font-semibold text-white/80 line-clamp-1 group-hover:text-white transition-colors">{template.title}</p>
+        <p className="text-xs text-white/30 mt-0.5">
+          {isFree ? <span className="text-emerald-400">Free</span> : `$${(template.priceCents / 100).toFixed(2)}`}
+        </p>
+      </div>
+    </Link>
   )
 }

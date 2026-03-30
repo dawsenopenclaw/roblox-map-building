@@ -250,10 +250,25 @@ function TemplateCard({ template }: { template: TemplateSearchItem }) {
       role="listitem"
       className="
         group relative flex flex-col bg-white/3 border border-white/8
-        rounded-xl overflow-hidden
-        hover:border-white/20 hover:bg-white/5
-        transition-all duration-200 cursor-pointer
+        rounded-xl overflow-hidden cursor-pointer
       "
+      style={{
+        transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1), border-color 200ms cubic-bezier(0.4,0,0.2,1), background-color 200ms ease',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(-4px)'
+        el.style.borderColor = 'rgba(212,175,55,0.3)'
+        el.style.boxShadow = '0 12px 32px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.08)'
+        el.style.backgroundColor = 'rgba(255,255,255,0.05)'
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.transform = 'translateY(0)'
+        el.style.borderColor = 'rgba(255,255,255,0.08)'
+        el.style.boxShadow = 'none'
+        el.style.backgroundColor = 'rgba(255,255,255,0.03)'
+      }}
     >
       {/* Thumbnail */}
       <div className="relative aspect-video bg-white/5 overflow-hidden">
@@ -373,22 +388,14 @@ function SkeletonCard() {
 // ─── SuggestionChip ───────────────────────────────────────────────────────────
 
 function SuggestionChip({ label, query }: { label: string; query: string }) {
+  const router = useRouter()
+
   const handleClick = () => {
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href)
-      if (query) {
-        url.searchParams.set('q', query)
-      } else {
-        url.searchParams.delete('q')
-      }
-      url.searchParams.delete('category')
-      url.searchParams.delete('minPrice')
-      url.searchParams.delete('maxPrice')
-      url.searchParams.delete('minRating')
-      url.searchParams.delete('after')
-      window.history.pushState({}, '', url.toString())
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    }
+    const params = new URLSearchParams()
+    if (query) params.set('q', query)
+    // strip all filter params — category, price, rating, cursor
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : '?')
   }
 
   return (

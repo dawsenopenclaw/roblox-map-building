@@ -1,12 +1,27 @@
 'use client'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+// ---------------------------------------------------------------------------
+// Platform modifier key
+// ---------------------------------------------------------------------------
+
+function useModKey() {
+  const [mod, setMod] = useState('Ctrl')
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)) {
+      setMod('⌘')
+    }
+  }, [])
+  return mod
+}
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface ShortcutEntry {
-  keys: string[]   // Each element is one key badge, e.g. ['⌘', 'K'] or ['G', 'then', 'D']
+  keys: string[]
   label: string
 }
 
@@ -16,46 +31,12 @@ interface ShortcutCategory {
 }
 
 // ---------------------------------------------------------------------------
-// Data
-// ---------------------------------------------------------------------------
-
-const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
-  {
-    title: 'General',
-    items: [
-      { keys: ['⌘', 'K'], label: 'Open command palette' },
-      { keys: ['⌘', 'N'], label: 'New project' },
-      { keys: ['⌘', 'B'], label: 'Toggle sidebar' },
-      { keys: ['⌘', '/'], label: 'Show keyboard shortcuts' },
-      { keys: ['Esc'], label: 'Close modal / palette' },
-    ],
-  },
-  {
-    title: 'Navigation',
-    items: [
-      { keys: ['G', 'D'], label: 'Go to Dashboard' },
-      { keys: ['G', 'V'], label: 'Go to Voice Build' },
-      { keys: ['G', 'I'], label: 'Go to Image to Map' },
-      { keys: ['G', 'M'], label: 'Go to Marketplace' },
-      { keys: ['G', 'S'], label: 'Go to Settings' },
-    ],
-  },
-  {
-    title: 'Navigation hints',
-    items: [
-      { keys: ['↑', '↓'], label: 'Move between items' },
-      { keys: ['↵'], label: 'Confirm / select' },
-    ],
-  },
-]
-
-// ---------------------------------------------------------------------------
-// Key component
+// Key badge component
 // ---------------------------------------------------------------------------
 
 function Key({ children }: { children: string }) {
   return (
-    <kbd className="inline-flex items-center justify-center min-w-[1.8rem] h-7 px-2 rounded-md bg-[#1c1c1c] border border-white/20 text-xs font-mono text-gray-200 shadow-sm">
+    <kbd className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-2 rounded-md bg-[#1c1c1c] border border-white/[0.15] text-xs font-mono text-gray-300 shadow-sm select-none">
       {children}
     </kbd>
   )
@@ -71,63 +52,125 @@ interface ShortcutsDialogProps {
 }
 
 export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
+  const mod = useModKey()
+
+  const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
+    {
+      title: 'General',
+      items: [
+        { keys: [mod, 'K'],       label: 'Open command palette' },
+        { keys: [mod, 'N'],       label: 'New build / project' },
+        { keys: [mod, 'B'],       label: 'Toggle sidebar' },
+        { keys: [mod, '/'],       label: 'Show keyboard shortcuts' },
+        { keys: ['?'],            label: 'Show keyboard shortcuts' },
+        { keys: ['Esc'],          label: 'Close panel / dialog' },
+      ],
+    },
+    {
+      title: 'Editor',
+      items: [
+        { keys: [mod, '↵'],          label: 'Send chat message' },
+        { keys: [mod, 'M'],          label: 'Toggle model selector' },
+        { keys: [mod, 'Shift', 'V'], label: 'Toggle voice input' },
+      ],
+    },
+    {
+      title: 'Navigation (G + key)',
+      items: [
+        { keys: ['G', 'E'], label: 'Go to Editor' },
+        { keys: ['G', 'D'], label: 'Go to Dashboard' },
+        { keys: ['G', 'M'], label: 'Go to Marketplace' },
+        { keys: ['G', 'S'], label: 'Go to Settings' },
+        { keys: ['G', 'B'], label: 'Go to Billing' },
+        { keys: ['G', 'V'], label: 'Go to Voice Build' },
+        { keys: ['G', 'I'], label: 'Go to Image to Map' },
+      ],
+    },
+    {
+      title: 'Command palette',
+      items: [
+        { keys: ['↑', '↓'], label: 'Move between items' },
+        { keys: ['↵'],       label: 'Confirm / select' },
+        { keys: ['Esc'],     label: 'Close palette' },
+      ],
+    },
+  ]
+
+  // Close on Escape
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [isOpen, onClose])
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           {/* Backdrop */}
           <motion.div
-            key="backdrop"
+            key="sd-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200]"
             onClick={onClose}
+            aria-hidden="true"
           />
 
           {/* Dialog */}
           <motion.div
-            key="dialog"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.18, ease: 'easeOut' }}
-            className="fixed inset-0 z-[101] flex items-center justify-center p-4"
+            key="sd-dialog"
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed inset-0 z-[201] flex items-center justify-center p-4"
           >
-            <div className="bg-[#141414] border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Keyboard shortcuts"
+              className="bg-[#141414] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+              style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)' }}
+            >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg">⌨️</span>
-                  <h2 className="text-base font-semibold text-white">Keyboard Shortcuts</h2>
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
+                    style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.15)' }}
+                    aria-hidden="true"
+                  >
+                    ⌨
+                  </div>
+                  <h2 className="text-sm font-semibold text-white tracking-tight">Keyboard Shortcuts</h2>
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-white hover:bg-white/[0.06] transition-colors"
                   aria-label="Close shortcuts dialog"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 max-h-[70vh] overflow-y-auto">
+              {/* Body — 2-column grid */}
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6 max-h-[65vh] overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(212,175,55,0.2) transparent' }}>
                 {SHORTCUT_CATEGORIES.map((cat) => (
                   <div key={cat.title}>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-[#D4AF37] mb-3">
                       {cat.title}
                     </p>
                     <ul className="space-y-2.5">
                       {cat.items.map((item, i) => (
-                        <li key={i} className="flex items-center justify-between gap-4">
+                        <li key={i} className="flex items-center justify-between gap-3">
                           {/* Keys */}
                           <div className="flex items-center gap-1 flex-shrink-0">
                             {item.keys.map((k, ki) => (
@@ -135,7 +178,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
                             ))}
                           </div>
                           {/* Label */}
-                          <span className="text-sm text-gray-300 text-right flex-1 min-w-0 truncate">
+                          <span className="text-xs text-gray-400 text-right flex-1 min-w-0 truncate leading-relaxed">
                             {item.label}
                           </span>
                         </li>
@@ -146,17 +189,21 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-3 border-t border-white/10 flex items-center justify-between">
-                <p className="text-xs text-gray-400">
+              <div className="px-6 py-3 border-t border-white/[0.07] flex items-center justify-between">
+                <p className="text-[11px] text-gray-600">
                   Press{' '}
-                  <kbd className="inline-flex items-center justify-center h-4 px-1.5 rounded bg-white/10 border border-white/20 text-[10px] font-mono">
-                    ⌘ /
+                  <kbd className="inline-flex items-center justify-center h-4 px-1.5 rounded bg-white/[0.07] border border-white/10 text-[9px] font-mono">
+                    ?
+                  </kbd>
+                  {' '}or{' '}
+                  <kbd className="inline-flex items-center justify-center h-4 px-1.5 rounded bg-white/[0.07] border border-white/10 text-[9px] font-mono">
+                    {mod} /
                   </kbd>{' '}
                   anytime to show this dialog
                 </p>
                 <button
                   onClick={onClose}
-                  className="text-xs text-[#FFB81C] hover:text-[#FFB81C]/80 transition-colors"
+                  className="text-xs text-[#D4AF37] hover:text-[#D4AF37]/70 transition-colors"
                 >
                   Close
                 </button>

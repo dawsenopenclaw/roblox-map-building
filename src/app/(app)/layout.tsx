@@ -1,7 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
 import { requireAuthUser } from '@/lib/clerk'
 import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 

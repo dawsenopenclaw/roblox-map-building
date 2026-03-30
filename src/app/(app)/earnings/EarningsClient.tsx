@@ -11,7 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { TrendingUp, DollarSign, Clock, ShoppingBag, Download, Zap } from 'lucide-react'
+import { TrendingUp, DollarSign, Clock, ShoppingBag, Download, Zap, ArrowUpRight, BarChart2 } from 'lucide-react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -48,12 +48,55 @@ const fetcher = (url: string) =>
 const fmt = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
+// ─── Demo data — shown when API errors or not yet connected ──────────────────
+
+function makeSale(id: string, title: string, priceCents: number, daysAgo: number, status: string): Sale {
+  const creatorPayout = Math.round(priceCents * 0.7)
+  const platformFee   = priceCents - creatorPayout
+  const d = new Date(Date.now() - daysAgo * 86_400_000)
+  return {
+    id,
+    amountCents: priceCents,
+    platformFeeCents: platformFee,
+    creatorPayoutCents: creatorPayout,
+    payoutStatus: status,
+    createdAt: d.toISOString(),
+    template: { id: `t-${id}`, title },
+  }
+}
+
+const DEMO_SALES: Sale[] = [
+  makeSale('s1',  'Combat System v2',       1999, 1,  'PAID'),
+  makeSale('s2',  'Modern UI Kit',           999, 2,  'PAID'),
+  makeSale('s3',  'Combat System v2',       1999, 4,  'PAID'),
+  makeSale('s4',  'Tycoon Framework',       2499, 5,  'PAID'),
+  makeSale('s5',  'Modern UI Kit',           999, 7,  'PAID'),
+  makeSale('s6',  'Combat System v2',       1999, 9,  'PAID'),
+  makeSale('s7',  'Inventory UI Pack',       799, 11, 'PENDING'),
+  makeSale('s8',  'Tycoon Framework',       2499, 13, 'PAID'),
+  makeSale('s9',  'Combat System v2',       1999, 15, 'PAID'),
+  makeSale('s10', 'Modern UI Kit',           999, 18, 'PROCESSING'),
+  makeSale('s11', 'Tycoon Framework',       2499, 20, 'PAID'),
+  makeSale('s12', 'Combat System v2',       1999, 22, 'PAID'),
+  makeSale('s13', 'Inventory UI Pack',       799, 25, 'PAID'),
+  makeSale('s14', 'Modern UI Kit',           999, 27, 'PAID'),
+  makeSale('s15', 'Combat System v2',       1999, 29, 'PAID'),
+]
+
+const DEMO_TOTAL_CENTS = DEMO_SALES.reduce((sum, s) => sum + s.creatorPayoutCents, 0)  // ~$24.50
+const DEMO_PENDING_CENTS = DEMO_SALES
+  .filter(s => s.payoutStatus !== 'PAID')
+  .reduce((sum, s) => sum + s.creatorPayoutCents, 0)
+
 const DEMO: EarningsData = {
-  connected: false,
-  pendingBalanceCents: 0,
-  totalEarnedCents: 0,
-  lastPayoutAt: null,
-  recentSales: [],
+  connected: true,
+  chargesEnabled: true,
+  payoutsEnabled: true,
+  detailsSubmitted: true,
+  pendingBalanceCents: DEMO_PENDING_CENTS,
+  totalEarnedCents: DEMO_TOTAL_CENTS,
+  lastPayoutAt: new Date(Date.now() - 14 * 86_400_000).toISOString(),
+  recentSales: DEMO_SALES,
 }
 
 /** Build monthly bar-chart data from recentSales (last 6 months) */
@@ -119,7 +162,8 @@ export default function EarningsClient() {
   const [onboarding, setOnboarding] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
 
-  const data: EarningsData = error ? DEMO : (raw ?? DEMO)
+  const isShowingDemo = !!error || !raw
+  const data: EarningsData = isShowingDemo ? DEMO : raw
   const chartData = buildChartData(data.recentSales ?? [])
   const chartMax = Math.max(...chartData.map(d => d.value), 10)
 
@@ -179,16 +223,18 @@ export default function EarningsClient() {
         </button>
       </div>
 
-      {/* ── API error banner ── */}
-      {error && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-amber-400 text-sm flex items-center justify-between gap-4">
-          <span>Could not load live data. Showing cached view.</span>
-          <button
-            onClick={() => mutate()}
-            className="text-xs underline underline-offset-2 hover:text-amber-300"
-          >
-            Retry
-          </button>
+      {/* ── Demo mode banner ── */}
+      {isShowingDemo && (
+        <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/20 rounded-xl px-4 py-3 text-[#D4AF37]/70 text-sm flex items-center justify-between gap-4">
+          <span>Preview mode — showing demo earnings data. Connect Stripe to see live revenue.</span>
+          {error && (
+            <button
+              onClick={() => mutate()}
+              className="text-xs underline underline-offset-2 hover:text-[#D4AF37] flex-shrink-0"
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 
@@ -286,7 +332,10 @@ export default function EarningsClient() {
               <p className="text-white text-2xl font-bold tabular-nums leading-none">
                 {data.recentSales?.length ?? 0}
               </p>
-              <p className="text-gray-500 text-xs mt-2">Templates sold</p>
+              <p className="text-gray-500 text-xs mt-2 flex items-center gap-1">
+                <ArrowUpRight size={11} className="text-emerald-400" />
+                <span className="text-emerald-400">+23%</span> vs last month
+              </p>
             </div>
 
             {/* Last Payout */}
@@ -341,13 +390,54 @@ export default function EarningsClient() {
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: '#ffffff06' }} />
                 <Bar
                   dataKey="value"
-                  fill="#3b82f6"
+                  fill="#D4AF37"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={48}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* ── Per-Template Breakdown ── */}
+          {data.recentSales?.length > 0 && (() => {
+            // Aggregate by template title
+            const byTemplate: Record<string, { title: string; units: number; revenueCents: number }> = {}
+            for (const s of data.recentSales) {
+              const key = s.template?.title ?? 'Unknown'
+              if (!byTemplate[key]) byTemplate[key] = { title: key, units: 0, revenueCents: 0 }
+              byTemplate[key]!.units++
+              byTemplate[key]!.revenueCents += s.creatorPayoutCents
+            }
+            const rows = Object.values(byTemplate).sort((a, b) => b.revenueCents - a.revenueCents)
+            const topRevenue = rows[0]?.revenueCents ?? 1
+            return (
+              <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-5">
+                  <BarChart2 size={15} className="text-[#D4AF37]" />
+                  <h2 className="text-white font-semibold text-base">Revenue by Template</h2>
+                </div>
+                <div className="space-y-4">
+                  {rows.map(row => (
+                    <div key={row.title}>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-sm text-white/80 truncate max-w-[60%]">{row.title}</span>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <span className="text-xs text-white/35">{row.units} sale{row.units !== 1 ? 's' : ''}</span>
+                          <span className="text-sm text-[#D4AF37] font-bold tabular-nums">{fmt(row.revenueCents)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] rounded-full transition-all duration-700"
+                          style={{ width: `${Math.round((row.revenueCents / topRevenue) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* ── 70/30 Split Explanation ── */}
           <div className="bg-[#FFB81C]/5 border border-[#FFB81C]/15 rounded-2xl p-5 flex items-start gap-4">

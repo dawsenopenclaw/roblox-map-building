@@ -235,6 +235,42 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        const customerId = invoice.customer as string
+        // Find user by stripeCustomerId and update subscription status
+        const user = await db.user.findFirst({ where: { subscription: { stripeCustomerId: customerId } } })
+        if (user) {
+          await db.subscription.update({
+            where: { userId: user.id },
+            data: { status: 'PAST_DUE' },
+          })
+          // TODO: Send dunning email when email function is wired
+        }
+        break
+      }
+
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute
+        // Log the dispute for admin review
+        await db.auditLog.create({
+          data: {
+            action: 'CHARGE_DISPUTED',
+            resource: 'stripe',
+            resourceId: dispute.id,
+            metadata: { amount: dispute.amount, reason: dispute.reason },
+          },
+        })
+        break
+      }
+
+      case 'customer.subscription.trial_will_end': {
+        // Log for future email notification
+        const sub = event.data.object as Stripe.Subscription
+        console.info(`[stripe-webhook] Trial ending for subscription ${sub.id}`)
+        break
+      }
+
       // Refund handling — reverse tokens and mark purchase for review
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge

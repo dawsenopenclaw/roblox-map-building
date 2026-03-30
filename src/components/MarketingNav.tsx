@@ -77,7 +77,7 @@ export function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-4 py-2 text-sm text-gray-300 hover:text-[#D4AF37] rounded-lg hover:bg-white/5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="link-underline px-4 py-2 text-sm text-gray-300 hover:text-[#D4AF37] rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
               {link.label}
             </Link>
@@ -88,16 +88,26 @@ export function MarketingNav() {
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           <Link
             href={signInHref}
-            className="text-sm text-gray-300 hover:text-[#D4AF37] transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+            className="link-underline text-sm text-gray-300 hover:text-[#D4AF37] transition-colors px-3 py-2 rounded-lg hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
           >
             Sign In
           </Link>
           <Link
             href={signUpHref}
-            className="text-sm font-bold px-4 py-2 rounded-lg transition-all hover:brightness-110 hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
+            className="text-sm font-bold px-4 py-2 rounded-lg hover:-translate-y-0.5 active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
             style={{
               background: 'linear-gradient(135deg, #D4AF37 0%, #F5CC5A 50%, #D4AF37 100%)',
               color: '#0a0a0a',
+              transition: 'transform 150ms ease, box-shadow 150ms ease, filter 150ms ease',
+              boxShadow: '0 0 16px rgba(212,175,55,0.25)',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 28px rgba(212,175,55,0.5)'
+              ;(e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)'
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(212,175,55,0.25)'
+              ;(e.currentTarget as HTMLElement).style.filter = ''
             }}
           >
             Try Free

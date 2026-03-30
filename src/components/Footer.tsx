@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 
 const PRODUCT_LINKS = [
@@ -82,8 +84,7 @@ function FooterColumn({
     <div>
       <p
         id={id}
-        className="text-xs font-semibold uppercase tracking-widest mb-4"
-        style={{ color: '#D4AF37' }}
+        className="text-xs font-semibold uppercase tracking-widest mb-4 text-gold"
       >
         {title}
       </p>
@@ -127,7 +128,7 @@ export function Footer() {
               className="inline-block font-extrabold text-2xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
               aria-label="ForjeGames home"
             >
-              <span style={{ color: '#D4AF37' }}>Forje</span>
+              <span className="text-gold">Forje</span>
               <span className="text-white">Games</span>
             </Link>
             <p className="text-gray-300 text-sm mt-2 max-w-xs leading-relaxed">
@@ -144,8 +145,7 @@ export function Footer() {
             }}
           >
             <svg
-              className="w-5 h-5 flex-shrink-0"
-              style={{ color: '#D4AF37' }}
+              className="w-5 h-5 flex-shrink-0 text-gold"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -159,7 +159,7 @@ export function Footer() {
               />
             </svg>
             <div>
-              <p className="text-sm font-semibold" style={{ color: '#D4AF37' }}>
+              <p className="text-sm font-semibold text-gold">
                 10% donated to charity
               </p>
               <p className="text-xs text-gray-400 mt-0.5">

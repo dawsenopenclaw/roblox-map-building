@@ -144,6 +144,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('description', e.target.value)}
             placeholder="Describe what's included, how to use it, and what makes it special..."
             rows={5}
+            maxLength={2000}
             className="w-full bg-[#141414] border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
           />
         </div>

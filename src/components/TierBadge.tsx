@@ -1,3 +1,5 @@
+'use client'
+
 export type Tier = 'NOVICE' | 'APPRENTICE' | 'BUILDER' | 'MASTER' | 'LEGEND' | 'MYTHIC'
 
 const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: string; border: string; icon: string }> = {

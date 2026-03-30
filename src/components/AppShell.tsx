@@ -28,6 +28,7 @@ const AppChrome = memo(function AppChrome({
   shortcutsOpen,
   onSidebarOpen,
   onSidebarClose,
+  onSidebarToggle,
   onPaletteOpen,
   onPaletteClose,
   onShortcutsOpen,
@@ -40,6 +41,7 @@ const AppChrome = memo(function AppChrome({
   shortcutsOpen: boolean
   onSidebarOpen: () => void
   onSidebarClose: () => void
+  onSidebarToggle: () => void
   onPaletteOpen: () => void
   onPaletteClose: () => void
   onShortcutsOpen: () => void
@@ -71,6 +73,7 @@ const AppChrome = memo(function AppChrome({
         onClose={onPaletteClose}
         onNewProject={onNewProject}
         onShowShortcuts={onShortcutsOpen}
+        onToggleSidebar={onSidebarToggle}
       />
 
       <ShortcutsDialog
@@ -123,6 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       shortcutsOpen={shortcutsOpen}
       onSidebarOpen={() => setSidebarOpen(true)}
       onSidebarClose={() => setSidebarOpen(false)}
+      onSidebarToggle={() => setSidebarOpen((v) => !v)}
       onPaletteOpen={() => setPaletteOpen(true)}
       onPaletteClose={() => setPaletteOpen(false)}
       onShortcutsOpen={() => setShortcutsOpen(true)}

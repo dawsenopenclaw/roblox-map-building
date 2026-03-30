@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ToastVariant = 'success' | 'error' | 'info' | 'achievement'
+export type ToastVariant = 'success' | 'error' | 'info' | 'warning' | 'achievement'
 
 export interface Toast {
   id: string
@@ -14,6 +14,10 @@ export interface Toast {
   title: string
   description?: string
   duration?: number
+  /** Show a spinning loader instead of the static icon */
+  loading?: boolean
+  /** Optional action button */
+  action?: { label: string; onClick: () => void }
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -34,6 +38,11 @@ const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: s
     icon: 'i',
     bg: 'bg-blue-500/10',
   },
+  warning: {
+    border: 'border-[#D4AF37]/40',
+    icon: '!',
+    bg: 'bg-[#D4AF37]/10',
+  },
   achievement: {
     border: 'border-[#FFB81C]/50',
     icon: '★',
@@ -45,6 +54,7 @@ const ICON_COLOR: Record<ToastVariant, string> = {
   success: 'text-emerald-400',
   error: 'text-red-400',
   info: 'text-blue-400',
+  warning: 'text-[#D4AF37]',
   achievement: 'text-[#FFB81C]',
 }
 
@@ -52,6 +62,7 @@ const PROGRESS_COLOR: Record<ToastVariant, string> = {
   success: 'bg-emerald-500',
   error: 'bg-red-500',
   info: 'bg-blue-500',
+  warning: 'bg-[#D4AF37]',
   achievement: 'bg-[#FFB81C]',
 }
 
@@ -84,7 +95,7 @@ function Confetti() {
 // ─── Single toast item ────────────────────────────────────────────────────────
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
-  const duration = toast.duration ?? 4000
+  const duration = toast.duration ?? 5000
   const styles = VARIANT_STYLES[toast.variant]
   const progressRef = useRef<HTMLDivElement>(null)
 
@@ -99,9 +110,9 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       role="alert"
       aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
-      initial={{ opacity: 0, x: 64, scale: 0.9 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 64, scale: 0.9 }}
+      initial={{ opacity: 0, x: 64, y: -8, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 64, scale: 0.95 }}
       transition={{ type: 'spring', stiffness: 380, damping: 28 }}
       className={`relative w-80 rounded-xl border ${styles.border} bg-[#141414]/95 backdrop-blur-sm shadow-2xl overflow-hidden`}
       onClick={() => onDismiss(toast.id)}
@@ -110,12 +121,19 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       {toast.variant === 'achievement' && <Confetti />}
 
       <div className="flex items-start gap-3 p-4">
-        {/* Icon — decorative, meaning conveyed by text */}
+        {/* Icon / spinner — decorative, meaning conveyed by text */}
         <div
           className={`w-7 h-7 rounded-full ${styles.bg} flex items-center justify-center flex-shrink-0 text-sm font-bold ${ICON_COLOR[toast.variant]}`}
           aria-hidden="true"
         >
-          {styles.icon}
+          {toast.loading ? (
+            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
+              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+          ) : (
+            styles.icon
+          )}
         </div>
 
         {/* Text */}
@@ -123,6 +141,14 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
           <p className="text-sm font-semibold text-white leading-tight">{toast.title}</p>
           {toast.description && (
             <p className="text-xs text-gray-300 mt-0.5 leading-snug">{toast.description}</p>
+          )}
+          {toast.action && (
+            <button
+              onClick={(e) => { e.stopPropagation(); toast.action!.onClick() }}
+              className="mt-1.5 text-xs font-semibold underline underline-offset-2 text-white hover:opacity-80 transition-opacity"
+            >
+              {toast.action.label}
+            </button>
           )}
         </div>
       </div>
@@ -155,9 +181,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setMounted(true), [])
 
+  const MAX_TOASTS = 5
+
   const show = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2)
-    setToasts((prev) => [...prev, { ...toast, id }])
+    setToasts((prev) => {
+      const next = [...prev, { ...toast, id }]
+      // Cap at MAX_TOASTS — drop oldest when limit exceeded
+      return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+    })
   }, [])
 
   const dismiss = useCallback((id: string) => {
@@ -170,7 +202,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {mounted &&
         createPortal(
           <div
-            className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end"
+            className="fixed bottom-4 right-4 z-[9999] flex flex-col-reverse gap-2 items-end"
             aria-label="Notifications"
             role="region"
           >

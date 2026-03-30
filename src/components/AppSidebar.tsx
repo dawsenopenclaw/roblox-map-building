@@ -169,15 +169,25 @@ function SectionGroup({
                 href={href}
                 onClick={onClose}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   active
                     ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
-                    : 'text-gray-300 hover:text-blue-400 hover:bg-white/5 border border-transparent'
+                    : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
                 }`}
               >
+                {/* Animated active bar */}
+                {active && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full bg-[#D4AF37]"
+                    style={{ animation: 'active-bar-slide 200ms cubic-bezier(0.4,0,0.2,1) forwards' }}
+                    aria-hidden="true"
+                  />
+                )}
                 <span
                   className={`flex-shrink-0 transition-all duration-150 ${
-                    active ? 'text-[#D4AF37]' : 'text-gray-400 group-hover:text-blue-400'
+                    active
+                      ? 'text-[#D4AF37]'
+                      : 'text-gray-400 group-hover:text-[#D4AF37] group-hover:scale-110'
                   }`}
                 >
                   <Icon />

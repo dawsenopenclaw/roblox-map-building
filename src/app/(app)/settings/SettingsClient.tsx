@@ -155,6 +155,115 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
   )
 }
 
+// ─── Account Stats Card ───────────────────────────────────────────────────────
+
+const ACCT_STATS = {
+  totalBuilds:  47,
+  tokensUsed:   15_240,
+  memberSince:  'March 2026',
+  tierLabel:    'Apprentice',
+  tierColor:    '#60A5FA',
+  referralCode: 'FORJE-DAWSEN-7F2A',
+  streakDays:   7,
+  totalXp:      850,
+}
+
+function InlineCopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const doCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* ignore */ }
+  }
+  return (
+    <button
+      onClick={doCopy}
+      className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border flex-shrink-0"
+      style={{
+        color: copied ? '#10B981' : '#FFB81C',
+        borderColor: copied ? '#10B98130' : '#FFB81C30',
+        background: copied ? '#10B98108' : '#FFB81C08',
+      }}
+    >
+      {copied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
+    </button>
+  )
+}
+
+function AccountStatsCard() {
+  const s = ACCT_STATS
+  const statItems = [
+    { label: 'Total Builds', value: s.totalBuilds.toLocaleString(), icon: '🔨' },
+    { label: 'Tokens Used',  value: s.tokensUsed.toLocaleString(),  icon: '⚡' },
+    { label: 'Streak Days',  value: `${s.streakDays} days`,         icon: '🔥' },
+    { label: 'Member Since', value: s.memberSince,                  icon: '📅' },
+  ]
+  return (
+    <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
+      <h3 className="text-white font-semibold mb-5">Account Stats</h3>
+      {/* Tier badge row */}
+      <div
+        className="flex items-center gap-3 p-4 rounded-xl mb-4"
+        style={{ background: `${s.tierColor}08`, border: `1px solid ${s.tierColor}22` }}
+      >
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+          style={{ background: `${s.tierColor}12`, border: `1px solid ${s.tierColor}20` }}
+        >
+          🎓
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Current Tier</p>
+          <p className="text-lg font-bold" style={{ color: s.tierColor }}>{s.tierLabel}</p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-sm font-bold text-white tabular-nums">{s.totalXp.toLocaleString()} XP</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">1,150 to Builder</p>
+        </div>
+      </div>
+      {/* XP progress */}
+      <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-5">
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${Math.round((s.totalXp / 2000) * 100)}%`, background: s.tierColor }}
+        />
+      </div>
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        {statItems.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl p-3"
+            style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-sm">{item.icon}</span>
+              <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest truncate">{item.label}</span>
+            </div>
+            <p className="text-base font-bold text-white tabular-nums">{item.value}</p>
+          </div>
+        ))}
+      </div>
+      {/* Referral code */}
+      <div>
+        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Referral Code</p>
+        <div
+          className="flex items-center justify-between gap-3 p-3 rounded-xl"
+          style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <code className="text-sm font-mono text-[#FFB81C] tracking-wide truncate">{s.referralCode}</code>
+          <InlineCopyButton text={s.referralCode} />
+        </div>
+        <p className="text-[11px] text-gray-600 mt-1.5">
+          Share to earn 500 tokens per friend who signs up.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ─── Profile Tab ──────────────────────────────────────────────────────────────
 
 function ProfileTab() {
@@ -210,7 +319,7 @@ function ProfileTab() {
 
         {/* Avatar */}
         <div className="mb-6 pb-6 border-b border-white/5">
-          <AvatarUpload name={displayName} />
+          <AvatarUpload name={displayName} onError={(msg) => show(msg, 'error')} />
         </div>
 
         <div className="space-y-4">
@@ -245,6 +354,7 @@ function ProfileTab() {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
+              maxLength={500}
               className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors resize-none"
             />
           </div>
@@ -277,6 +387,9 @@ function ProfileTab() {
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Account Stats */}
+      <AccountStatsCard />
 
       {/* Danger Zone */}
       <div className="bg-[#141414] border border-red-500/20 rounded-xl p-6">
@@ -526,12 +639,10 @@ function ApiKeysTab() {
   const [hydrated, setHydrated] = useState(false)
 
   // Load from localStorage after hydration to avoid SSR mismatch
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      setKeys(loadKeys())
-      setHydrated(true)
-    }
-  })
+  useEffect(() => {
+    setKeys(loadKeys())
+    setHydrated(true)
+  }, [])
 
   const [showCreate, setShowCreate] = useState(false)
   const [newKeyName, setNewKeyName] = useState('')

@@ -4,6 +4,39 @@ import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Footer } from '@/components/Footer'
 
+/* ─── Scroll Reveal Hook ─────────────────────────────────────────────────── */
+
+function useScrollReveal(options?: IntersectionObserverInit) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const elements = container.querySelectorAll<HTMLElement>(
+      '.scroll-reveal, .scroll-reveal-stagger, .section-header-animate'
+    )
+    if (elements.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible')
+            observer.unobserve(entry.target)
+          }
+        })
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -40px 0px', ...options }
+    )
+
+    elements.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  return containerRef
+}
+
 /* ─── SVG Icons ──────────────────────────────────────────────────────────── */
 
 function IconMic({ className = 'w-6 h-6' }: { className?: string }) {
@@ -129,7 +162,7 @@ function TestimonialCard({ name, handle, text, stars = 5 }: {
 }) {
   return (
     <div
-      className="rounded-2xl p-6 flex flex-col gap-4"
+      className="rounded-2xl p-6 flex flex-col gap-4 card-hover scroll-reveal-stagger"
       style={{ background: '#141414', border: '1px solid #2a2a2a' }}
     >
       <div className="flex">
@@ -292,24 +325,22 @@ function EditorMockup() {
 function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div
-      className="group relative rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1"
+      className="group relative rounded-2xl p-6 scroll-reveal-stagger card-hover"
       style={{
         background: '#141414',
         border: '1px solid #2a2a2a',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
-        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(212,175,55,0.05)'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = '#2a2a2a'
-        e.currentTarget.style.boxShadow = 'none'
+        transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1), border-color 200ms cubic-bezier(0.4,0,0.2,1)',
       }}
     >
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-[rgba(212,175,55,0.08)] text-[#D4AF37]">
-        {icon}
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-[rgba(212,175,55,0.08)] text-[#D4AF37]"
+        style={{ transition: 'transform 200ms ease, background-color 200ms ease' }}
+      >
+        <span className="group-hover:scale-110 group-hover:text-[#FFB81C] transition-all duration-200 flex items-center justify-center">
+          {icon}
+        </span>
       </div>
-      <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
+      <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-[#FFB81C] transition-colors duration-200">{title}</h3>
       <p className="text-sm leading-relaxed text-[#9CA3AF]">{description}</p>
     </div>
   )
@@ -336,11 +367,12 @@ function PricingCard({ name, price, period, features, cta, featured }: {
 }) {
   return (
     <div
-      className="relative rounded-2xl p-6 flex flex-col"
+      className="relative rounded-2xl p-6 flex flex-col scroll-reveal-stagger card-hover"
       style={{
         background: featured ? '#1c1c1c' : '#141414',
         border: featured ? '1px solid rgba(212,175,55,0.3)' : '1px solid #2a2a2a',
         boxShadow: featured ? '0 0 40px rgba(212,175,55,0.08)' : 'none',
+        transition: 'transform 200ms cubic-bezier(0.4,0,0.2,1), box-shadow 200ms cubic-bezier(0.4,0,0.2,1), border-color 200ms cubic-bezier(0.4,0,0.2,1)',
       }}
     >
       {featured && (
@@ -363,11 +395,29 @@ function PricingCard({ name, price, period, features, cta, featured }: {
       </ul>
       <Link
         href="/editor"
-        className="block text-center py-3 rounded-xl font-semibold text-sm transition-all duration-200"
+        className="block text-center py-3 rounded-xl font-semibold text-sm hover:-translate-y-0.5 active:translate-y-0"
         style={{
           background: featured ? 'linear-gradient(135deg, #D4AF37, #FFB81C)' : 'transparent',
           color: featured ? '#030712' : '#D4AF37',
           border: featured ? 'none' : '1px solid rgba(212,175,55,0.3)',
+          transition: 'transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease',
+          boxShadow: featured ? '0 0 16px rgba(212,175,55,0.25)' : 'none',
+        }}
+        onMouseEnter={(e) => {
+          if (featured) {
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 28px rgba(212,175,55,0.5)'
+          } else {
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,175,55,0.6)'
+            ;(e.currentTarget as HTMLElement).style.background = 'rgba(212,175,55,0.07)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (featured) {
+            (e.currentTarget as HTMLElement).style.boxShadow = '0 0 16px rgba(212,175,55,0.25)'
+          } else {
+            (e.currentTarget as HTMLElement).style.borderColor = 'rgba(212,175,55,0.3)'
+            ;(e.currentTarget as HTMLElement).style.background = 'transparent'
+          }
         }}
       >
         {cta}
@@ -379,8 +429,10 @@ function PricingCard({ name, price, period, features, cta, featured }: {
 /* ─── Main Landing Page ──────────────────────────────────────────────────── */
 
 export default function HomeClient() {
+  const pageRef = useScrollReveal()
+
   return (
-    <div className="min-h-screen" style={{ background: '#0a0a0a' }}>
+    <div className="min-h-screen" style={{ background: '#0a0a0a' }} ref={pageRef}>
 
       {/* ── Hero ────────────────────────────────────────────────────────────── */}
       {/* Note: MarketingNav is injected by layout.tsx — do not render it here */}
@@ -414,19 +466,26 @@ export default function HomeClient() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <Link
               href="/editor"
-              className="inline-flex items-center gap-2.5 font-bold text-lg px-8 py-4 rounded-xl transition-all duration-200 hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2.5 font-bold text-lg px-8 py-4 rounded-xl hover:-translate-y-1 active:translate-y-0"
               style={{
                 background: 'linear-gradient(135deg, #D4AF37, #FFB81C)',
                 color: '#030712',
                 boxShadow: '0 0 30px rgba(212,175,55,0.3), 0 8px 24px rgba(0,0,0,0.4)',
+                transition: 'transform 150ms ease, box-shadow 150ms ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 48px rgba(212,175,55,0.55), 0 12px 32px rgba(0,0,0,0.5)'
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 30px rgba(212,175,55,0.3), 0 8px 24px rgba(0,0,0,0.4)'
               }}
             >
               Open Editor — Free
-              <IconArrow className="w-5 h-5" />
+              <IconArrow className="w-5 h-5 transition-transform duration-150 group-hover:translate-x-0.5" />
             </Link>
             <Link
               href="/pricing"
-              className="inline-flex items-center gap-2 font-semibold text-base px-8 py-4 rounded-xl transition-all duration-200 text-[#D4AF37] border border-[rgba(212,175,55,0.25)] hover:bg-[rgba(212,175,55,0.05)]"
+              className="inline-flex items-center gap-2 font-semibold text-base px-8 py-4 rounded-xl text-[#D4AF37] border border-[rgba(212,175,55,0.25)] hover:bg-[rgba(212,175,55,0.07)] hover:border-[rgba(212,175,55,0.5)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150"
             >
               View Pricing
             </Link>
@@ -484,7 +543,7 @@ export default function HomeClient() {
       {/* ── Features ───────────────────────────────────────────────────────── */}
       <section id="features" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 section-header-animate">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Everything you need to build</h2>
             <p className="text-lg text-[#9CA3AF] max-w-xl mx-auto">
               From a single command to a full game world. Every tool, one platform.
@@ -492,36 +551,18 @@ export default function HomeClient() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <FeatureCard
-              icon={<IconMic />}
-              title="Voice to Game"
-              description="Speak your vision — terrain, buildings, NPCs. ForjeGames translates your words into playable game elements in seconds."
-            />
-            <FeatureCard
-              icon={<IconImage />}
-              title="Image to Map"
-              description="Upload a photo, sketch, or reference image. AI analyzes it and generates a matching terrain layout with assets placed."
-            />
-            <FeatureCard
-              icon={<IconCube />}
-              title="3D Mesh Generation"
-              description="Generate custom 3D models with Meshy AI. PBR textures applied automatically via Fal. Game-ready in one click."
-            />
-            <FeatureCard
-              icon={<IconSearch />}
-              title="500K+ Marketplace Assets"
-              description="Search the entire Roblox asset marketplace. Browse, preview, and insert models directly into your scene."
-            />
-            <FeatureCard
-              icon={<IconBrain />}
-              title="Multi-Model AI"
-              description="Choose your engine — Claude, GPT-4o, Gemini, Grok. Each optimized for different tasks. Switch models mid-conversation."
-            />
-            <FeatureCard
-              icon={<IconPlug />}
-              title="Studio Plugin"
-              description="Real-time sync with Roblox Studio. Changes appear in your place instantly. Every operation is undoable."
-            />
+            {[
+              { icon: <IconMic />, title: 'Voice to Game', description: 'Speak your vision — terrain, buildings, NPCs. ForjeGames translates your words into playable game elements in seconds.' },
+              { icon: <IconImage />, title: 'Image to Map', description: 'Upload a photo, sketch, or reference image. AI analyzes it and generates a matching terrain layout with assets placed.' },
+              { icon: <IconCube />, title: '3D Mesh Generation', description: 'Generate custom 3D models with Meshy AI. PBR textures applied automatically via Fal. Game-ready in one click.' },
+              { icon: <IconSearch />, title: '500K+ Marketplace Assets', description: 'Search the entire Roblox asset marketplace. Browse, preview, and insert models directly into your scene.' },
+              { icon: <IconBrain />, title: 'Multi-Model AI', description: 'Choose your engine — Claude, GPT-4o, Gemini, Grok. Each optimized for different tasks. Switch models mid-conversation.' },
+              { icon: <IconPlug />, title: 'Studio Plugin', description: 'Real-time sync with Roblox Studio. Changes appear in your place instantly. Every operation is undoable.' },
+            ].map(({ icon, title, description }, i) => (
+              <div key={title} style={{ '--reveal-delay': `${i * 60}ms` } as React.CSSProperties}>
+                <FeatureCard icon={icon} title={title} description={description} />
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -529,7 +570,7 @@ export default function HomeClient() {
       {/* ── How it works ───────────────────────────────────────────────────── */}
       <section className="py-24 px-6" style={{ background: '#0d0d0d' }}>
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 section-header-animate">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">How it works</h2>
             <p className="text-lg text-[#9CA3AF]">Three steps. Zero friction.</p>
           </div>
@@ -560,26 +601,20 @@ export default function HomeClient() {
       {/* ── Testimonials ───────────────────────────────────────────────────── */}
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 section-header-animate">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">What creators are saying</h2>
             <p className="text-lg text-[#9CA3AF]">Trusted by developers building the next generation of Roblox games.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <TestimonialCard
-              name="Alex R."
-              handle="@alexbuilds · 200K visits"
-              text="I described my whole city map in one sentence. ForjeGames laid it out, placed terrain, and inserted marketplace assets in under a minute. It would have taken me days."
-            />
-            <TestimonialCard
-              name="Maya T."
-              handle="@mayadev · Roblox Creator"
-              text="The Studio plugin is flawless. Every command I type shows up live in my place. The multi-model AI switching is a game changer — Claude for scripts, GPT for world-building."
-            />
-            <TestimonialCard
-              name="Jordan K."
-              handle="@jk_games · Game Jam Winner"
-              text="Won a 48-hour game jam using ForjeGames. Built an entire obby with custom 3D meshes and lighting scripts. My team of one competed against teams of five."
-            />
+            {[
+              { name: 'Alex R.', handle: '@alexbuilds · 200K visits', text: 'I described my whole city map in one sentence. ForjeGames laid it out, placed terrain, and inserted marketplace assets in under a minute. It would have taken me days.' },
+              { name: 'Maya T.', handle: '@mayadev · Roblox Creator', text: 'The Studio plugin is flawless. Every command I type shows up live in my place. The multi-model AI switching is a game changer — Claude for scripts, GPT for world-building.' },
+              { name: 'Jordan K.', handle: '@jk_games · Game Jam Winner', text: 'Won a 48-hour game jam using ForjeGames. Built an entire obby with custom 3D meshes and lighting scripts. My team of one competed against teams of five.' },
+            ].map(({ name, handle, text }, i) => (
+              <div key={name} style={{ '--reveal-delay': `${i * 80}ms` } as React.CSSProperties}>
+                <TestimonialCard name={name} handle={handle} text={text} />
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -587,7 +622,7 @@ export default function HomeClient() {
       {/* ── Pricing ────────────────────────────────────────────────────────── */}
       <section className="py-24 px-6" style={{ background: '#0d0d0d' }}>
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-16 section-header-animate">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">Simple pricing</h2>
             <p className="text-lg text-[#9CA3AF]">Start free. Scale when you need to.</p>
           </div>

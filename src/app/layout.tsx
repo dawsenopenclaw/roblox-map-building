@@ -12,6 +12,7 @@ import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 import { SplashScreen } from '@/components/SplashScreen'
 import { CookieBanner } from '@/components/CookieBanner'
+import { GlobalShortcuts } from '@/components/GlobalShortcuts'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -186,6 +187,7 @@ export default function RootLayout({
             <Suspense fallback={null}>
               <SkipToContent />
               <OfflineIndicator />
+              <GlobalShortcuts />
               <ToastProvider>
                 <PostHogProvider>{children}</PostHogProvider>
               </ToastProvider>

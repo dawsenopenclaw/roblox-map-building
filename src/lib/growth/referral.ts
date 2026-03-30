@@ -67,19 +67,18 @@ export type ReferralLeaderboardEntry = {
 // ─── Code generation ──────────────────────────────────────────────────────────
 
 /**
- * Deterministic referral code derived from userId — stable across sessions.
- * Format: FG-XXXX where XXXX is a 4-digit number.
+ * Generate a cryptographically random referral code.
+ * Format: FG-XXXXXXXX (8 hex chars = 4 294 967 296 possible values).
+ * Server-side only — requires Node.js `crypto` module.
  */
-export function generateReferralCode(userId: string): string {
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
-  }
-  return `FG-${(hash % 9000 + 1000).toString()}`
+export function generateReferralCode(): string {
+  // crypto is available in Node.js and the Next.js edge runtime
+  const { randomBytes } = require('crypto') as typeof import('crypto')
+  return `FG-${randomBytes(4).toString('hex').toUpperCase()}`
 }
 
-export function buildReferralLink(userId: string, baseUrl = 'https://forjegames.com'): string {
-  return `${baseUrl}/sign-up?ref=${generateReferralCode(userId)}`
+export function buildReferralLink(code: string, baseUrl = 'https://forjegames.com'): string {
+  return `${baseUrl}/sign-up?ref=${code}`
 }
 
 // ─── Commission calculation ───────────────────────────────────────────────────

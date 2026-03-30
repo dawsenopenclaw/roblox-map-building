@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useToast } from '@/components/ui/toast-notification'
 import {
   Search,
   X,
@@ -49,13 +50,13 @@ interface Template {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORY_TABS: { value: CategoryTab; label: string; icon: string }[] = [
-  { value: 'all',           label: 'All',        icon: '✦' },
-  { value: 'MAP_TEMPLATE',  label: 'Maps',        icon: '🗺' },
-  { value: 'SCRIPT',        label: 'Scripts',     icon: '⌨' },
-  { value: 'UI_KIT',        label: 'UI',          icon: '◻' },
-  { value: 'ASSET',         label: '3D Models',   icon: '◈' },
-  { value: 'SOUND',         label: 'Audio',       icon: '♪' },
-  { value: 'GAME_TEMPLATE', label: 'Game Templates', icon: '◉' },
+  { value: 'all',           label: 'All',            icon: '✦' },
+  { value: 'GAME_TEMPLATE', label: 'Full Games',      icon: '◉' },
+  { value: 'MAP_TEMPLATE',  label: 'Terrain & Maps',  icon: '🗺' },
+  { value: 'SCRIPT',        label: 'Scripts',         icon: '⌨' },
+  { value: 'UI_KIT',        label: 'UI & Buildings',  icon: '◻' },
+  { value: 'ASSET',         label: 'NPCs & Models',   icon: '◈' },
+  { value: 'SOUND',         label: 'Audio',           icon: '♪' },
 ]
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -78,49 +79,160 @@ const PRICE_FILTERS = [
 
 const FEATURED: Template[] = [
   {
-    id: 'feat-1',
-    title: 'Ultimate City Builder Kit',
-    slug: 'ultimate-city-builder-kit',
-    description: 'Complete modular city kit with 200+ assets, traffic systems, NPC logic, and day/night cycle. Used in 3 top-50 games.',
-    category: 'GAME_TEMPLATE',
-    priceCents: 2999,
+    id: 'demo-5',
+    title: 'Combat System v2',
+    slug: 'combat-system-v2',
+    description: 'Production-ready melee & ranged combat with hitbox detection, combo chains, blocking, dodge rolls, and skill cooldowns. Fully networked via RemoteEvents. Used by 7,800+ games.',
+    category: 'SCRIPT',
+    priceCents: 1999,
     thumbnailUrl: null,
-    averageRating: 4.9,
-    reviewCount: 142,
-    downloads: 8420,
-    tags: ['city', 'modular', 'featured'],
+    averageRating: 5.0,
+    reviewCount: 201,
+    downloads: 7800,
+    tags: ['combat', 'pvp', 'hitbox', 'featured'],
     createdAt: new Date().toISOString(),
-    creator: { id: 'c1', displayName: 'ForjeGames', username: 'forjegames', avatarUrl: null },
+    creator: { id: 'c5', displayName: 'LuauLegend', username: 'luau_legend', avatarUrl: null },
   },
   {
-    id: 'feat-2',
-    title: 'Pro Obby Framework',
-    slug: 'pro-obby-framework',
-    description: 'Full checkpoint system, moving platforms, deadly lava, leaderboards. Drop-in and launch in minutes.',
-    category: 'GAME_TEMPLATE',
+    id: 'demo-2',
+    title: 'City Starter Kit',
+    slug: 'city-starter-kit',
+    description: 'Free open-source city map with 40+ modular blocks, road networks, street lighting, day/night setup, and mobile optimization. The most downloaded map template on the platform.',
+    category: 'MAP_TEMPLATE',
     priceCents: 0,
     thumbnailUrl: null,
-    averageRating: 4.7,
-    reviewCount: 89,
-    downloads: 12300,
-    tags: ['obby', 'free', 'featured'],
+    averageRating: 5.0,
+    reviewCount: 128,
+    downloads: 9340,
+    tags: ['city', 'map', 'free', 'featured'],
     createdAt: new Date().toISOString(),
-    creator: { id: 'c2', displayName: 'ObbyDev', username: 'obbydev', avatarUrl: null },
+    creator: { id: 'c2', displayName: 'Marcus', username: 'marcus_dev', avatarUrl: null },
   },
   {
-    id: 'feat-3',
-    title: 'Anime UI Mega Pack',
-    slug: 'anime-ui-mega-pack',
-    description: 'Over 80 UI components in anime style — health bars, inventory grids, chat bubbles, quest trackers.',
-    category: 'UI_KIT',
+    id: 'demo-1',
+    title: 'Medieval Castle Pack',
+    slug: 'medieval-castle-pack',
+    description: 'Fully featured medieval castle game template — dungeon systems, NPC enemies with patrol AI, loot tables, quest framework, and mobile-optimized controls. Launch-ready in hours.',
+    category: 'GAME_TEMPLATE',
     priceCents: 1499,
     thumbnailUrl: null,
-    averageRating: 4.8,
-    reviewCount: 204,
-    downloads: 5670,
-    tags: ['anime', 'ui', 'featured'],
+    averageRating: 4.5,
+    reviewCount: 42,
+    downloads: 1820,
+    tags: ['medieval', 'rpg', 'castle', 'featured'],
     createdAt: new Date().toISOString(),
-    creator: { id: 'c3', displayName: 'UIWizard', username: 'uiwizard', avatarUrl: null },
+    creator: { id: 'c1', displayName: 'Alex_Builds', username: 'alex_builds', avatarUrl: null },
+  },
+]
+
+// ─── Demo templates (shown when API returns empty / during preview) ────────────
+
+const DEMO_GRADIENT_ART: Record<string, string> = {
+  'demo-1':  'from-orange-900/60 via-stone-800/80 to-yellow-900/50',
+  'demo-2':  'from-sky-900/60 via-slate-800/80 to-blue-900/50',
+  'demo-3':  'from-emerald-900/60 via-teal-800/80 to-cyan-900/50',
+  'demo-4':  'from-violet-900/60 via-purple-800/80 to-indigo-900/50',
+  'demo-5':  'from-red-900/60 via-rose-800/80 to-pink-900/50',
+  'demo-6':  'from-green-900/60 via-emerald-800/80 to-lime-900/50',
+  'demo-7':  'from-blue-900/60 via-indigo-800/80 to-violet-900/50',
+  'demo-8':  'from-fuchsia-900/60 via-purple-800/80 to-pink-900/50',
+  'demo-9':  'from-amber-900/60 via-orange-800/80 to-yellow-900/50',
+  'demo-10': 'from-slate-900/60 via-gray-800/80 to-zinc-900/50',
+  'demo-11': 'from-cyan-900/60 via-sky-800/80 to-teal-900/50',
+  'demo-12': 'from-rose-900/60 via-red-800/80 to-orange-900/50',
+}
+
+const DEMO_GRID_ICON: Record<string, string> = {
+  'demo-1':  '🏰', 'demo-2':  '🏙', 'demo-3':  '⚙',
+  'demo-4':  '🎨', 'demo-5':  '⚔', 'demo-6':  '🌿',
+  'demo-7':  '🛡', 'demo-8':  '🎒', 'demo-9':  '🌴',
+  'demo-10': '⚗', 'demo-11': '🔊', 'demo-12': '🚀',
+}
+
+const DEMO_TEMPLATES: Template[] = [
+  {
+    id: 'demo-1', title: 'Medieval Castle Pack', slug: 'medieval-castle-pack',
+    category: 'GAME_TEMPLATE', priceCents: 1499, thumbnailUrl: null,
+    averageRating: 4.5, reviewCount: 42, downloads: 1820,
+    tags: ['medieval', 'rpg'], createdAt: new Date().toISOString(),
+    creator: { id: 'c1', displayName: 'Alex_Builds', username: 'alex_builds', avatarUrl: null },
+  },
+  {
+    id: 'demo-2', title: 'City Starter Kit', slug: 'city-starter-kit',
+    category: 'MAP_TEMPLATE', priceCents: 0, thumbnailUrl: null,
+    averageRating: 5.0, reviewCount: 128, downloads: 9340,
+    tags: ['city', 'free'], createdAt: new Date().toISOString(),
+    creator: { id: 'c2', displayName: 'Marcus', username: 'marcus_dev', avatarUrl: null },
+  },
+  {
+    id: 'demo-3', title: 'Tycoon Framework', slug: 'tycoon-framework',
+    category: 'GAME_TEMPLATE', priceCents: 2499, thumbnailUrl: null,
+    averageRating: 4.0, reviewCount: 67, downloads: 3210,
+    tags: ['tycoon', 'simulator'], createdAt: new Date().toISOString(),
+    creator: { id: 'c3', displayName: 'Sarah', username: 'sarah_scripts', avatarUrl: null },
+  },
+  {
+    id: 'demo-4', title: 'Modern UI Kit', slug: 'modern-ui-kit',
+    category: 'UI_KIT', priceCents: 999, thumbnailUrl: null,
+    averageRating: 4.5, reviewCount: 89, downloads: 5670,
+    tags: ['ui', 'modern'], createdAt: new Date().toISOString(),
+    creator: { id: 'c4', displayName: 'DesignPro', username: 'designpro', avatarUrl: null },
+  },
+  {
+    id: 'demo-5', title: 'Combat System v2', slug: 'combat-system-v2',
+    category: 'SCRIPT', priceCents: 1999, thumbnailUrl: null,
+    averageRating: 5.0, reviewCount: 201, downloads: 7800,
+    tags: ['combat', 'pvp'], createdAt: new Date().toISOString(),
+    creator: { id: 'c5', displayName: 'LuauLegend', username: 'luau_legend', avatarUrl: null },
+  },
+  {
+    id: 'demo-6', title: 'Fantasy Map Bundle', slug: 'fantasy-map-bundle',
+    category: 'MAP_TEMPLATE', priceCents: 3499, thumbnailUrl: null,
+    averageRating: 4.0, reviewCount: 55, downloads: 2100,
+    tags: ['fantasy', 'rpg'], createdAt: new Date().toISOString(),
+    creator: { id: 'c6', displayName: 'WorldForge', username: 'world_forge', avatarUrl: null },
+  },
+  {
+    id: 'demo-7', title: 'Admin Panel Script', slug: 'admin-panel-script',
+    category: 'SCRIPT', priceCents: 0, thumbnailUrl: null,
+    averageRating: 4.5, reviewCount: 310, downloads: 14200,
+    tags: ['admin', 'free'], createdAt: new Date().toISOString(),
+    creator: { id: 'c7', displayName: 'DevTools', username: 'dev_tools', avatarUrl: null },
+  },
+  {
+    id: 'demo-8', title: 'Inventory UI Pack', slug: 'inventory-ui-pack',
+    category: 'UI_KIT', priceCents: 799, thumbnailUrl: null,
+    averageRating: 4.0, reviewCount: 44, downloads: 1950,
+    tags: ['inventory', 'gui'], createdAt: new Date().toISOString(),
+    creator: { id: 'c8', displayName: 'UIQueen', username: 'ui_queen', avatarUrl: null },
+  },
+  {
+    id: 'demo-9', title: 'Tropical Island Pack', slug: 'tropical-island-asset-pack',
+    category: 'ASSET', priceCents: 1299, thumbnailUrl: null,
+    averageRating: 5.0, reviewCount: 73, downloads: 4100,
+    tags: ['tropical', 'island'], createdAt: new Date().toISOString(),
+    creator: { id: 'c9', displayName: 'IslandArtist', username: 'island_artist', avatarUrl: null },
+  },
+  {
+    id: 'demo-10', title: 'Dungeon Crawler Starter', slug: 'dungeon-crawler-starter',
+    category: 'GAME_TEMPLATE', priceCents: 1999, thumbnailUrl: null,
+    averageRating: 4.5, reviewCount: 96, downloads: 3580,
+    tags: ['dungeon', 'roguelike'], createdAt: new Date().toISOString(),
+    creator: { id: 'c10', displayName: 'DungeonCraft', username: 'dungeon_craft', avatarUrl: null },
+  },
+  {
+    id: 'demo-11', title: 'Ambient Audio SFX Pack', slug: 'ambient-audio-sfx-pack',
+    category: 'SOUND', priceCents: 599, thumbnailUrl: null,
+    averageRating: 4.5, reviewCount: 38, downloads: 2200,
+    tags: ['audio', 'sfx'], createdAt: new Date().toISOString(),
+    creator: { id: 'c11', displayName: 'SoundForge', username: 'sound_forge', avatarUrl: null },
+  },
+  {
+    id: 'demo-12', title: 'Space Shooter Template', slug: 'space-shooter-template',
+    category: 'GAME_TEMPLATE', priceCents: 2999, thumbnailUrl: null,
+    averageRating: 4.8, reviewCount: 77, downloads: 2900,
+    tags: ['space', 'shooter'], createdAt: new Date().toISOString(),
+    creator: { id: 'c12', displayName: 'StarBuilder', username: 'star_builder', avatarUrl: null },
   },
 ]
 
@@ -148,6 +260,8 @@ function creatorInitial(creator: Creator): string {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MarketplacePage() {
+  const { show: showToast } = useToast()
+
   const [activeTab, setActiveTab]         = useState<CategoryTab>('all')
   const [searchQuery, setSearchQuery]     = useState('')
   const [sort, setSort]                   = useState<SortOption>('trending')
@@ -160,6 +274,19 @@ export default function MarketplacePage() {
   const [error, setError]                 = useState<string | null>(null)
   const [showFilters, setShowFilters]     = useState(false)
   const [featuredIndex, setFeaturedIndex] = useState(0)
+
+  // First-visit info toast
+  useEffect(() => {
+    const key = 'fj_marketplace_visited'
+    if (typeof window !== 'undefined' && !localStorage.getItem(key)) {
+      localStorage.setItem(key, '1')
+      const timer = setTimeout(() => {
+        showToast({ variant: 'info', title: 'Browse 12 templates in 6 categories', description: 'Game templates, maps, scripts, UI kits, models, and audio — all ready to import.', duration: 5000 })
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-advance featured banner
   useEffect(() => {
@@ -359,15 +486,19 @@ export default function MarketplacePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-transparent to-amber-500/3 pointer-events-none" />
 
             <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row gap-6 sm:items-center">
-              {/* Thumbnail placeholder */}
-              <div className="w-full sm:w-64 shrink-0 aspect-video rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-600/5 border border-amber-500/20 flex items-center justify-center overflow-hidden">
+              {/* Thumbnail / CSS art */}
+              <div className={`w-full sm:w-72 shrink-0 aspect-video rounded-xl border border-amber-500/20 flex items-center justify-center overflow-hidden bg-gradient-to-br ${DEMO_GRADIENT_ART[featured.id] ?? 'from-amber-500/10 to-yellow-600/5'}`}>
                 {featured.thumbnailUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={featured.thumbnailUrl} alt={featured.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="text-center space-y-2">
-                    <Sparkles className="w-10 h-10 text-amber-400/60 mx-auto" />
-                    <span className="text-xs text-amber-400/40 font-medium">Featured</span>
+                    <span className="text-6xl opacity-50 select-none block" aria-hidden="true">
+                      {DEMO_GRID_ICON[featured.id] ?? '🎮'}
+                    </span>
+                    <span className="text-xs text-white/25 font-medium uppercase tracking-widest">
+                      {categoryLabel(featured.category)}
+                    </span>
                   </div>
                 )}
               </div>
@@ -514,10 +645,32 @@ export default function MarketplacePage() {
 
         {/* ── Grid ───────────────────────────────────────────────────────── */}
         {error ? (
-          <ErrorState message={error} onRetry={() => doFetch(page)} />
+          // On API error fall back to demo grid so the page always looks populated
+          <div className="space-y-4">
+            <div className="px-4 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20 text-amber-400/80 text-xs">
+              Preview mode — showing demo templates. Connect the database to see live listings.
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {DEMO_TEMPLATES.map((t) => (
+                <TemplateCard key={t.id} template={t} gradientClass={DEMO_GRADIENT_ART[t.id]} iconChar={DEMO_GRID_ICON[t.id]} />
+              ))}
+            </div>
+          </div>
         ) : isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {Array.from({ length: 9 }, (_, i) => <SkeletonCard key={i} />)}
+          </div>
+        ) : templates.length === 0 && !searchQuery && activeTab === 'all' ? (
+          // Empty DB with no filters — show demo grid
+          <div className="space-y-4">
+            <div className="px-4 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20 text-amber-400/80 text-xs">
+              Preview mode — showing demo templates. Be the first to submit a real template.
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {DEMO_TEMPLATES.map((t) => (
+                <TemplateCard key={t.id} template={t} gradientClass={DEMO_GRADIENT_ART[t.id]} iconChar={DEMO_GRID_ICON[t.id]} />
+              ))}
+            </div>
           </div>
         ) : templates.length === 0 ? (
           <EmptyState query={searchQuery} onClear={() => { setSearchQuery(''); setActiveTab('all') }} />
@@ -601,7 +754,15 @@ export default function MarketplacePage() {
 
 // ─── TemplateCard ─────────────────────────────────────────────────────────────
 
-function TemplateCard({ template }: { template: Template }) {
+function TemplateCard({
+  template,
+  gradientClass,
+  iconChar,
+}: {
+  template: Template
+  gradientClass?: string
+  iconChar?: string
+}) {
   const isFree   = template.priceCents === 0
   const isHot    = template.downloads > 1000
   const catLabel = categoryLabel(template.category)
@@ -616,7 +777,7 @@ function TemplateCard({ template }: { template: Template }) {
       "
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video bg-gradient-to-br from-white/5 to-white/2 overflow-hidden">
+      <div className={`relative aspect-video overflow-hidden ${gradientClass ? `bg-gradient-to-br ${gradientClass}` : 'bg-gradient-to-br from-white/5 to-white/2'}`}>
         {template.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -625,6 +786,12 @@ function TemplateCard({ template }: { template: Template }) {
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />
+        ) : gradientClass ? (
+          /* CSS art placeholder — gradient + category icon */
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 group-hover:scale-105 transition-transform duration-500">
+            <span className="text-4xl opacity-60 select-none" aria-hidden="true">{iconChar ?? '🎮'}</span>
+            <span className="text-[10px] text-white/20 uppercase tracking-widest font-semibold">{catLabel}</span>
+          </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="w-10 h-10 text-white/8" />
