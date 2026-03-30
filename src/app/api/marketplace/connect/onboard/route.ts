@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
+import { connectOnboardSchema, parseBody } from '@/lib/validations'
 
 // POST /api/marketplace/connect/onboard — create or retrieve Stripe Connect Express account
 export async function POST(req: NextRequest) {
@@ -61,11 +62,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate onboarding link
-    const body = await req.json().catch(() => ({})) as { returnUrl?: string; refreshUrl?: string }
+    // Generate onboarding link — body is optional (both fields have defaults)
+    const parsed = await parseBody(req, connectOnboardSchema)
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
-    const returnUrl = body.returnUrl || `${baseUrl}/marketplace/earnings?onboarded=1`
-    const refreshUrl = body.refreshUrl || `${baseUrl}/marketplace/earnings?refresh=1`
+    const returnUrl  = (parsed.ok ? parsed.data.returnUrl  : undefined) ?? `${baseUrl}/marketplace/earnings?onboarded=1`
+    const refreshUrl = (parsed.ok ? parsed.data.refreshUrl : undefined) ?? `${baseUrl}/marketplace/earnings?refresh=1`
 
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,

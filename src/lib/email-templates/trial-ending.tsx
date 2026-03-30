@@ -39,7 +39,7 @@ export const TrialEndingEmail = ({
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');`}</style>
       </Head>
       <Preview>
-        Your ForjeGames trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''} — upgrade to keep building
+        {`Your ForjeGames trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — upgrade to keep building`}
       </Preview>
       <Body style={body}>
         <Container style={container}>

@@ -462,7 +462,7 @@ export async function POST(req: NextRequest) {
           // Also send an in-app notification so the dashboard banner shows
           sendNotification({
             userId: user.id,
-            type: 'PAYMENT_REQUIRED',
+            type: 'SYSTEM',
             title: 'Action required: complete your payment',
             body: 'Your subscription requires 3D Secure authentication. Click to complete payment.',
             actionUrl: paymentUrl ?? '/billing',

@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     {
       received: true,
       serverTime: Date.now(),
-      changeCount: body.changes.length,
+      changeCount: body.changes?.length ?? 0,
     },
     { status: 200, headers: CORS_HEADERS },
   )

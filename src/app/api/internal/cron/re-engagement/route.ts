@@ -45,14 +45,14 @@ export async function GET(req: NextRequest) {
         deletedAt: null,
         email: { not: { endsWith: '@deleted.invalid' } },
         subscription: { status: { notIn: ['CANCELED'] } },
-        gameScan: {
+        gameScans: {
           // Has some activity (not brand new) but last was 14-30 days ago
           some: {},
           none: { createdAt: { gte: inactiveThreshold } },
         },
         // Exclude users with very recent game scans
         NOT: {
-          gameScan: { some: { createdAt: { gte: maxInactiveThreshold } } },
+          gameScans: { some: { createdAt: { gte: maxInactiveThreshold } } },
         },
       },
       select: { id: true, email: true, displayName: true },

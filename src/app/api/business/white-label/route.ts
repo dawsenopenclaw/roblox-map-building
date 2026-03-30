@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { whiteLabelAgentSchema, whiteLabelDomainSchema, parseBody } from '@/lib/validations'
-import { z } from 'zod'
+import { whiteLabelBrandingSchema, whiteLabelAgentSchema, whiteLabelDomainSchema, parseBody } from '@/lib/validations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,19 +175,12 @@ export async function PATCH(req: NextRequest) {
     } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, whiteLabelBrandingSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
 
-    if (!validateBrandingUpdate(body)) {
-      return NextResponse.json(
-        { error: 'Invalid branding fields. Colors must be hex strings (e.g. #D4AF37).' },
-        { status: 422 },
-      )
-    }
-
-    const updated: WhiteLabelBranding = { ...DEMO_BRANDING, ...body }
+    const updated: WhiteLabelBranding = { ...DEMO_BRANDING, ...parsed.data }
     return NextResponse.json({
       branding:  updated,
       updatedAt: new Date().toISOString(),
@@ -210,23 +202,19 @@ export async function PUT(req: NextRequest) {
     } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, whiteLabelAgentSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
+    const { agentId, enabled, systemPrompt } = parsed.data
 
-    const b = body as Record<string, unknown>
-    if (!b.agentId || typeof b.agentId !== 'string') {
-      return NextResponse.json({ error: 'agentId required' }, { status: 422 })
-    }
-
-    const agent = DEMO_AGENTS.find((a) => a.id === b.agentId)
+    const agent = DEMO_AGENTS.find((a) => a.id === agentId)
     if (!agent) return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
 
     const updated: AgentConfig = {
       ...agent,
-      enabled:      typeof b.enabled === 'boolean'     ? b.enabled      : agent.enabled,
-      systemPrompt: typeof b.systemPrompt === 'string' ? b.systemPrompt : agent.systemPrompt,
+      enabled:      enabled      !== undefined ? enabled      : agent.enabled,
+      systemPrompt: systemPrompt !== undefined ? systemPrompt : agent.systemPrompt,
     }
 
     return NextResponse.json({ agent: updated, demo: true })
@@ -246,21 +234,17 @@ export async function POST(req: NextRequest) {
     } catch { /* demo mode */ }
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    let body: unknown
-    try { body = await req.json() } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    const parsed = await parseBody(req, whiteLabelDomainSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
-
-    const b = body as Record<string, unknown>
-    if (!b.domain || typeof b.domain !== 'string') {
-      return NextResponse.json({ error: 'domain required' }, { status: 422 })
-    }
+    const { domain } = parsed.data
 
     // Real impl: check DNS TXT record for _forjegames-verify=<token>
     return NextResponse.json({
-      domain:      b.domain,
+      domain,
       verified:    false,
-      txtRecord:   `_forjegames-verify.${b.domain}`,
+      txtRecord:   `_forjegames-verify.${domain}`,
       txtValue:    `fj-verify=demo_token_${Date.now()}`,
       instructions: 'Add the TXT record to your DNS provider and re-verify in 10 minutes.',
       demo:        true,

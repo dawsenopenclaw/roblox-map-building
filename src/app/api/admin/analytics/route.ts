@@ -40,6 +40,7 @@ export async function GET() {
         where: { createdAt: { gte: ninetyDaysAgo } },
         _count: { userId: true },
         having: { userId: { _count: { gt: 0 } } },
+        orderBy: { _count: { userId: 'desc' } },
         take: 500,
       }),
       db.subscription.groupBy({

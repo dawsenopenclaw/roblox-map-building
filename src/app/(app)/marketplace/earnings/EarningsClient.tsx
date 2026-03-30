@@ -68,24 +68,6 @@ function buildChartData(sales: Sale[]) {
   return Object.entries(months).map(([name, value]) => ({ name, value: +value.toFixed(2) }))
 }
 
-function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean
-  payload?: { value: number }[]
-  label?: string
-}) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-xs">
-      <p className="text-gray-400 mb-0.5">{label}</p>
-      <p className="text-[#FFB81C] font-bold">${payload[0].value.toFixed(2)}</p>
-    </div>
-  )
-}
-
 const STATUS_STYLES: Record<string, string> = {
   PAID:       'bg-green-500/10 text-green-400 border-green-500/20',
   PENDING:    'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
@@ -275,27 +257,7 @@ export default function EarningsPage() {
               <h2 className="text-white font-semibold text-base">Revenue — Last 6 Months</h2>
               <p className="text-gray-500 text-xs mt-0.5">Your 70% creator share per month</p>
             </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: '#6b7280', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={v => `$${v}`}
-                  domain={[0, Math.ceil(chartMax * 1.2)]}
-                  width={50}
-                />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: '#ffffff06' }} />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={48} />
-              </BarChart>
-            </ResponsiveContainer>
+            <RevenueBarChart data={chartData} chartMax={chartMax} barColor="#3b82f6" />
           </div>
 
           {/* ── 70/30 Split Explanation ── */}

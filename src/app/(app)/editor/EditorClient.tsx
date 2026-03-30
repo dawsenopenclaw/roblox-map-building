@@ -1701,70 +1701,6 @@ export function EditorClient() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
-  // ── Editor-level keyboard shortcuts ──────────────────────────────────────
-  useEffect(() => {
-    const PANEL_KEYS: Record<string, PanelId> = {
-      '1': 'projects',
-      '2': 'assets',
-      '3': 'dna',
-      '4': 'tokens',
-      '5': 'settings',
-    }
-
-    function handler(e: KeyboardEvent) {
-      const mod = e.ctrlKey || e.metaKey
-
-      // Ctrl/Cmd+K — command palette (GlobalShortcuts handles it globally;
-      // this duplicate ensures it works when an editor input is focused)
-      if (mod && e.key === 'k') {
-        e.preventDefault()
-        setPaletteOpen((v) => !v)
-        return
-      }
-
-      // Ctrl/Cmd+/ — shortcuts dialog
-      if (mod && e.key === '/') {
-        e.preventDefault()
-        setShortcutsOpen((v) => !v)
-        return
-      }
-
-      // Ctrl/Cmd+B — toggle active panel (sidebar visibility)
-      if (mod && e.key === 'b') {
-        e.preventDefault()
-        setActivePanel((prev) => (prev ? null : 'projects'))
-        return
-      }
-
-      // Ctrl/Cmd+1-5 — switch panels
-      if (mod && PANEL_KEYS[e.key]) {
-        e.preventDefault()
-        const id = PANEL_KEYS[e.key]
-        setActivePanel((prev) => (prev === id ? null : id))
-        return
-      }
-
-      // Ctrl+Enter — send message (textarea may or may not be focused)
-      if (mod && e.key === 'Enter') {
-        // Only fire if a textarea in this editor is NOT already handling it
-        const active = document.activeElement
-        if (!active || active.tagName !== 'TEXTAREA') {
-          e.preventDefault()
-          submit(input)
-        }
-        return
-      }
-
-      // Escape — close open panel
-      if (e.key === 'Escape' && !paletteOpen && !shortcutsOpen) {
-        setActivePanel(null)
-      }
-    }
-
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [paletteOpen, shortcutsOpen, input, submit])
-
   // Studio state — must be declared before submit so the callback closes over them
   const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
   const [demoMode, setDemoMode]             = useState(false)
@@ -1983,6 +1919,71 @@ export function EditorClient() {
     },
     [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast],
   )
+
+  // ── Editor-level keyboard shortcuts ──────────────────────────────────────
+  useEffect(() => {
+    const PANEL_KEYS: Record<string, PanelId> = {
+      '1': 'projects',
+      '2': 'assets',
+      '3': 'dna',
+      '4': 'tokens',
+      '5': 'settings',
+    }
+
+    function handler(e: KeyboardEvent) {
+      const mod = e.ctrlKey || e.metaKey
+
+      // Ctrl/Cmd+K — command palette (GlobalShortcuts handles it globally;
+      // this duplicate ensures it works when an editor input is focused)
+      if (mod && e.key === 'k') {
+        e.preventDefault()
+        setPaletteOpen((v) => !v)
+        return
+      }
+
+      // Ctrl/Cmd+/ — shortcuts dialog
+      if (mod && e.key === '/') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+        return
+      }
+
+      // Ctrl/Cmd+B — toggle active panel (sidebar visibility)
+      if (mod && e.key === 'b') {
+        e.preventDefault()
+        setActivePanel((prev) => (prev ? null : 'projects'))
+        return
+      }
+
+      // Ctrl/Cmd+1-5 — switch panels
+      if (mod && PANEL_KEYS[e.key]) {
+        e.preventDefault()
+        const id = PANEL_KEYS[e.key]
+        setActivePanel((prev) => (prev === id ? null : id))
+        return
+      }
+
+      // Ctrl+Enter — send message (textarea may or may not be focused)
+      if (mod && e.key === 'Enter') {
+        // Only fire if a textarea in this editor is NOT already handling it
+        const active = document.activeElement
+        if (!active || active.tagName !== 'TEXTAREA') {
+          e.preventDefault()
+          submit(input)
+        }
+        return
+      }
+
+      // Escape — close open panel
+      if (e.key === 'Escape' && !paletteOpen && !shortcutsOpen) {
+        setActivePanel(null)
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [paletteOpen, shortcutsOpen, input, submit])
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {

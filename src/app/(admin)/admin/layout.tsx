@@ -73,7 +73,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (isOwnerEmail(clerkEmail)) {
     return (
-      <AdminShell user={{ id: clerkUserId, email: clerkEmail, role: 'ADMIN' }}>
+      <AdminShell user={{ id: clerkUserId, email: clerkEmail ?? '', role: 'ADMIN' }}>
         {children}
       </AdminShell>
     )

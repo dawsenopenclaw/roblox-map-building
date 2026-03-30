@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { notificationMarkReadSchema, notificationDeleteSchema, parseBody } from '@/lib/validations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,16 +90,17 @@ export async function PATCH(req: NextRequest) {
     const { userId } = await auth()
     const demoMode = process.env.DEMO_MODE === 'true' || !userId
 
-    const body = await req.json().catch(() => ({}))
-    const { ids, markAll } = body as { ids?: string[]; markAll?: boolean }
+    const parsed = await parseBody(req, notificationMarkReadSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+    }
+    const { ids, markAll } = parsed.data
 
     if (demoMode) {
       if (markAll) {
         DEMO_NOTIFICATIONS.forEach((n) => readSet.add(n.id))
-      } else if (Array.isArray(ids)) {
-        // Validate ids are strings before processing
-        const validIds = ids.filter((id) => typeof id === 'string' && id.length < 64)
-        validIds.forEach((id) => readSet.add(id))
+      } else if (ids) {
+        ids.forEach((id) => readSet.add(id))
       }
       return NextResponse.json({ ok: true })
     }
@@ -106,9 +108,8 @@ export async function PATCH(req: NextRequest) {
     // Production path
     if (markAll) {
       DEMO_NOTIFICATIONS.forEach((n) => readSet.add(n.id))
-    } else if (Array.isArray(ids)) {
-      const validIds = ids.filter((id) => typeof id === 'string' && id.length < 64)
-      validIds.forEach((id) => readSet.add(id))
+    } else if (ids) {
+      ids.forEach((id) => readSet.add(id))
     }
     return NextResponse.json({ ok: true })
   } catch {
@@ -123,12 +124,11 @@ export async function DELETE(req: NextRequest) {
     const { userId } = await auth()
     const demoMode = process.env.DEMO_MODE === 'true' || !userId
 
-    const body = await req.json().catch(() => ({}))
-    const { id } = body as { id?: string }
-
-    if (!id || typeof id !== 'string' || id.length > 64) {
-      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    const parsed = await parseBody(req, notificationDeleteSchema)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: parsed.status })
     }
+    const { id } = parsed.data
 
     if (demoMode) {
       deletedSet.add(id)
