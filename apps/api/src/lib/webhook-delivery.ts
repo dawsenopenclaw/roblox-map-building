@@ -8,9 +8,16 @@
  *  - Dead letter queue after all retries exhausted
  *  - Delivery status tracking: pending | delivered | failed | dead_letter
  *  - Idempotency key header to prevent duplicate processing on recipient side
+ *
+ * RETRY ARCHITECTURE NOTE:
+ *  setTimeout-based retries are unreliable in serverless environments (Vercel)
+ *  because the function process is killed as soon as the response is sent.
+ *  Instead, failed deliveries store `nextRetryAt` in the DB. A separate cron
+ *  at /api/internal/cron/webhook-retry drives retries by calling
+ *  `processWebhookRetries()` every 5 minutes.
  */
 
-import { createHmac, randomBytes } from 'crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { db } from './db'
 import type { WebhookEvent, WebhookPayload } from './webhook-events'
 
@@ -73,13 +80,13 @@ export function verifySignature(
 
   const expected = buildSignature(secret, ts, rawBody)
 
-  // Constant-time comparison to prevent timing attacks
-  if (expected.length !== signature.length) return false
-  let diff = 0
-  for (let i = 0; i < expected.length; i++) {
-    diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i)
-  }
-  return diff === 0
+  // Constant-time comparison using crypto.timingSafeEqual to prevent timing attacks.
+  // Buffers must be equal length — pad to the longer of the two so we never
+  // short-circuit on length mismatch while still returning false on a mismatch.
+  const a = Buffer.from(expected)
+  const b = Buffer.from(signature)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
 
 // ---------------------------------------------------------------------------
@@ -213,15 +220,10 @@ export async function deliverWithRetry(
     nextRetryAt,
   })
 
-  // Schedule next retry asynchronously — does not block the caller
-  if (status === 'failed' && nextRetryAt) {
-    const delayMs = RETRY_DELAYS_MS[attempt - 1]
-    setTimeout(() => {
-      deliverWithRetry(endpointId, url, secret, payload, attempt + 1, idempotencyKey).catch(
-        (err) => console.error(`[webhook] retry ${attempt + 1} scheduling error:`, err)
-      )
-    }, delayMs)
-  }
+  // Retries are driven by the webhook-retry cron (processWebhookRetries below),
+  // not by setTimeout — setTimeout callbacks are dropped when the serverless
+  // function exits after sending the response. The nextRetryAt written to DB
+  // is the durable trigger the cron reads.
 
   if (status === 'dead_letter') {
     console.error(
@@ -271,4 +273,119 @@ export async function dispatchWebhookEvent(
 
 export function generateWebhookSecret(): string {
   return `whsec_${randomBytes(32).toString('hex')}`
+}
+
+// ---------------------------------------------------------------------------
+// Cron-driven retry processor
+// ---------------------------------------------------------------------------
+
+export interface RetryProcessResult {
+  processed: number
+  succeeded: number
+  failed: number
+  deadLettered: number
+}
+
+/**
+ * Process all webhook deliveries whose nextRetryAt is in the past.
+ * Called from /api/internal/cron/webhook-retry every 5 minutes.
+ *
+ * Uses cursor-based pagination so it never loads the entire table into memory.
+ * Each batch re-delivers up to BATCH_SIZE due entries, advancing the cursor
+ * until no more due records exist.
+ */
+export async function processWebhookRetries(
+  batchSize = 50
+): Promise<RetryProcessResult> {
+  const result: RetryProcessResult = { processed: 0, succeeded: 0, failed: 0, deadLettered: 0 }
+  const now = new Date()
+
+  let cursor: string | undefined
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const dueBatch = await db.webhookDelivery.findMany({
+      where: {
+        success: false,
+        nextRetryAt: { lte: now },
+      },
+      select: {
+        id: true,
+        endpointId: true,
+        attempt: true,
+        payload: true,
+        endpoint: {
+          select: { url: true, secret: true, active: true },
+        },
+      },
+      orderBy: { nextRetryAt: 'asc' },
+      take: batchSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    })
+
+    if (dueBatch.length === 0) break
+
+    await Promise.allSettled(
+      dueBatch.map(async (delivery) => {
+        result.processed++
+
+        // Skip if endpoint was deactivated since the delivery was scheduled
+        if (!delivery.endpoint?.active) {
+          await db.webhookDelivery.update({
+            where: { id: delivery.id },
+            data: { nextRetryAt: null },  // Remove from retry queue
+          })
+          return
+        }
+
+        const nextAttempt = delivery.attempt + 1
+        const idempotencyKey = (delivery.payload as WebhookPayload).id
+
+        const outcome = await attemptDelivery({
+          url: delivery.endpoint.url,
+          secret: delivery.endpoint.secret,
+          payload: delivery.payload as WebhookPayload,
+          idempotencyKey,
+          attempt: nextAttempt,
+        })
+
+        let status: DeliveryStatus
+        let nextRetryAt: Date | null = null
+
+        if (outcome.success) {
+          status = 'delivered'
+          result.succeeded++
+        } else if (nextAttempt < MAX_ATTEMPTS) {
+          status = 'failed'
+          const delayMs = RETRY_DELAYS_MS[nextAttempt - 1]
+          nextRetryAt = new Date(Date.now() + delayMs)
+          result.failed++
+        } else {
+          status = 'dead_letter'
+          result.deadLettered++
+          console.error(
+            `[webhook] dead letter — endpointId=${delivery.endpointId} attempt=${nextAttempt}`
+          )
+        }
+
+        // Update the existing record in-place rather than creating a new row,
+        // so delivery history remains traceable as a single record.
+        await db.webhookDelivery.update({
+          where: { id: delivery.id },
+          data: {
+            attempt: nextAttempt,
+            success: outcome.success,
+            statusCode: outcome.statusCode,
+            responseBody: outcome.responseBody,
+            nextRetryAt,
+          },
+        })
+      })
+    )
+
+    cursor = dueBatch[dueBatch.length - 1]?.id
+    if (dueBatch.length < batchSize) break  // Last page
+  }
+
+  return result
 }

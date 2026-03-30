@@ -202,9 +202,13 @@ function NotificationPanel({ notifications, onMarkAllRead, onMarkRead, onDelete,
               )
             }
             return (
-              <div key={n.id} onClick={() => onMarkRead(n.id)}>
+              <button
+                key={n.id}
+                onClick={() => onMarkRead(n.id)}
+                className="w-full text-left"
+              >
                 {inner}
-              </div>
+              </button>
             )
           })}
         </div>

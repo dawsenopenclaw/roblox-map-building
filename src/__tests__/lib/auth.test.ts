@@ -83,7 +83,7 @@ describe('generateConsentToken', () => {
 })
 
 describe('hashToken', () => {
-  it('produces a consistent SHA-256 hex digest', () => {
+  it('produces a consistent HMAC-SHA256 hex digest', () => {
     const token = 'abc123testtoken'
     const hash1 = hashToken(token)
     const hash2 = hashToken(token)

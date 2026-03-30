@@ -4,8 +4,16 @@ import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppTopNav } from '@/components/AppTopNav'
 import { AchievementToastProvider } from '@/components/AchievementToast'
-import { CommandPalette } from '@/components/CommandPalette'
-import { ShortcutsDialog } from '@/components/ShortcutsDialog'
+import dynamic from 'next/dynamic'
+
+const CommandPalette = dynamic(
+  () => import('@/components/CommandPalette').then((m) => m.CommandPalette),
+  { ssr: false }
+)
+const ShortcutsDialog = dynamic(
+  () => import('@/components/ShortcutsDialog').then((m) => m.ShortcutsDialog),
+  { ssr: false }
+)
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { Spotlight } from '@/components/ui/spotlight'
 

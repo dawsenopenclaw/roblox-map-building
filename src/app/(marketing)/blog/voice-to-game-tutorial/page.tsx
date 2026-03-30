@@ -5,7 +5,7 @@ import { createMetadata } from '@/lib/metadata'
 export const metadata: Metadata = createMetadata({
   title: 'Voice to Game: Build Without Typing',
   description:
-    'Step-by-step tutorial for ForjeGames Voice Commands. Click the mic, speak your game idea, watch it build in the live 3D preview. Works on Chrome, Edge, and Safari.',
+    'Hands-free Roblox building with voice commands. Click the mic, speak your game idea, watch it build in the live preview.',
   path: '/blog/voice-to-game-tutorial',
   keywords: [
     'Roblox voice commands',

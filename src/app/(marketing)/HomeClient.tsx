@@ -19,14 +19,25 @@ const GLOBAL_STYLES = `
     0%, 100% { opacity: 1; }
     50%       { opacity: 0; }
   }
+  @keyframes badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.18), 0 2px 8px rgba(0,0,0,0.3); }
+    50%       { box-shadow: 0 0 0 4px rgba(212,175,55,0.06), 0 2px 8px rgba(0,0,0,0.3); }
+  }
+
+  /* ── scroll reveal ── */
   .reveal {
     opacity: 0;
-    transform: translateY(18px);
-    transition: opacity 600ms cubic-bezier(0.4,0,0.2,1), transform 600ms cubic-bezier(0.4,0,0.2,1);
+    transform: translateY(16px);
+    filter: blur(2px);
+    transition:
+      opacity  600ms cubic-bezier(0.16,1,0.3,1),
+      transform 600ms cubic-bezier(0.16,1,0.3,1),
+      filter   500ms cubic-bezier(0.16,1,0.3,1);
   }
   .reveal.visible {
     opacity: 1;
     transform: translateY(0);
+    filter: blur(0px);
   }
   .reveal-delay-1 { transition-delay: 80ms; }
   .reveal-delay-2 { transition-delay: 160ms; }
@@ -34,8 +45,90 @@ const GLOBAL_STYLES = `
   .reveal-delay-4 { transition-delay: 320ms; }
   .reveal-delay-5 { transition-delay: 400ms; }
   .reveal-delay-6 { transition-delay: 480ms; }
+
+  /* ── cursor ── */
   .cursor-blink {
     animation: cursor-blink 1.1s step-start infinite;
+  }
+
+  /* ── feature card hover ── */
+  .feature-card {
+    transition: transform 250ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .feature-card:hover {
+    transform: translateY(-2px);
+  }
+  .feature-card:hover .feature-icon {
+    filter: drop-shadow(0 0 8px rgba(212,175,55,0.25));
+    color: rgba(212,175,55,0.7) !important;
+    transition: filter 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .feature-icon {
+    transition: filter 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1);
+  }
+
+  /* ── pricing card hover ── */
+  .pricing-card {
+    transition:
+      transform 250ms cubic-bezier(0.16,1,0.3,1),
+      box-shadow 250ms cubic-bezier(0.16,1,0.3,1),
+      border-color 250ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .pricing-card:hover {
+    transform: translateY(-3px);
+  }
+  .pricing-card-default:hover {
+    border-color: rgba(255,255,255,0.12) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+  }
+  .pricing-card-recommended:hover {
+    border-color: rgba(212,175,55,0.42) !important;
+    box-shadow: 0 0 48px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5) !important;
+  }
+
+  /* ── CTA primary button ── */
+  .cta-primary {
+    transition:
+      background 200ms cubic-bezier(0.16,1,0.3,1),
+      transform  200ms cubic-bezier(0.16,1,0.3,1),
+      box-shadow 200ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .cta-primary:hover {
+    transform: translateY(-1px);
+  }
+
+  /* ── editor mockup badge pulse ── */
+  .ai-badge {
+    animation: badge-pulse 2.8s ease-in-out infinite;
+  }
+
+  /* ── section gradient fades ── */
+  .section-fade-down {
+    background: linear-gradient(to bottom, #09090b 0%, #0c0c0e 100%);
+  }
+  .section-fade-up {
+    background: linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%);
+  }
+  .section-dark {
+    background: #0c0c0e;
+  }
+
+  /* ── mobile: reduce motion ── */
+  @media (max-width: 640px) {
+    .reveal {
+      filter: none;
+      transition:
+        opacity  400ms cubic-bezier(0.16,1,0.3,1),
+        transform 400ms cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal-delay-1,
+    .reveal-delay-2,
+    .reveal-delay-3,
+    .reveal-delay-4,
+    .reveal-delay-5,
+    .reveal-delay-6 {
+      transition-delay: 0ms;
+    }
   }
 `
 
@@ -188,7 +281,13 @@ function EditorMockup() {
       style={{
         background: '#111113',
         border: '1px solid rgba(212,175,55,0.14)',
-        boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 32px 80px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.05)',
+        boxShadow: [
+          '0 8px 32px rgba(0,0,0,0.5)',
+          '0 32px 64px rgba(0,0,0,0.3)',
+          '0 0 0 1px rgba(255,255,255,0.03)',
+          '0 0 60px rgba(212,175,55,0.05)',
+          'inset 0 1px 0 rgba(255,255,255,0.04)',
+        ].join(', '),
       }}
     >
       {/* Title bar */}
@@ -238,7 +337,13 @@ function EditorMockup() {
         </div>
 
         {/* Viewport */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: '#0e0e10' }}>
+        <div
+          className="flex-1 relative overflow-hidden"
+          style={{
+            background: '#0e0e10',
+            boxShadow: 'inset 0 0 0 1px rgba(212,175,55,0.06)',
+          }}
+        >
           {/* Subtle grid */}
           <div className="absolute inset-0" style={{
             backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
@@ -285,9 +390,15 @@ function EditorMockup() {
             </div>
           </div>
 
-          {/* Status pill */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md"
-            style={{ background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)', color: '#D4AF37' }}>
+          {/* Status pill — gently pulsing */}
+          <div
+            className="ai-badge absolute top-3 right-3 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md"
+            style={{
+              background: 'rgba(212,175,55,0.07)',
+              border: '1px solid rgba(212,175,55,0.18)',
+              color: '#D4AF37',
+            }}
+          >
             <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
             AI building...
           </div>
@@ -341,12 +452,12 @@ function EditorMockup() {
   )
 }
 
-/* ─── Feature item — text-only, no card bg ───────────────────────────────── */
+/* ─── Feature card — with hover depth ───────────────────────────────────── */
 
 function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="reveal">
-      <div className="mb-3" style={{ color: '#71717A' }}>{icon}</div>
+    <div className="reveal feature-card">
+      <div className="feature-icon mb-3" style={{ color: '#71717A' }}>{icon}</div>
       <h3 className="text-base font-medium mb-1.5" style={{ color: '#FAFAFA' }}>{title}</h3>
       <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
     </div>
@@ -360,11 +471,13 @@ function PricingCard({ name, price, period, features, cta, recommended }: {
 }) {
   return (
     <div
-      className="reveal flex flex-col rounded-xl p-7"
+      className={`reveal flex flex-col rounded-xl p-7 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'}`}
       style={{
         background: '#111113',
         border: recommended ? '1px solid rgba(212,175,55,0.28)' : '1px solid rgba(255,255,255,0.06)',
-        boxShadow: recommended ? '0 0 32px rgba(212,175,55,0.06)' : 'none',
+        boxShadow: recommended
+          ? '0 0 40px rgba(212,175,55,0.07), 0 4px 24px rgba(0,0,0,0.4)'
+          : '0 2px 12px rgba(0,0,0,0.2)',
       }}
     >
       <p className="text-sm font-medium mb-5" style={{ color: recommended ? '#D4AF37' : '#A1A1AA' }}>{name}</p>
@@ -437,12 +550,15 @@ export default function HomeClient() {
           className="relative flex flex-col items-center justify-center text-center px-6"
           style={{ minHeight: '100vh', paddingTop: '10vh', paddingBottom: '8vh' }}
         >
-          {/* Very faint radial glow — not a gradient, just depth */}
+          {/* Radial depth gradient behind headline */}
           <div
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,175,55,0.055) 0%, transparent 60%)',
+              background: [
+                'radial-gradient(ellipse 60% 40% at 50% 30%, rgba(212,175,55,0.04) 0%, transparent 70%)',
+                'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,175,55,0.03) 0%, transparent 60%)',
+              ].join(', '),
             }}
           />
 
@@ -486,23 +602,33 @@ export default function HomeClient() {
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
               <Link
                 href="/editor"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-300"
+                className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold"
                 style={{
                   background: '#D4AF37',
                   color: '#09090b',
+                  boxShadow: '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)',
                 }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#C4A030' }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#D4AF37' }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = '#C4A030'
+                  el.style.boxShadow = '0 0 32px rgba(212,175,55,0.32), 0 6px 16px rgba(0,0,0,0.5)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = '#D4AF37'
+                  el.style.boxShadow = '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)'
+                }}
               >
                 Start building
                 <IconArrow />
               </Link>
               <Link
                 href="/pricing"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium transition-all duration-300"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
                   border: '1px solid rgba(255,255,255,0.08)',
+                  transition: 'color 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms cubic-bezier(0.16,1,0.3,1)',
                 }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLElement
@@ -524,21 +650,26 @@ export default function HomeClient() {
             </p>
           </div>
 
-          {/* Editor mockup */}
-          <div className="reveal reveal-delay-5 relative w-full max-w-4xl mx-auto mt-16 px-2">
+          {/* Editor mockup — floating shadow */}
+          <div
+            className="reveal reveal-delay-5 relative w-full max-w-4xl mx-auto mt-16 px-2"
+            style={{
+              filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.45)) drop-shadow(0 8px 16px rgba(0,0,0,0.3))',
+            }}
+          >
             <EditorMockup />
           </div>
         </section>
 
         {/* ── Social proof strip ────────────────────────────────────────── */}
         <section
-          className="py-14 px-6"
+          className="py-14 px-6 section-fade-down"
           style={{ borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
         >
           <div className="max-w-4xl mx-auto">
-            <p className="text-center text-[13px] mb-8 reveal" style={{ color: '#52525B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <h2 className="text-center text-[13px] mb-8 reveal" style={{ color: '#52525B', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 'inherit', fontSize: 'inherit' }}>
               Powering the next generation of Roblox creators
-            </p>
+            </h2>
             <div className="flex flex-wrap items-center justify-center gap-x-14 gap-y-6 text-center">
               {[
                 { value: 50000, suffix: '+', label: 'Assets generated' },
@@ -558,7 +689,11 @@ export default function HomeClient() {
         </section>
 
         {/* ── Features ──────────────────────────────────────────────────── */}
-        <section id="features" className="py-32 px-6">
+        <section
+          id="features"
+          className="py-32 px-6"
+          style={{ background: '#09090b' }}
+        >
           <div className="max-w-6xl mx-auto">
             <div className="mb-20 reveal">
               <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
@@ -602,8 +737,10 @@ export default function HomeClient() {
                   description: 'Search 500K+ Roblox assets. Browse, preview, and insert models directly into your scene.',
                 },
               ].map(({ icon, title, description }, i) => (
-                <div key={title} style={{ '--delay': `${i * 60}ms` } as React.CSSProperties}
-                  className={`reveal reveal-delay-${Math.min(i + 1, 6)}`}>
+                <div
+                  key={title}
+                  className={`reveal reveal-delay-${Math.min(i + 1, 6)}`}
+                >
                   <Feature icon={icon} title={title} description={description} />
                 </div>
               ))}
@@ -612,7 +749,7 @@ export default function HomeClient() {
         </section>
 
         {/* ── How it works ──────────────────────────────────────────────── */}
-        <section className="py-32 px-6" style={{ background: '#0c0c0e' }}>
+        <section className="py-32 px-6 section-dark">
           <div className="max-w-5xl mx-auto">
             <div className="mb-20 reveal">
               <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
@@ -659,7 +796,10 @@ export default function HomeClient() {
         </section>
 
         {/* ── Editor preview (full-width showcase) ──────────────────────── */}
-        <section className="py-32 px-6">
+        <section
+          className="py-32 px-6 section-fade-up"
+          style={{ background: 'linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%)' }}
+        >
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16 reveal">
               <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
@@ -669,14 +809,19 @@ export default function HomeClient() {
                 Chat on the left. Your Roblox world on the right. Changes are live.
               </p>
             </div>
-            <div className="reveal">
+            <div
+              className="reveal"
+              style={{
+                filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.45)) drop-shadow(0 8px 16px rgba(0,0,0,0.3))',
+              }}
+            >
               <EditorMockup />
             </div>
           </div>
         </section>
 
         {/* ── Pricing ───────────────────────────────────────────────────── */}
-        <section id="pricing" className="py-32 px-6" style={{ background: '#0c0c0e' }}>
+        <section id="pricing" className="py-32 px-6 section-dark">
           <div className="max-w-5xl mx-auto">
             <div className="mb-16 reveal">
               <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
@@ -739,7 +884,10 @@ export default function HomeClient() {
         </section>
 
         {/* ── Bottom CTA ────────────────────────────────────────────────── */}
-        <section className="py-40 px-6 relative overflow-hidden">
+        <section
+          className="py-40 px-6 relative overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%)' }}
+        >
           <div
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none"
@@ -756,10 +904,22 @@ export default function HomeClient() {
             </p>
             <Link
               href="/editor"
-              className="reveal reveal-delay-2 inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold transition-all duration-300"
-              style={{ background: '#D4AF37', color: '#09090b' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#C4A030' }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#D4AF37' }}
+              className="reveal reveal-delay-2 cta-primary inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold"
+              style={{
+                background: '#D4AF37',
+                color: '#09090b',
+                boxShadow: '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)',
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background = '#C4A030'
+                el.style.boxShadow = '0 0 32px rgba(212,175,55,0.32), 0 6px 16px rgba(0,0,0,0.5)'
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLElement
+                el.style.background = '#D4AF37'
+                el.style.boxShadow = '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)'
+              }}
             >
               Start building
               <IconArrow />

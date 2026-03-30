@@ -11,8 +11,16 @@
  *   ?             → shortcuts dialog (when no input/textarea focused)
  */
 import { useState, useEffect, useCallback } from 'react'
-import { CommandPalette } from '@/components/CommandPalette'
-import { ShortcutsDialog } from '@/components/ShortcutsDialog'
+import dynamic from 'next/dynamic'
+
+const CommandPalette = dynamic(
+  () => import('@/components/CommandPalette').then((m) => m.CommandPalette),
+  { ssr: false }
+)
+const ShortcutsDialog = dynamic(
+  () => import('@/components/ShortcutsDialog').then((m) => m.ShortcutsDialog),
+  { ssr: false }
+)
 
 function isInputFocused() {
   const tag = document.activeElement?.tagName

@@ -5,7 +5,7 @@ import { createMetadata } from '@/lib/metadata'
 export const metadata: Metadata = createMetadata({
   title: 'How AI is Changing Roblox Game Development',
   description:
-    'Most Roblox creators have ideas but get stuck on scripting and terrain. This deep dive examines how 55 AI agents are removing every technical barrier between idea and published game.',
+    'How AI agents remove scripting and terrain barriers for Roblox creators, transforming ideas into published games in hours.',
   path: '/blog/building-roblox-games-with-ai',
   keywords: [
     'AI Roblox game development',

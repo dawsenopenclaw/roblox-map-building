@@ -11,6 +11,7 @@ import {
 } from '@/lib/roblox-asset-search'
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens } from '@/lib/tokens-server'
+import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import Anthropic from '@anthropic-ai/sdk'
 
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
@@ -812,6 +813,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
     authedUserId = userId
+
+    // Rate limit: 20 AI chat requests per minute per user
+    try {
+      const rl = await aiRateLimit(userId)
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait before sending another message.' },
+          { status: 429, headers: rateLimitHeaders(rl) },
+        )
+      }
+    } catch {
+      // Redis unavailable — allow through rather than hard-fail
+    }
   }
 
   const parsed = await parseBody(req, chatMessageSchema)

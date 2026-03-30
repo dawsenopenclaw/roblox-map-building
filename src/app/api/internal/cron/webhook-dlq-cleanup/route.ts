@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    console.info(`[cron/webhook-dlq-cleanup] deleted ${result.count} dead-letter entries older than ${DLQ_RETENTION_DAYS} days`)
     return NextResponse.json({ ok: true, deleted: result.count, cutoff: cutoff.toISOString() })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -33,52 +33,66 @@ async function runReEngagement(req: NextRequest): Promise<NextResponse> {
     const cutoffMax = new Date(now)
     cutoffMax.setDate(now.getDate() - INACTIVE_DAYS_MIN)
 
-    // Find users whose last login streak update (lastLoginDate) falls in the inactive window
-    const inactiveUsers = await db.streak.findMany({
-      where: {
-        lastLoginDate: { gte: cutoffMin, lte: cutoffMax },
-      },
-      select: {
-        lastLoginDate: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            displayName: true,
-            username: true,
-            deletedAt: true,
-          },
-        },
-      },
-    })
+    // Paginated in batches of 500 to avoid OOM on large user bases.
+    const PAGE_SIZE = 500
+    let cursor: string | undefined
 
     let totalSent = 0
     let totalSkipped = 0
 
-    for (const record of inactiveUsers) {
-      const { user, lastLoginDate } = record
-      if (user.deletedAt) {
-        totalSkipped++
-        continue
+    while (true) {
+      const inactiveUsers = await db.streak.findMany({
+        where: {
+          lastLoginDate: { gte: cutoffMin, lte: cutoffMax },
+        },
+        select: {
+          id: true,
+          lastLoginDate: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              displayName: true,
+              username: true,
+              deletedAt: true,
+            },
+          },
+        },
+        take: PAGE_SIZE,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { id: 'asc' },
+      })
+
+      if (inactiveUsers.length === 0) break
+      cursor = inactiveUsers[inactiveUsers.length - 1]!.id
+
+      for (const record of inactiveUsers) {
+        const { user, lastLoginDate } = record
+        if (user.deletedAt) {
+          totalSkipped++
+          continue
+        }
+
+        const daysInactive = Math.floor(
+          (now.getTime() - lastLoginDate.getTime()) / (1000 * 60 * 60 * 24)
+        )
+        const name = user.displayName ?? user.username ?? 'Builder'
+
+        try {
+          await sendReEngagementEmail({
+            email: user.email,
+            name,
+            daysInactive,
+            bonusTokens: 50,
+          })
+          totalSent++
+        } catch (err) {
+          console.error(`[cron/re-engagement] email failed for ${user.id}:`, err)
+          totalSkipped++
+        }
       }
 
-      const daysInactive = Math.floor(
-        (now.getTime() - lastLoginDate.getTime()) / (1000 * 60 * 60 * 24)
-      )
-      const name = user.displayName ?? user.username ?? 'Builder'
-
-      try {
-        await sendReEngagementEmail({
-          email: user.email,
-          name,
-          daysInactive,
-          bonusTokens: 50,
-        })
-        totalSent++
-      } catch (err) {
-        console.error(`[cron/re-engagement] email failed for ${user.id}:`, err)
-        totalSkipped++
-      }
+      if (inactiveUsers.length < PAGE_SIZE) break
     }
 
     return NextResponse.json({ ok: true, totalSent, totalSkipped })

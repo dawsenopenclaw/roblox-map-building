@@ -31,6 +31,7 @@ import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { meshGenerateSchema, parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
+import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -363,6 +364,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const tierDenied = await requireTier(userId, 'HOBBY')
     if (tierDenied) return tierDenied
+
+    // Rate limit: 20 AI requests per minute per user
+    try {
+      const rl = await aiRateLimit(userId)
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait before generating another mesh.' },
+          { status: 429, headers: rateLimitHeaders(rl) },
+        )
+      }
+    } catch {
+      // Redis unavailable — allow through rather than hard-fail
+    }
   }
 
   // Parse + validate body

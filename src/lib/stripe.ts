@@ -51,6 +51,9 @@ export async function createSubscriptionCheckoutSession({
   successUrl: string
   cancelUrl: string
 }) {
+  // Scope idempotency key to UTC date so a user can retry on a new day
+  // without getting back a stale/expired session from a previous attempt.
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
   return stripe.checkout.sessions.create(
     {
       customer: customerId,
@@ -67,7 +70,7 @@ export async function createSubscriptionCheckoutSession({
       customer_update: { address: 'auto' },
       metadata: { userId, type: 'subscription' },
     },
-    { idempotencyKey: `checkout_subscription_${userId}_${priceId}` },
+    { idempotencyKey: `checkout_subscription_${userId}_${priceId}_${today}` },
   )
 }
 
@@ -86,6 +89,7 @@ export async function createTokenPackCheckoutSession({
   successUrl: string
   cancelUrl: string
 }) {
+  const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
   return stripe.checkout.sessions.create(
     {
       customer: customerId,
@@ -98,7 +102,7 @@ export async function createTokenPackCheckoutSession({
       customer_update: { address: 'auto' },
       metadata: { userId, type: 'token_pack', tokenPackSlug },
     },
-    { idempotencyKey: `checkout_tokenpack_${userId}_${tokenPackSlug}` },
+    { idempotencyKey: `checkout_tokenpack_${userId}_${tokenPackSlug}_${today}` },
   )
 }
 

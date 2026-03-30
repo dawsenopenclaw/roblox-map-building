@@ -35,45 +35,56 @@ async function runCoppaAnnualNotice(req: NextRequest): Promise<NextResponse> {
     const dueBefore = new Date(now)
     dueBefore.setDate(now.getDate() - ANNUAL_NOTICE_DAYS)
 
-    // Find under-13 users whose parent gave consent >= 365 days ago and account is active
-    const users = await db.user.findMany({
-      where: {
-        isUnder13: true,
-        deletedAt: null,
-        parentEmail: { not: null },
-        parentConsentAt: { lte: dueBefore },
-      },
-      select: {
-        id: true,
-        email: true,
-        displayName: true,
-        username: true,
-        parentEmail: true,
-        parentConsentAt: true,
-      },
-    })
-
     const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
     const resend = getResend()
+
+    // Paginated in batches of 200 to avoid OOM.
+    const PAGE_SIZE = 200
+    let cursor: string | undefined
     let totalSent = 0
     let totalSkipped = 0
 
-    for (const user of users) {
-      if (!user.parentEmail) {
-        totalSkipped++
-        continue
-      }
+    while (true) {
+      // Find under-13 users whose parent gave consent >= 365 days ago and account is active
+      const users = await db.user.findMany({
+        where: {
+          isUnder13: true,
+          deletedAt: null,
+          parentEmail: { not: null },
+          parentConsentAt: { lte: dueBefore },
+        },
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          username: true,
+          parentEmail: true,
+          parentConsentAt: true,
+        },
+        take: PAGE_SIZE,
+        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+        orderBy: { id: 'asc' },
+      })
 
-      const childName = user.displayName ?? user.username ?? 'your child'
-      const privacyUrl = `${appUrl}/legal/privacy`
-      const manageUrl = `${appUrl}/settings/account`
+      if (users.length === 0) break
+      cursor = users[users.length - 1]!.id
 
-      try {
-        await resend.emails.send({
-          from: 'ForjeGames <noreply@ForjeGames.com>',
-          to: user.parentEmail,
-          subject: `Annual COPPA notice — ${childName}'s ForjeGames account`,
-          html: `
+      for (const user of users) {
+        if (!user.parentEmail) {
+          totalSkipped++
+          continue
+        }
+
+        const childName = user.displayName ?? user.username ?? 'your child'
+        const privacyUrl = `${appUrl}/legal/privacy`
+        const manageUrl = `${appUrl}/settings/account`
+
+        try {
+          await resend.emails.send({
+            from: 'ForjeGames <noreply@ForjeGames.com>',
+            to: user.parentEmail,
+            subject: `Annual COPPA notice — ${childName}'s ForjeGames account`,
+            html: `
 <p>Dear parent or guardian,</p>
 <p>
   This is your annual notice regarding <strong>${childName}</strong>'s account on ForjeGames,
@@ -95,16 +106,19 @@ async function runCoppaAnnualNotice(req: NextRequest): Promise<NextResponse> {
 </p>
 <p>Thank you for trusting ForjeGames.</p>
 <p>— The ForjeGames Team</p>
-          `.trim(),
-        })
-        totalSent++
-      } catch (err) {
-        console.error(`[cron/coppa-annual-notice] email failed for user ${user.id}:`, err)
-        totalSkipped++
+            `.trim(),
+          })
+          totalSent++
+        } catch (err) {
+          console.error(`[cron/coppa-annual-notice] email failed for user ${user.id}:`, err)
+          totalSkipped++
+        }
       }
+
+      if (users.length < PAGE_SIZE) break
     }
 
-    return NextResponse.json({ ok: true, totalSent, totalSkipped, eligibleCount: users.length })
+    return NextResponse.json({ ok: true, totalSent, totalSkipped })
   } catch (error) {
     console.error('[cron/coppa-annual-notice] fatal:', error)
     return NextResponse.json(

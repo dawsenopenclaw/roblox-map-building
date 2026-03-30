@@ -29,6 +29,10 @@ export async function GET() {
     const earnings = await db.creatorEarning.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
+      // 10 000-row cap: a single CSV export beyond this is impractical
+      // and would OOM a serverless function. Callers needing more should
+      // use date-range pagination via query params (future work).
+      take: 10_000,
       select: {
         id: true,
         templateName: true,

@@ -84,9 +84,67 @@ const DOC_CARDS: DocCard[] = [
   },
 ]
 
+const techArticleJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  headline: 'ForjeGames Documentation',
+  description:
+    'Everything you need to build Roblox games with ForjeGames AI. Guides, API reference, Studio plugin docs, and more.',
+  url: 'https://forjegames.com/docs',
+  datePublished: '2026-03-29',
+  dateModified: '2026-03-29',
+  author: {
+    '@type': 'Organization',
+    name: 'ForjeGames LLC',
+    url: 'https://forjegames.com',
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: 'ForjeGames LLC',
+    logo: {
+      '@type': 'ImageObject',
+      url: 'https://forjegames.com/logo.png',
+    },
+  },
+  inLanguage: 'en-US',
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'ForjeGames',
+    url: 'https://forjegames.com',
+  },
+}
+
+const breadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: 'Home',
+      item: 'https://forjegames.com',
+    },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Docs',
+      item: 'https://forjegames.com/docs',
+    },
+  ],
+}
+
 export default function DocsHubPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(techArticleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Hero */}
       <section className="border-b border-white/5 px-6 py-20 text-center">
         <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
@@ -154,5 +212,6 @@ export default function DocsHubPage() {
         </p>
       </section>
     </div>
+    </>
   )
 }

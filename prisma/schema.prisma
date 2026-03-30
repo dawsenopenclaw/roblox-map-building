@@ -104,7 +104,6 @@ model Subscription {
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
-  @@index([stripeCustomerId])
   @@index([status])
   @@index([status, currentPeriodEnd])
 }
@@ -264,7 +263,6 @@ model DailyCostSnapshot {
   marginMicro       Int
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
 }
 
 // ─── Marketplace ────────────────────────────────────────────────────────────
@@ -351,8 +349,10 @@ model TemplateReview {
   id              String           @id @default(cuid())
   templateId      String
   template        Template         @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  reviewerId      String
-  reviewer        User             @relation("AuthoredReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewerId      String?
+  // SetNull rather than Cascade: reviews are shared content that affect template ratings/counts.
+  // Deleting a user must not silently wipe other creators' review histories or template averages.
+  reviewer        User?            @relation("AuthoredReviews", fields: [reviewerId], references: [id], onDelete: SetNull)
   purchaseId      String           @unique
   purchase        TemplatePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   rating          Int
@@ -418,8 +418,6 @@ model CreatorAccount {
   lastPayoutAt        DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
-
-  @@index([stripeAccountId])
 }
 
 // ─── Gamification ───────────────────────────────────────────────────────────
@@ -638,7 +636,6 @@ model Team {
   activities TeamActivity[]
 
   @@index([ownerId])
-  @@index([slug])
   @@index([deletedAt])
 }
 
@@ -670,8 +667,10 @@ model TeamInvite {
   id         String       @id @default(cuid())
   teamId     String
   team       Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  invitedBy  String
-  inviter    User         @relation("SentInvites", fields: [invitedBy], references: [id], onDelete: Cascade)
+  invitedBy  String?
+  // SetNull rather than Cascade: the invite should survive the inviter's account deletion
+  // so existing pending invites can still be accepted or expired naturally.
+  inviter    User?        @relation("SentInvites", fields: [invitedBy], references: [id], onDelete: SetNull)
   email      String?
   token      String       @unique @default(cuid())
   role       TeamRole     @default(EDITOR)
@@ -682,7 +681,6 @@ model TeamInvite {
   updatedAt  DateTime     @updatedAt
 
   @@index([teamId])
-  @@index([token])
   @@index([email])
   @@index([status])
   @@index([expiresAt])
@@ -699,8 +697,10 @@ model TeamActivity {
   id          String   @id @default(cuid())
   teamId      String
   team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  userId      String
-  actor       User     @relation("TeamActivities", fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?
+  // SetNull rather than Cascade: team activity logs are audit records.
+  // Deleting a user must not erase the team's history of what was done.
+  actor       User?    @relation("TeamActivities", fields: [userId], references: [id], onDelete: SetNull)
   action      String
   description String
   metadata    Json?
@@ -731,8 +731,10 @@ model ProjectVersion {
   teamId    String
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   projectId String
-  userId    String
-  author    User     @relation("ProjectVersions", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  // SetNull rather than Cascade: project versions are team-owned history.
+  // Deleting a team member must not destroy the version snapshots other members depend on.
+  author    User?    @relation("ProjectVersions", fields: [userId], references: [id], onDelete: SetNull)
   version   Int
   message   String?
   snapshot  Json
@@ -864,7 +866,6 @@ model Referral {
 
   @@unique([referrerId, referredId])
   @@index([referrerId])
-  @@index([code])
   @@index([referredId])
   @@index([referrerId, status])
 }
@@ -965,7 +966,7 @@ enum EarningStatus {
 // ─── Token Grant Jobs (async webhook processing) ────────────────────────────
 
 model TokenGrantJob {
-  id          String                @id @default(cuid())
+  id          String               @id @default(cuid())
   userId      String
   amount      Int
   type        TokenTransactionType
@@ -973,12 +974,12 @@ model TokenGrantJob {
   metadata    Json?
   invoiceId   String?
   sessionId   String?
-  status      TokenGrantJobStatus   @default(PENDING)
-  attempts    Int                   @default(0)
+  status      TokenGrantJobStatus  @default(PENDING)
+  attempts    Int                  @default(0)
   lastError   String?
   processedAt DateTime?
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -995,6 +996,8 @@ enum TokenGrantJobStatus {
 }
 
 // ─── Builds ──────────────────────────────────────────────────────────────────
+// ORPHAN WARNING: No db.build.* calls exist anywhere in the codebase.
+// This model is schema-only. Either wire it up or remove it in the next migration.
 
 model Build {
   id         String   @id @default(cuid())
@@ -1011,6 +1014,8 @@ model Build {
 }
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
+// ORPHAN WARNING: No db.project.* calls exist anywhere in the codebase.
+// This model is schema-only. Either wire it up or remove it in the next migration.
 
 model Project {
   id        String   @id @default(cuid())

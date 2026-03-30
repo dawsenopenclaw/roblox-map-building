@@ -365,62 +365,85 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params
 
+  const metadataBase = new URL(APP_URL)
+
   // Demo template metadata
   if (id.startsWith('demo-')) {
     const demo = DEMO_TEMPLATES[id] ?? FALLBACK_DEMO
     const ogUrl = new URL(`${APP_URL}/api/og`)
     ogUrl.searchParams.set('type', 'template')
     ogUrl.searchParams.set('name', demo.title)
+    ogUrl.searchParams.set('category', demo.category)
+    const title = `${demo.title} — ForjeGames Marketplace`
     const description = demo.description.slice(0, 160)
+    const canonical = `${APP_URL}/marketplace/${id}`
     return {
-      title: `${demo.title} - ForjeGames Marketplace`,
+      title,
       description,
+      metadataBase,
+      alternates: { canonical },
       openGraph: {
-        title: `${demo.title} - ForjeGames Marketplace`,
+        title,
         description,
-        images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
+        url: canonical,
+        siteName: 'ForjeGames',
+        images: [{ url: ogUrl.toString(), width: 1200, height: 630, alt: title }],
         type: 'website',
+        locale: 'en_US',
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${demo.title} - ForjeGames Marketplace`,
+        title,
         description,
         images: [ogUrl.toString()],
+        creator: '@forjegames',
+        site: '@forjegames',
       },
+      robots: { index: false, follow: false },
     }
   }
 
   try {
     const template = await db.template.findUnique({
       where: { id },
-      select: { title: true, description: true },
+      select: { title: true, description: true, slug: true },
     })
 
-    if (!template) return {}
+    if (!template) return { metadataBase, robots: { index: false, follow: false } }
 
     const ogUrl = new URL(`${APP_URL}/api/og`)
     ogUrl.searchParams.set('type', 'template')
     ogUrl.searchParams.set('name', template.title)
+    const title = `${template.title} — ForjeGames Marketplace`
     const description = template.description?.slice(0, 160) ?? ''
+    const canonical = `${APP_URL}/marketplace/${id}`
 
     return {
-      title: `${template.title} - ForjeGames Marketplace`,
+      title,
       description,
+      metadataBase,
+      alternates: { canonical },
       openGraph: {
-        title: `${template.title} - ForjeGames Marketplace`,
+        title,
         description,
-        images: [{ url: ogUrl.toString(), width: 1200, height: 630 }],
+        url: canonical,
+        siteName: 'ForjeGames',
+        images: [{ url: ogUrl.toString(), width: 1200, height: 630, alt: title }],
         type: 'website',
+        locale: 'en_US',
       },
       twitter: {
         card: 'summary_large_image',
-        title: `${template.title} - ForjeGames Marketplace`,
+        title,
         description,
         images: [ogUrl.toString()],
+        creator: '@forjegames',
+        site: '@forjegames',
       },
+      robots: { index: false, follow: false },
     }
   } catch {
-    return {}
+    return { metadataBase, robots: { index: false, follow: false } }
   }
 }
 

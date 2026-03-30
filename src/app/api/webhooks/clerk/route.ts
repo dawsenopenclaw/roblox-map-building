@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { Webhook } from 'svix'
+import * as Sentry from '@sentry/nextjs'
 import { db } from '@/lib/db'
 import { sendWelcomeEmail } from '@/lib/email'
 
@@ -124,15 +125,30 @@ export async function POST(req: NextRequest) {
       const primaryEmail = event.data.email_addresses.find(
         (e) => e.id === event.data.primary_email_address_id
       )?.email_address
-      await db.user.update({
+
+      // Guard against P2025 — Clerk may fire user.updated before user.created is
+      // processed (race between webhook deliveries). Skip gracefully if the user
+      // row doesn't exist yet; the next user.created delivery will create it.
+      const existing = await db.user.findUnique({
         where: { clerkId: event.data.id },
-        data: {
-          email: primaryEmail,
-          displayName:
-            [event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || undefined,
-          avatarUrl: event.data.image_url,
-        },
+        select: { id: true },
       })
+      if (existing) {
+        await db.user.update({
+          where: { clerkId: event.data.id },
+          data: {
+            email: primaryEmail,
+            displayName:
+              [event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || undefined,
+            avatarUrl: event.data.image_url,
+          },
+        })
+      } else {
+        console.warn('[clerk-webhook] user.updated received before user.created — skipping', {
+          clerkId: event.data.id,
+          svixId,
+        })
+      }
     }
 
     if (event.type === 'user.deleted') {
@@ -188,6 +204,10 @@ export async function POST(req: NextRequest) {
       eventType: event.type,
       svixId,
       error,
+    })
+    Sentry.captureException(error, {
+      tags: { webhook: 'clerk', eventType: event.type },
+      extra: { svixId },
     })
     return NextResponse.json(
       { error: 'Service temporarily unavailable' },

@@ -6,9 +6,16 @@
  * and delivers with HMAC-SHA256 signing, 4-attempt retry, and dead-letter logging.
  *
  * Mirror of apps/api/src/lib/webhook-delivery.ts — keep in sync.
+ *
+ * RETRY ARCHITECTURE NOTE:
+ *  setTimeout-based retries are unreliable in serverless environments (Vercel)
+ *  because the function process is killed once the HTTP response is sent.
+ *  Instead, failed deliveries store `nextRetryAt` in the DB. The cron at
+ *  /api/internal/cron/webhook-retry drives retries every 5 minutes via
+ *  processWebhookRetries() defined at the bottom of this file.
  */
 
-import { createHmac, randomBytes } from 'crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 import { db } from './db'
 
 // ---------------------------------------------------------------------------
@@ -136,14 +143,10 @@ async function deliverWithRetry(
     },
   })
 
-  if (status === 'failed' && nextRetryAt) {
-    const delayMs = RETRY_DELAYS_MS[attempt - 1]
-    setTimeout(() => {
-      deliverWithRetry(endpointId, url, secret, payload, attempt + 1, idempotencyKey).catch((err) =>
-        console.error(`[webhook] retry ${attempt + 1} scheduling error:`, err)
-      )
-    }, delayMs)
-  }
+  // Retries are driven by the webhook-retry cron (processWebhookRetries below),
+  // not by setTimeout — setTimeout callbacks are dropped when the serverless
+  // function exits after sending the response. The nextRetryAt written to DB
+  // is the durable trigger the cron reads.
 
   if (status === 'dead_letter') {
     console.error(
@@ -158,11 +161,7 @@ async function deliverWithRetry(
 
 /**
  * Find all active endpoints subscribed to `event` for `userId` and deliver concurrently.
- * Fire-and-forget safe — retries are scheduled asynchronously via setTimeout.
- *
- * NOTE: setTimeout-based retry is acceptable for low-volume paths. When QStash is
- * provisioned, replace the setTimeout block in deliverWithRetry with a QStash publish
- * call so retries survive process restarts.
+ * Failed deliveries write nextRetryAt to DB; the webhook-retry cron re-drives them.
  */
 export async function dispatchWebhookEvent(
   userId: string,
@@ -187,4 +186,109 @@ export async function dispatchWebhookEvent(
   await Promise.allSettled(
     endpoints.map((ep) => deliverWithRetry(ep.id, ep.url, ep.secret, payload))
   )
+}
+
+// ---------------------------------------------------------------------------
+// Cron-driven retry processor
+// ---------------------------------------------------------------------------
+
+export interface RetryProcessResult {
+  processed: number
+  succeeded: number
+  failed: number
+  deadLettered: number
+}
+
+/**
+ * Process all webhook deliveries whose nextRetryAt is in the past.
+ * Called from /api/internal/cron/webhook-retry every 5 minutes.
+ *
+ * Cursor-paginated so it never loads the entire table — safe at any scale.
+ */
+export async function processWebhookRetries(
+  batchSize = 50
+): Promise<RetryProcessResult> {
+  const result: RetryProcessResult = { processed: 0, succeeded: 0, failed: 0, deadLettered: 0 }
+  const now = new Date()
+  let cursor: string | undefined
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const dueBatch = await db.webhookDelivery.findMany({
+      where: {
+        success: false,
+        nextRetryAt: { lte: now },
+      },
+      select: {
+        id: true,
+        endpointId: true,
+        attempt: true,
+        payload: true,
+        endpoint: {
+          select: { url: true, secret: true, active: true },
+        },
+      },
+      orderBy: { nextRetryAt: 'asc' },
+      take: batchSize,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    })
+
+    if (dueBatch.length === 0) break
+
+    await Promise.allSettled(
+      dueBatch.map(async (delivery) => {
+        result.processed++
+
+        // Deactivated endpoint — remove from retry queue
+        if (!delivery.endpoint?.active) {
+          await db.webhookDelivery.update({
+            where: { id: delivery.id },
+            data: { nextRetryAt: null },
+          })
+          return
+        }
+
+        const nextAttempt = delivery.attempt + 1
+        const typedPayload = delivery.payload as WebhookPayload
+        const idempotencyKey = typedPayload.id
+
+        const outcome = await attemptDelivery({
+          url: delivery.endpoint.url,
+          secret: delivery.endpoint.secret,
+          payload: typedPayload,
+          idempotencyKey,
+          attempt: nextAttempt,
+        })
+
+        let nextRetryAt: Date | null = null
+        if (!outcome.success && nextAttempt < MAX_ATTEMPTS) {
+          nextRetryAt = new Date(Date.now() + RETRY_DELAYS_MS[nextAttempt - 1])
+          result.failed++
+        } else if (!outcome.success) {
+          result.deadLettered++
+          console.error(
+            `[webhook] dead letter — endpointId=${delivery.endpointId} attempt=${nextAttempt}`
+          )
+        } else {
+          result.succeeded++
+        }
+
+        await db.webhookDelivery.update({
+          where: { id: delivery.id },
+          data: {
+            attempt: nextAttempt,
+            success: outcome.success,
+            statusCode: outcome.statusCode,
+            responseBody: outcome.responseBody,
+            nextRetryAt,
+          },
+        })
+      })
+    )
+
+    cursor = dueBatch[dueBatch.length - 1]?.id
+    if (dueBatch.length < batchSize) break
+  }
+
+  return result
 }

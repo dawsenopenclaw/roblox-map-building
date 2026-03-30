@@ -53,6 +53,14 @@ const config: Config = {
         'gold-lg':  '0 0 40px rgba(212,175,55,0.30), 0 0 80px rgba(212,175,55,0.15)',
         'card':     '0 4px 24px rgba(0,0,0,0.4)',
         'card-lg':  '0 8px 48px rgba(0,0,0,0.5)',
+        /* Depth layer scale — mirrors CSS vars in globals.css */
+        'depth-xs': '0 1px 2px rgba(0,0,0,0.3)',
+        'depth-sm': '0 2px 8px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4)',
+        'depth-md': '0 4px 16px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.3)',
+        'depth-lg': '0 8px 32px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3)',
+        'depth-xl': '0 16px 64px rgba(0,0,0,0.6), 0 8px 16px rgba(0,0,0,0.4)',
+        'depth-gold': '0 0 20px rgba(212,175,55,0.15), 0 4px 16px rgba(0,0,0,0.4)',
+        'inner':    'inset 0 1px 2px rgba(0,0,0,0.3)',
       },
       borderRadius: {
         'xl':   '12px',
@@ -64,7 +72,7 @@ const config: Config = {
       // their .animate-* utility classes — single source of truth.
     },
   },
-  plugins: [require('@tailwindcss/typography')],
+  plugins: [],
 }
 
 export default config

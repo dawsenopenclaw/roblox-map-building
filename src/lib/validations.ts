@@ -26,6 +26,17 @@ export const textureGenerateSchema = z.object({
   seamless: z.boolean().optional(),
 })
 
+export const feedbackBodySchema = z
+  .object({
+    messageId: z.string().min(1, 'messageId is required'),
+    rating: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+    thumbsUp: z.boolean().optional(),
+    comment: z.string().max(500).optional(),
+  })
+  .refine((b) => b.rating !== undefined || b.thumbsUp !== undefined, {
+    message: 'At least one of rating or thumbsUp is required',
+  })
+
 // ── Marketplace ───────────────────────────────────────────────────────────────
 
 export const templateSubmitSchema = z.object({
@@ -207,6 +218,12 @@ export const whiteLabelDomainSchema = z.object({
   domain: z.string().min(1, 'domain is required'),
 })
 
+// ── Email ─────────────────────────────────────────────────────────────────────
+
+export const emailUnsubscribeSchema = z.object({
+  token: z.string().min(8, 'token is required'),
+})
+
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 export const notificationMarkReadSchema = z.object({
@@ -220,9 +237,42 @@ export const notificationDeleteSchema = z.object({
 
 // ── Marketplace Connect ───────────────────────────────────────────────────────
 
+// Allowed origins for Stripe Connect return/refresh URLs.
+// Must start with the app's own origin to prevent open redirect abuse.
+const ALLOWED_REDIRECT_ORIGINS = [
+  'https://forjegames.com',
+  'https://www.forjegames.com',
+  'https://app.forjegames.com',
+  // Allow localhost and preview URLs only in non-production environments
+  ...(process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:3000', 'http://localhost:3001']
+    : []),
+  ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+]
+
+function isAllowedRedirectUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return ALLOWED_REDIRECT_ORIGINS.some((origin) => {
+      const allowed = new URL(origin)
+      return parsed.protocol === allowed.protocol && parsed.host === allowed.host
+    })
+  } catch {
+    return false
+  }
+}
+
 export const connectOnboardSchema = z.object({
-  returnUrl: z.string().url().optional(),
-  refreshUrl: z.string().url().optional(),
+  returnUrl: z
+    .string()
+    .url()
+    .refine(isAllowedRedirectUrl, { message: 'returnUrl must be on an allowed ForjeGames domain' })
+    .optional(),
+  refreshUrl: z
+    .string()
+    .url()
+    .refine(isAllowedRedirectUrl, { message: 'refreshUrl must be on an allowed ForjeGames domain' })
+    .optional(),
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 ﻿'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Endpoint = {
   id: string
@@ -29,6 +29,7 @@ export default function WebhooksPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const createModalRef = useRef<HTMLDivElement>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -125,6 +126,50 @@ export default function WebhooksPage() {
     }
   }
 
+  // Focus trap for the create modal — Tab cycling, Escape to close, restore focus on unmount
+  useEffect(() => {
+    if (!showCreate) return
+    const dialog = createModalRef.current
+    if (!dialog) return
+
+    const previouslyFocused = document.activeElement as HTMLElement | null
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled'))
+
+    focusable()[0]?.focus()
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowCreate(false)
+        setCreateError(null)
+        return
+      }
+      if (e.key !== 'Tab') return
+      const nodes = focusable()
+      if (nodes.length === 0) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    dialog.addEventListener('keydown', handler)
+    return () => {
+      dialog.removeEventListener('keydown', handler)
+      previouslyFocused?.focus()
+    }
+  }, [showCreate])
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -166,9 +211,19 @@ export default function WebhooksPage() {
 
       {/* Create modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-lg">
-            <h2 className="text-white font-bold text-lg mb-6">Add Webhook Endpoint</h2>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowCreate(false); setCreateError(null) } }}
+          aria-hidden="true"
+        >
+          <div
+            ref={createModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wh-modal-title"
+            className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-lg"
+          >
+            <h2 id="wh-modal-title" className="text-white font-bold text-lg mb-6">Add Webhook Endpoint</h2>
 
             <div className="mb-4">
               <label className="block text-sm text-gray-300 mb-1.5">Endpoint URL</label>

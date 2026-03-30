@@ -12,7 +12,7 @@ const NAV_LINKS = [
 
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
-export function MarketingNav() {
+function MarketingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const signInHref = IS_DEMO ? '/editor' : '/sign-in'
@@ -55,6 +55,7 @@ export function MarketingNav() {
           ? 'bg-[#09090b]/80 backdrop-blur-md border-b border-white/[0.06]'
           : 'bg-transparent',
       ].join(' ')}
+      style={scrolled ? { boxShadow: '0 1px 0 rgba(255,255,255,0.03)' } : undefined}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
 

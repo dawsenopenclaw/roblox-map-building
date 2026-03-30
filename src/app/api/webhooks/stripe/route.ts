@@ -46,13 +46,22 @@ export async function POST(req: NextRequest) {
         if (isPaid && session.metadata?.type === 'token_pack' && session.metadata.tokenPackSlug) {
           const pack = getTokenPackBySlug(session.metadata.tokenPackSlug)
           if (pack) {
-            // Idempotency: check if we already credited this session
+            // Idempotency: check if we already credited this session.
+            // We store BOTH sessionId and paymentIntentId so that the
+            // payment_intent.succeeded handler can find this record and skip
+            // double-crediting (it searches by paymentIntentId).
             const alreadyCredited = await db.tokenTransaction.findFirst({
               where: { metadata: { path: ['sessionId'], equals: session.id } },
               select: { id: true },
             })
             if (!alreadyCredited) {
-              await earnTokens(userId, pack.tokens, 'PURCHASE', `Purchased ${pack.name}`, { sessionId: session.id })
+              const paymentIntentId = typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent?.toString() ?? undefined
+              await earnTokens(userId, pack.tokens, 'PURCHASE', `Purchased ${pack.name}`, {
+                sessionId: session.id,
+                paymentIntentId,
+              })
             }
           }
         }
@@ -305,7 +314,8 @@ export async function POST(req: NextRequest) {
             })
           : null
 
-        await db.subscription.update({
+        // updateMany is safe when the row is absent — avoids P2025 on replay
+        await db.subscription.updateMany({
           where: { stripeSubscriptionId: subscription.id },
           data: { status: 'CANCELED', cancelAtPeriodEnd: false },
         })

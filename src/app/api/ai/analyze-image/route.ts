@@ -17,6 +17,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { requireTier } from '@/lib/tier-guard'
+import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { z } from 'zod'
+
+// ---------------------------------------------------------------------------
+// Server-side magic byte detection (never trust client-supplied MIME type)
+// ---------------------------------------------------------------------------
+
+function detectMimeFromBytes(buffer: Uint8Array): string | null {
+  if (buffer.length < 4) return null
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return 'image/jpeg'
+  // PNG: 89 50 4E 47
+  if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return 'image/png'
+  // GIF: 47 49 46 38
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) return 'image/gif'
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (
+    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+    buffer.length >= 12 &&
+    buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+  ) return 'image/webp'
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Zod schema — JSON branch only (multipart is validated separately below)
+// ---------------------------------------------------------------------------
+
+const jsonBodySchema = z.object({
+  base64: z.string().min(1, 'base64 is required'),
+  mimeType: z.string().optional(),
+  styleTransfer: z.boolean().optional(),
+})
 
 // ---------------------------------------------------------------------------
 // Types
@@ -173,6 +206,19 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const tierDenied = await requireTier(userId, 'HOBBY')
     if (tierDenied) return tierDenied
+
+    // Rate limit: 20 AI requests per minute per user
+    try {
+      const rl = await aiRateLimit(userId)
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait before analyzing another image.' },
+          { status: 429, headers: rateLimitHeaders(rl) },
+        )
+      }
+    } catch {
+      // Redis unavailable — allow through rather than hard-fail
+    }
   }
 
   try {
@@ -189,19 +235,37 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'image file is required' }, { status: 400 })
       }
 
-      mimeType = file.type || 'image/jpeg'
       const arrayBuffer = await file.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuffer)
+
+      // Detect MIME type from magic bytes — never trust client-supplied file.type
+      const detectedMime = detectMimeFromBytes(bytes)
+      if (!detectedMime) {
+        return NextResponse.json(
+          { error: 'Unsupported or unrecognized file format. Upload a JPEG, PNG, WebP, or GIF.' },
+          { status: 400 }
+        )
+      }
+      mimeType = detectedMime
       base64Data = Buffer.from(arrayBuffer).toString('base64')
     } else {
       // JSON body with base64 string
-      const body = (await req.json()) as {
-        base64?: string
-        mimeType?: string
+      let rawBody: unknown
+      try {
+        rawBody = await req.json()
+      } catch {
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
       }
 
-      if (!body.base64) {
-        return NextResponse.json({ error: 'base64 image data is required' }, { status: 400 })
+      const bodyResult = jsonBodySchema.safeParse(rawBody)
+      if (!bodyResult.success) {
+        const message = bodyResult.error.errors
+          .map((e) => `${e.path.join('.') || 'body'}: ${e.message}`)
+          .join(', ')
+        return NextResponse.json({ error: message }, { status: 422 })
       }
+
+      const body = bodyResult.data
 
       // Handle data URI prefix (data:image/png;base64,...)
       if (body.base64.startsWith('data:')) {

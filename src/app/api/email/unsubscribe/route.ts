@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
+import { emailUnsubscribeSchema, parseBody } from '@/lib/validations'
 
 /**
  * POST /api/email/unsubscribe
@@ -62,18 +63,11 @@ function verifyToken(token: string): string | null {
 }
 
 export async function POST(request: NextRequest) {
-  let token: string | undefined
-
-  try {
-    const body = await request.json()
-    token = typeof body?.token === 'string' ? body.token.trim() : undefined
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  const parsed = await parseBody(request, emailUnsubscribeSchema)
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
-
-  if (!token || token.length < 8) {
-    return NextResponse.json({ error: 'Token is required' }, { status: 400 })
-  }
+  const token = parsed.data.token.trim()
 
   const userId = verifyToken(token)
   if (!userId) {

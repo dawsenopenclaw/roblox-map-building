@@ -38,16 +38,25 @@ export async function processDonation({
   })
   if (existingDonation) return null
 
-  const donationRecord = await db.charityDonation.create({
-    data: {
-      userId,
-      charitySlug: charity.slug,
-      charityName: charity.name,
-      amountCents: donationAmountCents,
-      sourcePurchaseId,
-      status: 'PROCESSING',
-    },
-  })
+  let donationRecord
+  try {
+    donationRecord = await db.charityDonation.create({
+      data: {
+        userId,
+        charitySlug: charity.slug,
+        charityName: charity.name,
+        amountCents: donationAmountCents,
+        sourcePurchaseId,
+        status: 'PROCESSING',
+      },
+    })
+  } catch (err: unknown) {
+    // P2002 = unique constraint violation — concurrent call already created this donation
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2002') {
+      return null
+    }
+    throw err
+  }
 
   const charityAccountId = serverEnv.STRIPE_CHARITY_ACCOUNT_ID
   if (!charityAccountId) {

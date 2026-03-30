@@ -34,6 +34,10 @@ const apiEnvSchema = z.object({
   // Monitoring
   SENTRY_DSN: z.string().optional(),
 
+  // Security
+  // HMAC key used by hashSecret() / verifySecret() — must be ≥32 random chars
+  TOKEN_HASH_SECRET: z.string().optional(),
+
   // App
   NEXT_PUBLIC_APP_URL: z.string().min(1, 'NEXT_PUBLIC_APP_URL is required'),
   ALLOWED_ORIGINS: z.string().optional(),

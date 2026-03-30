@@ -8,6 +8,9 @@ export async function GET() {
     const { userId: clerkId } = await auth()
     if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
     const user = await db.user.findUnique({
       where: { clerkId },
       select: {
@@ -88,6 +91,22 @@ export async function GET() {
           },
         },
 
+        boughtTemplates: {
+          select: {
+            id: true,
+            amountCents: true,
+            createdAt: true,
+            template: {
+              select: {
+                title: true,
+                slug: true,
+                category: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+
         gameScans: {
           select: {
             id: true,
@@ -114,16 +133,22 @@ export async function GET() {
         },
 
         apiUsage: {
+          where: {
+            createdAt: { gte: ninetyDaysAgo },
+          },
           select: {
             provider: true,
             operation: true,
+            httpMethod: true,
+            httpPath: true,
+            statusCode: true,
             tokensUsed: true,
             costUsdMicro: true,
+            durationMs: true,
             success: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
-          take: 1000,
         },
       },
     })
@@ -156,8 +181,9 @@ export async function GET() {
       xp: user.userXp,
       achievements: user.userAchievements,
       streak: user.streak,
+      purchases: user.boughtTemplates,
       gameScans: user.gameScans,
-      apiUsage: user.apiUsage,
+      apiUsageRecords: user.apiUsage,
     }
 
     return NextResponse.json(payload, {

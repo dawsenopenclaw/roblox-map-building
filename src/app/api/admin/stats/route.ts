@@ -33,6 +33,10 @@ export async function GET() {
         where: { createdAt: { gte: thirtyDaysAgo }, deletedAt: null },
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
+        // Cap at 10 000: the chart buckets into 30 days so this is more than enough.
+        // If a viral day produces 10K+ signups the chart will under-count — an
+        // acceptable tradeoff vs loading the full table.
+        take: 10_000,
       }),
       db.auditLog.findMany({
         take: 20,

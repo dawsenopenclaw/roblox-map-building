@@ -219,8 +219,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-white">Right to Data Portability (Art. 20):</strong> Receive
-              your data in a structured, machine-readable format (data export available upon
-              request — contact us at privacy@forjegames.com).
+              your data in a structured, machine-readable format. Data export is coming soon —
+              in the meantime, contact us at privacy@forjegames.com to request your data manually.
             </li>
             <li>
               <strong className="text-white">Right to Object (Art. 21):</strong> Object to

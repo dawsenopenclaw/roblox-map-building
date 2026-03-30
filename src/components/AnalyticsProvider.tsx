@@ -63,6 +63,11 @@ export function AnalyticsProvider({
 }: AnalyticsProviderProps) {
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
   const sessionStartRef = useRef<number>(Date.now())
+  // Refs so the session_end cleanup always reads the current tier/role
+  const tierRef = useRef(tier)
+  const roleRef = useRef(role)
+  tierRef.current = tier
+  roleRef.current = role
 
   const userContext: UserContext = useMemo(
     () => ({ tier, role, streak, isUnder13 }),
@@ -124,7 +129,9 @@ export function AnalyticsProvider({
       import('posthog-js').then(({ default: posthog }) => {
         posthog.capture('session_end', {
           $app: 'ForjeGames',
-          user_tier: tier,
+          // Read via refs so cleanup always has the current value, not a stale closure
+          user_tier: tierRef.current,
+          user_role: roleRef.current,
           duration_ms: durationMs,
           duration_minutes: Math.round(durationMs / 60000),
         })

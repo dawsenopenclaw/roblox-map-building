@@ -18,6 +18,7 @@ import { zValidator } from '@hono/zod-validator'
 import { requireAuth } from '../middleware/auth'
 import { db } from '../lib/db'
 import { notifyTeamInvite } from '../lib/notifications'
+import { dispatchWebhookEvent } from '../lib/webhook-delivery'
 
 export const teamRoutes = new Hono()
 
@@ -171,6 +172,17 @@ teamRoutes.get('/invite/:token', async (c) => {
       },
     }),
   ])
+
+  // Dispatch team.member_joined webhook to the new member (best-effort)
+  dispatchWebhookEvent(user.id, 'team.member_joined', {
+    teamId: invite.teamId,
+    teamName: invite.team.name,
+    userId: user.id,
+    userEmail: user.email,
+    role: invite.role,
+    invitedBy: invite.invitedBy ?? undefined,
+    joinedAt: new Date().toISOString(),
+  }).catch(() => {})
 
   return c.json({ message: 'Joined team successfully', member: newMember, team: invite.team })
 })

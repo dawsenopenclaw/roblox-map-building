@@ -320,10 +320,10 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       if (!el) return
       if (i < revealedCount) {
         el.style.opacity = '1'
-        el.style.visibility = 'visible'
+        el.style.pointerEvents = ''
       } else {
         el.style.opacity = '0'
-        el.style.visibility = 'hidden'
+        el.style.pointerEvents = 'none'
       }
     })
   }, [revealedCount, splashState])
@@ -391,7 +391,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Phase 2: holographic pulse (1800ms → 2500ms)
+      // Phase 2: holographic pulse (550ms → 800ms)
       if (elapsed >= PHASE3_START && phaseRef.current < 2) {
         phaseRef.current = 2
         setPhase(2)
@@ -400,7 +400,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
         lettersRevealedRef.current = LETTERS.length
       }
 
-      // Phase 3: progress forge (2500ms → 3500ms)
+      // Phase 3: progress forge (800ms → 1200ms)
       if (elapsed >= PHASE4_START && phaseRef.current < 3) {
         phaseRef.current = 3
         setPhase(3)
@@ -707,7 +707,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                         ? 'fj-holo-gradient 3s linear infinite'
                         : 'none',
                       opacity: isRevealed ? 1 : 0,
-                      visibility: isRevealed ? 'visible' : 'hidden',
+                      pointerEvents: isRevealed ? '' : 'none',
                       willChange: 'background-position, opacity',
                       // Stagger gradient offset per letter for wave effect
                       animationDelay: isRevealed ? `${i * -0.15}s, ${i * -0.2}s, ${i * 0.3}s` : '0s',

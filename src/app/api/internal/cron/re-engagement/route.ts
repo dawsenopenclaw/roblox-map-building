@@ -37,48 +37,62 @@ export async function GET(req: NextRequest) {
   const maxInactiveThreshold = new Date()
   maxInactiveThreshold.setDate(maxInactiveThreshold.getDate() - 30)
 
+  const PAGE_SIZE = 100
+
+  let sent = 0
+  let failed = 0
+  let total = 0
+  let cursor: string | undefined
+
+  const candidateWhere = {
+    deletedAt: null,
+    email: { not: { endsWith: '@deleted.invalid' } },
+    subscription: { status: { notIn: ['CANCELED'] } },
+    gameScans: {
+      some: {},
+      none: { createdAt: { gte: inactiveThreshold } },
+    },
+    NOT: {
+      gameScans: { some: { createdAt: { gte: maxInactiveThreshold } } },
+    },
+  } as const
+
   try {
-    // Find users whose last build was exactly in the 14-30 day window
-    // and who have not already received a re-engagement email in the last 30 days
-    const candidates = await db.user.findMany({
-      where: {
-        deletedAt: null,
-        email: { not: { endsWith: '@deleted.invalid' } },
-        subscription: { status: { notIn: ['CANCELED'] } },
-        gameScans: {
-          // Has some activity (not brand new) but last was 14-30 days ago
-          some: {},
-          none: { createdAt: { gte: inactiveThreshold } },
-        },
-        // Exclude users with very recent game scans
-        NOT: {
-          gameScans: { some: { createdAt: { gte: maxInactiveThreshold } } },
-        },
-      },
-      select: { id: true, email: true, displayName: true },
-      take: 500,
-    })
-
-    let sent = 0
-    let failed = 0
-
-    await Promise.allSettled(
-      candidates.map(async (user) => {
-        try {
-          await sendReEngagementEmail({
-            email: user.email,
-            name: user.displayName ?? 'Creator',
-            daysInactive: INACTIVE_DAYS,
-            bonusTokens: 50,
-          })
-          sent++
-        } catch {
-          failed++
-        }
+    // Cursor-paginated so the cron handles any number of inactive users
+    // without loading the full set or timing out.
+    while (true) {
+      const candidates = await db.user.findMany({
+        where: candidateWhere,
+        select: { id: true, email: true, displayName: true },
+        orderBy: { id: 'asc' },
+        take: PAGE_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       })
-    )
 
-    return NextResponse.json({ ok: true, sent, failed, total: candidates.length })
+      if (candidates.length === 0) break
+      total += candidates.length
+
+      await Promise.allSettled(
+        candidates.map(async (user) => {
+          try {
+            await sendReEngagementEmail({
+              email: user.email,
+              name: user.displayName ?? 'Creator',
+              daysInactive: INACTIVE_DAYS,
+              bonusTokens: 50,
+            })
+            sent++
+          } catch {
+            failed++
+          }
+        })
+      )
+
+      cursor = candidates[candidates.length - 1]?.id
+      if (candidates.length < PAGE_SIZE) break
+    }
+
+    return NextResponse.json({ ok: true, sent, failed, total })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[cron/re-engagement] failed:', message)

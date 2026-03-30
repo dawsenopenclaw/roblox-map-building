@@ -89,7 +89,7 @@ function StatCard({ title, value, icon }: { title: string; value: string; icon: 
 }
 
 export default function AdminOverviewPage() {
-  const [stats, setStats] = useState<DashboardStats>(() => makeDemoStats())
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isDemo, setIsDemo] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -110,7 +110,7 @@ export default function AdminOverviewPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) {
+  if (loading || !stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />

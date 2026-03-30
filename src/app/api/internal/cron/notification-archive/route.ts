@@ -43,7 +43,6 @@ export async function GET(req: NextRequest) {
       },
     })
 
-    console.info(`[cron/notification-archive] archived ${result.count} read notifications older than ${ARCHIVE_AFTER_DAYS} days`)
     return NextResponse.json({ ok: true, archived: result.count, cutoff: cutoff.toISOString() })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

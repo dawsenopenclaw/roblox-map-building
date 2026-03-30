@@ -25,6 +25,21 @@ async function runWeeklyDigest(req: NextRequest): Promise<NextResponse> {
     const weekAgo = new Date()
     weekAgo.setDate(weekAgo.getDate() - 7)
 
+    // Fetch trending templates once for the entire run — same for every user
+    const trendingTemplates = await db.template.findMany({
+      where: { status: 'PUBLISHED', deletedAt: null },
+      orderBy: { downloads: 'desc' },
+      take: 3,
+      select: { title: true, category: true, purchases: { where: { createdAt: { gte: weekAgo } }, select: { id: true } }, thumbnailUrl: true },
+    })
+
+    const trending = trendingTemplates.map((t) => ({
+      name: t.title,
+      category: t.category,
+      sales: t.purchases.length,
+      thumbnailUrl: t.thumbnailUrl ?? undefined,
+    }))
+
     // Find active (non-deleted) users with email, process in pages to avoid OOM
     const PAGE_SIZE = 100
     let cursor: string | undefined
@@ -50,21 +65,6 @@ async function runWeeklyDigest(req: NextRequest): Promise<NextResponse> {
 
       if (users.length === 0) break
       cursor = users[users.length - 1]!.id
-
-      // Query trending templates once per batch (same for all users in page)
-      const trendingTemplates = await db.template.findMany({
-        where: { status: 'PUBLISHED', deletedAt: null },
-        orderBy: { downloads: 'desc' },
-        take: 3,
-        select: { title: true, category: true, purchases: { where: { createdAt: { gte: weekAgo } }, select: { id: true } }, thumbnailUrl: true },
-      })
-
-      const trending = trendingTemplates.map((t) => ({
-        name: t.title,
-        category: t.category,
-        sales: t.purchases.length,
-        thumbnailUrl: t.thumbnailUrl ?? undefined,
-      }))
 
       for (const user of users) {
         const name = user.displayName ?? user.username ?? 'Builder'

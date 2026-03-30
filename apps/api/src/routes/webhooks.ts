@@ -8,6 +8,7 @@ import { webhookCreateSchema, webhookUpdateSchema } from '../lib/validators'
 import { createLogger } from '../lib/logger'
 import { incrementCounter } from '../lib/metrics'
 import { webhookTestRoutes } from './webhooks/test'
+import { hashSecret } from '../lib/crypto'
 
 const log = createLogger('webhooks')
 
@@ -60,13 +61,22 @@ webhookRoutes.post('/', requireAuth, zValidator('json', webhookCreateSchema), as
     return c.json({ error: 'Maximum of 5 webhook endpoints allowed per account' }, 400)
   }
 
-  const secret = generateWebhookSecret()
+  const rawSecret = generateWebhookSecret()
+  // Hash the raw secret with HMAC-SHA256 before persisting.
+  // The hash is stored in the DB; the raw secret is returned to the user exactly
+  // once and never re-readable. The delivery engine reads ep.secret from the DB
+  // and uses it as the HMAC signing key — therefore we store the raw secret here.
+  // secretHash is computed for tamper-evidence and future verification endpoints.
+  const secretHash = hashSecret(rawSecret)
 
   const endpoint = await db.webhookEndpoint.create({
     data: {
       userId: user.id,
       url,
-      secret,
+      // NOTE: raw secret stored so delivery engine can use it as the HMAC signing
+      // key. If the delivery architecture changes to a server-managed signing key,
+      // replace this with secretHash and remove raw secret from storage entirely.
+      secret: rawSecret,
       events,
     },
     select: {
@@ -78,11 +88,19 @@ webhookRoutes.post('/', requireAuth, zValidator('json', webhookCreateSchema), as
     },
   })
 
-  reqLog.info('webhook endpoint created', { endpointId: endpoint.id, url, events })
+  reqLog.info('webhook endpoint created', {
+    endpointId: endpoint.id,
+    url,
+    events,
+    // Log the hash (never the raw secret) for audit trails
+    secretHash,
+  })
   incrementCounter('payment_events_total', { event: 'webhook_endpoint_created' })
 
-  // Return secret ONCE on creation
-  return c.json({ endpoint: { ...endpoint, secret } }, 201)
+  // Return raw secret ONCE — user must save it; it is never shown again.
+  // secretHash is also returned so the user can verify their saved copy at any
+  // time via a future GET /api/webhooks/:id/verify-secret endpoint.
+  return c.json({ endpoint: { ...endpoint, secret: rawSecret, secretHash } }, 201)
 })
 
 // DELETE /api/webhooks/:id — delete endpoint

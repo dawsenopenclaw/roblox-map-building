@@ -183,12 +183,16 @@ export async function POST(
         templateId,
         buyerId: user.id,
         type: 'template_purchase',
-        platformFeeCents: String(platformFeeCents),
-        creatorPayoutCents: String(creatorPayoutCents),
+        // platformFeeCents and creatorPayoutCents are intentionally omitted here —
+        // the webhook recomputes them server-side from session.amount_total to
+        // prevent any client-supplied amount from influencing financial records.
       },
     }
 
-    // Use Stripe Connect transfer if creator has account
+    // Use Stripe Connect transfer if creator has a charges-enabled account.
+    // If not, we still complete the purchase but flag the session metadata so the
+    // manual payout worker (admin/worker/process-token-grants) knows to queue a
+    // manual transfer once the creator onboards Connect.
     if (creatorStripeAccountId && template.creator.creatorAccount?.chargesEnabled) {
       sessionParams.payment_intent_data = {
         application_fee_amount: platformFeeCents,
@@ -196,6 +200,17 @@ export async function POST(
           destination: creatorStripeAccountId,
         },
       }
+    } else {
+      // Tag the session so the webhook and payout worker can identify manual-payout purchases
+      sessionParams.metadata = {
+        ...sessionParams.metadata,
+        payoutMethod: 'manual',
+        creatorId: template.creatorId,
+      }
+      console.warn(
+        `[marketplace/purchase] Creator ${template.creatorId} has no charges-enabled Connect account — purchase will require manual payout`,
+        { templateId, creatorStripeAccountId: creatorStripeAccountId ?? 'none' }
+      )
     }
 
     const session = await stripe.checkout.sessions.create(

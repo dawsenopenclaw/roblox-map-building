@@ -9,19 +9,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { feedbackBodySchema } from '@/lib/validations'
 import { applyFeedback, getOptimizerStats, type FeedbackInput } from '@/lib/ai/prompt-optimizer'
 import { getQualityStats, getDegradingIntents } from '@/lib/ai/response-quality'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-interface FeedbackBody {
-  messageId: string
-  rating?: 1 | 2 | 3 | 4 | 5
-  thumbsUp?: boolean
-  comment?: string
-}
 
 interface FeedbackResponse {
   success: boolean
@@ -32,53 +27,7 @@ interface FeedbackResponse {
   error?: string
 }
 
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
-
-function validateBody(body: unknown): { valid: true; data: FeedbackBody } | { valid: false; error: string } {
-  if (typeof body !== 'object' || body === null) {
-    return { valid: false, error: 'Body must be a JSON object' }
-  }
-  const b = body as Record<string, unknown>
-
-  if (typeof b.messageId !== 'string' || b.messageId.trim().length === 0) {
-    return { valid: false, error: 'messageId is required (string)' }
-  }
-
-  if (b.rating !== undefined) {
-    if (![1, 2, 3, 4, 5].includes(b.rating as number)) {
-      return { valid: false, error: 'rating must be 1, 2, 3, 4, or 5' }
-    }
-  }
-
-  if (b.thumbsUp !== undefined && typeof b.thumbsUp !== 'boolean') {
-    return { valid: false, error: 'thumbsUp must be a boolean' }
-  }
-
-  if (b.rating === undefined && b.thumbsUp === undefined) {
-    return { valid: false, error: 'At least one of rating or thumbsUp is required' }
-  }
-
-  if (b.comment !== undefined && typeof b.comment !== 'string') {
-    return { valid: false, error: 'comment must be a string' }
-  }
-
-  // Sanitize comment length
-  if (typeof b.comment === 'string' && b.comment.length > 500) {
-    b.comment = b.comment.slice(0, 500)
-  }
-
-  return {
-    valid: true,
-    data: {
-      messageId: (b.messageId as string).trim(),
-      rating: b.rating as 1 | 2 | 3 | 4 | 5 | undefined,
-      thumbsUp: b.thumbsUp as boolean | undefined,
-      comment: b.comment as string | undefined,
-    },
-  }
-}
+type FeedbackBody = z.infer<typeof feedbackBodySchema>
 
 // ---------------------------------------------------------------------------
 // Demo mode quality stats (static, returned when no records exist)
@@ -99,18 +48,21 @@ function buildDemoStats(): Record<string, unknown> {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest): Promise<NextResponse<FeedbackResponse>> {
-  let body: unknown
+  let raw: unknown
   try {
-    body = await req.json()
+    raw = await req.json()
   } catch {
     return NextResponse.json(
-      { success: false, updatedQuality: null, optimizerStats: {}, degradingIntents: [], demo: false },
+      { success: false, updatedQuality: null, optimizerStats: {}, degradingIntents: [], demo: false, error: 'Invalid JSON body' },
       { status: 400 }
     )
   }
 
-  const validation = validateBody(body)
-  if (!validation.valid) {
+  const parsed = feedbackBodySchema.safeParse(raw)
+  if (!parsed.success) {
+    const message = parsed.error.errors
+      .map((e) => `${e.path.join('.') || 'body'}: ${e.message}`)
+      .join(', ')
     return NextResponse.json(
       {
         success: false,
@@ -118,13 +70,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
         optimizerStats: {},
         degradingIntents: [],
         demo: false,
-        error: validation.error,
+        error: message,
       },
       { status: 422 }
     )
   }
 
-  const { messageId, rating, thumbsUp } = validation.data
+  const { messageId, rating, thumbsUp } = parsed.data
   const isDemo = process.env.DEMO_MODE === 'true' || !process.env.DATABASE_URL
 
   if (isDemo) {
@@ -153,11 +105,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
   const optimizerStats = getOptimizerStats()
   const qualityStats = getQualityStats()
   const degradingIntents = getDegradingIntents()
-
-  // If comment exists, store it (future: persist to DB when available)
-  if (validation.data.comment) {
-    // TODO: persist comment to DB when available
-  }
 
   // Compute a normalized quality number for the response
   let updatedQuality: number | null = null

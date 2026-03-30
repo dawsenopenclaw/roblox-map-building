@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
@@ -33,9 +33,12 @@ export default function AgeGatePage() {
   const [loading, setLoading] = useState(false)
 
   // Cap the max selectable date to today — prevents future-date bypass.
-  // useMemo ensures the value is stable between server and client renders,
-  // eliminating the hydration mismatch caused by new Date() differing across renders.
-  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  // Populated in useEffect so the value is only set on the client,
+  // eliminating the hydration mismatch caused by new Date() differing between server and client.
+  const [today, setToday] = useState('')
+  useEffect(() => {
+    setToday(new Date().toISOString().split('T')[0])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

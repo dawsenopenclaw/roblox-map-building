@@ -21,7 +21,13 @@ export async function POST(req: NextRequest) {
 
     const user = await db.user.findUnique({
       where: { clerkId },
-      include: { creatorAccount: true },
+      select: {
+        id: true,
+        email: true,
+        creatorAccount: {
+          select: { stripeAccountId: true },
+        },
+      },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 

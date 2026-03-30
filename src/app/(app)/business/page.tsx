@@ -489,8 +489,8 @@ function TeamTab({ team }: { team: TeamData }) {
             <div className="flex items-center justify-between sm:justify-start gap-2">
               <StatusBadge status={member.status} />
               {member.role !== 'OWNER' && (
-                <button className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-gray-500 hover:text-white">
-                  <MoreHorizontal size={14} />
+                <button className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-gray-500 hover:text-white" aria-label={`More options for ${member.displayName ?? 'member'}`}>
+                  <MoreHorizontal size={14} aria-hidden="true" />
                 </button>
               )}
             </div>

@@ -30,7 +30,18 @@ export async function GET() {
       select: {
         id: true,
         email: true,
-        creatorAccount: true,
+        creatorAccount: {
+          select: {
+            id: true,
+            stripeAccountId: true,
+            chargesEnabled: true,
+            payoutsEnabled: true,
+            detailsSubmitted: true,
+            pendingBalanceCents: true,
+            totalEarnedCents: true,
+            lastPayoutAt: true,
+          },
+        },
       },
     })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })

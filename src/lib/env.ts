@@ -98,6 +98,8 @@ const serverSchema = z.object({
   // ── Security / Infra ──────────────────────────────────────────────────────
   CRON_SECRET: prodRequired('CRON_SECRET'),
   WORKER_SECRET: z.string().optional(),
+  // HMAC key used by hashSecret() / hashToken() — must be ≥32 random chars
+  TOKEN_HASH_SECRET: prodRequired('TOKEN_HASH_SECRET'),
   ADMIN_EMAILS: z.string().optional(),
   ALLOWED_ORIGINS: z.string().optional(),
 
@@ -190,6 +192,7 @@ export function getServerEnv(): ServerEnv {
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? '',
       RESEND_API_KEY: process.env.RESEND_API_KEY ?? '',
       CRON_SECRET: process.env.CRON_SECRET ?? '',
+      TOKEN_HASH_SECRET: process.env.TOKEN_HASH_SECRET ?? '',
     } as ServerEnv
     return _serverEnv
   }

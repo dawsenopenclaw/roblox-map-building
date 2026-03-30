@@ -80,7 +80,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
       {/* Lock overlay for locked achievements */}
       {!unlocked && (
         <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-white/[0.08] flex items-center justify-center">
-          <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -114,7 +114,7 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
       {/* Text */}
       <div className="flex-1">
         <p className={`text-sm font-bold leading-tight ${unlocked ? 'text-white' : 'text-gray-400'}`}>{name}</p>
-        <p className="text-[11px] text-gray-600 mt-0.5 leading-snug line-clamp-2">{description}</p>
+        <p className="text-[11px] text-gray-400 mt-0.5 leading-snug line-clamp-2">{description}</p>
       </div>
 
       {/* XP / date */}
@@ -129,14 +129,14 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
           +{xp} XP
         </span>
         {unlocked && unlockedDate && (
-          <span className="text-[10px] text-gray-600">{unlockedDate}</span>
+          <span className="text-[10px] text-gray-400">{unlockedDate}</span>
         )}
       </div>
 
       {/* Progress bar for in-progress */}
       {!unlocked && target && (
         <div>
-          <div className="flex justify-between text-[10px] text-gray-600 mb-1">
+          <div className="flex justify-between text-[10px] text-gray-400 mb-1">
             <span>{current ?? 0} / {target}</span>
             <span>{pct}%</span>
           </div>
@@ -174,7 +174,7 @@ function CategorySection({
           <span className="text-lg">{meta.icon}</span>
           <h2 className="text-sm font-bold text-white">{category}</h2>
         </div>
-        <span className="text-xs text-gray-500">{unlocked}/{total} unlocked</span>
+        <span className="text-xs text-gray-400">{unlocked}/{total} unlocked</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {achievements.map((a) => (
@@ -210,12 +210,12 @@ export default function AchievementsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-white">Achievements</h1>
-          <p className="text-gray-500 text-sm mt-1">{unlockedCount} of {total} unlocked &mdash; {(DEMO_XP + totalXp).toLocaleString()} XP total</p>
+          <p className="text-gray-400 text-sm mt-1">{unlockedCount} of {total} unlocked &mdash; {(DEMO_XP + totalXp).toLocaleString()} XP total</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="text-right">
             <p className="text-3xl font-black tabular-nums" style={{ color: GOLD }}>{progressPct}%</p>
-            <p className="text-[11px] text-gray-600">complete</p>
+            <p className="text-[11px] text-gray-400">complete</p>
           </div>
           <TierBadge tier={DEMO_TIER} size="md" />
         </div>
@@ -252,7 +252,7 @@ export default function AchievementsPage() {
             >
               <span className="text-xl">{meta.icon}</span>
               <p className="text-sm font-bold text-white mt-2">{cat}</p>
-              <p className="text-[11px] text-gray-500">{catUnlocked}/{catAch.length}</p>
+              <p className="text-[11px] text-gray-400">{catUnlocked}/{catAch.length}</p>
               <div className="mt-2 h-1 rounded-full bg-white/[0.08] overflow-hidden">
                 <div
                   className="h-full rounded-full"
@@ -293,7 +293,7 @@ export default function AchievementsPage() {
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">{CATEGORY_META[cat].icon}</span>
                 <h2 className="text-sm font-bold text-white">{cat}</h2>
-                <span className="text-xs text-gray-600 ml-1">
+                <span className="text-xs text-gray-400 ml-1">
                   {byCategory[cat].filter((a) => a.unlocked).length}/{byCategory[cat].length}
                 </span>
               </div>

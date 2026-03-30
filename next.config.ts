@@ -1,5 +1,33 @@
 import type { NextConfig } from 'next'
 
+// Content-Security-Policy directive builder.
+// Keep it strict — add sources only when a real integration requires it.
+// 'unsafe-inline' for style-src is required by Tailwind's runtime injection in dev;
+// in production, switch to a nonce-based approach once SSR nonce support is wired up.
+const cspDirectives = [
+  // Only load scripts from our own origin and Clerk's CDN
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' https://clerk.forjegames.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+  // Styles: self + inline (Tailwind) + Google Fonts
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Fonts
+  "font-src 'self' https://fonts.gstatic.com",
+  // Images: self + Clerk avatars + Roblox CDN + S3/R2 + Meshy thumbnails
+  "img-src 'self' data: blob: https://img.clerk.com https://images.clerk.dev https://*.rbxcdn.com https://thumbnails.roblox.com https://*.amazonaws.com https://*.r2.dev https://assets.meshy.ai",
+  // Connections: self + API calls to Anthropic, Gemini, Fal, Meshy, Stripe, Clerk
+  "connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://api.anthropic.com https://generativelanguage.googleapis.com https://queue.fal.run https://api.meshy.ai https://api.stripe.com https://*.ingest.sentry.io wss://*.clerk.accounts.dev",
+  // Frames: Stripe only (for Stripe Elements / payment UI)
+  "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
+  // Workers: none
+  "worker-src 'self' blob:",
+  // Block all object/embed elements
+  "object-src 'none'",
+  // Block base tag overrides
+  "base-uri 'self'",
+  // Upgrade insecure requests in production
+  "upgrade-insecure-requests",
+].join('; ')
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -12,6 +40,7 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           // microphone=(self) allows voice input feature; camera and geolocation are denied
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Content-Security-Policy', value: cspDirectives },
         ],
       },
     ]

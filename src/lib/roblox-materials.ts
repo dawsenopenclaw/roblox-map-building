@@ -344,3 +344,13 @@ export function buildPartColorLuau(varName: string, spec: PartColorSpec): string
   }
   return lines.join('\n')
 }
+
+// ---------------------------------------------------------------------------
+// Flat array — for use in property-panel pickers and luau-codegen
+// ---------------------------------------------------------------------------
+
+/** All Roblox materials as a flat array of { name, enum } entries */
+export const ROBLOX_MATERIALS = Object.values(RobloxMaterial).map(mat => ({
+  name: mat,
+  enum: `Enum.Material.${mat}`,
+})) as ReadonlyArray<{ name: string; enum: string }>

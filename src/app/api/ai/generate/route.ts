@@ -14,6 +14,7 @@ import { auth } from '@clerk/nextjs/server'
 import { spendTokens } from '@/lib/tokens-server'
 import { requireTier } from '@/lib/tier-guard'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
+import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { z } from 'zod'
 
 const bodySchema = z.object({
@@ -121,6 +122,19 @@ export async function POST(req: NextRequest) {
     const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
     authedUserId = userId
+
+    // Rate limit: 20 AI generate requests per minute per user
+    try {
+      const rl = await aiRateLimit(userId)
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: 'Too many requests. Please wait before submitting another generation.' },
+          { status: 429, headers: rateLimitHeaders(rl) },
+        )
+      }
+    } catch {
+      // Redis unavailable — allow through rather than hard-fail
+    }
   }
 
   let prompt: string
