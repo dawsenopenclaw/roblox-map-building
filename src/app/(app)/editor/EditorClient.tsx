@@ -2970,7 +2970,7 @@ export function EditorClient() {
       }
 
       setMessages((prev) => [...prev, userMsg, statusMsg])
-      showToast({ variant: 'info', title: 'Building…', description: 'ForjeAI is generating your build.', duration: 4000 })
+      showToast({ variant: 'info', title: 'Building…', description: 'ForjeAI is generating your build.', duration: 4000, loading: true })
 
       try {
         let responseText: string | null = null
@@ -3096,6 +3096,9 @@ export function EditorClient() {
           title: 'Build complete!',
           description: buildResult ? 'Copy the Luau code to import into Roblox Studio.' : 'AI response ready.',
           duration: 5000,
+          ...(buildResult ? {
+            action: { label: 'View code', onClick: () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) },
+          } : {}),
         })
 
         // If Studio is actually connected (not demo), send Luau code to Studio for execution
