@@ -367,7 +367,7 @@ export default function PricingClient() {
                 {/* CTA */}
                 <Link
                   href={tier.ctaHref}
-                  className={`block text-center font-bold py-3 rounded-xl text-sm mb-7 transition-all ${
+                  className={`block text-center font-bold py-3 rounded-xl text-sm transition-all ${
                     tier.highlight
                       ? 'text-black hover:opacity-90 hover:scale-[1.02]'
                       : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
@@ -380,6 +380,10 @@ export default function PricingClient() {
                 >
                   {tier.cta}
                 </Link>
+                {tier.priceMonthly > 0 && (
+                  <p className="text-center text-xs text-gray-500 mt-2 mb-5">Cancel anytime. No hidden fees.</p>
+                )}
+                {tier.priceMonthly === 0 && <div className="mb-7" />}
 
                 {/* Divider */}
                 <div className={`h-px mb-5 ${tier.highlight ? 'bg-[#FFB81C]/20' : 'bg-white/5'}`} />

@@ -1,4 +1,5 @@
 import React from 'react'
+import { redirect } from 'next/navigation'
 import { AdminShell } from '@/components/admin/AdminShell'
 
 export const metadata = {
@@ -10,23 +11,19 @@ export const metadata = {
 const OWNER_EMAIL = process.env.ADMIN_EMAIL ?? ''
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Try to get Clerk session — if unavailable or unconfigured, fall through to demo mode.
+  // Require a valid Clerk session — no demo fallback for admin routes.
   let clerkUserId: string | null = null
   try {
     const { auth } = await import('@clerk/nextjs/server')
     const session = await auth()
     clerkUserId = session.userId ?? null
   } catch {
-    // Clerk not configured or unavailable — render in demo mode.
+    // Clerk unavailable — treat as unauthenticated.
   }
 
-  // No session → demo mode (unauthenticated access, for local dev / demo)
+  // No session → redirect to sign-in. Never render admin UI for unauthenticated users.
   if (!clerkUserId) {
-    return (
-      <AdminShell user={{ id: 'demo', email: 'demo@forjegames.com', role: 'ADMIN' }} isDemo>
-        {children}
-      </AdminShell>
-    )
+    redirect('/sign-in')
   }
 
   // Try DB user lookup
@@ -41,15 +38,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // DB unavailable — fall through to Clerk email check
   }
 
-  // DB user found — enforce ADMIN role
+  // DB user found — enforce ADMIN role strictly.
   if (dbUser) {
     if (dbUser.role !== 'ADMIN' && dbUser.email !== OWNER_EMAIL) {
-      // Non-admin logged-in user: show demo mode rather than crashing
-      return (
-        <AdminShell user={{ id: dbUser.id, email: dbUser.email, role: dbUser.role }} isDemo>
-          {children}
-        </AdminShell>
-      )
+      redirect('/sign-in')
     }
     return (
       <AdminShell user={{ id: dbUser.id, email: dbUser.email, role: dbUser.role }}>
@@ -71,7 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // Clerk SDK unavailable
   }
 
-  if (clerkEmail === OWNER_EMAIL) {
+  if (clerkEmail === OWNER_EMAIL && OWNER_EMAIL !== '') {
     return (
       <AdminShell user={{ id: clerkUserId, email: clerkEmail, role: 'ADMIN' }}>
         {children}
@@ -79,10 +71,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     )
   }
 
-  // Authenticated but not admin and no DB record — render demo mode
-  return (
-    <AdminShell user={{ id: clerkUserId, email: clerkEmail ?? 'unknown@forjegames.com', role: 'USER' }} isDemo>
-      {children}
-    </AdminShell>
-  )
+  // Authenticated but not admin and no DB record — deny access.
+  redirect('/sign-in')
 }

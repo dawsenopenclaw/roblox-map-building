@@ -32,6 +32,12 @@ export async function processDonation({
 
   if (donationAmountCents < 50) return null // Stripe minimum transfer is $0.50
 
+  // Idempotency guard — if a donation for this purchase already exists, skip creation
+  const existingDonation = await db.charityDonation.findFirst({
+    where: { sourcePurchaseId },
+  })
+  if (existingDonation) return null
+
   const donationRecord = await db.charityDonation.create({
     data: {
       userId,

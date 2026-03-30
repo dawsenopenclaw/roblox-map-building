@@ -41,6 +41,7 @@ export function captureClientEvent(
   userContext?: UserContext
 ): void {
   if (typeof window === 'undefined') return
+  if (userContext?.isUnder13 === true) return
   try {
     import('posthog-js').then(({ default: posthog }) => {
       posthog.capture(event, {

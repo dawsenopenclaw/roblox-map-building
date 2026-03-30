@@ -3214,6 +3214,7 @@ export function EditorClient() {
                     placeholder={listening ? 'Listening...' : 'Describe what to build...'}
                     disabled={loading}
                     rows={1}
+                    maxLength={4000}
                     className="flex-1 bg-transparent text-sm text-white placeholder-[#808080] focus:outline-none resize-none py-1.5 disabled:opacity-50"
                     style={{ minHeight: '32px', maxHeight: '120px' }}
                   />

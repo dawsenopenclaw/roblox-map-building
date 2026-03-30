@@ -8,16 +8,17 @@ const TARGET_TEXT = 'FORJEGAMES'
 const LETTERS = TARGET_TEXT.split('')
 
 // Phase timing (ms from animation start)
-const PHASE1_END        = 500    // void w/ ember
-const PHASE2_START      = 500    // scan line + letter burn-in
-const PHASE2_END        = 1800   // all letters revealed
-const PHASE3_START      = 1800   // holographic pulse
-const PHASE3_END        = 2500
-const PHASE4_START      = 2500   // progress forge
-const PHASE4_END        = 3500
-const PHASE5_START      = 3500   // ignition exit
-const PHASE5_QUENCH     = 3600   // white flash done
-const EXIT_COMPLETE     = 4000   // total exit duration
+// Total duration: ~2500ms (first visit) — returning users skip via sessionStorage
+const PHASE1_END        = 300    // void w/ ember
+const PHASE2_START      = 300    // scan line + letter burn-in
+const PHASE2_END        = 1100   // all letters revealed
+const PHASE3_START      = 1100   // holographic pulse
+const PHASE3_END        = 1600
+const PHASE4_START      = 1600   // progress forge
+const PHASE4_END        = 2200
+const PHASE5_START      = 2200   // ignition exit
+const PHASE5_QUENCH     = 2300   // white flash done
+const EXIT_COMPLETE     = 2500   // total exit duration
 
 const STAGE_LABELS = [
   { threshold: 0,   label: 'Heating the forge...' },

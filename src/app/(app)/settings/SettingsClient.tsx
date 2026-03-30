@@ -223,6 +223,7 @@ function ProfileTab() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={50}
               className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors"
             />
           </div>

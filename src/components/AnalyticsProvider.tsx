@@ -17,7 +17,7 @@
  *   </PostHogProvider>
  */
 
-import { createContext, useEffect, useRef } from 'react'
+import { createContext, useEffect, useMemo, useRef } from 'react'
 import type { UserContext } from '@/lib/analytics-client'
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -64,7 +64,10 @@ export function AnalyticsProvider({
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
   const sessionStartRef = useRef<number>(Date.now())
 
-  const userContext: UserContext = { tier, role, streak, isUnder13 }
+  const userContext: UserContext = useMemo(
+    () => ({ tier, role, streak, isUnder13 }),
+    [tier, role, streak, isUnder13]
+  )
 
   // ── Identify / reset on user change ──────────────────────────────────────
   useEffect(() => {

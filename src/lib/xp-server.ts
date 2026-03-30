@@ -103,21 +103,24 @@ export async function grantXp(
     baseXp = Math.min(baseXp, remaining)
   }
 
-  const newTotal = userXp.totalXp + baseXp
-  const newTier = getTier(newTotal)
+  // Compute projected total for tier calculation only (not written directly)
+  const projectedTotal = userXp.totalXp + baseXp
+  const newTier = getTier(projectedTotal)
   const tierChanged = newTier !== userXp.tier
-
-  // Only count daily usage for events that are subject to the cap
-  const newDailyXp = bypassCap
-    ? (isNewDay ? 0 : userXp.dailyXpToday)
-    : (isNewDay ? baseXp : userXp.dailyXpToday + baseXp)
 
   const updatedXp = await db.userXP.update({
     where: { id: userXp.id },
     data: {
-      totalXp: newTotal,
+      // Use atomic increment to avoid read-then-write race condition
+      totalXp: { increment: baseXp },
       tier: newTier,
-      dailyXpToday: newDailyXp,
+      // For cap-subject events: increment on same day, reset to baseXp on new day
+      // For bypass events: reset to 0 on new day, leave unchanged otherwise
+      dailyXpToday: bypassCap
+        ? (isNewDay ? 0 : userXp.dailyXpToday)
+        : isNewDay
+          ? baseXp
+          : { increment: baseXp },
       dailyXpDate: today,
       xpEvents: {
         create: {
@@ -128,6 +131,10 @@ export async function grantXp(
       },
     },
   })
+
+  const newDailyXp = bypassCap
+    ? (isNewDay ? 0 : userXp.dailyXpToday)
+    : (isNewDay ? baseXp : userXp.dailyXpToday + baseXp)
 
   return {
     awarded: baseXp,

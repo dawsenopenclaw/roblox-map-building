@@ -22,6 +22,7 @@ export async function GET() {
       db.dailyCostSnapshot.findMany({
         where: { date: { gte: ninetyDaysAgo } },
         orderBy: { date: 'asc' },
+        take: 500,
         select: { date: true, totalCostUsdMicro: true, totalRevenueMicro: true, marginMicro: true },
       }),
       db.templatePurchase.groupBy({

@@ -10,6 +10,7 @@ export async function GET() {
     const templates = await db.template.findMany({
       where: { status: 'PENDING_REVIEW', deletedAt: null },
       orderBy: { createdAt: 'asc' },
+      take: 100,
       select: {
         id: true,
         title: true,

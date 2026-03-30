@@ -31,6 +31,9 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "_cleanup": {
+    "socket.io-client": "UNUSED — not imported anywhere in src/. Remove with: npm uninstall socket.io-client @types/socket.io-client"
+  },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",
     "@prisma/client": "^6.0.0",

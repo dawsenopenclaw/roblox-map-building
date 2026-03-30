@@ -49,7 +49,7 @@ export default function AgeGatePage() {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dateOfBirth: new Date(dateOfBirth).toISOString() }),
+        body: JSON.stringify({ dateOfBirth: new Date(`${dateOfBirth}T00:00:00Z`).toISOString() }),
       })
 
       const data = await res.json()
@@ -103,6 +103,7 @@ export default function AgeGatePage() {
               <input
                 id="dob"
                 type="date"
+                min="1900-01-01"
                 max={today}
                 value={dateOfBirth}
                 onChange={(e) => { setDateOfBirth(e.target.value); setError('') }}

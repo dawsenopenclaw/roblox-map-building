@@ -167,7 +167,7 @@ function buildDemoAnalysis(filename: string): ImageAnalysisResult {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
-  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+  if (process.env.DEMO_MODE !== 'true') {
     let userId: string | null = null
     try {
       const session = await auth()

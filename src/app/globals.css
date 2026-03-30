@@ -54,11 +54,11 @@ button, a, [role="button"] {
   --warning:             #F59E0B;
   --info:                #60A5FA;
 
-  /* Text — lots of white and grey */
-  --foreground:          #FFFFFF;   /* pure white — headings             */
+  /* Text — slightly off-white (matches Tailwind foreground token) */
+  --foreground:          #F9FAFB;   /* off-white — headings (aligned with Tailwind) */
   --foreground-soft:     #E5E7EB;   /* soft white — body text            */
-  --muted:               #B0B0B0;   /* light grey — secondary text       */
-  --muted-subtle:        #808080;   /* medium grey — placeholders        */
+  --muted:               #9CA3AF;   /* grey — secondary text (aligned with Tailwind) */
+  --muted-subtle:        #6B7280;   /* medium grey — placeholders        */
 
   /* Legacy aliases */
   --accent:              var(--gold-light);

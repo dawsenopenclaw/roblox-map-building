@@ -102,6 +102,7 @@ model Subscription {
   @@index([stripeCustomerId])
   @@index([userId])
   @@index([status])
+  @@index([status, currentPeriodEnd])
 }
 
 enum SubscriptionTier {
@@ -177,8 +178,10 @@ model CharityDonation {
   sourcePurchaseId String?
   status           DonationStatus @default(PENDING)
   createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   processedAt      DateTime?
 
+  @@unique([sourcePurchaseId])
   @@index([userId])
   @@index([createdAt])
   @@index([status])
@@ -210,6 +213,7 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@index([resource, resourceId])
+  @@index([resource, resourceId, createdAt])
 }
 
 // ─── API Usage Tracking ────────────────────────────────────────────────────
@@ -652,11 +656,13 @@ model TeamInvite {
   expiresAt  DateTime
   acceptedAt DateTime?
   createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@index([teamId])
   @@index([token])
   @@index([email])
   @@index([status])
+  @@index([expiresAt])
 }
 
 enum InviteStatus {
@@ -821,6 +827,7 @@ model Referral {
   // Stored as cents (Int) to avoid float precision issues
   commissionCents Int            @default(0)
   createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   convertedAt     DateTime?
 
   @@unique([referrerId, referredId])
@@ -864,6 +871,7 @@ model Notification {
   readAt    DateTime?
   actionUrl String?
   createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@index([userId])
   @@index([userId, read])
@@ -901,6 +909,7 @@ model CreatorEarning {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  @@unique([templateId, buyerId])
   @@index([userId])
   @@index([createdAt])
   @@index([userId, status])

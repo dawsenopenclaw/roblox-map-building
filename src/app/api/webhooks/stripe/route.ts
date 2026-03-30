@@ -282,8 +282,15 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch (err) {
-    // Return 200 anyway — Stripe will retry if we return 5xx
-    // Log to Sentry in production
+    const message = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[stripe-webhook] Unhandled error processing event', {
+      eventId: event.id,
+      eventType: event.type,
+      message,
+      stack,
+    })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 
   return NextResponse.json({ received: true })

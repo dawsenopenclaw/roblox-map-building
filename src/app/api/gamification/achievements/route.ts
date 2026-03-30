@@ -39,6 +39,7 @@ export async function GET() {
       select: {
         id: true,
         userAchievements: {
+          take: 1000,
           select: {
             unlockedAt: true,
             achievement: { select: { slug: true } },

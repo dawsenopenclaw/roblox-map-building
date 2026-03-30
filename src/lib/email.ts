@@ -62,7 +62,7 @@ export async function sendWelcomeEmail({
   return getResend().emails.send({
     from: FROM,
     to: email,
-    subject: `Welcome to ForjeGames, ${name}! Here are 100 free tokens`,
+    subject: `Welcome to ForjeGames, ${name}! Here are 1,000 free tokens`,
     react: WelcomeEmail({ name }),
   })
 }

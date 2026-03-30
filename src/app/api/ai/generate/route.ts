@@ -99,7 +99,7 @@ async function tryHonoGenerate(
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+  if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
