@@ -157,6 +157,7 @@ async function verifyCondition(
         where: { userId },
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
+        take: 1000,
       })
       const counts: Record<string, number> = {}
       for (const b of builds) {
@@ -171,6 +172,7 @@ async function verifyCondition(
         where: { userId },
         select: { createdAt: true },
         orderBy: { createdAt: 'asc' },
+        take: 1000,
       })
       // Check for any pair of Sat+Sun in the same ISO week
       const weekendDays: Record<string, { sat: boolean; sun: boolean }> = {}

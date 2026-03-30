@@ -34,13 +34,16 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 const GOLD = '#D4AF37'
 
-const DEMO_ACTIVITY: ActivityItem[] = [
-  { id: '1', icon: '⚡', label: 'AI Generation completed', detail: 'Stone castle entrance arch — 12 tokens', ts: Date.now() - 1000 * 60 * 8, type: 'build' },
-  { id: '2', icon: '🏗️', label: 'New project created', detail: 'Medieval Kingdom v2', ts: Date.now() - 1000 * 60 * 34, type: 'project' },
-  { id: '3', icon: '🛒', label: 'Marketplace asset saved', detail: 'Fantasy Tree Pack — Free', ts: Date.now() - 1000 * 60 * 61, type: 'marketplace' },
-  { id: '4', icon: '🏆', label: 'Achievement unlocked', detail: 'First Build — 50 XP earned', ts: Date.now() - 1000 * 60 * 120, type: 'achievement' },
-  { id: '5', icon: '💰', label: 'Tokens purchased', detail: '500 tokens added to balance', ts: Date.now() - 1000 * 60 * 240, type: 'token' },
-]
+function buildDemoActivity(): ActivityItem[] {
+  const now = Date.now()
+  return [
+    { id: '1', icon: '⚡', label: 'AI Generation completed', detail: 'Stone castle entrance arch — 12 tokens', ts: now - 1000 * 60 * 8, type: 'build' },
+    { id: '2', icon: '🏗️', label: 'New project created', detail: 'Medieval Kingdom v2', ts: now - 1000 * 60 * 34, type: 'project' },
+    { id: '3', icon: '🛒', label: 'Marketplace asset saved', detail: 'Fantasy Tree Pack — Free', ts: now - 1000 * 60 * 61, type: 'marketplace' },
+    { id: '4', icon: '🏆', label: 'Achievement unlocked', detail: 'First Build — 50 XP earned', ts: now - 1000 * 60 * 120, type: 'achievement' },
+    { id: '5', icon: '💰', label: 'Tokens purchased', detail: '500 tokens added to balance', ts: now - 1000 * 60 * 240, type: 'token' },
+  ]
+}
 
 const CHECKLIST = [
   { id: 'profile', label: 'Complete your profile', href: '/settings', done: false },
@@ -201,7 +204,7 @@ function CheckItem({
 
 export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent }: Props) {
   const { data: tokenData } = useSWR<TokenData>('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
-  const [activity] = useState<ActivityItem[]>(DEMO_ACTIVITY)
+  const [activity] = useState<ActivityItem[]>(() => buildDemoActivity())
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [currentDate, setCurrentDate] = useState('')
 

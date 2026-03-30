@@ -285,7 +285,7 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-white">Right to Opt-Out of Sale/Sharing:</strong> We do not
               sell personal information. We do not share personal information for cross-context
-              behavioral advertising without consent. You may still opt out via the cookie preferences banner at the bottom of the page.
+              behavioral advertising without consent. Contact privacy@forjegames.com to update your cookie preferences.
             </li>
             <li>
               <strong className="text-white">Right to Limit Sensitive PI Use:</strong> Limit our use
@@ -395,7 +395,7 @@ export default function PrivacyPage() {
         </div>
         <p className="mt-4">
           EU/UK users are shown a cookie consent banner on first visit. You can update your
-          preferences at any time via the cookie preferences banner at the bottom of the page.
+          preferences at any time by contacting privacy@forjegames.com.
         </p>
       </section>
 

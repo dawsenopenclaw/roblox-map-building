@@ -64,7 +64,10 @@ export default function AgeGatePage() {
         return
       }
 
-      track('onboarding_step_completed', { step: 'age_gate', stepIndex: 1 })
+      // Skip analytics for under-13 users (COPPA compliance)
+      if (!data.isUnder13) {
+        track('onboarding_step_completed', { step: 'age_gate', stepIndex: 1 })
+      }
 
       // API returns: under-13 → /onboarding/parental-consent, 13+ → /onboarding/wizard
       // Override any old redirect that pointed straight to /dashboard.

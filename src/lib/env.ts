@@ -7,6 +7,7 @@
  *   - Runtime production: hard throw on missing critical vars
  *   - Runtime dev/test: warn and fall back so local boot still works
  */
+import 'server-only'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       createdAt={(user as { createdAt?: Date } | null)?.createdAt?.toISOString()}
       displayName={(user as { displayName?: string | null } | null)?.displayName ?? undefined}
     >
-      <AppShell><Suspense fallback={<div />}>{children}</Suspense></AppShell>
+      <AppShell>{children}</AppShell>
     </AnalyticsProvider>
   )
 }

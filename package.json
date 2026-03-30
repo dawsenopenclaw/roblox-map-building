@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
-    "dev:web": "next dev",
+    "dev:web": "next dev --turbo",
     "dev:api": "npm run dev --workspace=apps/api",
     "postinstall": "prisma generate",
     "build": "next build",

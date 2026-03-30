@@ -20,7 +20,7 @@ const LEGAL_LINKS = [
   { href: '/dmca', label: 'DMCA' },
   { href: '/acceptable-use', label: 'Acceptable Use' },
   { href: '/terms#charity', label: 'Charity Policy' },
-  { href: '/privacy#ccpa', label: 'Do Not Sell My Info' },
+  { href: '/privacy#ccpa', label: 'Do Not Sell My Personal Information' },
 ]
 
 const COMMUNITY_LINKS = [

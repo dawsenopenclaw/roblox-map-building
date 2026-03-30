@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import {
@@ -91,7 +91,7 @@ function Toggle({
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-function AvatarUpload({ name }: { name: string }) {
+function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
 
@@ -105,6 +105,16 @@ function AvatarUpload({ name }: { name: string }) {
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      onError?.('Please upload an image file.')
+      e.target.value = ''
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      onError?.('File too large. Max 5MB.')
+      e.target.value = ''
+      return
+    }
     setPreview(URL.createObjectURL(file))
   }
 

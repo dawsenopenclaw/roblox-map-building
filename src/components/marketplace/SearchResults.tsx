@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Package, RefreshCw, TrendingUp, Search } from 'lucide-react'
 import { Star } from 'lucide-react'
 import type { TemplateSearchItem } from './types'

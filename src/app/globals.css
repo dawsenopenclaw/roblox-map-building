@@ -545,9 +545,9 @@ body {
 /* ─── Top Loading Bar ─────────────────────────────────────────────────────────── */
 
 @keyframes top-bar-progress {
-  0%   { width: 0%;   opacity: 1; }
-  65%  { width: 85%;  opacity: 1; }
-  100% { width: 100%; opacity: 0; }
+  0%   { transform: scaleX(0);    opacity: 1; }
+  65%  { transform: scaleX(0.85); opacity: 1; }
+  100% { transform: scaleX(1);    opacity: 0; }
 }
 
 @keyframes top-bar-shine {
@@ -556,16 +556,18 @@ body {
 }
 
 .top-loading-bar {
-  position:   fixed;
-  top:        0;
-  left:       0;
-  height:     2px;
-  background: linear-gradient(90deg, #D4AF37, #FFD97D, #FFB81C);
-  z-index:    9999;
-  animation:  top-bar-progress 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-  box-shadow: 0 0 8px rgba(255, 184, 28, 0.65), 0 0 20px rgba(255, 184, 28, 0.3);
-  overflow:   hidden;
-  pointer-events: none;
+  position:         fixed;
+  top:              0;
+  left:             0;
+  height:           2px;
+  width:            100%;
+  background:       linear-gradient(90deg, #D4AF37, #FFD97D, #FFB81C);
+  z-index:          9999;
+  animation:        top-bar-progress 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: left center;
+  box-shadow:       0 0 8px rgba(255, 184, 28, 0.65), 0 0 20px rgba(255, 184, 28, 0.3);
+  overflow:         hidden;
+  pointer-events:   none;
 }
 
 .top-loading-bar::after {
