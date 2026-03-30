@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import {
   planBuildAssets,
   extractSearchTerms,
@@ -803,6 +804,11 @@ interface ChatResponsePayload {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: { message?: unknown; conversationId?: unknown }
 
   try {
@@ -868,8 +874,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const communityBlock  = buildCommunityAssetSection(communityAssets)
 
   // Simulated thinking delay: 1000–1800ms scaled by message complexity
-  // Skipped for mesh/texture/building intents which have real async API calls
-  if (intent !== 'mesh' && intent !== 'texture' && intent !== 'building') {
+  // Gated behind DEMO_SLEEP=true so production can disable it without a code change.
+  // Skipped for mesh/texture/building intents which have real async API calls.
+  if (process.env.DEMO_SLEEP === 'true' && intent !== 'mesh' && intent !== 'texture' && intent !== 'building') {
     const delayMs = Math.min(1800, 1000 + Math.floor(message.length * 1.5))
     await sleep(delayMs)
   }

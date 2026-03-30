@@ -152,6 +152,11 @@ function handleCorsPreFlight(request: NextRequest): NextResponse | null {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, request) => {
+  // ── DEMO_MODE production guard ─────────────────────────────────────────────
+  if (process.env.DEMO_MODE === 'true' && process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_PROD !== 'true') {
+    console.warn('[middleware] DEMO_MODE is enabled in production — auth bypassed')
+  }
+
   try {
     // ── CORS preflight — must run before any redirect or auth check ────────────
     const preFlightResponse = handleCorsPreFlight(request)

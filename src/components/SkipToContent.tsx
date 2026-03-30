@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * SkipToContent — Skip navigation link for keyboard users.
  * Renders visually hidden until focused, then jumps to #main-content.

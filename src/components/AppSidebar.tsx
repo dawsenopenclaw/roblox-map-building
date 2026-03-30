@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { TierBadge } from '@/components/TierBadge'
 import type { Tier } from '@/components/TierBadge'
 
@@ -199,15 +200,19 @@ function SectionGroup({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-// Placeholder user data — swap for real auth hook when available
-const MOCK_USER = {
-  initials: 'FG',
-  name: 'ForgeUser',
-  tier: 'BUILDER' as Tier,
-}
-
 export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname()
+  const { user } = useUser()
+
+  const displayName = user?.firstName
+    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
+    : user?.username ?? 'Demo User'
+
+  const initials = user?.firstName
+    ? `${user.firstName[0]}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : (user?.username?.[0]?.toUpperCase() ?? 'FG')
+
+  const tier: Tier = 'BUILDER'
 
   return (
     <>
@@ -279,14 +284,14 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
               }}
               aria-hidden="true"
             >
-              {MOCK_USER.initials}
+              {initials}
             </div>
 
             {/* Name + tier */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">{MOCK_USER.name}</p>
+              <p className="text-xs font-semibold text-white truncate">{displayName}</p>
               <div className="mt-0.5">
-                <TierBadge tier={MOCK_USER.tier} size="sm" showIcon />
+                <TierBadge tier={tier} size="sm" showIcon />
               </div>
             </div>
 

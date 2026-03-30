@@ -339,7 +339,7 @@ export default function WelcomePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#080B1A] text-white">
+    <div className="text-white">
       {showConfetti && <Confetti />}
 
       <div className="max-w-2xl mx-auto px-4 py-12 sm:py-16">

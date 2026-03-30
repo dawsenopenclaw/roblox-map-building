@@ -232,7 +232,7 @@ export function getDemoLeaderboard(): ReferralLeaderboardEntry[] {
     { userId: 'u_03', username: 'MapBuilder99',      avatarInitials: 'MB', totalReferrals: 73,  payingReferrals: 61,  lifetimeCommissionCents: 219600 },
     { userId: 'u_04', username: 'ScriptWizard_X',    avatarInitials: 'SW', totalReferrals: 54,  payingReferrals: 47,  lifetimeCommissionCents: 169200 },
     { userId: 'u_05', username: 'LuauLegend',        avatarInitials: 'LL', totalReferrals: 38,  payingReferrals: 32,  lifetimeCommissionCents: 115200 },
-    { userId: 'u_06', username: 'RobloxForge_Fan',   avatarInitials: 'RF', totalReferrals: 29,  payingReferrals: 25,  lifetimeCommissionCents: 90000  },
+    { userId: 'u_06', username: 'ForjeGames_Fan',    avatarInitials: 'FG', totalReferrals: 29,  payingReferrals: 25,  lifetimeCommissionCents: 90000  },
     { userId: 'u_07', username: 'GameDevGuru',       avatarInitials: 'GG', totalReferrals: 21,  payingReferrals: 18,  lifetimeCommissionCents: 64800  },
     { userId: 'u_08', username: 'StudioArchitect',   avatarInitials: 'SA', totalReferrals: 15,  payingReferrals: 12,  lifetimeCommissionCents: 43200  },
     { userId: 'u_09', username: 'AssetHunter_7',     avatarInitials: 'AH', totalReferrals: 10,  payingReferrals: 8,   lifetimeCommissionCents: 28800  },

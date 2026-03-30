@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 
 const PRODUCT_LINKS = [
@@ -11,7 +9,7 @@ const PRODUCT_LINKS = [
 ]
 
 const COMPANY_LINKS = [
-  { href: 'mailto:support@forjegames.gg', label: 'Support' },
+  { href: 'mailto:support@forjegames.com', label: 'Support' },
   { href: 'mailto:legal@forjegames.gg', label: 'Legal' },
   { href: 'mailto:abuse@forjegames.gg', label: 'Report Abuse' },
 ]

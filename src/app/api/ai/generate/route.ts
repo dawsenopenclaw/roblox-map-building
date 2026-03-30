@@ -10,6 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 
 // ── Demo responses (mirrors EditorClient.tsx) ────────────────────────────────
 
@@ -98,6 +99,11 @@ async function tryHonoGenerate(
 // ── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let prompt: string
 
   try {

@@ -228,7 +228,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
   const tierLabel = subscription === 'FREE' ? 'Free' : subscription === 'PRO' ? 'Pro' : subscription
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="text-white">
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
         {/* ── Welcome Header ─────────────────────────────────────────────── */}

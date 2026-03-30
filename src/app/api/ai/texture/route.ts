@@ -20,6 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 
 type Resolution = '512' | '1024' | '2048'
 
@@ -159,6 +160,11 @@ end
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let prompt: string
   let resolution: Resolution
   let seamless: boolean

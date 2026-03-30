@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 
 // Secured by CRON_SECRET header — called by Vercel cron (GET) or GitHub Actions nightly (POST)
 async function runSnapshot(req: NextRequest): Promise<NextResponse> {
   const secret = req.headers.get('x-cron-secret')
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  const expected = process.env.CRON_SECRET
+  // Use timingSafeEqual to prevent timing-based secret enumeration
+  const isAuthorized = !!secret && !!expected && (() => {
+    try {
+      const a = Buffer.from(secret)
+      const b = Buffer.from(expected)
+      return a.length === b.length && timingSafeEqual(a, b)
+    } catch {
+      return false
+    }
+  })()
+  if (!isAuthorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

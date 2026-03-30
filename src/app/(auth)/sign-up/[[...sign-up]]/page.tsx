@@ -157,7 +157,7 @@ export default function SignUpPage() {
       {/* Clerk SignUp */}
       <div className="w-full">
         <SignUp
-          forceRedirectUrl="/onboarding"
+          forceRedirectUrl="/onboarding/age-gate"
           appearance={clerkAppearance}
         />
       </div>

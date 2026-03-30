@@ -108,7 +108,7 @@ export default function GlobalError({
                 <p className="text-gray-500 text-xs">
                   Still stuck?{' '}
                   <a
-                    href={`mailto:support@ForjeGames.gg?subject=Global+error+report${error.digest ? `&body=Error+ID:+${error.digest}` : ''}`}
+                    href={`mailto:support@forjegames.com?subject=Global+error+report${error.digest ? `&body=Error+ID:+${error.digest}` : ''}`}
                     className="text-[#FFB81C] hover:underline"
                   >
                     Report this issue

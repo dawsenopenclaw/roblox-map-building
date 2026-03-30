@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
     const { hashToken } = await import('@/lib/tokens')
     const tokenHash = hashToken(token)
 
+    // CRITICAL: token must be stored before email is sent.
+    // If DB fails, the email link would be unverifiable — return 500, don't send.
     try {
       await db.user.update({
         where: { clerkId },
@@ -43,8 +45,12 @@ export async function POST(req: NextRequest) {
           parentConsentTokenExp: expires,
         },
       })
-    } catch (err) {
-      // Non-fatal — still attempt to send the email
+    } catch (dbErr) {
+      console.error('[parental-consent] DB write failed:', dbErr)
+      return NextResponse.json(
+        { error: 'Could not store consent token. Please try again.' },
+        { status: 500 }
+      )
     }
 
     await sendParentalConsentEmail({

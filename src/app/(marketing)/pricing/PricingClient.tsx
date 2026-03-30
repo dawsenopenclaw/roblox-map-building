@@ -122,7 +122,7 @@ const FAQ = [
   },
   {
     q: 'Is it safe for kids?',
-    a: 'Yes. RobloxForge is COPPA compliant with parental controls built in. Safe for creators aged 8 and up with parental consent.',
+    a: 'Yes. ForjeGames is COPPA compliant with parental controls built in. Safe for creators aged 8 and up with parental consent.',
   },
   {
     q: "What's the 10% donation?",
@@ -138,7 +138,7 @@ const FAQ = [
   },
   {
     q: 'What is white-label on Studio?',
-    a: 'Studio plan lets you export games and assets with your own branding — no RobloxForge watermarks. Ideal for agencies delivering work to clients.',
+    a: 'Studio plan lets you export games and assets with your own branding — no ForjeGames watermarks. Ideal for agencies delivering work to clients.',
   },
   {
     q: 'How does annual billing work?',
@@ -146,7 +146,7 @@ const FAQ = [
   },
   {
     q: 'What is API access on Studio?',
-    a: 'Studio plan includes full REST API and SDK access (npm, Python, Go) so you can integrate RobloxForge into your own tools, CI/CD pipelines, or custom workflows.',
+    a: 'Studio plan includes full REST API and SDK access (npm, Python, Go) so you can integrate ForjeGames into your own tools, CI/CD pipelines, or custom workflows.',
   },
   {
     q: 'Can I upgrade or downgrade my plan?',

@@ -27,6 +27,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -305,6 +306,10 @@ function demoResponse(prompt: string) {
 // ── GET — poll existing task ──────────────────────────────────────────────────
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
   const taskId = req.nextUrl.searchParams.get('taskId')
   if (!taskId) {
     return NextResponse.json({ error: 'taskId query param required' }, { status: 400 })
@@ -345,6 +350,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 // ── POST — generate new mesh ──────────────────────────────────────────────────
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   // Parse body
   let prompt: string
   let quality: Quality

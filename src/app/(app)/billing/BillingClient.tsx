@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import Link from 'next/link'
 import { CreditCard, Zap, TrendingUp, Package, Bot } from 'lucide-react'
 
@@ -94,6 +95,18 @@ export default function BillingClient() {
   const tokenPct = Math.min(100, Math.round((TOKENS_USED / TOKEN_LIMIT) * 100))
   const tokensRemaining = TOKEN_LIMIT - TOKENS_USED
 
+  const openBillingPortal = useCallback(async () => {
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      if (!res.ok) throw new Error('Portal request failed')
+      const { url } = await res.json() as { url: string }
+      window.location.href = url
+    } catch {
+      // Fallback: open in new tab if POST+redirect fails
+      window.open('/api/billing/portal', '_blank')
+    }
+  }, [])
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
@@ -132,7 +145,7 @@ export default function BillingClient() {
                 Upgrade Plan
               </Link>
               <button
-                onClick={() => window.open('/api/billing/portal', '_blank')}
+                onClick={openBillingPortal}
                 className="text-xs text-gray-300 hover:text-blue-400 text-center transition-colors"
               >
                 Manage billing →
@@ -195,7 +208,7 @@ export default function BillingClient() {
           <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment History</p>
             <button
-              onClick={() => window.open('/api/billing/portal', '_blank')}
+              onClick={openBillingPortal}
               className="text-xs text-[#FFB81C] hover:text-[#E6A519] flex items-center gap-1 transition-colors"
             >
               <CreditCard size={12} />

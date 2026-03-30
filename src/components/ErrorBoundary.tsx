@@ -152,10 +152,10 @@ function ErrorCard({
           <p className="text-gray-500 text-xs mt-5">
             Need help?{' '}
             <a
-              href="mailto:support@ForjeGames.gg"
+              href="mailto:support@forjegames.com"
               className="text-[#FFB81C] hover:underline"
             >
-              support@ForjeGames.gg
+              support@forjegames.com
             </a>
           </p>
         </div>

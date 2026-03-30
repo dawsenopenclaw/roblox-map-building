@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { useUser } from '@clerk/nextjs'
 import { ShortcutHint } from '@/components/ShortcutHint'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -148,7 +149,7 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
 
 // ─── User dropdown ────────────────────────────────────────────────────────────
 
-function UserMenu() {
+function UserMenu({ displayName, email }: { displayName: string; email: string }) {
   return (
     <div
       className="absolute right-0 top-full mt-2 w-52 bg-[#1A2235] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
@@ -157,8 +158,8 @@ function UserMenu() {
     >
       {/* Identity */}
       <div className="px-4 py-3 border-b border-white/[0.07]">
-        <p className="text-sm font-semibold text-white truncate">ForgeUser</p>
-        <p className="text-xs text-gray-400 truncate">user@example.com</p>
+        <p className="text-sm font-semibold text-white truncate">{displayName}</p>
+        <p className="text-xs text-gray-400 truncate">{email}</p>
       </div>
 
       {/* Links */}
@@ -218,8 +219,19 @@ interface AppTopNavProps {
 
 export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const { data } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
+  const { user } = useUser()
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+
+  const displayName = user?.firstName
+    ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
+    : user?.username ?? 'Demo User'
+
+  const email = user?.emailAddresses?.[0]?.emailAddress ?? 'demo@forjegames.com'
+
+  const initials = user?.firstName
+    ? `${user.firstName[0]}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : (user?.username?.[0]?.toUpperCase() ?? 'FG')
 
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
@@ -326,13 +338,13 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
             }}
             aria-hidden="true"
           >
-            FG
+            {initials}
           </div>
           <span className="text-gray-500 group-hover:text-gray-300 transition-colors hidden sm:block">
             <IconChevronDown />
           </span>
         </button>
-        {profileOpen && <UserMenu />}
+        {profileOpen && <UserMenu displayName={displayName} email={email} />}
       </div>
     </header>
   )

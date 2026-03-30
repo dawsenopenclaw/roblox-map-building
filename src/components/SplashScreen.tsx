@@ -9,16 +9,16 @@ const TARGET_TEXT = 'FORJEGAMES'
 const LETTER_RESOLVE_INTERVAL = 80 // ms between each letter resolving
 
 // Phase timing (ms from animation start)
-const PHASE1_END    = 300   // black -> grid fade-in
-const PHASE2_START  = 300   // scramble begins
-const PHASE2_END    = 1500  // scramble ends
-const TAGLINE_FADE  = 1200  // tagline appears
-const PHASE3_START  = 1500  // glitch burst
-const PHASE3_END    = 2000
-const PHASE4_START  = 1800  // progress bar
-const PHASE4_END    = 3200
-const PHASE5_HOLD   = 200   // hold before exit
-const EXIT_DURATION = 400   // fade-out ms
+const PHASE1_END    = 100   // black -> grid fade-in
+const PHASE2_START  = 100   // scramble begins
+const PHASE2_END    = 600   // scramble ends
+const TAGLINE_FADE  = 450   // tagline appears
+const PHASE3_START  = 600   // glitch burst
+const PHASE3_END    = 800
+const PHASE4_START  = 700   // progress bar
+const PHASE4_END    = 1300
+const PHASE5_HOLD   = 100   // hold before exit
+const EXIT_DURATION = 200   // fade-out ms
 
 const STAGE_LABELS = [
   { threshold: 0,  label: 'Initializing systems...' },
@@ -112,10 +112,13 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.removeAttribute('data-loading')
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
+    const rm = mq.matches
+    setReducedMotion(rm)
     const seen = sessionStorage.getItem('fj_splash_seen')
     if (seen) { setSplashState('done'); return }
     sessionStorage.setItem('fj_splash_seen', '1')
+    // Skip animation entirely for users who prefer reduced motion
+    if (rm) { setSplashState('done'); return }
     setSplashState('active')
   }, [])
 
@@ -136,7 +139,10 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     ].join(', ')
     overlay.style.opacity = '0'
     overlay.style.transform = 'scale(1.02)'
-    if (childrenWrapRef.current) childrenWrapRef.current.style.visibility = 'visible'
+    if (childrenWrapRef.current) {
+      childrenWrapRef.current.style.opacity = '1'
+      childrenWrapRef.current.style.pointerEvents = ''
+    }
     setTimeout(() => setSplashState('done'), EXIT_DURATION + 60)
   }, [])
 
@@ -299,11 +305,11 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Children rendered behind splash — visibility:hidden prevents layout shift */}
+      {/* Children rendered behind splash — opacity:0 + pointer-events:none prevents interaction */}
       <div
         ref={childrenWrapRef}
         aria-hidden
-        style={{ visibility: 'hidden', position: 'fixed', inset: 0, zIndex: 0 }}
+        style={{ opacity: 0, pointerEvents: 'none', position: 'fixed', inset: 0, zIndex: 0 }}
       >
         {children}
       </div>

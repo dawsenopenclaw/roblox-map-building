@@ -15,6 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,6 +167,11 @@ function buildDemoAnalysis(filename: string): ImageAnalysisResult {
 // ---------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
+  if (process.env.NEXT_PUBLIC_DEMO_MODE !== 'true') {
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const contentType = req.headers.get('content-type') ?? ''
     let base64Data: string

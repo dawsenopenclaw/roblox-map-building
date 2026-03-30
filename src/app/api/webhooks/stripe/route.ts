@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
             'paused': 'PAUSED',
             'unpaid': 'UNPAID',
           }
-          return statusMap[stripeStatus.toLowerCase()] || 'ACTIVE'
+          return statusMap[stripeStatus.toLowerCase()] || 'INCOMPLETE'
         }
 
         const normalizedStatus = normalizeStatus(subscription.status)

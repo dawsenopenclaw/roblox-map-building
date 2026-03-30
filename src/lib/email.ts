@@ -1,4 +1,5 @@
-﻿import { Resend } from 'resend'
+﻿import 'server-only'
+import { Resend } from 'resend'
 import { serverEnv, clientEnv } from './env'
 import {
   WelcomeEmail,

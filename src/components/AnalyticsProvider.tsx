@@ -83,10 +83,15 @@ export function AnalyticsProvider({
         return
       }
 
-      // Identify with full user properties
+      // COPPA: never track under-13 users
+      if (isUnder13 === true) {
+        posthog.opt_out_capturing()
+        return
+      }
+
+      // Identify with full user properties — email intentionally excluded (PII)
       posthog.identify(userId, {
         $app: 'ForjeGames',
-        ...(email && { email }),
         ...(tier && { tier }),
         ...(role && { role }),
         ...(streak !== undefined && { streak }),

@@ -206,57 +206,74 @@ export async function getRankedTemplateIds(
 ): Promise<string[]> {
   const trendingFormula = calculateTrending()
 
-  // Build WHERE conditions from the Prisma where clause
-  // We translate the common filters manually for the raw query
-  const conditions: string[] = [
-    `t.status = 'PUBLISHED'`,
-    `t."deletedAt" IS NULL`,
-  ]
+  // Collect parameterized filter values
+  const params: (string | number)[] = []
 
+  // Build safe category filter using $queryRaw tagged template + dynamic fragment
+  // We accumulate typed params and use Prisma.sql for the dynamic fragment.
+  // Because the trendingFormula and per-filter fragments are all developer-authored
+  // SQL (no user input), only user-supplied VALUES go into params.
+
+  let categoryClause = Prisma.sql``
   if (where.category) {
     if (typeof where.category === 'string') {
-      conditions.push(`t.category = '${where.category}'`)
+      // Validate against known enum values before embedding
+      const validCategories = Object.values(TemplateCategory) as string[]
+      if (validCategories.includes(where.category)) {
+        categoryClause = Prisma.sql`AND t.category = ${where.category}::text::"TemplateCategory"`
+      }
     } else if ((where.category as { in?: string[] }).in) {
-      const cats = (where.category as { in: string[] }).in.map((c) => `'${c}'`).join(',')
-      conditions.push(`t.category IN (${cats})`)
+      const cats = (where.category as { in: string[] }).in.filter(
+        (c) => (Object.values(TemplateCategory) as string[]).includes(c)
+      )
+      if (cats.length > 0) {
+        // Prisma.join produces a safe comma-separated list
+        categoryClause = Prisma.sql`AND t.category = ANY(ARRAY[${Prisma.join(cats)}]::"TemplateCategory"[])`
+      }
     }
   }
 
+  let priceGteClause = Prisma.sql``
+  let priceLteClause = Prisma.sql``
   if (where.priceCents) {
     const pc = where.priceCents as { gte?: number; lte?: number }
-    if (pc.gte !== undefined) conditions.push(`t."priceCents" >= ${pc.gte}`)
-    if (pc.lte !== undefined) conditions.push(`t."priceCents" <= ${pc.lte}`)
+    if (pc.gte !== undefined) priceGteClause = Prisma.sql`AND t."priceCents" >= ${pc.gte}`
+    if (pc.lte !== undefined) priceLteClause = Prisma.sql`AND t."priceCents" <= ${pc.lte}`
   }
 
+  let ratingClause = Prisma.sql``
   if (where.averageRating) {
     const ar = where.averageRating as { gte?: number }
-    if (ar.gte !== undefined) conditions.push(`t."averageRating" >= ${ar.gte}`)
+    if (ar.gte !== undefined) ratingClause = Prisma.sql`AND t."averageRating" >= ${ar.gte}`
   }
 
+  let searchClause = Prisma.sql``
   if (where.OR) {
-    // Full-text OR conditions from search query
-    const orParts = (where.OR as Array<{ title?: { contains: string }; description?: { contains: string } }>)
-      .map((clause) => {
-        if (clause.title?.contains) {
-          const q = clause.title.contains.replace(/'/g, "''")
-          return `(t.title ILIKE '%${q}%' OR t.description ILIKE '%${q}%')`
-        }
-        return null
-      })
-      .filter(Boolean)
-    if (orParts.length > 0) {
-      conditions.push(`(${orParts.join(' OR ')})`)
+    const orClauses = where.OR as Array<{ title?: { contains: string } }>
+    const firstContains = orClauses.find((c) => c.title?.contains)?.title?.contains
+    if (firstContains) {
+      const pattern = `%${firstContains}%`
+      searchClause = Prisma.sql`AND (t.title ILIKE ${pattern} OR t.description ILIKE ${pattern})`
     }
   }
 
-  const whereClause = conditions.join(' AND ')
+  // trendingFormula is a developer-authored string with no user input — safe to embed
+  const trendingRaw = Prisma.raw(trendingFormula)
+  const limitVal = Prisma.raw(String(Math.max(1, Math.floor(limit))))
+  const offsetVal = Prisma.raw(String(Math.max(0, Math.floor(offset))))
 
-  const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(
-    `SELECT t.id FROM "Template" t
-     WHERE ${whereClause}
-     ORDER BY (${trendingFormula}) DESC
-     LIMIT ${limit} OFFSET ${offset}`
-  )
+  const rows = await db.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+    SELECT t.id FROM "Template" t
+    WHERE t.status = 'PUBLISHED'::"TemplateStatus"
+      AND t."deletedAt" IS NULL
+      ${categoryClause}
+      ${priceGteClause}
+      ${priceLteClause}
+      ${ratingClause}
+      ${searchClause}
+    ORDER BY (${trendingRaw}) DESC
+    LIMIT ${limitVal} OFFSET ${offsetVal}
+  `)
 
   return rows.map((r) => r.id)
 }

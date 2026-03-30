@@ -100,7 +100,7 @@ function SuspendedContent() {
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
             <a
-              href="mailto:support@ForjeGames.gg?subject=Account%20Appeal"
+              href="mailto:support@forjegames.com?subject=Account%20Appeal"
               className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold text-sm transition-colors"
             >
               Contact support

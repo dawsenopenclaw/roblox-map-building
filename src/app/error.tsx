@@ -187,7 +187,7 @@ function ErrorShell({
             <p className="text-gray-500 text-xs">
               Still stuck?{' '}
               <a
-                href={`mailto:support@ForjeGames.gg?subject=Bug+report+[${reportType}]${digest ? `&body=Error+ID:+${digest}` : ''}`}
+                href={`mailto:support@forjegames.com?subject=Bug+report+[${reportType}]${digest ? `&body=Error+ID:+${digest}` : ''}`}
                 className="text-[#FFB81C] hover:underline"
               >
                 Report this issue

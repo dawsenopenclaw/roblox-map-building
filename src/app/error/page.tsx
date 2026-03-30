@@ -35,7 +35,7 @@ function ErrorContent() {
           <p className="text-gray-300 text-sm">{msg.description}</p>
           <p className="text-gray-400 text-xs mt-6">
             Need help?{' '}
-            <a href="mailto:support@ForjeGames.com" className="text-[#FFB81C]">
+            <a href="mailto:support@forjegames.com" className="text-[#FFB81C]">
               Contact support
             </a>
           </p>

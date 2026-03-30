@@ -112,10 +112,35 @@ export async function POST(req: NextRequest) {
       if (!event.data.id) {
         return NextResponse.json({ error: 'Missing user id in delete event' }, { status: 400 })
       }
-      // Soft delete — preserves audit trail and relational data
-      await db.user.update({
-        where: { clerkId: event.data.id },
-        data: { email: `deleted_${event.data.id}@deleted.invalid` },
+
+      // GDPR/COPPA hard delete — nullify ALL PII and set deletedAt
+      await db.$transaction(async (tx) => {
+        const user = await tx.user.findUnique({ where: { clerkId: event.data.id } })
+        if (!user) return // Already deleted or never synced
+
+        await tx.user.update({
+          where: { clerkId: event.data.id },
+          data: {
+            email: `deleted_${event.data.id}@deleted.invalid`,
+            displayName: null,
+            avatarUrl: null,
+            parentEmail: null,
+            parentConsentToken: null,
+            parentConsentTokenExp: null,
+            dateOfBirth: null,
+            deletedAt: new Date(),
+          },
+        })
+
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: 'USER_DELETED',
+            resource: 'user',
+            resourceId: user.id,
+            metadata: { source: 'clerk_webhook', clerkId: event.data.id },
+          },
+        })
       })
     }
   } catch (error) {

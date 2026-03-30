@@ -203,7 +203,7 @@ export default function MarketplacePage() {
   const featured = FEATURED[featuredIndex]!
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white">
+    <div className="text-white">
       {/* ── Page Header ────────────────────────────────────────────────────── */}
       <div className="border-b border-white/5 bg-[#050b14]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
