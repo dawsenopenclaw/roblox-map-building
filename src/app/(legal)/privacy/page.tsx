@@ -219,8 +219,8 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-white">Right to Data Portability (Art. 20):</strong> Receive
-              your data in a structured, machine-readable format (JSON/CSV export available in
-              account settings).
+              your data in a structured, machine-readable format (data export available upon
+              request — contact us at privacy@forjegames.com).
             </li>
             <li>
               <strong className="text-white">Right to Object (Art. 21):</strong> Object to
@@ -285,7 +285,7 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-white">Right to Opt-Out of Sale/Sharing:</strong> We do not
               sell personal information. We do not share personal information for cross-context
-              behavioral advertising without consent. You may still opt out via our Cookie Settings.
+              behavioral advertising without consent. You may still opt out via the cookie preferences banner at the bottom of the page.
             </li>
             <li>
               <strong className="text-white">Right to Limit Sensitive PI Use:</strong> Limit our use
@@ -395,7 +395,7 @@ export default function PrivacyPage() {
         </div>
         <p className="mt-4">
           EU/UK users are shown a cookie consent banner on first visit. You can update your
-          preferences at any time via Cookie Settings in your account.
+          preferences at any time via the cookie preferences banner at the bottom of the page.
         </p>
       </section>
 

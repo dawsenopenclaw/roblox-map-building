@@ -110,35 +110,35 @@ function AvatarUpload({ name }: { name: string }) {
   return (
     <div className="flex items-center gap-5">
       <div className="relative group">
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div
+          <label
+          htmlFor="avatar-upload"
           className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFB81C]/30 to-[#FFB81C]/10 border border-[#FFB81C]/20 cursor-pointer"
-          onClick={() => inputRef.current?.click()}
+          aria-label="Upload avatar image"
         >
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={preview} alt="Avatar preview" className="w-full h-full object-cover" />
           ) : (
-            <span className="text-[#FFB81C] font-bold text-lg">{initials}</span>
+            <span className="text-[#FFB81C] font-bold text-lg" aria-hidden="true">{initials}</span>
           )}
-        </div>
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-        <div
+        </label>
+        <label
+          htmlFor="avatar-upload"
           className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-          onClick={() => inputRef.current?.click()}
+          aria-hidden="true"
         >
           <Upload size={16} className="text-white" />
-        </div>
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        </label>
+        <input ref={inputRef} id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleFile} aria-label="Upload avatar image" />
       </div>
       <div>
         <p className="text-white text-sm font-semibold">{name}</p>
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="text-xs text-[#FFB81C] hover:text-[#E6A519] transition-colors mt-0.5"
+        <label
+          htmlFor="avatar-upload"
+          className="text-xs text-[#FFB81C] hover:text-[#E6A519] transition-colors mt-0.5 cursor-pointer"
         >
           Change avatar
-        </button>
+        </label>
       </div>
     </div>
   )
@@ -203,8 +203,9 @@ function ProfileTab() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm text-gray-300 mb-1.5">Email</label>
+            <label htmlFor="profile-email" className="block text-sm text-gray-300 mb-1.5">Email</label>
             <input
+              id="profile-email"
               type="email"
               value="dawsen@forjegames.gg"
               disabled
@@ -214,8 +215,9 @@ function ProfileTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-300 mb-1.5">Display Name</label>
+            <label htmlFor="profile-display-name" className="block text-sm text-gray-300 mb-1.5">Display Name</label>
             <input
+              id="profile-display-name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -224,8 +226,9 @@ function ProfileTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-300 mb-1.5">Bio</label>
+            <label htmlFor="profile-bio" className="block text-sm text-gray-300 mb-1.5">Bio</label>
             <textarea
+              id="profile-bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               rows={2}
@@ -234,8 +237,9 @@ function ProfileTab() {
           </div>
 
           <div>
-            <label className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
+            <label htmlFor="profile-charity" className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
             <select
+              id="profile-charity"
               value={charity}
               onChange={(e) => setCharity(e.target.value)}
               className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors appearance-none"
@@ -287,7 +291,9 @@ function ProfileTab() {
               </span>{' '}
               to confirm:
             </p>
+            <label htmlFor="delete-confirm-input" className="sr-only">Type &quot;delete my account&quot; to confirm</label>
             <input
+              id="delete-confirm-input"
               type="text"
               value={deleteInput}
               onChange={(e) => setDeleteInput(e.target.value)}

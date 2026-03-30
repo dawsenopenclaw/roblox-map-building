@@ -194,7 +194,7 @@ export default clerkMiddleware(async (auth, request) => {
         // We redirect to /blocked rather than returning 451 directly so the page
         // renders properly (Next.js edge runtime requires NextResponse.redirect).
         return NextResponse.redirect(new URL('/blocked', request.url), {
-          status: 307,
+          status: 308,
           headers: {
             // RFC 7725 Link header pointing to the blocking authority
             Link: '<https://ofac.treasury.gov/>; rel="blocked-by"',

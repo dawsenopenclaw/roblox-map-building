@@ -23,7 +23,7 @@ export async function GET() {
       db.subscription.count({
         where: { status: { in: ['ACTIVE', 'TRIALING'] } },
       }),
-      db.apiUsageRecord.count(),
+      db.apiUsageRecord.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
       db.dailyCostSnapshot.findMany({
         where: { date: { gte: thirtyDaysAgo } },
         orderBy: { date: 'asc' },

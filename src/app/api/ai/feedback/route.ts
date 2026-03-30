@@ -157,7 +157,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
   // If comment exists, log it (future: store in DB)
   if (validation.data.comment) {
     // TODO: persist comment to DB when available
-    console.info(`[feedback] ${messageId}: "${validation.data.comment}"`)
+    console.log(`[feedback] ${messageId}: "${validation.data.comment}"`)
   }
 
   // Compute a normalized quality number for the response

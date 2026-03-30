@@ -11,6 +11,7 @@ import Script from 'next/script'
 import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 import { SplashScreen } from '@/components/SplashScreen'
+import { CookieBanner } from '@/components/CookieBanner'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -189,6 +190,7 @@ export default function RootLayout({
                 <PostHogProvider>{children}</PostHogProvider>
               </ToastProvider>
               <InstallPrompt />
+              <CookieBanner />
             </Suspense>
           </SplashScreen>
         </ClerkProvider>

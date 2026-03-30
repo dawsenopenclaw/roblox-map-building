@@ -465,6 +465,7 @@ model XPEvent {
   @@index([userXpId])
   @@index([createdAt])
   @@index([type])
+  @@index([userXpId, createdAt])
 }
 
 model Achievement {
@@ -804,6 +805,7 @@ model WebhookDelivery {
   @@index([endpointId])
   @@index([createdAt])
   @@index([success, nextRetryAt])
+  @@index([endpointId, success, nextRetryAt])
 }
 
 // ─── Referrals ──────────────────────────────────────────────────────────────
@@ -825,6 +827,7 @@ model Referral {
   @@index([code])
   @@index([referredId])
   @@index([referrerId, status])
+  @@unique([referrerId, referredId])
 }
 
 enum ReferralStatus {
@@ -866,6 +869,7 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([userId, read, createdAt])
 }
 
 enum NotificationType {

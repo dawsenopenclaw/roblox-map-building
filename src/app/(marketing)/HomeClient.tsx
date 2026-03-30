@@ -615,7 +615,7 @@ export default function HomeClient() {
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4">Product</h4>
+              <h3 className="text-sm font-semibold text-white mb-4">Product</h3>
               <div className="space-y-3">
                 <Link href="/editor" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Editor</Link>
                 <Link href="/pricing" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Pricing</Link>
@@ -624,7 +624,7 @@ export default function HomeClient() {
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4">Features</h4>
+              <h3 className="text-sm font-semibold text-white mb-4">Features</h3>
               <div className="space-y-3">
                 <span className="block text-sm text-[#6B7280]">Voice to Game</span>
                 <span className="block text-sm text-[#6B7280]">Image to Map</span>
@@ -633,7 +633,7 @@ export default function HomeClient() {
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4">Legal</h4>
+              <h3 className="text-sm font-semibold text-white mb-4">Legal</h3>
               <div className="space-y-3">
                 <Link href="/terms" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Terms of Service</Link>
                 <Link href="/privacy" className="block text-sm text-[#6B7280] hover:text-white transition-colors">Privacy Policy</Link>
@@ -642,7 +642,7 @@ export default function HomeClient() {
               </div>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-white mb-4">Company</h4>
+              <h3 className="text-sm font-semibold text-white mb-4">Company</h3>
               <div className="space-y-3">
                 <span className="block text-sm text-[#6B7280]">ForjeGames LLC</span>
                 <span className="block text-sm text-[#6B7280]">Built by Dawsen Porter</span>
