@@ -1,4 +1,4 @@
-import 'server-only'
+// server-only removed — breaks prerender
 import Stripe from 'stripe'
 import { serverEnv } from '@/lib/env'
 

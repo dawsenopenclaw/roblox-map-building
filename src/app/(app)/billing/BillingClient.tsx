@@ -2,9 +2,8 @@
 
 import { useCallback } from 'react'
 import Link from 'next/link'
-import { CreditCard, Zap, TrendingUp, Package, Bot } from 'lucide-react'
-
-// Metadata moved to layout or handled via document title
+import useSWR from 'swr'
+import { CreditCard, Zap, TrendingUp, Bot, Package } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,27 +23,40 @@ type UsageStat = {
   color: string
 }
 
-// ─── Mock data (replace with real API fetches) ────────────────────────────────
+type BillingStatus = {
+  plan: string
+  tier: string
+  status: string
+  tokensUsed: number
+  tokenLimit: number
+  tokenBalance: number
+  renewDate: string | null
+  monthlyPrice: string
+  cancelAtPeriodEnd: boolean
+}
 
-const PLAN = 'Pro'
-const PLAN_DESCRIPTION = '5,000 tokens/month · Full AI access · Priority builds'
-const TOKENS_USED = 3_760
-const TOKEN_LIMIT = 5_000
-const RENEW_DATE = 'April 28, 2026'
-const MONTHLY_PRICE = '$29'
+// ─── Free plan defaults (shown when not subscribed or data unavailable) ───────
 
-const USAGE_STATS: UsageStat[] = [
-  { label: 'AI Generations', used: 142, limit: 200, icon: <Bot size={15} />, color: '#FFB81C' },
-  { label: 'Marketplace Searches', used: 58, limit: 500, icon: <Package size={15} />, color: '#60a5fa' },
-  { label: 'API Calls', used: 3_420, limit: 10_000, icon: <Zap size={15} />, color: '#a78bfa' },
-]
+const FREE_DEFAULTS: BillingStatus = {
+  plan: 'Free',
+  tier: 'FREE',
+  status: 'ACTIVE',
+  tokensUsed: 0,
+  tokenLimit: 1000,
+  tokenBalance: 1000,
+  renewDate: null,
+  monthlyPrice: 'Free',
+  cancelAtPeriodEnd: false,
+}
 
-const PAYMENTS: PaymentRow[] = [
-  { id: 'inv_001', date: 'Mar 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-  { id: 'inv_002', date: 'Feb 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-  { id: 'inv_003', date: 'Jan 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-  { id: 'inv_004', date: 'Dec 28, 2025', description: 'Starter Plan — Monthly', amount: '$9.00', status: 'Paid' },
-]
+// ─── Fetcher ──────────────────────────────────────────────────────────────────
+
+async function fetcher(url: string): Promise<BillingStatus | null> {
+  const res = await fetch(url)
+  if (!res.ok) return null
+  const data = await res.json() as BillingStatus | null
+  return data
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -89,11 +101,32 @@ function UsageMeter({ stat }: { stat: UsageStat }) {
   )
 }
 
+function SkeletonBlock({ className }: { className?: string }) {
+  return <div className={`bg-white/10 rounded animate-pulse ${className ?? ''}`} />
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingClient() {
-  const tokenPct = Math.min(100, Math.round((TOKENS_USED / TOKEN_LIMIT) * 100))
-  const tokensRemaining = TOKEN_LIMIT - TOKENS_USED
+  const { data: rawBilling, isLoading } = useSWR<BillingStatus | null>(
+    '/api/billing/status',
+    fetcher,
+    { revalidateOnFocus: false }
+  )
+
+  // Fall back to Free defaults if null response (DB not connected) or still loading
+  const billing: BillingStatus = rawBilling ?? FREE_DEFAULTS
+
+  const tokenPct = Math.min(100, Math.round((billing.tokensUsed / billing.tokenLimit) * 100))
+  const tokensRemaining = Math.max(0, billing.tokenLimit - billing.tokensUsed)
+
+  const usageStats: UsageStat[] = [
+    { label: 'Tokens Used', used: billing.tokensUsed, limit: billing.tokenLimit, icon: <Bot size={15} />, color: '#FFB81C' },
+    { label: 'Marketplace Searches', used: 0, limit: 500, icon: <Package size={15} />, color: '#60a5fa' },
+    { label: 'API Calls', used: 0, limit: 10_000, icon: <Zap size={15} />, color: '#a78bfa' },
+  ]
+
+  const payments: PaymentRow[] = []
 
   const openBillingPortal = useCallback(async () => {
     try {
@@ -103,7 +136,6 @@ export default function BillingClient() {
         window.location.href = data.url
       }
     } catch {
-      // Fallback: stay on billing page
       window.location.href = '/billing'
     }
   }, [])
@@ -123,19 +155,33 @@ export default function BillingClient() {
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="flex items-center gap-2.5 mb-2">
-                <span className="text-2xl font-bold text-white">{PLAN}</span>
-                {/* Gold tier badge */}
-                <span className="inline-flex items-center gap-1 bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/30 text-xs font-bold px-2.5 py-1 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] inline-block" />
-                  Active
-                </span>
-              </div>
-              <p className="text-gray-300 text-sm leading-relaxed">{PLAN_DESCRIPTION}</p>
-              <p className="text-gray-400 text-xs mt-2">
-                <span className="text-white font-semibold">{MONTHLY_PRICE}/mo</span>
-                {' '}· Renews {RENEW_DATE}
-              </p>
+              {isLoading ? (
+                <div className="space-y-2 mb-2">
+                  <SkeletonBlock className="h-8 w-24" />
+                  <SkeletonBlock className="h-4 w-56" />
+                  <SkeletonBlock className="h-3 w-40 mt-2" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <span className="text-2xl font-bold text-white">{billing.plan}</span>
+                    <span className="inline-flex items-center gap-1 bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/30 text-xs font-bold px-2.5 py-1 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] inline-block" />
+                      {billing.status === 'ACTIVE' || billing.status === 'TRIALING' ? 'Active' : billing.status}
+                    </span>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed">
+                    {billing.tokenLimit.toLocaleString()} tokens/month
+                    {billing.tier !== 'FREE' ? ' · Full AI access · Priority builds' : ' · Basic AI access'}
+                  </p>
+                  <p className="text-gray-400 text-xs mt-2">
+                    <span className="text-white font-semibold">{billing.monthlyPrice}{billing.monthlyPrice !== 'Free' ? '/mo' : ''}</span>
+                    {billing.renewDate && (
+                      <> · {billing.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} {billing.renewDate}</>
+                    )}
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex flex-col gap-2 flex-shrink-0">
               <Link
@@ -143,7 +189,7 @@ export default function BillingClient() {
                 className="inline-flex items-center gap-1.5 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
               >
                 <TrendingUp size={14} />
-                Upgrade Plan
+                {billing.tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
               </Link>
               <button
                 onClick={openBillingPortal}
@@ -159,31 +205,41 @@ export default function BillingClient() {
         <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
 
-          {/* Big number */}
-          <div className="flex items-end gap-3 mb-1">
-            <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
-              {tokensRemaining.toLocaleString()}
-            </span>
-            <span className="text-gray-300 text-sm mb-1">remaining</span>
-          </div>
-          <p className="text-gray-400 text-xs mb-4">of {TOKEN_LIMIT.toLocaleString()} total this month</p>
+          {isLoading ? (
+            <div className="space-y-3 mb-5">
+              <SkeletonBlock className="h-12 w-32" />
+              <SkeletonBlock className="h-3 w-48" />
+              <SkeletonBlock className="h-3 w-full mt-2" />
+            </div>
+          ) : (
+            <>
+              {/* Big number */}
+              <div className="flex items-end gap-3 mb-1">
+                <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
+                  {tokensRemaining.toLocaleString()}
+                </span>
+                <span className="text-gray-300 text-sm mb-1">remaining</span>
+              </div>
+              <p className="text-gray-400 text-xs mb-4">of {billing.tokenLimit.toLocaleString()} total this month</p>
 
-          {/* Progress bar */}
-          <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
-            <div
-              className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
-              style={{
-                width: `${tokenPct}%`,
-                background: tokenPct >= 80
-                  ? 'linear-gradient(90deg, #f87171, #ef4444)'
-                  : 'linear-gradient(90deg, #FFB81C, #E6A519)',
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-xs text-gray-500 mb-5">
-            <span>{TOKENS_USED.toLocaleString()} used</span>
-            <span>{tokenPct}%</span>
-          </div>
+              {/* Progress bar */}
+              <div className="relative h-3 bg-white/10 rounded-full overflow-hidden mb-1">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                  style={{
+                    width: `${tokenPct}%`,
+                    background: tokenPct >= 80
+                      ? 'linear-gradient(90deg, #f87171, #ef4444)'
+                      : 'linear-gradient(90deg, #FFB81C, #E6A519)',
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mb-5">
+                <span>{billing.tokensUsed.toLocaleString()} used</span>
+                <span>{tokenPct}%</span>
+              </div>
+            </>
+          )}
 
           <Link
             href="/pricing"
@@ -197,11 +253,25 @@ export default function BillingClient() {
         {/* ── Usage Breakdown ── */}
         <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
-          <div className="space-y-5">
-            {USAGE_STATS.map(stat => (
-              <UsageMeter key={stat.label} stat={stat} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="space-y-5">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <SkeletonBlock className="h-4 w-32" />
+                    <SkeletonBlock className="h-4 w-20" />
+                  </div>
+                  <SkeletonBlock className="h-1.5 w-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {usageStats.map(stat => (
+                <UsageMeter key={stat.label} stat={stat} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Payment History ── */}
@@ -217,8 +287,19 @@ export default function BillingClient() {
             </button>
           </div>
 
-          {PAYMENTS.length === 0 ? (
-            <p className="text-gray-400 text-sm py-4">No payments yet.</p>
+          {isLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex justify-between gap-4">
+                  <SkeletonBlock className="h-4 w-24" />
+                  <SkeletonBlock className="h-4 flex-1" />
+                  <SkeletonBlock className="h-4 w-16" />
+                  <SkeletonBlock className="h-4 w-12" />
+                </div>
+              ))}
+            </div>
+          ) : payments.length === 0 ? (
+            <p className="text-gray-400 text-sm py-4">No payment history yet.</p>
           ) : (
             <div className="overflow-x-auto -mx-6 px-6">
               <table className="w-full text-sm min-w-[400px]">
@@ -231,7 +312,7 @@ export default function BillingClient() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {PAYMENTS.map(row => (
+                  {payments.map(row => (
                     <tr key={row.id} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.date}</td>
                       <td className="py-3.5 text-white pr-4">{row.description}</td>

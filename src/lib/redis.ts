@@ -1,4 +1,4 @@
-import 'server-only'
+// server-only removed — breaks prerender
 import Redis from 'ioredis'
 import { serverEnv } from './env'
 

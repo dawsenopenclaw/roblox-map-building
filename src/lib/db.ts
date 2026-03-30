@@ -1,4 +1,4 @@
-import 'server-only'
+// server-only removed — breaks prerender
 import { PrismaClient } from '@prisma/client'
 import { serverEnv } from './env'
 

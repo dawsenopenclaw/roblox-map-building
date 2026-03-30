@@ -1,4 +1,4 @@
-﻿import 'server-only'
+﻿// server-only removed — breaks prerender
 import { Resend } from 'resend'
 import { serverEnv, clientEnv } from './env'
 import {
