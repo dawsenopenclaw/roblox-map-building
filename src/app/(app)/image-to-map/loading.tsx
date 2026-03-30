@@ -4,7 +4,7 @@ export default function ImageToMapLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-5xl mx-auto">
+      <div className="loading-enter max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="h-8 w-48 rounded-xl shimmer-gold mb-2" />

@@ -4,7 +4,7 @@ export default function TokensLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-4xl mx-auto">
+      <div className="loading-enter max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="h-8 w-40 rounded-xl shimmer-gold mb-2" />

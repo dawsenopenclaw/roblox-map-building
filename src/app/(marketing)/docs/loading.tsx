@@ -4,7 +4,7 @@ export default function DocsLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-6xl mx-auto px-4 py-12 flex gap-8">
+      <div className="loading-enter max-w-6xl mx-auto px-4 py-12 flex gap-8">
         {/* Sidebar nav */}
         <aside className="w-56 flex-shrink-0 hidden lg:block space-y-1">
           <div className="h-4 w-20 rounded shimmer mb-4" />

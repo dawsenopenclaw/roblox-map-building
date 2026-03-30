@@ -4,7 +4,7 @@ export default function TeamSettingsLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-3xl mx-auto">
+      <div className="loading-enter max-w-3xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="h-7 w-32 rounded-xl shimmer-gold mb-2" />

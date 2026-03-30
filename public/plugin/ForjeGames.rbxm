@@ -1,0 +1,2132 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  <!-- ForjeGames Studio Plugin v1.0.0 -->
+  <!-- Built by build-plugin.js on 2026-03-30T04:18:37.032Z -->
+  <Item class="Folder" referent="ROOT0001">
+    <Properties>
+      <string name="Name">ForjeGames</string>
+    </Properties>
+    <Item class="Script" referent="RBX0001">
+      <Properties>
+        <string name="Name">Plugin</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — Main Entry
+  Dark theme: background #1a1a1a, gold accents #c9a227
+
+  Auth flow: user enters 6-char code from forjegames.com/settings/studio
+  Sync loop: polls /api/studio/sync every 2-5s, applies server changes
+  execute_luau: handled inside Sync.lua via loadstring + pcall
+--]]
+
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local RunService           = game:GetService("RunService")
+
+-- Guard: only run in Studio edit mode
+if not RunService:IsStudio() then return end
+
+-- ============================================================
+-- Constants
+-- ============================================================
+local PLUGIN_NAME    = "ForjeGames"
+local PLUGIN_ID      = "ForjeGames_v1"
+local TOOLBAR_NAME   = "ForjeGames"
+local BUTTON_TOOLTIP = "Open ForjeGames AI Builder"
+local BUTTON_ICON    = "rbxassetid://0" -- replace with uploaded icon asset ID
+
+local COLORS = {
+  bg        = Color3.fromHex("1a1a1a"),
+  panel     = Color3.fromHex("242424"),
+  card      = Color3.fromHex("2e2e2e"),
+  gold      = Color3.fromHex("c9a227"),
+  goldHover = Color3.fromHex("e0b840"),
+  text      = Color3.fromHex("f0f0f0"),
+  textDim   = Color3.fromHex("8a8a8a"),
+  success   = Color3.fromHex("4caf50"),
+  error     = Color3.fromHex("f44336"),
+  warning   = Color3.fromHex("ff9800"),
+  border    = Color3.fromHex("3a3a3a"),
+  input     = Color3.fromHex("1e1e1e"),
+}
+
+-- ============================================================
+-- DockWidgetPluginGui
+-- ============================================================
+local widgetInfo = DockWidgetPluginGuiInfo.new(
+  Enum.InitialDockState.Right,
+  true,   -- initially enabled
+  false,  -- don't override saved state
+  380,    -- min width
+  600,    -- min height
+  380,    -- default width
+  720     -- default height
+)
+
+local widget     = plugin:CreateDockWidgetPluginGui(PLUGIN_ID, widgetInfo)
+widget.Title     = "ForjeGames AI"
+widget.Name      = "ForjeGamesWidget"
+
+-- ============================================================
+-- Toolbar button
+-- ============================================================
+local toolbar      = plugin:CreateToolbar(TOOLBAR_NAME)
+local toggleButton = toolbar:CreateButton(
+  PLUGIN_NAME,
+  BUTTON_TOOLTIP,
+  BUTTON_ICON,
+  "ForjeGames"
+)
+toggleButton.ClickableWhenViewportHidden = true
+
+widget:GetPropertyChangedSignal("Enabled"):Connect(function()
+  toggleButton:SetActive(widget.Enabled)
+end)
+toggleButton.Click:Connect(function()
+  widget.Enabled = not widget.Enabled
+end)
+
+-- ============================================================
+-- Safe module loader
+-- ============================================================
+local function safeRequire(moduleScript)
+  local ok, result = pcall(require, moduleScript)
+  if not ok then
+    warn("[ForjeGames] Failed to load module: " .. tostring(result))
+    return nil
+  end
+  return result
+end
+
+local Auth         = nil
+local UI           = nil
+local Sync         = nil
+local AssetManager = nil
+local History      = nil
+
+local pluginFolder = script.Parent
+if pluginFolder then
+  local authModule    = pluginFolder:FindFirstChild("Auth")
+  local uiModule      = pluginFolder:FindFirstChild("UI")
+  local syncModule    = pluginFolder:FindFirstChild("Sync")
+  local assetModule   = pluginFolder:FindFirstChild("AssetManager")
+  local historyModule = pluginFolder:FindFirstChild("History")
+
+  if authModule    then Auth         = safeRequire(authModule)    end
+  if uiModule      then UI           = safeRequire(uiModule)      end
+  if syncModule    then Sync         = safeRequire(syncModule)     end
+  if assetModule   then AssetManager = safeRequire(assetModule)   end
+  if historyModule then History      = safeRequire(historyModule) end
+end
+
+-- ============================================================
+-- Plugin state
+-- ============================================================
+local state = {
+  authenticated = false,
+  authToken     = nil,
+  sessionId     = nil,
+  connected     = false,
+  lastSync      = 0,
+  status        = "idle",
+}
+
+-- ============================================================
+-- Persisted settings helpers
+-- ============================================================
+local function loadSetting(key, default)
+  local ok, val = pcall(function() return plugin:GetSetting(key) end)
+  return (ok and val ~= nil) and val or default
+end
+
+local function saveSetting(key, value)
+  pcall(function() plugin:SetSetting(key, value) end)
+end
+
+-- Restore saved token
+state.authToken  = loadSetting("fj_auth_token", nil)
+state.sessionId  = loadSetting("fj_session_id", nil)
+if state.authToken and state.authToken ~= "" then
+  state.authenticated = true
+end
+
+-- ============================================================
+-- Build fallback UI (used when UI.lua module is not loaded)
+-- ============================================================
+local function buildFallbackUI()
+  -- Root background
+  local bg = Instance.new("Frame")
+  bg.Name             = "FJ_Root"
+  bg.Size             = UDim2.new(1, 0, 1, 0)
+  bg.BackgroundColor3 = COLORS.bg
+  bg.BorderSizePixel  = 0
+  bg.Parent           = widget
+
+  -- ----------------------------------------------------------------
+  -- Header bar
+  -- ----------------------------------------------------------------
+  local header = Instance.new("Frame")
+  header.Name             = "Header"
+  header.Size             = UDim2.new(1, 0, 0, 52)
+  header.BackgroundColor3 = COLORS.panel
+  header.BorderSizePixel  = 0
+  header.Parent           = bg
+
+  local titleLabel = Instance.new("TextLabel")
+  titleLabel.Text                  = "ForjeGames"
+  titleLabel.Font                  = Enum.Font.GothamBold
+  titleLabel.TextSize              = 16
+  titleLabel.TextColor3            = COLORS.gold
+  titleLabel.BackgroundTransparency = 1
+  titleLabel.Size                  = UDim2.new(0, 160, 0, 24)
+  titleLabel.Position              = UDim2.new(0, 12, 0, 6)
+  titleLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  titleLabel.Parent                = header
+
+  local subLabel = Instance.new("TextLabel")
+  subLabel.Text                  = "AI Builder"
+  subLabel.Font                  = Enum.Font.Gotham
+  subLabel.TextSize              = 11
+  subLabel.TextColor3            = COLORS.textDim
+  subLabel.BackgroundTransparency = 1
+  subLabel.Size                  = UDim2.new(0, 120, 0, 16)
+  subLabel.Position              = UDim2.new(0, 12, 0, 30)
+  subLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  subLabel.Parent                = header
+
+  -- Status dot
+  local statusDot = Instance.new("Frame")
+  statusDot.Name             = "StatusDot"
+  statusDot.Size             = UDim2.new(0, 10, 0, 10)
+  statusDot.Position         = UDim2.new(1, -22, 0.5, -5)
+  statusDot.BackgroundColor3 = state.authenticated and COLORS.success or COLORS.textDim
+  statusDot.BorderSizePixel  = 0
+  statusDot.Parent           = header
+  local dotC = Instance.new("UICorner")
+  dotC.CornerRadius = UDim.new(1, 0)
+  dotC.Parent       = statusDot
+
+  -- Header bottom border
+  local hBorder = Instance.new("Frame")
+  hBorder.Size             = UDim2.new(1, 0, 0, 1)
+  hBorder.Position         = UDim2.new(0, 0, 1, -1)
+  hBorder.BackgroundColor3 = COLORS.border
+  hBorder.BorderSizePixel  = 0
+  hBorder.Parent           = header
+
+  -- ----------------------------------------------------------------
+  -- Scrollable content
+  -- ----------------------------------------------------------------
+  local scroll = Instance.new("ScrollingFrame")
+  scroll.Name                  = "ContentScroll"
+  scroll.Size                  = UDim2.new(1, 0, 1, -52)
+  scroll.Position              = UDim2.new(0, 0, 0, 52)
+  scroll.BackgroundTransparency = 1
+  scroll.BorderSizePixel       = 0
+  scroll.ScrollBarThickness    = 4
+  scroll.ScrollBarImageColor3  = COLORS.gold
+  scroll.AutomaticCanvasSize   = Enum.AutomaticSize.Y
+  scroll.CanvasSize            = UDim2.new(0, 0, 0, 0)
+  scroll.Parent                = bg
+
+  local layout = Instance.new("UIListLayout")
+  layout.FillDirection       = Enum.FillDirection.Vertical
+  layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+  layout.SortOrder           = Enum.SortOrder.LayoutOrder
+  layout.Padding             = UDim.new(0, 10)
+  layout.Parent              = scroll
+
+  local outerPad = Instance.new("UIPadding")
+  outerPad.PaddingTop    = UDim.new(0, 14)
+  outerPad.PaddingLeft   = UDim.new(0, 12)
+  outerPad.PaddingRight  = UDim.new(0, 12)
+  outerPad.PaddingBottom = UDim.new(0, 14)
+  outerPad.Parent        = scroll
+
+  -- ----------------------------------------------------------------
+  -- Helper: rounded card
+  -- ----------------------------------------------------------------
+  local function card(name, height, layoutOrder)
+    local f = Instance.new("Frame")
+    f.Name             = name
+    f.Size             = UDim2.new(1, 0, 0, height)
+    f.BackgroundColor3 = COLORS.card
+    f.BorderSizePixel  = 0
+    f.LayoutOrder      = layoutOrder or 0
+    f.Parent           = scroll
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 8)
+    c.Parent       = f
+    return f
+  end
+
+  -- ----------------------------------------------------------------
+  -- Auth card — shows code entry when not authenticated
+  -- ----------------------------------------------------------------
+  local authCard = card("AuthCard", state.authenticated and 88 or 148, 1)
+
+  local authStatusLabel = Instance.new("TextLabel")
+  authStatusLabel.Name                  = "AuthStatus"
+  authStatusLabel.Text                  = state.authenticated and "Connected to ForjeGames" or "Enter your connection code"
+  authStatusLabel.Font                  = Enum.Font.Gotham
+  authStatusLabel.TextSize              = 12
+  authStatusLabel.TextColor3            = state.authenticated and COLORS.success or COLORS.textDim
+  authStatusLabel.BackgroundTransparency = 1
+  authStatusLabel.Size                  = UDim2.new(1, -24, 0, 18)
+  authStatusLabel.Position              = UDim2.new(0, 12, 0, 12)
+  authStatusLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  authStatusLabel.Parent                = authCard
+
+  -- Sub-label: instructions when not authed
+  local instrLabel = Instance.new("TextLabel")
+  instrLabel.Name                  = "InstrLabel"
+  instrLabel.Text                  = "Get your code at forjegames.com/settings/studio"
+  instrLabel.Font                  = Enum.Font.Gotham
+  instrLabel.TextSize              = 10
+  instrLabel.TextColor3            = COLORS.textDim
+  instrLabel.BackgroundTransparency = 1
+  instrLabel.Size                  = UDim2.new(1, -24, 0, 14)
+  instrLabel.Position              = UDim2.new(0, 12, 0, 32)
+  instrLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  instrLabel.TextWrapped           = true
+  instrLabel.Visible               = not state.authenticated
+  instrLabel.Parent                = authCard
+
+  -- Code text box (visible when not authed)
+  local codeBox = Instance.new("TextBox")
+  codeBox.Name             = "CodeBox"
+  codeBox.PlaceholderText  = "ABC123"
+  codeBox.PlaceholderColor3 = COLORS.textDim
+  codeBox.Text             = ""
+  codeBox.Font             = Enum.Font.GothamBold
+  codeBox.TextSize         = 18
+  codeBox.TextColor3       = COLORS.text
+  codeBox.BackgroundColor3 = COLORS.input
+  codeBox.BorderSizePixel  = 0
+  codeBox.Size             = UDim2.new(1, -24, 0, 36)
+  codeBox.Position         = UDim2.new(0, 12, 0, 50)
+  codeBox.TextXAlignment   = Enum.TextXAlignment.Center
+  codeBox.Visible          = not state.authenticated
+  codeBox.ClearTextOnFocus = false
+  codeBox.Parent           = authCard
+
+  local codeBoxCorner = Instance.new("UICorner")
+  codeBoxCorner.CornerRadius = UDim.new(0, 6)
+  codeBoxCorner.Parent       = codeBox
+
+  -- Primary action button
+  local primaryBtn = Instance.new("TextButton")
+  primaryBtn.Name             = "PrimaryBtn"
+  primaryBtn.Size             = UDim2.new(1, -24, 0, 32)
+  primaryBtn.Position         = UDim2.new(0, 12, 0, state.authenticated and 44 or 96)
+  primaryBtn.BackgroundColor3 = COLORS.gold
+  primaryBtn.BorderSizePixel  = 0
+  primaryBtn.Text             = state.authenticated and "Open Dashboard" or "Connect"
+  primaryBtn.Font             = Enum.Font.GothamBold
+  primaryBtn.TextSize         = 13
+  primaryBtn.TextColor3       = Color3.fromHex("0a0a0a")
+  primaryBtn.AutoButtonColor  = false
+  primaryBtn.Parent           = authCard
+
+  local primaryCorner = Instance.new("UICorner")
+  primaryCorner.CornerRadius = UDim.new(0, 6)
+  primaryCorner.Parent       = primaryBtn
+
+  primaryBtn.MouseEnter:Connect(function()
+    primaryBtn.BackgroundColor3 = COLORS.goldHover
+  end)
+  primaryBtn.MouseLeave:Connect(function()
+    primaryBtn.BackgroundColor3 = COLORS.gold
+  end)
+
+  -- ----------------------------------------------------------------
+  -- Sync status card
+  -- ----------------------------------------------------------------
+  local syncCard = card("SyncCard", 68, 2)
+
+  local connStatusLabel = Instance.new("TextLabel")
+  connStatusLabel.Name                  = "ConnStatus"
+  connStatusLabel.Text                  = "Studio Sync: Disconnected"
+  connStatusLabel.Font                  = Enum.Font.Gotham
+  connStatusLabel.TextSize              = 12
+  connStatusLabel.TextColor3            = COLORS.textDim
+  connStatusLabel.BackgroundTransparency = 1
+  connStatusLabel.Size                  = UDim2.new(1, -24, 0, 18)
+  connStatusLabel.Position              = UDim2.new(0, 12, 0, 10)
+  connStatusLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  connStatusLabel.Parent                = syncCard
+
+  local lastSyncLabel = Instance.new("TextLabel")
+  lastSyncLabel.Name                  = "LastSync"
+  lastSyncLabel.Text                  = "Last sync: never"
+  lastSyncLabel.Font                  = Enum.Font.Gotham
+  lastSyncLabel.TextSize              = 11
+  lastSyncLabel.TextColor3            = COLORS.textDim
+  lastSyncLabel.BackgroundTransparency = 1
+  lastSyncLabel.Size                  = UDim2.new(1, -24, 0, 14)
+  lastSyncLabel.Position              = UDim2.new(0, 12, 0, 32)
+  lastSyncLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  lastSyncLabel.Parent                = syncCard
+
+  local pingLabel = Instance.new("TextLabel")
+  pingLabel.Name                  = "Ping"
+  pingLabel.Text                  = ""
+  pingLabel.Font                  = Enum.Font.Gotham
+  pingLabel.TextSize              = 10
+  pingLabel.TextColor3            = COLORS.textDim
+  pingLabel.BackgroundTransparency = 1
+  pingLabel.Size                  = UDim2.new(1, -24, 0, 12)
+  pingLabel.Position              = UDim2.new(0, 12, 0, 50)
+  pingLabel.TextXAlignment        = Enum.TextXAlignment.Left
+  pingLabel.Parent                = syncCard
+
+  -- ----------------------------------------------------------------
+  -- Quick action buttons
+  -- ----------------------------------------------------------------
+  local function makeActionBtn(label, layoutOrder)
+    local btn = Instance.new("TextButton")
+    btn.Name             = "Btn_" .. label:gsub("%s+", "_")
+    btn.Size             = UDim2.new(1, 0, 0, 40)
+    btn.BackgroundColor3 = COLORS.card
+    btn.BorderSizePixel  = 0
+    btn.Text             = label
+    btn.Font             = Enum.Font.Gotham
+    btn.TextSize         = 13
+    btn.TextColor3       = COLORS.text
+    btn.LayoutOrder      = layoutOrder
+    btn.AutoButtonColor  = false
+    btn.Parent           = scroll
+
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 8)
+    c.Parent = btn
+
+    btn.MouseEnter:Connect(function()
+      btn.BackgroundColor3 = COLORS.border
+    end)
+    btn.MouseLeave:Connect(function()
+      btn.BackgroundColor3 = COLORS.card
+    end)
+
+    return btn
+  end
+
+  local terrainBtn = makeActionBtn("Generate Terrain", 10)
+  local cityBtn    = makeActionBtn("Generate City",    11)
+  local assetBtn   = makeActionBtn("Insert Asset",     12)
+  local undoBtn    = makeActionBtn("Undo Last AI Op",  13)
+
+  terrainBtn.MouseButton1Click:Connect(function()
+    if History then History.beginWaypoint("GenerateTerrain") end
+    if Sync then Sync.queueChange("generate_terrain", { placeId = game.PlaceId }) end
+    if History then History.endWaypoint("GenerateTerrain") end
+  end)
+
+  cityBtn.MouseButton1Click:Connect(function()
+    if History then History.beginWaypoint("GenerateCity") end
+    if Sync then Sync.queueChange("generate_city", { placeId = game.PlaceId }) end
+    if History then History.endWaypoint("GenerateCity") end
+  end)
+
+  assetBtn.MouseButton1Click:Connect(function()
+    if History then History.beginWaypoint("InsertAsset") end
+    if History then History.endWaypoint("InsertAsset") end
+  end)
+
+  undoBtn.MouseButton1Click:Connect(function()
+    pcall(function() ChangeHistoryService:Undo() end)
+  end)
+
+  -- ----------------------------------------------------------------
+  -- Auth button logic
+  -- ----------------------------------------------------------------
+  local function onAuthenticated(token, sessionId)
+    state.authToken     = token
+    state.sessionId     = sessionId or ""
+    state.authenticated = true
+
+    saveSetting("fj_auth_token", token)
+    saveSetting("fj_session_id", sessionId or "")
+
+    -- Update UI
+    authStatusLabel.Text      = "Connected to ForjeGames"
+    authStatusLabel.TextColor3 = COLORS.success
+    instrLabel.Visible         = false
+    codeBox.Visible            = false
+    primaryBtn.Text            = "Open Dashboard"
+    primaryBtn.Position        = UDim2.new(0, 12, 0, 44)
+    authCard.Size              = UDim2.new(1, 0, 0, 88)
+    statusDot.BackgroundColor3 = COLORS.success
+
+    -- Start sync
+    if Sync and not Sync.getStatus().running then
+      Sync.start({
+        token          = token,
+        sessionId      = sessionId,
+        onStatusChange = function(connected, lastSync)
+          state.connected = connected
+          state.lastSync  = lastSync
+          connStatusLabel.Text      = connected and "Studio Sync: Connected" or "Studio Sync: Disconnected"
+          connStatusLabel.TextColor3 = connected and COLORS.success or COLORS.textDim
+          if lastSync > 0 then
+            lastSyncLabel.Text = "Last sync: " .. os.date("%H:%M:%S", lastSync)
+          end
+        end,
+      })
+    end
+  end
+
+  primaryBtn.MouseButton1Click:Connect(function()
+    if state.authenticated then
+      if Auth then Auth.openDashboard() end
+    else
+      local code = codeBox.Text or ""
+      code = code:gsub("%s+", ""):upper()
+      if #code < 6 then
+        authStatusLabel.Text      = "Enter the 6-character code first"
+        authStatusLabel.TextColor3 = COLORS.warning
+        return
+      end
+
+      authStatusLabel.Text      = "Connecting..."
+      authStatusLabel.TextColor3 = COLORS.textDim
+      primaryBtn.Active          = false
+
+      if Auth then
+        Auth.exchangeCode(code, plugin, function(token, sessionId, err)
+          primaryBtn.Active = true
+          if err then
+            authStatusLabel.Text      = err
+            authStatusLabel.TextColor3 = COLORS.error
+          else
+            onAuthenticated(token, sessionId)
+          end
+        end)
+      else
+        authStatusLabel.Text      = "Auth module not loaded"
+        authStatusLabel.TextColor3 = COLORS.error
+      end
+    end
+  end)
+
+  -- If already authenticated on startup, start sync immediately
+  if state.authenticated and Sync then
+    onAuthenticated(state.authToken, state.sessionId)
+  end
+
+  return {
+    connStatusLabel = connStatusLabel,
+    lastSyncLabel   = lastSyncLabel,
+    pingLabel       = pingLabel,
+    statusDot       = statusDot,
+    authStatusLabel = authStatusLabel,
+  }
+end
+
+-- ============================================================
+-- Init
+-- ============================================================
+local uiRefs = nil
+
+local function init()
+  if UI then
+    uiRefs = UI.build(widget, state, COLORS, plugin)
+  else
+    uiRefs = buildFallbackUI()
+  end
+end
+
+init()
+
+-- ============================================================
+-- Cleanup on plugin unload
+-- ============================================================
+plugin.Unloading:Connect(function()
+  if Sync then pcall(Sync.stop) end
+  if History then pcall(History.cleanup) end
+  pcall(function() widget:Destroy() end)
+end)
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+        <token name="RunContext">Plugin</token>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0002">
+      <Properties>
+        <string name="Name">Auth</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — Auth.lua
+
+  Simple 6-character code auth flow:
+  1. User visits forjegames.com/settings/studio → sees a 6-character code
+  2. User enters the code in the plugin TextBox
+  3. Plugin POSTs /api/studio/auth with { code }
+  4. Server returns { token, sessionId, expiresAt }
+  5. Token stored via plugin:SetSetting (persisted across Studio sessions)
+--]]
+
+local HttpService = game:GetService("HttpService")
+
+local Auth = {}
+
+-- ============================================================
+-- Config
+-- ============================================================
+local BASE_URL   = "https://forjegames.com"
+local LOCAL_URL  = "http://localhost:3000"
+
+-- Detect environment: prefer local dev server if reachable
+local _baseUrl = nil
+local function getBaseUrl()
+  if _baseUrl then return _baseUrl end
+  local ok = pcall(function()
+    local res = HttpService:RequestAsync({
+      Url    = LOCAL_URL .. "/api/health",
+      Method = "GET",
+    })
+    if res and res.StatusCode and res.StatusCode < 500 then
+      _baseUrl = LOCAL_URL
+    end
+  end)
+  if not _baseUrl then _baseUrl = BASE_URL end
+  return _baseUrl
+end
+
+-- ============================================================
+-- Public: exchange a 6-character code for a session token
+-- callback(token, sessionId, err)
+-- ============================================================
+function Auth.exchangeCode(code, pluginRef, callback)
+  if not code or #code < 6 then
+    callback(nil, nil, "Please enter the 6-character code from forjegames.com/settings/studio")
+    return
+  end
+
+  -- Run in a separate thread so we don't block the heartbeat
+  task.spawn(function()
+    local url = getBaseUrl() .. "/api/studio/auth"
+
+    local encoded
+    local encOk = pcall(function()
+      encoded = HttpService:JSONEncode({ code = code:upper():gsub("%s+", "") })
+    end)
+    if not encOk then
+      callback(nil, nil, "Failed to encode request")
+      return
+    end
+
+    local ok, result = pcall(function()
+      return HttpService:RequestAsync({
+        Url    = url,
+        Method = "POST",
+        Headers = {
+          ["Content-Type"] = "application/json",
+        },
+        Body   = encoded,
+      })
+    end)
+
+    if not ok or not result then
+      callback(nil, nil, "Could not reach ForjeGames. Check your internet and try again.")
+      return
+    end
+
+    local status = result.StatusCode
+
+    if status == 200 then
+      local decodeOk, data = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+      end)
+      if decodeOk and data and data.token then
+        -- Persist token
+        pcall(function() pluginRef:SetSetting("fj_auth_token",   data.token)    end)
+        pcall(function() pluginRef:SetSetting("fj_session_id",   data.sessionId or "") end)
+        callback(data.token, data.sessionId, nil)
+      else
+        callback(nil, nil, "Invalid response from server")
+      end
+
+    elseif status == 400 then
+      callback(nil, nil, "Invalid or expired code. Get a fresh code from forjegames.com/settings/studio")
+
+    elseif status == 429 then
+      callback(nil, nil, "Too many attempts. Wait a moment and try again.")
+
+    else
+      callback(nil, nil, "Server error (" .. tostring(status) .. "). Try again shortly.")
+    end
+  end)
+end
+
+-- ============================================================
+-- Public: validate an existing stored token
+-- Returns true/false (synchronous pcall — fine for startup)
+-- ============================================================
+function Auth.validateToken(token)
+  if not token or token == "" then return false end
+
+  local ok, result = pcall(function()
+    return HttpService:RequestAsync({
+      Url    = getBaseUrl() .. "/api/studio/auth/validate",
+      Method = "GET",
+      Headers = {
+        ["Authorization"] = "Bearer " .. token,
+        ["Content-Type"]  = "application/json",
+      },
+    })
+  end)
+
+  if not ok or not result then return false end
+  return result.StatusCode == 200
+end
+
+-- ============================================================
+-- Public: sign out — clears stored credentials
+-- ============================================================
+function Auth.signOut(pluginRef, onComplete)
+  pcall(function() pluginRef:SetSetting("fj_auth_token", nil) end)
+  pcall(function() pluginRef:SetSetting("fj_session_id", nil) end)
+  if onComplete then onComplete() end
+end
+
+-- ============================================================
+-- Public: open dashboard URL (prints to Output for now;
+-- future: plugin:OpenBrowserWindow when Roblox exposes it)
+-- ============================================================
+function Auth.openDashboard()
+  local url = BASE_URL .. "/dashboard"
+  print("[ForjeGames] Open dashboard: " .. url)
+  warn("[ForjeGames] Copy the URL above and paste into your browser")
+end
+
+-- ============================================================
+-- Public: open settings page so user can get a fresh code
+-- ============================================================
+function Auth.openCodePage()
+  local url = BASE_URL .. "/settings/studio"
+  print("[ForjeGames] Get your connection code at: " .. url)
+  warn("[ForjeGames] Copy the URL above and paste into your browser")
+end
+
+return Auth
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0003">
+      <Properties>
+        <string name="Name">UI</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — UI.lua
+  Plugin panel with status, recent builds, quick actions
+  Dark theme: #1a1a1a bg, #c9a227 gold accent
+--]]
+
+local UI = {}
+
+-- ============================================================
+-- Helper: create a rounded frame
+-- ============================================================
+local function roundFrame(parent, name, size, position, bgColor, radius)
+  local f = Instance.new("Frame")
+  f.Name             = name
+  f.Size             = size
+  f.Position         = position or UDim2.new(0, 0, 0, 0)
+  f.BackgroundColor3 = bgColor
+  f.BorderSizePixel  = 0
+  f.Parent           = parent
+
+  local c = Instance.new("UICorner")
+  c.CornerRadius = UDim.new(0, radius or 8)
+  c.Parent       = f
+
+  return f
+end
+
+-- ============================================================
+-- Helper: create a text label
+-- ============================================================
+local function label(parent, name, text, size, position, textColor, fontSize, font, align)
+  local l = Instance.new("TextLabel")
+  l.Name                 = name
+  l.Text                 = text
+  l.Size                 = size
+  l.Position             = position
+  l.TextColor3           = textColor
+  l.TextSize             = fontSize or 13
+  l.Font                 = font or Enum.Font.Gotham
+  l.BackgroundTransparency = 1
+  l.TextXAlignment       = align or Enum.TextXAlignment.Left
+  l.TextWrapped          = true
+  l.Parent               = parent
+  return l
+end
+
+-- ============================================================
+-- Helper: gold button
+-- ============================================================
+local function goldButton(parent, name, text, size, position, COLORS)
+  local btn = Instance.new("TextButton")
+  btn.Name             = name
+  btn.Size             = size
+  btn.Position         = position
+  btn.BackgroundColor3 = COLORS.gold
+  btn.BorderSizePixel  = 0
+  btn.Text             = text
+  btn.Font             = Enum.Font.GothamBold
+  btn.TextSize         = 13
+  btn.TextColor3       = Color3.fromHex("0a0a0a")
+  btn.Parent           = parent
+  btn.AutoButtonColor  = false
+
+  local c = Instance.new("UICorner")
+  c.CornerRadius = UDim.new(0, 6)
+  c.Parent       = btn
+
+  btn.MouseEnter:Connect(function()
+    btn.BackgroundColor3 = COLORS.goldHover
+  end)
+  btn.MouseLeave:Connect(function()
+    btn.BackgroundColor3 = COLORS.gold
+  end)
+
+  return btn
+end
+
+-- ============================================================
+-- Helper: subtle button
+-- ============================================================
+local function subtleButton(parent, name, text, size, position, COLORS)
+  local btn = Instance.new("TextButton")
+  btn.Name             = name
+  btn.Size             = size
+  btn.Position         = position
+  btn.BackgroundColor3 = COLORS.card
+  btn.BorderSizePixel  = 0
+  btn.Text             = text
+  btn.Font             = Enum.Font.Gotham
+  btn.TextSize         = 12
+  btn.TextColor3       = COLORS.text
+  btn.Parent           = parent
+  btn.AutoButtonColor  = false
+
+  local c = Instance.new("UICorner")
+  c.CornerRadius = UDim.new(0, 6)
+  c.Parent       = btn
+
+  btn.MouseEnter:Connect(function()
+    btn.BackgroundColor3 = COLORS.border
+  end)
+  btn.MouseLeave:Connect(function()
+    btn.BackgroundColor3 = COLORS.card
+  end)
+
+  return btn
+end
+
+-- ============================================================
+-- Main build function
+-- ============================================================
+function UI.build(widget, state, COLORS, pluginRef)
+  -- Root background
+  local bg = Instance.new("Frame")
+  bg.Name             = "RF_Root"
+  bg.Size             = UDim2.new(1, 0, 1, 0)
+  bg.BackgroundColor3 = COLORS.bg
+  bg.BorderSizePixel  = 0
+  bg.Parent           = widget
+
+  -- ----------------------------------------------------------------
+  -- Header bar
+  -- ----------------------------------------------------------------
+  local header = Instance.new("Frame")
+  header.Name             = "Header"
+  header.Size             = UDim2.new(1, 0, 0, 52)
+  header.BackgroundColor3 = COLORS.panel
+  header.BorderSizePixel  = 0
+  header.Parent           = bg
+
+  -- Left: logo text + subtitle
+  local logoText = label(
+    header, "LogoText", "ForjeGames",
+    UDim2.new(0, 140, 0, 24), UDim2.new(0, 12, 0, 6),
+    COLORS.gold, 16, Enum.Font.GothamBold
+  )
+
+  local subText = label(
+    header, "SubText", "AI Builder",
+    UDim2.new(0, 120, 0, 16), UDim2.new(0, 12, 0, 30),
+    COLORS.textDim, 11, Enum.Font.Gotham
+  )
+
+  -- Right: status dot
+  local statusDot = Instance.new("Frame")
+  statusDot.Name             = "StatusDot"
+  statusDot.Size             = UDim2.new(0, 10, 0, 10)
+  statusDot.Position         = UDim2.new(1, -22, 0.5, -5)
+  statusDot.BackgroundColor3 = state.authenticated and COLORS.success or COLORS.textDim
+  statusDot.BorderSizePixel  = 0
+  statusDot.Parent           = header
+
+  local dotCorner = Instance.new("UICorner")
+  dotCorner.CornerRadius = UDim.new(1, 0)
+  dotCorner.Parent       = statusDot
+
+  -- Bottom border for header
+  local headerBorder = Instance.new("Frame")
+  headerBorder.Name             = "HeaderBorder"
+  headerBorder.Size             = UDim2.new(1, 0, 0, 1)
+  headerBorder.Position         = UDim2.new(0, 0, 1, -1)
+  headerBorder.BackgroundColor3 = COLORS.border
+  headerBorder.BorderSizePixel  = 0
+  headerBorder.Parent           = header
+
+  -- ----------------------------------------------------------------
+  -- Scroll content area
+  -- ----------------------------------------------------------------
+  local scroll = Instance.new("ScrollingFrame")
+  scroll.Name                  = "ContentScroll"
+  scroll.Size                  = UDim2.new(1, 0, 1, -52)
+  scroll.Position              = UDim2.new(0, 0, 0, 52)
+  scroll.BackgroundTransparency = 1
+  scroll.BorderSizePixel       = 0
+  scroll.ScrollBarThickness    = 4
+  scroll.ScrollBarImageColor3  = COLORS.gold
+  scroll.AutomaticCanvasSize   = Enum.AutomaticSize.Y
+  scroll.CanvasSize            = UDim2.new(0, 0, 0, 0)
+  scroll.Parent                = bg
+
+  local layout = Instance.new("UIListLayout")
+  layout.FillDirection       = Enum.FillDirection.Vertical
+  layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+  layout.SortOrder           = Enum.SortOrder.LayoutOrder
+  layout.Padding             = UDim.new(0, 10)
+  layout.Parent              = scroll
+
+  local padding = Instance.new("UIPadding")
+  padding.PaddingTop    = UDim.new(0, 14)
+  padding.PaddingLeft   = UDim.new(0, 12)
+  padding.PaddingRight  = UDim.new(0, 12)
+  padding.PaddingBottom = UDim.new(0, 14)
+  padding.Parent        = scroll
+
+  -- ----------------------------------------------------------------
+  -- Auth section
+  -- ----------------------------------------------------------------
+  local authCard = roundFrame(scroll, "AuthCard",
+    UDim2.new(1, 0, 0, 88), nil, COLORS.card, 8)
+  authCard.LayoutOrder = 1
+
+  local authStatus = label(
+    authCard, "AuthStatus",
+    state.authenticated and "Connected to ForjeGames" or "Not connected",
+    UDim2.new(1, -24, 0, 18), UDim2.new(0, 12, 0, 12),
+    state.authenticated and COLORS.success or COLORS.textDim, 12
+  )
+
+  local authEmailLabel = label(
+    authCard, "AuthEmail", "",
+    UDim2.new(1, -24, 0, 14), UDim2.new(0, 12, 0, 30),
+    COLORS.textDim, 11, Enum.Font.Gotham
+  )
+
+  local authBtn = goldButton(
+    authCard, "AuthBtn",
+    state.authenticated and "Open Dashboard" or "Enter Code",
+    UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, 48), COLORS
+  )
+
+  -- ----------------------------------------------------------------
+  -- Connection status section
+  -- ----------------------------------------------------------------
+  local syncCard = roundFrame(scroll, "SyncCard",
+    UDim2.new(1, 0, 0, 72), nil, COLORS.card, 8)
+  syncCard.LayoutOrder = 2
+
+  local syncLayout = Instance.new("UIListLayout")
+  syncLayout.FillDirection  = Enum.FillDirection.Vertical
+  syncLayout.Padding        = UDim.new(0, 4)
+  syncLayout.Parent         = syncCard
+
+  local syncPadding = Instance.new("UIPadding")
+  syncPadding.PaddingAll = UDim.new(0, 10)
+  syncPadding.Parent     = syncCard
+
+  local connStatusLabel = label(
+    syncCard, "ConnStatus", "Studio Sync: Disconnected",
+    UDim2.new(1, 0, 0, 18), nil,
+    COLORS.textDim, 12, Enum.Font.Gotham
+  )
+
+  local lastSyncLabel = label(
+    syncCard, "LastSync", "Last sync: never",
+    UDim2.new(1, 0, 0, 14), nil,
+    COLORS.textDim, 11, Enum.Font.Gotham
+  )
+
+  local pingLabel = label(
+    syncCard, "Ping", "",
+    UDim2.new(1, 0, 0, 14), nil,
+    COLORS.textDim, 11, Enum.Font.Gotham
+  )
+
+  -- ----------------------------------------------------------------
+  -- Quick actions
+  -- ----------------------------------------------------------------
+  local actionsCard = roundFrame(scroll, "ActionsCard",
+    UDim2.new(1, 0, 0, 200), nil, COLORS.card, 8)
+  actionsCard.LayoutOrder = 3
+
+  local actionsTitle = label(
+    actionsCard, "ActionsTitle", "Quick Actions",
+    UDim2.new(1, -24, 0, 18), UDim2.new(0, 12, 0, 10),
+    COLORS.text, 13, Enum.Font.GothamBold
+  )
+
+  local actionItems = {
+    { name = "Generate Terrain",  color = COLORS.gold },
+    { name = "Generate City",     color = COLORS.gold },
+    { name = "Generate Asset",    color = COLORS.gold },
+    { name = "Undo Last AI Op",   color = COLORS.card  },
+  }
+
+  local actionButtons = {}
+  for i, item in ipairs(actionItems) do
+    local yOffset = 36 + (i - 1) * 38
+    local btn
+
+    if item.color == COLORS.card then
+      btn = subtleButton(
+        actionsCard, "Action_" .. i, item.name,
+        UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, yOffset), COLORS
+      )
+    else
+      btn = goldButton(
+        actionsCard, "Action_" .. i, item.name,
+        UDim2.new(1, -24, 0, 32), UDim2.new(0, 12, 0, yOffset), COLORS
+      )
+    end
+
+    actionButtons[i] = btn
+  end
+
+  -- Resize card based on content
+  actionsCard.Size = UDim2.new(1, 0, 0, 36 + #actionItems * 38 + 12)
+
+  -- ----------------------------------------------------------------
+  -- Recent builds section
+  -- ----------------------------------------------------------------
+  local recentCard = roundFrame(scroll, "RecentCard",
+    UDim2.new(1, 0, 0, 130), nil, COLORS.card, 8)
+  recentCard.LayoutOrder = 4
+
+  local recentTitle = label(
+    recentCard, "RecentTitle", "Recent Builds",
+    UDim2.new(1, -24, 0, 18), UDim2.new(0, 12, 0, 10),
+    COLORS.text, 13, Enum.Font.GothamBold
+  )
+
+  local recentList = Instance.new("Frame")
+  recentList.Name             = "RecentList"
+  recentList.Size             = UDim2.new(1, -24, 1, -36)
+  recentList.Position         = UDim2.new(0, 12, 0, 36)
+  recentList.BackgroundTransparency = 1
+  recentList.Parent           = recentCard
+
+  local recentListLayout = Instance.new("UIListLayout")
+  recentListLayout.FillDirection  = Enum.FillDirection.Vertical
+  recentListLayout.Padding        = UDim.new(0, 6)
+  recentListLayout.Parent         = recentList
+
+  local emptyLabel = label(
+    recentList, "EmptyLabel", "No recent builds yet",
+    UDim2.new(1, 0, 0, 40), nil,
+    COLORS.textDim, 11, Enum.Font.Gotham, Enum.TextXAlignment.Center
+  )
+
+  -- ============================================================
+  -- Public API for other modules to update UI
+  -- ============================================================
+  local refs = {
+    statusDot        = statusDot,
+    authStatus       = authStatus,
+    authEmailLabel   = authEmailLabel,
+    authBtn          = authBtn,
+    connStatusLabel  = connStatusLabel,
+    lastSyncLabel    = lastSyncLabel,
+    pingLabel        = pingLabel,
+    actionButtons    = actionButtons,
+    recentList       = recentList,
+    emptyLabel       = emptyLabel,
+    COLORS           = COLORS,
+  }
+
+  -- ============================================================
+  -- Update auth state in UI
+  -- ============================================================
+  function refs.setAuthenticated(email)
+    authStatus.Text      = "Connected — " .. (email or "")
+    authStatus.TextColor3 = COLORS.success
+    authBtn.Text         = "Open Dashboard"
+    statusDot.BackgroundColor3 = COLORS.success
+    if email then authEmailLabel.Text = email end
+  end
+
+  function refs.setDisconnected()
+    authStatus.Text      = "Not connected"
+    authStatus.TextColor3 = COLORS.textDim
+    authBtn.Text         = "Enter Code"
+    statusDot.BackgroundColor3 = COLORS.textDim
+    authEmailLabel.Text  = ""
+  end
+
+  -- ============================================================
+  -- Add a recent build entry
+  -- ============================================================
+  function refs.addRecentBuild(buildName, buildType, timestamp)
+    emptyLabel.Visible = false
+
+    local entry = Instance.new("Frame")
+    entry.Name             = "Build_" .. tostring(timestamp)
+    entry.Size             = UDim2.new(1, 0, 0, 28)
+    entry.BackgroundTransparency = 1
+    entry.Parent           = recentList
+
+    local entryLayout = Instance.new("UIListLayout")
+    entryLayout.FillDirection = Enum.FillDirection.Horizontal
+    entryLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    entryLayout.Padding   = UDim.new(0, 8)
+    entryLayout.Parent    = entry
+
+    local dot = Instance.new("Frame")
+    dot.Size             = UDim2.new(0, 6, 0, 6)
+    dot.BackgroundColor3 = COLORS.gold
+    dot.BorderSizePixel  = 0
+    dot.LayoutOrder      = 1
+    dot.Parent           = entry
+
+    local dotC = Instance.new("UICorner")
+    dotC.CornerRadius = UDim.new(1, 0)
+    dotC.Parent       = dot
+
+    local nameLabel = label(
+      entry, "Name", buildName,
+      UDim2.new(0, 160, 1, 0), nil,
+      COLORS.text, 11, Enum.Font.Gotham
+    )
+    nameLabel.LayoutOrder = 2
+
+    local typeLabel = label(
+      entry, "Type", buildType,
+      UDim2.new(0, 60, 1, 0), nil,
+      COLORS.gold, 10, Enum.Font.Gotham
+    )
+    typeLabel.LayoutOrder = 3
+
+    -- Keep only last 5 entries
+    local children = recentList:GetChildren()
+    local frameCount = 0
+    for _, c in ipairs(children) do
+      if c:IsA("Frame") then frameCount = frameCount + 1 end
+    end
+    if frameCount > 5 then
+      for _, c in ipairs(children) do
+        if c:IsA("Frame") then
+          c:Destroy()
+          break
+        end
+      end
+    end
+
+    -- Resize recent card
+    recentCard.Size = UDim2.new(1, 0, 0, 36 + math.min(frameCount + 1, 5) * 34 + 12)
+  end
+
+  return refs
+end
+
+return UI
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0004">
+      <Properties>
+        <string name="Name">Sync</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — Sync.lua
+  HTTP polling sync (2-5 second interval)
+
+  GET  /api/studio/sync?lastSync=<timestamp>&sessionId=<id>  → pending changes
+  POST /api/studio/update                                     → push local changes
+  POST /api/studio/connect                                    → announce connection
+  POST /api/studio/screenshot                                 → push screenshot data
+
+  Features:
+  - Exponential backoff on failures (2s → 4s → 8s → max 30s)
+  - Graceful degradation: retries silently, never crashes plugin
+  - Change queue: batches local changes before pushing
+  - execute_luau command handler with loadstring + pcall
+--]]
+
+local HttpService = game:GetService("HttpService")
+local RunService  = game:GetService("RunService")
+
+local Sync = {}
+
+-- ============================================================
+-- Config
+-- ============================================================
+local BASE_URL     = "https://forjegames.com"
+local LOCAL_URL    = "http://localhost:3000"
+local MIN_INTERVAL = 2    -- seconds
+local MAX_INTERVAL = 30   -- seconds (backoff ceiling)
+
+-- ============================================================
+-- Internal state
+-- ============================================================
+local _running           = false
+local _heartbeatConn     = nil
+local _token             = nil
+local _sessionId         = nil
+local _onStatusChange    = nil
+local _lastSync          = 0
+local _backoffInterval   = MIN_INTERVAL
+local _timeSinceLastPoll = 0
+local _changeQueue       = {}
+local _pendingPush       = false
+local _baseUrl           = nil
+
+-- ============================================================
+-- Resolve base URL (prefer local dev if reachable)
+-- ============================================================
+local function resolveBaseUrl()
+  if _baseUrl then return _baseUrl end
+
+  local ok = pcall(function()
+    local res = HttpService:RequestAsync({
+      Url    = LOCAL_URL .. "/api/health",
+      Method = "GET",
+    })
+    if res and res.StatusCode and res.StatusCode < 500 then
+      _baseUrl = LOCAL_URL
+    end
+  end)
+
+  if not _baseUrl then
+    _baseUrl = BASE_URL
+  end
+
+  return _baseUrl
+end
+
+-- ============================================================
+-- HTTP helpers (all pcall-wrapped — never crash the plugin)
+-- ============================================================
+local function authHeaders()
+  local headers = {
+    ["Content-Type"]    = "application/json",
+    ["X-Plugin-Version"] = "1.0.0",
+  }
+  if _token then
+    headers["Authorization"] = "Bearer " .. _token
+  end
+  if _sessionId then
+    headers["X-Session-Id"] = _sessionId
+  end
+  return headers
+end
+
+local function httpGet(path)
+  local url = resolveBaseUrl() .. path
+  local ok, result = pcall(function()
+    return HttpService:RequestAsync({
+      Url     = url,
+      Method  = "GET",
+      Headers = authHeaders(),
+    })
+  end)
+  return ok and result or nil
+end
+
+local function httpPost(path, body)
+  local url = resolveBaseUrl() .. path
+  local encoded
+  local encOk, encErr = pcall(function()
+    encoded = HttpService:JSONEncode(body)
+  end)
+  if not encOk then
+    warn("[ForjeGames Sync] JSON encode error: " .. tostring(encErr))
+    return nil
+  end
+
+  local ok, result = pcall(function()
+    return HttpService:RequestAsync({
+      Url     = url,
+      Method  = "POST",
+      Headers = authHeaders(),
+      Body    = encoded,
+    })
+  end)
+  return ok and result or nil
+end
+
+-- ============================================================
+-- execute_luau handler
+-- loadstring is available in Studio plugin context.
+-- If disabled by FFlag, falls back to structured command parse.
+-- ============================================================
+local function executeStructuredCommand(data)
+  -- Fallback: interpret a structured {action, ...} table instead of raw Luau.
+  local action = data.action
+  if action == "create_part" then
+    local part = Instance.new("Part")
+    part.Name     = data.name or "FJ_Part"
+    part.Size     = Vector3.new(
+      data.sizeX or 4,
+      data.sizeY or 4,
+      data.sizeZ or 4
+    )
+    part.CFrame   = CFrame.new(
+      data.posX or 0,
+      data.posY or 5,
+      data.posZ or 0
+    )
+    part.Anchored = true
+    part:SetAttribute("fj_generated", true)
+    part.Parent   = workspace
+  elseif action == "delete_named" then
+    local inst = workspace:FindFirstChild(data.name or "", true)
+    if inst then inst:Destroy() end
+  elseif action == "set_property" then
+    local inst = workspace:FindFirstChild(data.instancePath or "", true)
+    if inst and data.property and data.value ~= nil then
+      pcall(function()
+        inst[data.property] = data.value
+      end)
+    end
+  end
+end
+
+local function handleExecuteLuau(data)
+  if not data or not data.code then return end
+
+  -- Attempt loadstring (available in Studio plugin scripts)
+  local loadOk = false
+  pcall(function()
+    -- loadstring returns fn, err
+    local fn, parseErr = loadstring(data.code)
+    if fn then
+      loadOk = true
+      local ok, execErr = pcall(fn)
+      if not ok then
+        warn("[ForjeGames] Execution error: " .. tostring(execErr))
+      end
+    else
+      warn("[ForjeGames] Parse error: " .. tostring(parseErr))
+      -- Fall through to structured command if loadstring gave us nil
+      if data.structured then
+        executeStructuredCommand(data.structured)
+      end
+    end
+  end)
+
+  if not loadOk and data.structured then
+    -- loadstring itself errored (security restricted) — use structured fallback
+    executeStructuredCommand(data.structured)
+  end
+end
+
+-- ============================================================
+-- Apply incoming changes from the server
+-- ============================================================
+local function applyChanges(changes)
+  if not changes or type(changes) ~= "table" then return end
+
+  for _, change in ipairs(changes) do
+    local ok, err = pcall(function()
+      local changeType = change.type
+      local data       = change.data
+
+      if changeType == "execute_luau" then
+        handleExecuteLuau(data)
+
+      elseif changeType == "insert_model" and data then
+        local assetOk, assetErr = pcall(function()
+          local AssetManager = require(script.Parent.AssetManager)
+          AssetManager.insertFromChange(change)
+        end)
+        if not assetOk then
+          warn("[ForjeGames Sync] insert_model failed: " .. tostring(assetErr))
+        end
+
+      elseif changeType == "delete_model" and data and data.name then
+        local instance = workspace:FindFirstChild(data.name, true)
+        if instance then instance:Destroy() end
+
+      elseif changeType == "update_property" and data then
+        local instance = workspace:FindFirstChild(data.instancePath or "", true)
+        if instance and data.property and data.value ~= nil then
+          pcall(function()
+            instance[data.property] = data.value
+          end)
+        end
+      end
+    end)
+
+    if not ok then
+      warn("[ForjeGames Sync] Failed to apply change: " .. tostring(err))
+    end
+  end
+end
+
+-- ============================================================
+-- Announce connection to the server
+-- ============================================================
+local function sendConnect()
+  if not _token then return end
+
+  local payload = {
+    placeId   = game.PlaceId,
+    jobId     = game.JobId,
+    pluginVer = "1.0.0",
+    sessionId = _sessionId,
+  }
+
+  local result = httpPost("/api/studio/connect", payload)
+  if result and result.StatusCode == 200 then
+    local ok, data = pcall(function()
+      return HttpService:JSONDecode(result.Body)
+    end)
+    if ok and data and data.sessionId then
+      _sessionId = data.sessionId
+    end
+  end
+end
+
+-- ============================================================
+-- Poll for pending server changes
+-- ============================================================
+local function pollSync()
+  if not _token then return end
+
+  local path = "/api/studio/sync?lastSync=" .. tostring(math.floor(_lastSync))
+  if _sessionId then
+    path = path .. "&sessionId=" .. _sessionId
+  end
+
+  local result = httpGet(path)
+
+  if not result then
+    _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
+    return
+  end
+
+  local status = result.StatusCode
+
+  if status == 200 then
+    _backoffInterval = MIN_INTERVAL
+    local ok, data = pcall(function()
+      return HttpService:JSONDecode(result.Body)
+    end)
+    if ok and data then
+      _lastSync = data.serverTime or os.time()
+      if data.changes and #data.changes > 0 then
+        applyChanges(data.changes)
+      end
+    end
+    if _onStatusChange then _onStatusChange(true, _lastSync) end
+
+  elseif status == 401 then
+    warn("[ForjeGames Sync] Auth expired — please reconnect in the plugin")
+    _backoffInterval = MAX_INTERVAL
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
+
+  elseif status == 429 then
+    -- Rate limited: aggressive backoff
+    _backoffInterval = math.min(_backoffInterval * 3, MAX_INTERVAL)
+
+  else
+    _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
+    if _onStatusChange then _onStatusChange(false, _lastSync) end
+  end
+end
+
+-- ============================================================
+-- Push local changes to API
+-- ============================================================
+local function pushChanges()
+  if #_changeQueue == 0 then return end
+  if not _token then return end
+
+  local batch = {}
+  for _, c in ipairs(_changeQueue) do
+    table.insert(batch, c)
+  end
+  _changeQueue  = {}
+  _pendingPush  = false
+
+  local payload = {
+    timestamp = os.time(),
+    changes   = batch,
+    source    = "studio-plugin",
+    placeId   = game.PlaceId,
+    jobId     = game.JobId,
+    sessionId = _sessionId,
+  }
+
+  local result = httpPost("/api/studio/update", payload)
+  if not (result and result.StatusCode == 200) then
+    -- Re-queue on failure
+    for _, c in ipairs(batch) do
+      table.insert(_changeQueue, c)
+    end
+    warn("[ForjeGames Sync] Failed to push changes, will retry")
+  end
+end
+
+-- ============================================================
+-- Heartbeat tick
+-- ============================================================
+local function onHeartbeat(dt)
+  if not _running then return end
+
+  _timeSinceLastPoll = _timeSinceLastPoll + dt
+
+  if _timeSinceLastPoll >= _backoffInterval then
+    _timeSinceLastPoll = 0
+    pollSync()
+    if _pendingPush then
+      pushChanges()
+    end
+  end
+end
+
+-- ============================================================
+-- Public: push a screenshot payload
+-- ============================================================
+function Sync.pushScreenshot(imageData)
+  if not _token then return end
+  local payload = {
+    image     = imageData,
+    placeId   = game.PlaceId,
+    sessionId = _sessionId,
+    timestamp = os.time(),
+  }
+  local result = httpPost("/api/studio/screenshot", payload)
+  return result and result.StatusCode == 200
+end
+
+-- ============================================================
+-- Public: queue a local change for push
+-- ============================================================
+function Sync.queueChange(changeType, data)
+  table.insert(_changeQueue, {
+    type      = changeType,
+    data      = data,
+    timestamp = os.time(),
+  })
+  _pendingPush = true
+end
+
+-- ============================================================
+-- Public: start sync loop
+-- ============================================================
+function Sync.start(opts)
+  if _running then return end
+
+  _token             = opts.token
+  _sessionId         = opts.sessionId or nil
+  _onStatusChange    = opts.onStatusChange
+  _backoffInterval   = MIN_INTERVAL
+  _timeSinceLastPoll = 0
+  _running           = true
+
+  -- Resolve base URL on startup (background — doesn't block)
+  task.spawn(function()
+    resolveBaseUrl()
+    -- Announce connection once base URL is known
+    sendConnect()
+  end)
+
+  -- Attach heartbeat
+  _heartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
+
+  -- Initial poll after a short delay (give connect time to register)
+  task.delay(1, pollSync)
+end
+
+-- ============================================================
+-- Public: stop sync loop
+-- ============================================================
+function Sync.stop()
+  _running = false
+  if _heartbeatConn then
+    _heartbeatConn:Disconnect()
+    _heartbeatConn = nil
+  end
+end
+
+-- ============================================================
+-- Public: update auth token (after re-login)
+-- ============================================================
+function Sync.setToken(token)
+  _token           = token
+  _backoffInterval = MIN_INTERVAL
+  -- Re-announce connection with new token
+  task.spawn(sendConnect)
+end
+
+-- ============================================================
+-- Public: get current sync status
+-- ============================================================
+function Sync.getStatus()
+  return {
+    running         = _running,
+    connected       = _backoffInterval == MIN_INTERVAL,
+    lastSync        = _lastSync,
+    backoffInterval = _backoffInterval,
+    pendingChanges  = #_changeQueue,
+    sessionId       = _sessionId,
+  }
+end
+
+return Sync
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0005">
+      <Properties>
+        <string name="Name">AssetManager</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — AssetManager.lua
+  Asset injection into workspace.
+
+  Supports:
+  - InsertService:LoadAsset() for marketplace asset IDs
+  - game:GetObjects() for .rbxm content strings
+  - Batch insertion with task.wait() between groups
+  - ChangeHistoryService waypoints for full undo support
+  - Structured script insertion
+--]]
+
+local InsertService        = game:GetService("InsertService")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local Selection            = game:GetService("Selection")
+
+local AssetManager = {}
+
+-- ============================================================
+-- Config
+-- ============================================================
+local BATCH_WAIT     = 0.05  -- seconds between batch groups (prevents Studio freeze)
+local BATCH_SIZE     = 5     -- assets per batch
+local DEFAULT_PARENT = workspace
+
+-- ============================================================
+-- Internal helpers
+-- ============================================================
+local function getTargetParent()
+  local selected = Selection:Get()
+  for _, s in ipairs(selected) do
+    if s:IsA("Folder") or s:IsA("Model") then
+      return s
+    end
+  end
+  return DEFAULT_PARENT
+end
+
+local function setInstanceAttributes(instance, attrs)
+  if not attrs then return end
+  for key, value in pairs(attrs) do
+    pcall(function() instance:SetAttribute(key, value) end)
+  end
+end
+
+-- Tag all ForjeGames-generated instances so they can be audited or bulk-removed
+local function stampGenerated(instance, extra)
+  pcall(function() instance:SetAttribute("fj_generated", true) end)
+  pcall(function() instance:SetAttribute("fj_timestamp",  os.time()) end)
+  if extra then
+    for k, v in pairs(extra) do
+      pcall(function() instance:SetAttribute(k, v) end)
+    end
+  end
+end
+
+-- ============================================================
+-- Load a marketplace asset by numeric asset ID
+-- ============================================================
+function AssetManager.loadMarketplaceAsset(assetId, opts)
+  opts = opts or {}
+
+  -- InsertService:LoadAsset returns a Model container
+  local ok, result = pcall(function()
+    return InsertService:LoadAsset(tonumber(assetId))
+  end)
+
+  if not ok or not result then
+    warn("[ForjeGames AssetManager] LoadAsset failed for ID "
+      .. tostring(assetId) .. ": " .. tostring(result))
+    return nil
+  end
+
+  -- Extract the first meaningful child (Model, BasePart, etc.)
+  local model = result:FindFirstChildWhichIsA("Model")
+           or result:FindFirstChildWhichIsA("BasePart")
+           or result
+
+  if opts.name then
+    pcall(function() model.Name = opts.name end)
+  end
+
+  if opts.cframe then
+    pcall(function()
+      if model:IsA("Model") and model.PrimaryPart then
+        model:SetPrimaryPartCFrame(opts.cframe)
+      elseif model:IsA("BasePart") then
+        model.CFrame = opts.cframe
+      else
+        -- Fallback: move PrimaryPart-less model via first BasePart
+        local bp = model:FindFirstChildWhichIsA("BasePart", true)
+        if bp then bp.CFrame = opts.cframe end
+      end
+    end)
+  end
+
+  if opts.attributes then
+    setInstanceAttributes(model, opts.attributes)
+  end
+
+  local parent = opts.parent or getTargetParent()
+  model.Parent = parent
+
+  stampGenerated(model, { fj_asset_id = tostring(assetId) })
+
+  return model
+end
+
+-- ============================================================
+-- Load a custom model from a content string / URL
+-- (works for rbxm files accessible via game:GetObjects)
+-- ============================================================
+function AssetManager.loadCustomModel(url, opts)
+  opts = opts or {}
+
+  local ok, result = pcall(function()
+    return game:GetObjects(url)
+  end)
+
+  if not ok or not result or #result == 0 then
+    warn("[ForjeGames AssetManager] Failed to load custom model from "
+      .. tostring(url) .. ": " .. tostring(result))
+    return nil
+  end
+
+  local model = result[1]
+  if not model then return nil end
+
+  if opts.name then
+    pcall(function() model.Name = opts.name end)
+  end
+
+  if opts.cframe then
+    pcall(function()
+      if model:IsA("Model") and model.PrimaryPart then
+        model:SetPrimaryPartCFrame(opts.cframe)
+      elseif model:IsA("BasePart") then
+        model.CFrame = opts.cframe
+      end
+    end)
+  end
+
+  local parent = opts.parent or getTargetParent()
+  model.Parent = parent
+
+  stampGenerated(model, { fj_source_url = url })
+
+  return model
+end
+
+-- ============================================================
+-- Batch insert a list of asset definitions
+-- def format: { type="marketplace"|"custom", id, url, name, cframe, attributes }
+-- ============================================================
+function AssetManager.batchInsert(assetDefs, opts)
+  opts = opts or {}
+
+  local parent     = opts.parent or getTargetParent()
+  local onProgress = opts.onProgress
+  local results    = {}
+  local total      = #assetDefs
+  local current    = 0
+
+  ChangeHistoryService:SetWaypoint("FJ_BatchInsert_Start")
+
+  for i = 1, total, BATCH_SIZE do
+    for j = i, math.min(i + BATCH_SIZE - 1, total) do
+      local def   = assetDefs[j]
+      local model = nil
+
+      if def.type == "marketplace" then
+        model = AssetManager.loadMarketplaceAsset(def.id, {
+          name       = def.name,
+          cframe     = def.cframe,
+          parent     = parent,
+          attributes = def.attributes,
+        })
+      elseif def.type == "custom" then
+        model = AssetManager.loadCustomModel(def.url, {
+          name   = def.name,
+          cframe = def.cframe,
+          parent = parent,
+        })
+      end
+
+      current = current + 1
+      table.insert(results, {
+        def     = def,
+        model   = model,
+        success = model ~= nil,
+      })
+
+      if onProgress then
+        onProgress(current, total, def.name or tostring(def.id or def.url))
+      end
+    end
+
+    if i + BATCH_SIZE <= total then
+      task.wait(BATCH_WAIT)
+    end
+  end
+
+  ChangeHistoryService:SetWaypoint("FJ_BatchInsert_End")
+
+  local successCount = 0
+  for _, r in ipairs(results) do
+    if r.success then successCount = successCount + 1 end
+  end
+
+  return {
+    results      = results,
+    total        = total,
+    successCount = successCount,
+    failCount    = total - successCount,
+  }
+end
+
+-- ============================================================
+-- Apply a single change object from Sync.lua
+-- change.data fields:
+--   assetId   → marketplace insert
+--   modelUrl  → custom .rbxm insert
+--   script    → script insertion
+--   position  → { x, y, z } table
+-- ============================================================
+function AssetManager.insertFromChange(change)
+  local data = change and change.data
+  if not data then return end
+
+  local label = data.name or "Unknown"
+  ChangeHistoryService:SetWaypoint("FJ_SyncInsert_" .. label)
+
+  local cframe = nil
+  if data.position then
+    local px = tonumber(data.position.x) or 0
+    local py = tonumber(data.position.y) or 0
+    local pz = tonumber(data.position.z) or 0
+    cframe = CFrame.new(px, py, pz)
+  end
+
+  if data.assetId then
+    AssetManager.loadMarketplaceAsset(data.assetId, {
+      name   = data.name,
+      cframe = cframe,
+    })
+
+  elseif data.modelUrl then
+    AssetManager.loadCustomModel(data.modelUrl, {
+      name   = data.name,
+      cframe = cframe,
+    })
+
+  elseif data.script then
+    pcall(function()
+      local scriptInst = Instance.new(data.scriptType or "Script")
+      scriptInst.Name   = data.name or "FJ_Script"
+      scriptInst.Source = data.script
+      -- Find parent service by name, default to workspace
+      local parentInst = data.parent and game:FindFirstChild(data.parent) or workspace
+      scriptInst.Parent = parentInst
+      stampGenerated(scriptInst, {})
+    end)
+  end
+
+  ChangeHistoryService:SetWaypoint("FJ_SyncInsert_" .. label .. "_Done")
+end
+
+-- ============================================================
+-- Remove all ForjeGames-generated instances
+-- ============================================================
+function AssetManager.removeAllGenerated(parent)
+  parent = parent or workspace
+  ChangeHistoryService:SetWaypoint("FJ_RemoveGenerated")
+
+  local removed = 0
+
+  local function scanAndRemove(instance)
+    for _, child in ipairs(instance:GetChildren()) do
+      if child:GetAttribute("fj_generated") then
+        child:Destroy()
+        removed = removed + 1
+      else
+        scanAndRemove(child)
+      end
+    end
+  end
+
+  scanAndRemove(parent)
+  ChangeHistoryService:SetWaypoint("FJ_RemoveGenerated_Done")
+  return removed
+end
+
+-- ============================================================
+-- Get all ForjeGames-generated instances
+-- ============================================================
+function AssetManager.getGeneratedInstances(parent)
+  parent = parent or workspace
+  local instances = {}
+
+  local function scan(instance)
+    for _, child in ipairs(instance:GetChildren()) do
+      if child:GetAttribute("fj_generated") then
+        table.insert(instances, child)
+      end
+      scan(child)
+    end
+  end
+
+  scan(parent)
+  return instances
+end
+
+return AssetManager
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX0006">
+      <Properties>
+        <string name="Name">History</string>
+        <ProtectedString name="Source"><![CDATA[--[[
+  ForjeGames Studio Plugin — History.lua
+  PLUG-04: ChangeHistoryService wrapper
+
+  Every AI operation gets:
+  1. beginWaypoint() call before changes
+  2. endWaypoint() call after changes
+  3. Named waypoints so Studio's undo stack shows "Undo: FJ_GenerateTerrain"
+
+  Users can undo/redo ALL AI operations via Ctrl+Z / Ctrl+Y in Studio.
+--]]
+
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+
+local History = {}
+
+-- ============================================================
+-- Waypoint registry (tracks open waypoints)
+-- ============================================================
+local _openWaypoints = {}
+local _waypointHistory = {}  -- Full history log
+
+-- Maximum history entries to keep in memory
+local MAX_HISTORY = 100
+
+-- ============================================================
+-- Waypoint name formatter
+-- ============================================================
+local function formatWaypointName(operationName)
+  -- Studio displays this in the undo menu
+  -- Format: "FJ_OperationName" (prefix FJ_ makes them identifiable)
+  return "FJ_" .. tostring(operationName):gsub("%s+", "_")
+end
+
+-- ============================================================
+-- Public: begin a named waypoint
+-- ============================================================
+function History.beginWaypoint(operationName)
+  local wpName = formatWaypointName(operationName)
+
+  -- Close any previously open waypoint for this operation
+  if _openWaypoints[operationName] then
+    warn("[ForjeGames History] Waypoint already open for " .. operationName .. " — closing it first")
+    ChangeHistoryService:SetWaypoint(wpName .. "_AutoClose")
+  end
+
+  _openWaypoints[operationName] = {
+    name      = wpName,
+    startTime = os.clock(),
+    operation = operationName,
+  }
+
+  -- Set the "start" waypoint — everything after this is captured
+  local ok, err = pcall(function()
+    ChangeHistoryService:SetWaypoint(wpName .. "_Begin")
+  end)
+
+  if not ok then
+    warn("[ForjeGames History] Failed to set begin waypoint: " .. tostring(err))
+  end
+end
+
+-- ============================================================
+-- Public: end a named waypoint
+-- ============================================================
+function History.endWaypoint(operationName)
+  local wpName = formatWaypointName(operationName)
+  local entry  = _openWaypoints[operationName]
+
+  if not entry then
+    -- No open waypoint — set one anyway as a safety net
+    local ok = pcall(function()
+      ChangeHistoryService:SetWaypoint(wpName)
+    end)
+    return
+  end
+
+  local duration = os.clock() - entry.startTime
+  _openWaypoints[operationName] = nil
+
+  local ok, err = pcall(function()
+    ChangeHistoryService:SetWaypoint(wpName)
+  end)
+
+  if not ok then
+    warn("[ForjeGames History] Failed to set end waypoint: " .. tostring(err))
+    return
+  end
+
+  -- Log to history
+  local logEntry = {
+    operation = operationName,
+    waypoint  = wpName,
+    duration  = math.floor(duration * 1000),  -- ms
+    timestamp = os.time(),
+  }
+
+  table.insert(_waypointHistory, logEntry)
+
+  -- Trim history
+  while #_waypointHistory > MAX_HISTORY do
+    table.remove(_waypointHistory, 1)
+  end
+end
+
+-- ============================================================
+-- Public: wrap a function in begin/end waypoints
+-- ============================================================
+function History.wrap(operationName, fn)
+  History.beginWaypoint(operationName)
+
+  local ok, result = pcall(fn)
+
+  History.endWaypoint(operationName)
+
+  if not ok then
+    error("[ForjeGames History] Operation '" .. operationName .. "' failed: " .. tostring(result))
+  end
+
+  return result
+end
+
+-- ============================================================
+-- Predefined operation waypoints (all AI operations use these)
+-- ============================================================
+History.Operations = {
+  -- Terrain operations
+  GENERATE_TERRAIN     = "GenerateTerrain",
+  SMOOTH_TERRAIN       = "SmoothTerrain",
+  PAINT_TERRAIN        = "PaintTerrain",
+
+  -- City operations
+  GENERATE_CITY        = "GenerateCity",
+  GENERATE_ROADS       = "GenerateRoads",
+  PLACE_BUILDINGS      = "PlaceBuildings",
+
+  -- Asset operations
+  INSERT_ASSET         = "InsertAsset",
+  BATCH_INSERT         = "BatchInsert",
+  INSERT_FROM_SYNC     = "InsertFromSync",
+  DELETE_GENERATED     = "DeleteGenerated",
+  INSERT_SCRIPT        = "InsertScript",
+
+  -- Sync operations
+  APPLY_SYNC_CHANGES   = "ApplySyncChanges",
+}
+
+-- ============================================================
+-- Public: undo the last AI operation
+-- ============================================================
+function History.undoLast()
+  local ok, err = pcall(function()
+    ChangeHistoryService:Undo()
+  end)
+
+  if not ok then
+    warn("[ForjeGames History] Undo failed: " .. tostring(err))
+    return false
+  end
+
+  return true
+end
+
+-- ============================================================
+-- Public: redo the last undone AI operation
+-- ============================================================
+function History.redoLast()
+  local ok, err = pcall(function()
+    ChangeHistoryService:Redo()
+  end)
+
+  if not ok then
+    warn("[ForjeGames History] Redo failed: " .. tostring(err))
+    return false
+  end
+
+  return true
+end
+
+-- ============================================================
+-- Public: get history log
+-- ============================================================
+function History.getLog()
+  return _waypointHistory
+end
+
+-- ============================================================
+-- Public: get last operation
+-- ============================================================
+function History.getLastOperation()
+  if #_waypointHistory == 0 then return nil end
+  return _waypointHistory[#_waypointHistory]
+end
+
+-- ============================================================
+-- Public: clear all open waypoints (safety cleanup)
+-- ============================================================
+function History.cleanup()
+  for opName, entry in pairs(_openWaypoints) do
+    pcall(function()
+      ChangeHistoryService:SetWaypoint(entry.name .. "_Cleanup")
+    end)
+  end
+  _openWaypoints = {}
+end
+
+return History
+]]></ProtectedString>
+        <bool name="Disabled">false</bool>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>

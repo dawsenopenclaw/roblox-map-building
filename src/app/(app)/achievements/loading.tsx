@@ -6,7 +6,7 @@ export default function AchievementsLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-5xl mx-auto">
+      <div className="loading-enter max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>

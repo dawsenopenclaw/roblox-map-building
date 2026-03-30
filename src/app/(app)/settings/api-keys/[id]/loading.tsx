@@ -4,7 +4,7 @@ export default function ApiKeyDetailLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-4xl mx-auto">
+      <div className="loading-enter max-w-4xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6">
           <div className="h-4 w-20 rounded shimmer" />

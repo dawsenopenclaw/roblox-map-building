@@ -4,7 +4,7 @@ export default function DashboardLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-7xl mx-auto px-4 sm:px-0">
+      <div className="loading-enter max-w-7xl mx-auto px-4 sm:px-0">
         {/* Greeting skeleton — gold tint on headline */}
         <div className="mb-8">
           <div className="h-8 w-56 rounded-xl shimmer-gold mb-2" />

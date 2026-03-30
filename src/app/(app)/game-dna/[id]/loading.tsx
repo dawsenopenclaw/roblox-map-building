@@ -4,7 +4,7 @@ export default function GameDnaReportLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-4xl mx-auto">
+      <div className="loading-enter max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="h-7 w-56 rounded-xl shimmer-gold mb-2" />

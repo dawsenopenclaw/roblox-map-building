@@ -4,7 +4,7 @@ export default function PricingLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+      <div className="loading-enter max-w-7xl mx-auto px-4 sm:px-6 py-16">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="h-12 w-96 max-w-full rounded-2xl shimmer-gold mx-auto mb-4" />

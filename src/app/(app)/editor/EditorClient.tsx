@@ -2464,6 +2464,20 @@ function SettingsPanel({ studioStatus }: { studioStatus: StudioStatus }) {
           <p>2. Open your place in Roblox Studio</p>
           <p>3. Enter this code in the plugin toolbar</p>
         </div>
+
+        {/* Full settings link */}
+        <Link
+          href="/settings/studio"
+          className="forge-focus flex items-center justify-between w-full px-2.5 py-2 rounded-lg text-[10px] font-medium transition-colors group"
+          style={{ background: 'rgba(255,184,28,0.04)', border: '1px solid rgba(255,184,28,0.15)' }}
+        >
+          <span className="text-[#FFB81C]/70 group-hover:text-[#FFB81C] transition-colors">
+            Full Studio settings &amp; sessions
+          </span>
+          <svg className="w-3 h-3 text-[#FFB81C]/40 group-hover:text-[#FFB81C] transition-colors" viewBox="0 0 14 14" fill="none">
+            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </Link>
       </div>
 
       <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold pt-1">Preferences</p>
@@ -2497,6 +2511,7 @@ function SettingsPanel({ studioStatus }: { studioStatus: StudioStatus }) {
       <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold pt-1">Account</p>
       <div className="space-y-1">
         {[
+          { label: 'Studio',   sub: 'Connect',      href: '/settings/studio' },
           { label: 'API Keys', sub: 'Configure',   href: '/settings/api-keys' },
           { label: 'Account',  sub: 'Manage',       href: '/settings' },
           { label: 'Billing',  sub: 'View',         href: '/billing' },

@@ -4,7 +4,7 @@ export default function EditorLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <div className="loading-enter min-h-screen bg-[#0a0a0a] flex flex-col">
         {/* Editor toolbar */}
         <div className="h-14 border-b border-white/10 bg-[#141414] flex items-center gap-3 px-4">
           <div className="h-7 w-28 rounded-lg shimmer-gold" />

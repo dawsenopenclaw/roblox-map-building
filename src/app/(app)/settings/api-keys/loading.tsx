@@ -4,7 +4,7 @@ export default function ApiKeysLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-3xl mx-auto">
+      <div className="loading-enter max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

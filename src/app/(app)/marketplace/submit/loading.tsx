@@ -4,7 +4,7 @@ export default function MarketplaceSubmitLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-2xl mx-auto">
+      <div className="loading-enter max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="h-7 w-40 rounded-xl shimmer-gold mb-2" />

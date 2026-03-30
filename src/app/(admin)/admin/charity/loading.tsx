@@ -4,7 +4,7 @@ export default function AdminCharityLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+      <div className="loading-enter space-y-8 p-6 max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>

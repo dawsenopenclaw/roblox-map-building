@@ -1,20 +1,27 @@
 'use client'
 
 /**
- * PageTransition — pure CSS, zero dependencies.
+ * PageTransition — pure CSS, zero Framer Motion.
  *
- * Strategy:
- *  - First render (initial page load): content is instantly visible — no animation,
- *    no flash. The `data-loading` attribute on <html> already suppresses all
- *    transitions during hydration, but we add an extra guard here.
- *  - Subsequent navigations: 200ms fade-in + 8px slide-up using GPU-accelerated
- *    opacity and transform only. No layout shifts.
+ * How it works:
+ *  - A module-level flag tracks whether the app has been navigated at least once.
+ *    On the very first page load the flag is false → component renders fully visible
+ *    and useEffect marks the app as "navigated". No animation, no flash.
+ *  - On every subsequent navigation (remount): component renders invisible/translated,
+ *    useEffect fires a RAF → transition to opacity:1 / translateY(0) in 200ms.
  *
- * Works with Next.js App Router template.tsx — the component unmounts/remounts on
- * every navigation, so `useRef(true)` reliably detects first render per route.
+ * Using a module-level variable (not useRef) is critical: useRef resets to its
+ * initial value on every remount. We need a value that persists across remounts
+ * but resets on full page reload — module scope is exactly that.
+ *
+ * GPU path: only opacity + transform. will-change declared upfront.
+ * Easing: cubic-bezier(0.4, 0, 0.2, 1) — Material Design "standard" curve.
  */
 
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect } from 'react'
+
+// Persists across remounts, resets on full page reload.
+let hasNavigated = false
 
 interface PageTransitionProps {
   children: React.ReactNode
@@ -22,35 +29,31 @@ interface PageTransitionProps {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const isFirstRender = useRef(true)
+  // Capture at render time before useEffect flips the flag
+  const shouldAnimate = hasNavigated
 
-  const runEnter = useCallback(() => {
+  useEffect(() => {
+    if (!hasNavigated) {
+      // First page load: mark as navigated, skip animation
+      hasNavigated = true
+      return
+    }
+
     const el = containerRef.current
     if (!el) return
 
-    // Force a reflow so the browser registers the starting state before
-    // we remove the class that triggers the transition.
-    void el.offsetHeight
+    // RAF: ensures the browser has painted opacity:0 before we start the transition
+    const raf = requestAnimationFrame(() => {
+      if (!containerRef.current) return
+      el.style.transition =
+        'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0)'
+    })
 
-    el.style.transition = 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'
-    el.style.opacity = '1'
-    el.style.transform = 'translateY(0)'
-  }, [])
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      // First render: skip animation entirely — content is already visible
-      isFirstRender.current = false
-      return
-    }
-    // Subsequent navigation: RAF ensures paint happens before transition fires
-    const raf = requestAnimationFrame(runEnter)
     return () => cancelAnimationFrame(raf)
-  }, [runEnter])
-
-  // On first render: fully visible, no transition
-  // On subsequent navigations: start invisible/translated, animate to final state
-  const isFirst = isFirstRender.current
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div
@@ -58,10 +61,9 @@ export function PageTransition({ children }: PageTransitionProps) {
       style={{
         width: '100%',
         willChange: 'transform, opacity',
-        // First render: visible immediately, no transition queued
-        opacity: isFirst ? 1 : 0,
-        transform: isFirst ? 'translateY(0)' : 'translateY(8px)',
-        transition: isFirst ? 'none' : undefined,
+        opacity: shouldAnimate ? 0 : 1,
+        transform: shouldAnimate ? 'translateY(8px)' : 'translateY(0)',
+        transition: 'none',
       }}
     >
       {children}
@@ -70,11 +72,11 @@ export function PageTransition({ children }: PageTransitionProps) {
 }
 
 /**
- * Utility: attach this CSS variable to any direct child you want to stagger in.
- * Usage (inside a page, with a regular CSS class or inline style):
- *
+ * Opt-in stagger for page children.
+ * Usage:
  *   <div className="page-stagger-child" style={{ '--stagger-i': 0 } as React.CSSProperties}>
  *
- * Pair with the `.page-stagger-child` class defined in globals.css.
+ * CSS is defined in globals.css under .page-stagger-child.
+ * Stagger index 0–5, each step adds 40ms delay after the 200ms page enter.
  */
 export type StaggerIndex = 0 | 1 | 2 | 3 | 4 | 5

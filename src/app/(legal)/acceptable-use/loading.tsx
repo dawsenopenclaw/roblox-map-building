@@ -4,7 +4,7 @@ export default function AcceptableUseLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="loading-enter max-w-3xl mx-auto px-4 py-12">
         <div className="h-8 w-56 rounded-xl shimmer-gold mb-2" />
         <div className="h-4 w-32 rounded shimmer mb-8" />
         <div className="space-y-6">

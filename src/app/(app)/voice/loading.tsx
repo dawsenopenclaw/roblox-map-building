@@ -4,7 +4,7 @@ export default function VoiceLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="loading-enter max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div>
           <div className="h-8 w-48 rounded-xl shimmer-gold mb-2" />

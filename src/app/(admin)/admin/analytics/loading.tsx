@@ -4,7 +4,7 @@ export default function AdminAnalyticsLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="space-y-8 p-6 max-w-[1600px] mx-auto">
+      <div className="loading-enter space-y-8 p-6 max-w-[1600px] mx-auto">
         {/* Header */}
         <div>
           <div className="h-7 w-28 rounded-xl shimmer-gold mb-2" />

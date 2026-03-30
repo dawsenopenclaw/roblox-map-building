@@ -4,7 +4,7 @@ export default function AdminTemplatesLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+      <div className="loading-enter space-y-6 p-6 max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

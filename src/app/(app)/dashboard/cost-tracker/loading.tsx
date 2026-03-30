@@ -4,7 +4,7 @@ export default function CostTrackerLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-4xl mx-auto">
+      <div className="loading-enter max-w-4xl mx-auto">
         {/* Header */}
         <div className="h-7 w-40 rounded-xl shimmer-gold mb-2" />
         <div className="h-4 w-72 rounded shimmer mb-6" />

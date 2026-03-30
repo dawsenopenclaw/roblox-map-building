@@ -4,7 +4,7 @@ export default function GameDnaLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="loading-enter max-w-3xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl shimmer flex-shrink-0" />

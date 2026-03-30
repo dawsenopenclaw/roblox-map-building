@@ -4,7 +4,7 @@ export default function ParentalConsentSuccessLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="loading-enter min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <div className="bg-[#141414] border border-white/10 rounded-xl p-8">
             <div className="w-14 h-14 rounded-full shimmer mx-auto mb-4" />

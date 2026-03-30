@@ -4,7 +4,7 @@ export default function MarketplaceLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="max-w-7xl mx-auto">
+      <div className="loading-enter max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>

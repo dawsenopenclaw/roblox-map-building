@@ -4,7 +4,7 @@ export default function VerifyEmailLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
+      <div className="loading-enter min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="max-w-md w-full text-center">
           {/* Mail icon with pulse rings */}
           <div className="relative mx-auto mb-6 w-24 h-24">

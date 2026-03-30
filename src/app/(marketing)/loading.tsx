@@ -9,7 +9,7 @@ export default function MarketingLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+      <div className="loading-enter flex flex-col items-center justify-center min-h-[60vh] gap-6">
         {/* ForjeGames logo mark */}
         <div className="relative flex items-center justify-center">
           {/* Outer glow ring */}

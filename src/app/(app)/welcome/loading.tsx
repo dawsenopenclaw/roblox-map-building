@@ -4,7 +4,7 @@ export default function WelcomeLoading() {
   return (
     <>
       <TopLoadingBar />
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="loading-enter min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="max-w-lg w-full">
           {/* Progress bar */}
           <div className="flex items-center gap-2 mb-8">
