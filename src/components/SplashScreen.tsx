@@ -2,58 +2,52 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%'
 const TARGET_TEXT = 'FORJEGAMES'
-const LETTER_RESOLVE_INTERVAL = 80 // ms between each letter resolving
+const LETTERS = TARGET_TEXT.split('')
 
 // Phase timing (ms from animation start)
-const PHASE1_END    = 100   // black -> grid fade-in
-const PHASE2_START  = 100   // scramble begins
-const PHASE2_END    = 600   // scramble ends
-const TAGLINE_FADE  = 450   // tagline appears
-const PHASE3_START  = 600   // glitch burst
-const PHASE3_END    = 800
-const PHASE4_START  = 700   // progress bar
-const PHASE4_END    = 1300
-const PHASE5_HOLD   = 100   // hold before exit
-const EXIT_DURATION = 200   // fade-out ms
+const PHASE1_END        = 500    // void w/ ember
+const PHASE2_START      = 500    // scan line + letter burn-in
+const PHASE2_END        = 1800   // all letters revealed
+const PHASE3_START      = 1800   // holographic pulse
+const PHASE3_END        = 2500
+const PHASE4_START      = 2500   // progress forge
+const PHASE4_END        = 3500
+const PHASE5_START      = 3500   // ignition exit
+const PHASE5_QUENCH     = 3600   // white flash done
+const EXIT_COMPLETE     = 4000   // total exit duration
 
 const STAGE_LABELS = [
-  { threshold: 0,  label: 'Initializing systems...' },
-  { threshold: 25, label: 'Loading AI models...' },
-  { threshold: 50, label: 'Connecting services...' },
-  { threshold: 75, label: 'Ready.' },
+  { threshold: 0,   label: 'Heating the forge...' },
+  { threshold: 25,  label: 'Smelting AI cores...' },
+  { threshold: 55,  label: 'Tempering game engine...' },
+  { threshold: 80,  label: 'Quenching systems...' },
+  { threshold: 98,  label: 'Ready.' },
 ]
 
-const GLITCH_FRAMES = [
-  { inset: 'inset(15% 0 72% 0)', offsetX: 3 },
-  { inset: 'inset(48% 0 40% 0)', offsetX: -2 },
-  { inset: 'inset(71% 0 18% 0)', offsetX: 4 },
+const PARTICLE_COUNT = 30
+
+// 6 shatter fragments (clip-path polygons covering screen thirds)
+const SHATTER_FRAGMENTS = [
+  'polygon(0% 0%, 33% 0%, 28% 50%, 0% 45%)',
+  'polygon(33% 0%, 67% 0%, 62% 48%, 30% 52%)',
+  'polygon(67% 0%, 100% 0%, 100% 48%, 64% 46%)',
+  'polygon(0% 45%, 30% 50%, 25% 100%, 0% 100%)',
+  'polygon(30% 52%, 65% 48%, 62% 100%, 27% 100%)',
+  'polygon(65% 46%, 100% 48%, 100% 100%, 60% 100%)',
 ]
 
-// CSS keyframes injected once into <head> — no runtime overhead per render
-const KEYFRAMES = [
-  '@keyframes fj-grid-in {',
-  '  from { opacity: 0; }',
-  '  to   { opacity: 0.15; }',
-  '}',
-  '@keyframes fj-skip-pulse {',
-  '  0%, 100% { opacity: 0.18; }',
-  '  50%       { opacity: 0.32; }',
-  '}',
-  '@keyframes fj-corner-in {',
-  '  from { opacity: 0; }',
-  '  to   { opacity: 1; }',
-  '}',
-].join('\n')
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function randomChar(): string {
-  return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)]
-}
+// Shatter transform destinations — each fragment flies outward
+const SHATTER_TRANSFORMS = [
+  'translate(-120px, -100px) rotate(-15deg) scale(0.75)',
+  'translate(0px, -140px) rotate(8deg) scale(0.8)',
+  'translate(140px, -90px) rotate(18deg) scale(0.72)',
+  'translate(-130px, 110px) rotate(-20deg) scale(0.78)',
+  'translate(10px, 130px) rotate(-10deg) scale(0.82)',
+  'translate(150px, 100px) rotate(22deg) scale(0.74)',
+]
 
 function getStageLabel(pct: number): string {
   let label = STAGE_LABELS[0].label
@@ -63,205 +57,317 @@ function getStageLabel(pct: number): string {
   return label
 }
 
-// Approximates cubic-bezier(0.4, 0, 0.2, 1) — starts fast, eases into end
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3)
+}
+
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Keyframes injected once ──────────────────────────────────────────────────
+
+const KEYFRAMES = `
+@keyframes fj-ember-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+  50%       { transform: translate(-50%, -50%) scale(1.6); opacity: 0.5; }
+}
+@keyframes fj-ember-ring {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(3.5); opacity: 0; }
+}
+@keyframes fj-particle-rise {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: var(--p-opacity); }
+  100% { transform: translateY(calc(var(--p-dy) * 1px)) translateX(calc(var(--p-dx) * 1px)) scale(0.1); opacity: 0; }
+}
+@keyframes fj-letter-flash {
+  0%   { color: #FFFFFF; text-shadow: 0 0 40px #FFFFFF, 0 0 80px #FFD700, 0 0 120px #FF6B2B; }
+  100% { color: transparent; text-shadow: none; }
+}
+@keyframes fj-holo-gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes fj-holo-glow {
+  0%, 100% { text-shadow: 0 0 30px rgba(212,175,55,0.8), 0 0 60px rgba(212,175,55,0.4), 0 0 100px rgba(96,165,250,0.3); }
+  33%       { text-shadow: 0 0 30px rgba(255,107,157,0.8), 0 0 60px rgba(255,107,157,0.4), 0 0 100px rgba(45,212,191,0.3); }
+  66%       { text-shadow: 0 0 30px rgba(96,165,250,0.8), 0 0 60px rgba(96,165,250,0.4), 0 0 100px rgba(212,175,55,0.3); }
+}
+@keyframes fj-scanline-sweep {
+  0%   { top: -2px; opacity: 1; }
+  95%  { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+@keyframes fj-scanline-glow-trail {
+  0%   { top: -20px; opacity: 0.3; height: 20px; }
+  100% { top: calc(100% - 20px); opacity: 0; height: 60px; }
+}
+@keyframes fj-bar-ember {
+  0%   { transform: translateY(0) scale(1); opacity: 0.9; }
+  100% { transform: translateY(-24px) translateX(calc(var(--spark-dx) * 1px)) scale(0); opacity: 0; }
+}
+@keyframes fj-skip-pulse {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.4; }
+}
+@keyframes fj-corner-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fj-tagline-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fj-forge-flicker {
+  0%, 100% { opacity: 1; }
+  45%       { opacity: 0.85; }
+  50%       { opacity: 1; }
+  70%       { opacity: 0.9; }
+}
+`
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function Particles({ active }: { active: boolean }) {
+  const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+    const angle = (i / PARTICLE_COUNT) * 360
+    const radius = 40 + Math.random() * 180
+    const dx = Math.cos((angle * Math.PI) / 180) * radius * (0.5 + Math.random() * 0.5)
+    const dy = -(30 + Math.random() * 120)
+    const size = 1.5 + Math.random() * 3
+    const delay = Math.random() * 3
+    const duration = 1.5 + Math.random() * 2.5
+    const opacity = 0.3 + Math.random() * 0.7
+    const left = 30 + Math.random() * 40 // % — spread around center
+    const top = 40 + Math.random() * 20
+
+    return { i, dx, dy, size, delay, duration, opacity, left, top }
+  })
+
+  if (!active) return null
+
+  return (
+    <div
+      aria-hidden
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
+    >
+      {particles.map((p) => (
+        <div
+          key={p.i}
+          style={{
+            position: 'absolute',
+            left: `${p.left}%`,
+            top: `${p.top}%`,
+            width: p.size,
+            height: p.size,
+            borderRadius: '50%',
+            backgroundColor: '#D4AF37',
+            '--p-dy': p.dy,
+            '--p-dx': p.dx,
+            '--p-opacity': p.opacity,
+            animation: `fj-particle-rise ${p.duration}s ease-out ${p.delay}s infinite`,
+            willChange: 'transform, opacity',
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  )
+}
+
+function BarSparks({ active }: { active: boolean }) {
+  if (!active) return null
+  return (
+    <div
+      aria-hidden
+      style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
+    >
+      {Array.from({ length: 8 }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '50%',
+            width: 2 + Math.random() * 2,
+            height: 2 + Math.random() * 2,
+            borderRadius: '50%',
+            backgroundColor: i % 3 === 0 ? '#FFFFFF' : i % 3 === 1 ? '#FFB81C' : '#D4AF37',
+            '--spark-dx': (Math.random() - 0.5) * 20,
+            animation: `fj-bar-ember ${0.4 + Math.random() * 0.6}s ease-out ${i * 0.08}s infinite`,
+            willChange: 'transform, opacity',
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export function SplashScreen({ children }: { children: React.ReactNode }) {
-  // 'pending' = sessionStorage not yet checked (render nothing — prevents flash)
-  // 'active'  = splash is running
-  // 'done'    = render children normally
   const [splashState, setSplashState] = useState<'pending' | 'active' | 'done'>('pending')
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [phase, setPhase] = useState(0) // 0=void, 1=scanline, 2=holo, 3=progress, 4=exit
+  const [revealedCount, setRevealedCount] = useState(0)
+  const [showScanLine, setShowScanLine] = useState(false)
+  const [progressPct, setProgressPct] = useState(0)
+  const [stageLabel, setStageLabel] = useState('Heating the forge...')
+  const [showShatter, setShowShatter] = useState(false)
+  const [shatterActive, setShatterActive] = useState(false)
+  const [quench, setQuench] = useState(false)
 
-  // DOM refs — all per-frame writes go directly to the DOM.
-  // Zero React state updates per rAF tick = true compositor-thread 60fps.
-  const overlayRef      = useRef<HTMLDivElement>(null)
-  const scrambleRef     = useRef<HTMLSpanElement>(null)
-  const glitchGoldRef   = useRef<HTMLSpanElement>(null)
-  const glitchBlueRef   = useRef<HTMLSpanElement>(null)
-  const glitchWrapRef   = useRef<HTMLDivElement>(null)
-  const taglineRef      = useRef<HTMLParagraphElement>(null)
-  const barFillRef      = useRef<HTMLDivElement>(null)
-  const barDotRef       = useRef<HTMLDivElement>(null)
-  const pctLabelRef     = useRef<HTMLSpanElement>(null)
-  const stageLabelRef   = useRef<HTMLSpanElement>(null)
-  const childrenWrapRef = useRef<HTMLDivElement>(null)
+  // DOM refs for GPU-only writes (no React re-renders in tight loops)
+  const overlayRef       = useRef<HTMLDivElement>(null)
+  const childrenWrapRef  = useRef<HTMLDivElement>(null)
+  const barFillRef       = useRef<HTMLDivElement>(null)
+  const barLeadRef       = useRef<HTMLDivElement>(null)
+  const pctLabelRef      = useRef<HTMLSpanElement>(null)
+  const stageLabelRef    = useRef<HTMLSpanElement>(null)
+  const letterRefs       = useRef<(HTMLSpanElement | null)[]>([])
+  const holoTextRef      = useRef<HTMLDivElement>(null)
 
-  // rAF loop state
-  const rafRef         = useRef<number>(0)
-  const startTimeRef   = useRef<number>(-1)
-  const exitStartedRef = useRef(false)
-  const lastPctIntRef  = useRef(-1)
-  const lastStageRef   = useRef('')
-  const stageFadingRef = useRef(false)
+  const rafRef           = useRef<number>(0)
+  const startTimeRef     = useRef<number>(-1)
+  const exitStartedRef   = useRef(false)
+  const lastPctIntRef    = useRef(-1)
+  const lastStageRef     = useRef('')
+  const stageFadingRef   = useRef(false)
+  const lettersRevealedRef = useRef(0) // track without re-render
 
   // ── Inject CSS keyframes once ────────────────────────────────────────────
   useEffect(() => {
-    if (document.getElementById('fj-splash-kf')) return
+    if (document.getElementById('fj-df-kf')) return
     const el = document.createElement('style')
-    el.id = 'fj-splash-kf'
+    el.id = 'fj-df-kf'
     el.textContent = KEYFRAMES
     document.head.appendChild(el)
   }, [])
 
-  // ── Session gate + reduced-motion detection ──────────────────────────────
+  // ── Session gate + reduced-motion ────────────────────────────────────────
   useEffect(() => {
-    document.documentElement.removeAttribute('data-loading')
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     const rm = mq.matches
     setReducedMotion(rm)
-    const seen = sessionStorage.getItem('fj_splash_seen')
+    const seen = sessionStorage.getItem('fj_df_splash')
     if (seen) { setSplashState('done'); return }
-    sessionStorage.setItem('fj_splash_seen', '1')
-    // Skip animation entirely for users who prefer reduced motion
+    sessionStorage.setItem('fj_df_splash', '1')
     if (rm) { setSplashState('done'); return }
     setSplashState('active')
   }, [])
 
-  // ── Exit sequence: glitch flash → fade → scale ───────────────────────────
-  const triggerExit = useCallback((rm: boolean) => {
+  // ── Letter reveal: stamp each revealed letter's gradient style ───────────
+  useEffect(() => {
+    if (splashState !== 'active') return
+    letterRefs.current.forEach((el, i) => {
+      if (!el) return
+      if (i < revealedCount) {
+        // Revealed: holographic gradient text (visible)
+        el.style.opacity = '1'
+        el.style.visibility = 'visible'
+      } else {
+        el.style.opacity = '0'
+        el.style.visibility = 'hidden'
+      }
+    })
+  }, [revealedCount, splashState])
+
+  // ── Exit trigger ─────────────────────────────────────────────────────────
+  const triggerExit = useCallback(() => {
     if (exitStartedRef.current) return
     exitStartedRef.current = true
-    const overlay = overlayRef.current
-    if (!overlay) return
-    // Brief brightness flash before fade
-    if (!rm) {
-      overlay.style.filter = 'brightness(1.5)'
-      setTimeout(() => { if (overlay) overlay.style.filter = '' }, 80)
-    }
-    overlay.style.transition = [
-      'opacity ' + EXIT_DURATION + 'ms cubic-bezier(0.4,0,1,1)',
-      'transform ' + EXIT_DURATION + 'ms cubic-bezier(0.4,0,1,1)',
-    ].join(', ')
-    overlay.style.opacity = '0'
-    overlay.style.transform = 'scale(1.02)'
+
+    // Phase 5: white quench flash
+    setQuench(true)
+    setTimeout(() => setQuench(false), 120)
+
+    // Shatter
+    setTimeout(() => {
+      setShowShatter(true)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setShatterActive(true))
+      })
+    }, 100)
+
+    // Reveal children
     if (childrenWrapRef.current) {
       childrenWrapRef.current.style.opacity = '1'
       childrenWrapRef.current.style.pointerEvents = ''
     }
-    setTimeout(() => setSplashState('done'), EXIT_DURATION + 60)
+
+    setTimeout(() => setSplashState('done'), EXIT_COMPLETE - PHASE5_START + 50)
   }, [])
 
-  // ── Click to skip ────────────────────────────────────────────────────────
+  // ── Click to skip ─────────────────────────────────────────────────────────
   const handleSkip = useCallback(() => {
     if (splashState !== 'active' || exitStartedRef.current) return
     cancelAnimationFrame(rafRef.current)
-    triggerExit(reducedMotion)
-  }, [splashState, reducedMotion, triggerExit])
+    triggerExit()
+  }, [splashState, triggerExit])
 
-  // ── Main rAF animation loop ──────────────────────────────────────────────
+  // ── Main rAF loop ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (splashState !== 'active') return
-    const rm = reducedMotion // capture in closure — avoids stale ref reads
+
+    // Initialize letter refs array
+    letterRefs.current = Array(LETTERS.length).fill(null)
 
     const animate = (ts: number) => {
       if (startTimeRef.current < 0) startTimeRef.current = ts
       const elapsed = ts - startTimeRef.current
 
-      // ── Phase 2: Letter scramble, left-to-right (300ms–1500ms) ───────────
-      if (!rm && elapsed >= PHASE2_START && elapsed < PHASE2_END) {
-        const phaseT = elapsed - PHASE2_START
-        const resolved = Math.min(
-          Math.floor(phaseT / LETTER_RESOLVE_INTERVAL),
-          TARGET_TEXT.length
+      // Phase 0 → 1: activate scan line
+      if (elapsed >= PHASE2_START && phase === 0) {
+        setPhase(1)
+        setShowScanLine(true)
+      }
+
+      // Phase 1: reveal letters as scan line sweeps (500ms → 1800ms)
+      if (elapsed >= PHASE2_START && elapsed < PHASE2_END) {
+        const scanT = (elapsed - PHASE2_START) / (PHASE2_END - PHASE2_START)
+        // Letter reveals: stagger across 1300ms window
+        const targetRevealed = Math.min(
+          Math.floor(scanT * (LETTERS.length + 1)),
+          LETTERS.length
         )
-        let display = ''
-        for (let i = 0; i < TARGET_TEXT.length; i++) {
-          display += i < resolved ? TARGET_TEXT[i] : randomChar()
-        }
-        if (scrambleRef.current)   scrambleRef.current.textContent   = display
-        if (glitchGoldRef.current) glitchGoldRef.current.textContent = display
-        if (glitchBlueRef.current) glitchBlueRef.current.textContent = display
-      }
-
-      // Lock text when scramble ends
-      if (elapsed >= PHASE2_END) {
-        const scr = scrambleRef.current
-        if (scr && scr.textContent !== TARGET_TEXT) {
-          scr.textContent = TARGET_TEXT
-          if (glitchGoldRef.current) glitchGoldRef.current.textContent = TARGET_TEXT
-          if (glitchBlueRef.current) glitchBlueRef.current.textContent = TARGET_TEXT
+        if (targetRevealed > lettersRevealedRef.current) {
+          lettersRevealedRef.current = targetRevealed
+          setRevealedCount(targetRevealed)
         }
       }
 
-      // ── Tagline fade-in at 1200ms ─────────────────────────────────────────
-      if (elapsed >= TAGLINE_FADE) {
-        const t = taglineRef.current
-        if (t && t.style.opacity !== '1') {
-          t.style.opacity = '1'
-          t.style.transform = 'translateY(0)'
-        }
+      // Phase 2: holographic pulse (1800ms → 2500ms)
+      if (elapsed >= PHASE3_START && phase < 2) {
+        setPhase(2)
+        setShowScanLine(false)
+        setRevealedCount(LETTERS.length) // ensure all letters shown
+        lettersRevealedRef.current = LETTERS.length
       }
 
-      // ── Phase 3: Glitch burst — 3 clip-path frames + shake (1500ms–2000ms) ─
-      if (!rm && elapsed >= PHASE3_START && elapsed < PHASE3_END) {
-        const phaseT = elapsed - PHASE3_START
-        const phaseDur = PHASE3_END - PHASE3_START
-        const fi = Math.min(
-          Math.floor((phaseT / phaseDur) * GLITCH_FRAMES.length),
-          GLITCH_FRAMES.length - 1
-        )
-        const frame = GLITCH_FRAMES[fi]
-        const gold = glitchGoldRef.current
-        const blue = glitchBlueRef.current
-        if (gold) {
-          gold.style.clipPath = frame.inset
-          gold.style.transform = 'translateX(' + frame.offsetX + 'px)'
-          gold.style.opacity = '0.9'
-        }
-        if (blue) {
-          blue.style.clipPath = frame.inset
-          blue.style.transform = 'translateX(' + (-frame.offsetX) + 'px)'
-          blue.style.opacity = '0.9'
-        }
-        if (glitchWrapRef.current) {
-          glitchWrapRef.current.style.transform = 'translateX(' + (fi % 2 === 0 ? -2 : 2) + 'px)'
-        }
+      // Phase 3: progress forge (2500ms → 3500ms)
+      if (elapsed >= PHASE4_START && phase < 3) {
+        setPhase(3)
       }
 
-      // Settle aberration layers after glitch burst
-      if (elapsed >= PHASE3_END) {
-        const gold = glitchGoldRef.current
-        const blue = glitchBlueRef.current
-        if (gold && gold.style.clipPath !== '') {
-          gold.style.clipPath = ''
-          gold.style.transform = 'translateX(-2px)'
-          gold.style.opacity = '0.4'
-        }
-        if (blue && blue.style.clipPath !== '') {
-          blue.style.clipPath = ''
-          blue.style.transform = 'translateX(2px)'
-          blue.style.opacity = '0.4'
-        }
-        if (glitchWrapRef.current && glitchWrapRef.current.style.transform !== '') {
-          glitchWrapRef.current.style.transform = ''
-        }
-      }
-
-      // ── Phase 4: Progress bar with easing (1800ms–3200ms) ────────────────
-      if (elapsed >= PHASE4_START) {
-        const rawT = Math.min((elapsed - PHASE4_START) / (PHASE4_END - PHASE4_START), 1)
+      if (elapsed >= PHASE4_START && elapsed < PHASE4_END) {
+        const rawT = (elapsed - PHASE4_START) / (PHASE4_END - PHASE4_START)
         const eased = easeInOutCubic(rawT)
         const pct = eased * 100
-        const pctInt = Math.floor(pct)
 
-        // scaleX is compositor-only — zero layout thrash
+        // GPU-only bar fill
         if (barFillRef.current) {
-          barFillRef.current.style.transform = 'scaleX(' + eased + ')'
+          barFillRef.current.style.transform = `scaleX(${eased})`
         }
-        if (barDotRef.current) {
-          barDotRef.current.style.opacity = (pct > 1 && pct < 99.5) ? '1' : '0'
+        if (barLeadRef.current) {
+          barLeadRef.current.style.opacity = pct > 1 && pct < 99.5 ? '1' : '0'
         }
-        // Only update pct label on integer change
+
+        const pctInt = Math.floor(pct)
         if (pctLabelRef.current && pctInt !== lastPctIntRef.current) {
           lastPctIntRef.current = pctInt
           pctLabelRef.current.textContent = pctInt + '%'
         }
-        // Stage label with 200ms opacity cross-fade
+
         const label = getStageLabel(pct)
         if (label !== lastStageRef.current && !stageFadingRef.current) {
           lastStageRef.current = label
@@ -277,44 +383,48 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // ── Phase 5: trigger exit after bar + hold ────────────────────────────
-      if (elapsed >= PHASE4_END + PHASE5_HOLD && !exitStartedRef.current) {
+      // Phase 4 end → exit
+      if (elapsed >= PHASE4_END && !exitStartedRef.current) {
         cancelAnimationFrame(rafRef.current)
-        triggerExit(rm)
+        setPhase(4)
+        triggerExit()
         return
       }
+
       rafRef.current = requestAnimationFrame(animate)
     }
 
     rafRef.current = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [splashState, reducedMotion, triggerExit])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splashState])
 
-  // Reduced motion: skip to static visible state immediately
-  useEffect(() => {
-    if (splashState !== 'active' || !reducedMotion) return
-    if (scrambleRef.current) scrambleRef.current.textContent = TARGET_TEXT
-    const t = taglineRef.current
-    if (t) { t.style.opacity = '1'; t.style.transform = 'translateY(0)' }
-  }, [splashState, reducedMotion])
-
-  // ── Guard renders ────────────────────────────────────────────────────────
+  // ── Guard renders ─────────────────────────────────────────────────────────
   if (splashState === 'pending') return null
   if (splashState === 'done') return <>{children}</>
+
+  const isHolo = phase >= 2
 
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* Children rendered behind splash — opacity:0 + pointer-events:none prevents interaction */}
+      {/* Children behind splash */}
       <div
         ref={childrenWrapRef}
         aria-hidden
-        style={{ opacity: 0, pointerEvents: 'none', position: 'fixed', inset: 0, zIndex: 0 }}
+        style={{
+          opacity: 0,
+          pointerEvents: 'none',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          transition: 'opacity 500ms ease',
+        }}
       >
         {children}
       </div>
 
-      {/* ── Splash overlay ───────────────────────────────────────────────── */}
+      {/* ── Splash overlay ────────────────────────────────────────────────── */}
       <div
         ref={overlayRef}
         role="status"
@@ -325,35 +435,35 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           position: 'fixed',
           inset: 0,
           zIndex: 9999,
-          backgroundColor: '#0a0a0a',
+          backgroundColor: quench ? '#FFFFFF' : '#0a0a0a',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
           userSelect: 'none',
-          willChange: 'opacity, transform',
           overflow: 'hidden',
+          transition: quench ? 'background-color 0ms' : 'background-color 120ms ease-out',
         }}
       >
-        {/* Grid pattern — CSS animation, own compositor layer */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            backgroundImage: [
-              'linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px)',
-              'linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px)',
-            ].join(', '),
-            backgroundSize: '40px 40px',
-            opacity: 0,
-            animation: reducedMotion
-              ? 'none'
-              : 'fj-grid-in 600ms ease-out ' + PHASE1_END + 'ms forwards',
-          }}
-        />
+        {/* Shatter fragments */}
+        {showShatter && SHATTER_FRAGMENTS.map((clip, i) => (
+          <div
+            key={i}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: '#0a0a0a',
+              clipPath: clip,
+              transform: shatterActive ? SHATTER_TRANSFORMS[i] : 'none',
+              opacity: shatterActive ? 0 : 1,
+              transition: `transform ${300 + i * 40}ms cubic-bezier(0.55, 0, 1, 0.45) ${i * 35}ms, opacity ${280 + i * 30}ms ease-out ${i * 35}ms`,
+              zIndex: 10,
+              willChange: 'transform, opacity',
+            }}
+          />
+        ))}
 
         {/* Radial vignette */}
         <div
@@ -362,214 +472,303 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
             position: 'absolute',
             inset: 0,
             pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.72) 100%)',
+            background: 'radial-gradient(ellipse 70% 60% at center, transparent 30%, rgba(0,0,0,0.85) 100%)',
+            zIndex: 1,
           }}
         />
 
-        {/* CRT scanlines */}
-        {!reducedMotion && (
-          <div
-            aria-hidden
-            style={{
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              backgroundImage:
-                'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.014) 2px, rgba(255,255,255,0.014) 4px)',
-            }}
-          />
+        {/* CRT scanlines texture */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            backgroundImage:
+              'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px)',
+            zIndex: 1,
+          }}
+        />
+
+        {/* Ambient forge glow — center bloom */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 600,
+            height: 300,
+            transform: 'translate(-50%, -50%)',
+            borderRadius: '50%',
+            background: isHolo
+              ? 'radial-gradient(ellipse at center, rgba(212,175,55,0.12) 0%, rgba(96,165,250,0.06) 50%, transparent 70%)'
+              : 'radial-gradient(ellipse at center, rgba(212,175,55,0.08) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 1,
+            transition: 'background 800ms ease',
+          }}
+        />
+
+        {/* Phase 1: Single gold ember at center (visible in void phase) */}
+        {phase === 0 && (
+          <div aria-hidden style={{ position: 'absolute', left: '50%', top: '50%', zIndex: 3, pointerEvents: 'none' }}>
+            {/* Pulsing core ember */}
+            <div
+              style={{
+                position: 'absolute',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: '#D4AF37',
+                boxShadow: '0 0 16px 6px rgba(212,175,55,0.8), 0 0 32px 12px rgba(255,107,43,0.4)',
+                animation: 'fj-ember-pulse 800ms ease-in-out infinite',
+                willChange: 'transform, opacity',
+              }}
+            />
+            {/* Expanding ring */}
+            <div
+              style={{
+                position: 'absolute',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                border: '1px solid rgba(212,175,55,0.6)',
+                animation: 'fj-ember-ring 1.2s ease-out infinite',
+                willChange: 'transform, opacity',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                border: '1px solid rgba(212,175,55,0.3)',
+                animation: 'fj-ember-ring 1.2s ease-out 0.4s infinite',
+                willChange: 'transform, opacity',
+              }}
+            />
+          </div>
         )}
 
-        {/* ── Main content ────────────────────────────────────────────────── */}
+        {/* Floating particles — always active */}
+        <Particles active={splashState === 'active'} />
+
+        {/* Scan line sweep */}
+        {showScanLine && (
+          <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 4 }}>
+            {/* Main laser line */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 2,
+                background: 'linear-gradient(90deg, transparent, #D4AF37 10%, #FFFFFF 50%, #D4AF37 90%, transparent)',
+                boxShadow: '0 0 12px 4px rgba(212,175,55,0.9), 0 0 24px 8px rgba(255,255,255,0.5)',
+                animation: `fj-scanline-sweep ${PHASE2_END - PHASE2_START}ms linear forwards`,
+                willChange: 'top, opacity',
+              }}
+            />
+            {/* Glow trail behind laser */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 20,
+                background: 'linear-gradient(180deg, transparent, rgba(212,175,55,0.15))',
+                animation: `fj-scanline-glow-trail ${PHASE2_END - PHASE2_START}ms linear forwards`,
+                willChange: 'top, opacity, height',
+              }}
+            />
+          </div>
+        )}
+
+        {/* ── Main content ──────────────────────────────────────────────────── */}
         <div
           style={{
             position: 'relative',
-            zIndex: 2,
+            zIndex: 5,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '1.5rem',
+            gap: '1.75rem',
             padding: '2rem',
             width: '100%',
-            maxWidth: '640px',
+            maxWidth: '800px',
           }}
         >
-          {/* Logo + glitch wrapper — this div is the screen-shake target */}
-          <div ref={glitchWrapRef} style={{ position: 'relative', willChange: 'transform' }}>
-
-            {/* Gold chromatic aberration layer */}
-            {!reducedMotion && (
-              <span
-                ref={glitchGoldRef}
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  pointerEvents: 'none',
-                  fontFamily: 'var(--font-inter), Inter, sans-serif',
-                  fontWeight: 900,
-                  fontSize: '5rem',
-                  letterSpacing: '0.15em',
-                  whiteSpace: 'nowrap',
-                  color: '#D4AF37',
-                  opacity: 0.4,
-                  transform: 'translateX(-2px)',
-                  willChange: 'transform, clip-path, opacity',
-                }}
-              >
-                {TARGET_TEXT}
-              </span>
-            )}
-
-            {/* Blue chromatic aberration layer */}
-            {!reducedMotion && (
-              <span
-                ref={glitchBlueRef}
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  pointerEvents: 'none',
-                  fontFamily: 'var(--font-inter), Inter, sans-serif',
-                  fontWeight: 900,
-                  fontSize: '5rem',
-                  letterSpacing: '0.15em',
-                  whiteSpace: 'nowrap',
-                  color: '#60A5FA',
-                  opacity: 0.4,
-                  transform: 'translateX(2px)',
-                  willChange: 'transform, clip-path, opacity',
-                }}
-              >
-                {TARGET_TEXT}
-              </span>
-            )}
-
-            {/* Main logo — white text, gold glow */}
-            <span
-              ref={scrambleRef}
+          {/* Logo text block */}
+          <div
+            ref={holoTextRef}
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            {/* Individual letters for burn-in effect */}
+            <div
               style={{
-                display: 'block',
+                display: 'flex',
+                gap: '0.08em',
                 position: 'relative',
-                fontFamily: 'var(--font-inter), Inter, sans-serif',
-                fontWeight: 900,
-                fontSize: '5rem',
-                letterSpacing: '0.15em',
-                whiteSpace: 'nowrap',
-                color: '#FFFFFF',
-                textShadow: '0 0 30px rgba(212,175,55,0.55), 0 0 60px rgba(212,175,55,0.22)',
               }}
             >
-              {/* rAF populates this each frame; reduced-motion pre-fills it */}
-              {reducedMotion ? TARGET_TEXT : ''}
-            </span>
+              {LETTERS.map((letter, i) => {
+                const isRevealed = i < revealedCount
+                return (
+                  <span
+                    key={i}
+                    ref={(el) => { letterRefs.current[i] = el }}
+                    style={{
+                      display: 'inline-block',
+                      fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                      fontWeight: 900,
+                      fontSize: '6rem',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      lineHeight: 1,
+                      // Holographic gradient text
+                      background: 'linear-gradient(90deg, #D4AF37, #FF6B9D, #60A5FA, #2DD4BF, #D4AF37)',
+                      backgroundSize: '300% 100%',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      // Animations
+                      animation: isRevealed && phase >= 2
+                        ? 'fj-holo-gradient 2s linear infinite, fj-holo-glow 2s ease-in-out infinite, fj-forge-flicker 4s ease-in-out infinite'
+                        : isRevealed
+                        ? 'fj-holo-gradient 3s linear infinite'
+                        : 'none',
+                      opacity: isRevealed ? 1 : 0,
+                      visibility: isRevealed ? 'visible' : 'hidden',
+                      willChange: 'background-position, opacity',
+                      // Stagger gradient offset per letter for wave effect
+                      animationDelay: isRevealed ? `${i * -0.15}s, ${i * -0.2}s, ${i * 0.3}s` : '0s',
+                    }}
+                  >
+                    {letter}
+                  </span>
+                )
+              })}
+            </div>
+
+            {/* Tagline — fades in at phase >= 2 */}
+            <p
+              style={{
+                margin: 0,
+                color: '#B0B0B0',
+                fontSize: '0.85rem',
+                letterSpacing: '0.25em',
+                textTransform: 'uppercase',
+                fontFamily: 'var(--font-jetbrains-mono), ui-monospace, monospace',
+                opacity: phase >= 2 ? 1 : 0,
+                transform: phase >= 2 ? 'translateY(0)' : 'translateY(8px)',
+                transition: 'opacity 600ms ease, transform 600ms ease',
+                willChange: 'opacity, transform',
+              }}
+            >
+              AI-Powered Game Development
+            </p>
           </div>
 
-          {/* Tagline */}
-          <p
-            ref={taglineRef}
+          {/* ── Progress Forge Bar (Phase 3+) ───────────────────────────────── */}
+          <div
             style={{
-              margin: 0,
-              marginTop: '-0.75rem',
-              color: 'rgba(255,255,255,0.42)',
-              fontSize: '0.75rem',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              fontFamily: 'var(--font-jetbrains-mono), ui-monospace, monospace',
-              opacity: reducedMotion ? 1 : 0,
-              transform: reducedMotion ? 'none' : 'translateY(6px)',
+              width: '56%',
+              minWidth: '300px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: '0.5rem',
+              opacity: phase >= 3 ? 1 : 0,
+              transform: phase >= 3 ? 'translateY(0)' : 'translateY(10px)',
               transition: 'opacity 400ms ease, transform 400ms ease',
               willChange: 'opacity, transform',
             }}
           >
-            AI-Powered Game Development
-          </p>
-
-          {/* ── Progress bar ────────────────────────────────────────────────── */}
-          <div
-            style={{
-              width: '60%',
-              minWidth: '280px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch',
-              gap: '0.45rem',
-            }}
-          >
-            {/* Percentage counter — right aligned */}
+            {/* Pct counter */}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <span
                 ref={pctLabelRef}
                 style={{
                   fontFamily: 'var(--font-jetbrains-mono), ui-monospace, monospace',
-                  fontSize: '0.7rem',
+                  fontSize: '0.72rem',
                   color: '#D4AF37',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                 }}
               >
                 0%
               </span>
             </div>
 
-            {/* Bar track */}
+            {/* Track */}
             <div
               style={{
                 width: '100%',
-                height: '3px',
-                backgroundColor: 'rgba(255,255,255,0.08)',
+                height: '4px',
+                backgroundColor: 'rgba(212,175,55,0.12)',
                 borderRadius: '9999px',
                 position: 'relative',
                 overflow: 'visible',
+                border: '1px solid rgba(212,175,55,0.15)',
               }}
             >
-              {/* Gold fill — scaleX only, compositor-thread, no layout */}
+              {/* Molten fill — dark red → orange → gold → white tip */}
               <div
                 ref={barFillRef}
                 style={{
                   position: 'absolute',
                   inset: 0,
                   borderRadius: '9999px',
-                  background: 'linear-gradient(90deg, #D4AF37, #FFB81C, #D4AF37)',
-                  boxShadow: '0 0 20px rgba(212,175,55,0.4)',
+                  background: 'linear-gradient(90deg, #5C0000 0%, #CC3300 20%, #FF6B2B 50%, #FFB81C 75%, #D4AF37 90%, #FFFFFF 100%)',
+                  boxShadow: '0 0 8px 2px rgba(212,175,55,0.5), 0 0 16px 4px rgba(255,107,43,0.3)',
                   transform: 'scaleX(0)',
                   transformOrigin: 'left center',
                   willChange: 'transform',
                 }}
               />
-              {/* Leading glow dot */}
+
+              {/* White-hot leading edge glow */}
               <div
-                ref={barDotRef}
+                ref={barLeadRef}
                 style={{
                   position: 'absolute',
                   top: '50%',
                   right: 0,
-                  width: '6px',
-                  height: '6px',
+                  width: 10,
+                  height: 10,
                   borderRadius: '50%',
-                  backgroundColor: '#FFD700',
-                  boxShadow: '0 0 8px 3px rgba(255,215,0,0.65)',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 0 12px 5px rgba(255,255,255,0.9), 0 0 24px 8px rgba(255,180,50,0.6)',
                   transform: 'translate(50%, -50%)',
                   opacity: 0,
                   pointerEvents: 'none',
                   willChange: 'opacity',
                 }}
               />
+
+              {/* Spark particles off leading edge */}
+              <BarSparks active={phase >= 3} />
             </div>
 
-            {/* Stage text */}
+            {/* Stage label */}
             <span
               ref={stageLabelRef}
               style={{
                 fontFamily: 'var(--font-jetbrains-mono), ui-monospace, monospace',
-                fontSize: '0.68rem',
-                color: 'rgba(255,255,255,0.38)',
-                letterSpacing: '0.05em',
+                fontSize: '0.7rem',
+                color: 'rgba(212,175,55,0.65)',
+                letterSpacing: '0.06em',
                 transition: 'opacity 200ms ease',
               }}
             >
-              Initializing systems...
+              {stageLabel}
             </span>
           </div>
 
@@ -577,15 +776,12 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           <p
             style={{
               margin: 0,
-              marginTop: '-0.25rem',
-              color: 'rgba(255,255,255,0.18)',
+              color: 'rgba(255,255,255,0.2)',
               fontSize: '0.62rem',
-              letterSpacing: '0.15em',
+              letterSpacing: '0.18em',
               textTransform: 'uppercase',
               fontFamily: 'var(--font-jetbrains-mono), ui-monospace, monospace',
-              animation: reducedMotion
-                ? 'none'
-                : 'fj-skip-pulse 2.5s ease-in-out infinite',
+              animation: 'fj-skip-pulse 2.5s ease-in-out infinite',
             }}
           >
             Click anywhere to skip
@@ -593,7 +789,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Corner bracket decorations */}
-        {!reducedMotion && (['tl', 'tr', 'bl', 'br'] as const).map((pos) => {
+        {(['tl', 'tr', 'bl', 'br'] as const).map((pos) => {
           const isTop  = pos === 'tl' || pos === 'tr'
           const isLeft = pos === 'tl' || pos === 'bl'
           return (
@@ -602,21 +798,38 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
               aria-hidden
               style={{
                 position: 'absolute',
-                width: '18px',
-                height: '18px',
-                ...(isTop  ? { top: 20 }    : { bottom: 20 }),
-                ...(isLeft ? { left: 20 }   : { right: 20 }),
-                borderTopWidth:    isTop    ? '1.5px' : '0',
-                borderBottomWidth: !isTop   ? '1.5px' : '0',
-                borderLeftWidth:   isLeft   ? '1.5px' : '0',
-                borderRightWidth:  !isLeft  ? '1.5px' : '0',
+                width: 20,
+                height: 20,
+                zIndex: 6,
+                ...(isTop  ? { top: 24 }    : { bottom: 24 }),
+                ...(isLeft ? { left: 24 }   : { right: 24 }),
+                borderTopWidth:    isTop  ? '1.5px' : '0',
+                borderBottomWidth: !isTop  ? '1.5px' : '0',
+                borderLeftWidth:   isLeft  ? '1.5px' : '0',
+                borderRightWidth:  !isLeft ? '1.5px' : '0',
                 borderStyle: 'solid',
-                borderColor: 'rgba(212,175,55,0.35)',
-                animation: 'fj-corner-in 400ms ease-out ' + (PHASE1_END + 100) + 'ms both',
+                borderColor: 'rgba(212,175,55,0.4)',
+                animation: 'fj-corner-in 600ms ease-out 200ms both',
               }}
             />
           )
         })}
+
+        {/* Forge floor — subtle horizontal light line at bottom of text */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            bottom: '30%',
+            left: '20%',
+            right: '20%',
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.2) 20%, rgba(212,175,55,0.4) 50%, rgba(212,175,55,0.2) 80%, transparent)',
+            zIndex: 2,
+            opacity: phase >= 1 ? 1 : 0,
+            transition: 'opacity 800ms ease',
+          }}
+        />
       </div>
     </>
   )
