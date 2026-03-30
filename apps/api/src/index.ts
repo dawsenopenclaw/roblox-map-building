@@ -110,6 +110,11 @@ app.route('/api/admin', adminRoutes)
 // Metrics endpoint — Prometheus text format + optional JSON
 // ---------------------------------------------------------------------------
 app.get('/api/metrics', (c) => {
+  const authHeader = c.req.header('authorization')
+  const metricsSecret = process.env.METRICS_SECRET
+  if (metricsSecret && authHeader !== `Bearer ${metricsSecret}`) {
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
   const accept = c.req.header('accept') ?? ''
   if (accept.includes('application/json')) {
     return c.json(getMetricsJson())

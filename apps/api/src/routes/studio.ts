@@ -232,8 +232,14 @@ const pushChangeBodySchema = z.object({
 })
 
 studioRoutes.post('/push-change', zValidator('json', pushChangeBodySchema), async (c) => {
-  const body = c.req.valid('json')
-  const now  = Math.floor(Date.now() / 1000)
+  const body           = c.req.valid('json')
+  const authenticatedId = c.get('userId') as string
+  const now            = Math.floor(Date.now() / 1000)
+
+  // Ownership check — the authenticated user must match the target userId
+  if (authenticatedId !== body.userId) {
+    return c.json({ error: 'Forbidden: cannot push changes to another user\'s session' }, 403)
+  }
 
   const queueKey = changeQueueKey(body.userId)
 

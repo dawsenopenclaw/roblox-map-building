@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { stripe, constructWebhookEvent } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { earnTokens, spendTokens } from '@/lib/tokens-server'
@@ -144,16 +145,19 @@ export async function POST(req: NextRequest) {
 
         // Grant monthly token allowance — idempotent via invoiceId
         const sub = await db.subscription.findFirst({ where: { stripeSubscriptionId: subscriptionId } })
-        if (sub) {
-          const alreadyGranted = await db.tokenTransaction.findFirst({
-            where: { metadata: { path: ['invoiceId'], equals: invoice.id } },
-            select: { id: true },
-          })
-          if (!alreadyGranted) {
-            // sub.tier is guaranteed to be a SubscriptionTier enum from Prisma schema
-            const allowance = getTierTokenAllowance(sub.tier as SubscriptionTier)
-            await earnTokens(userId, allowance, 'SUBSCRIPTION_GRANT', `Monthly ${sub.tier} token grant`, { invoiceId: invoice.id })
-          }
+        if (!sub) {
+          console.warn('[stripe-webhook] Subscription not found for invoice.paid — skipping token grant', { subscriptionId, invoiceId: invoice.id })
+          break
+        }
+
+        const alreadyGranted = await db.tokenTransaction.findFirst({
+          where: { metadata: { path: ['invoiceId'], equals: invoice.id } },
+          select: { id: true },
+        })
+        if (!alreadyGranted) {
+          // sub.tier is guaranteed to be a SubscriptionTier enum from Prisma schema
+          const allowance = getTierTokenAllowance(sub.tier as SubscriptionTier)
+          await earnTokens(userId, allowance, 'SUBSCRIPTION_GRANT', `Monthly ${sub.tier} token grant`, { invoiceId: invoice.id })
         }
 
         // Charity donation on recurring billing
@@ -289,6 +293,10 @@ export async function POST(req: NextRequest) {
       eventType: event.type,
       message,
       stack,
+    })
+    Sentry.captureException(err, {
+      tags: { webhook: 'stripe', eventType: event.type },
+      extra: { eventId: event.id },
     })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

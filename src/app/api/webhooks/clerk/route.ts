@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { Webhook } from 'svix'
 import { db } from '@/lib/db'
+import { sendWelcomeEmail } from '@/lib/email'
 
 type ClerkUserEvent = {
   type: string
@@ -45,6 +46,13 @@ export async function POST(req: NextRequest) {
       const clerkId = event.data.id
       if (!clerkId) return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
 
+      // Idempotency: if Svix retries this webhook, avoid creating a duplicate user
+      const existing = await db.user.findUnique({ where: { clerkId } })
+      if (existing) {
+        console.warn('[clerk-webhook] user.created already processed — skipping duplicate', { clerkId, svixId })
+        return NextResponse.json({ ok: true })
+      }
+
       const primaryEmail = event.data.email_addresses.find(
         (e) => e.id === event.data.primary_email_address_id
       )?.email_address
@@ -86,6 +94,14 @@ export async function POST(req: NextRequest) {
             metadata: { source: 'clerk_webhook' },
           },
         })
+      })
+
+      // Send welcome email (fire and forget)
+      sendWelcomeEmail({
+        email: primaryEmail,
+        name: event.data.first_name || 'Creator',
+      }).catch((err) => {
+        console.error('[clerk-webhook] Failed to send welcome email:', err)
       })
     }
 

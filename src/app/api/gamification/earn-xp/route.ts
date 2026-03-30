@@ -11,15 +11,17 @@ const DEMO_XP_RESULT = {
 }
 
 // Types that may be called from the public API.
-// ACHIEVEMENT, STREAK_BONUS, and SALE are server-internal only — they must be
-// triggered by server-side logic (achievement unlock, streak calculation, Stripe
-// webhook) and never accepted directly from a client request.
+// ACHIEVEMENT, STREAK_BONUS, SALE, PURCHASE, TEMPLATE_PUBLISHED are server-internal
+// only — they must be triggered by server-side logic (achievement unlock, streak
+// calculation, Stripe webhook) and never accepted directly from a client request.
+// PUBLISH and REVIEW_GIVEN are also excluded: PUBLISH is superseded by
+// TEMPLATE_PUBLISHED (server-side), and REVIEW_GIVEN is awarded server-side after
+// review creation to prevent double-granting.
 const PUBLIC_API_ALLOWED_TYPES = new Set([
   'BUILD',
-  'PUBLISH',
-  'REVIEW_GIVEN',
   'DAILY_LOGIN',
-  'DAILY_CHALLENGE',
+  'MARKETPLACE_BROWSE',
+  'COMMUNITY_SHARE',
 ])
 
 // POST /api/gamification/earn-xp

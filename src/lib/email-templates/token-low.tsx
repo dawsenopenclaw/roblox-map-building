@@ -48,8 +48,8 @@ export const TokenLowEmail = ({
           {/* Logo Header */}
           <Section style={logoSection}>
             <Text style={logoText}>
-              <span style={logoSpan}>Roblox</span>
-              <span style={logoGold}>Forge</span>
+              <span style={logoSpan}>Forje</span>
+              <span style={logoGold}>Games</span>
             </Text>
           </Section>
 

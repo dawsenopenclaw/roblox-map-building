@@ -37,14 +37,14 @@ export const WelcomeEmail = ({
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
       `}</style>
     </Head>
-    <Preview>Welcome to ForjeGames — 1,000 free tokens, ready to use.</Preview>
+    <Preview>Welcome to ForjeGames — 100 free tokens, ready to use.</Preview>
     <Body style={body}>
       <Container style={container}>
         {/* Logo Header */}
         <Section style={logoSection}>
           <Text style={logoText}>
-            <span style={logoSpan}>Roblox</span>
-            <span style={logoGold}>Forge</span>
+            <span style={logoSpan}>Forje</span>
+            <span style={logoGold}>Games</span>
           </Text>
         </Section>
 
@@ -62,7 +62,7 @@ export const WelcomeEmail = ({
         {/* Token Badge */}
         <Section style={tokenBadge}>
           <Text style={tokenBadgeText}>
-            You have <strong style={tokenGold}>1,000 free tokens</strong> ready to use
+            You have <strong style={tokenGold}>100 free tokens</strong> ready to use
           </Text>
         </Section>
 

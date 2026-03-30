@@ -186,7 +186,7 @@ export async function PATCH(
     }
 
     const updated = await db.templateReview.update({
-      where: { id: reviewId },
+      where: { id: reviewId, templateId },
       data: { creatorResponse: response.trim(), respondedAt: new Date() },
     })
 
