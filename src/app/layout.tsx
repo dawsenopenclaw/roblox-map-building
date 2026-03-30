@@ -9,6 +9,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ToastProvider } from '@/components/ui/toast-notification'
 import Script from 'next/script'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
+import { SplashScreen } from '@/components/SplashScreen'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -137,6 +138,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-background text-white antialiased font-sans">
+        <SplashScreen>
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
@@ -165,6 +167,7 @@ export default function RootLayout({
           </ToastProvider>
           <InstallPrompt />
         </ClerkProvider>
+        </SplashScreen>
         <Script
           id="register-sw"
           strategy="afterInteractive"
