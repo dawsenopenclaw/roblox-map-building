@@ -1774,6 +1774,11 @@ export function EditorClient() {
     ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'
   }, [input])
 
+  // Auto-focus textarea on mount
+  useEffect(() => {
+    textareaRef.current?.focus()
+  }, [])
+
   // Sync project name when active game changes
   useEffect(() => {
     if (activeGame) setProjectName(activeGame.name)
@@ -2241,9 +2246,10 @@ export function EditorClient() {
   // Derived: show connected viewport if actually connected OR in demo mode
   const studioConnected = studioStatus.connected || demoMode
 
-  // Banner: show when not connected and not dismissed
+  // Banner: show only after the user has received at least one AI response AND is not connected
   const [bannerAutoConnect, setBannerAutoConnect] = useState(0)
-  const showStudioBanner = !studioConnected && !bannerDismissed
+  const hasAssistantMessage = messages.some((m) => m.role === 'assistant')
+  const showStudioBanner = hasAssistantMessage && !studioConnected && !bannerDismissed
 
   const dismissBanner = useCallback(() => {
     setBannerDismissed(true)
@@ -2564,8 +2570,6 @@ export function EditorClient() {
                   <EditorEmptyState
                     firstName={editorFirstName}
                     onSelectPrompt={(prompt) => submit(prompt)}
-                    studioConnected={studioConnected}
-                    onConnectStudio={triggerStudioConnect}
                   />
                 )}
                 {messages.map((msg) => (
