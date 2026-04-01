@@ -47,7 +47,7 @@ import type { ToolMode } from '@/components/editor/Toolbar'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade'
+type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup'
 
 // ─── Marketplace build result type (mirrors API shape) ─────────────────────
 
@@ -890,6 +890,60 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
     return (
       <div className="flex justify-start my-2 px-1">
         <TokenGateCard />
+      </div>
+    )
+  }
+
+  if (msg.role === 'signup') {
+    return (
+      <div className="flex justify-start my-3 px-1">
+        <div
+          style={{
+            background: 'rgba(212,175,55,0.06)',
+            border: '1px solid rgba(212,175,55,0.2)',
+            borderRadius: 16,
+            padding: '24px 28px',
+            maxWidth: 420,
+          }}
+        >
+          <p style={{ color: '#D4AF37', fontWeight: 700, fontSize: 16, marginBottom: 6 }}>
+            You&apos;re building great stuff!
+          </p>
+          <p style={{ color: '#A1A1AA', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
+            Create a free account to keep building, save your projects, and get 1,000 free tokens.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link
+              href="/sign-up"
+              style={{
+                background: 'linear-gradient(135deg, #D4AF37, #FFB81C)',
+                color: '#09090b',
+                padding: '10px 24px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              Create free account
+            </Link>
+            <Link
+              href="/sign-in"
+              style={{
+                color: '#A1A1AA',
+                padding: '10px 16px',
+                borderRadius: 10,
+                fontSize: 13,
+                border: '1px solid rgba(255,255,255,0.08)',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              Sign in
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
@@ -1752,6 +1806,10 @@ export function EditorClient() {
   const [showBuildOverlay, setShowBuildOverlay] = useState(false)
   const projectNameInputRef = useRef<HTMLInputElement>(null)
 
+  // Guest mode — allow 3 free messages before prompting sign-up
+  const GUEST_MESSAGE_LIMIT = 3
+  const [guestMessageCount, setGuestMessageCount] = useState(0)
+
   // Studio connect banner — persist dismissal per session via localStorage
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
     try { return localStorage.getItem('fg_studio_banner_dismissed') === '1' } catch { return false }
@@ -1845,6 +1903,26 @@ export function EditorClient() {
       }
 
       setMessages((prev) => [...prev, userMsg, statusMsg])
+
+      // Guest mode: after N free messages, prompt sign-up
+      if (!user && guestMessageCount >= GUEST_MESSAGE_LIMIT) {
+        setMessages((prev) => {
+          const without = prev.filter((m) => m.id !== statusMsg.id)
+          return [
+            ...without,
+            {
+              id: uid(),
+              role: 'signup' as MessageRole,
+              content: '',
+              timestamp: new Date(),
+            },
+          ]
+        })
+        setLoading(false)
+        return
+      }
+      if (!user) setGuestMessageCount((c) => c + 1)
+
       showToast({ variant: 'info', title: 'Building…', description: 'ForjeAI is generating your build.', duration: 4000, loading: true })
 
       try {

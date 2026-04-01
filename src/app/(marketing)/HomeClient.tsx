@@ -936,7 +936,7 @@ export default function HomeClient() {
             {/* CTA row */}
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
               <Link
-                href="/sign-up"
+                href="/editor"
                 className="cta-primary inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
@@ -1580,7 +1580,7 @@ export default function HomeClient() {
 
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                href="/sign-up"
+                href="/editor"
                 className="cta-primary inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',

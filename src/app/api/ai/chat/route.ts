@@ -806,26 +806,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let authedUserId: string | null = null
 
   if (!isDemo) {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    // Basic chat is available on FREE tier. Mesh/texture sub-actions within
-    // chat will be gated by their own routes when the client calls them.
-    const tierDenied = await requireTier(userId, 'FREE')
-    if (tierDenied) return tierDenied
-    authedUserId = userId
-
-    // Rate limit: 20 AI chat requests per minute per user
+    let userId: string | null = null
     try {
-      const rl = await aiRateLimit(userId)
-      if (!rl.allowed) {
-        return NextResponse.json(
-          { error: 'Too many requests. Please wait before sending another message.' },
-          { status: 429, headers: rateLimitHeaders(rl) },
-        )
-      }
+      const session = await auth()
+      userId = session?.userId ?? null
     } catch {
-      // Redis unavailable — allow through rather than hard-fail
+      // Clerk unavailable — treat as guest
     }
+
+    if (userId) {
+      // Authenticated user — check tier and rate limit
+      const tierDenied = await requireTier(userId, 'FREE')
+      if (tierDenied) return tierDenied
+      authedUserId = userId
+
+      try {
+        const rl = await aiRateLimit(userId)
+        if (!rl.allowed) {
+          return NextResponse.json(
+            { error: 'Too many requests. Please wait before sending another message.' },
+            { status: 429, headers: rateLimitHeaders(rl) },
+          )
+        }
+      } catch {
+        // Redis unavailable — allow through
+      }
+    }
+    // Guest users (no userId) fall through — they get demo responses
+    // but can try the product before signing up
   }
 
   const parsed = await parseBody(req, chatMessageSchema)

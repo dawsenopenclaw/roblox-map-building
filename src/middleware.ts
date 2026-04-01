@@ -40,6 +40,10 @@ const isPublicRoute = createRouteMatcher([
   '/about',
   '/blog(.*)',
   '/changelog',
+  // Editor — accessible without auth (guest mode with limited free messages)
+  '/editor(.*)',
+  // AI chat — handles auth internally (guest gets limited demo responses)
+  '/api/ai/(.*)',
   // Legal
   '/privacy',
   '/terms',
@@ -250,9 +254,9 @@ export default clerkMiddleware(async (auth, request) => {
       }
     }
 
-    // Redirect authenticated users away from auth pages → go straight to welcome
+    // Redirect authenticated users away from auth pages → go straight to editor
     if (isAuthRoute(request) && userId) {
-      return NextResponse.redirect(new URL('/welcome', request.url))
+      return NextResponse.redirect(new URL('/editor', request.url))
     }
 
     // Protect non-public routes — isPublicRoute is the single source of truth.

@@ -14,8 +14,8 @@ const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 function MarketingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const signInHref = IS_DEMO ? '/editor' : '/sign-in'
-  const signUpHref = IS_DEMO ? '/editor' : '/sign-up'
+  const signInHref = '/sign-in'
+  const signUpHref = '/editor'
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
