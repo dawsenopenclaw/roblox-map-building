@@ -61,6 +61,11 @@ const isPublicRoute = createRouteMatcher([
   '/api/onboarding/(.*)',
   // Webhooks — Stripe, Clerk, etc. must always reach these endpoints
   '/api/webhooks/(.*)',
+  // Studio plugin + auth — must be public so:
+  // 1. Plugin can be downloaded without auth
+  // 2. Connection codes can be generated from guest editor
+  // 3. Plugin can claim codes and poll sync from Roblox Studio (no cookies)
+  '/api/studio/(.*)',
   // Public API endpoints (unauthenticated reads only)
   '/api/og',
   // System / utility pages — must be reachable without auth

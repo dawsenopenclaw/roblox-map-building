@@ -183,6 +183,86 @@ local function handleExecuteLuau(data)
 end
 
 -- ============================================================
+-- insert_asset command handler
+--
+-- Triggered by POST /api/studio/push-asset from the web editor
+-- after a mesh has been uploaded to Roblox via Open Cloud.
+--
+-- change.data shape:
+--   robloxAssetId  string   — numeric Roblox asset ID for InsertService
+--   assetId        string   — internal ForjeGames asset ID (stored as attribute)
+--   name           string?  — display name for the inserted model
+--   position       table?   — { x, y, z } world-space position (Y is up)
+--
+-- Reports success/failure back on the next heartbeat via Sync.queueChange.
+-- ============================================================
+local function handleInsertAsset(change)
+  local data = change and change.data
+  if not data then
+    warn("[ForjeGames Sync] insert_asset: missing data payload")
+    return
+  end
+
+  local robloxAssetId = data.robloxAssetId
+  if not robloxAssetId then
+    warn("[ForjeGames Sync] insert_asset: robloxAssetId is required")
+    return
+  end
+
+  -- Delegate to AssetManager so we get ChangeHistory waypoints + stamping
+  local assetOk, assetErr = pcall(function()
+    local AssetManager = require(script.Parent.AssetManager)
+
+    -- Build a position CFrame if coordinates were supplied
+    local cframe = nil
+    if data.position then
+      local px = tonumber(data.position.x) or 0
+      local py = tonumber(data.position.y) or 0
+      local pz = tonumber(data.position.z) or 0
+      cframe = CFrame.new(px, py, pz)
+    end
+
+    local model = AssetManager.loadMarketplaceAsset(robloxAssetId, {
+      name       = data.name or ("FJ_Asset_" .. tostring(robloxAssetId)),
+      cframe     = cframe,
+      attributes = {
+        fj_asset_id        = tostring(data.assetId or robloxAssetId),
+        fj_roblox_asset_id = tostring(robloxAssetId),
+      },
+    })
+
+    if model then
+      -- Queue a success event so the web editor can confirm insertion
+      Sync.queueChange("asset_inserted", {
+        assetId       = data.assetId,
+        robloxAssetId = tostring(robloxAssetId),
+        instanceName  = model.Name,
+        success       = true,
+      })
+    else
+      -- LoadAsset returned nil — report failure
+      Sync.queueChange("asset_insert_failed", {
+        assetId       = data.assetId,
+        robloxAssetId = tostring(robloxAssetId),
+        error         = "LoadAsset returned nil",
+        success       = false,
+      })
+    end
+  end)
+
+  if not assetOk then
+    warn("[ForjeGames Sync] insert_asset failed: " .. tostring(assetErr))
+    -- Still report failure upstream so the web editor can surface the error
+    Sync.queueChange("asset_insert_failed", {
+      assetId       = tostring(data.assetId or ""),
+      robloxAssetId = tostring(robloxAssetId),
+      error         = tostring(assetErr),
+      success       = false,
+    })
+  end
+end
+
+-- ============================================================
 -- Apply incoming changes from the server
 -- ============================================================
 local function applyChanges(changes)
@@ -195,6 +275,9 @@ local function applyChanges(changes)
 
       if changeType == "execute_luau" then
         handleExecuteLuau(data)
+
+      elseif changeType == "insert_asset" and data then
+        handleInsertAsset(change)
 
       elseif changeType == "insert_model" and data then
         local assetOk, assetErr = pcall(function()

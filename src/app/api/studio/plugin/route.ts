@@ -29,9 +29,11 @@ local PLUGIN_VER = "1.1.0"
 
 local HttpService          = game:GetService("HttpService")
 local RunService           = game:GetService("RunService")
-local StudioService        = game:GetService("StudioService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local MarketplaceService   = game:GetService("MarketplaceService")
+
+-- Auto-enable HTTP requests (required for the plugin to work)
+pcall(function() HttpService.HttpEnabled = true end)
 
 -- ── State ─────────────────────────────────────────────────────────────────────
 
@@ -52,10 +54,9 @@ local cachedPlaceName = "Unnamed Place"
 
 -- ── Plugin toolbar ────────────────────────────────────────────────────────────
 
-local toolbar    = plugin:CreateToolbar("ForjeGames")
-local connectBtn = toolbar:CreateButton("Connect", "Connect to ForjeGames.com", "rbxassetid://0")
-local statusLabel = toolbar:CreateButton("●  Disconnected", "", "rbxassetid://0")
-statusLabel.ClickableWhenViewportHidden = true
+local toolbar    = plugin:CreateToolbar("ForjeGames AI")
+local connectBtn = toolbar:CreateButton("Connect", "Click to connect to forjegames.com", "")
+connectBtn.ClickableWhenViewportHidden = true
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -115,7 +116,8 @@ end
 
 local function setStatus(label: string, isConnected: boolean)
     connected = isConnected
-    statusLabel.Text = isConnected and ("● " .. label) or ("○ " .. label)
+    connectBtn.Text = isConnected and ("● " .. label) or ("Connect")
+    print("[ForjeGames] " .. label)
 end
 
 --[[
@@ -218,7 +220,7 @@ local function promptForCode()
     sub.Size = UDim2.new(1, -32, 0, 30)
     sub.Position = UDim2.new(0, 16, 0, 50)
     sub.BackgroundTransparency = 1
-    sub.Text = "Enter the 6-character code from forjegames.com/settings/studio"
+    sub.Text = "Go to forjegames.com/editor — your code is on the right side"
     sub.TextColor3 = Color3.fromRGB(160, 160, 160)
     sub.Font = Enum.Font.Gotham
     sub.TextSize = 11

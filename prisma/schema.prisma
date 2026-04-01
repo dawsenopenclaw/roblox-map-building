@@ -66,6 +66,9 @@ model User {
   creatorEarnings CreatorEarning[]
   buyerEarnings   CreatorEarning[] @relation("BuyerEarnings")
 
+  // Generated Assets
+  generatedAssets GeneratedAsset[]
+
   // Game DNA Scanner
   gameScans GameScan[]
 
@@ -994,6 +997,53 @@ enum TokenGrantJobStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// ─── Generated Assets (Meshy 3D pipeline) ────────────────────────────────────
+
+model GeneratedAsset {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt        String   @db.Text
+  type          String   // building, character, vehicle, etc.
+  style         String   // realistic, stylized, lowpoly, roblox
+
+  // queued → generating → optimizing → uploading → ready | failed
+  status        String   @default("queued")
+
+  // Meshy
+  meshyTaskId   String?  @unique
+  meshUrl       String?
+  thumbnailUrl  String?
+  polyCount     Int?
+
+  // Textures
+  albedoUrl     String?
+  normalUrl     String?
+  roughnessUrl  String?
+  metallicUrl   String?
+
+  // Roblox
+  robloxAssetId String?
+
+  // Quality
+  qualityScore  Float?
+  fileSize      Int?
+
+  // Metadata
+  tokensCost    Int      @default(0)
+  generationMs  Int?
+  errorMessage  String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([meshyTaskId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 // ─── Builds ──────────────────────────────────────────────────────────────────
