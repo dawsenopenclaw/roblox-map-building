@@ -350,6 +350,18 @@ function estimateFileSize(polyTarget: number, textured: boolean): string {
   return total < 1 ? `${Math.round(total * 1024)} KB` : `${total.toFixed(1)} MB`
 }
 
+// ── Demo thumbnail placeholder (SVG, no external dependency) ─────────────────
+
+const DEMO_THUMBNAIL_3D =
+  'data:image/svg+xml;base64,' +
+  Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<rect width="128" height="128" fill="#1a1a2e"/>' +
+    '<polygon points="64,20 100,90 28,90" fill="none" stroke="#D4AF37" stroke-width="3"/>' +
+    '<text x="64" y="112" text-anchor="middle" fill="#D4AF37" font-size="10" font-family="sans-serif">3D DEMO</text>' +
+    '</svg>',
+  ).toString('base64')
+
 // ── Demo response ─────────────────────────────────────────────────────────────
 
 function buildDemoResponse(input: Generate3dInput) {
@@ -366,7 +378,7 @@ function buildDemoResponse(input: Generate3dInput) {
     asset: {
       meshUrl:      null,
       textureUrls: { albedo: null, normal: null, roughness: null, metallic: null },
-      thumbnailUrl: null,
+      thumbnailUrl: DEMO_THUMBNAIL_3D,
       polyCount:    input.polyTarget,
       fileSize:     estimateFileSize(input.polyTarget, input.textured),
       dimensions:   dims,

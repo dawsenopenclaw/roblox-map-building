@@ -25,25 +25,29 @@ function getAnthropicClient(): Anthropic | null {
   return _anthropic
 }
 
-const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI, an expert Roblox game development assistant embedded in the ForjeGames platform. You help users build games by generating terrain, placing assets, writing Luau scripts, and managing game elements.
+const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI, an expert Roblox game architect. You build PRODUCTION-QUALITY games with proper geometry, materials, lighting, and game systems.
 
-Your expertise:
-- Luau scripting (ServerScripts, LocalScripts, ModuleScripts, RemoteEvents, RemoteFunctions)
-- Roblox Studio APIs: Instance.new, CFrame, Vector3, Color3, Material enum, Enum.Material, Terrain:FillBlock/FillBall/WriteVoxels
-- Performance: keep parts < 20,000, use unions sparingly, anchor static parts
-- Marketplace-first: suggest real Roblox asset IDs when possible before generating custom
-- All 25 Roblox Materials and when to use each
-- DataStore / ProfileStore for persistence
-- Tycoon, simulator, obby, RPG game patterns
-- Economy design for 8-16 year old players
+BUILDING RULES:
+- Use WedgeParts for roofs, ramps, angled surfaces
+- Use Cylinders (SpecialMesh with MeshType.Cylinder) for pillars, towers, pipes
+- Use proper materials: Cobblestone for castle walls, WoodPlanks for floors, Slate for roofs, Marble for fancy interiors, Glass for windows, Metal for gates, SmoothRock for cliffs, Granite for paths, Sand for beaches, Mud for swamps, Glacier for ice, Neon for signs/effects
+- Use realistic Color3.fromRGB values: stone(140,130,120) wood(150,110,70) gold(212,175,55) iron(80,80,90) brick(180,90,70) grass(90,140,60) sand(220,200,140)
+- Scale: character=5 studs tall, door=4×7 studs, ceiling height=12 studs, wall thickness=1-2 studs, window=3×4 studs
+- Group everything in named Models: workspace.Castle.Walls, workspace.Castle.Towers, etc.
+- Add PointLights to torches: Brightness=1.5, Range=16, Color=Color3.fromRGB(255,180,80)
+- Add SpotLights for directed beams: Brightness=2, Range=30, Angle=45
+- Anchor ALL static parts (Anchored=true), set CastShadow=true on large structures
+- Use Terrain:FillBlock for ground fill, Terrain:FillBall for hills/craters
+- Wrap ALL code in ChangeHistoryService for undo: local id=CH:TryBeginRecording("Name") ... CH:FinishRecording(id,Enum.FinishRecordingOperation.Commit,{})
 
-Response style:
-- Always give specific numbers: part counts, stud dimensions, polygon counts, token costs
-- Include Luau code blocks (in triple backticks) for any scripting request
-- Use the checkmark prefix format: "✓ [Action] Complete" as header
-- Keep responses concise but dense with specifics — no padding
-- Suggest the next logical build step at the end as a "Tip:"
-- When suggesting marketplace assets, include realistic asset IDs and creator names`
+RESPONSE FORMAT:
+1. "✓ [Build Name] Complete" header (1 line)
+2. What you built (2-3 sentences, include stud dimensions)
+3. Complete runnable Luau code block — no placeholders, no TODO comments
+4. Stats line: "Parts: X | Tris: ~Y | Performance: Good/OK"
+5. "Tip:" with the next logical build step
+
+NEVER output placeholder code. ALWAYS include real Color3 values, real material enums, real stud dimensions.`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -220,41 +224,170 @@ Token cost: 20 tokens
 
 Tip: Add FAL_API_KEY to generate real textures. Demo shows a preview tile.`,
 
-  terrain: `✓ Terrain Generated
+  terrain: `✓ Volcanic Island Terrain Generated
 
-Created a volcanic island biome (512×512 studs):
-• Central volcano peak: 180 studs high, active lava crater at summit
-• Beach ring: 40 studs wide, Sand material, gentle 12° slope angle
-• Dense jungle canopy: 847 trees placed (Palm, Tropical, Mangrove variants)
-• Coral reef: underwater ring at -20 studs depth, SmoothPlastic coral clusters
-• 3 waterfalls cascading from volcano peak to shoreline
-• Rocky sea cliffs: north face, 60 studs high, Rock material
+512×512 stud island with volcano (180 studs), sand beach ring (40 studs wide), jungle zone, and sea cliffs. All terrain written via Terrain API — zero loose parts.
 
-Material breakdown:
-  Grass 42% | Sand 18% | Rock 25% | Water 15%
+\`\`\`lua
+-- Volcanic Island Terrain
+local CH = game:GetService("ChangeHistoryService")
+local id = CH:TryBeginRecording("Volcanic Island")
 
-Instance count: 1,247 | Performance: Good
+local Terrain = workspace.Terrain
+local region = workspace:FindFirstChildOfClass("Terrain")
+
+-- Ocean base (-8 studs depth, 700×700 stud area)
+Terrain:FillBlock(
+  CFrame.new(0, -12, 0),
+  Vector3.new(700, 16, 700),
+  Enum.Material.Water
+)
+
+-- Island land mass
+Terrain:FillBlock(
+  CFrame.new(0, -2, 0),
+  Vector3.new(420, 12, 420),
+  Enum.Material.Grass
+)
+
+-- Sandy beach ring (outer band, lower elevation)
+for angle = 0, 360, 15 do
+  local rad = math.rad(angle)
+  local x = math.cos(rad) * 200
+  local z = math.sin(rad) * 200
+  Terrain:FillBall(
+    Vector3.new(x, 0, z),
+    30,
+    Enum.Material.Sand
+  )
+end
+
+-- Volcano base (Rock, 120 stud radius)
+Terrain:FillBall(Vector3.new(0, 20, 0), 120, Enum.Material.Rock)
+
+-- Volcano peak (SmoothRock, narrower, taller)
+Terrain:FillBall(Vector3.new(0, 80, 0), 60, Enum.Material.SmoothRock)
+Terrain:FillBall(Vector3.new(0, 150, 0), 30, Enum.Material.SmoothRock)
+
+-- Lava crater at summit
+Terrain:FillBall(Vector3.new(0, 178, 0), 22, Enum.Material.CrackedLava)
+
+-- Rock sea cliffs (north face)
+Terrain:FillBlock(
+  CFrame.new(0, 20, -210),
+  Vector3.new(200, 60, 40),
+  Enum.Material.Rock
+)
+
+-- Add atmospheric lighting for volcanic scene
+local lighting = game:GetService("Lighting")
+lighting.Ambient = Color3.fromRGB(255, 180, 80)
+lighting.OutdoorAmbient = Color3.fromRGB(200, 100, 40)
+lighting.Brightness = 1.6
+lighting.ClockTime = 18.2
+
+local atmo = Instance.new("Atmosphere")
+atmo.Density = 0.45
+atmo.Color = Color3.fromRGB(255, 140, 60)
+atmo.Glare = 0.4
+atmo.Haze = 2.2
+atmo.Parent = lighting
+
+CH:FinishRecording(id, Enum.FinishRecordingOperation.Commit, {})
+print("Volcanic island terrain complete!")
+\`\`\`
+
+Parts: 0 (pure Terrain API) | Draw calls: Minimal | Performance: Excellent
 Token cost: 45 tokens
 
-Tip: Say "add a village on the beach" to place buildings, or "create a cave entrance in the volcano" to add interior areas.`,
+Tip: Say "add a jungle village on the beach" to place buildings, or "add lava particle effects at the crater" for atmosphere.`,
 
-  building: `✓ Buildings Placed
+  building: `✓ Medieval Castle Build Complete
 
-Constructed a medieval castle complex (240×240 stud footprint):
-• Main keep: 80 studs tall, SmoothRock material, battlements on all sides
-• 4 corner towers: 70 studs, arrow slit windows, spiral staircase interiors
-• Gatehouse: portcullis (functional sliding mechanism), drawbridge over moat
-• Inner courtyard: 120×120 studs, cobblestone floor pattern
-• Great hall: 60×40 stud interior, timber roof beams, fireplace
-• Dungeon level: -15 studs underground, cell doors, torchlight atmosphere
-• Outer wall circuit: 8 studs thick, 22 studs high, 4 guard towers
-• Moat: 12 studs wide, 8 studs deep, water fill
+60×60 stud keep, 4 corner towers (14×14 base, 40 studs tall), outer wall circuit (8 studs thick, 22 studs high), Cobblestone walls, Slate WedgePart roofs, and PointLight torches throughout.
 
-Parts placed: 2,341 | Unions: 48 | SpecialMeshes: 12
-Performance: Good | Render budget used: 18%
+\`\`\`lua
+-- Medieval Castle Build
+local CH = game:GetService("ChangeHistoryService")
+local id = CH:TryBeginRecording("Castle Build")
+local castle = Instance.new("Model")
+castle.Name = "MedievalCastle"
+castle.Parent = workspace
+
+local WALL_COLOR  = Color3.fromRGB(140, 130, 120)
+local ROOF_COLOR  = Color3.fromRGB(80, 75, 70)
+local TORCH_COLOR = Color3.fromRGB(255, 180, 80)
+
+local function makePart(name, size, pos, mat, color, parent)
+  local p = Instance.new("Part")
+  p.Name, p.Size, p.Position = name, size, pos
+  p.Material, p.Color = mat, color
+  p.Anchored, p.CastShadow = true, true
+  p.Parent = parent or castle
+  return p
+end
+local function addTorch(pos, parent)
+  local t = makePart("Torch", Vector3.new(0.5,2,0.5), pos, Enum.Material.WoodPlanks, Color3.fromRGB(150,110,70), parent)
+  local pl = Instance.new("PointLight")
+  pl.Brightness, pl.Range, pl.Color = 1.5, 16, TORCH_COLOR
+  pl.Parent = t
+end
+
+-- Outer walls
+local wallsF = Instance.new("Folder"); wallsF.Name = "Walls"; wallsF.Parent = castle
+for _, d in {
+  { "NorthWall", Vector3.new(80,22,8),  Vector3.new(0,11,-44) },
+  { "SouthWall", Vector3.new(80,22,8),  Vector3.new(0,11, 44) },
+  { "EastWall",  Vector3.new(8,22,80),  Vector3.new( 44,11,0) },
+  { "WestWall",  Vector3.new(8,22,80),  Vector3.new(-44,11,0) },
+} do makePart(d[1], d[2], d[3], Enum.Material.Cobblestone, WALL_COLOR, wallsF) end
+
+-- Corner towers + WedgePart roofs
+local towersF = Instance.new("Folder"); towersF.Name = "Towers"; towersF.Parent = castle
+for i, tp in { {-44,20,-44},{44,20,-44},{-44,20,44},{44,20,44} } do
+  makePart("Tower"..i, Vector3.new(14,40,14), Vector3.new(tp[1],tp[2],tp[3]), Enum.Material.Cobblestone, WALL_COLOR, towersF)
+  local roof = Instance.new("WedgePart")
+  roof.Name = "TowerRoof"..i; roof.Size = Vector3.new(14,8,7)
+  roof.Position = Vector3.new(tp[1],44,tp[3])
+  roof.Material, roof.Color, roof.Anchored, roof.CastShadow = Enum.Material.Slate, ROOF_COLOR, true, true
+  roof.Parent = towersF
+  addTorch(Vector3.new(tp[1],42,tp[3]+4), towersF)
+end
+
+-- Main keep + WoodPlanks floor
+local keepF = Instance.new("Folder"); keepF.Name = "Keep"; keepF.Parent = castle
+makePart("KeepWalls", Vector3.new(60,30,60), Vector3.new(0,15,0), Enum.Material.Cobblestone, WALL_COLOR, keepF)
+makePart("KeepFloor", Vector3.new(56,1,56),  Vector3.new(0,1,0),  Enum.Material.WoodPlanks, Color3.fromRGB(150,110,70), keepF)
+
+-- Keep roof (two mirrored WedgeParts)
+local rA = Instance.new("WedgePart")
+rA.Size = Vector3.new(60,12,30); rA.CFrame = CFrame.new(0,36,-15)
+rA.Material, rA.Color, rA.Anchored, rA.CastShadow = Enum.Material.Slate, ROOF_COLOR, true, true
+rA.Parent = keepF
+local rB = rA:Clone(); rB.CFrame = CFrame.new(0,36,15) * CFrame.Angles(0,math.pi,0); rB.Parent = keepF
+
+-- Gatehouse arch (south face gap)
+makePart("GateLeft",   Vector3.new(8,14,8), Vector3.new(-6,7,44), Enum.Material.Cobblestone, WALL_COLOR, keepF)
+makePart("GateRight",  Vector3.new(8,14,8), Vector3.new( 6,7,44), Enum.Material.Cobblestone, WALL_COLOR, keepF)
+makePart("GateLintel", Vector3.new(20,8,8), Vector3.new( 0,18,44),Enum.Material.Cobblestone, WALL_COLOR, keepF)
+
+-- Courtyard torches
+for _, tp in { {-25,2,25},{25,2,25},{-25,2,-25},{25,2,-25} } do
+  addTorch(Vector3.new(tp[1],tp[2],tp[3]), castle)
+end
+
+-- Moat via Terrain API
+workspace.Terrain:FillBlock(CFrame.new(0,-4,0), Vector3.new(120,8,120), Enum.Material.Water)
+workspace.Terrain:FillBlock(CFrame.new(0,-4,0), Vector3.new(96,10,96), Enum.Material.Ground)
+
+CH:FinishRecording(id, Enum.FinishRecordingOperation.Commit, {})
+print("Castle complete — " .. #castle:GetDescendants() .. " instances")
+\`\`\`
+
+Parts: ~30 | Tris: ~4,800 | Performance: Excellent
 Token cost: 62 tokens
 
-Tip: Say "add NPCs patrolling the walls" to bring the castle to life.`,
+Tip: Say "add NPC guards patrolling the walls" or "furnish the great hall with tables and benches".`,
 
   npc: `✓ NPC Deployed
 
@@ -279,42 +412,97 @@ Token cost: 38 tokens
 
 Tip: Say "add more villagers to the town square" or "give Gareth a patrol route".`,
 
-  script: `✓ Script Generated
+  script: `✓ Coin Collection System Generated
 
-Coin Collection System — 3 scripts created:
+Complete server-authoritative coin system: spawns glowing gold coins, handles collection with Touched validation, respawns after 8 seconds, and awards leaderstats. All server-side — exploit resistant.
 
-── CoinSpawner (ServerScript) ────────────────────────
+\`\`\`lua
+-- CoinSpawner.server.lua  (place in ServerScriptService)
+local Players        = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local COIN_VALUE   = 5
 local RESPAWN_TIME = 8
+local COIN_COLOR   = Color3.fromRGB(212, 175, 55) -- gold
 
-local function collectCoin(player, coin, position)
-  coin:Destroy()
-  local leads = player:FindFirstChild("leaderstats")
-  if leads then leads.Coins.Value += COIN_VALUE end
-  task.delay(RESPAWN_TIME, spawnCoin, position)
+-- Spawn positions (edit to match your map)
+local SPAWN_POINTS = {
+  Vector3.new(10, 1, 10), Vector3.new(-10, 1, 10),
+  Vector3.new(10, 1,-10), Vector3.new(-10, 1,-10),
+  Vector3.new(0,  1, 20), Vector3.new(20, 1,  0),
+}
+
+local coinsFolder = Instance.new("Folder")
+coinsFolder.Name, coinsFolder.Parent = "Coins", workspace
+
+-- Create a coin part (glowing gold disc)
+local function createCoin(position): Part
+  local coin = Instance.new("Part")
+  coin.Name     = "Coin"
+  coin.Size     = Vector3.new(2, 0.4, 2)
+  coin.Position = position
+  coin.Material = Enum.Material.Neon
+  coin.Color    = COIN_COLOR
+  coin.Anchored = false
+  coin.CastShadow = false
+  coin.Shape    = Enum.PartType.Cylinder
+  -- Spin continuously
+  local bav     = Instance.new("BodyAngularVelocity")
+  bav.AngularVelocity = Vector3.new(0, 4, 0)
+  bav.MaxTorque       = Vector3.new(0, 1e5, 0)
+  bav.Parent          = coin
+  -- Glow
+  local glow       = Instance.new("PointLight")
+  glow.Brightness  = 0.8
+  glow.Range       = 8
+  glow.Color       = COIN_COLOR
+  glow.Parent      = coin
+  coin.Parent      = coinsFolder
+  return coin
 end
 
-local function spawnCoin(position)
-  local coin = ReplicatedStorage.Assets.Coin:Clone()
-  coin.Position = position
-  coin.Parent   = workspace.Coins
-  local bav = Instance.new("BodyAngularVelocity")
-  bav.AngularVelocity = Vector3.new(0, 3, 0)
-  bav.Parent = coin
+local collecting: { [BasePart]: boolean } = {}
+
+local function spawnCoin(position: Vector3)
+  local coin = createCoin(position)
   coin.Touched:Connect(function(hit)
+    if collecting[coin] then return end
     local plr = Players:GetPlayerFromCharacter(hit.Parent)
-    if plr then collectCoin(plr, coin, position) end
+    if not plr then return end
+    collecting[coin] = true
+    -- Award coins server-side only
+    local leads = plr:FindFirstChild("leaderstats")
+    if leads then
+      local coinsStat = leads:FindFirstChild("Coins")
+      if coinsStat then coinsStat.Value += COIN_VALUE end
+    end
+    coin:Destroy()
+    collecting[coin] = nil
+    task.delay(RESPAWN_TIME, spawnCoin, position)
   end)
 end
-──────────────────────────────────────────────────────
 
-Also created:
-  • CoinSFX (LocalScript) — plays collect sound, shows +5 floating text
-  • LeaderboardSetup (ServerScript) — creates leaderstats on join
+-- Leaderstats setup
+Players.PlayerAdded:Connect(function(plr)
+  local leads     = Instance.new("Folder")
+  leads.Name      = "leaderstats"
+  leads.Parent    = plr
+  local coins     = Instance.new("IntValue")
+  coins.Name      = "Coins"
+  coins.Value     = 0
+  coins.Parent    = leads
+end)
 
+-- Spawn all coins on server start
+for _, pos in SPAWN_POINTS do
+  spawnCoin(pos)
+end
+\`\`\`
+
+Scripts: 1 ServerScript | Instances per coin: 3 (Part + BAV + PointLight) | Performance: Excellent
 Token cost: 52 tokens
 
-Tip: Say "add a shop to spend the coins" to wire up a purchase system.`,
+Tip: Say "add a shop to spend the coins" to wire up item purchases, or "add floating +5 text on collect" for the client feedback effect.`,
 
   ui: `✓ UI Built
 
@@ -542,41 +730,141 @@ Token cost: 22 tokens
 
 Tip: Say "add a fire effect to the sword" for weapon-specific particles.`,
 
-  fullgame: `✓ Full Game Generated
+  fullgame: `✓ Factory Empire Tycoon — Scaffold Generated
 
-"Factory Empire" — Tycoon game, complete project scaffold:
+Complete tycoon framework: 6 plots per player (claim, build, sell), machine producer with 3 upgrade tiers, DataStore persistence, leaderboard, and starter map. Core loop running end-to-end.
 
-Core loop:
-  Collect Resources → Build Machines → Produce Goods → Sell → Upgrade → Repeat
+\`\`\`lua
+-- PlotManager.server.lua  (ServerScriptService)
+-- Handles plot claiming, ownership, reset, and machine placement
 
-Map layout (2,048×2,048 studs):
-  Zone              Size       Contents
-  ──────────────────────────────────────────────────────────
-  Starter Zone      256×256    3 free plots, tutorial NPCs
-  Industrial Zone   512×512    20 purchasable factory plots
-  Market District   256×128    Sell station, upgrade shop
-  Residential       128×128    Worker NPC housing
-  Prestige Island   256×256    Unlocks at $1M earned
+local Players     = game:GetService("Players")
+local DataStore   = game:GetService("DataStoreService"):GetDataStore("TycoonV1")
+local RunService  = game:GetService("RunService")
 
-Systems scaffolded (12 total):
-   1. PlotManager        claim, reset, ownership via DataStore
-   2. ConveyorSystem     parts move along belt network
-   3. MachineProducer    time-based item generation per tier
-   4. SellerStation      auto-sells, broadcasts income to leaderboard
-   5. UpgradeTree        3 tiers per machine, doubles output each tier
-   6. PrestigeSystem     reset with 2× multiplier, persistent badge
-   7. LeaderboardGui     top 10 earners, refreshes every 30s
-   8. TutorialSequence   5-step guided onboarding flow
-   9. DataPersistence    ProfileService schema, auto-migration
-  10. AdminCommands      kick, ban, give money, reset plot
-  11. GamepassHandler    2× Money, VIP Plot, Auto-Collect gamepasses
-  12. AnalyticsLogger    funnel event tracking for LiveOps
+-- Configuration
+local PLOT_PRICE      = 0        -- starter plots are free
+local MACHINE_PRICES  = { 100, 500, 2000 }   -- tier 1/2/3
+local MACHINE_OUTPUT  = { 10,  30,  100  }   -- coins/sec per tier
+local MAX_MACHINES    = 6
+local SELL_INTERVAL   = 1        -- seconds between auto-sell ticks
 
-Estimated launch readiness: 70% (artwork + balancing remaining)
-Total instances: 4,840 | Scripts: 28 | Performance: Good
+-- Map: plotId → { ownerId, machines: {tier, lastTick} }
+local plotData: { [number]: { ownerId: string, machines: { { tier: number, lastTick: number } } } } = {}
+
+-- Plot parts live in workspace.Plots.Plot1 ... Plot6
+local plotsFolder = workspace:WaitForChild("Plots")
+
+local function getLeaderstats(player: Player)
+  return player:FindFirstChild("leaderstats")
+end
+
+-- Save player data
+local function saveData(player: Player)
+  local leads = getLeaderstats(player)
+  if not leads then return end
+  local ok, err = pcall(DataStore.SetAsync, DataStore,
+    tostring(player.UserId),
+    { coins = leads.Coins.Value, gems = leads.Gems.Value }
+  )
+  if not ok then warn("[PlotManager] Save failed:", err) end
+end
+
+-- Load player data
+local function loadData(player: Player)
+  local leads = getLeaderstats(player)
+  if not leads then return end
+  local ok, data = pcall(DataStore.GetAsync, DataStore, tostring(player.UserId))
+  if ok and data then
+    leads.Coins.Value = data.coins or 0
+    leads.Gems.Value  = data.gems  or 0
+  end
+end
+
+-- Leaderstats init
+Players.PlayerAdded:Connect(function(player)
+  local leads = Instance.new("Folder"); leads.Name = "leaderstats"; leads.Parent = player
+  local coins = Instance.new("IntValue"); coins.Name = "Coins"; coins.Value = 0; coins.Parent = leads
+  local gems  = Instance.new("IntValue"); gems.Name  = "Gems";  gems.Value  = 0; gems.Parent  = leads
+  loadData(player)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+  saveData(player)
+  -- Release owned plots
+  for plotId, data in plotData do
+    if data.ownerId == tostring(player.UserId) then
+      plotData[plotId] = { ownerId = "", machines = {} }
+    end
+  end
+end)
+
+-- Machine producer tick (every SELL_INTERVAL seconds)
+task.spawn(function()
+  while true do
+    task.wait(SELL_INTERVAL)
+    for plotId, data in plotData do
+      if data.ownerId ~= "" then
+        local player = Players:FindFirstChild(data.ownerId) -- by name fallback
+        -- find by userId
+        for _, p in Players:GetPlayers() do
+          if tostring(p.UserId) == data.ownerId then player = p break end
+        end
+        if player then
+          local leads = getLeaderstats(player)
+          if leads then
+            local total = 0
+            for _, machine in data.machines do
+              total += MACHINE_OUTPUT[machine.tier]
+            end
+            leads.Coins.Value += total
+          end
+        end
+      end
+    end
+  end
+end)
+
+-- Expose claim/build RemoteEvents (wire up in StarterGui)
+local remotes = Instance.new("Folder"); remotes.Name = "TycoonRemotes"; remotes.Parent = game.ReplicatedStorage
+
+local claimPlot  = Instance.new("RemoteEvent"); claimPlot.Name  = "ClaimPlot";  claimPlot.Parent  = remotes
+local buildMachine = Instance.new("RemoteEvent"); buildMachine.Name = "BuildMachine"; buildMachine.Parent = remotes
+
+claimPlot.OnServerEvent:Connect(function(player, plotId: number)
+  if plotData[plotId] and plotData[plotId].ownerId ~= "" then return end
+  plotData[plotId] = { ownerId = tostring(player.UserId), machines = {} }
+  -- Color the plot to signal ownership
+  local plot = plotsFolder:FindFirstChild("Plot"..plotId)
+  if plot then
+    for _, p in plot:GetDescendants() do
+      if p:IsA("BasePart") and p.Name == "Base" then
+        p.Color = Color3.fromRGB(90, 180, 90) -- claimed: green
+      end
+    end
+  end
+end)
+
+buildMachine.OnServerEvent:Connect(function(player, plotId: number, tier: number)
+  local data = plotData[plotId]
+  if not data or data.ownerId ~= tostring(player.UserId) then return end
+  if #data.machines >= MAX_MACHINES then return end
+  local leads = getLeaderstats(player)
+  if not leads then return end
+  local price = MACHINE_PRICES[tier] or 9999
+  if leads.Coins.Value < price then return end
+  leads.Coins.Value -= price
+  table.insert(data.machines, { tier = tier, lastTick = os.clock() })
+end)
+
+print("[PlotManager] Ready — " .. MAX_MACHINES .. " machine slots per plot")
+\`\`\`
+
+Scripts: 1 ServerScript | Systems: PlotManager + MachineProducer + DataStore + RemoteEvents
+Total instances: ~4,800 (add 6 Plot models to workspace.Plots) | Performance: Good
 Token cost: 142 tokens
 
-Tip: Say "balance the economy curve" for a progression spreadsheet.`,
+Tip: Say "generate the starter map layout with 6 plots and a sell station" to build the physical world, or "balance the economy curve" for a progression spreadsheet.`,
 
   marketplace: `✓ Marketplace Search Complete
 
@@ -729,27 +1017,117 @@ function estimateTokens(text: string): number {
   return Math.max(8, Math.ceil(text.split(/\s+/).length * 1.3))
 }
 
-// ─── Internal API callers ─────────────────────────────────────────────────────
+// ─── Direct mesh generation (no loopback HTTP) ───────────────────────────────
+// Calling /api/ai/mesh via fetch from within a Next.js API route is fragile
+// (loopback, no cookies forwarded, extra latency).  We replicate the essential
+// logic here so the chat route can generate meshes without a network round-trip.
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
+const MESHY_BASE_URL = 'https://api.meshy.ai'
 
-async function callMeshApi(
-  prompt: string,
-): Promise<{ meshUrl: string | null; thumbnailUrl: string | null; polygonCount: number | null; status: string; message?: string }> {
-  const res = await fetch(`${BASE_URL}/api/ai/mesh`, {
+interface MeshyChatTask {
+  id: string
+  status: 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED'
+  model_urls?: { glb?: string; fbx?: string; obj?: string }
+  thumbnail_url?: string
+  polygon_count?: number
+  progress?: number
+}
+
+async function createMeshyChatTask(prompt: string, apiKey: string): Promise<string> {
+  const res = await fetch(`${MESHY_BASE_URL}/v2/text-to-3d`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, quality: 'standard' }),
-    signal: AbortSignal.timeout(120_000), // generation can take up to 2 min
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      mode: 'preview',
+      prompt: `${prompt}, game asset, optimized for real-time rendering, Roblox-compatible`,
+      negative_prompt: 'low quality, blurry, distorted, floating parts, disconnected mesh',
+      art_style: 'low-poly',
+      topology: 'quad',
+      target_polycount: 5000,
+    }),
+    signal: AbortSignal.timeout(15_000),
   })
-  if (!res.ok) throw new Error(`Mesh API error ${res.status}`)
-  return res.json() as Promise<{ meshUrl: string | null; thumbnailUrl: string | null; polygonCount: number | null; status: string; message?: string }>
+  if (!res.ok) throw new Error(`Meshy task creation failed (${res.status})`)
+  const data = (await res.json()) as { result: string }
+  return data.result
+}
+
+async function pollMeshyChatTask(
+  taskId: string,
+  apiKey: string,
+  maxAttempts = 35,
+  intervalMs = 4_000,
+): Promise<MeshyChatTask> {
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 3_000 : intervalMs))
+    const res = await fetch(`${MESHY_BASE_URL}/v2/text-to-3d/${taskId}`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) continue
+    const task = (await res.json()) as MeshyChatTask
+    if (task.status === 'SUCCEEDED') return task
+    if (task.status === 'FAILED' || task.status === 'EXPIRED') {
+      throw new Error(`Meshy task ${taskId} ended with status: ${task.status}`)
+    }
+  }
+  return { id: taskId, status: 'IN_PROGRESS' }
+}
+
+// A small 32×32 grey SVG placeholder encoded as a data URI so the client
+// always has something to render even when Meshy is not configured.
+const DEMO_THUMBNAIL_SVG =
+  'data:image/svg+xml;base64,' +
+  Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<rect width="128" height="128" fill="#1a1a2e"/>' +
+    '<polygon points="64,20 100,90 28,90" fill="none" stroke="#D4AF37" stroke-width="3"/>' +
+    '<text x="64" y="112" text-anchor="middle" fill="#D4AF37" font-size="10" font-family="sans-serif">3D DEMO</text>' +
+    '</svg>',
+  ).toString('base64')
+
+interface ChatMeshResult {
+  meshUrl: string | null
+  thumbnailUrl: string | null
+  polygonCount: number | null
+  status: 'complete' | 'pending' | 'demo'
+  taskId?: string
+}
+
+async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
+  const meshyKey = process.env.MESHY_API_KEY
+
+  // Demo mode — return placeholder immediately, no API call
+  if (!meshyKey) {
+    return {
+      meshUrl: null,
+      thumbnailUrl: DEMO_THUMBNAIL_SVG,
+      polygonCount: null,
+      status: 'demo',
+    }
+  }
+
+  const taskId = await createMeshyChatTask(prompt, meshyKey)
+  const task = await pollMeshyChatTask(taskId, meshyKey)
+
+  if (task.status === 'IN_PROGRESS') {
+    return { meshUrl: null, thumbnailUrl: null, polygonCount: null, status: 'pending', taskId }
+  }
+
+  return {
+    meshUrl: task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null,
+    thumbnailUrl: task.thumbnail_url ?? null,
+    polygonCount: task.polygon_count ?? null,
+    status: 'complete',
+    taskId,
+  }
 }
 
 async function callTextureApi(
   prompt: string,
 ): Promise<{ textureUrl: string | null; resolution: string; status: string; message?: string }> {
-  const res = await fetch(`${BASE_URL}/api/ai/texture`, {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const res = await fetch(`${baseUrl}/api/ai/texture`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, resolution: '1024' }),
@@ -990,12 +1368,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         mcpResult = await callTool(mcpIntent.server, mcpIntent.tool, mcpIntent.args)
       }
 
+      // Auto-trigger mesh generation when user intent is mesh
+      let meshResult: ChatResponsePayload['meshResult']
+      if (intent === 'mesh') {
+        try {
+          const mesh = await generateMeshForChat(message)
+          meshResult = {
+            meshUrl: mesh.meshUrl,
+            thumbnailUrl: mesh.thumbnailUrl,
+            polygonCount: mesh.polygonCount,
+            status: mesh.status,
+          }
+        } catch {
+          meshResult = {
+            meshUrl: null,
+            thumbnailUrl: DEMO_THUMBNAIL_SVG,
+            polygonCount: null,
+            status: 'demo',
+          }
+        }
+      }
+
       return NextResponse.json({
         message: responseText,
         tokensUsed,
         intent,
         model: aiResponse.model,
-        ...(mcpResult ? { mcpResult } : {}),
+        ...(mcpResult  ? { mcpResult }  : {}),
+        ...(meshResult ? { meshResult } : {}),
       } satisfies ChatResponsePayload & { model: string })
     } catch (err: unknown) {
       // Rate limit — surface a clean error, don't fall through to demo
@@ -1029,10 +1429,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     intent,
   }
 
-  // ── Mesh generation ──────────────────────────────────────────────────────
+  // ── Mesh generation (direct server-side call, no loopback HTTP) ─────────
   if (intent === 'mesh') {
     try {
-      const result = await callMeshApi(message)
+      const result = await generateMeshForChat(message)
       payload.meshResult = {
         meshUrl: result.meshUrl,
         thumbnailUrl: result.thumbnailUrl,
@@ -1041,18 +1441,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       if (result.status === 'demo') {
         payload.message =
-          'Demo mode: 3D model generation preview shown below. Add a MESHY_API_KEY environment variable to generate real GLB models. Used ' +
+          'Demo mode: 3D model generation preview shown below. Set MESHY_API_KEY to generate real GLB models. Used ' +
           tokensUsed +
           ' tokens.'
       } else if (result.status === 'complete') {
         payload.message =
-          `3D model generated successfully! ${result.polygonCount ? result.polygonCount.toLocaleString() + ' polygons.' : ''} Download the GLB below. Used ${tokensUsed} tokens.`
+          `3D model generated! ${result.polygonCount ? result.polygonCount.toLocaleString() + ' polygons. ' : ''}Download the GLB below. Used ${tokensUsed} tokens.`
       } else {
         payload.message =
-          `3D model generation started. Check back shortly for your GLB download. Used ${tokensUsed} tokens.`
+          `3D model still generating (taskId: ${result.taskId ?? 'unknown'}). Poll GET /api/ai/mesh?taskId=${result.taskId ?? ''} for the download link. Used ${tokensUsed} tokens.`
       }
     } catch {
-      // Leave default demo message, no meshResult attached
+      // Mesh generation failed — fall through to demo message
+      payload.meshResult = {
+        meshUrl: null,
+        thumbnailUrl: DEMO_THUMBNAIL_SVG,
+        polygonCount: null,
+        status: 'demo',
+      }
+      payload.message =
+        'Mesh generation unavailable right now. Set MESHY_API_KEY for real 3D models. Used ' +
+        tokensUsed + ' tokens.'
     }
     return NextResponse.json(payload)
   }
@@ -1150,22 +1559,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           parts.push(`Found ${foundCount} marketplace asset${foundCount !== 1 ? 's' : ''} for your build`)
         }
         if (customCount > 0) {
-          parts.push(`Generating ${customCount} custom model${customCount !== 1 ? 's' : ''} (${plan.estimatedCustomCost} Meshy credit${plan.estimatedCustomCost !== 1 ? 's' : ''})`)
+          parts.push(`${customCount} asset${customCount !== 1 ? 's' : ''} need custom generation via Meshy AI (${plan.estimatedCustomCost} credit${plan.estimatedCustomCost !== 1 ? 's' : ''})`)
         }
 
         if (foundCount === 0 && customCount === 0) {
           payload.message = DEMO_RESPONSES[intent]
         } else {
+          // Build a Luau snippet showing how to load marketplace assets
+          const luauSnippet = foundAssets.length > 0
+            ? `\`\`\`lua\n-- Paste into Studio Command Bar to insert all found assets\nlocal IS = game:GetService("InsertService")\nlocal root = workspace\n${foundAssets.slice(0, 5).map((a, i) => {
+                const x = (i % 4) * 30
+                const z = Math.floor(i / 4) * 30
+                return `local m${i+1} = IS:LoadAsset(${a.assetId}) -- ${a.name}\nm${i+1}:MoveTo(Vector3.new(${x}, 0, ${z}))\nm${i+1}.Parent = root`
+              }).join('\n')}${foundAssets.length > 5 ? `\n-- ... ${foundAssets.length - 5} more assets in full Luau code panel` : ''}\n\`\`\``
+            : ''
+
+          // If missing terms exist, suggest Meshy generation with specific prompts
+          const meshySection = customCount > 0
+            ? `\n\nMeshy AI generation queued for ${customCount} missing asset${customCount !== 1 ? 's' : ''}:\n${plan.missing.map((t, i) => `  ${foundCount + i + 1}. "${t}" — click Generate to start Meshy text-to-3D (~2 min, ${Math.ceil(plan.estimatedCustomCost / customCount)} credit${Math.ceil(plan.estimatedCustomCost / customCount) !== 1 ? 's' : ''})`).join('\n')}\n\nAdd MESHY_API_KEY to .env to auto-generate these as GLB models.`
+            : ''
+
           payload.message = `✓ Build Plan Ready
 
 ${parts.join(' · ')}
 
 Marketplace assets (${foundCount}):
-${foundAssets.map((a, i) => `  ${i + 1}. ${a.name} by ${a.creator} [ID: ${a.assetId}]`).join('\n')}
-${customCount > 0 ? `\nCustom generation needed (${customCount}):\n${plan.missing.map((t, i) => `  ${foundCount + i + 1}. "${t}" — will generate with Meshy AI`).join('\n')}` : ''}
+${foundAssets.map((a, i) => `  ${i + 1}. ${a.name} by ${a.creator} [ID: ${a.assetId}]${a.isFree ? ' — Free' : ''}`).join('\n')}${meshySection}
 
-Luau code generated — uses InsertService:LoadAsset() with real asset IDs.
-Token cost: ${tokensUsed} tokens`
+${luauSnippet}
+
+Token cost: ${tokensUsed} tokens
+
+Tip: Run the Luau snippet in Studio Command Bar to insert all marketplace assets at once.`
         }
       }
     } catch {
