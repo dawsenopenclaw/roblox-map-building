@@ -2135,7 +2135,7 @@ export function EditorClient() {
             fetch('/api/studio/execute', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code: luauToExecute, prompt: trimmed }),
+              body: JSON.stringify({ code: luauToExecute, prompt: trimmed, sessionId: studioStatus.sessionId }),
             })
               .then((r) => {
                 setExecuteStatus(r.ok ? 'done' : 'error')
@@ -2315,22 +2315,27 @@ export function EditorClient() {
   const [studioPolling, setStudioPolling] = useState(false)
   const studioIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Studio status polling
+  // Studio status polling — needs sessionId to get real status
   const pollStudioStatus = useCallback(async () => {
     try {
-      const res = await fetch('/api/studio/status')
+      const sid = studioStatus.sessionId
+      if (!sid) return
+      const res = await fetch(`/api/studio/status?sessionId=${sid}`)
       if (!res.ok) return
       const data = await res.json() as StudioStatus
-      setStudioStatus(data)
+      // Preserve sessionId from our state (status endpoint may not return it)
+      setStudioStatus((prev) => ({ ...data, sessionId: data.sessionId ?? prev.sessionId }))
     } catch {
       // Network error — don't crash, just keep polling
     }
-  }, [])
+  }, [studioStatus.sessionId])
 
   // Screenshot polling (only when connected)
   const pollScreenshot = useCallback(async () => {
     try {
-      const res = await fetch('/api/studio/screenshot')
+      const sid = studioStatus.sessionId
+      if (!sid) return
+      const res = await fetch(`/api/studio/screenshot?sessionId=${sid}`)
       if (!res.ok) return
       const data = await res.json() as { screenshotUrl?: string }
       if (data.screenshotUrl) {
@@ -2339,7 +2344,7 @@ export function EditorClient() {
     } catch {
       // silently ignore
     }
-  }, [])
+  }, [studioStatus.sessionId])
 
   // Start polling when user clicks "Connect to Studio"
   const handleStartPolling = useCallback(() => {
@@ -2408,9 +2413,12 @@ export function EditorClient() {
         try {
           const statusRes = await fetch(`/api/studio/auth?action=status&code=${data.code}`)
           if (!statusRes.ok) return
-          const statusData = await statusRes.json() as { claimed: boolean }
+          const statusData = await statusRes.json() as { claimed: boolean; sessionId?: string }
           if (statusData.claimed) {
             stopConnectPolling()
+            if (statusData.sessionId) {
+              setStudioStatus((prev) => ({ ...prev, sessionId: statusData.sessionId }))
+            }
             setConnectFlow('connected')
             handleStartPolling()
           }
