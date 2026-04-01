@@ -36,6 +36,7 @@ local MarketplaceService   = game:GetService("MarketplaceService")
 -- ── State ─────────────────────────────────────────────────────────────────────
 
 local sessionToken   : string? = nil
+local sessionId      : string? = nil
 local connectionCode : string? = nil
 local connected      = false
 local lastSyncAt     = 0
@@ -127,6 +128,7 @@ local function onRequestFailure()
     if consecutiveFailures >= MAX_FAILURES then
         warn("[ForjeGames] " .. MAX_FAILURES .. " consecutive failures — disconnecting. Click Connect to reconnect.")
         sessionToken = nil
+        sessionId = nil
         consecutiveFailures = 0
         setStatus("Disconnected (lost connection)", false)
     end
@@ -166,6 +168,7 @@ local function reportCommandResult(cmdType: string, success: boolean, errorMsg: 
     if not sessionToken then return end
     task.spawn(function()
         requestOnce("POST", "/api/studio/update", {
+            sessionId    = sessionId,
             sessionToken = sessionToken,
             placeId      = cachedPlaceId,
             placeName    = cachedPlaceName,
@@ -289,6 +292,7 @@ local function promptForCode()
 
         if ok and data and (data.token or data.sessionToken) then
             sessionToken      = data.token or data.sessionToken
+            sessionId         = data.sessionId
             connectionCode    = code
             consecutiveFailures = 0
             setStatus("Connected — " .. cachedPlaceName, true)
@@ -308,6 +312,7 @@ end
 connectBtn.Click:Connect(function()
     if connected then
         sessionToken = nil
+        sessionId = nil
         consecutiveFailures = 0
         setStatus("Disconnected", false)
     else
@@ -395,6 +400,7 @@ RunService.Heartbeat:Connect(function()
             -- Heartbeat uses a single attempt only; retry logic would cause
             -- overlapping heartbeats and inflate server-side latency metrics.
             local hbOk, _ = requestOnce("POST", "/api/studio/update", {
+                sessionId    = sessionId,
                 sessionToken = sessionToken,
                 placeId      = cachedPlaceId,
                 placeName    = cachedPlaceName,
@@ -415,7 +421,8 @@ RunService.Heartbeat:Connect(function()
         lastSyncAt = now
         task.spawn(function()
             local pollOk, data = request("GET",
-                "/api/studio/sync?sessionToken=" .. HttpService:UrlEncode(sessionToken))
+                "/api/studio/sync?sessionId=" .. HttpService:UrlEncode(sessionId or "")
+                .. "&token=" .. HttpService:UrlEncode(sessionToken or ""))
 
             if pollOk and data then
                 onRequestSuccess()

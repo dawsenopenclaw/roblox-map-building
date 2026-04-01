@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { createSession } from '@/lib/studio-session'
+import { createSession, getSession } from '@/lib/studio-session'
 import { studioAuthClaimSchema, parseBody } from '@/lib/validations'
 
 // ---------------------------------------------------------------------------
@@ -131,11 +131,17 @@ export async function GET(req: NextRequest) {
     }
 
     const expiresAt = entry.createdAt + CODE_TTL_MS
+
+    // When claimed, resolve the live session to surface placeId/placeName
+    const liveSession = entry.sessionId ? getSession(entry.sessionId) : undefined
+
     return NextResponse.json(
       {
         status: entry.claimed ? 'connected' : 'pending',
         claimed: entry.claimed,
         sessionId: entry.sessionId,
+        placeId: liveSession?.placeId ?? null,
+        placeName: liveSession?.placeName ?? null,
         expiresAt,
         remainingSeconds: Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)),
       },

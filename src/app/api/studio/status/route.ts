@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, SESSION_TTL_MS } from '@/lib/studio-session'
+import { getSession, getSessionByToken, SESSION_TTL_MS } from '@/lib/studio-session'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -35,9 +35,22 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
-  const sessionId = searchParams.get('sessionId')
 
-  if (!sessionId) {
+  // Resolve session: prefer sessionId param, fall back to token param
+  let sessionId = searchParams.get('sessionId')
+  let session = sessionId ? getSession(sessionId) : undefined
+
+  if (!session) {
+    const token = searchParams.get('token')
+    if (token) {
+      session = getSessionByToken(token)
+      if (session) {
+        sessionId = session.sessionId
+      }
+    }
+  }
+
+  if (!sessionId && !session) {
     // No session specified — return a simple server-alive ping
     return NextResponse.json(
       {
@@ -54,8 +67,6 @@ export async function GET(req: NextRequest) {
       { status: 200, headers: CORS_HEADERS },
     )
   }
-
-  const session = getSession(sessionId)
 
   if (!session) {
     return NextResponse.json(

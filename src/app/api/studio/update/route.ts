@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { updateSessionState } from '@/lib/studio-session'
+import { updateSessionState, getSessionByToken } from '@/lib/studio-session'
 import { studioUpdateSchema, parseBody } from '@/lib/validations'
 
 interface PluginChange {
@@ -59,8 +59,14 @@ export async function POST(req: NextRequest) {
   }
   const rawBody = parsedBody.data
 
-  // Support legacy plugin versions that send sessionToken instead of sessionId
-  const sessionId = rawBody.sessionId ?? rawBody.sessionToken
+  // Resolve sessionId: prefer explicit sessionId, then look up by token
+  let sessionId = rawBody.sessionId
+  if (!sessionId && rawBody.sessionToken) {
+    const sessionByToken = getSessionByToken(rawBody.sessionToken)
+    if (sessionByToken) {
+      sessionId = sessionByToken.sessionId
+    }
+  }
   if (!sessionId) {
     return NextResponse.json(
       { error: 'sessionId is required' },

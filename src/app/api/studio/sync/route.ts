@@ -36,19 +36,23 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
 
-  const sessionId = searchParams.get('sessionId')
   const lastSyncRaw = searchParams.get('lastSync')
 
-  if (!sessionId) {
-    return NextResponse.json(
-      { error: 'sessionId query param is required' },
-      { status: 400, headers: CORS_HEADERS },
-    )
+  // Resolve session: prefer sessionId param, fall back to token param
+  let sessionId = searchParams.get('sessionId')
+  let session = sessionId ? getSession(sessionId) : undefined
+
+  if (!session) {
+    const token = searchParams.get('token')
+    if (token) {
+      session = getSessionByToken(token)
+      if (session) {
+        sessionId = session.sessionId
+      }
+    }
   }
 
-  const session = getSession(sessionId)
-  if (!session) {
-    // Session unknown or expired — tell the plugin to re-connect
+  if (!sessionId || !session) {
     return NextResponse.json(
       { error: 'session_not_found', reconnect: true },
       { status: 404, headers: CORS_HEADERS },
