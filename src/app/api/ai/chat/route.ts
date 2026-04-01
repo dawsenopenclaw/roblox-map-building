@@ -845,6 +845,109 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const intent = detectIntent(message)
 
+  // ── Custom user-supplied API key ─────────────────────────────────────────
+  const customApiKey  = req.headers.get('x-custom-api-key')?.trim() ?? null
+  const customProvider = req.headers.get('x-custom-provider')?.trim() ?? null
+
+  // If user provided a Google key, attempt a Gemini response
+  if (customApiKey && customProvider === 'google') {
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${customApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT }] },
+            contents: [{ role: 'user', parts: [{ text: message }] }],
+            generationConfig: { maxOutputTokens: 1024 },
+          }),
+        },
+      )
+      if (geminiRes.ok) {
+        type GeminiResponse = {
+          candidates?: Array<{
+            content?: { parts?: Array<{ text?: string }> }
+          }>
+          usageMetadata?: { totalTokenCount?: number }
+        }
+        const geminiData = await geminiRes.json() as GeminiResponse
+        const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        const tokensUsed = geminiData.usageMetadata?.totalTokenCount ?? estimateTokens(message)
+        return NextResponse.json({
+          message: text,
+          tokensUsed,
+          intent,
+          model: 'gemini-1.5-flash (custom key)',
+        } satisfies ChatResponsePayload & { model: string })
+      }
+    } catch {
+      // Fall through to demo on error
+    }
+  }
+
+  // If user provided an OpenAI key
+  if (customApiKey && customProvider === 'openai') {
+    try {
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${customApiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          max_tokens: 1024,
+          messages: [
+            { role: 'system', content: FORJEAI_SYSTEM_PROMPT },
+            { role: 'user',   content: message },
+          ],
+        }),
+      })
+      if (openaiRes.ok) {
+        type OpenAIResponse = {
+          choices?: Array<{ message?: { content?: string } }>
+          usage?: { total_tokens?: number }
+        }
+        const openaiData = await openaiRes.json() as OpenAIResponse
+        const text = openaiData.choices?.[0]?.message?.content ?? ''
+        const tokensUsed = openaiData.usage?.total_tokens ?? estimateTokens(message)
+        return NextResponse.json({
+          message: text,
+          tokensUsed,
+          intent,
+          model: 'gpt-4o (custom key)',
+        } satisfies ChatResponsePayload & { model: string })
+      }
+    } catch {
+      // Fall through to demo on error
+    }
+  }
+
+  // If user provided an Anthropic key, use a fresh Anthropic client with it
+  if (customApiKey && customProvider === 'anthropic') {
+    try {
+      const customAnthropic = new Anthropic({ apiKey: customApiKey })
+      const aiResponse = await customAnthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        system: FORJEAI_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: message }],
+      })
+      const textBlock = aiResponse.content.find((b) => b.type === 'text')
+      const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
+      const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
+      return NextResponse.json({
+        message: responseText,
+        tokensUsed,
+        intent,
+        model: aiResponse.model + ' (custom key)',
+      } satisfies ChatResponsePayload & { model: string })
+    } catch {
+      // Fall through to server key / demo on error
+    }
+  }
+
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
   if (anthropic) {

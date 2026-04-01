@@ -35,6 +35,10 @@ const TokenGateCard = dynamic(
   () => import('./panels/TokenGateCard'),
   { ssr: false }
 )
+const ApiKeysModal = dynamic(
+  () => import('./panels/ApiKeysModal'),
+  { ssr: false }
+)
 import { EditorTour, useEditorTour } from './EditorTour'
 import { EditorEmptyState } from './EditorEmptyState'
 import { ViewportPreview } from '@/components/editor/ViewportPreview'
@@ -81,7 +85,15 @@ interface ChatMessage {
   buildResult?: BuildResult
 }
 
-type ModelId = 'claude-4' | 'claude-3-5' | 'gemini-2' | 'gpt-4o' | 'grok-3'
+type ModelId =
+  | 'claude-4'
+  | 'claude-3-5'
+  | 'gemini-2'
+  | 'gpt-4o'
+  | 'grok-3'
+  | 'custom-anthropic'
+  | 'custom-openai'
+  | 'custom-google'
 
 interface ModelOption {
   id: ModelId
@@ -123,11 +135,14 @@ interface RobloxGame {
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const MODELS: ModelOption[] = [
-  { id: 'claude-4',    label: 'Claude 4',       provider: 'Anthropic', color: '#CC785C', badge: 'BEST' },
-  { id: 'claude-3-5',  label: 'Claude 3.5',     provider: 'Anthropic', color: '#CC785C' },
-  { id: 'gemini-2',    label: 'Gemini 2.0',     provider: 'Google',    color: '#4285F4' },
-  { id: 'gpt-4o',      label: 'GPT-4o',         provider: 'OpenAI',    color: '#10A37F' },
-  { id: 'grok-3',      label: 'Grok 3',         provider: 'xAI',       color: '#8B5CF6' },
+  { id: 'claude-4',          label: 'Claude 4',           provider: 'Anthropic',     color: '#CC785C', badge: 'BEST' },
+  { id: 'claude-3-5',        label: 'Claude 3.5',         provider: 'Anthropic',     color: '#CC785C' },
+  { id: 'gemini-2',          label: 'Gemini 2.0',         provider: 'Google',        color: '#4285F4' },
+  { id: 'gpt-4o',            label: 'GPT-4o',             provider: 'OpenAI',        color: '#10A37F' },
+  { id: 'grok-3',            label: 'Grok 3',             provider: 'xAI',           color: '#8B5CF6' },
+  { id: 'custom-anthropic',  label: 'My Anthropic Key',   provider: 'Custom',        color: '#D4AF37', badge: 'BYO' },
+  { id: 'custom-openai',     label: 'My OpenAI Key',      provider: 'Custom',        color: '#D4AF37', badge: 'BYO' },
+  { id: 'custom-google',     label: 'My Google Key',      provider: 'Custom',        color: '#D4AF37', badge: 'BYO' },
 ]
 
 const QUICK_ACTIONS = [
@@ -1799,6 +1814,7 @@ export function EditorClient() {
   const [redoStack, setRedoStack] = useState<SceneObject[][]>([])
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
+  const [apiKeysOpen, setApiKeysOpen] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [activeGame, setActiveGame] = useState<RobloxGame | null>(DEMO_GAMES[0])
   const [projectName, setProjectName] = useState('Medieval Kingdom')
@@ -1946,10 +1962,28 @@ export function EditorClient() {
         const lowerTrimmed = trimmed.toLowerCase()
         const isBuildMeshIntent = BUILD_MESH_KEYWORDS.some((kw) => lowerTrimmed.includes(kw))
 
+        // Build headers — inject custom API key if user has one set
+        const chatHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (selectedModel.startsWith('custom-')) {
+          const providerMap: Record<string, { lsKey: string; provider: string }> = {
+            'custom-anthropic': { lsKey: 'fg_anthropic_key', provider: 'anthropic' },
+            'custom-openai':    { lsKey: 'fg_openai_key',    provider: 'openai'    },
+            'custom-google':    { lsKey: 'fg_google_key',    provider: 'google'    },
+          }
+          const cfg = providerMap[selectedModel]
+          if (cfg) {
+            const storedKey = typeof window !== 'undefined' ? localStorage.getItem(cfg.lsKey) : null
+            if (storedKey) {
+              chatHeaders['x-custom-api-key']  = storedKey
+              chatHeaders['x-custom-provider'] = cfg.provider
+            }
+          }
+        }
+
         // Fire both in parallel: chat + optional mesh generation
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: chatHeaders,
           body: JSON.stringify({
             message: trimmed,
             model: selectedModel,
@@ -2758,6 +2792,18 @@ export function EditorClient() {
                 {/* Model + hint row */}
                 <div className="flex items-center gap-2 px-3 pb-2">
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+                  {/* Gear icon — opens API key modal */}
+                  <button
+                    onClick={() => setApiKeysOpen(true)}
+                    aria-label="Configure API keys"
+                    className="flex items-center justify-center w-6 h-6 rounded-md transition-colors text-zinc-600 hover:text-[#D4AF37] hover:bg-white/5"
+                    title="Connect your own API key"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <circle cx="6.5" cy="6.5" r="2" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M6.5 1v1.2M6.5 10.8V12M1 6.5h1.2M10.8 6.5H12M2.7 2.7l.85.85M9.45 9.45l.85.85M9.45 3.55l-.85.85M3.55 9.45l-.85.85" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
                   <div className="flex-1" />
                   <span className="text-[10px] text-zinc-700 hidden lg:block">Enter to send</span>
                 </div>
@@ -2876,6 +2922,11 @@ export function EditorClient() {
         isOpen={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
       />
+
+      {/* ── API Keys Modal ─────────────────────────────────────────────────── */}
+      {apiKeysOpen && (
+        <ApiKeysModal onClose={() => setApiKeysOpen(false)} />
+      )}
 
       {/* ── Quick tip toast ────────────────────────────────────────────────── */}
       {showTipToast && (

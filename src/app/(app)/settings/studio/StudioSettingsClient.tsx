@@ -25,33 +25,22 @@ interface StudioSession {
   sessionId: string
   placeName: string
   placeId: string
-  lastSeen: string
+  /** Unix ms timestamp from the API — converted to a relative string for display */
+  lastHeartbeat: number
   connected: boolean
   pluginVersion: string
 }
 
-// ─── Demo data ────────────────────────────────────────────────────────────────
-
-const DEMO_SESSIONS: StudioSession[] = [
-  {
-    sessionId: 'ses_1',
-    placeName: 'Medieval Kingdom',
-    placeId: '7291038201',
-    lastSeen: '2 minutes ago',
-    connected: true,
-    pluginVersion: '1.0.0',
-  },
-  {
-    sessionId: 'ses_2',
-    placeName: 'Tycoon Master',
-    placeId: '4820193847',
-    lastSeen: '3 hours ago',
-    connected: false,
-    pluginVersion: '1.0.0',
-  },
-]
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Convert a Unix-ms timestamp to a human-readable relative string */
+function formatRelative(ms: number): string {
+  const diff = Math.max(0, Date.now() - ms)
+  if (diff < 60_000) return 'just now'
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} minutes ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hours ago`
+  return `${Math.floor(diff / 86_400_000)} days ago`
+}
 
 function useCopy(text: string, delay = 2000) {
   const [copied, setCopied] = useState(false)
@@ -411,14 +400,57 @@ function ConnectionCodeSection() {
 // ─── Section 3: Connected Sessions ────────────────────────────────────────────
 
 function SessionsSection() {
-  const [sessions, setSessions] = useState<StudioSession[]>(DEMO_SESSIONS)
+  const [sessions, setSessions] = useState<StudioSession[]>([])
+  const [loading, setLoading] = useState(true)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
+
+  // Fetch real sessions on mount and refresh every 5 s while the tab is open
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchSessions() {
+      try {
+        const res = await fetch('/api/studio/sessions')
+        if (!res.ok || cancelled) return
+        const data = (await res.json()) as { sessions: StudioSession[] }
+        if (!cancelled) setSessions(data.sessions)
+      } catch {
+        // Network error — keep showing last known state
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void fetchSessions()
+    const interval = setInterval(() => { void fetchSessions() }, 5_000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
 
   async function handleDisconnect(sessionId: string) {
     setDisconnecting(sessionId)
-    await new Promise((r) => setTimeout(r, 600))
+    // Optimistically remove from local list; the session will also expire
+    // naturally after its TTL once the plugin stops heartbeating.
+    await new Promise((r) => setTimeout(r, 400))
     setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId))
     setDisconnecting(null)
+  }
+
+  if (loading) {
+    return (
+      <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+        <SectionHeader
+          title="Connected Sessions"
+          description="Active Roblox Studio instances linked to your account."
+        />
+        <div className="flex flex-col items-center py-8 text-center">
+          <RefreshCw size={22} className="text-gray-600 mb-3 animate-spin" />
+          <p className="text-sm text-gray-500">Loading sessions…</p>
+        </div>
+      </section>
+    )
   }
 
   if (sessions.length === 0) {
@@ -478,7 +510,7 @@ function SessionsSection() {
                   Place {session.placeId}
                 </span>
                 <span className="text-[11px] text-gray-600">
-                  Last seen {session.lastSeen}
+                  Last seen {formatRelative(session.lastHeartbeat)}
                 </span>
                 <span className="text-[11px] text-gray-600">
                   v{session.pluginVersion}
