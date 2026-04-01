@@ -249,7 +249,7 @@ export async function processWebhookRetries(
         }
 
         const nextAttempt = delivery.attempt + 1
-        const typedPayload = delivery.payload as WebhookPayload
+        const typedPayload = delivery.payload as unknown as WebhookPayload
         const idempotencyKey = typedPayload.id
 
         const outcome = await attemptDelivery({

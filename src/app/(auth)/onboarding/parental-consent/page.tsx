@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useAnalytics } from '@/hooks/useAnalytics'
+import { useState, useEffect, useRef } from 'react'
 
 const TOTAL_STEPS = 5
 const CURRENT_STEP = 2
@@ -24,45 +23,71 @@ function ProgressBar() {
   )
 }
 
+const RESEND_COOLDOWN = 60
+
 export default function ParentalConsentPage() {
-  const { track } = useAnalytics()
   const [parentEmail, setParentEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  function startCooldown() {
+    setCooldown(RESEND_COOLDOWN)
+    timerRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!)
+          timerRef.current = null
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  async function sendConsentEmail() {
     setLoading(true)
     setError('')
-
     try {
       const res = await fetch('/api/onboarding/parental-consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ parentEmail }),
       })
-
       const data = await res.json()
-
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
-        track('error_encountered', {
-          errorType: 'parental_consent',
-          message: data.error,
-          page: '/onboarding/parental-consent',
-        })
-        return
+        return false
       }
-
-      track('onboarding_step_completed', { step: 'parental_consent', stepIndex: 2 })
-      setSent(true)
+      return true
     } catch {
       setError('Network error. Please try again.')
-      track('error_encountered', { errorType: 'network_error', page: '/onboarding/parental-consent' })
+      return false
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const ok = await sendConsentEmail()
+    if (ok) {
+      setSent(true)
+      startCooldown()
+    }
+  }
+
+  async function handleResend() {
+    const ok = await sendConsentEmail()
+    if (ok) startCooldown()
   }
 
   // ── Sent state ──────────────────────────────────────────────────────────────
@@ -75,7 +100,7 @@ export default function ParentalConsentPage() {
           </div>
           <div className="bg-[#141414] border border-white/10 rounded-xl p-8 shadow-xl">
             <ProgressBar />
-            <div className="text-5xl mb-4">📧</div>
+            <div className="text-5xl mb-4"><span aria-hidden="true">📧</span></div>
             <h2 className="text-xl font-bold text-white mb-3">Check your parent&apos;s email</h2>
             <p className="text-gray-300 text-sm">
               We sent a consent link to{' '}
@@ -85,6 +110,28 @@ export default function ParentalConsentPage() {
             <p className="text-gray-400 text-xs mt-4">
               The link expires in 48 hours. Your account will be unlocked once they approve.
             </p>
+
+            {error && <p role="alert" className="text-red-400 text-sm mt-4">{error}</p>}
+
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={handleResend}
+                disabled={loading || cooldown > 0}
+                className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading
+                  ? 'Sending…'
+                  : cooldown > 0
+                  ? `Resend email (${cooldown}s)`
+                  : 'Resend email'}
+              </button>
+              <button
+                onClick={() => { setSent(false); setError('') }}
+                className="w-full text-sm text-gray-400 hover:text-white transition-colors py-2"
+              >
+                Wrong email? Change it
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -135,7 +182,7 @@ export default function ParentalConsentPage() {
               </ul>
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
 
             <button
               type="submit"

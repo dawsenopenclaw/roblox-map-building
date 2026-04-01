@@ -6,7 +6,7 @@
 /* Works alongside the inline <script> in layout.tsx for belt-and-suspenders    */
 /* coverage — prevents any white/light frame before Tailwind classes apply.     */
 html {
-  background-color: #09090b;
+  background-color: #0A0E27;
   color-scheme: dark;
   scroll-behavior: smooth;
 }
@@ -28,10 +28,10 @@ body {
 
 :root {
   /* Core backgrounds */
-  --background:          #09090b;
-  --surface:             #111113;
-  --surface-2:           #18181b;
-  --surface-elevated:    #1c1c1f;
+  --background:          #0A0E27;
+  --surface:             #0F1535;
+  --surface-2:           #1A2550;
+  --surface-elevated:    #1c2060;
 
   /* Borders */
   --border:              rgba(255,255,255,0.06);
@@ -39,10 +39,10 @@ body {
   --border-focus:        rgba(212,175,55,0.3);
 
   /* Gold accent */
-  --gold:                #D4AF37;
-  --gold-light:          #E4C04A;
-  --gold-glow:           rgba(212,175,55,0.15);
-  --gold-glow-sm:        rgba(212,175,55,0.15);
+  --gold:                #FFB81C;
+  --gold-light:          #FFD166;
+  --gold-glow:           rgba(255,184,28,0.15);
+  --gold-glow-sm:        rgba(255,184,28,0.15);
 
   /* Semantic */
   --success:             #22C55E;

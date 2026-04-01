@@ -30,7 +30,7 @@ function ErrorContent() {
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
         <div className="bg-[#141414] border border-red-500/20 rounded-xl p-8 shadow-xl">
-          <div className="text-5xl mb-4">⚠️</div>
+          <div className="text-5xl mb-4"><span aria-hidden="true">⚠️</span></div>
           <h2 className="text-2xl font-bold text-white mb-3">{msg.title}</h2>
           <p className="text-gray-300 text-sm">{msg.description}</p>
           <p className="text-gray-400 text-xs mt-6">

@@ -25,6 +25,7 @@ model User {
   parentConsentToken    String?   @unique
   parentConsentTokenExp DateTime?
   role                  UserRole  @default(USER)
+  marketingEmailsOptOut Boolean   @default(false)
   deletedAt             DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt

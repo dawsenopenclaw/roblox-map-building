@@ -36,6 +36,10 @@ const isPublicRoute = createRouteMatcher([
   '/pricing',
   '/docs(.*)',
   '/download(.*)',
+  '/showcase(.*)',
+  '/about',
+  '/blog(.*)',
+  '/changelog',
   // Legal
   '/privacy',
   '/terms',
@@ -47,6 +51,10 @@ const isPublicRoute = createRouteMatcher([
   '/onboarding(.*)',
   // Welcome / post-auth landing (no session yet during onboarding redirect)
   '/welcome(.*)',
+  // Onboarding API routes — must be reachable before a Clerk session is
+  // fully established (e.g. age-gate POST runs immediately after sign-up
+  // before the session cookie propagates). Each route handles auth internally.
+  '/api/onboarding/(.*)',
   // Webhooks — Stripe, Clerk, etc. must always reach these endpoints
   '/api/webhooks/(.*)',
   // Public API endpoints (unauthenticated reads only)
@@ -100,13 +108,16 @@ const isMaintenanceExempt = createRouteMatcher([
 ])
 
 // ─── Admin e-mail list (comma-separated ADMIN_EMAILS env var) ────────────────
-function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false
-  const list = (process.env.ADMIN_EMAILS ?? '')
+const ADMIN_EMAIL_SET = new Set(
+  (process.env.ADMIN_EMAILS ?? '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
-  return list.includes(email.toLowerCase())
+)
+
+function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  return ADMIN_EMAIL_SET.has(email.toLowerCase())
 }
 
 // ─── Demo mode ────────────────────────────────────────────────────────────────
@@ -132,15 +143,15 @@ function getCorsHeaders(request: NextRequest): HeadersInit {
     origin === APP_URL ||
     ALLOWED_ORIGINS.includes(origin)
 
-  return isAllowed
-    ? {
-        'Access-Control-Allow-Origin': origin || '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-        'Access-Control-Max-Age': '86400',
-        'Access-Control-Allow-Credentials': 'true',
-      }
-    : {}
+  if (!origin || !isAllowed) return {}
+
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Max-Age': '86400',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 function handleCorsPreFlight(request: NextRequest): NextResponse | null {
@@ -197,7 +208,7 @@ export default clerkMiddleware(async (auth, request) => {
         // We redirect to /blocked rather than returning 451 directly so the page
         // renders properly (Next.js edge runtime requires NextResponse.redirect).
         return NextResponse.redirect(new URL('/blocked', request.url), {
-          status: 308,
+          status: 307,
           headers: {
             // RFC 7725 Link header pointing to the blocking authority
             Link: '<https://ofac.treasury.gov/>; rel="blocked-by"',
@@ -227,8 +238,12 @@ export default clerkMiddleware(async (auth, request) => {
 
     // Age-gate guard: authenticated users who have not completed the age gate
     // must be redirected to /onboarding/age-gate before accessing any protected route.
-    const dateOfBirth = (claims as { dateOfBirth?: string | null } | null)?.dateOfBirth ?? null
-    if (userId && dateOfBirth === null && !isPublicRoute(request)) {
+    // Check both top-level claims and publicMetadata (where the age-gate API stores it).
+    const meta = ((claims as { publicMetadata?: Record<string, unknown> })?.publicMetadata ?? {}) as Record<string, unknown>
+    const dateOfBirth = (claims as { dateOfBirth?: string | null } | null)?.dateOfBirth
+      ?? (meta.dateOfBirth as string | null | undefined)
+      ?? null
+    if (userId && !dateOfBirth && !isPublicRoute(request)) {
       const ageGateUrl = new URL('/onboarding/age-gate', request.url)
       if (request.nextUrl.pathname !== '/onboarding/age-gate') {
         return NextResponse.redirect(ageGateUrl)
@@ -248,7 +263,11 @@ export default clerkMiddleware(async (auth, request) => {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
       const signInUrl = new URL('/sign-in', request.url)
-      signInUrl.searchParams.set('redirect_url', request.nextUrl.pathname)
+      // Validate redirect_url to prevent open redirect (must be a relative path)
+      const redirectPath = request.nextUrl.pathname
+      if (redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
+        signInUrl.searchParams.set('redirect_url', redirectPath)
+      }
       return NextResponse.redirect(signInUrl)
     }
 

@@ -23,8 +23,11 @@ describe('isUnder13', () => {
   })
 
   it('returns false for someone who just turned 13 today', () => {
-    const thirteenYearsAgo = new Date()
-    thirteenYearsAgo.setFullYear(thirteenYearsAgo.getFullYear() - 13)
+    const today = new Date()
+    // Construct the DOB in UTC to match the isUnder13 UTC implementation
+    const thirteenYearsAgo = new Date(Date.UTC(
+      today.getUTCFullYear() - 13, today.getUTCMonth(), today.getUTCDate()
+    ))
     // Born exactly 13 years ago today — NOT under 13
     expect(isUnder13(thirteenYearsAgo)).toBe(false)
   })
@@ -36,16 +39,20 @@ describe('isUnder13', () => {
   })
 
   it('returns false for someone born 13 years and 1 day ago', () => {
-    const moreThan13YearsAgo = new Date()
-    moreThan13YearsAgo.setFullYear(moreThan13YearsAgo.getFullYear() - 13)
-    moreThan13YearsAgo.setDate(moreThan13YearsAgo.getDate() - 1)
+    const today = new Date()
+    // One day before the 13-year cutoff in UTC — just passed 13
+    const moreThan13YearsAgo = new Date(Date.UTC(
+      today.getUTCFullYear() - 13, today.getUTCMonth(), today.getUTCDate() - 1
+    ))
     expect(isUnder13(moreThan13YearsAgo)).toBe(false)
   })
 
   it('boundary: born one day before the 13-year cutoff → still under 13', () => {
-    const almostThirteen = new Date()
-    almostThirteen.setFullYear(almostThirteen.getFullYear() - 13)
-    almostThirteen.setDate(almostThirteen.getDate() + 1)
+    const today = new Date()
+    // One day after the 13-year cutoff in UTC — not yet 13
+    const almostThirteen = new Date(Date.UTC(
+      today.getUTCFullYear() - 13, today.getUTCMonth(), today.getUTCDate() + 1
+    ))
     expect(isUnder13(almostThirteen)).toBe(true)
   })
 })

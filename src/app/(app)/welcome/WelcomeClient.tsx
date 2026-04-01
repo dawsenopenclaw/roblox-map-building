@@ -281,6 +281,116 @@ function StepExperience({
 
 // ─── Step 3 — Studio Connect ───────────────────────────────────────────────────
 
+const STUDIO_BENEFITS = [
+  {
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M2 8h12M9 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    title: 'One-click deploy',
+    desc: 'AI builds appear directly in your Studio scene — zero copy-paste.',
+  },
+  {
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+    title: 'Live viewport',
+    desc: 'See your game update in real-time as the AI places parts.',
+  },
+  {
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+        <path d="M8 5v3l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+    title: 'Build 10x faster',
+    desc: 'No switching windows. Prompt → build → play in seconds.',
+  },
+]
+
+// Visual showing the ForjeAI → Plugin → Studio flow
+function PluginFlowDiagram() {
+  return (
+    <div
+      className="rounded-xl p-4 mb-6"
+      style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}
+    >
+      <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 text-center">How it works</p>
+      <div className="flex items-center justify-between gap-2">
+        {/* ForjeAI node */}
+        <div className="flex flex-col items-center gap-1.5 flex-1">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)' }}
+          >
+            <svg className="w-5 h-5 text-[#D4AF37]" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3L12 8.5H18L13 11.5L15 17L10 14L5 17L7 11.5L2 8.5H8L10 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className="text-[10px] text-gray-400 font-medium">ForjeAI</span>
+        </div>
+
+        {/* Arrow 1 */}
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5">
+            <div className="w-6 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,175,55,0.3), rgba(212,175,55,0.8))' }} />
+            <svg className="w-2 h-2 text-[#D4AF37]" viewBox="0 0 8 8" fill="currentColor">
+              <path d="M0 0L8 4L0 8z" />
+            </svg>
+          </div>
+          <span className="text-[9px] text-gray-700">Luau</span>
+        </div>
+
+        {/* Plugin node */}
+        <div className="flex flex-col items-center gap-1.5 flex-1">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <svg className="w-5 h-5 text-gray-300" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M3 8h14" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M7 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </div>
+          <span className="text-[10px] text-gray-400 font-medium">Plugin</span>
+        </div>
+
+        {/* Arrow 2 */}
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5">
+            <div className="w-6 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.4))' }} />
+            <svg className="w-2 h-2 text-gray-500" viewBox="0 0 8 8" fill="currentColor">
+              <path d="M0 0L8 4L0 8z" />
+            </svg>
+          </div>
+          <span className="text-[9px] text-gray-700">places</span>
+        </div>
+
+        {/* Studio node */}
+        <div className="flex flex-col items-center gap-1.5 flex-1">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <svg className="w-5 h-5 text-gray-300" viewBox="0 0 20 20" fill="none">
+              <rect x="2" y="2" width="16" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M2 7h16" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M7 2v5" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </div>
+          <span className="text-[10px] text-gray-400 font-medium">Studio</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function StepStudio({
   selected,
   onSelect,
@@ -290,102 +400,113 @@ function StepStudio({
 }) {
   return (
     <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        Connect Roblox Studio?
-      </h2>
-      <p className="text-gray-400 text-sm mb-8">
-        Linking Studio lets ForjeAI push builds directly into your game — no copy-paste needed.
-      </p>
-
-      <div className="space-y-3 mb-8">
-        {/* Connect option */}
-        <button
-          onClick={() => onSelect('connect')}
-          className="w-full flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-200 active:scale-[0.99]"
-          style={{
-            background: selected === 'connect' ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
-            borderColor: selected === 'connect' ? 'rgba(212,175,55,0.6)' : 'rgba(255,255,255,0.08)',
-            boxShadow: selected === 'connect' ? '0 0 24px rgba(212,175,55,0.15)' : 'none',
-          }}
+      {/* Header */}
+      <div className="flex items-start gap-3 mb-2">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)' }}
         >
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)' }}
-          >
-            <svg className="w-5 h-5 text-[#D4AF37]" viewBox="0 0 20 20" fill="none">
-              <path d="M4 10h12M13 6l4 4-4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-white mb-0.5">Yes, connect Studio</p>
-            <p className="text-[12px] text-gray-500">One-click builds pushed live. Most powerful option.</p>
-          </div>
-          <div
-            className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-            style={{
-              borderColor: selected === 'connect' ? '#D4AF37' : 'rgba(255,255,255,0.15)',
-              background: selected === 'connect' ? '#D4AF37' : 'transparent',
-            }}
-          >
-            {selected === 'connect' && (
-              <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </div>
-        </button>
-
-        {/* Skip option */}
-        <button
-          onClick={() => onSelect('skip')}
-          className="w-full flex items-center gap-4 p-5 rounded-2xl border text-left transition-all duration-200 active:scale-[0.99]"
-          style={{
-            background: selected === 'skip' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
-            borderColor: selected === 'skip' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.06)',
-          }}
-        >
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-          >
-            <svg className="w-5 h-5 text-gray-400" viewBox="0 0 20 20" fill="none">
-              <path d="M6 10h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-gray-300 mb-0.5">Skip for now</p>
-            <p className="text-[12px] text-gray-600">You can connect later in Settings.</p>
-          </div>
-          <div
-            className="w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center"
-            style={{
-              borderColor: selected === 'skip' ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.12)',
-              background: selected === 'skip' ? 'rgba(255,255,255,0.15)' : 'transparent',
-            }}
-          >
-            {selected === 'skip' && (
-              <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                <path d="M1 3L3 5L7 1" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </div>
-        </button>
+          <svg className="w-4.5 h-4.5 text-[#D4AF37]" width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="2" width="16" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M2 7h16" stroke="currentColor" strokeWidth="1.4" />
+            <path d="M7 2v5" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
+            Connect Roblox Studio
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">
+            This is what makes ForjeAI genuinely powerful.
+          </p>
+        </div>
       </div>
+
+      {/* Plugin flow diagram */}
+      <div className="mt-5">
+        <PluginFlowDiagram />
+      </div>
+
+      {/* Benefits */}
+      <div className="space-y-2 mb-6">
+        {STUDIO_BENEFITS.map((b) => (
+          <div
+            key={b.title}
+            className="flex items-start gap-3 px-3.5 py-2.5 rounded-xl"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-[#D4AF37]"
+              style={{ background: 'rgba(212,175,55,0.1)' }}
+            >
+              {b.icon}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white">{b.title}</p>
+              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{b.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Primary CTA — Connect */}
+      <button
+        onClick={() => onSelect('connect')}
+        className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-[0.98] mb-3"
+        style={{
+          background: selected === 'connect'
+            ? 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)'
+            : 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
+          color: '#030712',
+          boxShadow: '0 0 28px rgba(212,175,55,0.45), 0 4px 12px rgba(0,0,0,0.3)',
+          border: selected === 'connect' ? '2px solid #F5D060' : '2px solid transparent',
+        }}
+      >
+        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+          <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M2 6h12" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M6 2v4" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+        Connect Roblox Studio
+        {selected === 'connect' && (
+          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+            <path d="M3 8l4 4 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </button>
 
       {selected === 'connect' && (
         <div
-          className="flex items-center gap-3 p-4 rounded-xl text-sm"
+          className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl mb-3"
           style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)' }}
         >
-          <svg className="w-4 h-4 text-[#D4AF37] flex-shrink-0" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3" />
-            <path d="M8 5v4M8 11v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          <svg className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
+            <path d="M7 4.5v3M7 9.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
-          <span className="text-gray-300 text-xs">
-            You'll be taken to the Studio settings page after this wizard completes.
+          <span className="text-xs text-gray-300">
+            You'll get a 6-character connection code on the next screen — paste it into the ForjeGames plugin in Studio.
           </span>
         </div>
       )}
+
+      {/* Skip */}
+      <button
+        onClick={() => onSelect('skip')}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-[0.98]"
+        style={{
+          background: selected === 'skip' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+          border: `1px solid ${selected === 'skip' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)'}`,
+          color: selected === 'skip' ? '#9CA3AF' : '#6B7280',
+        }}
+      >
+        {selected === 'skip' && (
+          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+            <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+        Skip for now — I'll connect in Settings later
+      </button>
     </div>
   )
 }
@@ -651,7 +772,7 @@ export default function WelcomePage() {
 
           <div className="p-6 sm:p-8">
             {/* Steps */}
-            <div className="relative" style={{ minHeight: 340 }}>
+            <div className="relative" style={{ minHeight: step === 3 ? 520 : 340 }}>
               <div className="absolute inset-0" style={slideStyle(step === 1)}>
                 <StepGenre
                   selected={prefs.genre}

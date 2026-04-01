@@ -70,7 +70,8 @@ describe('Stripe integration', () => {
             trial_period_days: 14,
             metadata: { userId: 'user_abc' },
           }),
-        })
+        }),
+        expect.any(Object)
       )
     })
 
@@ -126,7 +127,8 @@ describe('Stripe integration', () => {
             type: 'token_pack',
             tokenPackSlug: 'pack-1000',
           }),
-        })
+        }),
+        expect.any(Object)
       )
     })
   })

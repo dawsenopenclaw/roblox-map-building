@@ -707,7 +707,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                         ? 'fj-holo-gradient 3s linear infinite'
                         : 'none',
                       opacity: isRevealed ? 1 : 0,
-                      pointerEvents: isRevealed ? '' : 'none',
+                      pointerEvents: isRevealed ? 'auto' : 'none',
                       willChange: 'background-position, opacity',
                       // Stagger gradient offset per letter for wave effect
                       animationDelay: isRevealed ? `${i * -0.15}s, ${i * -0.2}s, ${i * 0.3}s` : '0s',

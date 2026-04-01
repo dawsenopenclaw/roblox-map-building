@@ -31,6 +31,10 @@ const SettingsPanel = dynamic(
   () => import('./panels/SettingsPanel'),
   { ssr: false }
 )
+const TokenGateCard = dynamic(
+  () => import('./panels/TokenGateCard'),
+  { ssr: false }
+)
 import { EditorTour, useEditorTour } from './EditorTour'
 import { EditorEmptyState } from './EditorEmptyState'
 import { ViewportPreview } from '@/components/editor/ViewportPreview'
@@ -43,7 +47,7 @@ import type { ToolMode } from '@/components/editor/Toolbar'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type MessageRole = 'user' | 'assistant' | 'system' | 'status'
+type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade'
 
 // ─── Marketplace build result type (mirrors API shape) ─────────────────────
 
@@ -313,6 +317,183 @@ function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: Mod
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Studio Connect Banner ─────────────────────────────────────────────────────
+
+interface StudioConnectBannerProps {
+  onDismiss: () => void
+  /** Incrementing this number auto-triggers code generation */
+  autoConnectSignal?: number
+}
+
+function StudioConnectBanner({ onDismiss, autoConnectSignal = 0 }: StudioConnectBannerProps) {
+  const [phase, setPhase] = useState<'idle' | 'loading' | 'code' | 'error'>('idle')
+  const [code, setCode] = useState<string>('')
+  const [codeCopied, setCodeCopied] = useState(false)
+
+  const generateCode = async () => {
+    setPhase('loading')
+    try {
+      const res = await fetch('/api/studio/auth', { method: 'POST' })
+      if (!res.ok) throw new Error('non-2xx response')
+      const data = await res.json() as { code?: string }
+      if (typeof data.code === 'string' && data.code.length > 0) {
+        setCode(data.code.toUpperCase())
+        setPhase('code')
+      } else {
+        setPhase('error')
+      }
+    } catch {
+      setPhase('error')
+    }
+  }
+
+  const copyCode = async () => {
+    await navigator.clipboard.writeText(code).catch(() => {})
+    setCodeCopied(true)
+    setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  // Auto-trigger code generation when signal fires from empty-state card
+  const prevSignalRef = useRef(0)
+  useEffect(() => {
+    if (autoConnectSignal > prevSignalRef.current && phase === 'idle') {
+      prevSignalRef.current = autoConnectSignal
+      generateCode()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoConnectSignal])
+
+  return (
+    <div
+      className="flex-shrink-0 mx-3 mt-3 rounded-xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.07) 0%, rgba(212,175,55,0.03) 100%)',
+        border: '1px solid rgba(212,175,55,0.25)',
+        boxShadow: '0 2px 16px rgba(212,175,55,0.08)',
+      }}
+    >
+      {/* Gold top stripe */}
+      <div
+        className="h-[2px]"
+        style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.7) 30%, rgba(212,175,55,0.7) 70%, transparent 100%)' }}
+      />
+
+      <div className="px-3 py-2.5">
+        {phase === 'code' ? (
+          /* ── Code reveal state ── */
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-white">Paste this code in the ForjeGames plugin</p>
+              <button onClick={onDismiss} className="text-zinc-600 hover:text-zinc-400 transition-colors ml-2 flex-shrink-0" aria-label="Dismiss banner">
+                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                  <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div
+                className="flex-1 flex items-center justify-center py-2 rounded-lg"
+                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(212,175,55,0.3)' }}
+              >
+                <span
+                  className="text-2xl font-bold tracking-[0.3em] select-all"
+                  style={{
+                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                    color: '#D4AF37',
+                    textShadow: '0 0 20px rgba(212,175,55,0.5)',
+                  }}
+                >
+                  {code}
+                </span>
+              </div>
+              <button
+                onClick={copyCode}
+                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all flex-shrink-0"
+                style={{
+                  background: codeCopied ? 'rgba(74,222,128,0.15)' : 'rgba(212,175,55,0.12)',
+                  border: `1px solid ${codeCopied ? 'rgba(74,222,128,0.3)' : 'rgba(212,175,55,0.25)'}`,
+                  color: codeCopied ? '#4ADE80' : '#D4AF37',
+                }}
+              >
+                {codeCopied ? (
+                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                    <rect x="1" y="3" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.1" />
+                    <path d="M4 3V2a1 1 0 011-1h5a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                  </svg>
+                )}
+                {codeCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <p className="text-[10px] text-zinc-600">
+              Open ForjeGames plugin in Studio, click Connect, then enter this code.
+            </p>
+          </div>
+        ) : (
+          /* ── Default / loading / error state ── */
+          <div className="flex items-center gap-3">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)' }}
+            >
+              <svg className="w-3.5 h-3.5 text-[#D4AF37]" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="1" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M1 5h12" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4 1v4" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-white leading-tight">
+                {phase === 'error' ? 'Could not generate code' : 'Connect Roblox Studio'}
+              </p>
+              <p className="text-[10px] text-zinc-500 leading-tight mt-0.5">
+                {phase === 'error' ? 'Check your connection and try again.' : 'Push builds live — no copy-paste.'}
+              </p>
+            </div>
+
+            <button
+              onClick={generateCode}
+              disabled={phase === 'loading'}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold flex-shrink-0 transition-all duration-150 active:scale-[0.96] disabled:opacity-60"
+              style={{
+                background: phase === 'error'
+                  ? 'rgba(239,68,68,0.15)'
+                  : 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
+                color: phase === 'error' ? '#F87171' : '#030712',
+                border: phase === 'error' ? '1px solid rgba(239,68,68,0.3)' : 'none',
+                boxShadow: phase === 'error' ? 'none' : '0 0 12px rgba(212,175,55,0.3)',
+              }}
+            >
+              {phase === 'loading' ? (
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none">
+                  <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.5" strokeDasharray="6 6" />
+                </svg>
+              ) : (
+                <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                  <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M1 4.5h10" stroke="currentColor" strokeWidth="1.2" />
+                  <path d="M4 1v3.5" stroke="currentColor" strokeWidth="1.2" />
+                </svg>
+              )}
+              {phase === 'loading' ? 'Generating…' : phase === 'error' ? 'Retry' : 'Connect Now'}
+            </button>
+
+            <button onClick={onDismiss} className="text-zinc-700 hover:text-zinc-500 transition-colors flex-shrink-0" aria-label="Dismiss banner">
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -703,6 +884,14 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
 
   if (msg.role === 'status') {
     return <TypingIndicator />
+  }
+
+  if (msg.role === 'upgrade') {
+    return (
+      <div className="flex justify-start my-2 px-1">
+        <TokenGateCard />
+      </div>
+    )
   }
 
   if (msg.role === 'user') {
@@ -1563,6 +1752,11 @@ export function EditorClient() {
   const [showBuildOverlay, setShowBuildOverlay] = useState(false)
   const projectNameInputRef = useRef<HTMLInputElement>(null)
 
+  // Studio connect banner — persist dismissal per session via localStorage
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem('fg_studio_banner_dismissed') === '1' } catch { return false }
+  })
+
   const chatEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1696,6 +1890,27 @@ export function EditorClient() {
           : Promise.resolve(null)
 
         const [chatRes, meshData] = await Promise.all([chatPromise, meshPromise])
+
+        // Handle token exhaustion — show upgrade card inline rather than a generic error
+        if (chatRes.status === 402) {
+          const errData = await chatRes.json() as { error?: string }
+          if (errData.error === 'insufficient_tokens') {
+            setMessages((prev) => {
+              const without = prev.filter((m) => m.id !== statusMsg.id)
+              return [
+                ...without,
+                {
+                  id: uid(),
+                  role: 'upgrade' as MessageRole,
+                  content: '',
+                  timestamp: new Date(),
+                },
+              ]
+            })
+            setLoading(false)
+            return
+          }
+        }
 
         if (!chatRes.ok) throw new Error(`API error ${chatRes.status}`)
 
@@ -2026,6 +2241,22 @@ export function EditorClient() {
   // Derived: show connected viewport if actually connected OR in demo mode
   const studioConnected = studioStatus.connected || demoMode
 
+  // Banner: show when not connected and not dismissed
+  const [bannerAutoConnect, setBannerAutoConnect] = useState(0)
+  const showStudioBanner = !studioConnected && !bannerDismissed
+
+  const dismissBanner = useCallback(() => {
+    setBannerDismissed(true)
+    try { localStorage.setItem('fg_studio_banner_dismissed', '1') } catch { /* ignore */ }
+  }, [])
+
+  // Called from empty state card — un-dismisses and auto-triggers code generation
+  const triggerStudioConnect = useCallback(() => {
+    setBannerDismissed(false)
+    try { localStorage.removeItem('fg_studio_banner_dismissed') } catch { /* ignore */ }
+    setBannerAutoConnect((n) => n + 1)
+  }, [])
+
   // Derived: viewport animation state for ViewportPreview
   const viewportState: ViewportState = showBuildOverlay
     ? 'building'
@@ -2319,12 +2550,22 @@ export function EditorClient() {
             {/* ── LEFT: Chat ─────────────────────────────────────────────── */}
             <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0" style={{ width: 'min(420px, 40vw)', borderRight: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.03)' }}>
 
+              {/* Studio connect banner — visible when not connected and not dismissed */}
+              {showStudioBanner && (
+                <StudioConnectBanner
+                  onDismiss={dismissBanner}
+                  autoConnectSignal={bannerAutoConnect}
+                />
+              )}
+
               {/* Messages */}
               <div className="flex-1 overflow-y-auto forge-scroll px-4 py-5 space-y-4 min-h-0">
                 {messages.length === 1 && (
                   <EditorEmptyState
                     firstName={editorFirstName}
                     onSelectPrompt={(prompt) => submit(prompt)}
+                    studioConnected={studioConnected}
+                    onConnectStudio={triggerStudioConnect}
                   />
                 )}
                 {messages.map((msg) => (

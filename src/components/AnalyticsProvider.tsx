@@ -113,6 +113,7 @@ export function AnalyticsProvider({
   // ── Session tracking ──────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === 'undefined' || !userId) return
+    if (isUnder13 === true) return
 
     sessionStartRef.current = Date.now()
 

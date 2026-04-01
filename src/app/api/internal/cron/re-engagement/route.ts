@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 import { sendReEngagementEmail } from '@/lib/email'
+import { SubscriptionStatus } from '@prisma/client'
 
 function isCronAuthorized(req: NextRequest): boolean {
   const secret = req.headers.get('x-cron-secret')
@@ -46,8 +47,9 @@ export async function GET(req: NextRequest) {
 
   const candidateWhere = {
     deletedAt: null,
+    marketingEmailsOptOut: false,
     email: { not: { endsWith: '@deleted.invalid' } },
-    subscription: { status: { notIn: ['CANCELED'] } },
+    subscription: { is: { status: { notIn: [SubscriptionStatus.CANCELED] } } },
     gameScans: {
       some: {},
       none: { createdAt: { gte: inactiveThreshold } },
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
     NOT: {
       gameScans: { some: { createdAt: { gte: maxInactiveThreshold } } },
     },
-  } as const
+  }
 
   try {
     // Cursor-paginated so the cron handles any number of inactive users

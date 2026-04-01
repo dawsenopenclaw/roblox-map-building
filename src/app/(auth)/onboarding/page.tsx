@@ -106,6 +106,7 @@ function TemplateStep({
           <button
             key={t.id}
             onClick={() => setSelected(t.id)}
+            aria-pressed={selected === t.id}
             className={`p-4 rounded-lg border text-left transition-all ${
               selected === t.id
                 ? 'border-[#FFB81C] bg-[#FFB81C]/10'

@@ -81,6 +81,29 @@ export async function DELETE() {
       })
     })
 
+    // Delete the Stripe customer record so their PII (name, email, address)
+    // is removed from Stripe's systems per GDPR Article 17.
+    const stripeCustomerId = sub?.stripeCustomerId
+    if (stripeCustomerId) {
+      try {
+        const stripe = getStripe()
+        await stripe.customers.del(stripeCustomerId)
+      } catch (stripeErr) {
+        Sentry.captureException(stripeErr, {
+          extra: { clerkId, stripeCustomerId, context: 'user_deletion_stripe_customer_delete' },
+        })
+        // Non-fatal: log and continue. Ops can reconcile orphaned customers via
+        // Stripe's dashboard. The user's local PII has already been wiped above.
+        console.error('[user/delete] Stripe customer deletion failed (proceeding):', stripeErr)
+      }
+    }
+
+    // TODO: Delete PostHog person record to purge behavioural event history.
+    // Requires a server-side PostHog API key with person:delete scope.
+    // Call: DELETE https://app.posthog.com/api/projects/<project_id>/persons/<distinct_id>/
+    // See: https://posthog.com/docs/api/persons#delete-api-projects-project_id-persons-id
+    // The distinct_id used is the internal user.id (set at identify() time).
+
     return NextResponse.json({
       success: true,
       message: 'Account scheduled for deletion. Data will be fully removed within 30 days.',

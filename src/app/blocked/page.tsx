@@ -1,5 +1,4 @@
 ﻿import type { Metadata } from 'next'
-import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Access Restricted — ForjeGames',
@@ -68,21 +67,15 @@ export default function BlockedPage() {
           VPN that routes traffic through a restricted region — please disable your VPN and try
           again. If the issue persists and you believe your access should not be restricted, contact
           us at{' '}
-          <a href="mailto:legal@ForjeGames.gg" className="text-[#FFB81C] hover:underline">
-            legal@ForjeGames.gg
+          <a href="mailto:support@forjegames.com" className="text-[#FFB81C] hover:underline">
+            support@forjegames.com
           </a>
           .
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-colors"
-          >
-            Return Home
-          </Link>
           <a
-            href="mailto:legal@ForjeGames.gg"
+            href="mailto:support@forjegames.com"
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 text-[#FFB81C] text-sm font-medium transition-colors"
           >
             Contact Legal

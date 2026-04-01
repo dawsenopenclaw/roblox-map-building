@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     // and the function won't timeout regardless of user count.
     while (true) {
       const users = await db.user.findMany({
-        where: { deletedAt: null, email: { not: { endsWith: '@deleted.invalid' } } },
+        where: { deletedAt: null, marketingEmailsOptOut: false, email: { not: { endsWith: '@deleted.invalid' } } },
         select: {
           id: true,
           email: true,

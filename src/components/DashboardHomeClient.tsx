@@ -12,6 +12,7 @@ interface Props {
   subscription: string
   tokenBalance: number
   lifetimeSpent: number
+  initialPrompt?: string
 }
 
 interface TokenData {
@@ -429,7 +430,7 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent }: Props) {
+export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent, initialPrompt }: Props) {
   const { data: tokenData } = useSWR<TokenData>('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
   const { data: statsData } = useSWR<DashboardStats>('/api/dashboard/stats', fetcher, { refreshInterval: 60000 })
   const { data: buildsData } = useSWR<RecentBuildsData>('/api/dashboard/recent-builds', fetcher, { refreshInterval: 60000 })
@@ -500,6 +501,33 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             </Link>
           </div>
         </div>
+
+        {/* ── Onboarding Prompt Banner ───────────────────────────────────── */}
+        {initialPrompt && (
+          <div
+            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border p-5"
+            style={{ background: `${GOLD}08`, borderColor: `${GOLD}30` }}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] mb-1" style={{ color: GOLD }}>
+                Ready to build?
+              </p>
+              <p className="text-sm text-gray-200 truncate">
+                Your prompt: &ldquo;{initialPrompt}&rdquo;
+              </p>
+            </div>
+            <Link
+              href={`/editor?prompt=${encodeURIComponent(initialPrompt)}`}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
+              style={{ background: GOLD }}
+            >
+              Start Building
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        )}
 
         {/* ── Stat Cards ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

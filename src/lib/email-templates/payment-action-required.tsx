@@ -92,6 +92,7 @@ export const PaymentActionRequiredEmail = ({
             <Link href={`${baseUrl}/support`} style={footerLink}>Support</Link>
           </Text>
           <Text style={footerAddress}>ForjeGames Inc. · All rights reserved</Text>
+          <Text style={footerAddress}>ForjeGames LLC · [PHYSICAL ADDRESS REQUIRED - UPDATE BEFORE LAUNCH] · United States</Text>
         </Section>
       </Container>
     </Body>

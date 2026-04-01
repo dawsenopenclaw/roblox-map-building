@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { isUnder13 } from '@/lib/auth'
 import { z } from 'zod'
@@ -38,22 +38,69 @@ export async function POST(req: NextRequest) {
   const dob = new Date(parsed.data.dateOfBirth)
   const under13 = isUnder13(dob)
 
+  // Always store DOB in Clerk metadata so the middleware age-gate check passes.
+  // This works even without a database (local dev without PostgreSQL).
   try {
-    await db.user.update({
-      where: { clerkId },
-      data: { dateOfBirth: dob, isUnder13: under13 },
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(clerkId)
+    const existing = (clerkUser.publicMetadata ?? {}) as Record<string, unknown>
+    await client.users.updateUserMetadata(clerkId, {
+      publicMetadata: {
+        ...existing,
+        dateOfBirth: dob.toISOString(),
+        isUnder13: under13,
+      },
     })
-  } catch (err) {
-    // DB unavailable — still return the routing decision so the flow can continue
-    return NextResponse.json({
-      isUnder13: under13,
-      redirect: under13 ? '/onboarding/parental-consent' : '/onboarding',
-      dbError: true,
-    })
+  } catch (clerkErr) {
+    console.error('[onboarding] Clerk metadata update failed:', clerkErr)
+    return NextResponse.json({ error: 'Failed to save. Please try again.' }, { status: 500 })
+  }
+
+  // Persist to DB if available (production + local with PostgreSQL running)
+  try {
+    const existingUser = await db.user.findUnique({ where: { clerkId } })
+
+    if (existingUser) {
+      await db.user.update({
+        where: { clerkId },
+        data: { dateOfBirth: dob, isUnder13: under13 },
+      })
+    } else {
+      // Webhook hasn't created the user yet — create inline
+      let email = `${clerkId}@placeholder.local`
+      let displayName: string | null = null
+      let avatarUrl: string | null = null
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(clerkId)
+        const primary = clerkUser.emailAddresses.find(
+          (e) => e.id === clerkUser.primaryEmailAddressId
+        )
+        if (primary) email = primary.emailAddress
+        displayName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || null
+        avatarUrl = clerkUser.imageUrl
+      } catch { /* use placeholder */ }
+
+      await db.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: { clerkId, email, displayName, avatarUrl, dateOfBirth: dob, isUnder13: under13 },
+        })
+        await tx.subscription.create({
+          data: { userId: user.id, stripeCustomerId: `pending_${user.id}`, tier: 'FREE', status: 'ACTIVE' },
+        })
+        await tx.tokenBalance.create({
+          data: { userId: user.id, balance: 100, lifetimeEarned: 100 },
+        })
+      })
+    }
+  } catch (dbErr) {
+    // DB unavailable (no PostgreSQL in local dev) — not fatal since
+    // Clerk metadata was already saved above. Log and continue.
+    console.warn('[onboarding] DB write skipped (DB unavailable):', (dbErr as Error).message)
   }
 
   return NextResponse.json({
     isUnder13: under13,
-    redirect: under13 ? '/onboarding/parental-consent' : '/onboarding',
+    redirect: under13 ? '/onboarding/parental-consent' : '/editor',
   })
 }

@@ -1,14 +1,21 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
+import HeroScreenshotTabs from '@/components/marketing/HeroScreenshotTabs'
+import ShowcasePreview from '@/components/marketing/ShowcasePreview'
+import FeatureSpotlight from '@/components/marketing/FeatureSpotlight'
+import ComparisonSection from '@/components/marketing/ComparisonSection'
+import TestimonialsSection from '@/components/marketing/TestimonialsSection'
+import FaqSection from '@/components/marketing/FaqSection'
 // Footer rendered by marketing layout
 
-/* ─── CSS-in-JS animation styles injected once ──────────────────────────── */
+/* ─── CSS-in-JS animation styles ─────────────────────────────────────────── */
 
 const GLOBAL_STYLES = `
+  /* ── keyframes ── */
   @keyframes fade-up {
-    from { opacity: 0; transform: translateY(20px); }
+    from { opacity: 0; transform: translateY(24px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes fade-in {
@@ -20,19 +27,56 @@ const GLOBAL_STYLES = `
     50%       { opacity: 0; }
   }
   @keyframes badge-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.18), 0 2px 8px rgba(0,0,0,0.3); }
-    50%       { box-shadow: 0 0 0 4px rgba(212,175,55,0.06), 0 2px 8px rgba(0,0,0,0.3); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.25), 0 2px 8px rgba(0,0,0,0.3); }
+    50%       { box-shadow: 0 0 0 6px rgba(212,175,55,0.0), 0 2px 8px rgba(0,0,0,0.3); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50%       { transform: translateY(-8px); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%       { opacity: 1; }
+  }
+  @keyframes progress-fill {
+    from { width: 0%; }
+    to   { width: 72%; }
+  }
+  @keyframes count-tick {
+    from { transform: translateY(4px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slide-right {
+    from { transform: translateX(-100%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes gradient-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes dot-appear {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
   }
 
   /* ── scroll reveal ── */
   .reveal {
     opacity: 0;
-    transform: translateY(16px);
-    filter: blur(2px);
+    transform: translateY(18px);
+    filter: blur(3px);
     transition:
-      opacity  600ms cubic-bezier(0.16,1,0.3,1),
-      transform 600ms cubic-bezier(0.16,1,0.3,1),
-      filter   500ms cubic-bezier(0.16,1,0.3,1);
+      opacity  700ms cubic-bezier(0.16,1,0.3,1),
+      transform 700ms cubic-bezier(0.16,1,0.3,1),
+      filter   600ms cubic-bezier(0.16,1,0.3,1);
   }
   .reveal.visible {
     opacity: 1;
@@ -45,90 +89,172 @@ const GLOBAL_STYLES = `
   .reveal-delay-4 { transition-delay: 320ms; }
   .reveal-delay-5 { transition-delay: 400ms; }
   .reveal-delay-6 { transition-delay: 480ms; }
+  .reveal-delay-7 { transition-delay: 560ms; }
 
-  /* ── cursor ── */
+  /* ── cursor blink ── */
   .cursor-blink {
     animation: cursor-blink 1.1s step-start infinite;
   }
 
-  /* ── feature card hover ── */
-  .feature-card {
-    transition: transform 250ms cubic-bezier(0.16,1,0.3,1);
+  /* ── bento cards ── */
+  .bento-card {
+    transition:
+      transform 300ms cubic-bezier(0.16,1,0.3,1),
+      border-color 300ms cubic-bezier(0.16,1,0.3,1),
+      box-shadow 300ms cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+    overflow: hidden;
   }
-  .feature-card:hover {
-    transform: translateY(-2px);
+  .bento-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(212,175,55,0.04) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 400ms ease;
+    pointer-events: none;
+    z-index: 0;
   }
-  .feature-card:hover .feature-icon {
-    filter: drop-shadow(0 0 8px rgba(212,175,55,0.25));
-    color: rgba(212,175,55,0.7) !important;
-    transition: filter 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1);
+  .bento-card:hover::before {
+    opacity: 1;
   }
-  .feature-icon {
-    transition: filter 250ms cubic-bezier(0.16,1,0.3,1), color 250ms cubic-bezier(0.16,1,0.3,1);
+  .bento-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(212,175,55,0.18) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
+  }
+  .bento-card > * {
+    position: relative;
+    z-index: 1;
   }
 
-  /* ── pricing card hover ── */
+  /* ── feature icon ── */
+  .feature-icon {
+    transition: filter 300ms cubic-bezier(0.16,1,0.3,1), transform 300ms cubic-bezier(0.16,1,0.3,1), color 300ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .bento-card:hover .feature-icon {
+    filter: drop-shadow(0 0 12px rgba(212,175,55,0.4));
+    color: rgba(212,175,55,0.85) !important;
+    transform: scale(1.08);
+  }
+
+  /* ── pricing cards ── */
   .pricing-card {
     transition:
-      transform 250ms cubic-bezier(0.16,1,0.3,1),
-      box-shadow 250ms cubic-bezier(0.16,1,0.3,1),
-      border-color 250ms cubic-bezier(0.16,1,0.3,1);
+      transform 300ms cubic-bezier(0.16,1,0.3,1),
+      box-shadow 300ms cubic-bezier(0.16,1,0.3,1),
+      border-color 300ms cubic-bezier(0.16,1,0.3,1);
   }
-  .pricing-card:hover {
-    transform: translateY(-3px);
-  }
+  .pricing-card:hover { transform: translateY(-4px); }
   .pricing-card-default:hover {
-    border-color: rgba(255,255,255,0.12) !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4) !important;
+    border-color: rgba(255,255,255,0.14) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.45) !important;
   }
   .pricing-card-recommended:hover {
-    border-color: rgba(212,175,55,0.42) !important;
-    box-shadow: 0 0 48px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5) !important;
+    border-color: rgba(212,175,55,0.5) !important;
+    box-shadow: 0 0 80px rgba(212,175,55,0.18), 0 16px 48px rgba(0,0,0,0.55) !important;
   }
 
-  /* ── CTA primary button ── */
+  /* ── CTA button ── */
   .cta-primary {
     transition:
       background 200ms cubic-bezier(0.16,1,0.3,1),
       transform  200ms cubic-bezier(0.16,1,0.3,1),
       box-shadow 200ms cubic-bezier(0.16,1,0.3,1);
   }
-  .cta-primary:hover {
-    transform: translateY(-1px);
+  .cta-primary:hover { transform: translateY(-2px); }
+
+  .cta-secondary {
+    transition:
+      color 200ms cubic-bezier(0.16,1,0.3,1),
+      border-color 200ms cubic-bezier(0.16,1,0.3,1),
+      transform 200ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .cta-secondary:hover {
+    transform: translateY(-2px);
+    color: #FAFAFA !important;
+    border-color: rgba(255,255,255,0.18) !important;
   }
 
-  /* ── editor mockup badge pulse ── */
+  /* ── gradient text ── */
+  .gradient-text {
+    background: linear-gradient(135deg, #FFD166 0%, #FFB81C 30%, #D4AF37 60%, #FFD166 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 4s linear infinite;
+  }
+
+  /* ── AI badge ── */
   .ai-badge {
     animation: badge-pulse 2.8s ease-in-out infinite;
   }
 
-  /* ── section gradient fades ── */
-  .section-fade-down {
-    background: linear-gradient(to bottom, #09090b 0%, #0c0c0e 100%);
+  /* ── floating mockup ── */
+  .mockup-float {
+    animation: float 6s ease-in-out infinite;
   }
-  .section-fade-up {
-    background: linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%);
+
+  /* ── step connector line ── */
+  .step-line {
+    background: linear-gradient(90deg, rgba(212,175,55,0.4) 0%, rgba(212,175,55,0.1) 100%);
   }
-  .section-dark {
-    background: #0c0c0e;
+
+  /* ── recommended glow ── */
+  .recommended-glow {
+    animation: glow-pulse 3s ease-in-out infinite;
   }
+
+  /* ── progress bar animation ── */
+  .progress-bar-fill {
+    animation: progress-fill 2.5s cubic-bezier(0.25,1,0.5,1) 1s both;
+  }
+
+  /* ── noise overlay ── */
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* ── grid overlay ── */
+  .grid-overlay {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ── trust stat hover ── */
+  .trust-stat {
+    transition: transform 250ms cubic-bezier(0.16,1,0.3,1);
+  }
+  .trust-stat:hover { transform: translateY(-2px); }
+
+  /* ── section backgrounds ── */
+  .section-void { background: #09090b; }
+  .section-deep { background: #0A0E27; }
+  .section-navy { background: #0D1230; }
 
   /* ── mobile: reduce motion ── */
   @media (max-width: 640px) {
     .reveal {
       filter: none;
       transition:
-        opacity  400ms cubic-bezier(0.16,1,0.3,1),
-        transform 400ms cubic-bezier(0.16,1,0.3,1);
+        opacity  450ms cubic-bezier(0.16,1,0.3,1),
+        transform 450ms cubic-bezier(0.16,1,0.3,1);
     }
-    .reveal-delay-1,
-    .reveal-delay-2,
-    .reveal-delay-3,
-    .reveal-delay-4,
-    .reveal-delay-5,
-    .reveal-delay-6 {
+    .reveal-delay-1, .reveal-delay-2, .reveal-delay-3,
+    .reveal-delay-4, .reveal-delay-5, .reveal-delay-6, .reveal-delay-7 {
       transition-delay: 0ms;
     }
+    .mockup-float { animation: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition-duration: 0ms; filter: none; }
+    .cursor-blink, .ai-badge, .mockup-float, .gradient-text,
+    .recommended-glow, .progress-bar-fill { animation: none; }
   }
 `
 
@@ -140,7 +266,6 @@ function useReveal() {
   useEffect(() => {
     const container = ref.current
     if (!container) return
-
     const els = container.querySelectorAll<HTMLElement>('.reveal')
     const observer = new IntersectionObserver(
       (entries) => {
@@ -151,91 +276,13 @@ function useReveal() {
           }
         })
       },
-      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
     )
     els.forEach((el) => observer.observe(el))
     return () => observer.disconnect()
   }, [])
 
   return ref
-}
-
-/* ─── SVG Icons (20px, stroke-based) ────────────────────────────────────── */
-
-function IconMic() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-      <line x1="12" y1="19" x2="12" y2="22" />
-    </svg>
-  )
-}
-
-function IconImage() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="9" cy="9" r="2" />
-      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-    </svg>
-  )
-}
-
-function IconCube() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-      <line x1="12" y1="22.08" x2="12" y2="12" />
-    </svg>
-  )
-}
-
-function IconSync() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 2v6h-6" />
-      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-      <path d="M3 22v-6h6" />
-      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-    </svg>
-  )
-}
-
-function IconBrain() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14Z" />
-      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14Z" />
-    </svg>
-  )
-}
-
-function IconPlug() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22V12" />
-      <path d="M7 12V9a5 5 0 0 1 10 0v3" />
-      <rect x="5" y="12" width="14" height="5" rx="2" />
-    </svg>
-  )
-}
-
-function IconArrow() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 12h14M12 5l7 7-7 7" />
-    </svg>
-  )
-}
-
-function IconCheck() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  )
 }
 
 /* ─── Animated counter ───────────────────────────────────────────────────── */
@@ -252,7 +299,7 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
       ([entry]) => {
         if (entry.isIntersecting && !started.current) {
           started.current = true
-          const duration = 1400
+          const duration = 1600
           const start = performance.now()
           const tick = (now: number) => {
             const p = Math.min((now - start) / duration, 1)
@@ -272,66 +319,229 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>
 }
 
-/* ─── Editor mockup ──────────────────────────────────────────────────────── */
+/* ─── Typing animation hook ──────────────────────────────────────────────── */
+
+function useTypingAnimation(phrases: string[], speed = 55, pauseMs = 1800) {
+  const [display, setDisplay] = useState('')
+  const [phraseIdx, setPhraseIdx] = useState(0)
+  const [charIdx, setCharIdx] = useState(0)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    const current = phrases[phraseIdx]
+    if (!deleting && charIdx < current.length) {
+      const t = setTimeout(() => setCharIdx((c) => c + 1), speed)
+      return () => clearTimeout(t)
+    }
+    if (!deleting && charIdx === current.length) {
+      const t = setTimeout(() => setDeleting(true), pauseMs)
+      return () => clearTimeout(t)
+    }
+    if (deleting && charIdx > 0) {
+      const t = setTimeout(() => setCharIdx((c) => c - 1), speed / 2)
+      return () => clearTimeout(t)
+    }
+    if (deleting && charIdx === 0) {
+      setDeleting(false)
+      setPhraseIdx((p) => (p + 1) % phrases.length)
+    }
+  }, [charIdx, deleting, phraseIdx, phrases, speed, pauseMs])
+
+  useEffect(() => {
+    setDisplay(phrases[phraseIdx].slice(0, charIdx))
+  }, [charIdx, phraseIdx, phrases])
+
+  return display
+}
+
+/* ─── SVG Icons ──────────────────────────────────────────────────────────── */
+
+function IconMic({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+    </svg>
+  )
+}
+
+function IconImage({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </svg>
+  )
+}
+
+function IconCube({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+      <line x1="12" y1="22.08" x2="12" y2="12" />
+    </svg>
+  )
+}
+
+function IconSync({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+    </svg>
+  )
+}
+
+function IconBrain({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14Z" />
+      <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14Z" />
+    </svg>
+  )
+}
+
+function IconPlug({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22V12" />
+      <path d="M7 12V9a5 5 0 0 1 10 0v3" />
+      <rect x="5" y="12" width="14" height="5" rx="2" />
+    </svg>
+  )
+}
+
+function IconArrow({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
+  )
+}
+
+function IconCheck({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
+function IconSparkle({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v1M12 20v1M4.22 4.22l.7.7M19.07 19.07l.71.71M3 12h1M20 12h1M4.22 19.78l.7-.7M19.07 4.93l.71-.71" />
+      <circle cx="12" cy="12" r="4" />
+    </svg>
+  )
+}
+
+function IconZap({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  )
+}
+
+function IconShield({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  )
+}
+
+/* ─── Enhanced Editor Mockup ─────────────────────────────────────────────── */
 
 function EditorMockup() {
+  const typedText = useTypingAnimation([
+    'build a medieval castle with stone walls, 4 towers, and a working drawbridge',
+    'generate a tropical island with palm trees, a beach, and hidden caves',
+    'create a futuristic city district with neon signs and flying vehicles',
+    'add a haunted mansion on the hilltop with fog and flickering lights',
+  ])
+
   return (
     <div
-      className="w-full max-w-4xl mx-auto rounded-xl overflow-hidden"
+      className="w-full max-w-4xl mx-auto rounded-2xl overflow-hidden"
       style={{
-        background: '#111113',
-        border: '1px solid rgba(212,175,55,0.14)',
+        background: '#0B0F24',
+        border: '1px solid rgba(212,175,55,0.16)',
         boxShadow: [
-          '0 8px 32px rgba(0,0,0,0.5)',
-          '0 32px 64px rgba(0,0,0,0.3)',
-          '0 0 0 1px rgba(255,255,255,0.03)',
-          '0 0 60px rgba(212,175,55,0.05)',
-          'inset 0 1px 0 rgba(255,255,255,0.04)',
+          '0 0 0 1px rgba(255,255,255,0.04)',
+          '0 8px 32px rgba(0,0,0,0.6)',
+          '0 32px 72px rgba(0,0,0,0.4)',
+          '0 0 80px rgba(212,175,55,0.07)',
+          'inset 0 1px 0 rgba(255,255,255,0.05)',
         ].join(', '),
       }}
     >
       {/* Title bar */}
       <div
         className="flex items-center gap-2 px-4 py-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#0d0d0f' }}
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#080C1C' }}
       >
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FF5F56' }} />
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FFBD2E' }} />
-        <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#27C93F' }} />
-        <span className="ml-4 text-xs font-mono" style={{ color: 'rgba(212,175,55,0.45)' }}>
-          ForjeGames — Editor
-        </span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
-          <span className="text-[11px]" style={{ color: '#10B981' }}>Studio connected</span>
+        <span className="w-3 h-3 rounded-full" style={{ background: '#FF5F56' }} />
+        <span className="w-3 h-3 rounded-full" style={{ background: '#FFBD2E' }} />
+        <span className="w-3 h-3 rounded-full" style={{ background: '#27C93F' }} />
+        <div className="ml-4 flex items-center gap-2">
+          <span className="text-xs font-mono" style={{ color: 'rgba(212,175,55,0.5)' }}>
+            ForjeGames
+          </span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
+          <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.25)' }}>my-game</span>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-[11px] px-2 py-0.5 rounded-md" style={{
+            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981',
+          }}>
+            Studio live
+          </span>
+          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10B981' }} />
         </div>
       </div>
 
       {/* Body */}
-      <div className="flex" style={{ height: 272 }}>
+      <div className="flex" style={{ height: 288 }}>
         {/* File tree */}
         <div
-          className="hidden md:flex flex-col w-40 flex-shrink-0 pt-3"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#111113' }}
+          className="hidden md:flex flex-col w-44 flex-shrink-0 pt-3"
+          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#0A0D1A' }}
         >
-          <p className="px-3 mb-2 text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.35)' }}>
+          <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Explorer
           </p>
           {[
-            { depth: 0, label: 'Workspace',   color: '#52525B' },
-            { depth: 1, label: 'Castle',      color: '#A1A1AA' },
-            { depth: 2, label: 'Walls',       color: '#52525B' },
-            { depth: 2, label: 'Towers (4)',  color: '#52525B' },
-            { depth: 1, label: 'Terrain',     color: '#10B981' },
-            { depth: 1, label: 'Lighting',    color: '#60A5FA' },
-            { depth: 0, label: 'Scripts',     color: '#52525B' },
+            { depth: 0, label: 'Workspace',    color: '#52525B', icon: '▾' },
+            { depth: 1, label: 'Castle',       color: '#D4AF37', icon: '▾', active: true },
+            { depth: 2, label: 'Walls',        color: '#71717A', icon: '▸' },
+            { depth: 2, label: 'Towers (4)',   color: '#71717A', icon: '▸' },
+            { depth: 2, label: 'Gate',         color: '#10B981', icon: '▸', new: true },
+            { depth: 1, label: 'Terrain',      color: '#60A5FA', icon: '▸' },
+            { depth: 1, label: 'Lighting',     color: '#A78BFA', icon: '▸' },
+            { depth: 0, label: 'Scripts',      color: '#52525B', icon: '▾' },
           ].map((row, i) => (
             <div
               key={i}
-              className="flex items-center text-[11px] py-[3px]"
-              style={{ paddingLeft: 12 + row.depth * 12, color: row.color }}
+              className="flex items-center text-[11px] py-[3px] gap-1"
+              style={{
+                paddingLeft: 8 + row.depth * 14,
+                color: row.color,
+                background: row.active ? 'rgba(212,175,55,0.06)' : 'transparent',
+                borderLeft: row.active ? '2px solid rgba(212,175,55,0.4)' : '2px solid transparent',
+              }}
             >
-              {row.label}
+              <span style={{ fontSize: 8, opacity: 0.6 }}>{row.icon}</span>
+              <span>{row.label}</span>
+              {row.new && (
+                <span className="ml-auto mr-2 text-[9px] px-1 rounded" style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>new</span>
+              )}
             </div>
           ))}
         </div>
@@ -339,194 +549,309 @@ function EditorMockup() {
         {/* Viewport */}
         <div
           className="flex-1 relative overflow-hidden"
-          style={{
-            background: '#0e0e10',
-            boxShadow: 'inset 0 0 0 1px rgba(212,175,55,0.06)',
-          }}
+          style={{ background: '#080C1E' }}
         >
-          {/* Subtle grid */}
+          {/* Grid overlay */}
+          <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.6 }} />
+
+          {/* Depth gradient */}
           <div className="absolute inset-0" style={{
-            backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
+            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(212,175,55,0.04) 0%, transparent 70%)',
           }} />
 
-          {/* Castle illustration */}
+          {/* Castle scene */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative" style={{ width: 220, height: 150 }}>
-              {[0, 172].map((x) => (
-                <div key={x} className="absolute" style={{
-                  left: x, bottom: 36, width: 44, height: 90,
-                  background: 'linear-gradient(180deg, #1e1e22, #16161a)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: '2px 2px 0 0',
-                }}>
-                  {[0, 10, 20, 30].map((bx) => (
-                    <div key={bx} style={{ position: 'absolute', left: bx + 2, top: -7, width: 7, height: 7, background: '#1e1e22', border: '1px solid rgba(255,255,255,0.07)' }} />
-                  ))}
-                  <div style={{ position: 'absolute', left: 10, top: 22, width: 22, height: 26,
-                    background: 'rgba(96,165,250,0.12)', border: '1px solid rgba(96,165,250,0.2)',
-                    borderRadius: '11px 11px 0 0' }} />
-                </div>
-              ))}
-              <div className="absolute" style={{
-                left: 44, bottom: 36, width: 128, height: 58,
-                background: 'linear-gradient(180deg, #1c1c20, #16161a)',
-                border: '1px solid rgba(255,255,255,0.05)',
-              }}>
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-7 h-9" style={{
-                  background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '14px 14px 0 0',
-                }}>
-                  {[6,12,18].map((bx) => (
-                    <div key={bx} style={{ position: 'absolute', left: bx - 5, top: 3, width: 1, height: 22, background: 'rgba(212,175,55,0.3)' }} />
-                  ))}
+            <div className="relative" style={{ width: 240, height: 160 }}>
+              {/* Left tower */}
+              <div className="absolute" style={{ left: 0, bottom: 40, width: 46, height: 96, background: 'linear-gradient(180deg, #252530, #1a1a22)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px 3px 0 0' }}>
+                {[0, 10, 20, 32].map((bx) => (
+                  <div key={bx} style={{ position: 'absolute', left: bx + 1, top: -8, width: 8, height: 8, background: '#252530', border: '1px solid rgba(255,255,255,0.07)' }} />
+                ))}
+                <div style={{ position: 'absolute', left: 11, top: 24, width: 22, height: 28, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.18)', borderRadius: '11px 11px 0 0' }} />
+              </div>
+
+              {/* Right tower */}
+              <div className="absolute" style={{ right: 0, bottom: 40, width: 46, height: 96, background: 'linear-gradient(180deg, #252530, #1a1a22)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px 3px 0 0' }}>
+                {[0, 10, 20, 32].map((bx) => (
+                  <div key={bx} style={{ position: 'absolute', left: bx + 1, top: -8, width: 8, height: 8, background: '#252530', border: '1px solid rgba(255,255,255,0.07)' }} />
+                ))}
+                <div style={{ position: 'absolute', left: 11, top: 24, width: 22, height: 28, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.18)', borderRadius: '11px 11px 0 0' }} />
+              </div>
+
+              {/* Main wall */}
+              <div className="absolute" style={{ left: 46, bottom: 40, width: 148, height: 64, background: 'linear-gradient(180deg, #1e1e28, #181820)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                {/* Battlements */}
+                {[0, 16, 32, 48, 64, 80, 96, 112, 128].map((bx) => (
+                  <div key={bx} style={{ position: 'absolute', left: bx + 2, top: -6, width: 10, height: 6, background: '#1e1e28', border: '1px solid rgba(255,255,255,0.06)' }} />
+                ))}
+                {/* Gate — gold glowing */}
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-0" style={{ width: 28, height: 40 }}>
+                  <div style={{ width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '14px 14px 0 0', boxShadow: '0 0 12px rgba(212,175,55,0.15) inset' }}>
+                    {[7, 14, 21].map((bx) => (
+                      <div key={bx} style={{ position: 'absolute', left: bx - 5, top: 4, width: 1, height: 28, background: 'rgba(212,175,55,0.35)' }} />
+                    ))}
+                  </div>
+                  <div className="ai-badge absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', color: '#D4AF37' }}>
+                    building...
+                  </div>
                 </div>
               </div>
-              <div className="absolute" style={{
-                left: -4, right: -4, bottom: 2, height: 36,
-                background: 'linear-gradient(180deg, #1a2e1a, #162416)',
-                borderRadius: '2px',
-              }} />
+
+              {/* Ground */}
+              <div className="absolute" style={{ left: -6, right: -6, bottom: 2, height: 40, background: 'linear-gradient(180deg, #1c2e1c, #162016)', borderRadius: '3px' }} />
+
+              {/* Ambient glow */}
+              <div className="absolute" style={{ left: -20, right: -20, bottom: 0, height: 60, background: 'radial-gradient(ellipse at 50% 100%, rgba(212,175,55,0.06) 0%, transparent 70%)' }} />
             </div>
           </div>
 
-          {/* Status pill — gently pulsing */}
-          <div
-            className="ai-badge absolute top-3 right-3 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md"
-            style={{
-              background: 'rgba(212,175,55,0.07)',
-              border: '1px solid rgba(212,175,55,0.18)',
-              color: '#D4AF37',
-            }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-            AI building...
+          {/* Selection outline indicator */}
+          <div className="absolute" style={{ top: 16, left: 16, fontSize: 10, color: 'rgba(212,175,55,0.5)', fontFamily: 'monospace' }}>
+            Gate — selected
           </div>
         </div>
 
         {/* Properties panel */}
         <div
-          className="hidden lg:flex flex-col w-36 flex-shrink-0 pt-3"
-          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#111113' }}
+          className="hidden lg:flex flex-col w-40 flex-shrink-0 pt-3"
+          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#0A0D1A' }}
         >
-          <p className="px-3 mb-3 text-[10px] font-medium uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.35)' }}>
+          <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Properties
           </p>
           {[
-            { label: 'Parts',     value: '2,847' },
-            { label: 'Triangles', value: '14.2k' },
-            { label: 'Scripts',   value: '4'     },
+            { label: 'Parts',     value: '3,491' },
+            { label: 'Triangles', value: '18.7k' },
+            { label: 'Scripts',   value: '6',     highlight: true },
           ].map((p) => (
-            <div key={p.label} className="px-3 mb-3">
+            <div key={p.label} className="px-3 mb-4">
               <p className="text-[10px] mb-0.5" style={{ color: '#52525B' }}>{p.label}</p>
-              <p className="text-[12px] font-semibold" style={{ color: '#E4E4E7' }}>{p.value}</p>
+              <p className="text-[13px] font-semibold tabular-nums" style={{ color: p.highlight ? '#10B981' : '#E4E4E7' }}>{p.value}</p>
             </div>
           ))}
           <div className="mx-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <p className="text-[10px] mb-1.5" style={{ color: '#52525B' }}>Tokens used</p>
-            <div className="h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-              <div className="h-1 rounded-full" style={{ width: '62%', background: '#D4AF37' }} />
+            <div className="flex justify-between mb-1.5">
+              <p className="text-[10px]" style={{ color: '#52525B' }}>Tokens</p>
+              <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.5)' }}>620/1k</p>
             </div>
-            <p className="text-[10px] mt-1" style={{ color: 'rgba(212,175,55,0.5)' }}>620 / 1,000</p>
+            <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)', width: '62%' }} />
+            </div>
+          </div>
+          <div className="mx-3 mt-4">
+            <p className="text-[10px] mb-1.5" style={{ color: '#52525B' }}>Model</p>
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#A78BFA' }} />
+              <p className="text-[11px]" style={{ color: '#A1A1AA' }}>Claude 3.5</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Command bar */}
       <div
-        className="flex items-center gap-3 px-4 py-3"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#0d0d0f' }}
+        className="flex items-center gap-3 px-4 py-3.5"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#070A18' }}
       >
-        <span className="text-sm font-mono" style={{ color: 'rgba(212,175,55,0.4)' }}>&gt;</span>
+        <span className="text-sm font-mono font-bold" style={{ color: 'rgba(212,175,55,0.5)' }}>&gt;</span>
         <span className="flex-1 text-sm font-mono truncate" style={{ color: '#E4E4E7' }}>
-          build a castle with stone walls, 4 towers, and a working gate
-          <span className="cursor-blink inline-block w-0.5 h-3.5 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
+          {typedText}
+          <span className="cursor-blink inline-block w-0.5 h-4 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
         </span>
-        <span className="text-[11px] px-2 py-0.5 rounded" style={{
-          background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)', color: '#D4AF37'
-        }}>
-          Enter
-        </span>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded" style={{
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#52525B',
+          }}>
+            ⌘K
+          </span>
+          <span className="text-[11px] px-2 py-0.5 rounded" style={{
+            background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.22)', color: '#D4AF37',
+          }}>
+            Enter
+          </span>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ─── Feature card — with hover depth ───────────────────────────────────── */
+/* ─── Bento feature card ─────────────────────────────────────────────────── */
 
-function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+interface BentoCardProps {
+  icon: React.ReactNode
+  title: string
+  description: string
+  size?: 'normal' | 'wide' | 'tall'
+  accent?: string
+  children?: React.ReactNode
+  delay?: number
+}
+
+function BentoCard({ icon, title, description, size = 'normal', children, delay = 0 }: BentoCardProps) {
+  const delayClass = delay > 0 ? `reveal-delay-${delay}` : ''
   return (
-    <div className="reveal feature-card">
-      <div className="feature-icon mb-3" style={{ color: '#71717A' }}>{icon}</div>
-      <h3 className="text-base font-medium mb-1.5" style={{ color: '#FAFAFA' }}>{title}</h3>
-      <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
+    <div
+      className={`reveal ${delayClass} bento-card rounded-2xl p-6 flex flex-col gap-4`}
+      style={{
+        background: 'rgba(255,255,255,0.025)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(12px)',
+        gridColumn: size === 'wide' ? 'span 2' : undefined,
+        gridRow: size === 'tall' ? 'span 2' : undefined,
+      }}
+    >
+      <div className="flex items-start justify-between">
+        <div
+          className="feature-icon w-11 h-11 rounded-xl flex items-center justify-center"
+          style={{
+            background: 'rgba(212,175,55,0.08)',
+            border: '1px solid rgba(212,175,55,0.12)',
+            color: '#D4AF37',
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+      <div>
+        <h3 className="text-base font-semibold mb-1.5" style={{ color: '#FAFAFA' }}>{title}</h3>
+        <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
+      </div>
+      {children}
     </div>
   )
 }
 
 /* ─── Pricing card ───────────────────────────────────────────────────────── */
 
-function PricingCard({ name, price, period, features, cta, recommended }: {
-  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean
+function PricingCard({ name, price, period, features, cta, recommended, description }: {
+  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string
 }) {
   return (
     <div
-      className={`reveal flex flex-col rounded-xl p-7 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'}`}
+      className={`reveal flex flex-col rounded-2xl p-8 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'} relative overflow-hidden`}
       style={{
-        background: '#111113',
-        border: recommended ? '1px solid rgba(212,175,55,0.28)' : '1px solid rgba(255,255,255,0.06)',
+        background: recommended ? 'linear-gradient(145deg, #121A3E 0%, #0F1535 100%)' : '#0C0F1F',
+        border: recommended ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
         boxShadow: recommended
-          ? '0 0 40px rgba(212,175,55,0.07), 0 4px 24px rgba(0,0,0,0.4)'
-          : '0 2px 12px rgba(0,0,0,0.2)',
+          ? '0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5)'
+          : '0 4px 20px rgba(0,0,0,0.25)',
       }}
     >
-      <p className="text-sm font-medium mb-5" style={{ color: recommended ? '#D4AF37' : '#A1A1AA' }}>{name}</p>
-      <div className="mb-6">
-        <span className="text-4xl font-semibold tracking-tight" style={{ color: '#FAFAFA' }}>{price}</span>
-        <span className="ml-1 text-sm" style={{ color: '#71717A' }}>{period}</span>
+      {/* Recommended glow orb */}
+      {recommended && (
+        <div
+          className="recommended-glow absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)' }}
+        />
+      )}
+
+      {/* Badge */}
+      {recommended && (
+        <div className="absolute top-5 right-5">
+          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{
+            background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.25)', color: '#D4AF37',
+          }}>
+            Most popular
+          </span>
+        </div>
+      )}
+
+      <div className="relative z-10">
+        <p className="text-sm font-semibold mb-1" style={{ color: recommended ? '#D4AF37' : '#71717A' }}>{name}</p>
+        <p className="text-[13px] mb-6" style={{ color: '#52525B' }}>{description}</p>
+
+        <div className="mb-8">
+          <div className="flex items-end gap-1.5">
+            <span className="text-5xl font-bold tracking-tight" style={{ color: '#FAFAFA' }}>{price}</span>
+            <span className="mb-2 text-sm" style={{ color: '#52525B' }}>{period}</span>
+          </div>
+        </div>
+
+        <ul className="flex-1 space-y-3.5 mb-8">
+          {features.map((f) => (
+            <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: '#A1A1AA' }}>
+              <span className="mt-0.5 flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center" style={{
+                background: recommended ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.05)',
+                color: recommended ? '#D4AF37' : '#52525B',
+              }}>
+                <IconCheck size={10} />
+              </span>
+              {f}
+            </li>
+          ))}
+        </ul>
+
+        <Link
+          href="/editor"
+          className="block text-center py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+          style={recommended ? {
+            background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            color: '#09090b',
+            boxShadow: '0 0 24px rgba(212,175,55,0.3)',
+          } : {
+            background: 'rgba(255,255,255,0.05)',
+            color: '#A1A1AA',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget as HTMLElement
+            if (recommended) {
+              el.style.boxShadow = '0 0 40px rgba(212,175,55,0.45)'
+              el.style.transform = 'translateY(-1px)'
+            } else {
+              el.style.borderColor = 'rgba(255,255,255,0.16)'
+              el.style.color = '#FAFAFA'
+              el.style.background = 'rgba(255,255,255,0.08)'
+            }
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget as HTMLElement
+            if (recommended) {
+              el.style.boxShadow = '0 0 24px rgba(212,175,55,0.3)'
+              el.style.transform = 'translateY(0)'
+            } else {
+              el.style.borderColor = 'rgba(255,255,255,0.08)'
+              el.style.color = '#A1A1AA'
+              el.style.background = 'rgba(255,255,255,0.05)'
+            }
+          }}
+        >
+          {cta}
+        </Link>
       </div>
-      <ul className="flex-1 space-y-3 mb-7">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-sm" style={{ color: '#A1A1AA' }}>
-            <span className="mt-0.5 flex-shrink-0" style={{ color: recommended ? '#D4AF37' : '#52525B' }}>
-              <IconCheck />
-            </span>
-            {f}
-          </li>
-        ))}
-      </ul>
-      <Link
-        href="/editor"
-        className="block text-center py-2.5 rounded-lg text-sm font-medium transition-all duration-300"
-        style={recommended ? {
-          background: '#D4AF37',
-          color: '#09090b',
-        } : {
-          background: 'transparent',
-          color: '#A1A1AA',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-        onMouseEnter={(e) => {
-          const el = e.currentTarget as HTMLElement
-          if (recommended) {
-            el.style.background = '#C4A030'
-          } else {
-            el.style.borderColor = 'rgba(255,255,255,0.18)'
-            el.style.color = '#FAFAFA'
-          }
-        }}
-        onMouseLeave={(e) => {
-          const el = e.currentTarget as HTMLElement
-          if (recommended) {
-            el.style.background = '#D4AF37'
-          } else {
-            el.style.borderColor = 'rgba(255,255,255,0.08)'
-            el.style.color = '#A1A1AA'
-          }
-        }}
-      >
-        {cta}
-      </Link>
+    </div>
+  )
+}
+
+/* ─── How it works step ──────────────────────────────────────────────────── */
+
+function HowItWorksStep({ n, title, description, icon, delay }: {
+  n: string; title: string; description: string; icon: React.ReactNode; delay: number
+}) {
+  return (
+    <div className={`reveal reveal-delay-${delay} flex flex-col items-center text-center`}>
+      <div className="relative mb-6">
+        {/* Number ring */}
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center"
+          style={{
+            background: 'rgba(212,175,55,0.06)',
+            border: '1px solid rgba(212,175,55,0.2)',
+            boxShadow: '0 0 24px rgba(212,175,55,0.08)',
+          }}
+        >
+          <span className="text-xl font-bold" style={{ color: 'rgba(212,175,55,0.7)' }}>{n}</span>
+        </div>
+        {/* Icon overlay */}
+        <div
+          className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ background: '#D4AF37', color: '#09090b' }}
+        >
+          {icon}
+        </div>
+      </div>
+      <h3 className="text-xl font-bold mb-3" style={{ color: '#FAFAFA' }}>{title}</h3>
+      <p className="text-sm leading-relaxed max-w-[220px]" style={{ color: '#71717A' }}>{description}</p>
     </div>
   )
 }
@@ -542,277 +867,534 @@ export default function HomeClient() {
       <div
         ref={pageRef}
         className="min-h-screen"
-        style={{ background: '#09090b', color: '#FAFAFA' }}
+        style={{ background: '#09090b', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
       >
 
-        {/* ── Hero ──────────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════
+            HERO SECTION
+        ══════════════════════════════════════════════════════════════════ */}
         <section
-          className="relative flex flex-col items-center justify-center text-center px-6"
-          style={{ minHeight: '100vh', paddingTop: '10vh', paddingBottom: '8vh' }}
+          className="relative flex flex-col items-center justify-center text-center overflow-hidden"
+          style={{ minHeight: '100vh', paddingTop: '12vh', paddingBottom: '8vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
         >
-          {/* Radial depth gradient behind headline */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{
+          {/* Deep radial background */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
               background: [
-                'radial-gradient(ellipse 60% 40% at 50% 30%, rgba(212,175,55,0.04) 0%, transparent 70%)',
-                'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(212,175,55,0.03) 0%, transparent 60%)',
+                'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(212,175,55,0.05) 0%, transparent 70%)',
+                'radial-gradient(ellipse 60% 40% at 20% 80%, rgba(96,165,250,0.03) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(167,139,250,0.03) 0%, transparent 60%)',
               ].join(', '),
-            }}
-          />
+            }} />
+            {/* Subtle grid */}
+            <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.5 }} />
+          </div>
 
-          <div className="relative max-w-3xl mx-auto w-full">
-            {/* Status pill */}
+          <div className="relative max-w-4xl mx-auto w-full">
+
+            {/* Floating badge */}
             <div
-              className="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[13px] mb-10"
+              className="reveal inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-[13px] mb-10 cursor-default"
               style={{
                 background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.09)',
                 color: '#A1A1AA',
+                backdropFilter: 'blur(8px)',
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10B981' }} />
-              Open beta — free to start
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
+              Open beta is live — free to start
+              <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
+              <span style={{ color: '#D4AF37' }}>1,000 free tokens</span>
             </div>
 
             {/* Headline */}
             <h1
-              className="reveal reveal-delay-1 font-semibold leading-[1.08] tracking-tight mb-6"
-              style={{ fontSize: 'clamp(2.6rem, 7vw, 4.5rem)', color: '#FAFAFA' }}
+              className="reveal reveal-delay-1 font-bold tracking-tight mb-6"
+              style={{
+                fontSize: 'clamp(2.8rem, 8vw, 5.5rem)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.02em',
+              }}
             >
-              Build games{' '}
-              <span style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #e8c84a 50%, #D4AF37 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>
-                with AI
-              </span>
+              Build Roblox games
+              <br />
+              <span className="gradient-text">with AI in minutes</span>
             </h1>
 
+            {/* Subheadline */}
             <p
-              className="reveal reveal-delay-2 text-lg leading-relaxed max-w-xl mx-auto mb-10"
-              style={{ color: '#71717A' }}
+              className="reveal reveal-delay-2 text-xl leading-relaxed max-w-2xl mx-auto mb-12"
+              style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
             >
-              Describe your game. ForjeGames generates terrain, assets, and scripts — live in Roblox Studio.
+              Describe your world. ForjeGames generates terrain, builds assets,
+              <br className="hidden sm:block" />
+              writes scripts, and syncs directly to your Roblox Studio — live.
             </p>
 
             {/* CTA row */}
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
               <Link
-                href="/editor"
-                className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold"
+                href="/sign-up"
+                className="cta-primary inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
-                  background: '#D4AF37',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)',
+                  boxShadow: '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)',
+                  letterSpacing: '0.01em',
                 }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget as HTMLElement
-                  el.style.background = '#C4A030'
-                  el.style.boxShadow = '0 0 32px rgba(212,175,55,0.32), 0 6px 16px rgba(0,0,0,0.5)'
+                  el.style.boxShadow = '0 0 48px rgba(212,175,55,0.5), 0 8px 24px rgba(0,0,0,0.5)'
                 }}
                 onMouseLeave={(e) => {
                   const el = e.currentTarget as HTMLElement
-                  el.style.background = '#D4AF37'
-                  el.style.boxShadow = '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)'
+                  el.style.boxShadow = '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)'
                 }}
               >
-                Start building
-                <IconArrow />
+                Start building free
+                <IconArrow size={15} />
               </Link>
               <Link
-                href="/pricing"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-medium"
+                href="/editor"
+                className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  transition: 'color 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms cubic-bezier(0.16,1,0.3,1)',
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.color = '#FAFAFA'
-                  el.style.borderColor = 'rgba(255,255,255,0.16)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.color = '#A1A1AA'
-                  el.style.borderColor = 'rgba(255,255,255,0.08)'
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
-                View pricing
+                Try the editor
               </Link>
             </div>
 
-            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#52525B' }}>
-              No credit card required &middot; 1,000 free tokens
+            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#3F3F46' }}>
+              No credit card required &middot; No setup &middot; Works with Roblox Studio
             </p>
           </div>
 
-          {/* Editor mockup — floating shadow */}
+          {/* Editor mockup — hero centrepiece */}
           <div
-            className="reveal reveal-delay-5 relative w-full max-w-4xl mx-auto mt-16 px-2"
+            className="reveal reveal-delay-5 mockup-float relative w-full max-w-4xl mx-auto mt-20 px-2"
             style={{
-              filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.45)) drop-shadow(0 8px 16px rgba(0,0,0,0.3))',
+              filter: 'drop-shadow(0 32px 64px rgba(0,0,0,0.55)) drop-shadow(0 8px 24px rgba(212,175,55,0.05))',
             }}
           >
             <EditorMockup />
           </div>
+
+          {/* Scroll indicator */}
+          <div
+            className="reveal reveal-delay-6 absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 opacity-40"
+            aria-hidden="true"
+          >
+            <span className="text-[11px] tracking-widest uppercase" style={{ color: '#52525B' }}>Scroll</span>
+            <div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, #52525B, transparent)' }} />
+          </div>
         </section>
 
-        {/* ── Social proof strip ────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════
+            HERO SCREENSHOT TABS
+        ══════════════════════════════════════════════════════════════════ */}
+        <HeroScreenshotTabs />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TRUST BAR — animated stats
+        ══════════════════════════════════════════════════════════════════ */}
         <section
-          className="py-14 px-6 section-fade-down"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+          className="relative py-16 px-6 overflow-hidden"
+          style={{
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            background: 'linear-gradient(to bottom, #0A0E27, #09090b)',
+          }}
         >
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-center text-[13px] mb-8 reveal" style={{ color: '#52525B', letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 'inherit', fontSize: 'inherit' }}>
-              Powering the next generation of Roblox creators
-            </h2>
-            <div className="flex flex-wrap items-center justify-center gap-x-14 gap-y-6 text-center">
+          {/* Ambient glow */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
+            background: 'radial-gradient(ellipse 80% 100% at 50% 50%, rgba(212,175,55,0.025) 0%, transparent 70%)',
+          }} />
+
+          <div className="relative max-w-5xl mx-auto">
+            <p className="reveal text-center text-[12px] font-semibold uppercase tracking-[0.12em] mb-10" style={{ color: '#3F3F46' }}>
+              Trusted by Roblox creators worldwide
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8 text-center">
               {[
-                { value: 50000, suffix: '+', label: 'Assets generated' },
-                { value: 1200,  suffix: '+', label: 'Games built'      },
-                { value: 5,     suffix: '',  label: 'AI models'        },
-                { value: 99,    suffix: '%', label: 'Uptime'           },
-              ].map(({ value, suffix, label }, i) => (
-                <div key={label} className={`reveal reveal-delay-${i + 1}`}>
-                  <p className="text-2xl font-semibold mb-0.5 tabular-nums" style={{ color: '#FAFAFA' }}>
+                { value: 50000, suffix: '+', label: 'Assets generated',     color: '#D4AF37'  },
+                { value: 1200,  suffix: '+', label: 'Games built',          color: '#60A5FA'  },
+                { value: 8400,  suffix: '+', label: 'Active creators',      color: '#A78BFA'  },
+                { value: 99,    suffix: '%', label: 'Uptime SLA',           color: '#10B981'  },
+              ].map(({ value, suffix, label, color }, i) => (
+                <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`}>
+                  <p
+                    className="text-3xl font-bold mb-1 tabular-nums"
+                    style={{ color, letterSpacing: '-0.02em' }}
+                  >
                     <AnimatedCounter target={value} suffix={suffix} />
                   </p>
-                  <p className="text-xs" style={{ color: '#52525B' }}>{label}</p>
+                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#52525B' }}>{label}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── Features ──────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════
+            BENTO GRID FEATURES
+        ══════════════════════════════════════════════════════════════════ */}
         <section
           id="features"
-          className="py-32 px-6"
+          className="py-32 px-6 relative"
           style={{ background: '#09090b' }}
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="mb-20 reveal">
-              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
-                Every tool you need.
-              </h2>
-              <p className="text-lg max-w-md" style={{ color: '#71717A' }}>
-                From a single sentence to a full game world.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12">
-              {[
-                {
-                  icon: <IconMic />,
-                  title: 'Voice input',
-                  description: 'Speak your vision. ForjeGames translates natural language into game elements in seconds.',
-                },
-                {
-                  icon: <IconImage />,
-                  title: 'Image to map',
-                  description: 'Upload a photo or sketch. AI analyzes it and generates a matching terrain layout with assets placed.',
-                },
-                {
-                  icon: <IconCube />,
-                  title: '3D generation',
-                  description: 'Generate custom models with Meshy AI. PBR textures applied automatically. Game-ready in one click.',
-                },
-                {
-                  icon: <IconSync />,
-                  title: 'Live Studio sync',
-                  description: 'Changes appear in your Roblox Studio place instantly. Every operation is undoable.',
-                },
-                {
-                  icon: <IconBrain />,
-                  title: 'AI agents',
-                  description: 'Claude, GPT-4o, Gemini. Each model optimized for different tasks. Switch mid-conversation.',
-                },
-                {
-                  icon: <IconPlug />,
-                  title: 'Marketplace',
-                  description: 'Search 500K+ Roblox assets. Browse, preview, and insert models directly into your scene.',
-                },
-              ].map(({ icon, title, description }, i) => (
-                <div
-                  key={title}
-                  className={`reveal reveal-delay-${Math.min(i + 1, 6)}`}
-                >
-                  <Feature icon={icon} title={title} description={description} />
-                </div>
-              ))}
-            </div>
+          {/* Section background */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse 70% 50% at 50% 30%, rgba(212,175,55,0.03) 0%, transparent 70%)',
+            }} />
           </div>
-        </section>
 
-        {/* ── How it works ──────────────────────────────────────────────── */}
-        <section className="py-32 px-6 section-dark">
-          <div className="max-w-5xl mx-auto">
-            <div className="mb-20 reveal">
-              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
-                How it works.
+          <div className="relative max-w-6xl mx-auto">
+            {/* Section header */}
+            <div className="max-w-2xl mb-20">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                Platform
+              </p>
+              <h2
+                className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
+              >
+                Every tool your
+                <br />game studio needs.
               </h2>
-              <p className="text-lg" style={{ color: '#71717A' }}>
-                Three steps. No setup.
+              <p className="reveal reveal-delay-2 text-lg leading-relaxed" style={{ color: '#71717A' }}>
+                From a single sentence to a complete Roblox world. AI-powered at every step.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
-              {[
-                {
-                  n: '01',
-                  title: 'Describe',
-                  description: 'Type, speak, or upload an image. Be as specific or as vague as you want.',
-                },
-                {
-                  n: '02',
-                  title: 'AI builds',
-                  description: 'Terrain, assets, scripts, lighting — all generated automatically and pushed to Studio.',
-                },
-                {
-                  n: '03',
-                  title: 'Play',
-                  description: 'Test in Studio, iterate with AI, or publish directly to Roblox.',
-                },
-              ].map(({ n, title, description }, i) => (
-                <div key={n} className={`reveal reveal-delay-${i + 1} flex gap-5`}>
-                  <span
-                    className="flex-shrink-0 text-5xl font-light leading-none select-none"
-                    style={{ color: 'rgba(255,255,255,0.07)', fontVariantNumeric: 'tabular-nums' }}
-                  >
-                    {n}
-                  </span>
-                  <div className="pt-1">
-                    <h3 className="text-lg font-medium mb-2" style={{ color: '#FAFAFA' }}>{title}</h3>
-                    <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
+            {/* Bento grid */}
+            <div
+              className="grid gap-4"
+              style={{
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gridAutoRows: 'minmax(200px, auto)',
+              }}
+            >
+              {/* Large card — Voice input */}
+              <div
+                className="reveal bento-card rounded-2xl p-7 flex flex-col justify-between"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  gridColumn: 'span 1',
+                  minHeight: 260,
+                }}
+              >
+                <div>
+                  <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                    style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
+                    <IconMic size={22} />
+                  </div>
+                  <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Voice input</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+                    Speak your vision. Natural language is instantly translated into game elements.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-2">
+                  {['describe', 'build', 'publish'].map((tag, i) => (
+                    <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full" style={{
+                      background: i === 0 ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${i === 0 ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)'}`,
+                      color: i === 0 ? '#D4AF37' : '#52525B',
+                    }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Image to map */}
+              <BentoCard
+                icon={<IconImage size={22} />}
+                title="Image to map"
+                description="Upload a photo or sketch. AI analyzes composition and generates matching terrain with assets placed precisely."
+                delay={1}
+              />
+
+              {/* 3D generation — tall */}
+              <div
+                className="reveal reveal-delay-2 bento-card rounded-2xl p-7 flex flex-col"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  gridRow: 'span 2',
+                  minHeight: 420,
+                }}
+              >
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5 flex-shrink-0"
+                  style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
+                  <IconCube size={22} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>3D generation</h3>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: '#71717A' }}>
+                  Generate custom 3D models with Meshy AI. PBR textures applied automatically. Game-ready in one click.
+                </p>
+                {/* Visual: 3D cube preview mockup */}
+                <div className="flex-1 rounded-xl flex items-center justify-center" style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  minHeight: 160,
+                }}>
+                  <div className="relative">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.8">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="rgba(212,175,55,0.25)" />
+                      <line x1="12" y1="22.08" x2="12" y2="12" stroke="rgba(212,175,55,0.25)" />
+                    </svg>
+                    <div className="absolute inset-0" style={{
+                      background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, transparent 70%)',
+                    }} />
                   </div>
                 </div>
-              ))}
+                <div className="mt-4 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
+                  <span className="text-[11px]" style={{ color: '#52525B' }}>PBR ready &middot; Roblox-optimized</span>
+                </div>
+              </div>
+
+              {/* Live Studio sync */}
+              <BentoCard
+                icon={<IconSync size={22} />}
+                title="Live Studio sync"
+                description="Changes appear in your Roblox Studio place in real time. Every action is undoable. No copy-paste required."
+                delay={3}
+              />
+
+              {/* AI agents */}
+              <div
+                className="reveal reveal-delay-4 bento-card rounded-2xl p-7 flex flex-col"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  minHeight: 200,
+                }}
+              >
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
+                  <IconBrain size={22} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Multi-model AI</h3>
+                <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717A' }}>
+                  Claude, GPT-4o, Gemini — each optimized for different tasks. Switch mid-conversation.
+                </p>
+                <div className="flex gap-2 flex-wrap mt-auto">
+                  {[
+                    { name: 'Claude', color: '#A78BFA' },
+                    { name: 'GPT-4o', color: '#10B981' },
+                    { name: 'Gemini', color: '#60A5FA' },
+                  ].map(({ name, color }) => (
+                    <span key={name} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full" style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: '#71717A',
+                    }}>
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Marketplace */}
+              <BentoCard
+                icon={<IconPlug size={22} />}
+                title="Marketplace access"
+                description="Browse 500K+ Roblox assets. Search, preview, and insert models directly into your scene — no leaving the editor."
+                delay={5}
+              />
+
+              {/* Wide card — performance stat */}
+              <div
+                className="reveal reveal-delay-6 bento-card rounded-2xl p-7 flex flex-col sm:flex-row gap-6 items-start sm:items-center"
+                style={{
+                  background: 'rgba(212,175,55,0.03)',
+                  border: '1px solid rgba(212,175,55,0.1)',
+                  gridColumn: 'span 2',
+                }}
+              >
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.18)', color: '#D4AF37' }}>
+                  <IconZap size={22} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Fast. Like, really fast.</h3>
+                  <p className="text-sm" style={{ color: '#71717A' }}>
+                    Average generation time under 12 seconds. From prompt to playable game world.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-6 flex-shrink-0">
+                  {[
+                    { value: '12s',  label: 'Avg generation' },
+                    { value: '99%',  label: 'Uptime' },
+                    { value: '<1ms', label: 'Studio sync' },
+                  ].map(({ value, label }) => (
+                    <div key={label} className="text-center">
+                      <p className="text-2xl font-bold" style={{ color: '#D4AF37' }}>{value}</p>
+                      <p className="text-[11px] mt-0.5" style={{ color: '#52525B' }}>{label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ── Editor preview (full-width showcase) ──────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════
+            HOW IT WORKS — horizontal timeline
+        ══════════════════════════════════════════════════════════════════ */}
         <section
-          className="py-32 px-6 section-fade-up"
-          style={{ background: 'linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%)' }}
+          className="py-32 px-6 relative overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #0A0E27 0%, #0D1230 100%)' }}
         >
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-16 reveal">
-              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
-                The editor.
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(212,175,55,0.04) 0%, transparent 60%)',
+            }} />
+          </div>
+
+          <div className="relative max-w-5xl mx-auto">
+            <div className="text-center mb-20">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                How it works
+              </p>
+              <h2
+                className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
+              >
+                Three steps.
+                <br />
+                <span className="gradient-text">No setup required.</span>
               </h2>
-              <p className="text-lg max-w-md mx-auto" style={{ color: '#71717A' }}>
-                Chat on the left. Your Roblox world on the right. Changes are live.
+            </div>
+
+            {/* Steps with connecting lines */}
+            <div className="relative">
+              {/* Connector line — desktop only */}
+              <div
+                aria-hidden="true"
+                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)]"
+                style={{ height: 1, background: 'linear-gradient(90deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.5) 50%, rgba(212,175,55,0.25) 100%)' }}
+              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
+                <HowItWorksStep
+                  n="1"
+                  title="Describe"
+                  description="Type, speak, or upload an image. Describe your world in plain English — no game dev knowledge needed."
+                  icon={<IconMic size={14} />}
+                  delay={1}
+                />
+                <HowItWorksStep
+                  n="2"
+                  title="AI builds"
+                  description="Terrain, assets, scripts, lighting — all generated automatically and pushed live to your Roblox Studio session."
+                  icon={<IconSparkle size={14} />}
+                  delay={2}
+                />
+                <HowItWorksStep
+                  n="3"
+                  title="Play"
+                  description="Test in Studio, iterate with natural language, then publish to Roblox and reach millions of players."
+                  icon={<IconArrow size={14} />}
+                  delay={3}
+                />
+              </div>
+            </div>
+
+            {/* CTA below steps */}
+            <div className="reveal reveal-delay-4 text-center mt-16">
+              <Link
+                href="/editor"
+                className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
+                style={{
+                  background: 'rgba(212,175,55,0.1)',
+                  border: '1px solid rgba(212,175,55,0.25)',
+                  color: '#D4AF37',
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'rgba(212,175,55,0.15)'
+                  el.style.boxShadow = '0 0 24px rgba(212,175,55,0.15)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.background = 'rgba(212,175,55,0.1)'
+                  el.style.boxShadow = 'none'
+                }}
+              >
+                Try it yourself — free
+                <IconArrow size={14} />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            SHOWCASE PREVIEW
+        ══════════════════════════════════════════════════════════════════ */}
+        <ShowcasePreview />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            FEATURE SPOTLIGHT
+        ══════════════════════════════════════════════════════════════════ */}
+        <FeatureSpotlight />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            COMPARISON SECTION
+        ══════════════════════════════════════════════════════════════════ */}
+        <ComparisonSection />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            TESTIMONIALS
+        ══════════════════════════════════════════════════════════════════ */}
+        <TestimonialsSection />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            EDITOR PREVIEW — second look
+        ══════════════════════════════════════════════════════════════════ */}
+        <section
+          className="py-32 px-6 relative overflow-hidden"
+          style={{ background: '#09090b' }}
+        >
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(212,175,55,0.03) 0%, transparent 70%)',
+            }} />
+          </div>
+          <div className="relative max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                The Editor
+              </p>
+              <h2
+                className="reveal reveal-delay-1 font-bold tracking-tight mb-4"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
+              >
+                Chat on the left.
+                <br />
+                <span className="gradient-text">Your Roblox world on the right.</span>
+              </h2>
+              <p className="reveal reveal-delay-2 text-lg max-w-md mx-auto" style={{ color: '#71717A' }}>
+                One interface. Every tool you need. Changes are always live.
               </p>
             </div>
             <div
-              className="reveal"
+              className="reveal reveal-delay-3"
               style={{
-                filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.45)) drop-shadow(0 8px 16px rgba(0,0,0,0.3))',
+                filter: 'drop-shadow(0 32px 64px rgba(0,0,0,0.55)) drop-shadow(0 0 40px rgba(212,175,55,0.04))',
               }}
             >
               <EditorMockup />
@@ -820,40 +1402,69 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* ── Pricing ───────────────────────────────────────────────────── */}
-        <section id="pricing" className="py-32 px-6 section-dark">
-          <div className="max-w-5xl mx-auto">
-            <div className="mb-16 reveal">
-              <h2 className="text-4xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
-                Pricing.
+        {/* ══════════════════════════════════════════════════════════════════
+            PRICING
+        ══════════════════════════════════════════════════════════════════ */}
+        <section
+          id="pricing"
+          className="py-32 px-6 relative overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #0A0E27 0%, #0D1230 100%)' }}
+        >
+          {/* Glow behind pricing */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 600, height: 400,
+              background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.04) 0%, transparent 70%)',
+            }} />
+          </div>
+
+          <div className="relative max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                Pricing
+              </p>
+              <h2
+                className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
+              >
+                Start free.
+                <br />
+                <span className="gradient-text">Scale when you are ready.</span>
               </h2>
-              <p className="text-lg" style={{ color: '#71717A' }}>
-                Start free. Scale when you&rsquo;re ready.
+              <p className="reveal reveal-delay-2 text-lg" style={{ color: '#71717A' }}>
+                No credit card to start. Cancel anytime.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
               <PricingCard
                 name="Free"
                 price="$0"
                 period="/forever"
+                description="Perfect for trying ForjeGames"
                 features={[
-                  '1,000 tokens',
-                  'All AI models',
+                  '1,000 tokens to start',
+                  'All AI models included',
                   'Marketplace access',
+                  'Live Studio sync',
                   'Community support',
                 ]}
-                cta="Get started"
+                cta="Get started free"
               />
               <PricingCard
                 name="Creator"
                 price="$15"
                 period="/month"
+                description="For serious Roblox creators"
                 features={[
                   '50,000 tokens / month',
                   'Priority AI processing',
-                  'Custom mesh generation',
+                  'Custom 3D mesh generation',
                   'Studio plugin sync',
+                  'Image-to-map feature',
                   'Email support',
                 ]}
                 cta="Start creating"
@@ -863,67 +1474,147 @@ export default function HomeClient() {
                 name="Studio"
                 price="$50"
                 period="/month"
+                description="For teams and game studios"
                 features={[
                   '200,000 tokens / month',
-                  'Team collaboration',
-                  'API access + SDKs',
+                  'Team collaboration (5 seats)',
+                  'Full API access + SDKs',
                   'Game DNA analysis',
+                  'Dedicated account manager',
                   'Priority support',
                 ]}
                 cta="Go pro"
               />
             </div>
 
-            <p className="mt-8 text-[13px] reveal" style={{ color: '#52525B' }}>
-              10% of every payment goes to charity.{' '}
-              <Link href="/pricing" className="transition-colors duration-200 hover:underline" style={{ color: '#A1A1AA' }}>
-                Full pricing details
-              </Link>
-            </p>
+            <div className="reveal mt-10 text-center">
+              <p className="text-[13px] mb-3" style={{ color: '#3F3F46' }}>
+                10% of every payment goes to charity.{' '}
+                <Link href="/pricing" className="transition-colors duration-200" style={{ color: '#71717A' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#A1A1AA' }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#71717A' }}
+                >
+                  Full pricing details
+                </Link>
+              </p>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {[
+                  { icon: <IconCheck size={12} />, label: 'Cancel anytime' },
+                  { icon: <IconCheck size={12} />, label: 'No hidden fees' },
+                  { icon: <IconShield size={12} />, label: 'Secure payments' },
+                ].map(({ icon, label }) => (
+                  <span key={label} className="flex items-center gap-1.5 text-[12px]" style={{ color: '#3F3F46' }}>
+                    <span style={{ color: '#52525B' }}>{icon}</span>
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ── Bottom CTA ────────────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════
+            FAQ
+        ══════════════════════════════════════════════════════════════════ */}
+        <FaqSection />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            BOTTOM CTA
+        ══════════════════════════════════════════════════════════════════ */}
         <section
-          className="py-40 px-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, #0c0c0e 0%, #09090b 100%)' }}
+          className="relative py-48 px-6 overflow-hidden"
+          style={{ background: '#09090b' }}
         >
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(ellipse 60% 50% at 50% 100%, rgba(212,175,55,0.05) 0%, transparent 60%)',
-            }}
-          />
-          <div className="relative max-w-lg mx-auto text-center">
-            <h2 className="reveal text-4xl sm:text-5xl font-semibold tracking-tight mb-4" style={{ color: '#FAFAFA' }}>
-              Ready to build?
-            </h2>
-            <p className="reveal reveal-delay-1 text-lg mb-10" style={{ color: '#71717A' }}>
-              Your first 1,000 tokens are free.
-            </p>
-            <Link
-              href="/editor"
-              className="reveal reveal-delay-2 cta-primary inline-flex items-center gap-2 px-7 py-3.5 rounded-lg text-sm font-semibold"
+          {/* Multi-layer depth glow */}
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: [
+                'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(212,175,55,0.07) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 30% 60%, rgba(167,139,250,0.03) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 70% 60%, rgba(96,165,250,0.03) 0%, transparent 60%)',
+              ].join(', '),
+            }} />
+            {/* Subtle grid */}
+            <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.3 }} />
+            {/* Horizontal line */}
+            <div className="absolute top-0 inset-x-0" style={{ height: 1, background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.08) 30%, rgba(212,175,55,0.15) 50%, rgba(212,175,55,0.08) 70%, transparent 100%)' }} />
+          </div>
+
+          <div className="relative max-w-2xl mx-auto text-center">
+            {/* Eyebrow */}
+            <div
+              className="reveal inline-flex items-center gap-2 px-4 py-2 rounded-full text-[12px] font-semibold uppercase tracking-[0.1em] mb-8"
               style={{
-                background: '#D4AF37',
-                color: '#09090b',
-                boxShadow: '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)',
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLElement
-                el.style.background = '#C4A030'
-                el.style.boxShadow = '0 0 32px rgba(212,175,55,0.32), 0 6px 16px rgba(0,0,0,0.5)'
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLElement
-                el.style.background = '#D4AF37'
-                el.style.boxShadow = '0 0 20px rgba(212,175,55,0.2), 0 4px 12px rgba(0,0,0,0.4)'
+                background: 'rgba(212,175,55,0.06)',
+                border: '1px solid rgba(212,175,55,0.14)',
+                color: 'rgba(212,175,55,0.7)',
               }}
             >
-              Start building
-              <IconArrow />
-            </Link>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#D4AF37' }} />
+              Free to start
+            </div>
+
+            <h2
+              className="reveal reveal-delay-1 font-bold tracking-tight mb-6"
+              style={{
+                fontSize: 'clamp(2.4rem, 7vw, 5rem)',
+                lineHeight: 1.05,
+                letterSpacing: '-0.025em',
+                color: '#FAFAFA',
+              }}
+            >
+              Ready to forge
+              <br />
+              <span className="gradient-text">your game?</span>
+            </h2>
+
+            <p
+              className="reveal reveal-delay-2 text-xl mb-12"
+              style={{ color: '#52525B', lineHeight: 1.7 }}
+            >
+              Join 8,400+ creators building the next generation of Roblox experiences.
+              <br />
+              Your first 1,000 tokens are on us.
+            </p>
+
+            <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/sign-up"
+                className="cta-primary inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  color: '#09090b',
+                  boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.5)',
+                  letterSpacing: '0.01em',
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.boxShadow = '0 0 64px rgba(212,175,55,0.55), 0 12px 32px rgba(0,0,0,0.6)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLElement
+                  el.style.boxShadow = '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.5)'
+                }}
+              >
+                Start building free
+                <IconArrow size={16} />
+              </Link>
+              <Link
+                href="/editor"
+                className="cta-secondary inline-flex items-center gap-2 px-7 py-4 rounded-xl text-base font-medium"
+                style={{
+                  color: '#71717A',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}
+              >
+                Try the editor
+              </Link>
+            </div>
+
+            <p className="reveal reveal-delay-4 mt-8 text-[13px]" style={{ color: '#27272A' }}>
+              No credit card required &middot; Cancel anytime &middot; Loved by 8,400+ creators
+            </p>
           </div>
         </section>
 

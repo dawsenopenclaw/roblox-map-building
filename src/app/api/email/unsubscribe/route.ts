@@ -11,9 +11,9 @@ import { emailUnsubscribeSchema, parseBody } from '@/lib/validations'
  * The token is a stateless HMAC-signed value: base64url(<userId>.<hmac>)
  * where hmac = HMAC-SHA256(UNSUBSCRIBE_SECRET, userId).
  *
- * No new DB fields are required — the opt-out is recorded via PostHog
- * identity update. If you later add a `marketingEmailsOptOut` field to
- * the User model you can uncomment the db.user.update block below.
+ * The opt-out is persisted to `User.marketingEmailsOptOut` (DB) so all
+ * email-sending paths can filter on it server-side, and also forwarded to
+ * PostHog so marketing tools stay in sync.
  *
  * Response codes:
  *   200 — opt-out recorded
@@ -84,13 +84,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Record the opt-out via PostHog so marketing tools respect it.
-    // Uncomment the block below once marketingEmailsOptOut is added to schema:
-    //
-    // await db.user.update({
-    //   where: { id: userId },
-    //   data: { marketingEmailsOptOut: true },
-    // })
+    // Record the opt-out in the DB so all email sends can filter on it server-side.
+    await db.user.update({
+      where: { id: userId },
+      data: { marketingEmailsOptOut: true },
+    })
 
     try {
       const { getPostHogClient } = await import('@/lib/posthog')

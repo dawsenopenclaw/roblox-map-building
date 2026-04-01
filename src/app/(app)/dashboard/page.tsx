@@ -11,9 +11,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prompt?: string }>
+}) {
   // Graceful fallback — never throws
   const user = await requireAuthUser().catch(() => null)
+  const { prompt: initialPrompt } = await searchParams
 
   const firstName =
     (user as { firstName?: string | null } | null)?.firstName ??
@@ -41,6 +46,7 @@ export default async function DashboardPage() {
       subscription={subscription}
       tokenBalance={tokenBalance}
       lifetimeSpent={lifetimeSpent}
+      initialPrompt={initialPrompt}
     />
   )
 }

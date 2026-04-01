@@ -847,7 +847,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         await spendTokens(authedUserId, 50, 'AI chat request', { prompt: message.slice(0, 100) })
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Token error'
-        return NextResponse.json({ error: errMsg }, { status: 402 })
+        // Only hard-fail for real balance errors — if DB is unavailable, skip
+        // deduction and continue so the chat still works without a database.
+        if (errMsg === 'Insufficient token balance') {
+          return NextResponse.json(
+            { error: 'insufficient_tokens', balance: 0, required: 50 },
+            { status: 402 },
+          )
+        }
+        console.warn('[chat] DB unavailable for token deduction — skipping:', errMsg)
+        // Fall through: chat proceeds without spending tokens
       }
     }
 

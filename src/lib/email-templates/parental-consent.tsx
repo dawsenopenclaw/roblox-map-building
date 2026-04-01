@@ -138,8 +138,8 @@ export const ParentalConsentEmail = ({
           </Text>
           <Text style={noteItem}>
             &#8226; You can revoke consent and delete all data at any time by emailing{' '}
-            <Link href="mailto:privacy@ForjeGames.com" style={emailLink}>
-              privacy@ForjeGames.com
+            <Link href="mailto:support@forjegames.com" style={emailLink}>
+              support@forjegames.com
             </Link>
           </Text>
           <Text style={noteItem}>
@@ -178,6 +178,9 @@ export const ParentalConsentEmail = ({
           </Text>
           <Text style={footerAddress}>
             ForjeGames Inc. · All rights reserved
+          </Text>
+          <Text style={footerAddress}>
+            ForjeGames LLC · [PHYSICAL ADDRESS REQUIRED - UPDATE BEFORE LAUNCH] · United States
           </Text>
         </Section>
       </Container>
