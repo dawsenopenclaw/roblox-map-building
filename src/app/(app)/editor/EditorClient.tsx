@@ -265,6 +265,82 @@ function useSpeechRecognition(onResult: (text: string) => void) {
   return { listening, supported, start, stop }
 }
 
+// ─── Studio Connect — inline copy buttons ──────────────────────────────────────
+
+const LOADSTRING_CMD = 'loadstring(game:HttpGet("https://forjegames.com/api/studio/plugin"))()'
+
+function LoadstringCopyButton() {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(LOADSTRING_CMD).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-all"
+      style={{
+        background: copied ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${copied ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        color: copied ? '#D4AF37' : '#71717a',
+      }}
+      title="Copy loadstring"
+    >
+      {copied ? (
+        <>
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5"/>
+          </svg>
+          Copied
+        </>
+      ) : (
+        <>
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
+  )
+}
+
+function CodeCopyButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded transition-all"
+      style={{
+        background: copied ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${copied ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.1)'}`,
+        color: copied ? '#D4AF37' : '#52525b',
+      }}
+      title="Copy code"
+    >
+      {copied ? (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      )}
+    </button>
+  )
+}
+
 // ─── Model Selector ────────────────────────────────────────────────────────────
 
 function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: ModelId) => void }) {
@@ -2432,6 +2508,14 @@ export function EditorClient() {
   // Clean up on unmount
   useEffect(() => () => stopConnectPolling(), [stopConnectPolling])
 
+  // Auto-generate connection code when editor loads — no button click needed
+  useEffect(() => {
+    if (connectFlow === 'idle' && !studioConnected && !demoMode) {
+      handleConnectToStudio()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
+
   // Derived: show connected viewport if actually connected OR in demo mode
   const studioConnected = studioStatus.connected || demoMode || connectFlow === 'connected'
 
@@ -2960,72 +3044,7 @@ export function EditorClient() {
 
                     <div className="relative z-10 max-w-sm w-full text-center">
 
-                      {/* ── IDLE ─────────────────────────────────────────── */}
-                      {connectFlow === 'idle' && (
-                        <>
-                          <div className="w-12 h-12 mx-auto mb-5 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                            <svg className="w-5 h-5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <rect x="3" y="3" width="18" height="18" rx="2"/>
-                              <path d="M3 9h18"/>
-                              <path d="M9 21V9"/>
-                            </svg>
-                          </div>
-
-                          <h2 className="text-base font-semibold text-zinc-100 mb-1.5">Connect Roblox Studio</h2>
-                          <p className="text-sm text-zinc-500 mb-6 leading-relaxed">
-                            AI commands build directly in your place. Connect once — stays live.
-                          </p>
-
-                          {/* Steps */}
-                          <div className="space-y-2 text-left mb-5">
-                            {[
-                              {
-                                n: '1',
-                                title: 'Install the ForjeGames Plugin',
-                                desc: (
-                                  <>
-                                    <a
-                                      href="/api/studio/plugin"
-                                      download="ForjeGames.lua"
-                                      className="text-[#D4AF37] underline hover:text-yellow-300 transition-colors"
-                                    >
-                                      Download Plugin
-                                    </a>
-                                    {' '}or get it from the Roblox Creator Store
-                                  </>
-                                ),
-                              },
-                              { n: '2', title: 'Open your place in Roblox Studio', desc: 'Keep Studio open on the same machine' },
-                              { n: '3', title: 'Enter the code shown below', desc: 'Click Connect to generate your 6-character code' },
-                            ].map((s) => (
-                              <div key={s.n} className="flex items-start gap-3 px-3 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <span className="text-[10px] font-semibold text-zinc-600 mt-0.5 w-4 flex-shrink-0">{s.n}</span>
-                                <div>
-                                  <p className="text-xs font-medium text-zinc-200">{s.title}</p>
-                                  <p className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">{s.desc}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          <button
-                            onClick={handleConnectToStudio}
-                            className="w-full py-2.5 rounded-lg font-medium text-sm transition-all hover:brightness-110 active:scale-[0.98]"
-                            style={{ background: '#D4AF37', color: '#030712' }}
-                          >
-                            Connect to Studio
-                          </button>
-
-                          <button
-                            onClick={() => setDemoMode(true)}
-                            className="mt-3 text-[11px] text-zinc-700 hover:text-zinc-500 transition-colors"
-                          >
-                            Use demo viewport instead
-                          </button>
-                        </>
-                      )}
-
-                      {/* ── GENERATING ───────────────────────────────────── */}
+                      {/* ── GENERATING (brief spinner while API call resolves) ── */}
                       {connectFlow === 'generating' && (
                         <div className="flex flex-col items-center gap-4">
                           <svg className="w-6 h-6 text-zinc-400 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -3035,51 +3054,105 @@ export function EditorClient() {
                         </div>
                       )}
 
-                      {/* ── CODE ─────────────────────────────────────────── */}
-                      {connectFlow === 'code' && (
+                      {/* ── IDLE + CODE — unified single-step panel ────────── */}
+                      {(connectFlow === 'idle' || connectFlow === 'code') && (
                         <>
-                          <div className="mb-4">
-                            <p className="text-[11px] text-zinc-500 uppercase tracking-widest mb-3">Enter in ForjeGames Plugin</p>
+                          {/* Header */}
+                          <div className="flex items-center justify-center gap-2.5 mb-5">
+                            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                            </svg>
+                            <h2 className="text-base font-semibold text-zinc-100">Connect Roblox Studio</h2>
+                          </div>
+
+                          {/* Step 1 — loadstring command */}
+                          <div className="mb-4 text-left">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2 px-0.5">
+                              Paste in Studio&rsquo;s Command Bar
+                            </p>
                             <div
-                              className="rounded-xl px-6 py-5 mx-auto inline-block"
-                              style={{ background: 'rgba(212,175,55,0.08)', border: '2px solid rgba(212,175,55,0.3)' }}
+                              className="rounded-lg px-3 py-2.5 flex items-start gap-2"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
                             >
-                              <span
-                                style={{
-                                  fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                  fontSize: 48,
-                                  fontWeight: 700,
-                                  letterSpacing: '0.18em',
-                                  color: '#D4AF37',
-                                  lineHeight: 1,
-                                }}
+                              <code
+                                className="flex-1 text-left text-[11px] leading-relaxed break-all"
+                                style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', color: '#a3a3a3' }}
                               >
-                                {connectCode}
-                              </span>
+                                <span style={{ color: '#D4AF37' }}>loadstring</span>
+                                {'(game:HttpGet("https://forjegames.com/api/studio/plugin"))()'}
+                              </code>
+                              <LoadstringCopyButton />
                             </div>
                           </div>
 
-                          <p className="text-xs text-zinc-400 mb-1">Waiting for plugin to connect…</p>
-                          <p className="text-[11px] text-zinc-600 mb-5">
-                            Expires in {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
-                          </p>
-
-                          {/* Pulse indicator */}
-                          <div className="flex items-center justify-center gap-2 mb-5">
-                            {[0, 1, 2].map((i) => (
-                              <span
-                                key={i}
-                                className="w-1.5 h-1.5 rounded-full bg-zinc-600"
-                                style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                              />
-                            ))}
+                          {/* Step 2 — connection code */}
+                          <div className="mb-5 text-left">
+                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2 px-0.5">
+                              Then enter this code in the plugin
+                            </p>
+                            {connectFlow === 'idle' ? (
+                              /* Skeleton while auto-connect fires */
+                              <div
+                                className="rounded-lg px-4 py-4 flex items-center justify-center"
+                                style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}
+                              >
+                                <span className="text-zinc-700 text-sm" style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace' }}>— — — — — —</span>
+                              </div>
+                            ) : (
+                              <div
+                                className="rounded-lg px-4 py-4 flex items-center justify-between gap-3"
+                                style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)' }}
+                              >
+                                <span
+                                  style={{
+                                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                                    fontSize: 32,
+                                    fontWeight: 700,
+                                    letterSpacing: '0.22em',
+                                    color: '#D4AF37',
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  {connectCode}
+                                </span>
+                                <CodeCopyButton code={connectCode} />
+                              </div>
+                            )}
                           </div>
 
+                          {/* Waiting indicator */}
+                          {connectFlow === 'code' && (
+                            <div className="flex items-center justify-center gap-3 mb-5">
+                              <div className="flex items-center gap-1.5">
+                                {[0, 1, 2].map((i) => (
+                                  <span
+                                    key={i}
+                                    className="w-1 h-1 rounded-full bg-zinc-600"
+                                    style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
+                                  />
+                                ))}
+                              </div>
+                              <p className="text-[11px] text-zinc-500">
+                                Waiting for connection...{' '}
+                                <span style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace' }}>
+                                  {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Divider + demo fallback */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                            <span className="text-[10px] text-zinc-700">or</span>
+                            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                          </div>
                           <button
-                            onClick={() => { stopConnectPolling(); setConnectFlow('idle') }}
-                            className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                            onClick={() => setDemoMode(true)}
+                            className="text-[11px] text-zinc-700 hover:text-zinc-500 transition-colors"
                           >
-                            Cancel
+                            Skip — use demo preview
                           </button>
                         </>
                       )}
