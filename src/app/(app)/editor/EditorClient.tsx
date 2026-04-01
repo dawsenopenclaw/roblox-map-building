@@ -1807,8 +1807,21 @@ export function EditorClient() {
   const projectNameInputRef = useRef<HTMLInputElement>(null)
 
   // Guest mode — allow 3 free messages before prompting sign-up
+  // Persisted to sessionStorage so a page refresh doesn't reset the counter.
   const GUEST_MESSAGE_LIMIT = 3
-  const [guestMessageCount, setGuestMessageCount] = useState(0)
+  const [guestMessageCount, setGuestMessageCount] = useState<number>(() => {
+    try {
+      const stored = sessionStorage.getItem('fg_guest_msg_count')
+      return stored ? parseInt(stored, 10) : 0
+    } catch {
+      return 0
+    }
+  })
+
+  // Persist guest message count to sessionStorage whenever it changes
+  useEffect(() => {
+    try { sessionStorage.setItem('fg_guest_msg_count', String(guestMessageCount)) } catch { /* ignore */ }
+  }, [guestMessageCount])
 
   // Studio connect banner — persist dismissal per session via localStorage
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
@@ -2128,7 +2141,7 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast],
+    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount],
   )
 
   // ── Editor-level keyboard shortcuts ──────────────────────────────────────

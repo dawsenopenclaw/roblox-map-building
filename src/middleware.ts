@@ -180,6 +180,11 @@ export default clerkMiddleware(async (auth, request) => {
     const preFlightResponse = handleCorsPreFlight(request)
     if (preFlightResponse) return preFlightResponse
 
+    // ── Inject x-pathname header so Server Component layouts can read the
+    //    current path without relying on searchParams or unstable headers. ──────
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-pathname', request.nextUrl.pathname)
+
     // ── 0. Maintenance mode (runs before geo and auth checks) ──────────────────
     const maintenanceActive = process.env.MAINTENANCE_MODE === 'true'
 
@@ -226,7 +231,7 @@ export default clerkMiddleware(async (auth, request) => {
     // ── 2. Auth routing ────────────────────────────────────────────────────────
     // In demo mode all routes are accessible — skip auth resolution entirely.
     // DEMO_MODE in production throws at module load (see guard above).
-    if (effectiveDemoMode) return NextResponse.next()
+    if (effectiveDemoMode) return NextResponse.next({ request: { headers: requestHeaders } })
 
     let userId: string | null = null
     let claims: Record<string, unknown> | null = null
@@ -237,7 +242,7 @@ export default clerkMiddleware(async (auth, request) => {
       claims = session.sessionClaims as Record<string, unknown> | null
     } catch {
       // Clerk unreachable — pass all requests through so the site stays up.
-      return NextResponse.next()
+      return NextResponse.next({ request: { headers: requestHeaders } })
     }
 
     // Age-gate guard: authenticated users who have not completed the age gate
@@ -290,6 +295,9 @@ export default clerkMiddleware(async (auth, request) => {
         return NextResponse.redirect(new URL('/editor', request.url))
       }
     }
+
+    // Pass-through: forward the injected x-pathname header to all Server Components.
+    return NextResponse.next({ request: { headers: requestHeaders } })
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────
     // Admin routes return 503 on transient failure — never silently pass through
@@ -299,7 +307,15 @@ export default clerkMiddleware(async (auth, request) => {
     }
     // For all other routes, pass through so users are not locked out by a
     // transient Clerk or runtime failure.
-    return NextResponse.next()
+    // Note: requestHeaders may not be initialised if the error was thrown before
+    // that assignment (e.g. the DEMO_MODE production guard). Fall back gracefully.
+    try {
+      const fallbackHeaders = new Headers(request.headers)
+      fallbackHeaders.set('x-pathname', request.nextUrl.pathname)
+      return NextResponse.next({ request: { headers: fallbackHeaders } })
+    } catch {
+      return NextResponse.next()
+    }
   }
 })
 
