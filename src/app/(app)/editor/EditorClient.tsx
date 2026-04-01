@@ -341,6 +341,173 @@ function CodeCopyButton({ code }: { code: string }) {
   )
 }
 
+// ─── Setup Panel (tabbed install methods) ──────────────────────────────────────
+
+type InstallTab = 'download' | 'command' | 'manual'
+
+function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
+  connectFlow: 'idle' | 'code'
+  connectCode: string
+  connectTimer: number
+  onDemoMode: () => void
+}) {
+  const [tab, setTab] = useState<InstallTab>('download')
+  const PLUGIN_FOLDER = navigator.userAgent.includes('Mac')
+    ? '~/Documents/Roblox/Plugins/'
+    : '%LOCALAPPDATA%\\Roblox\\Plugins\\'
+
+  const tabs: { id: InstallTab; label: string; icon: string }[] = [
+    { id: 'download', label: 'Download', icon: '↓' },
+    { id: 'command', label: 'Command Bar', icon: '>' },
+    { id: 'manual', label: 'Manual', icon: '⚙' },
+  ]
+
+  return (
+    <>
+      {/* Header */}
+      <h2 className="text-base font-semibold text-zinc-100 mb-1">Connect Roblox Studio</h2>
+      <p className="text-[11px] text-zinc-500 mb-4">Choose how to install the plugin:</p>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[11px] font-medium transition-all"
+            style={{
+              background: tab === t.id ? 'rgba(212,175,55,0.12)' : 'transparent',
+              color: tab === t.id ? '#D4AF37' : '#71717a',
+              border: tab === t.id ? '1px solid rgba(212,175,55,0.25)' : '1px solid transparent',
+            }}
+          >
+            <span style={{ fontSize: 13 }}>{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="text-left mb-4">
+        {tab === 'download' && (
+          <div className="space-y-3">
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <strong className="text-zinc-200">Easiest method.</strong> Download the plugin file and drop it in your Plugins folder.
+            </p>
+            <a
+              href="/api/studio/plugin"
+              download="ForjeGames.lua"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+              style={{ background: '#D4AF37', color: '#030712' }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download ForjeGames.lua
+            </a>
+            <div className="rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <p className="text-[10px] text-zinc-500 mb-1">Put it here:</p>
+              <code className="text-[11px] text-zinc-300 break-all" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                {PLUGIN_FOLDER}
+              </code>
+            </div>
+            <p className="text-[10px] text-zinc-600">Then restart Studio. The plugin appears in the toolbar.</p>
+          </div>
+        )}
+
+        {tab === 'command' && (
+          <div className="space-y-3">
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <strong className="text-zinc-200">Quick method.</strong> Paste this in Studio&apos;s Command Bar (View → Command Bar).
+            </p>
+            <div className="rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-start gap-2">
+                <code className="flex-1 text-[11px] leading-relaxed break-all" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#a3a3a3' }}>
+                  <span style={{ color: '#D4AF37' }}>loadstring</span>
+                  {'(game:HttpGet("https://forjegames.com/api/studio/plugin"))()'}
+                </code>
+                <LoadstringCopyButton />
+              </div>
+            </div>
+            <div className="rounded-lg px-3 py-2 flex items-start gap-2" style={{ background: 'rgba(255,180,0,0.04)', border: '1px solid rgba(255,180,0,0.12)' }}>
+              <span className="text-[11px] mt-px">⚠️</span>
+              <p className="text-[10px] text-zinc-400 leading-relaxed">
+                Requires <strong className="text-zinc-300">HttpService</strong> enabled. In Studio: Game Settings → Security → Allow HTTP Requests → ON
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === 'manual' && (
+          <div className="space-y-3">
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              <strong className="text-zinc-200">Works everywhere.</strong> Create the plugin manually in Studio.
+            </p>
+            <div className="space-y-1.5">
+              {[
+                'In Studio, go to View → Command Bar',
+                'Type: game.HttpService.HttpEnabled = true',
+                'Press Enter, then paste the loadstring above',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-2 px-2.5 py-2 rounded-md" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                  <span className="text-[10px] font-bold text-zinc-600 mt-px w-3 flex-shrink-0">{i + 1}</span>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">{step}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-zinc-600">
+              Or download the file above and place it in your Plugins folder.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Connection code — always shown below tabs */}
+      <div className="mb-4">
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2 px-0.5">
+          Enter this code in the plugin
+        </p>
+        {connectFlow === 'idle' ? (
+          <div className="rounded-lg px-4 py-3 flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}>
+            <span className="text-zinc-700 text-sm" style={{ fontFamily: '"JetBrains Mono", monospace' }}>— — — — — —</span>
+          </div>
+        ) : (
+          <div className="rounded-lg px-4 py-3 flex items-center justify-between gap-3" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)' }}>
+            <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 28, fontWeight: 700, letterSpacing: '0.2em', color: '#D4AF37', lineHeight: 1 }}>
+              {connectCode}
+            </span>
+            <CodeCopyButton code={connectCode} />
+          </div>
+        )}
+      </div>
+
+      {/* Waiting indicator */}
+      {connectFlow === 'code' && (
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="w-1 h-1 rounded-full bg-zinc-600" style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+            ))}
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Waiting...{' '}
+            <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+              {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* Skip */}
+      <button onClick={onDemoMode} className="text-[11px] text-zinc-700 hover:text-zinc-500 transition-colors">
+        Skip — use demo preview
+      </button>
+    </>
+  )
+}
+
 // ─── Model Selector ────────────────────────────────────────────────────────────
 
 function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: ModelId) => void }) {
@@ -3054,107 +3221,14 @@ export function EditorClient() {
                         </div>
                       )}
 
-                      {/* ── IDLE + CODE — unified single-step panel ────────── */}
+                      {/* ── IDLE + CODE — tabbed install panel ──────────────── */}
                       {(connectFlow === 'idle' || connectFlow === 'code') && (
-                        <>
-                          {/* Header */}
-                          <div className="flex items-center justify-center gap-2.5 mb-5">
-                            <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                            </svg>
-                            <h2 className="text-base font-semibold text-zinc-100">Connect Roblox Studio</h2>
-                          </div>
-
-                          {/* Step 1 — loadstring command */}
-                          <div className="mb-4 text-left">
-                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2 px-0.5">
-                              Paste in Studio&rsquo;s Command Bar
-                            </p>
-                            <div
-                              className="rounded-lg px-3 py-2.5 flex items-start gap-2"
-                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-                            >
-                              <code
-                                className="flex-1 text-left text-[11px] leading-relaxed break-all"
-                                style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace', color: '#a3a3a3' }}
-                              >
-                                <span style={{ color: '#D4AF37' }}>loadstring</span>
-                                {'(game:HttpGet("https://forjegames.com/api/studio/plugin"))()'}
-                              </code>
-                              <LoadstringCopyButton />
-                            </div>
-                          </div>
-
-                          {/* Step 2 — connection code */}
-                          <div className="mb-5 text-left">
-                            <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-2 px-0.5">
-                              Then enter this code in the plugin
-                            </p>
-                            {connectFlow === 'idle' ? (
-                              /* Skeleton while auto-connect fires */
-                              <div
-                                className="rounded-lg px-4 py-4 flex items-center justify-center"
-                                style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}
-                              >
-                                <span className="text-zinc-700 text-sm" style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace' }}>— — — — — —</span>
-                              </div>
-                            ) : (
-                              <div
-                                className="rounded-lg px-4 py-4 flex items-center justify-between gap-3"
-                                style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)' }}
-                              >
-                                <span
-                                  style={{
-                                    fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                    fontSize: 32,
-                                    fontWeight: 700,
-                                    letterSpacing: '0.22em',
-                                    color: '#D4AF37',
-                                    lineHeight: 1,
-                                  }}
-                                >
-                                  {connectCode}
-                                </span>
-                                <CodeCopyButton code={connectCode} />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Waiting indicator */}
-                          {connectFlow === 'code' && (
-                            <div className="flex items-center justify-center gap-3 mb-5">
-                              <div className="flex items-center gap-1.5">
-                                {[0, 1, 2].map((i) => (
-                                  <span
-                                    key={i}
-                                    className="w-1 h-1 rounded-full bg-zinc-600"
-                                    style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }}
-                                  />
-                                ))}
-                              </div>
-                              <p className="text-[11px] text-zinc-500">
-                                Waiting for connection...{' '}
-                                <span style={{ fontFamily: '"JetBrains Mono", "Fira Code", monospace' }}>
-                                  {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
-                                </span>
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Divider + demo fallback */}
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                            <span className="text-[10px] text-zinc-700">or</span>
-                            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                          </div>
-                          <button
-                            onClick={() => setDemoMode(true)}
-                            className="text-[11px] text-zinc-700 hover:text-zinc-500 transition-colors"
-                          >
-                            Skip — use demo preview
-                          </button>
-                        </>
+                        <SetupPanel
+                          connectFlow={connectFlow}
+                          connectCode={connectCode}
+                          connectTimer={connectTimer}
+                          onDemoMode={() => setDemoMode(true)}
+                        />
                       )}
 
                     </div>
