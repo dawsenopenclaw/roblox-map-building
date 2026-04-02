@@ -1261,10 +1261,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     if (userId) {
-      // Authenticated user — check tier and rate limit
-      const tierDenied = await requireTier(userId, 'FREE')
-      if (tierDenied) return tierDenied
       authedUserId = userId
+
+      // Check tier — skip if DB unavailable (allow through as FREE)
+      try {
+        const tierDenied = await requireTier(userId, 'FREE')
+        if (tierDenied) return tierDenied
+      } catch {
+        // DB unavailable — treat as FREE tier, allow through
+        console.warn('[chat] DB unavailable for tier check — allowing through')
+      }
 
       try {
         const rl = await aiRateLimit(userId)
