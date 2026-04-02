@@ -500,13 +500,18 @@ async function freeModelTwoPass(
 
   if (isBuildIntent) {
     const codePrompt = CODE_GENERATION_PROMPT + (cameraContext ? '\n\nSTUDIO CONTEXT:\n' + cameraContext : '')
-    const buildInstruction = `Build this: ${message}\n\nGenerate ONLY a \`\`\`lua code block using the template. No other text.`
+    const buildInstruction = `Build this: ${message}
+
+RESPOND WITH ONLY A SINGLE \`\`\`lua CODE BLOCK. NO TEXT BEFORE OR AFTER THE CODE BLOCK.
+The code must be complete, runnable Roblox Luau that creates the build in Edit Mode.
+Use the template pattern: ChangeHistoryService, camera spawn position, create Model, create Parts with CFrame/Size/Color/Material, parent to workspace.
+MINIMUM 15 parts. Use proper materials (Slate, Granite, WoodPlanks, Glass, Metal). Add PointLights.`
 
     // Try Gemini first for code gen (better at following structured output)
-    let codeResponse = await callGemini(codePrompt, buildInstruction, [], 2048)
+    let codeResponse = await callGemini(codePrompt, buildInstruction, [], 4096)
 
     if (!codeResponse) {
-      codeResponse = await callGroq(codePrompt, buildInstruction, [], 2048)
+      codeResponse = await callGroq(codePrompt, buildInstruction, [], 4096)
     }
 
     if (codeResponse) {

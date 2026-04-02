@@ -3704,6 +3704,8 @@ export function EditorClient() {
             })
             setConnectFlow('connected')
             pendingConnectRef.current = null
+            // Start heartbeat + screenshot polling now that we're connected
+            handleStartPolling()
           }
         } catch {
           // Network error during polling — ignore, keep trying
@@ -3774,7 +3776,8 @@ export function EditorClient() {
     })
     setConnectFlow('connected')
     pendingConnectRef.current = null
-  }, [stopConnectPolling])
+    handleStartPolling()
+  }, [stopConnectPolling, handleStartPolling])
 
   // Clean up on unmount
   useEffect(() => () => stopConnectPolling(), [stopConnectPolling])
