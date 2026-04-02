@@ -89,23 +89,18 @@ end
 -- ============================================================
 
 local function detectBaseUrl(savedUrl)
-	-- Prefer the URL the plugin last successfully connected to
+	-- Production plugin always connects to production.
+	-- This ensures the code from forjegames.com/editor matches the server.
+	-- Clear any saved localhost URL from previous dev sessions.
+	if savedUrl and savedUrl:find("localhost") then
+		savedUrl = nil
+		pcall(function() plugin:SetSetting("ForjeGames_BaseUrl", nil) end)
+	end
 	if savedUrl and savedUrl ~= "" then
 		BASE_URL = savedUrl
 		return
 	end
-
-	-- Try localhost (development)
-	local ok = pcall(function()
-		local res = HttpService:RequestAsync({
-			Url    = "http://localhost:3000/api/studio/status",
-			Method = "GET",
-		})
-		if res.StatusCode == 200 or res.StatusCode == 401 then
-			BASE_URL = "http://localhost:3000"
-		end
-	end)
-	-- Falls through to PROD_URL if localhost unreachable
+	BASE_URL = PROD_URL
 end
 
 -- ============================================================
