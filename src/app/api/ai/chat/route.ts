@@ -1547,6 +1547,47 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${
     }
   }
 
+  // ── Groq fallback (Llama 3.3 70B — free, fast, intelligent) ───────────────
+  const groqKey = process.env.GROQ_API_KEY
+  if (groqKey) {
+    try {
+      const maxTokens = intent === 'chat' || intent === 'conversation' ? 512 : intent === 'fullgame' ? 4096 : 2048
+      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: maxTokens,
+          messages: [
+            { role: 'system', content: FORJEAI_SYSTEM_PROMPT + cameraContext },
+            { role: 'user', content: message },
+          ],
+        }),
+      })
+      if (groqRes.ok) {
+        type GroqResponse = {
+          choices?: Array<{ message?: { content?: string } }>
+          usage?: { total_tokens?: number }
+        }
+        const groqData = await groqRes.json() as GroqResponse
+        const text = groqData.choices?.[0]?.message?.content ?? ''
+        if (text) {
+          return NextResponse.json({
+            message: text,
+            tokensUsed: tokenCost,
+            intent,
+            model: 'llama-3.3-70b',
+          } satisfies ChatResponsePayload & { model: string })
+        }
+      }
+    } catch (err) {
+      console.error('[chat] Groq fallback error:', err instanceof Error ? err.message : String(err))
+    }
+  }
+
   const tokensUsed = intent === 'conversation' || intent === 'chat' ? 0 : estimateTokens(message)
 
   // ── Community asset search (runs for all build-related intents) ───────────
