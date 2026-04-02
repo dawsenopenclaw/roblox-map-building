@@ -1396,6 +1396,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
+  console.log('[chat] Anthropic client available:', !!anthropic, 'key present:', !!process.env.ANTHROPIC_API_KEY)
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
   if (anthropic) {
     // Deduct tokens before calling the AI — conversation is FREE, builds cost tokens
@@ -1475,7 +1476,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 429 },
         )
       }
-      // Any other API error — fall through to demo responses below
+      // Any other API error — log and fall through to demo responses
+      console.error('[chat] Anthropic API error:', err instanceof Error ? err.message : String(err))
     }
   }
 
