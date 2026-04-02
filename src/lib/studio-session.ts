@@ -46,6 +46,10 @@ export interface StudioSession {
   latestState:     Record<string, unknown> | null
   /** Latest viewport screenshot (base64 PNG) */
   latestScreenshot: string | null
+  /** Pre-build screenshot for before/after comparison */
+  beforeScreenshot: string | null
+  /** Unix ms when beforeScreenshot was captured */
+  beforeScreenshotAt: number | null
   /** Live camera position + look direction from Studio */
   camera: {
     posX: number; posY: number; posZ: number
@@ -109,7 +113,9 @@ function serialize(session: StudioSession): string {
 function deserialize(raw: string): StudioSession | null {
   try {
     const obj = JSON.parse(raw) as StudioSession
-    obj.latestScreenshot = null  // never stored in Redis
+    obj.latestScreenshot   = null  // never stored in Redis
+    obj.beforeScreenshot   = null  // never stored in Redis
+    obj.beforeScreenshotAt ??= null
     return obj
   } catch {
     return null
@@ -231,9 +237,11 @@ export function createSession(opts: {
     authToken:        opts.authToken,
     lastHeartbeat:    Date.now(),
     connected:        true,
-    latestState:      null,
-    latestScreenshot: null,
-    camera:           null,
+    latestState:        null,
+    latestScreenshot:   null,
+    beforeScreenshot:   null,
+    beforeScreenshotAt: null,
+    camera:             null,
     partCount:        0,
     commandQueue:     [],
     lastPollAt:       0,
@@ -289,6 +297,25 @@ export async function storeScreenshot(
   session.latestScreenshot = base64Png
   sessions.set(sessionId, session)
   // Persist everything except the screenshot
+  redisPersist(session)
+  return true
+}
+
+/**
+ * Promote the current latestScreenshot to beforeScreenshot so the plugin can
+ * capture a "before" frame right before executing a build command.
+ * If latestScreenshot is null and base64Png is provided, that is used directly.
+ */
+export async function storeBeforeScreenshot(
+  sessionId: string,
+  base64Png: string,
+): Promise<boolean> {
+  let session = sessions.get(sessionId) ?? await redisLoad(sessionId)
+  if (!session) return false
+  touchHeartbeat(session)
+  session.beforeScreenshot   = base64Png
+  session.beforeScreenshotAt = Date.now()
+  sessions.set(sessionId, session)
   redisPersist(session)
   return true
 }

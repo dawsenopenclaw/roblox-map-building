@@ -134,7 +134,25 @@ const CATEGORY_KEYWORDS: Record<AssetCategory, string[]> = {
     'pillar', 'column', 'wall', 'floor', 'landscape', 'nature', 'forest',
     'plant', 'bush', 'mushroom', 'crystal', 'gem',
   ],
-  prop: [],    // catch-all — matched if no other category wins
+  prop: [
+    'barrel', 'crate', 'box', 'sign', 'lantern', 'torch', 'candle', 'flag',
+    'banner', 'trophy', 'clock', 'vase', 'bottle', 'key', 'chest', 'basket',
+    'bucket', 'pot', 'cauldron', 'anvil', 'wheel', 'rope', 'chain', 'ladder',
+    'fence', 'gate', 'trapdoor', 'lever', 'button', 'orb', 'potion', 'scroll',
+    'book', 'map', 'compass', 'telescope', 'crown', 'ring', 'amulet', 'mask',
+    'food', 'pizza', 'burger', 'cake', 'fruit', 'bread', 'fish', 'meat',
+    'cup', 'plate', 'bowl', 'mug', 'glass', 'goblet', 'pan', 'frying',
+    'fire hydrant', 'mailbox', 'trash', 'garbage', 'dumpster', 'hydrant',
+    'parking meter', 'bollard', 'cone', 'barrier', 'newspaper', 'phone booth',
+    'vending machine', 'atm', 'speaker', 'microphone', 'camera', 'satellite',
+    'computer', 'monitor', 'keyboard', 'phone', 'tv', 'television', 'radio',
+    'arcade', 'piano', 'guitar', 'drum', 'instrument', 'tool', 'shovel',
+    'pickaxe', 'wrench', 'screwdriver', 'toolbox', 'paint', 'easel',
+    'tent', 'campfire', 'sleeping bag', 'backpack', 'suitcase', 'bag',
+    'flower', 'pot plant', 'potted', 'decoration', 'ornament', 'statue',
+    'fountain', 'well', 'lamp post', 'street light', 'traffic light',
+    'bench', 'swing', 'slide', 'seesaw', 'trampoline', 'playground',
+  ],
   default: [], // fallback
 }
 
@@ -173,9 +191,40 @@ const PROMPT_TEMPLATES: Record<AssetCategory, string> = {
 const NEGATIVE_PROMPT =
   'low quality, blurry, distorted, oversized, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, texture seams visible, NSFW, watermark, text, signature, deformed, ugly, extra limbs'
 
+// Style detection from user prompt
+const STYLE_MODIFIERS: Record<string, string> = {
+  'low poly':    ', flat shading, low polygon count, minimal vertices, stylized game asset',
+  'lowpoly':     ', flat shading, low polygon count, minimal vertices, stylized game asset',
+  'cartoon':     ', cartoon style, bright colors, exaggerated proportions, cel shading',
+  'realistic':   ', photorealistic, high detail, accurate proportions, natural materials',
+  'medieval':    ', medieval style, aged materials, stone and wood, fantasy setting',
+  'modern':      ', modern style, clean lines, contemporary design, minimalist',
+  'futuristic':  ', sci-fi futuristic, sleek design, glowing elements, high-tech materials',
+  'cyberpunk':   ', cyberpunk style, neon lights, dark urban, chrome and holographic',
+  'fantasy':     ', fantasy style, magical elements, ornate details, enchanted materials',
+  'pirate':      ', pirate theme, weathered wood, rope, barnacles, nautical',
+  'japanese':    ', Japanese style, minimalist, bamboo, paper screens, zen aesthetic',
+  'steampunk':   ', steampunk style, gears, brass, copper pipes, Victorian industrial',
+  'horror':      ', horror style, dark, decayed, eerie, unsettling, cobwebs',
+  'cute':        ', cute kawaii style, rounded shapes, pastel colors, chibi proportions',
+  'voxel':       ', voxel art style, cubic shapes, pixel art 3D, blocky retro',
+  'stylized':    ', stylized art, hand-painted look, clean silhouette, game-ready',
+}
+
 function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
   const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
-  return template.replace('{prompt}', rawPrompt)
+  let result = template.replace('{prompt}', rawPrompt)
+
+  // Detect and append style modifier
+  const lower = rawPrompt.toLowerCase()
+  for (const [key, modifier] of Object.entries(STYLE_MODIFIERS)) {
+    if (lower.includes(key)) {
+      result += modifier
+      break
+    }
+  }
+
+  return result
 }
 
 // ── Collision fidelity per category ──────────────────────────────────────────

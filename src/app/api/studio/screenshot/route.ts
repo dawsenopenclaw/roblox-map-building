@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { storeScreenshot, getSession } from '@/lib/studio-session'
+import { storeScreenshot, storeBeforeScreenshot, getSession } from '@/lib/studio-session'
 import { studioScreenshotSchema, parseBody } from '@/lib/validations'
 
 const CORS_HEADERS = {
@@ -32,6 +32,8 @@ interface ScreenshotPostBody {
   image: string
   width?: number
   height?: number
+  /** When true, stores as the "before" screenshot instead of the live screenshot */
+  isBefore?: boolean
 }
 
 export async function OPTIONS() {
@@ -69,7 +71,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const ok = await storeScreenshot(body.sessionId, base64)
+  const isBefore = (parsedBody.data as ScreenshotPostBody).isBefore === true
+
+  const ok = isBefore
+    ? await storeBeforeScreenshot(body.sessionId, base64)
+    : await storeScreenshot(body.sessionId, base64)
+
   if (!ok) {
     return NextResponse.json(
       { error: 'session_not_found', reconnect: true },
@@ -78,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(
-    { stored: true, serverTime: Date.now() },
+    { stored: true, type: isBefore ? 'before' : 'live', serverTime: Date.now() },
     { status: 200, headers: CORS_HEADERS },
   )
 }
@@ -108,7 +115,12 @@ export async function GET(req: NextRequest) {
 
   if (!session.latestScreenshot) {
     return NextResponse.json(
-      { image: null, sessionId },
+      {
+        image: null,
+        beforeImage: session.beforeScreenshot ?? null,
+        beforeImageAt: session.beforeScreenshotAt ?? null,
+        sessionId,
+      },
       { status: 200, headers: CORS_HEADERS },
     )
   }
@@ -119,6 +131,8 @@ export async function GET(req: NextRequest) {
       /** Base64 PNG without data URI prefix — caller adds it for <img> src */
       image: session.latestScreenshot,
       capturedAt: session.lastHeartbeat,
+      beforeImage: session.beforeScreenshot ?? null,
+      beforeImageAt: session.beforeScreenshotAt ?? null,
       serverTime: Date.now(),
     },
     { status: 200, headers: CORS_HEADERS },

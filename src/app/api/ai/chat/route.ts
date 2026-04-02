@@ -301,6 +301,38 @@ VOICE & ENERGY:
 - Drop knowledge naturally: "fun fact — the top tycoons all put their best stuff within 30 seconds of spawn"
 - Use humor sometimes: "I mean... we COULD leave it as a grey box simulator but your players might riot"
 
+=== OBJECT LIBRARY (build ANY of these using Parts, WedgeParts, Cylinders, Spheres) ===
+Cylinder axis: X=height, Y+Z=diameter. Rotate Z=90deg for horizontal. Parent set LAST. 2-3 color shades per object.
+
+FURNITURE: Chair(seat 2x0.3x2+backrest+4 legs|Wood 139,90,43) Table(top 4x0.3x3+4 legs|WoodPlanks 170,130,80) Desk(top 5x0.3x2.5+2 sides+drawer|Wood 120,80,40) Bed(frame 4x1x6+mattress+pillow+headboard|Fabric) Couch(seat 5x1x2.5+back+2 arms+legs|Fabric 80,60,45) Bookshelf(frame 3x5x1+4 shelves+colored books) Lamp(base+pole+shade cone+PointLight 8,16) Wardrobe(body 3x5x1.5+2 doors+handles) Fireplace(back Brick+sides+mantle+Neon fire+PointLight) Piano(body 4x3x2+keys+lid|SmoothPlastic 20,20,20) Chandelier(ring+6 arms+6 candles+6 PointLights)
+
+VEHICLES: Car(body 4x1.5x8+hood wedge+4 wheel cylinders+windshield Glass+headlights Neon) Truck(cab+bed+6 wheels|Metal 180,30,30) Bus(body 3.5x3x10+windows+6 wheels|SmoothPlastic 220,180,30) Boat(hull wedge+cabin+railing+mast|Wood+Metal) Bicycle(frame+2 wheels cyl 0.1x2x2+seat+handlebars) Helicopter(body+tail boom+main rotor cyl+tail rotor+skids)
+
+NATURE: Oak(trunk cyl 1.5x6x1.5 Wood+canopy sphere 6x5x6 Grass+2 branch spheres) Pine(trunk cyl 1x8x1+3 stacked shrinking WedgePart cones Grass 40,90,30) Palm(tilted trunk cyl 0.8x10x0.8+5 frond wedges) Cherry(trunk+pink canopy sphere 255,180,200) Dead tree(trunk+3 branch cylinders no leaves) Rock(Ball 3x2x3 Rock 130,125,120+2 smaller) Bush(3 overlapping spheres LeafyGrass) Flower(stem cyl+petal spheres Neon+leaf wedge) Mushroom(stem cyl+cap sphere half red+white) Campfire(3 log cyls angled+Neon fire parts+PointLight 1.5,12) Waterfall(cliff Rock+Glass stream+white splash) Pond(flat cyl 8x0.3x8 blue 0.3 transp+rock ring+lily pads)
+
+FOOD: Pizza(base cyl 2x0.2x2+toppings) Burger(bun halves+patty+lettuce) Cake(cyl 2x1.5x2+frosting+candles Neon) Coffee(cyl 0.6x1x0.6+handle+liquid disc) Bottle(cyl 0.4x1.5x0.4 Glass+cap+label) IceCream(cone wedge+scoops spheres colored)
+
+ELECTRONICS: TV(screen 4x0.15x2.5 Neon+bezel+stand) Computer(monitor+base+keyboard+mouse) VendingMachine(body 2.5x5x2 Metal+glass front+products) ATM(body Metal+screen Neon+keypad+card slot) ArcadeCabinet(body colored+screen Neon+controls+marquee) TrafficLight(pole cyl 8+housing+3 lights Neon R/Y/G)
+
+STREET: Bench(seat 4x0.3x1.5 WoodPlanks+back+2 metal legs+armrests) TrashCan(cyl 1x2x1 Metal+lid) Mailbox(body 1x3x0.8 blue+cap+flag red+post) FireHydrant(cyl 0.8x2x0.8 red+cap+2 nozzles) StreetLight(post cyl 0.3x10x0.3 Metal+arm+head+PointLight 4,40) BusStop(glass roof+2 posts+bench+sign) PhoneBooth(frame 2x6x2 red Metal+glass panels+light)
+
+WEAPONS: Sword(blade 0.3x0.1x4 Metal+guard gold+handle Wood+pommel sphere) Axe(head wedge Metal+handle cyl Wood) Shield(cyl 2x0.2x2 Metal+boss sphere+rim) Bow(curved cyl Wood+string thin+grip) Staff(pole cyl 0.2x5x0.2 Wood+crystal sphere Neon purple+PointLight)
+
+DECOR: Flag(pole cyl+banner 2x3x0.05 colored) Trophy(base+column+cup Metal gold 212,175,55) Clock(face cyl white+frame+hands thin+pendulum) Vase(body cyl+rim+flowers) Candle(body cyl 0.2x0.8x0.2+flame Neon+PointLight 0.8,6) Statue(base Marble+simplified body+plaque) Sign(post Wood+board 3x1.5x0.2) PottedPlant(pot cyl terracotta 180,100,60+soil+green spheres)
+
+PLAYGROUND: SwingSet(A-frame+crossbar+2 chains+2 seats) Slide(platform+ramp wedge+rails+ladder) Seesaw(base+board 6x0.3x1 WoodPlanks+pivot+handles) Sandbox(frame 4x0.5x4 WoodPlanks+Sand fill) Trampoline(ring cyl 4x1x4 Metal+mat disc)
+
+STYLES — apply to ANY object:
+LOWPOLY: 3-5 parts only, flat SmoothPlastic, no variation, sharp angles
+STANDARD: Full parts, proper materials, color vary ±10%, proper lighting
+DETAILED: Add trim/edges, weathering(darken bottoms), extra detail parts
+CARTOON: 1.3x scale, bright saturated, SmoothPlastic, rounded
+REALISTIC: Natural scale, muted colors, Brick/Wood/Metal, subtle variation
+MEDIEVAL: WoodPlanks+Cobblestone, dark 60-100 range, CorrodedMetal, torch lighting
+MODERN: Glass+Concrete+Metal, clean lines, white/grey/black, bright
+FUTURISTIC: SmoothPlastic dark+Neon accents, blue/purple/cyan glow
+SPOOKY: Dark materials, fog, purple/green Neon, cobwebs, dim lights
+
 ENGAGEMENT HOOKS (use these to keep the conversation going):
 - After EVERY response, end with something that pulls them forward:
   - A choice: "we could go modern glass or rustic wood — which vibe?"
@@ -914,6 +946,7 @@ type IntentKey =
   | 'help'
   | 'publish'
   | 'multiscript'
+  | 'weather'
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
@@ -936,6 +969,7 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   npc: 15,          // NPC generation
   vehicle: 15,      // Vehicle generation
   particle: 15,     // Particle effects
+  weather: 15,      // Weather effects (rain/snow/fog/sandstorm)
   building: 20,     // Building generation (Luau code)
   terrain: 25,      // Terrain generation
   marketplace: 5,   // Asset search
@@ -1021,8 +1055,22 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'audio',
   },
   {
-    patterns: [/\b(light|fog|sky|ambient|sunrise|sunset|atmosphere)\b/i],
+    patterns: [
+      /\b(light(?:ing)?|fog|sky|ambient|sunrise|sunset|atmosphere|bloom|color.?correction|haze|overcast|dusk|dawn|noon|midday|neon.?city|horror.?lighting|fantasy.?lighting|tropical.?lighting|night.?lighting|dark.?mode)\b/i,
+      /\b(make it (night|day|dark|bright|sunset|sunrise|foggy|overcast|warm|cool|moody))\b/i,
+      /\b(sunset|sunrise|night|overcast|tropical|horror|fantasy|neon.?city)\s*(lighting|preset|mode|look|vibe|feel|scene|atmosphere)\b/i,
+      /\b(add|set|change|update|apply)\s+(the\s+)?(lighting|atmosphere|sky|fog|bloom|haze|ambient)\b/i,
+    ],
     intent: 'lighting',
+  },
+  {
+    patterns: [
+      /\b(rain|snow|blizzard|sandstorm|dust.?storm|storm|thunderstorm|hail|sleet|drizzle|downpour)\b/i,
+      /\b(make it (rain|snow|storm|blizzard|foggy|misty|windy))\b/i,
+      /\b(add|create|make|start|toggle)\s+(rain|snow|fog|mist|sandstorm|weather|precipitation)\b/i,
+      /\b(weather (effects?|system|particles?))\b/i,
+    ],
+    intent: 'weather',
   },
   {
     patterns: [/\b(economy|shop|currency|coin|token|price|buy|sell|store)\b/i],
@@ -1062,7 +1110,7 @@ function detectIntent(message: string): IntentKey {
   for (const entry of KEYWORD_INTENT_MAP) {
     if (entry.patterns.some((p) => p.test(trimmed))) {
       // For build intents, require a build verb OR a strong object noun
-      const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture'].includes(entry.intent)
+      const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture', 'weather'].includes(entry.intent)
       if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, etc.) pass through
       const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|put|stick|plop|slap|give me|i want|i need|can you|could you|let'?s|we should|make it|scale it|resize it|move it|rotate it|change the|change its)\b/i.test(trimmed)
       const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon|lamp\s*post|street\s*light|lamp|tree|bush|bench|sign|pillar|column|stairs|steps|arch|fence|railing)\b/i.test(trimmed)
@@ -2086,6 +2134,15 @@ export interface MarketplaceAssetClient {
   searchTerm: string
 }
 
+interface BuildPlan {
+  totalSteps: number
+  currentStep: number
+  stepLabel: string
+  nextStepPrompt: string | null
+  autoNext: boolean
+  planLines: string[]
+}
+
 interface ChatResponsePayload {
   message: string
   tokensUsed: number
@@ -2094,6 +2151,8 @@ interface ChatResponsePayload {
   hasCode?: boolean
   /** Clickable next-action suggestions parsed from [SUGGESTIONS] block */
   suggestions?: string[]
+  /** Multi-step build orchestration metadata */
+  buildPlan?: BuildPlan
   meshResult?: {
     meshUrl: string | null
     thumbnailUrl: string | null

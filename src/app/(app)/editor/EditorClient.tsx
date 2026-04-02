@@ -56,6 +56,12 @@ import { CodePreview } from '@/components/editor/CodePreview'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
 import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
 import type { Enhancement } from '@/lib/ai/build-enhancer'
+import { parseLuauCode, extractLuauBlocks } from '@/lib/luau-parser'
+import type { ParsedPart } from '@/lib/luau-parser'
+const Viewport3D = dynamic(
+  () => import('@/components/editor/Viewport3D').then((m) => m.Viewport3D),
+  { ssr: false }
+)
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2490,6 +2496,7 @@ export function EditorClient() {
   const [loading, setLoading] = useState(false)
   const [activePanel, setActivePanel] = useState<PanelId>(null)
   const [sceneBlocks, setSceneBlocks] = useState<SceneBlock[]>([])
+  const [parsedParts, setParsedParts] = useState<ParsedPart[]>([])
   const [totalTokens, setTotalTokens] = useState(0)
   const [suggestedReplies, setSuggestedReplies] = useState<string[]>([])
   const [buildCount, setBuildCount] = useState(0)
@@ -2846,6 +2853,23 @@ export function EditorClient() {
           return [...prev, newBlock]
         })
 
+        // Parse Luau code into 3D parts for the Three.js viewport
+        {
+          const luauSource =
+            buildResult?.luauCode ??
+            meshData?.luauCode ??
+            (() => {
+              if (!responseText) return null
+              return extractLuauBlocks(responseText) || null
+            })()
+          if (luauSource) {
+            const newParts = parseLuauCode(luauSource)
+            if (newParts.length > 0) {
+              setParsedParts((prev) => [...prev, ...newParts])
+            }
+          }
+        }
+
         setMessages((prev) => {
           const without = prev.filter((m) => m.id !== statusMsg.id)
           const assistantMsg: ChatMessage = {
@@ -3012,6 +3036,8 @@ export function EditorClient() {
     }])
     setSuggestedReplies([])
     setInput('')
+    setSceneBlocks([])
+    setParsedParts([])
     setTimeout(() => textareaRef.current?.focus(), 50)
   }, [])
 
@@ -3477,7 +3503,7 @@ export function EditorClient() {
   // Derived: viewport animation state for ViewportPreview
   const viewportState: ViewportState = showBuildOverlay
     ? 'building'
-    : sceneBlocks.length > 0
+    : (sceneBlocks.length > 0 || parsedParts.length > 0)
     ? 'complete'
     : 'idle'
 
@@ -4118,7 +4144,15 @@ export function EditorClient() {
                     <ViewportPreview state="building" builtBlockCount={sceneBlocks.length} className="absolute inset-0 z-0" />
                   )}
                   <div className="absolute inset-0">
-                    <Viewport sceneBlocks={sceneBlocks} />
+                    {parsedParts.length > 0 ? (
+                      <Viewport3D
+                        parts={parsedParts}
+                        showGrid
+                        className="absolute inset-0"
+                      />
+                    ) : (
+                      <Viewport sceneBlocks={sceneBlocks} />
+                    )}
                   </div>
 
                   {/* Top-right: Connect Studio button — larger tap target on mobile */}
