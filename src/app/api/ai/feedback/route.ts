@@ -9,6 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { feedbackBodySchema } from '@/lib/validations'
 import { applyFeedback, getOptimizerStats, type FeedbackInput } from '@/lib/ai/prompt-optimizer'
@@ -133,6 +134,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<FeedbackRespo
 // ---------------------------------------------------------------------------
 
 export async function GET(): Promise<NextResponse> {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const optimizerStats = getOptimizerStats()
   const qualityStats = getQualityStats()
   const degradingIntents = getDegradingIntents()

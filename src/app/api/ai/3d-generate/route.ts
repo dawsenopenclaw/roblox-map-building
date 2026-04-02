@@ -713,6 +713,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: '3D generation failed to queue', detail: message }, { status: 502 })
+    console.error('[3d-generate POST] Failed to queue:', message)
+    return NextResponse.json({ error: '3D generation failed to queue' }, { status: 502 })
   }
 }

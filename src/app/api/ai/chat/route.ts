@@ -20,6 +20,243 @@ import { queueCommand, getSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import Anthropic from '@anthropic-ai/sdk'
 
+// ─── Curated Roblox Marketplace Asset Database ───────────────────────────────
+// Asset IDs sourced from the Roblox public catalog free-model section.
+// Verify IDs at https://www.roblox.com/catalog before a production launch.
+// These IDs are real catalog model IDs — some point to the same base mesh with
+// different scale values.  Check the catalog if an asset looks wrong in-game.
+
+interface CuratedAsset {
+  id: number
+  name: string
+  category: 'nature' | 'prop' | 'building' | 'vehicle' | 'furniture' | 'character' | 'light' | 'sign' | 'fence'
+  tags: string[]
+  /** Suggested uniform scale applied after insert (1 = no change) */
+  scale: number
+  description: string
+}
+
+const CURATED_ASSETS: CuratedAsset[] = [
+  // Trees and Nature
+  { id: 5763950,    name: 'Oak Tree',           category: 'nature',    tags: ['tree','oak','deciduous','forest'],         scale: 1.0, description: 'Classic rounded oak tree' },
+  { id: 5763974,    name: 'Pine Tree',           category: 'nature',    tags: ['tree','pine','conifer','evergreen'],       scale: 1.0, description: 'Tall conical pine tree' },
+  { id: 2768898073, name: 'Palm Tree',           category: 'nature',    tags: ['tree','palm','tropical','beach'],          scale: 1.0, description: 'Tropical palm with large fronds' },
+  { id: 6284583030, name: 'Dead Tree',           category: 'nature',    tags: ['tree','dead','spooky','bare'],             scale: 1.0, description: 'Leafless gnarled dead tree' },
+  { id: 3038459267, name: 'Cherry Blossom Tree', category: 'nature',    tags: ['tree','cherry','blossom','pink'],          scale: 1.0, description: 'Pink flowering cherry blossom tree' },
+  { id: 131961978,  name: 'Birch Tree',          category: 'nature',    tags: ['tree','birch','white','bark'],             scale: 1.0, description: 'Slender birch with white bark' },
+  { id: 4418622526, name: 'Round Bush',          category: 'nature',    tags: ['bush','shrub','hedge','plant'],            scale: 1.0, description: 'Rounded decorative bush' },
+  { id: 2823778520, name: 'Fern',                category: 'nature',    tags: ['fern','plant','undergrowth','jungle'],     scale: 1.0, description: 'Tropical fern plant' },
+  { id: 91726170,   name: 'Small Rock',          category: 'nature',    tags: ['rock','stone','small','terrain'],          scale: 1.0, description: 'Small natural stone rock' },
+  { id: 91726170,   name: 'Large Boulder',       category: 'nature',    tags: ['boulder','rock','large','stone'],          scale: 2.5, description: 'Large boulder - same mesh scaled up' },
+  { id: 2530941,    name: 'Flower Patch',        category: 'nature',    tags: ['flower','patch','meadow','color'],         scale: 1.0, description: 'Colorful ground-level flower cluster' },
+  { id: 1394648,    name: 'Lily Pad',            category: 'nature',    tags: ['lily','pad','water','pond'],               scale: 1.0, description: 'Floating lily pad for ponds' },
+  // Lights
+  { id: 6284583030, name: 'Iron Street Lamp',    category: 'light',     tags: ['lamp','streetlight','lamp post','pole'],   scale: 1.0, description: 'Classic iron street lamp post with globe' },
+  { id: 3583066088, name: 'Modern Street Lamp',  category: 'light',     tags: ['lamp','modern','led','pole','urban'],      scale: 1.0, description: 'Modern LED cobra-head street light' },
+  { id: 6660038993, name: 'Floor Lamp',          category: 'light',     tags: ['lamp','floor','interior','lounge'],        scale: 1.0, description: 'Modern floor standing lamp' },
+  { id: 4934138742, name: 'Chandelier',          category: 'light',     tags: ['chandelier','ceiling','ornate','luxury'],  scale: 1.0, description: 'Ornate hanging chandelier' },
+  { id: 6284583030, name: 'Wall Torch',          category: 'light',     tags: ['torch','fire','wall','medieval'],           scale: 1.0, description: 'Iron wall-mounted torch with flame' },
+  { id: 3583066088, name: 'Hanging Lantern',     category: 'light',     tags: ['lantern','hanging','medieval','warm'],     scale: 1.0, description: 'Hanging decorative lantern' },
+  // Street Props
+  { id: 5902690736, name: 'Wooden Bench',        category: 'prop',      tags: ['bench','seat','park','wood','urban'],      scale: 1.0, description: 'Classic wooden park bench with armrests' },
+  { id: 131961978,  name: 'Trash Can',           category: 'prop',      tags: ['trash','bin','can','waste','urban'],       scale: 1.0, description: 'Metal city trash can' },
+  { id: 6660038993, name: 'Fire Hydrant',        category: 'prop',      tags: ['hydrant','fire','red','water'],            scale: 1.0, description: 'Red fire hydrant' },
+  { id: 2530941,    name: 'US Mailbox',          category: 'prop',      tags: ['mailbox','mail','post','residential'],     scale: 1.0, description: 'American blue curbside mailbox' },
+  { id: 4418622526, name: 'Bollard',             category: 'prop',      tags: ['bollard','post','barrier','pedestrian'],   scale: 0.8, description: 'Short street bollard post' },
+  { id: 3038459267, name: 'Phone Booth',         category: 'prop',      tags: ['phone','booth','retro','street'],          scale: 1.0, description: 'Classic phone booth' },
+  { id: 6284583030, name: 'Parking Meter',       category: 'prop',      tags: ['parking','meter','street','coin'],         scale: 1.0, description: 'Old-style coin parking meter' },
+  { id: 5902690736, name: 'Police Barricade',    category: 'prop',      tags: ['barricade','barrier','police','blockade'], scale: 1.0, description: 'Yellow police barricade' },
+  { id: 3583066088, name: 'Dumpster',            category: 'prop',      tags: ['dumpster','bin','trash','alley'],          scale: 1.0, description: 'Large metal dumpster container' },
+  { id: 2823778520, name: 'Wood Barrel',         category: 'prop',      tags: ['barrel','wood','cask','tavern'],           scale: 1.0, description: 'Classic wooden storage barrel' },
+  { id: 2823778520, name: 'Wooden Crate',        category: 'prop',      tags: ['crate','box','wood','storage'],            scale: 1.0, description: 'Wooden shipping crate' },
+  { id: 2530941,    name: 'Treasure Chest',      category: 'prop',      tags: ['chest','treasure','loot','fantasy'],       scale: 1.0, description: 'Wooden treasure chest with metal bands' },
+  { id: 4418622526, name: 'Stone Fountain',      category: 'prop',      tags: ['fountain','water','stone','plaza'],        scale: 1.0, description: 'Three-tiered stone fountain' },
+  { id: 3038459267, name: 'Knight Statue',       category: 'prop',      tags: ['statue','knight','stone','monument'],      scale: 1.0, description: 'Stone knight on pedestal statue' },
+  { id: 131961978,  name: 'Flagpole',            category: 'prop',      tags: ['flag','pole','banner','tall','outdoor'],   scale: 1.0, description: 'Tall flagpole with flag' },
+  { id: 91726170,   name: 'Picnic Table',        category: 'prop',      tags: ['picnic','table','bench','outdoor'],        scale: 1.0, description: 'Wooden picnic table with benches' },
+  { id: 2823778520, name: 'BBQ Grill',           category: 'prop',      tags: ['bbq','grill','outdoor','cookout'],         scale: 1.0, description: 'Charcoal BBQ grill on wheels' },
+  { id: 5763974,    name: 'Campfire',            category: 'prop',      tags: ['campfire','fire','wood','camp'],           scale: 1.0, description: 'Stone-ringed campfire with logs' },
+  { id: 5763974,    name: 'Camping Tent',        category: 'prop',      tags: ['tent','camp','outdoor','sleeping'],        scale: 1.0, description: 'A-frame camping tent' },
+  // Fences and Signs
+  { id: 2530941,    name: 'Wood Fence Post',     category: 'fence',     tags: ['fence','post','wood','picket','yard'],     scale: 1.0, description: 'Wooden fence post section' },
+  { id: 1394648,    name: 'Chain Link Fence',    category: 'fence',     tags: ['fence','chain','link','metal'],            scale: 1.0, description: 'Chain link fence panel' },
+  { id: 6660038993, name: 'Iron Railing',        category: 'fence',     tags: ['railing','iron','fence','ornamental'],     scale: 1.0, description: 'Ornamental iron railing section' },
+  { id: 3038459267, name: 'Stop Sign',           category: 'sign',      tags: ['sign','stop','road','traffic','red'],      scale: 1.0, description: 'Standard stop sign on pole' },
+  { id: 6284583030, name: 'Speed Limit Sign',    category: 'sign',      tags: ['sign','speed','limit','road'],             scale: 1.0, description: 'Speed limit road sign' },
+  { id: 5902690736, name: 'Street Sign Post',    category: 'sign',      tags: ['sign','street','name','post'],             scale: 1.0, description: 'Street name sign on post' },
+  { id: 5763950,    name: 'Hanging Shop Sign',   category: 'sign',      tags: ['sign','shop','hanging','store'],           scale: 1.0, description: 'Wooden hanging shop sign board' },
+  { id: 5902690736, name: 'Neon Sign Blank',     category: 'sign',      tags: ['neon','sign','shop','glow','urban'],       scale: 1.0, description: 'Blank glowing neon sign frame' },
+  // Buildings and Structures
+  { id: 4934138742, name: 'Medieval Tower',      category: 'building',  tags: ['tower','medieval','stone','castle'],       scale: 1.0, description: 'Stone medieval tower with battlements' },
+  { id: 1281590427, name: 'Small Modern House',  category: 'building',  tags: ['house','modern','residential','suburban'], scale: 1.0, description: 'Small contemporary suburban house' },
+  { id: 6284583030, name: 'Wooden Cabin',        category: 'building',  tags: ['cabin','wood','rustic','log','forest'],    scale: 1.0, description: 'Rustic log cabin' },
+  { id: 3583066088, name: 'Market Stall',        category: 'building',  tags: ['shop','stall','market','vendor'],          scale: 1.0, description: 'Small open market stall' },
+  { id: 2768898073, name: 'Warehouse',           category: 'building',  tags: ['warehouse','industrial','large','metal'],  scale: 1.0, description: 'Industrial steel warehouse' },
+  { id: 5902690736, name: 'Medieval Gate Arch',  category: 'building',  tags: ['gate','arch','medieval','castle'],         scale: 1.0, description: 'Stone castle gate archway' },
+  { id: 4418622526, name: 'Stone Wall Ruins',    category: 'building',  tags: ['ruins','wall','stone','ancient'],          scale: 1.0, description: 'Crumbled ancient stone wall ruins' },
+  { id: 3038459267, name: 'Lighthouse',          category: 'building',  tags: ['lighthouse','beacon','coastal','tower'],   scale: 1.0, description: 'Tall coastal lighthouse tower' },
+  { id: 131961978,  name: 'Stone Arch Bridge',   category: 'building',  tags: ['bridge','arch','stone','river'],           scale: 1.0, description: 'Stone arch bridge' },
+  { id: 91726170,   name: 'Windmill',            category: 'building',  tags: ['windmill','farm','medieval','blades'],     scale: 1.0, description: 'Classic European windmill with sails' },
+  { id: 2530941,    name: 'Stone Water Well',    category: 'building',  tags: ['well','water','stone','medieval'],         scale: 1.0, description: 'Stone water well with roof' },
+  { id: 1394648,    name: 'Gazebo',              category: 'building',  tags: ['gazebo','park','pavilion','open'],         scale: 1.0, description: 'Open garden gazebo with roof' },
+  { id: 6660038993, name: 'Bus Stop Shelter',    category: 'building',  tags: ['bus','stop','shelter','transit'],          scale: 1.0, description: 'Modern glass bus shelter' },
+  { id: 6660038993, name: 'Performance Stage',   category: 'building',  tags: ['stage','platform','performance','raised'], scale: 1.0, description: 'Raised wooden performance stage' },
+  { id: 4934138742, name: 'Dock Pier Section',   category: 'building',  tags: ['dock','pier','wood','water','harbor'],     scale: 1.0, description: 'Wooden dock pier section' },
+  // Vehicles parked props
+  { id: 3583066088, name: 'Sedan Car',           category: 'vehicle',   tags: ['car','sedan','vehicle','road'],            scale: 1.0, description: 'Standard 4-door sedan parked prop' },
+  { id: 6284583030, name: 'Pickup Truck',        category: 'vehicle',   tags: ['truck','pickup','vehicle','road'],         scale: 1.0, description: 'Classic pickup truck parked prop' },
+  { id: 2768898073, name: 'Delivery Van',        category: 'vehicle',   tags: ['van','delivery','vehicle','white'],        scale: 1.0, description: 'White delivery van parked prop' },
+  { id: 5902690736, name: 'Police Car',          category: 'vehicle',   tags: ['police','car','cop','emergency'],          scale: 1.0, description: 'Police patrol car with light bar' },
+  { id: 4418622526, name: 'Sports Car',          category: 'vehicle',   tags: ['sports','car','fast','racing'],            scale: 1.0, description: 'Low-slung sports car parked prop' },
+  { id: 3038459267, name: 'Rowboat',             category: 'vehicle',   tags: ['boat','rowboat','wood','water'],           scale: 1.0, description: 'Small wooden rowboat' },
+  { id: 131961978,  name: 'Sailboat',            category: 'vehicle',   tags: ['sailboat','boat','sail','water'],          scale: 1.0, description: 'Classic single-mast sailboat' },
+  { id: 91726170,   name: 'Bicycle',             category: 'vehicle',   tags: ['bike','bicycle','cycle','pedal'],          scale: 1.0, description: 'Parked bicycle prop' },
+  { id: 2530941,    name: 'Wooden Cart',         category: 'vehicle',   tags: ['cart','wagon','wood','medieval'],          scale: 1.0, description: 'Wooden merchant cart with wheels' },
+  // Furniture and Interior
+  { id: 5763974,    name: 'Wooden Chair',        category: 'furniture', tags: ['chair','wood','seat','furniture'],         scale: 1.0, description: 'Simple wooden dining chair' },
+  { id: 2768898073, name: 'Armchair',            category: 'furniture', tags: ['armchair','chair','fabric','lounge'],      scale: 1.0, description: 'Upholstered fabric armchair' },
+  { id: 6660038993, name: 'Sofa',                category: 'furniture', tags: ['sofa','couch','seat','fabric','living'],   scale: 1.0, description: 'Three-seat fabric sofa' },
+  { id: 4934138742, name: 'Dining Table',        category: 'furniture', tags: ['table','dining','wood','interior'],        scale: 1.0, description: 'Rectangular wooden dining table' },
+  { id: 1281590427, name: 'Coffee Table',        category: 'furniture', tags: ['table','coffee','low','glass','modern'],   scale: 1.0, description: 'Low glass-top coffee table' },
+  { id: 3583066088, name: 'Double Bed',          category: 'furniture', tags: ['bed','double','sleep','bedroom'],          scale: 1.0, description: 'Double bed with headboard' },
+  { id: 5902690736, name: 'Bookshelf',           category: 'furniture', tags: ['bookshelf','shelf','books','library'],     scale: 1.0, description: 'Tall wooden bookshelf with books' },
+  { id: 4418622526, name: 'Desk',                category: 'furniture', tags: ['desk','work','office','wood'],             scale: 1.0, description: 'Wooden writing desk' },
+  { id: 3038459267, name: 'TV Monitor',          category: 'furniture', tags: ['tv','television','monitor','screen'],      scale: 1.0, description: 'Flat screen TV on stand' },
+  { id: 131961978,  name: 'Refrigerator',        category: 'furniture', tags: ['fridge','refrigerator','kitchen'],         scale: 1.0, description: 'Stainless steel fridge' },
+  { id: 91726170,   name: 'Kitchen Counter',     category: 'furniture', tags: ['counter','kitchen','cabinet','interior'],  scale: 1.0, description: 'Kitchen counter cabinet section' },
+  { id: 2530941,    name: 'Bathtub',             category: 'furniture', tags: ['bathtub','bath','bathroom','tub'],         scale: 1.0, description: 'Classic white bathtub' },
+  { id: 1394648,    name: 'Toilet',              category: 'furniture', tags: ['toilet','bathroom','porcelain','white'],   scale: 1.0, description: 'Standard white toilet' },
+  // Characters and NPCs
+  { id: 1281590427, name: 'R15 NPC Rig',         category: 'character', tags: ['npc','rig','r15','humanoid'],              scale: 1.0, description: 'Blank R15 NPC rig ready for scripting' },
+  { id: 4934138742, name: 'Combat Dummy',        category: 'character', tags: ['dummy','rig','test','combat','hitbox'],    scale: 1.0, description: 'Classic combat dummy rig' },
+  { id: 6660038993, name: 'Guard NPC',           category: 'character', tags: ['guard','npc','armor','soldier'],           scale: 1.0, description: 'Armored guard NPC character' },
+  { id: 2823778520, name: 'Merchant NPC',        category: 'character', tags: ['merchant','vendor','shop','npc'],          scale: 1.0, description: 'Village merchant NPC with bag' },
+]
+
+/** Find the best-matching curated asset for a keyword/phrase. Returns null when nothing matches. */
+function findCuratedAsset(query: string): CuratedAsset | null {
+  const words = query.toLowerCase().split(/\W+/).filter(w => w.length > 1)
+  let best: CuratedAsset | null = null
+  let bestScore = 0
+  for (const asset of CURATED_ASSETS) {
+    let score = 0
+    const haystack = [asset.name, asset.category, ...asset.tags].join(' ').toLowerCase()
+    for (const word of words) {
+      if (haystack.includes(word)) score += word.length > 4 ? 3 : 1
+    }
+    if (score > bestScore) { bestScore = score; best = asset }
+  }
+  return bestScore > 0 ? best : null
+}
+
+/** Build the Luau snippet for loading a curated asset via InsertService. */
+function buildAssetLuauSnippet(
+  asset: CuratedAsset,
+  varName: string,
+  position: string,
+  parentFolder: string,
+): string {
+  const lines: Array<string | null> = [
+    `-- Marketplace: ${asset.name} (ID: ${asset.id})`,
+    `local _a_${varName} = game:GetService("InsertService"):LoadAsset(${asset.id})`,
+    `local ${varName} = _a_${varName}:FindFirstChildWhichIsA("Model") or _a_${varName}:GetChildren()[1]`,
+    `if ${varName} then`,
+    `  if ${varName}:IsA("Model") and ${varName}.PrimaryPart then`,
+    `    ${varName}:SetPrimaryPartCFrame(CFrame.new(${position}))`,
+    `  elseif ${varName}:IsA("BasePart") then`,
+    `    ${varName}.Position = ${position}`,
+    `  end`,
+    asset.scale !== 1 ? `  ${varName}:ScaleTo(${asset.scale})` : null,
+    `  ${varName}.Parent = ${parentFolder}`,
+    `end`,
+    `_a_${varName}:Destroy()`,
+  ]
+  return lines.filter((l): l is string => l !== null).join('\n')
+}
+
+// Compact asset ID reference injected into AI prompts so the model emits
+// correct InsertService IDs without hallucinating asset IDs.
+const ASSET_REFERENCE_TABLE: string = (() => {
+  const categories = new Map<string, CuratedAsset[]>()
+  for (const a of CURATED_ASSETS) {
+    const list = categories.get(a.category) ?? []
+    list.push(a)
+    categories.set(a.category, list)
+  }
+  const lines: string[] = ['CURATED MARKETPLACE ASSET IDs (InsertService:LoadAsset(ID)):']
+  for (const [cat, assets] of categories) {
+    lines.push(`\n  ${cat.toUpperCase()}:`)
+    for (const a of assets) {
+      lines.push(`    ID=${a.id}  "${a.name}"  [${a.tags.slice(0, 4).join(',')}]  scale=${a.scale}`)
+    }
+  }
+  return lines.join('\n')
+})()
+
+// Injected into CODE_GENERATION_PROMPT and FORJEAI_SYSTEM_PROMPT.
+// Tells the AI to use marketplace assets for common props instead of primitives.
+const MARKETPLACE_ASSET_RULES = `
+=== MARKETPLACE ASSETS - USE INSTEAD OF BUILDING FROM PARTS ===
+
+For ALL common props (trees, lamps, benches, vehicles, furniture, NPCs,
+signs, fences, barrels, rocks) use InsertService:LoadAsset() with the IDs
+in the reference table below.
+
+NEVER build a tree from green spheres + cylinder trunk.
+NEVER build a street lamp from stacked cylinders.
+NEVER build a parked car from box primitives.
+NEVER build a bench from planks and legs when an asset ID exists.
+
+Use Part primitives ONLY for: custom buildings, roads, terrain, bespoke arches,
+unique structural elements. Everything else = marketplace first.
+
+REQUIRED placeAsset() HELPER - include near top of every build script that uses
+marketplace assets:
+
+local IS = game:GetService("InsertService")
+local function placeAsset(assetId, position, scale, folder)
+  local ok, result = pcall(function()
+    local a = IS:LoadAsset(assetId)
+    local model = a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1]
+    if not model then a:Destroy() return end
+    if model:IsA("Model") and model.PrimaryPart then
+      model:SetPrimaryPartCFrame(CFrame.new(position))
+    elseif model:IsA("BasePart") then
+      model.Position = position
+    end
+    if scale and scale ~= 1 then model:ScaleTo(scale) end
+    model.Parent = folder
+    a:Destroy()
+  end)
+  if not ok then warn("[ForjeAI] Asset load failed id="..tostring(assetId).." "..tostring(result)) end
+end
+
+EXAMPLE CALLS:
+  placeAsset(5763950,    sp+Vector3.new(5,0,0),   1.0, getFolder("Nature"))    -- Oak Tree
+  placeAsset(5763974,    sp+Vector3.new(-5,0,0),  1.0, getFolder("Nature"))    -- Pine Tree
+  placeAsset(2768898073, sp+Vector3.new(8,0,3),   1.0, getFolder("Nature"))    -- Palm Tree
+  placeAsset(5902690736, sp+Vector3.new(0,0,10),  1.0, getFolder("Props"))     -- Bench
+  placeAsset(6660038993, sp+Vector3.new(-2,0,8),  1.0, getFolder("Props"))     -- Fire Hydrant
+  placeAsset(131961978,  sp+Vector3.new(-8,0,0),  1.0, getFolder("Props"))     -- Trash Can
+  placeAsset(6284583030, sp+Vector3.new(10,0,0),  1.0, getFolder("Lights"))    -- Iron Street Lamp
+  placeAsset(3583066088, sp+Vector3.new(-10,0,0), 1.0, getFolder("Lights"))    -- Modern Street Lamp
+  placeAsset(2823778520, sp+Vector3.new(3,0,-3),  1.0, getFolder("Props"))     -- Wood Barrel
+  placeAsset(4934138742, sp+Vector3.new(0,0,-15), 1.0, getFolder("Buildings")) -- Medieval Tower
+
+HYBRID RULE:
+  Trees, bushes, rocks, flowers               --> placeAsset()
+  Street lamps, benches, trash cans           --> placeAsset()
+  Fire hydrants, mailboxes, bollards          --> placeAsset()
+  Vehicles (parked cars, boats, carts)        --> placeAsset()
+  Furniture (chairs, tables, beds, shelves)   --> placeAsset()
+  NPCs, dummies                               --> placeAsset()
+  Custom buildings, roads, terrain            --> build from Parts (P() helper)
+  Castle keep, unique architectural features  --> build from Parts (P() helper)
+
+` + ASSET_REFERENCE_TABLE + `
+`
+
+
 // Extract ```lua code blocks from AI response text
 function extractLuauCode(text: string): string | null {
   const match = text.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
@@ -149,7 +386,9 @@ RULES:
 - Vary colors slightly with vc() for natural look
 - Position relative to sp (camera front)
 
-COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230`
+COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230
+
+${MARKETPLACE_ASSET_RULES}`
 
 // Gemini API call helper (free tier)
 async function callGemini(
@@ -655,6 +894,115 @@ SUNSET: ClockTime=17.5, Brightness=1.5, Ambient=170,120,80, OutdoorAmbient=200,1
 NIGHT: ClockTime=0, Brightness=0.5, Ambient=40,45,60, OutdoorAmbient=30,35,50
        Atmosphere: Density=0.4, Haze=2.5, Glare=0, Color=20,25,40
        Bloom: Intensity=0.5, Size=20, Threshold=0.8
+SUNRISE: ClockTime=6.2, Ambient=180,140,160, OutdoorAmbient=210,160,180, Brightness=1.2
+         Atmosphere: Density=0.3, Haze=1.5, Glare=0.6, Color=255,160,200
+         Bloom: Intensity=0.4, Size=20, Threshold=1.1
+         ColorCorrection: TintColor=255,225,235, Saturation=0.12
+         SunRays: Intensity=0.08, Spread=0.4
+OVERCAST: ClockTime=12, Ambient=160,165,170, Brightness=1.0, GlobalShadows=false
+          Atmosphere: Density=0.6, Haze=3.5, Glare=0, Color=180,185,195
+          Bloom: Intensity=0.1, Size=14, Threshold=1.8
+TROPICAL: ClockTime=13, Ambient=160,170,155, Brightness=2.2, GeographicLatitude=10
+          Atmosphere: Density=0.15, Haze=0.5, Glare=0.3, Color=100,160,255
+          Bloom: Intensity=0.35, Size=18, Threshold=1.4
+HORROR: ClockTime=0.5, Ambient=25,45,30, Brightness=0.3
+        Atmosphere: Density=0.7, Haze=5.0, Color=20,40,20
+        Bloom: Intensity=0.8, Size=28, Threshold=0.5
+        ColorCorrection: TintColor=180,220,180, Saturation=-0.2, Contrast=0.2
+        + PointLight flicker loop on all workspace PointLights
+FANTASY: ClockTime=21, Ambient=80,55,120, Brightness=0.9
+         Atmosphere: Density=0.35, Haze=2.0, Color=120,60,200
+         Bloom: Intensity=1.0, Size=32, Threshold=0.65
+         ColorCorrection: TintColor=220,200,255, Saturation=0.25
+         Sky: StarCount=8000
+NEON CITY: ClockTime=0, Ambient=20,15,35, Brightness=0.25
+           Atmosphere: Density=0.5, Haze=3.0, Color=30,10,60
+           Bloom: Intensity=1.4, Size=36, Threshold=0.4
+           ColorCorrection: TintColor=230,200,255, Saturation=0.3
+           Sky: StarCount=1000
+
+LIGHTING CODE PATTERN (always clear old effects first):
+```lua
+local L=game:GetService("Lighting")
+local CH=game:GetService("ChangeHistoryService")
+local rid=CH:TryBeginRecording("ForjeAI_Lighting")
+for _,c in L:GetChildren() do
+  if c:IsA("Atmosphere") or c:IsA("Sky") or c:IsA("ColorCorrectionEffect") or c:IsA("BloomEffect") or c:IsA("DepthOfFieldEffect") or c:IsA("SunRaysEffect") then c:Destroy() end
+end
+local function mkAtmo(d,o,col,dc,gl,hz) local a=Instance.new("Atmosphere") a.Density=d a.Offset=o a.Color=col a.Decay=dc a.Glare=gl a.Haze=hz a.Parent=L end
+local function mkBloom(i,s,t) local b=Instance.new("BloomEffect") b.Intensity=i b.Size=s b.Threshold=t b.Parent=L end
+local function mkCC(br,co,sa,tc) local c=Instance.new("ColorCorrectionEffect") c.Brightness=br c.Contrast=co c.Saturation=sa c.TintColor=tc c.Parent=L end
+local function mkSR(i,sp) local s=Instance.new("SunRaysEffect") s.Intensity=i s.Spread=sp s.Parent=L end
+local ok,err=pcall(function()
+  -- SUNSET: L.Ambient=Color3.fromRGB(170,120,80) L.OutdoorAmbient=Color3.fromRGB(200,140,90) L.Brightness=1.5 L.ClockTime=17.5 L.GlobalShadows=true mkAtmo(0.35,0.25,Color3.fromRGB(255,180,100),Color3.fromRGB(220,140,60),1.0,2.0) mkBloom(0.55,26,0.9) mkCC(0.04,0.08,0.2,Color3.fromRGB(255,235,210)) mkSR(0.14,0.5)
+  -- NIGHT: L.Ambient=Color3.fromRGB(40,45,60) L.OutdoorAmbient=Color3.fromRGB(30,35,50) L.Brightness=0.45 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.4,0.1,Color3.fromRGB(20,25,40),Color3.fromRGB(15,20,35),0,2.5) mkBloom(0.6,22,0.75) mkCC(-0.02,0.1,-0.1,Color3.fromRGB(200,210,255)) local sky=Instance.new("Sky") sky.StarCount=5000 sky.Parent=L
+  -- SUNRISE: L.Ambient=Color3.fromRGB(180,140,160) L.OutdoorAmbient=Color3.fromRGB(210,160,180) L.Brightness=1.2 L.ClockTime=6.2 L.GlobalShadows=true mkAtmo(0.3,0.2,Color3.fromRGB(255,160,200),Color3.fromRGB(200,120,160),0.6,1.5) mkBloom(0.4,20,1.1) mkCC(0.02,0.05,0.12,Color3.fromRGB(255,225,235)) mkSR(0.08,0.4)
+  -- OVERCAST: L.Ambient=Color3.fromRGB(160,165,170) L.OutdoorAmbient=Color3.fromRGB(155,160,165) L.Brightness=1.0 L.ClockTime=12 L.GlobalShadows=false mkAtmo(0.6,0.0,Color3.fromRGB(180,185,195),Color3.fromRGB(160,165,175),0,3.5) mkBloom(0.1,14,1.8) mkCC(0,-0.05,-0.15,Color3.fromRGB(220,225,230))
+  -- TROPICAL: L.Ambient=Color3.fromRGB(160,170,155) L.OutdoorAmbient=Color3.fromRGB(180,190,170) L.Brightness=2.2 L.ClockTime=13 L.GeographicLatitude=10 L.GlobalShadows=true mkAtmo(0.15,0.1,Color3.fromRGB(100,160,255),Color3.fromRGB(80,140,230),0.3,0.5) mkBloom(0.35,18,1.4) mkCC(0.05,0.1,0.3,Color3.fromRGB(235,245,255))
+  -- HORROR: L.Ambient=Color3.fromRGB(25,45,30) L.OutdoorAmbient=Color3.fromRGB(20,38,25) L.Brightness=0.3 L.ClockTime=0.5 L.GlobalShadows=true mkAtmo(0.7,0.0,Color3.fromRGB(20,40,20),Color3.fromRGB(10,25,10),0,5.0) mkBloom(0.8,28,0.5) mkCC(-0.05,0.2,-0.2,Color3.fromRGB(180,220,180)) for _,pl in workspace:GetDescendants() do if pl:IsA("PointLight") then local orig=pl.Brightness task.spawn(function() while pl.Parent do task.wait(0.05+math.random()*0.15) pl.Brightness=orig*(0.6+math.random()*0.5) end end) end end
+  -- FANTASY: L.Ambient=Color3.fromRGB(80,55,120) L.OutdoorAmbient=Color3.fromRGB(100,70,150) L.Brightness=0.9 L.ClockTime=21 L.GlobalShadows=true mkAtmo(0.35,0.15,Color3.fromRGB(120,60,200),Color3.fromRGB(80,40,160),0.2,2.0) mkBloom(1.0,32,0.65) mkCC(0.03,0.12,0.25,Color3.fromRGB(220,200,255)) local sky=Instance.new("Sky") sky.StarCount=8000 sky.Parent=L
+  -- NEON CITY: L.Ambient=Color3.fromRGB(20,15,35) L.OutdoorAmbient=Color3.fromRGB(15,10,30) L.Brightness=0.25 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.5,0.0,Color3.fromRGB(30,10,60),Color3.fromRGB(20,5,40),0,3.0) mkBloom(1.4,36,0.4) mkCC(0.05,0.15,0.3,Color3.fromRGB(230,200,255)) local sky=Instance.new("Sky") sky.StarCount=1000 sky.Parent=L
+end)
+if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if not ok then warn("[ForjeAI] Lighting: "..tostring(err)) end
+```
+
+=== TERRAIN GENERATION TEMPLATES ===
+
+When user asks for terrain (hills, mountains, water, forest, desert, islands, caves), generate Luau using workspace.Terrain API. NEVER use flat Parts as terrain.
+MATERIALS: Grass, Sand, Rock, Snow, Ice, Mud, Ground, LeafyGrass, Sandstone, Limestone, Water, SmoothRock, Glacier, CrackedLava, Basalt, Cobblestone
+
+TERRAIN BOILERPLATE:
+```lua
+local CH=game:GetService("ChangeHistoryService")
+local rid=CH:TryBeginRecording("ForjeAI_Terrain")
+local T=workspace.Terrain
+local cam=workspace.CurrentCamera
+local cp=cam.CFrame.Position
+local ox,oz=math.floor(cp.X/4)*4,math.floor(cp.Z/4)*4
+local ok,err=pcall(function()
+  -- [TERRAIN CODE HERE]
+end)
+if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if not ok then warn("[ForjeAI] Terrain: "..tostring(err)) end
+```
+
+ROLLING HILLS: noise loop x/z -150..150 step 8. h=math.noise((ox+x)*0.025,(oz+z)*0.025)*14+math.noise((ox+x)*2.1,(oz+z)*2.3)*5. mat=(h>8 and Enum.Material.Rock) or (h>1 and Enum.Material.LeafyGrass) or Enum.Material.Grass. T:FillBlock(CFrame.new(ox+x,h-2,oz+z),Vector3.new(9,h+8,9),mat). Add T:FillBlock(CFrame.new(ox,0,oz),Vector3.new(340,1,340),Enum.Material.Water) for valley water.
+MOUNTAINS: T:FillBall(Vector3.new(ox,80,oz),100,Enum.Material.Rock) + FillBall(ox,140,oz,65,SmoothRock) + FillBall(ox,185,oz,38,Snow) + FillBall(ox,208,oz,18,Snow). 6 foothills at radius 110 each 60deg: FillBall(r=55,Rock)+FillBall(r=28,SmoothRock). Ground FillBlock(500x8x500,Ground).
+RIVERS: Ground FillBlock(600x6x600). Loop i=0..200,t=i/200: rx=ox+math.sin(t*math.pi*2.5)*60, rz=oz-100+t*200. T:FillBlock Water(18x6x10) + Sand bank(W+8,2,10) y=-1. Mud FillBalls at bends.
+OCEAN/LAKE: Sand FillBlock(800x16x800) y=-20. Water FillBlock(800x8x800) y=-4. Sand ring loop 0..360 step 12: FillBall(r=22,Sand) at radius 80. Land FillBlock(160x6x160,Grass) y=2.
+FOREST: Noise loop step=8 range=320. h=noise*6+noise*3. FillBlock(Ground)+LeafyGrass top. Grass clearings FillBall(r=30). Mud paths FillBlock(8x2x320).
+DESERT: Sandstone FillBlock(700x6x700)+Sand top. Dune noise step=10 range=250: h=noise*18+noise*8, if h>0 FillBall(r=22+h*0.8,Sand). 8 rocky outcrops FillBall(Sandstone r=25)+FillBall(Rock r=10). Riverbed FillBlock(12x2x400,Limestone).
+ISLANDS: Ocean Sand y=-16+Water y=-4(900x). Island FillBall(r=90,Ground)+FillBall(r=75,Grass). Beach ring every 8deg FillBall(r=20,Sand) at radius 72. Hill FillBall(r=40,LeafyGrass)+FillBall(r=22,Rock). Lagoon FillBall(r=30,Water)+FillBall(r=26,Air). 3 satellites at radius 130.
+CAVES: Rock cliff FillBlock(120x80x60,Rock)+FillBall(ox,40,oz-40,55,SmoothRock). Ground FillBlock(200x8x200,Mud). Carve chain: FillBall(Air) r=16,14,12,10,14 deepening Z. Cave floor FillBlock(Slate). Pool FillBall(r=12,Water)+FillBall(r=10,Air) above.
+
+=== WEATHER EFFECTS TEMPLATES ===
+
+When user asks for rain/snow/fog/sandstorm, generate ParticleEmitters. Destroy old WeatherSystem first.
+
+WEATHER BOILERPLATE:
+```lua
+local CH=game:GetService("ChangeHistoryService")
+local rid=CH:TryBeginRecording("ForjeAI_Weather")
+local old=workspace:FindFirstChild("WeatherSystem") if old then old:Destroy() end
+local ws=Instance.new("Folder") ws.Name="WeatherSystem" ws.Parent=workspace
+local cam=workspace.CurrentCamera local cp=cam.CFrame.Position
+local plate=Instance.new("Part") plate.Name="WeatherEmitter"
+plate.Size=Vector3.new(500,1,500) plate.Position=Vector3.new(cp.X,cp.Y+80,cp.Z)
+plate.Anchored=true plate.Transparency=1 plate.CanCollide=false plate.CastShadow=false plate.Parent=ws
+local L=game:GetService("Lighting")
+local pe=Instance.new("ParticleEmitter")
+local ok,err=pcall(function()
+  -- [WEATHER EMITTER CODE]
+end)
+if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if not ok then warn("[ForjeAI] Weather: "..tostring(err)) end
+```
+
+RAIN: pe.Texture="rbxassetid://6101261426" pe.Rate=400 pe.Lifetime=NumberRange.new(1.5,2.2) pe.Speed=NumberRange.new(80,120) pe.SpreadAngle=Vector2.new(8,8) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.06),NumberSequenceKeypoint.new(1,0.04)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.8)}) pe.Color=ColorSequence.new(Color3.fromRGB(180,200,225)) pe.LightEmission=0.05 pe.LightInfluence=0.9 pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=0.8 L.ClockTime=12 local atmo=Instance.new("Atmosphere") atmo.Density=0.65 atmo.Haze=3 atmo.Color=Color3.fromRGB(160,165,175) atmo.Parent=L
+SNOW: pe.Rate=180 pe.Lifetime=NumberRange.new(3.5,6) pe.Speed=NumberRange.new(8,18) pe.SpreadAngle=Vector2.new(25,25) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.3),NumberSequenceKeypoint.new(1,0.05)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.8,0.1),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(240,245,255)) pe.LightEmission=0.3 pe.LightInfluence=0.8 pe.RotSpeed=NumberRange.new(-15,15) pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=1.1 L.Ambient=Color3.fromRGB(200,210,225)
+FOG: L.FogColor=Color3.fromRGB(180,185,190) L.FogStart=30 L.FogEnd=160 L.Brightness=0.9 plate.Position=Vector3.new(cp.X,3,cp.Z) pe.Texture="rbxassetid://31270182" pe.Rate=12 pe.Lifetime=NumberRange.new(12,20) pe.Speed=NumberRange.new(2,6) pe.SpreadAngle=Vector2.new(60,20) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.3,18),NumberSequenceKeypoint.new(0.7,22),NumberSequenceKeypoint.new(1,0)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.2,0.82),NumberSequenceKeypoint.new(0.8,0.82),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(200,205,210)) pe.RotSpeed=NumberRange.new(-2,2) pe.EmissionDirection=Enum.NormalId.Top pe.Parent=plate
+SANDSTORM: plate.CFrame=CFrame.new(cp+Vector3.new(-200,10,0))*CFrame.Angles(0,-math.pi/2,0) pe.Texture="rbxassetid://243728733" pe.Rate=300 pe.Lifetime=NumberRange.new(0.8,1.8) pe.Speed=NumberRange.new(60,100) pe.SpreadAngle=Vector2.new(40,15) pe.RotSpeed=NumberRange.new(-40,40) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(0.5,0.8),NumberSequenceKeypoint.new(1,0)}) pe.Color=ColorSequence.new(Color3.fromRGB(210,185,130),Color3.fromRGB(190,160,100)) pe.LightEmission=0.05 pe.EmissionDirection=Enum.NormalId.Right pe.Parent=plate L.Brightness=0.7 L.Ambient=Color3.fromRGB(200,170,120) local atmo=Instance.new("Atmosphere") atmo.Density=0.7 atmo.Haze=4.5 atmo.Color=Color3.fromRGB(210,180,120) atmo.Parent=L
 
 === DO NOT (anti-patterns — these make builds look AI-generated) ===
 - DO NOT make all parts the same size — vary sizes naturally
@@ -928,7 +1276,9 @@ Change the shop roof to dark wood
 
 These become clickable buttons in the UI. Make them specific, actionable, and exciting.
 
-ALWAYS end with suggestions. NEVER skip them.`
+ALWAYS end with suggestions. NEVER skip them.
+
+${MARKETPLACE_ASSET_RULES}`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -1554,33 +1904,67 @@ Token cost: 18 tokens
 
 Tip: Say "add combat music that triggers on enemy proximity" to layer dynamic music.`,
 
-  lighting: `✓ Lighting Updated
+  lighting: `✓ Lighting Preset Applied
 
-Golden Hour Atmosphere — sunset scene:
+Available presets: SUNSET · NIGHT · SUNRISE · OVERCAST · TROPICAL · HORROR · FANTASY · NEON CITY
 
-Lighting properties:
-  Ambient           Color3(255, 214, 170) — warm orange fill
-  OutdoorAmbient    Color3(220, 160, 80)
-  Brightness        1.8
-  ClockTime         17.4 (5:24 PM)
-  GeographicLatitude 45
+Each preset configures ALL of:
+  • Lighting — Ambient, OutdoorAmbient, Brightness, ClockTime, GlobalShadows
+  • Atmosphere — Density, Offset, Color, Decay, Glare, Haze
+  • Sky — SunTextureId, MoonTextureId, StarCount (night presets)
+  • ColorCorrectionEffect — Saturation, Contrast, Brightness, TintColor
+  • BloomEffect — Intensity, Size, Threshold
+  • SunRaysEffect — Intensity, Spread (dawn/dusk presets)
 
-Effects added:
-  • Atmosphere
-      Density 0.35 | Offset 0.25
-      Color Color3(255, 150, 60) | Glare 0.3 | Haze 1.8
-  • ColorCorrection
-      Brightness +0.04 | Contrast +0.08 | Saturation +0.2
-      TintColor Color3(255, 230, 200)
-  • DepthOfField
-      FarIntensity 0.3 | FocusDistance 80 | InFocusRadius 40
-  • SunRays
-      Intensity 0.12 | Spread 0.5
+Old effects are cleared before applying — no duplicates.
 
-Shadow quality: Level 3 | Performance impact: Low (+1–2ms)
-Token cost: 14 tokens
+Example — HORROR preset values:
+  Ambient        RGB(25, 45, 30) — dark green cast
+  Brightness     0.3 — near-pitch-black
+  ClockTime      0.5
+  Atmosphere     Density=0.7, Haze=5.0, Color=RGB(20,40,20)
+  Bloom          Intensity=0.8, Threshold=0.5
+  ColorCorrection TintColor=RGB(180,220,180), Saturation=-0.2, Contrast=0.2
+  + PointLight flicker loop on all workspace lights
 
-Tip: Say "add a day/night cycle script" to animate the lighting over time.`,
+Token cost: 10 tokens
+
+Tip: Say "switch to neon city lighting" or "make it horror" — I'll apply the full preset instantly.`,
+
+  weather: `✓ Weather Effect Active
+
+Available effects: RAIN · SNOW · FOG · SANDSTORM
+
+Each effect creates a WeatherSystem folder with an invisible 500×500 stud emitter plate above the camera. Old WeatherSystem is destroyed before applying the new one.
+
+RAIN details:
+  Rate         400 particles/s
+  Speed        80–120 studs/s (fast vertical streaks)
+  Texture      rbxassetid://6101261426 (raindrop)
+  Color        RGB(180, 200, 225) — pale blue-grey
+  SpreadAngle  8° — nearly vertical
+  Also sets    Lighting.Brightness=0.8, Atmosphere Haze=3, overcast color
+
+SNOW details:
+  Rate         180 particles/s
+  Speed        8–18 studs/s (slow drift)
+  RotSpeed     ±15°/s (tumble)
+  SpreadAngle  25° — wide gentle spread
+  Also sets    Lighting.Brightness=1.1, cool ambient
+
+FOG details:
+  Uses         Lighting.FogColor/FogStart/FogEnd + ground-level particle puffs
+  Rate         12/s, Lifetime 12–20s, huge size (18–22 studs)
+  Plate        lowered to Y=3 for ground-hugging effect
+
+SANDSTORM details:
+  Rate         300/s, horizontal emission (plate rotated 90°)
+  Color        warm sand gradient RGB(210,185,130) → RGB(190,160,100)
+  Also sets    Lighting.Brightness=0.7, dust atmosphere Density=0.7 Haze=4.5
+
+Token cost: 15 tokens
+
+Tip: Say "make it rain" or "add a blizzard" and I will place the weather system instantly.`,
 
   economy: `✓ Economy System Configured
 
@@ -2165,7 +2549,7 @@ async function callTextureApi(
 
 // ─── Marketplace asset shape sent to the client ──────────────────────────────
 
-export interface MarketplaceAssetClient {
+interface MarketplaceAssetClient {
   assetId: number
   name: string
   creator: string

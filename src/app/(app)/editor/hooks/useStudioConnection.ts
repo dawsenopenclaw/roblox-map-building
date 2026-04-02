@@ -33,6 +33,7 @@ export interface StudioConnectionState {
   activity: StudioActivity[]
   commandsSent: number
   studioContext: StudioContext
+  connectionError: string | null
 }
 
 function uid() {
@@ -52,6 +53,7 @@ export function useStudioConnection() {
     activity: [],
     commandsSent: 0,
     studioContext: { camera: null, partCount: 0, nearbyParts: [] },
+    connectionError: null,
   })
 
   const codeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -119,7 +121,7 @@ export function useStudioConnection() {
         }
       })
     } catch {
-      // network error — stay silent
+      setState((prev) => ({ ...prev, connectionError: 'Network error — check your connection' }))
     }
   }, [])
 
@@ -132,7 +134,7 @@ export function useStudioConnection() {
         setState((prev) => ({ ...prev, screenshotUrl: data.screenshotUrl! }))
       }
     } catch {
-      // silent
+      // Screenshot poll failures are non-critical — don't surface to UI
     }
   }, [])
 
@@ -193,6 +195,7 @@ export function useStudioConnection() {
               ...prev,
               isConnected: true,
               connectFlow: 'connected',
+              connectionError: null,
               sessionId: realSessionId,
               placeName: pollData.placeName ?? prev.placeName ?? 'Roblox Studio',
               placeId: pollData.placeId ? Number(pollData.placeId) : prev.placeId,
@@ -207,11 +210,11 @@ export function useStudioConnection() {
             screenshotPollRef.current = setInterval(() => pollScreenshot(realSessionId), 8000)
           }
         } catch {
-          // network error — stay silent
+          setState((prev) => ({ ...prev, connectionError: 'Network error — check your connection' }))
         }
       }, 2000)
     } catch {
-      setState((prev) => ({ ...prev, connectFlow: 'idle' }))
+      setState((prev) => ({ ...prev, connectFlow: 'idle', connectionError: 'Failed to generate connection code' }))
     }
   }, [addActivity, pollStatus, pollScreenshot])
 

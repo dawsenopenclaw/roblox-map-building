@@ -609,7 +609,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: 'Poll failed', detail: message }, { status: 502 })
+    console.error('[mesh GET] Poll failed:', message)
+    return NextResponse.json({ error: 'Poll failed' }, { status: 502 })
   }
 }
 
@@ -740,6 +741,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: 'Mesh generation failed', detail: message }, { status: 502 })
+    console.error('[mesh POST] Generation failed:', message)
+    return NextResponse.json({ error: 'Mesh generation failed' }, { status: 502 })
   }
 }

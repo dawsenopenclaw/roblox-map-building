@@ -266,7 +266,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
-      return NextResponse.json({ error: 'Texture generation failed', detail: message }, { status: 502 })
+      console.error('[texture POST] Generation failed:', message)
+      return NextResponse.json({ error: 'Texture generation failed' }, { status: 502 })
     }
   }
 }
