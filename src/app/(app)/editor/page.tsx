@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { EditorClient } from './EditorClient'
+import NewEditorClient from './NewEditorClient'
 
 export const metadata: Metadata = {
   title: 'Editor — ForjeGames',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function EditorPage() {
-  return <EditorClient />
+  return <NewEditorClient />
 }

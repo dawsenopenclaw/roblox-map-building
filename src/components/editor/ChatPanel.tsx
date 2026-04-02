@@ -335,9 +335,20 @@ function useSpeech(onResult: (text: string) => void) {
       setListening(false)
       return
     }
+    type SRCtor = new () => {
+      lang: string
+      interimResults: boolean
+      maxAlternatives: number
+      onstart: (() => void) | null
+      onend: (() => void) | null
+      onerror: (() => void) | null
+      onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
+      start(): void
+      stop(): void
+    }
     const win = window as typeof window & {
-      webkitSpeechRecognition?: new () => SpeechRecognition
-      SpeechRecognition?: new () => SpeechRecognition
+      webkitSpeechRecognition?: SRCtor
+      SpeechRecognition?: SRCtor
     }
     const SR = win.webkitSpeechRecognition ?? win.SpeechRecognition
     if (!SR) return
@@ -500,8 +511,8 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const handleVoiceResult = useCallback((text: string) => {
-    setInput((prev: string) => (prev ? `${prev} ${text}` : text))
-  }, [setInput])
+    setInput(input ? `${input} ${text}` : text)
+  }, [setInput, input])
 
   const { listening, supported: speechSupported, toggle: toggleSpeech } = useSpeech(handleVoiceResult)
 

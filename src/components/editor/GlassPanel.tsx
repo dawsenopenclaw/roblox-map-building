@@ -12,7 +12,6 @@ interface GlassPanelProps {
   glowColor?: string
   style?: React.CSSProperties
   onClick?: () => void
-  as?: keyof React.JSX.IntrinsicElements
 }
 
 const PADDING_MAP: Record<PaddingSize, string> = {
@@ -30,14 +29,13 @@ export function GlassPanel({
   glowColor = '#FFB81C',
   style,
   onClick,
-  as: Tag = 'div',
 }: GlassPanelProps) {
-  const glowStyle = glow
+  const glowStyle: React.CSSProperties = glow
     ? { boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 32px ${glowColor}22, inset 0 0 32px rgba(255,255,255,0.01)` }
     : { boxShadow: '0 0 0 1px rgba(255,255,255,0.05), inset 0 0 24px rgba(255,255,255,0.01)' }
 
   return (
-    <Tag
+    <div
       className={className}
       onClick={onClick}
       style={{
@@ -52,6 +50,6 @@ export function GlassPanel({
       }}
     >
       {children}
-    </Tag>
+    </div>
   )
 }
