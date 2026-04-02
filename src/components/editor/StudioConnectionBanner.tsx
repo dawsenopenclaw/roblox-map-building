@@ -237,79 +237,88 @@ export function StudioConnectionBanner({
   // ── CODE state — main connection banner ───────────────────────────────────
   return (
     <div
-      className={`flex items-center gap-3 px-3 flex-shrink-0 transition-all duration-300 ${className}`}
+      className={`flex flex-col items-center gap-2 px-4 py-4 flex-shrink-0 transition-all duration-300 ${className}`}
       style={{
-        height: '36px',
-        background: 'rgba(212,175,55,0.05)',
-        borderBottom: '1px solid rgba(212,175,55,0.18)',
+        background: 'linear-gradient(180deg, rgba(212,175,55,0.08) 0%, rgba(10,27,60,0.95) 100%)',
+        borderBottom: '2px solid rgba(212,175,55,0.3)',
       }}
       role="status"
     >
-      {/* Left: icon + label */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* Studio icon */}
-        <svg className="w-3.5 h-3.5 text-[#D4AF37]/70 flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      {/* Top row: label + countdown + dismiss */}
+      <div className="flex items-center gap-2 w-full">
+        <svg className="w-4 h-4 text-[#FFB81C] flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.3"/>
           <path d="M5 6l3-3 3 3M8 3v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M3 12h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
-        <span className="text-[11px] text-[#D4AF37]/80 hidden sm:block font-medium whitespace-nowrap">
-          Connect Roblox Studio
+        <span className="text-xs text-[#FFB81C] font-semibold">
+          Enter this code in the Roblox Studio plugin
         </span>
-      </div>
-
-      {/* Divider */}
-      <div className="w-px self-stretch my-2 flex-shrink-0" style={{ background: 'rgba(212,175,55,0.15)' }} />
-
-      {/* Code display */}
-      <button
-        onClick={handleCopy}
-        title={codeCopied ? 'Copied!' : 'Click to copy code'}
-        aria-label={`Pairing code ${code} — click to copy`}
-        className="flex items-center gap-1.5 flex-shrink-0 group"
-      >
+        <div className="flex-1" />
         <span
-          className="text-sm font-bold tracking-[0.3em] transition-colors group-hover:text-[#FFB81C]"
-          style={{ fontFamily: '"JetBrains Mono", monospace', color: '#D4AF37' }}
+          className="text-xs flex-shrink-0 font-mono tabular-nums"
+          style={{ color: countdown < 60 ? '#ef4444' : 'rgba(212,175,55,0.5)' }}
         >
-          {code || '— — — — — —'}
+          {formatCountdown(countdown)}
         </span>
-        <span className="text-[9px] text-[#D4AF37]/40 group-hover:text-[#D4AF37]/70 transition-colors">
-          {codeCopied ? 'COPIED' : 'COPY'}
-        </span>
-      </button>
-
-      {/* Countdown */}
-      <span
-        className="text-[10px] flex-shrink-0 font-mono tabular-nums"
-        style={{ color: countdown < 60 ? '#ef4444' : 'rgba(212,175,55,0.4)' }}
-        aria-label={`Code expires in ${formatCountdown(countdown)}`}
-      >
-        {formatCountdown(countdown)}
-      </span>
-
-      {/* Spacer */}
-      <div className="flex-1 min-w-0" />
-
-      {/* Right: instructions link + dismiss */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <a
-          href="/docs/studio-plugin"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors whitespace-nowrap hidden md:block"
-        >
-          Plugin download
-        </a>
         <button
           onClick={onDismiss}
-          aria-label="Dismiss Studio banner"
-          className="flex items-center justify-center w-5 h-5 rounded text-zinc-700 hover:text-zinc-400 transition-colors"
+          aria-label="Dismiss"
+          className="flex items-center justify-center w-5 h-5 rounded text-zinc-600 hover:text-zinc-400 transition-colors"
         >
           <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
             <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
+      </div>
+
+      {/* BIG CODE — the main focus */}
+      <button
+        onClick={handleCopy}
+        title={codeCopied ? 'Copied!' : 'Click to copy code'}
+        aria-label={`Pairing code ${code} — click to copy`}
+        className="flex items-center gap-3 group cursor-pointer"
+      >
+        <div className="flex gap-2">
+          {(code || '------').split('').map((char, i) => (
+            <span
+              key={i}
+              className="flex items-center justify-center w-10 h-12 rounded-lg text-xl font-black transition-all group-hover:scale-105"
+              style={{
+                fontFamily: '"JetBrains Mono", monospace',
+                color: '#FFB81C',
+                background: 'rgba(255,184,28,0.08)',
+                border: '2px solid rgba(255,184,28,0.25)',
+                letterSpacing: '0.05em',
+              }}
+            >
+              {char}
+            </span>
+          ))}
+        </div>
+        <span className="text-xs font-bold px-3 py-1 rounded-full transition-colors"
+          style={{
+            background: codeCopied ? 'rgba(34,197,94,0.15)' : 'rgba(255,184,28,0.1)',
+            color: codeCopied ? '#22C55E' : '#D4AF37',
+            border: `1px solid ${codeCopied ? 'rgba(34,197,94,0.3)' : 'rgba(255,184,28,0.2)'}`,
+          }}
+        >
+          {codeCopied ? 'COPIED!' : 'COPY'}
+        </span>
+      </button>
+
+      {/* Bottom row: plugin download link */}
+      <div className="flex items-center gap-3">
+        <span className="text-[11px] text-zinc-500">
+          Don&apos;t have the plugin?
+        </span>
+        <a
+          href="/api/studio/plugin"
+          download="ForjeGames.lua"
+          className="text-[11px] text-[#FFB81C] font-semibold hover:underline underline-offset-2 transition-colors"
+        >
+          Download ForjeGames Plugin
+        </a>
       </div>
     </div>
   )

@@ -2232,17 +2232,7 @@ export function EditorClient() {
 
 
   // Studio state — must be declared before submit so the callback closes over them
-  const [studioStatus, setStudioStatus] = useState<StudioStatus>(() => {
-    // Restore connection state from localStorage so tabs share it
-    try {
-      const saved = localStorage.getItem('fg_studio_connection')
-      if (saved) {
-        const parsed = JSON.parse(saved) as StudioStatus
-        if (parsed.connected && parsed.sessionId) return parsed
-      }
-    } catch { /* ignore */ }
-    return { connected: false }
-  })
+  const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
   const [demoMode, setDemoMode]             = useState(false)
   const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
   const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
@@ -2788,27 +2778,13 @@ export function EditorClient() {
   // Clean up on unmount
   useEffect(() => () => stopConnectPolling(), [stopConnectPolling])
 
-  // Persist connection state to localStorage so other tabs can use it
+  // Clear any stale fake connection from localStorage
   useEffect(() => {
-    try {
-      if (studioStatus.connected && studioStatus.sessionId) {
-        localStorage.setItem('fg_studio_connection', JSON.stringify(studioStatus))
-      }
-    } catch { /* ignore */ }
-  }, [studioStatus])
-
-  // On mount: restore connection from localStorage OR show setup
-  useEffect(() => {
-    if (studioStatus.connected) {
-      // Already connected (restored from localStorage) — skip setup
-      setConnectFlow('connected')
-    }
-    // Don't auto-generate a code — let the user click when ready
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Run once on mount
+    try { localStorage.removeItem('fg_studio_connection') } catch { /* ignore */ }
+  }, [])
 
   // Derived: show connected viewport if actually connected OR in demo mode
-  const studioConnected = studioStatus.connected || demoMode || connectFlow === 'connected'
+  const studioConnected = studioStatus.connected || (connectFlow === 'connected' && studioStatus.sessionId !== null)
 
   // Banner: show only after the user has received at least one AI response AND is not connected
   const [bannerAutoConnect, setBannerAutoConnect] = useState(0)
@@ -3331,39 +3307,32 @@ export function EditorClient() {
                     </div>
                   )
                 ) : (
-                  /* Not connected — connection flow */
-                  <div className="absolute inset-0 flex flex-col items-center justify-center px-8">
-                    {/* Animated isometric scene background */}
-                    <ViewportPreview
-                      state={viewportState}
-                      builtBlockCount={sceneBlocks.length}
-                      className="absolute inset-0"
-                    />
-
-                    <div className="relative z-10 max-w-sm w-full text-center">
-
-                      {/* ── GENERATING (brief spinner while API call resolves) ── */}
-                      {connectFlow === 'generating' && (
-                        <div className="flex flex-col items-center gap-4">
-                          <svg className="w-6 h-6 text-zinc-400 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="40 20" strokeLinecap="round"/>
-                          </svg>
-                          <p className="text-sm text-zinc-400">Generating code...</p>
-                        </div>
-                      )}
-
-                      {/* ── IDLE + CODE — tabbed install panel ──────────────── */}
-                      {(connectFlow === 'idle' || connectFlow === 'code') && (
-                        <SetupPanel
-                          connectFlow={connectFlow}
-                          connectCode={connectCode}
-                          connectTimer={connectTimer}
-                          onDemoMode={() => setDemoMode(true)}
-                          onConfirmConnected={confirmStudioConnected}
-                          onGenerateCode={handleConnectToStudio}
-                        />
-                      )}
-
+                  /* Not connected — show how to use the code */
+                  <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+                    <ViewportPreview state={viewportState} builtBlockCount={sceneBlocks.length} className="absolute inset-0" />
+                    <div className="relative z-10 max-w-sm w-full text-center space-y-4">
+                      <h2 className="text-lg font-semibold text-zinc-100">How it works</h2>
+                      <p className="text-[12px] text-zinc-500 leading-relaxed">
+                        Chat with ForjeAI on the left. When it generates Luau code, click <strong className="text-zinc-300">&quot;Import to Studio&quot;</strong> to copy it. Then paste it into a Script in Roblox Studio.
+                      </p>
+                      <div className="space-y-2 text-left">
+                        {[
+                          { n: '1', text: 'Ask ForjeAI to build something (e.g. "build a castle")' },
+                          { n: '2', text: 'Click the gold "Import to Studio" button on the code' },
+                          { n: '3', text: 'In Studio: Insert → Script → paste → run (F5)' },
+                        ].map((s) => (
+                          <div key={s.n} className="flex items-start gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: '#D4AF37', color: '#000' }}>{s.n}</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">{s.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => setDemoMode(true)}
+                        className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                      >
+                        Show 3D preview instead
+                      </button>
                     </div>
                   </div>
                 )}
