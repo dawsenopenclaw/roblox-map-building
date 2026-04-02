@@ -166,6 +166,19 @@ async function handleSync(req: NextRequest) {
     )
   }
 
+  // ── Capture camera data from plugin ──────────────────────────────────────
+  const camX = searchParams.get('camX')
+  if (camX && session) {
+    session.camera = {
+      posX: parseFloat(camX) || 0,
+      posY: parseFloat(searchParams.get('camY') ?? '0') || 0,
+      posZ: parseFloat(searchParams.get('camZ') ?? '0') || 0,
+      lookX: parseFloat(searchParams.get('lookX') ?? '0') || 0,
+      lookY: parseFloat(searchParams.get('lookY') ?? '0') || 0,
+      lookZ: parseFloat(searchParams.get('lookZ') ?? '0') || 0,
+    }
+  }
+
   // ── Version check ─────────────────────────────────────────────────────────
   const needsUpdate = isOutdated(pluginVer)
 

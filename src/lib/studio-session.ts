@@ -45,6 +45,14 @@ export interface StudioSession {
   latestState:     Record<string, unknown> | null
   /** Latest viewport screenshot (base64 PNG) */
   latestScreenshot: string | null
+  /** Live camera position + look direction from Studio */
+  camera: {
+    posX: number; posY: number; posZ: number
+    lookX: number; lookY: number; lookZ: number
+    fov?: number
+  } | null
+  /** Part count in workspace */
+  partCount: number
   /** Pending commands waiting for the plugin to drain */
   commandQueue:    PendingCommand[]
   /** Unix ms of the last poll — enforces rate limit */
@@ -223,6 +231,8 @@ export function createSession(opts: {
     connected:        true,
     latestState:      null,
     latestScreenshot: null,
+    camera:           null,
+    partCount:        0,
     commandQueue:     [],
     lastPollAt:       0,
   }

@@ -1294,8 +1294,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const message = parsed.data.message.trim()
+  const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
   const intent = detectIntent(message)
+
+  // ── Fetch live camera data from Studio if session is connected ──────────
+  let cameraContext = ''
+  if (sessionId) {
+    try {
+      const { getSession: getSess } = await import('@/lib/studio-session')
+      const studioSession = await getSess(sessionId)
+      if (studioSession?.camera) {
+        const c = studioSession.camera
+        cameraContext = `\n\nSTUDIO CONTEXT (live camera from Roblox Studio):
+- Camera position: (${c.posX}, ${c.posY}, ${c.posZ})
+- Looking toward: (${c.lookX}, ${c.lookY}, ${c.lookZ})
+- Parts in workspace: ${studioSession.partCount ?? 'unknown'}
+- Place: ${studioSession.placeName ?? 'Unknown'}
+
+IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${c.lookX}, ${c.posY}, ${c.lookZ}) as the base position so the user can see what you build. Offset from there as needed.`
+      }
+    } catch {
+      // No camera data — that's fine, place at origin
+    }
+  }
 
   // ── Custom user-supplied API key ─────────────────────────────────────────
   const customApiKey  = req.headers.get('x-custom-api-key')?.trim() ?? null
@@ -1310,7 +1332,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT }] },
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
             contents: [{ role: 'user', parts: [{ text: message }] }],
             generationConfig: { maxOutputTokens: 1024 },
           }),
@@ -1430,7 +1452,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: maxTokens,
-        system: FORJEAI_SYSTEM_PROMPT,
+        system: FORJEAI_SYSTEM_PROMPT + cameraContext,
         messages: [{ role: 'user', content: message }],
       })
 
@@ -1498,7 +1520,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT }] },
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
             contents: [{ role: 'user', parts: [{ text: message }] }],
             generationConfig: { maxOutputTokens: maxTokens },
           }),

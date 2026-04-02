@@ -2432,6 +2432,11 @@ export function EditorClient() {
           }
         }
 
+        // Include Studio session ID so AI knows camera position
+        if (studioStatus.sessionId) {
+          chatHeaders['x-studio-session'] = studioStatus.sessionId
+        }
+
         // Fire both in parallel: chat + optional mesh generation
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
@@ -2440,8 +2445,8 @@ export function EditorClient() {
             message: trimmed,
             model: selectedModel,
             gameContext: activeGame
-              ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre }
-              : null,
+              ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre, sessionId: studioStatus.sessionId }
+              : studioStatus.sessionId ? { sessionId: studioStatus.sessionId } : null,
           }),
         })
 

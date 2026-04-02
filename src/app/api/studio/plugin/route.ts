@@ -720,10 +720,35 @@ RunService.Heartbeat:Connect(function()
 	if not authToken then return end
 	local now = tick()
 
-	-- Keepalive heartbeat (every 30 s)
+	-- Keepalive heartbeat + camera data (every 30 s)
 	if now - lastHB >= HB_INTERVAL then
 		lastHB = now
 		task.spawn(function()
+			-- Gather camera info for the web editor
+			local cam = workspace.CurrentCamera
+			local camData = nil
+			if cam then
+				local cf = cam.CFrame
+				local lookAt = cf.Position + cf.LookVector * 50
+				camData = {
+					posX = math.floor(cf.Position.X * 10) / 10,
+					posY = math.floor(cf.Position.Y * 10) / 10,
+					posZ = math.floor(cf.Position.Z * 10) / 10,
+					lookX = math.floor(lookAt.X * 10) / 10,
+					lookY = math.floor(lookAt.Y * 10) / 10,
+					lookZ = math.floor(lookAt.Z * 10) / 10,
+					fov = cam.FieldOfView,
+				}
+			end
+
+			-- Count workspace children for map overview
+			local partCount = 0
+			pcall(function()
+				for _, obj in ipairs(workspace:GetDescendants()) do
+					if obj:IsA("BasePart") then partCount = partCount + 1 end
+				end
+			end)
+
 			local ok, _ = jsonRequest("POST", "/api/studio/update", {
 				sessionId    = sessionId,
 				sessionToken = authToken,
@@ -731,21 +756,40 @@ RunService.Heartbeat:Connect(function()
 				placeName    = placeName,
 				event        = "heartbeat",
 				timestamp    = os.time(),
+				camera       = camData,
+				partCount    = partCount,
 			})
 			if ok then onSuccess() else onFail() end
 		end)
 	end
 
-	-- Command poll (every 1 s)
+	-- Command poll (every 1 s) — includes live camera position
 	if now - lastSync >= SYNC_INTERVAL then
 		lastSync = now
 		task.spawn(function()
+			-- Quick camera snapshot for the sync URL
+			local camQ = ""
+			pcall(function()
+				local cam = workspace.CurrentCamera
+				if cam then
+					local p = cam.CFrame.Position
+					local l = cam.CFrame.LookVector
+					camQ = "&camX=" .. math.floor(p.X)
+						.. "&camY=" .. math.floor(p.Y)
+						.. "&camZ=" .. math.floor(p.Z)
+						.. "&lookX=" .. string.format("%.2f", l.X)
+						.. "&lookY=" .. string.format("%.2f", l.Y)
+						.. "&lookZ=" .. string.format("%.2f", l.Z)
+				end
+			end)
+
 			local ok, data = jsonRequest("GET",
 				"/api/studio/sync"
 				.. "?sessionId=" .. HttpService:UrlEncode(sessionId or "")
 				.. "&token="     .. HttpService:UrlEncode(authToken or "")
 				.. "&pluginVer=" .. HttpService:UrlEncode(PLUGIN_VER)
-				.. "&lastSync="  .. tostring(math.floor(lastSync * 1000)))
+				.. "&lastSync="  .. tostring(math.floor(lastSync * 1000))
+				.. camQ)
 
 			if ok and data then
 				onSuccess()
