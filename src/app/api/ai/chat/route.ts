@@ -25,33 +25,38 @@ function getAnthropicClient(): Anthropic | null {
   return _anthropic
 }
 
-const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI, an expert Roblox game architect. You build PRODUCTION-QUALITY games with proper geometry, materials, lighting, and game systems.
+const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI, a friendly and knowledgeable Roblox game development assistant. You help users plan, learn about, and build Roblox games.
 
-BUILDING RULES:
-- Use WedgeParts for roofs, ramps, angled surfaces
-- Use Cylinders (SpecialMesh with MeshType.Cylinder) for pillars, towers, pipes
-- Use proper materials: Cobblestone for castle walls, WoodPlanks for floors, Slate for roofs, Marble for fancy interiors, Glass for windows, Metal for gates, SmoothRock for cliffs, Granite for paths, Sand for beaches, Mud for swamps, Glacier for ice, Neon for signs/effects
-- Use realistic Color3.fromRGB values: stone(140,130,120) wood(150,110,70) gold(212,175,55) iron(80,80,90) brick(180,90,70) grass(90,140,60) sand(220,200,140)
-- Scale: character=5 studs tall, door=4×7 studs, ceiling height=12 studs, wall thickness=1-2 studs, window=3×4 studs
-- Group everything in named Models: workspace.Castle.Walls, workspace.Castle.Towers, etc.
-- Add PointLights to torches: Brightness=1.5, Range=16, Color=Color3.fromRGB(255,180,80)
-- Add SpotLights for directed beams: Brightness=2, Range=30, Angle=45
-- Anchor ALL static parts (Anchored=true), set CastShadow=true on large structures
-- Use Terrain:FillBlock for ground fill, Terrain:FillBall for hills/craters
-- Wrap ALL code in ChangeHistoryService for undo: local id=CH:TryBeginRecording("Name") ... CH:FinishRecording(id,Enum.FinishRecordingOperation.Commit,{})
+HOW TO BEHAVE:
+- Be conversational and helpful. Answer questions naturally.
+- If the user is just chatting, asking questions, or learning — just TALK. No code needed.
+- Only generate Luau code when the user explicitly asks you to BUILD, CREATE, GENERATE, or MAKE something.
+- When chatting (no build request), keep responses concise — 2-4 sentences max.
+- Never generate code for greetings, questions about features, or general conversation.
 
-RESPONSE FORMAT:
-1. "✓ [Build Name] Complete" header (1 line)
-2. What you built (2-3 sentences, include stud dimensions)
-3. Complete runnable Luau code block — no placeholders, no TODO comments
-4. Stats line: "Parts: X | Tris: ~Y | Performance: Good/OK"
-5. "Tip:" with the next logical build step
+WHEN THE USER ASKS TO BUILD SOMETHING:
+- Use WedgeParts for roofs/ramps, Cylinders for pillars/towers
+- Materials: Cobblestone, WoodPlanks, Slate, Marble, Glass, Metal, SmoothRock, Granite, Sand, Neon
+- Colors: stone(140,130,120) wood(150,110,70) gold(212,175,55) iron(80,80,90) brick(180,90,70)
+- Scale: character=5 studs, door=4×7, ceiling=12 studs, wall=1-2 studs
+- Group in Models: workspace.Castle.Walls, etc.
+- PointLights for torches, SpotLights for beams
+- Anchor static parts, CastShadow=true
+- Wrap in ChangeHistoryService for undo
+- Include complete runnable code — no placeholders
 
-NEVER output placeholder code. ALWAYS include real Color3 values, real material enums, real stud dimensions.`
+BUILD RESPONSE FORMAT:
+1. Brief description (2 sentences)
+2. Complete Luau code block
+3. "Parts: X | Tip: [next step]"
+
+CHAT RESPONSE FORMAT (no build):
+Just respond naturally. No code blocks. No build headers. Just helpful conversation.`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
 type IntentKey =
+  | 'conversation'
   | 'mesh'
   | 'texture'
   | 'terrain'
@@ -69,7 +74,31 @@ type IntentKey =
   | 'fullgame'
   | 'marketplace'
   | 'analysis'
+  | 'chat'
   | 'default'
+
+// Token costs per intent — cheap for conversation, expensive for generation
+const INTENT_TOKEN_COST: Record<IntentKey, number> = {
+  chat: 2,          // Simple conversation
+  default: 5,       // General questions
+  analysis: 5,      // Analyzing existing work
+  script: 10,       // Script help
+  ui: 10,           // UI advice
+  audio: 10,        // Audio advice
+  lighting: 10,     // Lighting advice
+  economy: 10,      // Economy design
+  quest: 10,        // Quest design
+  combat: 10,       // Combat design
+  npc: 15,          // NPC generation
+  vehicle: 15,      // Vehicle generation
+  particle: 15,     // Particle effects
+  building: 20,     // Building generation (Luau code)
+  terrain: 25,      // Terrain generation
+  marketplace: 5,   // Asset search
+  fullgame: 50,     // Full game generation
+  mesh: 100,        // 3D mesh generation (Meshy API)
+  texture: 50,      // Texture generation (Fal.ai)
+}
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
   {
@@ -162,11 +191,25 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
   },
 ]
 
+// Chat patterns — greetings, questions, opinions (no build intent)
+const CHAT_PATTERNS = [
+  /^(hi|hey|hello|sup|yo|what'?s up|howdy|hola)/i,
+  /^(how|what|why|when|where|who|can you|could you|do you|is there|tell me|explain|help me understand)/i,
+  /\?$/,  // Ends with a question mark
+  /^(thanks|thank you|thx|cool|nice|awesome|great|ok|okay|got it|i see|makes sense)/i,
+  /^(i want to|i('d| would) like to|i('m| am) thinking|i('m| am) planning|what if|should i)/i,
+]
+
 function detectIntent(message: string): IntentKey {
+  // Check specific build intents first
   for (const entry of KEYWORD_INTENT_MAP) {
     if (entry.patterns.some((p) => p.test(message))) {
       return entry.intent
     }
+  }
+  // Check if it's just conversation
+  if (CHAT_PATTERNS.some((p) => p.test(message.trim()))) {
+    return 'chat'
   }
   return 'default'
 }
@@ -927,6 +970,12 @@ Token cost: 35 tokens
 
 Tip: Say "fix the EnemyAI performance issue" to get an optimized script.`,
 
+  chat: `Hey! I'm ForjeAI, your Roblox game development assistant. I can help you plan your game, answer questions about Roblox development, or build things directly in Studio when you're ready.
+
+Just tell me what you're working on and I'll help! You can ask me anything about game design, scripting, UI, maps, or say "build me a castle" when you want me to generate code.
+
+Token cost: 2 tokens`,
+
   default: `✓ Request Processed
 
 I've analyzed your input and here's what was generated:
@@ -1328,19 +1377,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
+  const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
   if (anthropic) {
-    // Deduct tokens before calling the AI — outside the inner try so insufficient
-    // balance returns 402 rather than silently falling through to demo mode.
+    // Deduct tokens before calling the AI — cost depends on intent type
     if (!isDemo && authedUserId) {
       try {
-        await spendTokens(authedUserId, 50, 'AI chat request', { prompt: message.slice(0, 100) })
+        await spendTokens(authedUserId, tokenCost, `AI ${intent} request`, { prompt: message.slice(0, 100), intent })
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Token error'
         // Only hard-fail for real balance errors — if DB is unavailable, skip
         // deduction and continue so the chat still works without a database.
         if (errMsg === 'Insufficient token balance') {
           return NextResponse.json(
-            { error: 'insufficient_tokens', balance: 0, required: 50 },
+            { error: 'insufficient_tokens', balance: 0, required: tokenCost },
             { status: 402 },
           )
         }
@@ -1350,9 +1399,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     try {
+      // Chat gets shorter responses, builds get full output
+      const maxTokens = intent === 'chat' ? 512 : intent === 'fullgame' ? 4096 : 2048
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
+        max_tokens: maxTokens,
         system: FORJEAI_SYSTEM_PROMPT,
         messages: [{ role: 'user', content: message }],
       })
@@ -1391,7 +1442,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       return NextResponse.json({
         message: responseText,
-        tokensUsed,
+        tokensUsed: tokenCost, // Report the charged cost, not raw API tokens
         intent,
         model: aiResponse.model,
         ...(mcpResult  ? { mcpResult }  : {}),
