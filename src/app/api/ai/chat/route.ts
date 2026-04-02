@@ -499,7 +499,24 @@ async function freeModelTwoPass(
   let executedInStudio = false
 
   if (isBuildIntent) {
-    const codePrompt = CODE_GENERATION_PROMPT + (cameraContext ? '\n\nSTUDIO CONTEXT:\n' + cameraContext : '')
+    // Use a SHORT focused prompt for Pass 2 — the full CODE_GENERATION_PROMPT is 2900+ lines
+    // which overwhelms free models. This compact version gets reliable code output.
+    const codePrompt = `You are a Roblox Luau code generator for Edit Mode. Output ONLY a \`\`\`lua code block.
+
+RULES:
+- Use ChangeHistoryService:TryBeginRecording/FinishRecording for undo
+- Place relative to camera: local cam=workspace.CurrentCamera; local sp=cam.CFrame.Position+cam.CFrame.LookVector*25
+- Raycast down for ground: local ray=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)); local groundY=ray and ray.Position.Y or 0
+- Group in a Model, set PrimaryPart, parent to workspace
+- Use REAL materials: Enum.Material.Slate, .Granite, .WoodPlanks, .Glass, .Metal, .Marble, .Cobblestone, .Neon, .Brick, .SmoothPlastic
+- Use REALISTIC colors: Color3.fromRGB(r,g,b) — stone grays, warm browns, NOT bright primary colors
+- Minimum 10 parts per build. Add architectural detail: window frames, trim, steps, columns
+- Doors: 4x7 studs. Windows: 4x4. Wall thickness: 1.5 studs. Ceiling height: 12 studs
+- Character is 5.5 studs tall
+- Add PointLights for atmosphere
+- Tag with CollectionService:AddTag(model,"ForjeAI")
+- Select result: game:GetService("Selection"):Set({model})
+` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
     const buildInstruction = `Build this: ${message}
 
 RESPOND WITH ONLY A SINGLE \`\`\`lua CODE BLOCK. NO TEXT BEFORE OR AFTER THE CODE BLOCK.
