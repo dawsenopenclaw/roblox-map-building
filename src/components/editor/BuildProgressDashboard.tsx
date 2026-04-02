@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useResponsiveStandalone } from '@/components/ui/ResponsiveLayout'
+import { announceToScreenReader } from '@/lib/a11y'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,7 +157,15 @@ function formatTime(secs: number): string {
 
 function OverallProgressBar({ pct }: { pct: number }) {
   return (
-    <div className="relative h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+    <div
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={`Build progress: ${pct}%`}
+      className="relative h-1.5 rounded-full overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.06)' }}
+    >
       <motion.div
         className="absolute inset-y-0 left-0 rounded-full"
         style={{
@@ -294,6 +304,7 @@ function CompleteCard({ summary, onDismiss }: { summary?: string; onDismiss: () 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export function BuildProgressDashboard({ buildId, onComplete, onCancel }: BuildProgressProps) {
+  const { isMobile } = useResponsiveStandalone()
   const [status, setStatus] = useState<BuildStatus | null>(null)
   const [visible, setVisible] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -310,7 +321,10 @@ export function BuildProgressDashboard({ buildId, onComplete, onCancel }: BuildP
         completedRef.current = true
         if (intervalRef.current) clearInterval(intervalRef.current)
         if (data.status === 'complete') {
+          announceToScreenReader('Build complete! Your game is ready.')
           onComplete?.(data.summary)
+        } else {
+          announceToScreenReader('Build failed. Please try again.')
         }
       }
     } catch {

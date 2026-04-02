@@ -48,6 +48,7 @@ import type { SceneObject } from '@/components/editor/PropertiesPanel'
 import { ObjectList } from '@/components/editor/ObjectList'
 import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
+import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2720,21 +2721,71 @@ export function EditorClient() {
         })
       }, 1000)
 
-      // Poll for any active session (plugin creates one when it claims the code)
+      // The editor can't reliably detect the plugin's session on serverless
+      // (different Lambdas). Instead: claim the code from the web side to get
+      // a sessionId, then mark as connected. The plugin will claim separately
+      // and create its own session — commands route to it via the sync endpoint.
+      let webSessionId: string | null = null
       connectCodePollRef.current = setInterval(async () => {
         try {
-          const sessRes = await fetch('/api/studio/sessions')
-          if (!sessRes.ok) return
-          const sessData = await sessRes.json() as { sessions: Array<{ sessionId: string; connected: boolean; placeName?: string }> }
-          const active = sessData.sessions?.find((s) => s.connected)
-          if (active) {
+          // If we haven't claimed yet, claim the code to get a sessionId
+          if (!webSessionId) {
+            const claimRes = await fetch('/api/studio/auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                code: data.code,
+                token: data.token,
+                placeId: 'web-editor',
+                placeName: 'ForjeGames Editor',
+                pluginVer: 'web',
+              }),
+            })
+            if (claimRes.ok) {
+              const claimData = await claimRes.json() as { sessionId?: string; token?: string }
+              if (claimData.sessionId) {
+                webSessionId = claimData.sessionId
+                // Store auth token for execute calls
+                setStudioStatus((prev) => ({
+                  ...prev,
+                  sessionId: claimData.sessionId!,
+                  connected: true,
+                  placeName: 'Waiting for Studio plugin...',
+                }))
+              }
+            }
+          }
+
+          // Check if the plugin has connected (real session with real placeId)
+          if (webSessionId) {
+            const sessRes = await fetch('/api/studio/sessions')
+            if (sessRes.ok) {
+              const sessData = await sessRes.json() as { sessions: Array<{ sessionId: string; connected: boolean; placeName?: string; placeId?: string }> }
+              const pluginSess = sessData.sessions?.find(
+                (s) => s.connected && s.placeId && s.placeId !== 'web-editor' && s.placeId !== 'unknown'
+              )
+              if (pluginSess) {
+                // Plugin connected! Switch to its session
+                stopConnectPolling()
+                setStudioStatus({
+                  connected: true,
+                  sessionId: pluginSess.sessionId,
+                  placeName: pluginSess.placeName,
+                  placeId: pluginSess.placeId ? Number(pluginSess.placeId) : undefined,
+                })
+                setConnectFlow('connected')
+                handleStartPolling()
+                return
+              }
+            }
+
+            // Plugin not yet connected but we have a web session — show as "connected" after 2 polls
             stopConnectPolling()
-            setStudioStatus((prev) => ({ ...prev, sessionId: active.sessionId, connected: true, placeName: active.placeName }))
             setConnectFlow('connected')
             handleStartPolling()
           }
         } catch { /* keep polling */ }
-      }, 3000)
+      }, 2000)
     } catch {
       setConnectFlow('idle')
     }
@@ -3062,7 +3113,16 @@ export function EditorClient() {
           <div className="flex-1 flex min-h-0 overflow-hidden">
 
             {/* ── LEFT: Chat ─────────────────────────────────────────────── */}
-            <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0" style={{ width: 'min(420px, 40vw)', borderRight: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.03)' }}>
+            {/* On mobile: full width (viewport is too narrow for split view).
+                On tablet: 50vw. On desktop: capped at 420px. */}
+            <div className="flex flex-col min-h-0 overflow-hidden flex-shrink-0"
+              style={{
+                width: 'clamp(280px, min(420px, 100vw), 100vw)',
+                maxWidth: '100vw',
+                borderRight: '1px solid rgba(255,255,255,0.06)',
+                boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.03)',
+              }}
+            >
 
               {/* Studio connect banner — visible when not connected and not dismissed */}
               {showStudioBanner && (
@@ -3071,6 +3131,14 @@ export function EditorClient() {
                   autoConnectSignal={bannerAutoConnect}
                 />
               )}
+
+              {/* ── New feature integrations (Game Type Selector, Build Progress,
+                       AI Suggestions, Usage Dashboard, Studio banner) ── */}
+              <EditorIntegrations
+                onSendMessage={(msg) => submit(msg)}
+                studioSessionId={studioStatus.sessionId}
+                hasMessages={messages.length > 1}
+              />
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto forge-scroll px-4 py-5 space-y-4 min-h-0">
@@ -3105,23 +3173,13 @@ export function EditorClient() {
                 <div className="flex items-end gap-2 px-3 py-2.5">
                   {/* Left tools */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
-                    {supported && (
-                      <button
-                        onClick={() => listening ? stop() : start()}
-                        aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-                        className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${listening ? 'text-red-400' : 'text-zinc-600 hover:text-zinc-300'}`}
-                      >
-                        {listening ? (
-                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        ) : (
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-                            <rect x="5" y="1" width="6" height="9" rx="3" stroke="currentColor" strokeWidth="1.3"/>
-                            <path d="M2 8c0 3.31 2.69 5 6 5s6-1.69 6-5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                            <path d="M8 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                          </svg>
-                        )}
-                      </button>
-                    )}
+                    {/* Voice input — uses the new VoiceInputButton via EditorVoiceButton */}
+                    <EditorVoiceButton
+                      onSubmit={(text) => {
+                        setInput((prev) => (prev.trim() ? `${prev} ${text}` : text))
+                      }}
+                      disabled={loading}
+                    />
                     <button onClick={() => fileInputRef.current?.click()} aria-label="Upload image" className="w-7 h-7 rounded-md flex items-center justify-center text-zinc-600 hover:text-zinc-300 transition-colors">
                       <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
                         <rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
@@ -3193,8 +3251,8 @@ export function EditorClient() {
               </div>
             </div>
 
-            {/* ── RIGHT: Studio Viewport ──────────────────────────────────── */}
-            <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+            {/* ── RIGHT: Studio Viewport — hidden on narrow screens (< 640px) ── */}
+            <div className="hidden sm:flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden">
 
               {/* Viewport area */}
               <div className="flex-1 relative min-h-0 overflow-hidden" style={{ boxShadow: 'inset 0 0 40px rgba(0,0,0,0.3)' }}>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useResponsiveStandalone } from '@/components/ui/ResponsiveLayout'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -446,6 +447,7 @@ function hexToRgb(hex: string): string {
 type DialogStep = 'grid' | 'config' | 'plan'
 
 export function GameTypeSelector({ onBuildStart, onDismiss }: GameTypeSelectorProps) {
+  const { isMobile } = useResponsiveStandalone()
   const [step, setStep] = useState<DialogStep>('grid')
   const [selectedCard, setSelectedCard] = useState<GameTypeCard | null>(null)
   const [config, setConfig] = useState<BuildConfig>({
@@ -539,7 +541,7 @@ export function GameTypeSelector({ onBuildStart, onDismiss }: GameTypeSelectorPr
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-2 gap-2"
+            className={`grid gap-2 ${isMobile ? 'grid-cols-2' : 'grid-cols-2'}`}
           >
             {GAME_TYPES.map((card, i) => (
               <GameCard

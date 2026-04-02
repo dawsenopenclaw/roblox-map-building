@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppTopNav } from '@/components/AppTopNav'
 import { AchievementToastProvider } from '@/components/AchievementToast'
+import { ResponsiveProvider } from '@/components/ui/ResponsiveLayout'
 import dynamic from 'next/dynamic'
 
 const CommandPalette = dynamic(
@@ -124,24 +125,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // /editor renders its own full-screen layout — no wrapper chrome
   if (isNewEditor) {
-    return <>{children}</>
+    return (
+      <ResponsiveProvider>
+        {children}
+      </ResponsiveProvider>
+    )
   }
 
   return (
-    <AppChrome
-      sidebarOpen={sidebarOpen}
-      paletteOpen={paletteOpen}
-      shortcutsOpen={shortcutsOpen}
-      onSidebarOpen={() => setSidebarOpen(true)}
-      onSidebarClose={() => setSidebarOpen(false)}
-      onSidebarToggle={() => setSidebarOpen((v) => !v)}
-      onPaletteOpen={() => setPaletteOpen(true)}
-      onPaletteClose={() => setPaletteOpen(false)}
-      onShortcutsOpen={() => setShortcutsOpen(true)}
-      onShortcutsClose={() => setShortcutsOpen(false)}
-      onNewProject={handleNewProject}
-    >
-      {children}
-    </AppChrome>
+    <ResponsiveProvider>
+      <AppChrome
+        sidebarOpen={sidebarOpen}
+        paletteOpen={paletteOpen}
+        shortcutsOpen={shortcutsOpen}
+        onSidebarOpen={() => setSidebarOpen(true)}
+        onSidebarClose={() => setSidebarOpen(false)}
+        onSidebarToggle={() => setSidebarOpen((v) => !v)}
+        onPaletteOpen={() => setPaletteOpen(true)}
+        onPaletteClose={() => setPaletteOpen(false)}
+        onShortcutsOpen={() => setShortcutsOpen(true)}
+        onShortcutsClose={() => setShortcutsOpen(false)}
+        onNewProject={handleNewProject}
+      >
+        {children}
+      </AppChrome>
+    </ResponsiveProvider>
   )
 }

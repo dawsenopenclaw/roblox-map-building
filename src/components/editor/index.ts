@@ -33,3 +33,10 @@ export type { AISuggestionsProps } from './AISuggestions'
 
 export { UsageDashboard } from './UsageDashboard'
 export type { UsageDashboardProps } from './UsageDashboard'
+
+export { EditorIntegrations, EditorVoiceButton, useBuildPhase } from './EditorIntegrations'
+export type { EditorIntegrationsProps, UseBuildPhaseReturn } from './EditorIntegrations'
+
+export { FeatureErrorBoundary } from './FeatureErrorBoundary'
+
+export { SkeletonCard, SkeletonList, SkeletonProgress, EmptyState, ErrorState } from './LoadingStates'

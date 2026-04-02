@@ -95,6 +95,7 @@ function SuggestionCard({
           {/* Accept button */}
           <button
             onClick={onAccept}
+            aria-label={`Build: ${suggestion.title}`}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110 active:scale-95"
             style={{
               background: style.bg,
@@ -102,7 +103,7 @@ function SuggestionCard({
               color: style.color,
             }}
           >
-            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3">
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-3 h-3" aria-hidden="true">
               <path d="M2 6h8M7 3l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Build this

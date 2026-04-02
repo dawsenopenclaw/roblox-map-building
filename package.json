@@ -2,6 +2,7 @@
   "name": "forjegames",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "main": "electron/main.js",
   "workspaces": [
     "apps/*",
@@ -11,6 +12,8 @@
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
     "dev:web": "next dev --turbo",
     "dev:api": "npm run dev --workspace=apps/api",
+    "dev:full": "node scripts/start-dev.js",
+    "predev": "node scripts/check-deps.js",
     "postinstall": "prisma generate",
     "build": "next build",
     "build:web": "next build",
