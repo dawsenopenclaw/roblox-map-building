@@ -19,13 +19,13 @@ const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET ||
 
 // ── Claimed code store (Redis-backed for serverless, in-memory fallback) ────
 // Key: code → { sessionId, placeName, placeId, claimedAt }
-const claimedCodes = new Map<string, { sessionId: string; placeName: string; placeId: string; claimedAt: number }>()
+const claimedCodes = new Map<string, { sessionId: string; placeName: string; placeId: string; claimedAt: number; jwt?: string }>()
 
-async function markCodeClaimed(code: string, data: { sessionId: string; placeName: string; placeId: string }) {
+async function markCodeClaimed(code: string, data: { sessionId: string; placeName: string; placeId: string; jwt?: string }) {
   claimedCodes.set(code, { ...data, claimedAt: Date.now() })
   // Also persist to Redis so other Lambdas can see it
   try {
-    const { redis } = await import('@/lib/redis') as { redis: { set: (k: string, v: string, m: string, t: number) => Promise<unknown> } }
+    const { redis } = await import('@/lib/redis') as { redis: { set: (k: string, v: string, m: string, t: number) => Promise<unknown> } | null }
     if (redis) await redis.set(`fj:studio:code:${code}`, JSON.stringify({ ...data, claimedAt: Date.now() }), 'EX', 600)
   } catch { /* ignore */ }
 }
@@ -131,6 +131,7 @@ export async function GET(req: NextRequest) {
           sessionId: claim.sessionId,
           placeName: claim.placeName,
           placeId: claim.placeId,
+          jwt: claim.jwt ?? null,
         },
         { status: 200, headers: CORS },
       )
@@ -227,7 +228,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Mark code as claimed so status endpoint can report it
-  await markCodeClaimed(code, { sessionId, placeName, placeId })
+  // Include JWT so the website can retrieve it when polling status
+  await markCodeClaimed(code, { sessionId, placeName, placeId, jwt: jwtToken })
 
   return NextResponse.json(
     { token: jwtToken, sessionId, expiresAt },

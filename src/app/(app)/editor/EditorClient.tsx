@@ -120,6 +120,8 @@ interface StudioStatus {
   screenshotUrl?: string
   lastActivity?: string
   sessionId?: string
+  /** JWT token returned by /api/studio/auth — used to authenticate execute/sync calls */
+  jwt?: string
 }
 
 interface StudioActivity {
@@ -1553,7 +1555,7 @@ const MessageTimestamp = memo(function MessageTimestamp({ ts }: { ts: Date }) {
 
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
-const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
+const Message = memo(function Message({ msg, studioConnected, studioSessionId, studioJwt }: { msg: ChatMessage; studioConnected?: boolean; studioSessionId?: string; studioJwt?: string }) {
   const [showTs, setShowTs] = useState(false)
 
   if (msg.role === 'system') {
@@ -1656,9 +1658,13 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
     )
   }
 
-  // assistant — strip any residual [SUGGESTIONS] blocks before rendering
+  // assistant — strip suggestions, JSON metadata, and other non-display content
   const displayContent = msg.content
-    .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/gi, '')
+    .replace(/\[SUGGESTIONS\][\s\S]*?(?:\[\/SUGGESTIONS\]|$)/gi, '')
+    .replace(/[,\s]*"?tokensUsed"?\s*:\s*\d[\s\S]*$/m, '')
+    .replace(/\s*\{[^{}]*"tokensUsed"[^{}]*\}\s*$/m, '')
+    .replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '')
+    .replace(/\s*[}\]]\s*$/, '')
     .trim()
 
   const modelColor = MODELS.find((m) => m.id === msg.model)?.color ?? '#FFB81C'
@@ -1707,7 +1713,7 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
           </p>
         </div>
         {/* Marketplace-first build result card */}
-        {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
+        {msg.buildResult && <BuildResultCard result={msg.buildResult} studioConnected={studioConnected} studioSessionId={studioSessionId} studioJwt={studioJwt} />}
         {/* Code preview — shown when a build result has Luau code */}
         {msg.buildResult?.luauCode && (
           <CodePreview code={msg.buildResult.luauCode} />
@@ -2761,17 +2767,28 @@ export function EditorClient() {
         tokensUsed = data.tokensUsed ?? tokensUsed
         const buildResult = data.buildResult
 
-        // Parse [SUGGESTIONS] block from message text, strip from display
+        // Clean AI response — strip suggestions blocks, JSON metadata, code fences
         let inlineSuggestions: string[] = []
         if (responseText) {
-          const suggMatch = responseText.match(/\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/i)
-          if (suggMatch) {
-            inlineSuggestions = suggMatch[1]
-              .split('\n')
-              .map((s) => s.replace(/^[-•*]\s*/, '').trim())
-              .filter(Boolean)
+          // 1. Strip [SUGGESTIONS]...[/SUGGESTIONS] (with closing tag)
+          const suggMatch1 = responseText.match(/\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/i)
+          if (suggMatch1) {
+            inlineSuggestions = suggMatch1[1].split('\n').map((s) => s.replace(/^[-•*]\s*/, '').trim()).filter((s) => s.length > 0 && s.length < 120)
             responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/i, '').trim()
           }
+          // 2. Strip [SUGGESTIONS]...(end of string) (no closing tag)
+          const suggMatch2 = responseText.match(/\[SUGGESTIONS\]([\s\S]*)$/i)
+          if (suggMatch2) {
+            const parsed = suggMatch2[1].split('\n').map((s) => s.replace(/^[-•*]\s*/, '').trim()).filter((s) => s.length > 0 && s.length < 120 && !s.startsWith('{'))
+            if (parsed.length > 0 && inlineSuggestions.length === 0) inlineSuggestions = parsed
+            responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*$/i, '').trim()
+          }
+          // 3. Strip any trailing JSON metadata blob like ","tokensUsed":0,...}
+          responseText = responseText.replace(/[,\s]*"?(?:tokensUsed|"tokensUsed")["\s]*:\s*\d[\s\S]*$/m, '').trim()
+          // 4. Strip any full JSON object at end of message { "tokensUsed": ... }
+          responseText = responseText.replace(/\s*\{[^{}]*"tokensUsed"[^{}]*\}\s*$/m, '').trim()
+          // 5. Strip orphaned closing braces/brackets
+          responseText = responseText.replace(/\s*[}\]]\s*$/, '').trim()
         }
 
         // Store suggestions — prefer API field, fall back to inline block
@@ -2887,7 +2904,7 @@ export function EditorClient() {
             ])
             fetch('/api/studio/execute', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 'Content-Type': 'application/json', ...(studioStatus.jwt ? { 'Authorization': `Bearer ${studioStatus.jwt}` } : {}) },
               body: JSON.stringify({ code: luauToExecute, prompt: trimmed, sessionId: studioStatus.sessionId }),
             })
               .then((r) => {
@@ -3282,6 +3299,10 @@ export function EditorClient() {
     if (connectTimerRef.current)    { clearInterval(connectTimerRef.current);    connectTimerRef.current = null }
   }, [])
 
+  // Stores the code + signed token from the last generate call so confirmStudioConnected
+  // can look up the real sessionId created by the plugin's claim.
+  const pendingConnectRef = useRef<{ code: string; token: string } | null>(null)
+
   const handleConnectToStudio = useCallback(async () => {
     setConnectFlow('generating')
     try {
@@ -3290,6 +3311,8 @@ export function EditorClient() {
       const data = await res.json() as { code: string; token?: string }
       setConnectCode(data.code)
       setConnectTimer(300)
+      // Stash the signed token so confirmStudioConnected can retrieve the real sessionId
+      pendingConnectRef.current = { code: data.code, token: data.token ?? '' }
       setConnectFlow('code')
 
       // Countdown timer
@@ -3304,26 +3327,95 @@ export function EditorClient() {
         })
       }, 1000)
 
-      // The editor can't reliably detect the plugin's session on serverless
-      // (different Lambdas). Instead: claim the code from the web side to get
-      // a sessionId, then mark as connected. The plugin will claim separately
-      // and create its own session — commands route to it via the sync endpoint.
-      let webSessionId: string | null = null
-      // No auto-claim — just show the code and wait for user to confirm
+      // Poll for the plugin claiming the code. On serverless, the status poll may
+      // miss the claim (different Lambda). So we also include the JWT if available.
+      connectCodePollRef.current = setInterval(async () => {
+        try {
+          const code = pendingConnectRef.current?.code
+          if (!code) return
+          const statusRes = await fetch(`/api/studio/auth?action=status&code=${code}`)
+          if (!statusRes.ok) return
+          const statusData = await statusRes.json() as { status: string; claimed: boolean; sessionId?: string; placeName?: string; placeId?: string; jwt?: string }
+          if (statusData.claimed && statusData.sessionId) {
+            stopConnectPolling()
+            setStudioStatus({
+              connected: true,
+              sessionId: statusData.sessionId,
+              placeName: statusData.placeName ?? 'Roblox Studio',
+              jwt: statusData.jwt ?? undefined,
+            })
+            setConnectFlow('connected')
+            pendingConnectRef.current = null
+          }
+        } catch {
+          // Network error during polling — ignore, keep trying
+        }
+      }, 2000)
     } catch {
       setConnectFlow('idle')
     }
   }, [stopConnectPolling, handleStartPolling])
 
-  // User confirms they connected the plugin in Studio
-  const confirmStudioConnected = useCallback(() => {
+  // User manually clicks "I'm connected" — create a session via POST claim
+  // Since Vercel serverless Lambdas don't share memory, status polling across
+  // Lambdas fails. Instead, we POST claim the code ourselves to get a JWT.
+  const confirmStudioConnected = useCallback(async () => {
     stopConnectPolling()
+    const pending = pendingConnectRef.current
+    let realSessionId: string | null = null
+    let realPlaceName: string | undefined
+    let jwt: string | undefined
+
+    // Try status first (works if same Lambda handled the plugin's claim)
+    if (pending?.code) {
+      try {
+        const statusRes = await fetch(`/api/studio/auth?action=status&code=${pending.code}`)
+        if (statusRes.ok) {
+          const d = await statusRes.json() as { claimed: boolean; sessionId?: string; placeName?: string; jwt?: string }
+          if (d.claimed && d.sessionId) {
+            realSessionId = d.sessionId
+            realPlaceName = d.placeName
+            jwt = d.jwt ?? undefined
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // If status poll missed (different Lambda), claim the code directly
+    // to create our own session with a fresh JWT
+    if (!realSessionId && pending?.code && pending?.token) {
+      try {
+        const claimRes = await fetch('/api/studio/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: pending.code,
+            token: pending.token,
+            placeId: 'web-connect',
+            placeName: 'Roblox Studio',
+            pluginVer: '4.1.0',
+          }),
+        })
+        if (claimRes.ok) {
+          const d = await claimRes.json() as { token?: string; sessionId?: string }
+          if (d.sessionId) {
+            realSessionId = d.sessionId
+            jwt = d.token
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    if (!realSessionId) realSessionId = 'manual-' + Date.now()
+
     setStudioStatus({
       connected: true,
-      sessionId: 'manual-' + Date.now(),
-      placeName: 'Roblox Studio',
+      sessionId: realSessionId,
+      placeName: realPlaceName ?? 'Roblox Studio',
+      jwt: jwt,
     })
     setConnectFlow('connected')
+    pendingConnectRef.current = null
   }, [stopConnectPolling])
 
   // Clean up on unmount
@@ -3712,7 +3804,7 @@ export function EditorClient() {
                   />
                 )}
                 {messages.map((msg) => (
-                  <Message key={msg.id} msg={msg} />
+                  <Message key={msg.id} msg={msg} studioConnected={studioConnected} studioSessionId={studioStatus.sessionId} studioJwt={studioStatus.jwt} />
                 ))}
                 <div ref={chatEndRef} />
               </div>
@@ -4096,6 +4188,7 @@ export function EditorClient() {
                 <AIContextPanel
                   studioConnected={studioConnected}
                   studioContext={null}
+                  onSendToChat={(msg) => submit(msg)}
                 />
 
                 {/* Legacy panels removed — viewport is always visible now */}

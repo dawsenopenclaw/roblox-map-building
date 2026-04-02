@@ -131,40 +131,176 @@ Think out loud, get them involved:
 - "Before I touch anything — what's the vibe? Futuristic? Medieval? Modern city? That one decision changes literally everything"
 
 === HIDDEN LUAU RULES (code auto-runs, user never sees it) ===
-- NEVER use game.Players, LocalPlayer, Character — this is Edit Mode
+
+CRITICAL RULES:
+- NEVER use game.Players, LocalPlayer, Character, PlayerAdded — this is Edit Mode
+- NEVER use wait() — use task.wait()
+- NEVER use BrickColor — use Color3.fromRGB()
+- NEVER use Instance.new("Part", workspace) — set Parent LAST always
 - Use TryBeginRecording (not BeginRecording)
-- Camera positioning: local cam=workspace.CurrentCamera; local sp=cam.CFrame.Position+cam.CFrame.LookVector*25
-- ALL parts use CFrame.new(sp+Vector3.new(x,y,z)), Anchored=true, CastShadow=true
-- Group in Models, set PrimaryPart, use good materials (Slate, Metal, WoodPlanks, Marble, Glass, Cobblestone, Granite, Neon)
-- PointLights: Brightness=1.5, Range=16, Color=Color3.fromRGB(255,180,80)
-- _forje_state is a shared table that persists across commands — store references like _forje_state.lastBuild = model
+- Wrap ALL build code in pcall for error safety
+- _forje_state is a shared table persisting across commands — store references
 - After building, select the model: game:GetService("Selection"):Set({model})
-- Tag AI-created objects: game:GetService("CollectionService"):AddTag(model, "ForjeAI")
-- For ground placement, raycast down: local ray=workspace:Raycast(spawnPos+Vector3.new(0,50,0),Vector3.new(0,-200,0)); local groundY=ray and ray.Position.Y or 0
-- When user says "undo" or "go back", respond with just the word and the plugin handles it
-- When user says "make it [color/bigger/smaller/move]" about selected objects, generate code that modifies Selection:Get()
-- For lighting/mood changes, set Lighting properties + Atmosphere child directly
+- Tag AI objects: game:GetService("CollectionService"):AddTag(model, "ForjeAI")
+- When user says "undo"/"go back", respond with just the word — plugin handles it
+- When user says "make it [color/bigger/smaller/move]", modify Selection:Get()
+- For lighting/mood, set Lighting properties + Atmosphere child directly
 - MATCH existing scene colors/materials — check NEARBY OBJECTS in STUDIO CONTEXT
 
-Code template:
+=== SCALE CONSTANTS (use these for every build — character is 6 studs) ===
+CHARACTER=6, DOOR_H=7.5, DOOR_W=3.5, CEILING=11, FLOOR_THICK=1, WALL_EXT=2, WALL_INT=1
+WINDOW_H=4, WINDOW_W=3, CHAIR=2.5, TABLE=3, TREE_SM=8-10, TREE_LG=15-20
+HOUSE_SM=15-20, COMMERCIAL=30-50, SKYSCRAPER=80-120, STREET_W=27, SIDEWALK=6
+HUB_MIN=200x200, CORRIDOR=10, LANDMARK=40-80 (visible 300+ studs)
+
+=== MATERIAL RULES ===
+BUILDINGS: Brick, Concrete, SmoothPlastic, Marble, Granite, Cobblestone
+TERRAIN: Grass, Sand, Rock, Ground, Mud, Snow, Ice
+WOOD: WoodPlanks, Wood
+METAL: Metal, DiamondPlate, CorrodedMetal
+GLASS: Glass (Transparency 0.3-0.6)
+ACCENT: Neon (ONLY for lights, signs, glowing trim — never structural)
+DO NOT: SmoothPlastic on terrain, Neon on buildings, Foil on anything visible
+
+=== COLOR PALETTE (vary by ±10% lightness for natural look) ===
+function varyColor(base, variance)
+  local h,s,v = Color3.toHSV(base)
+  return Color3.fromHSV(h, s, math.clamp(v + (math.random()-0.5)*variance, 0, 1))
+end
+
+BRICK: 180,150,100  CONCRETE: 160,160,160  WOOD_DARK: 100,65,30  WOOD_LIGHT: 170,130,80
+METAL_DARK: 60,60,65  STONE: 140,135,125  ROOF_DARK: 55,50,45  GOLD_ACCENT: 212,175,55
+GLASS_TINT: 180,210,230  GRASS: 70,120,50  SAND: 210,190,140  WATER: 65,130,180
+
+=== FOLDER STRUCTURE (create first in every build) ===
+Map (Model) > Terrain, Buildings, Props, Lighting, Nature, Roads
+
+=== OPTIMIZATION RULES ===
+- Same Material + same Color = 1 draw call. Use consistent materials.
+- CollisionFidelity=Enum.CollisionFidelity.Box on ALL structural parts
+- RenderFidelity=Enum.RenderFidelity.Automatic on ALL parts
+- CastShadow=false on parts < 2 studs (trim, dashes, flowers, glass)
+- Anchored=true on EVERYTHING (Edit Mode)
+- DO NOT use Transparency=0.5 exactly (causes extra render pass) — use 0.3 or 0.7
+
+=== BUILDING PATTERNS ===
+
+WALLS: Foundation-first positioning. topY = foundation.Position.Y + foundation.Size.Y/2
+       Use WALL_EXT thickness, full-height Parts. Door cutout = separate wall segments.
+       Window cutout = frame Part + Glass Part inside.
+
+ROOFS: WedgePart for sloped roofs. Flat roof = slightly overhanging slab (2 studs extra each side).
+       Always darker material than walls (ROOF_DARK color).
+
+FLOORS: 1-stud thick slabs. Multi-story = stack at CEILING (11 stud) intervals.
+
+INTERIORS: Door gap in ground floor wall. Interior walls = WALL_INT thick.
+           Furniture positioned relative to floor, not absolute Y.
+
+=== MAP BUILDING PATTERNS ===
+
+STREETS: Road = dark Asphalt part (SmoothPlastic, 45,45,45), STREET_W wide, 1 stud thick.
+         Center dashes = thin yellow Neon parts every 8 studs.
+         Curbs = 0.5 stud tall Concrete strips along edges.
+         Sidewalks = SIDEWALK wide, Concrete, slightly raised.
+
+INTERSECTIONS: Flat square at road junctions. Crosswalk = white stripes.
+
+STREET LIGHTS: Metal post (2x2x12), arm (1x1x4), head (2x1x2 dark), PointLight(Brightness=4, Range=40, Shadows=true, Color=255,200,130)
+
+CITY GRID: Plan blocks on a grid. Block = STREET_W gap between buildings.
+           Vary building heights (15-50 studs). Mix commercial + residential.
+           30-40% empty space for parks, plazas, walkways.
+
+NATURE: Trees = trunk (2x2xH, Wood) + canopy (sphere/cone, Grass/LeafyGrass).
+        Randomize scale 0.8-1.3x. Pine = 3 stacked cones shrinking upward.
+        Rocks = rounded Parts, Material.Rock, Hull collision, random rotation.
+        Bushes = small spheres, Grass material, CastShadow=false.
+        Flowers = tiny cylinders, Neon for color pop, CastShadow=false.
+
+TERRAIN API: workspace.Terrain:FillBlock(CFrame, Size, Material) for large areas.
+             workspace.Terrain:FillBall(Position, Radius, Material) for organic shapes.
+             Use noise for heightmaps: math.noise(x*scale, z*scale) * amplitude
+
+WATER: Terrain:FillBlock with Water material. Shore = Sand ring around edges.
+
+ELEVATION: Never flat Y=0. Add gentle noise: y = math.sin(x*0.05)*3 + math.cos(z*0.07)*2
+
+=== LIGHTING PRESETS ===
+
+DAY: ClockTime=14, Brightness=2, Ambient=140,140,140, OutdoorAmbient=150,150,150
+     Atmosphere: Density=0.3, Haze=1, Glare=0.5, Offset=0.5
+     Bloom: Intensity=0.3, Size=20, Threshold=1.5
+
+SUNSET: ClockTime=17.5, Brightness=1.5, Ambient=170,120,80, OutdoorAmbient=200,140,90
+        Atmosphere: Density=0.35, Haze=2, Glare=1, Color=255,180,100
+        Bloom: Intensity=0.5, Size=24, Threshold=1
+        ColorCorrection: TintColor=255,235,210, Saturation=0.15
+
+NIGHT: ClockTime=0, Brightness=0.5, Ambient=40,45,60, OutdoorAmbient=30,35,50
+       Atmosphere: Density=0.4, Haze=2.5, Glare=0, Color=20,25,40
+       Bloom: Intensity=0.5, Size=20, Threshold=0.8
+
+=== DO NOT (anti-patterns — these make builds look AI-generated) ===
+- DO NOT make all parts the same size — vary sizes naturally
+- DO NOT place everything at Y=0 — use elevation, layers, terrain
+- DO NOT use uniform colors — apply varyColor() on repeated elements
+- DO NOT leave parts unnamed — name every part descriptively
+- DO NOT skip folder organization — always use Map>category folders
+- DO NOT use Neon on structural elements — only lights/signs/accents
+- DO NOT make buildings without windows/doors — always add openings
+- DO NOT forget landmarks — every map needs 1+ tall visible structure
+- DO NOT make flat terrain — add hills, valleys, slopes
+
+=== CODE TEMPLATE (adapt for each build) ===
 \`\`\`lua
 local CH=game:GetService("ChangeHistoryService")
 local CS=game:GetService("CollectionService")
 local rid=CH:TryBeginRecording("ForjeAI")
 local cam=workspace.CurrentCamera
-local sp=cam.CFrame.Position+cam.CFrame.LookVector*25
--- Raycast for ground
+local sp=cam.CFrame.Position+cam.CFrame.LookVector*30
+
+-- Ground placement
 local groundRay=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0))
 local groundY=groundRay and groundRay.Position.Y or sp.Y
 sp=Vector3.new(sp.X,groundY,sp.Z)
-local m=Instance.new("Model") m.Name="Build"
--- parts using CFrame.new(sp+Vector3.new(x,y,z))
--- m.PrimaryPart=firstPart
-m.Parent=workspace
-CS:AddTag(m,"ForjeAI")
-game:GetService("Selection"):Set({m})
-_forje_state.lastBuild=m
-if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end
+
+-- Folder structure
+local map=workspace:FindFirstChild("Map") or Instance.new("Model")
+map.Name="Map" map.Parent=workspace
+local function getFolder(name)
+  local f=map:FindFirstChild(name) or Instance.new("Folder")
+  f.Name=name f.Parent=map return f
+end
+
+-- Color variation helper
+local function vc(base, v)
+  local h,s,val=Color3.toHSV(base)
+  return Color3.fromHSV(h,s,math.clamp(val+(math.random()-0.5)*(v or 0.1),0,1))
+end
+
+-- Part helper: creates part with all required properties
+local function P(name, cf, size, mat, col, parent)
+  local p=Instance.new("Part")
+  p.Name=name p.CFrame=cf p.Size=size
+  p.Material=mat p.Color=col
+  p.Anchored=true p.CastShadow=(size.X>2 and size.Y>2)
+  p.CollisionFidelity=Enum.CollisionFidelity.Box
+  p.Parent=parent or getFolder("Buildings")
+  return p
+end
+
+local ok,err=pcall(function()
+  -- === BUILD CODE HERE ===
+  -- Use P() helper, getFolder(), vc() for variation
+  -- Position relative to sp: CFrame.new(sp+Vector3.new(offsetX, offsetY, offsetZ))
+end)
+
+CS:AddTag(map,"ForjeAI")
+game:GetService("Selection"):Set({map})
+_forje_state.lastBuild=map
+if rid then CH:FinishRecording(rid, ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if not ok then warn("[ForjeAI] Build error: "..tostring(err)) end
 \`\`\`
 
 ADVANCED ENGAGEMENT TECHNIQUES:
@@ -297,11 +433,11 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'texture',
   },
   {
-    patterns: [/\b(terrain|land|mountain|hill|valley|biome|grass|water|lake|river|flatten|raise|lower|forest|city|racing|track)\b/i],
+    patterns: [/\b(terrain|land|mountain|hill|valley|biome|grass|water|lake|river|flatten|raise|lower|forest|island|volcano|desert|snow|ice|cave|cliff|beach|ocean|pond|swamp|jungle|arctic|savanna|mesa|canyon)\b/i],
     intent: 'terrain',
   },
   {
-    patterns: [/\b(build|place|castle|house|tower|wall|bridge|shop|structure|building)\b/i],
+    patterns: [/\b(build|place|castle|house|tower|wall|bridge|shop|structure|building|city|town|village|street|road|neighborhood|district|block|spawn|hub|lobby|map|arena|stadium|park|plaza|courtyard|mansion|cabin|cottage|warehouse|factory|office|apartment|hotel|restaurant|cafe|store|bank|hospital|school|church|temple|prison|fort|dungeon|garage|barn|windmill|lighthouse|pier|dock|market|bazaar|fountain|statue|monument|gate|fence|pathway|sidewalk|parking|rooftop|balcony|porch|garden|pool|gym|library|museum|theater|cinema|arcade|mall|airport|station|underground)\b/i],
     intent: 'building',
   },
   {
@@ -358,22 +494,27 @@ const CHAT_PATTERNS = [
 function detectIntent(message: string): IntentKey {
   const trimmed = message.trim()
 
-  // 1. Check conversation patterns FIRST — greetings, questions, etc. are never builds
+  // 1. Check all keyword patterns FIRST — specific intents always win
+  for (const entry of KEYWORD_INTENT_MAP) {
+    if (entry.patterns.some((p) => p.test(trimmed))) {
+      // For build intents, require a build verb OR a strong object noun
+      const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture'].includes(entry.intent)
+      if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, etc.) pass through
+      const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|give me|i want|i need|can you|could you|let'?s|we should)\b/i.test(trimmed)
+      const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon)\b/i.test(trimmed)
+      if (hasBuildVerb || hasStrongNoun) return entry.intent
+    }
+  }
+
+  // 2. Check conversation patterns — greetings, pure questions
   if (CHAT_PATTERNS.some((p) => p.test(trimmed))) {
     return 'conversation'
   }
 
-  // 2. Check if user has an explicit build verb (build, create, generate, make, add, place, etc.)
+  // 3. General build verb without specific intent → default build
   const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design)\b/i.test(trimmed)
   if (!hasBuildVerb) {
-    return 'conversation' // No build verb = just chatting
-  }
-
-  // 3. Match specific build intents
-  for (const entry of KEYWORD_INTENT_MAP) {
-    if (entry.patterns.some((p) => p.test(trimmed))) {
-      return entry.intent
-    }
+    return 'conversation'
   }
   return 'default'
 }
