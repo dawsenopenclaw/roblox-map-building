@@ -2274,6 +2274,8 @@ export function EditorClient() {
   const [activePanel, setActivePanel] = useState<PanelId>(null)
   const [sceneBlocks, setSceneBlocks] = useState<SceneBlock[]>([])
   const [totalTokens, setTotalTokens] = useState(0)
+  const [suggestedReplies, setSuggestedReplies] = useState<string[]>([])
+  const [buildCount, setBuildCount] = useState(0)
 
   // ─── Properties editor state ───────────────────────────────────────────────
   const [sceneObjects, setSceneObjects] = useState<SceneObject[]>([])
@@ -2530,10 +2532,19 @@ export function EditorClient() {
           message?: string
           tokensUsed?: number
           buildResult?: BuildResult
+          suggestions?: string[]
+          executedInStudio?: boolean
         }
         responseText = data.message ?? getDemoResponse(trimmed)
         tokensUsed = data.tokensUsed ?? tokensUsed
         const buildResult = data.buildResult
+
+        // Store suggestions for clickable chips
+        if (data.suggestions && data.suggestions.length > 0) {
+          setSuggestedReplies(data.suggestions)
+        } else {
+          setSuggestedReplies([])
+        }
 
         setTotalTokens((prev) => prev + tokensUsed)
 
@@ -3307,6 +3318,26 @@ export function EditorClient() {
                 ))}
                 <div ref={chatEndRef} />
               </div>
+
+              {/* ── Suggested reply chips ───────────────────────────────── */}
+              {suggestedReplies.length > 0 && !loading && (
+                <div className="flex-shrink-0 px-3 py-2 flex flex-wrap gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  {suggestedReplies.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => { setSuggestedReplies([]); submit(s) }}
+                      className="text-xs px-3 py-1.5 rounded-full transition-all duration-200 hover:scale-105"
+                      style={{
+                        background: 'rgba(212,175,55,0.1)',
+                        border: '1px solid rgba(212,175,55,0.25)',
+                        color: 'rgba(212,175,55,0.9)',
+                      }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* ── Flat input bar ───────────────────────────────────────── */}
               <div className="flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 -1px 0 rgba(255,255,255,0.03)' }}>

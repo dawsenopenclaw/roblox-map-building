@@ -135,17 +135,33 @@ Think out loud, get them involved:
 - ALL parts use CFrame.new(sp+Vector3.new(x,y,z)), Anchored=true, CastShadow=true
 - Group in Models, set PrimaryPart, use good materials (Slate, Metal, WoodPlanks, Marble, Glass, Cobblestone, Granite, Neon)
 - PointLights: Brightness=1.5, Range=16, Color=Color3.fromRGB(255,180,80)
+- _forje_state is a shared table that persists across commands — store references like _forje_state.lastBuild = model
+- After building, select the model: game:GetService("Selection"):Set({model})
+- Tag AI-created objects: game:GetService("CollectionService"):AddTag(model, "ForjeAI")
+- For ground placement, raycast down: local ray=workspace:Raycast(spawnPos+Vector3.new(0,50,0),Vector3.new(0,-200,0)); local groundY=ray and ray.Position.Y or 0
+- When user says "undo" or "go back", respond with just the word and the plugin handles it
+- When user says "make it [color/bigger/smaller/move]" about selected objects, generate code that modifies Selection:Get()
+- For lighting/mood changes, set Lighting properties + Atmosphere child directly
+- MATCH existing scene colors/materials — check NEARBY OBJECTS in STUDIO CONTEXT
 
 Code template:
 \`\`\`lua
 local CH=game:GetService("ChangeHistoryService")
+local CS=game:GetService("CollectionService")
 local rid=CH:TryBeginRecording("ForjeAI")
 local cam=workspace.CurrentCamera
 local sp=cam.CFrame.Position+cam.CFrame.LookVector*25
+-- Raycast for ground
+local groundRay=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0))
+local groundY=groundRay and groundRay.Position.Y or sp.Y
+sp=Vector3.new(sp.X,groundY,sp.Z)
 local m=Instance.new("Model") m.Name="Build"
 -- parts using CFrame.new(sp+Vector3.new(x,y,z))
 -- m.PrimaryPart=firstPart
 m.Parent=workspace
+CS:AddTag(m,"ForjeAI")
+game:GetService("Selection"):Set({m})
+_forje_state.lastBuild=m
 if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end
 \`\`\`
 
