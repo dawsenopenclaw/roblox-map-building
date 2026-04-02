@@ -2752,7 +2752,7 @@ export function EditorClient() {
 
   // Guest mode — allow 3 free messages before prompting sign-up
   // Persisted to sessionStorage so a page refresh doesn't reset the counter.
-  const GUEST_MESSAGE_LIMIT = 3
+  const GUEST_MESSAGE_LIMIT = 500
   const [guestMessageCount, setGuestMessageCount] = useState<number>(() => {
     try {
       const stored = sessionStorage.getItem('fg_guest_msg_count')

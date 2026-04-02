@@ -475,7 +475,41 @@ async function callGroq(
   }
 }
 
+// Race helper — runs multiple promises, returns the first non-null result
+async function raceNonNull<T>(...promises: Promise<T | null>[]): Promise<{ result: T; index: number } | null> {
+  // Start all promises. As each resolves, check if it has a result.
+  // Return immediately when the first non-null result arrives.
+  return new Promise((resolve) => {
+    let settled = false
+    let pendingCount = promises.length
+    promises.forEach((p, i) => {
+      p.then((result) => {
+        if (!settled && result !== null) {
+          settled = true
+          resolve({ result, index: i })
+        }
+        if (--pendingCount === 0 && !settled) resolve(null)
+      }).catch(() => {
+        if (--pendingCount === 0 && !settled) resolve(null)
+      })
+    })
+  })
+}
+
+// Validate that generated code meets minimum quality bar
+function isCodeQualityOk(code: string): boolean {
+  // Must have basic Roblox API calls
+  if (!code.includes('Instance.new') && !code.includes('workspace') && !code.includes('placeAsset')) return false
+  // Must be at least 200 chars (not a trivial/empty response)
+  if (code.length < 200) return false
+  // Must not contain common AI mistakes that indicate bad output
+  if (code.includes('game.Players.LocalPlayer')) return false
+  if (code.includes('script.Parent')) return false
+  return true
+}
+
 // Two-pass free model pipeline: conversation + code generation
+// UPGRADED: races both models in parallel for faster responses
 async function freeModelTwoPass(
   message: string,
   intent: string,
@@ -491,17 +525,17 @@ async function freeModelTwoPass(
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'default'].includes(intent)
 
-  // Pass 1: Conversational response (try Gemini first, then Groq)
+  // Pass 1: Race both models in parallel — use whichever responds first
   const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
-  let conversationText = await callGemini(convPrompt, message, history, 512)
-  let model = 'gemini-2.0-flash'
+  const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b']
+  const convRace = await raceNonNull(
+    callGemini(convPrompt, message, history, 512),
+    callGroq(convPrompt, message, history, 512),
+  )
 
-  if (!conversationText) {
-    conversationText = await callGroq(convPrompt, message, history, 512)
-    model = 'llama-3.3-70b'
-  }
-
-  if (!conversationText) return null
+  if (!convRace) return null
+  const conversationText = convRace.result
+  const model = modelNames[convRace.index]
 
   // Extract suggestions from conversation
   const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
@@ -528,6 +562,14 @@ RULES:
 - Add PointLights for atmosphere
 - Tag with CollectionService:AddTag(model,"ForjeAI")
 - Select result: game:GetService("Selection"):Set({model})
+- For props (trees, lamps, benches, vehicles, furniture), use InsertService:LoadAsset() with these IDs:
+  Trees: 5763950(Oak) 5763974(Pine) 2768898073(Palm)  Lamps: 6284583030(Iron) 3583066088(Modern)
+  Benches: 5902690736  Trash: 131961978  Hydrant: 6660038993  Barricade: 5902690736
+  Barrel: 2823778520  Fountain: 4418622526  Cars: 3583066088(Sedan) 6284583030(Truck)
+  Chairs: 5763974  Tables: 4934138742  Beds: 3583066088  Bookshelves: 5902690736
+  Helper: local IS=game:GetService("InsertService")
+  local function placeAsset(id,pos,folder) local a=IS:LoadAsset(id) local m=a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1] if m then if m:IsA("Model") and m.PrimaryPart then m:SetPrimaryPartCFrame(CFrame.new(pos)) elseif m:IsA("BasePart") then m.Position=pos end m.Parent=folder end a:Destroy() end
+- Build custom structures from Part primitives. Use marketplace assets for props/furniture/nature.
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
     const buildInstruction = `Build this: ${message}
 
@@ -536,25 +578,28 @@ The code must be complete, runnable Roblox Luau that creates the build in Edit M
 Use the template pattern: ChangeHistoryService, camera spawn position, create Model, create Parts with CFrame/Size/Color/Material, parent to workspace.
 MINIMUM 15 parts. Use proper materials (Slate, Granite, WoodPlanks, Glass, Metal). Add PointLights.`
 
-    // Try Gemini first for code gen (better at following structured output)
-    console.log('[Pass2] Starting code gen for:', message.slice(0, 50))
-    let codeResponse = await callGemini(codePrompt, buildInstruction, [], 4096)
-    console.log('[Pass2] Gemini result:', codeResponse ? `${codeResponse.length} chars` : 'null')
+    // Race both models for code gen — first valid result wins
+    console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
+    const codeRace = await raceNonNull(
+      callGemini(codePrompt, buildInstruction, [], 4096),
+      callGroq(codePrompt, buildInstruction, [], 4096),
+    )
 
-    if (!codeResponse) {
-      codeResponse = await callGroq(codePrompt, buildInstruction, [], 4096)
-      console.log('[Pass2] Groq result:', codeResponse ? `${codeResponse.length} chars` : 'null')
-    }
-
-    if (codeResponse) {
+    if (codeRace) {
+      const codeResponse = codeRace.result
+      console.log('[Pass2]', modelNames[codeRace.index], `returned ${codeResponse.length} chars`)
       luauCode = extractLuauCode(codeResponse)
       // Fallback: if no ```lua block found but response contains Luau code, use it raw
       if (!luauCode && codeResponse.includes('Instance.new') && codeResponse.includes('workspace')) {
-        // Strip any markdown artifacts and use the raw code
         luauCode = codeResponse
           .replace(/^```\w*\s*/gm, '')
           .replace(/^```\s*$/gm, '')
           .trim()
+      }
+      // Quality gate — reject low-quality code and tell user
+      if (luauCode && !isCodeQualityOk(luauCode)) {
+        console.warn('[Pass2] Code failed quality check, discarding')
+        luauCode = null
       }
     }
 
@@ -2905,7 +2950,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const { getRedis } = await import('@/lib/redis')
         const redis = getRedis()
         if (redis) {
-          const GUEST_LIMIT = 3
+          const GUEST_LIMIT = 500 // generous during beta
           const DAY_SEC = 86400
           const dayBucket = Math.floor(Date.now() / 1000 / DAY_SEC)
           const key = `rl:guest:ip:${clientIp}:${DAY_SEC}:${dayBucket}`
