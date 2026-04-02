@@ -2580,9 +2580,16 @@ export function EditorClient() {
         })
 
         // If Studio is actually connected (not demo), send Luau code to Studio for execution
-        if (studioStatus.connected) {
-          // Extract Luau from buildResult or mesh data
-          const luauToExecute = buildResult?.luauCode ?? meshData?.luauCode ?? null
+        if (studioStatus.connected || connectFlow === 'connected') {
+          // Extract Luau from buildResult, mesh data, OR from code blocks in the AI response
+          let luauToExecute = buildResult?.luauCode ?? meshData?.luauCode ?? null
+          if (!luauToExecute && responseText) {
+            // Extract ```lua ... ``` code blocks from the AI response
+            const codeMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            if (codeMatch?.[1]?.trim()) {
+              luauToExecute = codeMatch[1].trim()
+            }
+          }
           if (luauToExecute) {
             setExecuteStatus('sending')
             setStudioActivity((prev) => [
