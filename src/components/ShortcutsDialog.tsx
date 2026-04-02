@@ -115,6 +115,12 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
       title: 'Editor',
       items: [
         { keys: [mod, '↵'],          label: 'Send chat message' },
+        { keys: [mod, 'K'],          label: 'Focus chat input' },
+        { keys: [mod, 'N'],          label: 'New conversation' },
+        { keys: [mod, 'Shift', 'C'], label: 'Copy last code block' },
+        { keys: [mod, 'Shift', 'R'], label: 'Run last code in Studio' },
+        { keys: ['/'],               label: 'Open slash commands (empty input)' },
+        { keys: ['Esc'],             label: 'Dismiss slash menu / close panel' },
         { keys: [mod, 'M'],          label: 'Toggle model selector' },
         { keys: [mod, 'Shift', 'V'], label: 'Toggle voice input' },
       ],

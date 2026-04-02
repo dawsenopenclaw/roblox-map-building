@@ -8,6 +8,8 @@ import { ChatPanel } from '@/components/editor/ChatPanel'
 import { StudioPanel } from '@/components/editor/StudioPanel'
 import { useChat } from './hooks/useChat'
 import { useStudioConnection } from './hooks/useStudioConnection'
+import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
+// ↑ Onboarding: 5-step first-visit walkthrough with spotlight highlighting
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
 
@@ -229,6 +231,9 @@ function MobileTabBar({
 export default function NewEditorClient() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'studio'>('chat')
 
+  // Onboarding overlay — only shows once (localStorage flag)
+  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay()
+
   // Studio connection
   const studio = useStudioConnection()
 
@@ -270,6 +275,11 @@ export default function NewEditorClient() {
         fontFamily: 'Inter, sans-serif',
       }}
     >
+      {/* Onboarding — 5-step spotlight walkthrough, first visit only */}
+      {showOnboarding && (
+        <OnboardingOverlay onDone={dismissOnboarding} inputRef={chat.textareaRef} />
+      )}
+
       {/* Animated space background */}
       <SpaceBackground />
 

@@ -1074,171 +1074,200 @@ export default function HomeClient() {
               </p>
             </div>
 
-            {/* Bento grid */}
-            <div
-              className="grid gap-4"
-              style={{
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gridAutoRows: 'minmax(200px, auto)',
-              }}
-            >
-              {/* Large card — Voice input */}
+            {/* Feature grid — 6 specific features */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+              {/* AI Chat */}
               <div
-                className="reveal bento-card rounded-2xl p-7 flex flex-col justify-between"
+                className="reveal bento-card rounded-2xl p-7 flex flex-col lg:col-span-2"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
-                  gridColumn: 'span 1',
-                  minHeight: 260,
+                  minHeight: 280,
                 }}
               >
-                <div>
-                  <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                <div className="flex items-start gap-4 mb-5">
+                  <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
-                    <IconMic size={22} />
+                    <IconBrain size={22} />
                   </div>
-                  <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Voice input</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
-                    Speak your vision. Natural language is instantly translated into game elements.
-                  </p>
+                  <div>
+                    <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>AI Chat</h3>
+                    <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+                      Natural language to production Luau. Describe any mechanic — combat, economy, physics — and watch it generate live.
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-6 flex items-center gap-2">
-                  {['describe', 'build', 'publish'].map((tag, i) => (
-                    <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full" style={{
-                      background: i === 0 ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.04)',
-                      border: `1px solid ${i === 0 ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)'}`,
-                      color: i === 0 ? '#D4AF37' : '#52525B',
-                    }}>
-                      {tag}
-                    </span>
-                  ))}
+                <div className="flex-1 rounded-xl overflow-hidden" style={{
+                  background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.05)', minHeight: 120,
+                }}>
+                  <div className="flex flex-col gap-2 p-4">
+                    {([
+                      { role: 'user', text: 'Add a coin magnet power-up that pulls nearby coins for 5 seconds' },
+                      { role: 'ai',   text: 'Creating CoinMagnet.lua — 20 stud radius, 5s duration, glow VFX on pickup...' },
+                    ] as const).map((msg, i) => (
+                      <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.role === 'ai' && (
+                          <div className="w-5 h-5 rounded-full flex-shrink-0 mt-0.5 flex items-center justify-center"
+                            style={{ background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.2)' }}>
+                            <span style={{ fontSize: 8, color: '#D4AF37' }}>F</span>
+                          </div>
+                        )}
+                        <div
+                          className={`text-[12px] leading-relaxed px-3 py-2 rounded-xl max-w-[85%]`}
+                          style={{
+                            background: msg.role === 'user' ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.04)',
+                            border: msg.role === 'user' ? '1px solid rgba(212,175,55,0.18)' : '1px solid rgba(255,255,255,0.06)',
+                            color: msg.role === 'user' ? '#D4AF37' : '#A1A1AA',
+                          }}
+                        >
+                          {msg.text}
+                          {msg.role === 'ai' && <span className="cursor-blink inline-block w-0.5 h-3 ml-1 align-middle" style={{ background: '#D4AF37' }} />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10B981' }} />
+                  <span className="text-[11px]" style={{ color: '#52525B' }}>Live &middot; Context-aware &middot; Luau-native</span>
                 </div>
               </div>
 
-              {/* Image to map */}
-              <BentoCard
-                icon={<IconImage size={22} />}
-                title="Image to map"
-                description="Upload a photo or sketch. AI analyzes composition and generates matching terrain with assets placed precisely."
-                delay={1}
-              />
+              {/* Studio Sync */}
+              <div
+                className="reveal reveal-delay-1 bento-card rounded-2xl p-7 flex flex-col"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  minHeight: 280,
+                }}
+              >
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.12)', color: '#60A5FA' }}>
+                  <IconSync size={22} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Studio Sync</h3>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: '#71717A' }}>
+                  Real-time connection to Roblox Studio. Every change appears live in your place — no copy-paste, no waiting.
+                </p>
+                <div className="mt-auto flex items-center gap-3 p-3 rounded-lg" style={{
+                  background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.1)',
+                }}>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <div className="h-1.5 rounded-full" style={{ background: 'rgba(96,165,250,0.15)' }}>
+                      <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: '#60A5FA', width: '78%' }} />
+                    </div>
+                    <span className="text-[10px]" style={{ color: '#52525B' }}>Syncing to Studio...</span>
+                  </div>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md flex-shrink-0" style={{
+                    background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981',
+                  }}>Live</span>
+                </div>
+              </div>
 
-              {/* 3D generation — tall */}
+              {/* Workspace Intelligence */}
               <div
                 className="reveal reveal-delay-2 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
-                  gridRow: 'span 2',
-                  minHeight: 420,
+                  minHeight: 260,
                 }}
               >
-                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5 flex-shrink-0"
-                  style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
-                  <IconCube size={22} />
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.12)', color: '#A78BFA' }}>
+                  <IconSparkle size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>3D generation</h3>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: '#71717A' }}>
-                  Generate custom 3D models with Meshy AI. PBR textures applied automatically. Game-ready in one click.
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Workspace Intelligence</h3>
+                <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+                  The AI knows your entire map — scripts, parts, structure. Suggestions are always contextual, never generic.
                 </p>
-                {/* Visual: 3D cube preview mockup */}
-                <div className="flex-1 rounded-xl flex items-center justify-center" style={{
-                  background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  minHeight: 160,
-                }}>
-                  <div className="relative">
-                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.4)" strokeWidth="0.8">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                      <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="rgba(212,175,55,0.25)" />
-                      <line x1="12" y1="22.08" x2="12" y2="12" stroke="rgba(212,175,55,0.25)" />
-                    </svg>
-                    <div className="absolute inset-0" style={{
-                      background: 'radial-gradient(circle, rgba(212,175,55,0.06) 0%, transparent 70%)',
-                    }} />
-                  </div>
-                </div>
-                <div className="mt-4 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981' }} />
-                  <span className="text-[11px]" style={{ color: '#52525B' }}>PBR ready &middot; Roblox-optimized</span>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {['Map-aware', 'Script-aware', 'No hallucinations'].map((tag) => (
+                    <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full" style={{
+                      background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.12)', color: '#A78BFA',
+                    }}>{tag}</span>
+                  ))}
                 </div>
               </div>
 
-              {/* Live Studio sync */}
-              <BentoCard
-                icon={<IconSync size={22} />}
-                title="Live Studio sync"
-                description="Changes appear in your Roblox Studio place in real time. Every action is undoable. No copy-paste required."
-                delay={3}
-              />
+              {/* 3D Preview */}
+              <div
+                className="reveal reveal-delay-3 bento-card rounded-2xl p-7 flex flex-col"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  minHeight: 260,
+                }}
+              >
+                <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
+                  <IconCube size={22} />
+                </div>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>3D Preview</h3>
+                <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717A' }}>
+                  See your builds in the browser before they hit Studio. Interactive 3D viewer with PBR textures included.
+                </p>
+                <div className="mt-auto flex items-center justify-center rounded-xl" style={{
+                  background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', height: 72,
+                }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(212,175,55,0.35)" strokeWidth="0.9" className="mockup-float">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="rgba(212,175,55,0.2)" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" stroke="rgba(212,175,55,0.2)" />
+                  </svg>
+                </div>
+              </div>
 
-              {/* AI agents */}
+              {/* Templates */}
               <div
                 className="reveal reveal-delay-4 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
-                  minHeight: 200,
+                  minHeight: 260,
                 }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-                  style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
-                  <IconBrain size={22} />
+                  style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.12)', color: '#10B981' }}>
+                  <IconZap size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Multi-model AI</h3>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Templates</h3>
                 <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717A' }}>
-                  Claude, GPT-4o, Gemini — each optimized for different tasks. Switch mid-conversation.
+                  50+ pre-built game templates — tycoons, simulators, RPGs, obby, shooters. Fully wired, ready to customize.
                 </p>
-                <div className="flex gap-2 flex-wrap mt-auto">
-                  {[
-                    { name: 'Claude', color: '#A78BFA' },
-                    { name: 'GPT-4o', color: '#10B981' },
-                    { name: 'Gemini', color: '#60A5FA' },
-                  ].map(({ name, color }) => (
-                    <span key={name} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full" style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      color: '#71717A',
-                    }}>
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
-                      {name}
-                    </span>
+                <div className="mt-auto flex flex-wrap gap-2">
+                  {['Tycoon', 'Simulator', 'RPG', 'Obby', '+46 more'].map((genre, i) => (
+                    <span key={genre} className="text-[11px] px-2.5 py-1 rounded-full" style={{
+                      background: i === 4 ? 'rgba(16,185,129,0.08)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${i === 4 ? 'rgba(16,185,129,0.14)' : 'rgba(255,255,255,0.06)'}`,
+                      color: i === 4 ? '#10B981' : '#52525B',
+                    }}>{genre}</span>
                   ))}
                 </div>
               </div>
 
-              {/* Marketplace */}
-              <BentoCard
-                icon={<IconPlug size={22} />}
-                title="Marketplace access"
-                description="Browse 500K+ Roblox assets. Search, preview, and insert models directly into your scene — no leaving the editor."
-                delay={5}
-              />
-
-              {/* Wide card — performance stat */}
+              {/* Professional Code */}
               <div
-                className="reveal reveal-delay-6 bento-card rounded-2xl p-7 flex flex-col sm:flex-row gap-6 items-start sm:items-center"
-                style={{
-                  background: 'rgba(212,175,55,0.03)',
-                  border: '1px solid rgba(212,175,55,0.1)',
-                  gridColumn: 'span 2',
-                }}
+                className="reveal reveal-delay-5 bento-card rounded-2xl p-7 flex flex-col sm:flex-row gap-6 items-start sm:items-center sm:col-span-2 lg:col-span-3"
+                style={{ background: 'rgba(212,175,55,0.03)', border: '1px solid rgba(212,175,55,0.1)' }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.18)', color: '#D4AF37' }}>
-                  <IconZap size={22} />
+                  <IconShield size={22} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Fast. Like, really fast.</h3>
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Professional Code</h3>
                   <p className="text-sm" style={{ color: '#71717A' }}>
-                    Average generation time under 12 seconds. From prompt to playable game world.
+                    Production-ready Luau — typed, modular, optimized. Server authority, rate limiting, and anti-cheat baked in. Ship games you are proud of.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-6 flex-shrink-0">
                   {[
-                    { value: '12s',  label: 'Avg generation' },
+                    { value: '12s',  label: 'Avg gen time' },
                     { value: '99%',  label: 'Uptime' },
-                    { value: '<1ms', label: 'Studio sync' },
+                    { value: '0',    label: 'Config needed' },
                   ].map(({ value, label }) => (
                     <div key={label} className="text-center">
                       <p className="text-2xl font-bold" style={{ color: '#D4AF37' }}>{value}</p>
@@ -1291,22 +1320,22 @@ export default function HomeClient() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
                 <HowItWorksStep
                   n="1"
-                  title="Describe"
-                  description="Type, speak, or upload an image. Describe your world in plain English — no game dev knowledge needed."
+                  title="Describe your game"
+                  description="Type or speak what you want. Any genre, any mechanic — plain English works. No coding required."
                   icon={<IconMic size={14} />}
                   delay={1}
                 />
                 <HowItWorksStep
                   n="2"
-                  title="AI builds"
-                  description="Terrain, assets, scripts, lighting — all generated automatically and pushed live to your Roblox Studio session."
+                  title="AI builds it"
+                  description="Watch terrain generate, scripts write themselves, and assets place in real time — streamed live to your Studio."
                   icon={<IconSparkle size={14} />}
                   delay={2}
                 />
                 <HowItWorksStep
                   n="3"
-                  title="Play"
-                  description="Test in Studio, iterate with natural language, then publish to Roblox and reach millions of players."
+                  title="Play in Roblox"
+                  description="Hit Play in Studio immediately. Iterate, refine, then publish to reach millions of Roblox players."
                   icon={<IconArrow size={14} />}
                   delay={3}
                 />

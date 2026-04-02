@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type ToastVariant = 'success' | 'error' | 'info' | 'warning' | 'achievement'
+export type ToastVariant = 'success' | 'error' | 'info' | 'warning' | 'achievement' | 'building'
 
 export interface Toast {
   id: string
@@ -18,6 +18,78 @@ export interface Toast {
   loading?: boolean
   /** Optional action button */
   action?: { label: string; onClick: () => void }
+}
+
+// ─── Sound effects ────────────────────────────────────────────────────────────
+//
+// Synthesised tones via Web Audio API — no external files, no network requests.
+// Sounds respect the user's preference stored in localStorage.
+
+const SOUND_PREF_KEY = 'fg_toast_sounds'
+
+export function getToastSoundsEnabled(): boolean {
+  if (typeof window === 'undefined') return false
+  try { return localStorage.getItem(SOUND_PREF_KEY) !== '0' } catch { return true }
+}
+
+export function setToastSoundsEnabled(on: boolean): void {
+  try { localStorage.setItem(SOUND_PREF_KEY, on ? '1' : '0') } catch { /* ignore */ }
+}
+
+function playTone(type: 'success' | 'error' | 'info'): void {
+  if (!getToastSoundsEnabled()) return
+  if (typeof window === 'undefined') return
+  const win = window as typeof window & {
+    AudioContext?: typeof AudioContext
+    webkitAudioContext?: typeof AudioContext
+  }
+  const AC = win.AudioContext ?? win.webkitAudioContext
+  if (!AC) return
+  try {
+    const ctx = new AC()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    if (type === 'success') {
+      // Two ascending notes: E5 then G5
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(659, ctx.currentTime)
+      osc.frequency.setValueAtTime(784, ctx.currentTime + 0.1)
+      gain.gain.setValueAtTime(0.18, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.35)
+    } else if (type === 'error') {
+      // Low descending buzz: A4 then E4
+      osc.type = 'sawtooth'
+      osc.frequency.setValueAtTime(440, ctx.currentTime)
+      osc.frequency.setValueAtTime(330, ctx.currentTime + 0.12)
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.3)
+    } else {
+      // Soft neutral blip: C5
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(523, ctx.currentTime)
+      gain.gain.setValueAtTime(0.1, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2)
+      osc.start(ctx.currentTime)
+      osc.stop(ctx.currentTime + 0.2)
+    }
+
+    osc.onended = () => { void ctx.close() }
+  } catch { /* AudioContext may be blocked by browser policy */ }
+}
+
+// Map variants to sound type — building/warning play no entry sound
+const VARIANT_SOUND: Partial<Record<ToastVariant, 'success' | 'error' | 'info'>> = {
+  success:     'success',
+  error:       'error',
+  info:        'info',
+  achievement: 'success',
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -48,22 +120,29 @@ const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: s
     icon: '★',
     bg: 'bg-[#FFB81C]/10',
   },
+  building: {
+    border: 'border-[#D4AF37]/50',
+    icon: '⚙',
+    bg: 'bg-[#D4AF37]/10',
+  },
 }
 
 const ICON_COLOR: Record<ToastVariant, string> = {
-  success: 'text-emerald-400',
-  error: 'text-red-400',
-  info: 'text-blue-400',
-  warning: 'text-[#D4AF37]',
+  success:     'text-emerald-400',
+  error:       'text-red-400',
+  info:        'text-blue-400',
+  warning:     'text-[#D4AF37]',
   achievement: 'text-[#FFB81C]',
+  building:    'text-[#D4AF37]',
 }
 
 const PROGRESS_COLOR: Record<ToastVariant, string> = {
-  success: 'bg-emerald-500',
-  error: 'bg-red-500',
-  info: 'bg-blue-500',
-  warning: 'bg-[#D4AF37]',
+  success:     'bg-emerald-500',
+  error:       'bg-red-500',
+  info:        'bg-blue-500',
+  warning:     'bg-[#D4AF37]',
   achievement: 'bg-[#FFB81C]',
+  building:    'bg-[#D4AF37]',
 }
 
 // ─── Confetti (achievement only) ─────────────────────────────────────────────
@@ -98,11 +177,20 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
   const duration = toast.duration ?? 5000
   const styles = VARIANT_STYLES[toast.variant]
   const progressRef = useRef<HTMLDivElement>(null)
+  const isBuilding = toast.variant === 'building'
 
+  // Auto-dismiss timer
   useEffect(() => {
     const timer = setTimeout(() => onDismiss(toast.id), duration)
     return () => clearTimeout(timer)
   }, [toast.id, duration, onDismiss])
+
+  // Play sound once on mount
+  useEffect(() => {
+    const soundType = VARIANT_SOUND[toast.variant]
+    if (soundType) playTone(soundType)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <motion.div
@@ -118,15 +206,26 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       onClick={() => onDismiss(toast.id)}
       style={{ cursor: 'pointer' }}
     >
+      {/* Pulsing border overlay — building variant only */}
+      {isBuilding && (
+        <motion.div
+          className="absolute inset-0 rounded-xl pointer-events-none"
+          style={{ border: '1px solid rgba(212,175,55,0.6)' }}
+          animate={{ opacity: [0.6, 0.15, 0.6] }}
+          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+          aria-hidden="true"
+        />
+      )}
+
       {toast.variant === 'achievement' && <Confetti />}
 
       <div className="flex items-start gap-3 p-4">
-        {/* Icon / spinner — decorative, meaning conveyed by text */}
+        {/* Icon / spinner */}
         <div
           className={`w-7 h-7 rounded-full ${styles.bg} flex items-center justify-center flex-shrink-0 text-sm font-bold ${ICON_COLOR[toast.variant]}`}
           aria-hidden="true"
         >
-          {toast.loading ? (
+          {(toast.loading || isBuilding) ? (
             <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
               <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -153,7 +252,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
         </div>
       </div>
 
-      {/* Shrinking progress bar — decorative */}
+      {/* Shrinking progress bar */}
       <motion.div
         ref={progressRef}
         className={`absolute bottom-0 left-0 h-0.5 ${PROGRESS_COLOR[toast.variant]}`}
@@ -218,7 +317,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─── Fallback no-op context used when provider isn't mounted ─────────────────
+// ─── Fallback no-op context used when provider is not mounted ─────────────────
 
 const NOOP_CONTEXT: ToastContextValue = {
   show: () => {},
@@ -232,4 +331,20 @@ export function useToast() {
   // Return a no-op implementation instead of throwing so callers outside
   // <ToastProvider> fail silently rather than crashing the component tree.
   return ctx ?? NOOP_CONTEXT
+}
+
+// ─── Sound toggle hook ────────────────────────────────────────────────────────
+
+export function useToastSounds() {
+  const [enabled, setEnabled] = useState<boolean>(() => getToastSoundsEnabled())
+
+  const toggle = useCallback(() => {
+    setEnabled((prev) => {
+      const next = !prev
+      setToastSoundsEnabled(next)
+      return next
+    })
+  }, [])
+
+  return { enabled, toggle }
 }

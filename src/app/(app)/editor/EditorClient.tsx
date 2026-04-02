@@ -49,6 +49,7 @@ import { ObjectList } from '@/components/editor/ObjectList'
 import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
 import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
+import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,6 +154,43 @@ const QUICK_ACTIONS = [
   { label: 'City Block',   icon: '🏙️', prompt: 'Build a city district with roads and buildings' },
   { label: '3D Mesh',      icon: '💎', prompt: 'Generate a 3D mesh: medieval stone tower, Roblox game asset' },
   { label: 'Dungeon',      icon: '⚔️', prompt: 'Generate a dungeon with corridors and traps' },
+]
+
+// ─── Slash commands ────────────────────────────────────────────────────────────
+
+interface SlashCommand {
+  command: string
+  description: string
+  placeholder?: string
+  /** If true, no text argument needed — this command fires immediately */
+  immediate?: boolean
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  { command: '/build',    description: 'Force build mode',            placeholder: 'describe what to build...' },
+  { command: '/script',   description: 'Force script generation',     placeholder: 'describe the script...' },
+  { command: '/terrain',  description: 'Terrain generation',          placeholder: 'describe the terrain...' },
+  { command: '/ui',       description: 'UI / GUI generation',         placeholder: 'describe the UI...' },
+  { command: '/optimize', description: 'Scan workspace & optimise',  immediate: true },
+  { command: '/undo',     description: 'Undo last build in Studio',   immediate: true },
+  { command: '/export',   description: 'Export code from last build', immediate: true },
+  { command: '/clear',    description: 'Clear conversation',          immediate: true },
+  { command: '/help',     description: 'Show all commands',           immediate: true },
+]
+
+// ─── Power-user quick-action pills ─────────────────────────────────────────────
+
+interface PowerQuickAction {
+  label: string
+  prefix: string
+}
+
+const POWER_QUICK_ACTIONS: PowerQuickAction[] = [
+  { label: 'Build',    prefix: '/build '   },
+  { label: 'Script',   prefix: '/script '  },
+  { label: 'Terrain',  prefix: '/terrain ' },
+  { label: 'UI',       prefix: '/ui '      },
+  { label: 'Optimize', prefix: '/optimize' },
 ]
 
 // Build-intent keywords that should trigger real 3D mesh generation from the chat
@@ -320,7 +358,7 @@ function CodeCopyButton({ code }: { code: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded transition-all"
+      className="flex-shrink-0 flex items-center justify-center w-9 h-9 md:w-7 md:h-7 rounded transition-all"
       style={{
         background: copied ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
         border: `1px solid ${copied ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.1)'}`,
@@ -1047,18 +1085,18 @@ function AssetPill({ asset }: { asset: MarketplaceAssetClient }) {
   )
 }
 
-// ─── Simple Luau syntax highlighter ───────────────────────────────────────────
+// ─── Luau syntax highlighter (gold keywords · green strings · gray comments · blue numbers · purple globals) ───
 
 function LuauHighlighted({ code }: { code: string }) {
   const keywords = /\b(local|function|end|if|then|else|elseif|for|do|while|repeat|until|return|and|or|not|true|false|nil|in|break|continue)\b/g
-  const builtins = /\b(print|wait|game|workspace|Instance|Vector3|CFrame|Enum|script|math|table|string|pcall|xpcall|error|tostring|tonumber|pairs|ipairs|next|select|type|typeof|unpack)\b/g
+  const globals  = /\b(game|workspace|Instance|Vector3|CFrame|Color3|BrickColor|Enum|script|Players|RunService|TweenService|UserInputService|CollectionService|ReplicatedStorage|ServerStorage|ServerScriptService|StarterGui|StarterPack|Lighting)\b/g
+  const builtins = /\b(print|warn|error|wait|task|math|table|string|pcall|xpcall|tostring|tonumber|pairs|ipairs|next|select|type|typeof|unpack|rawget|rawset|setmetatable|getmetatable|require|coroutine|os|tick|time)\b/g
   const strings  = /"([^"\\]|\\.)*"|'([^'\\]|\\.)*'|\[\[[\s\S]*?\]\]/g
   const comments = /--.*$/gm
   const numbers  = /\b\d+(\.\d+)?\b/g
 
-  // Tokenise by running each pattern and marking ranges
   const len = code.length
-  type TokenKind = 'keyword' | 'builtin' | 'string' | 'comment' | 'number' | 'plain'
+  type TokenKind = 'keyword' | 'globals' | 'builtin' | 'string' | 'comment' | 'number' | 'plain'
   interface Span { start: number; end: number; kind: TokenKind }
   const spans: Span[] = []
 
@@ -1069,13 +1107,14 @@ function LuauHighlighted({ code }: { code: string }) {
       spans.push({ start: m.index, end: m.index + m[0].length, kind })
     }
   }
+  // Priority: comments > strings > globals > keywords > builtins > numbers
   mark(comments, 'comment')
   mark(strings,  'string')
+  mark(globals,  'globals')
   mark(keywords, 'keyword')
   mark(builtins, 'builtin')
   mark(numbers,  'number')
 
-  // Sort by start; filter overlaps (first wins)
   spans.sort((a, b) => a.start - b.start)
   const filtered: Span[] = []
   let cursor = 0
@@ -1085,16 +1124,16 @@ function LuauHighlighted({ code }: { code: string }) {
     cursor = s.end
   }
 
-  // Build output with interleaved plain text
   const parts: React.ReactNode[] = []
   let pos = 0
   const COLOR: Record<TokenKind, string> = {
-    keyword: '#C792EA',
-    builtin: '#82AAFF',
-    string:  '#C3E88D',
-    comment: '#546E7A',
-    number:  '#F78C6C',
-    plain:   '#CDD3DE',
+    keyword: '#D4AF37',   // gold
+    globals: '#A78BFA',   // purple — Roblox globals
+    builtin: '#60A5FA',   // blue — std builtins
+    string:  '#10B981',   // green
+    comment: '#6B7280',   // gray
+    number:  '#60A5FA',   // blue
+    plain:   '#E2E8F0',   // off-white
   }
   filtered.forEach((s, i) => {
     if (pos < s.start) parts.push(<span key={`p${i}`} style={{ color: COLOR.plain }}>{code.slice(pos, s.start)}</span>)
@@ -1106,23 +1145,129 @@ function LuauHighlighted({ code }: { code: string }) {
   return <>{parts}</>
 }
 
+// ─── Code editor container with line numbers, file tab, and collapse ──────────
+
+function LuauCodeBlock({
+  code,
+  collapsed,
+  onToggle,
+}: {
+  code: string
+  collapsed: boolean
+  onToggle: () => void
+}) {
+  const lines = code.split('\n')
+  const lineCount = lines.length
+  const gutterWidth = String(lineCount).length * 8 + 20
+
+  return (
+    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Editor tab bar */}
+      <div
+        className="flex items-center justify-between px-3 py-1.5"
+        style={{
+          background: '#0D1117',
+          borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          {/* Traffic-light dots */}
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full" style={{ background: '#FF5F57' }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: '#FFBD2E' }} />
+            <div className="w-2 h-2 rounded-full" style={{ background: '#28CA41' }} />
+          </div>
+          {/* Active file tab */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-0.5"
+            style={{
+              background: '#161B22',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '4px 4px 0 0',
+              borderBottom: collapsed ? undefined : '1px solid #0D1117',
+              marginBottom: collapsed ? 0 : -1,
+            }}
+          >
+            <svg className="w-2.5 h-2.5 flex-shrink-0" viewBox="0 0 10 10" fill="none">
+              <path d="M2 1h4l2 2v6H2V1z" stroke="#A78BFA" strokeWidth="0.8" fill="rgba(167,139,250,0.1)"/>
+              <path d="M6 1v2h2" stroke="#A78BFA" strokeWidth="0.8"/>
+            </svg>
+            <span className="text-[9px] font-mono" style={{ color: '#A78BFA' }}>ServerScript.lua</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] tabular-nums" style={{ color: '#374151' }}>{lineCount} lines</span>
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded transition-colors hover:bg-white/5"
+            style={{ color: '#6B7280' }}
+          >
+            <svg
+              className={`w-2.5 h-2.5 transition-transform duration-150 ${collapsed ? '' : 'rotate-180'}`}
+              viewBox="0 0 10 10"
+              fill="none"
+            >
+              <path d="M2 3.5l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {collapsed ? 'Expand' : 'Collapse'}
+          </button>
+        </div>
+      </div>
+
+      {/* Code area */}
+      {!collapsed && (
+        <div
+          className="overflow-auto font-mono text-[10px] leading-[1.65]"
+          style={{ background: '#0D1117', maxHeight: '260px', tabSize: 2 }}
+        >
+          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: gutterWidth }} />
+              <col />
+            </colgroup>
+            <tbody>
+              {lines.map((line, idx) => (
+                <tr key={idx} className="group hover:bg-white/[0.025]">
+                  <td
+                    className="text-right pr-3 pl-2 align-top select-none tabular-nums"
+                    style={{
+                      color: '#374151',
+                      borderRight: '1px solid rgba(255,255,255,0.04)',
+                      minWidth: gutterWidth,
+                    }}
+                  >
+                    {idx + 1}
+                  </td>
+                  <td className="pl-3 pr-3 whitespace-pre align-top">
+                    <LuauHighlighted code={line} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 const BuildResultCard = memo(function BuildResultCard({ result, studioConnected, studioSessionId, studioJwt }: { result: BuildResult; studioConnected?: boolean; studioSessionId?: string; studioJwt?: string }) {
-  const [showCode, setShowCode] = useState(false)
-  const [copied, setCopied]     = useState(false)
-  const [importDone, setImportDone] = useState(false)
+  const [codeCollapsed, setCodeCollapsed] = useState(true)
+  const [copied, setCopied]               = useState(false)
+  const [runSent, setRunSent]             = useState(false)
+  const [importDone, setImportDone]       = useState(false)
   const { show: showToast } = useToast()
   const copyTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const importTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runTimerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Cancel pending reset timers on unmount to avoid setState on dead component
   useEffect(() => {
     return () => {
       if (copyTimerRef.current)   clearTimeout(copyTimerRef.current)
       if (importTimerRef.current) clearTimeout(importTimerRef.current)
+      if (runTimerRef.current)    clearTimeout(runTimerRef.current)
     }
   }, [])
 
-  // Rough part/time estimates based on code line count
   const lineCount = result.luauCode.split('\n').length
   const estimatedParts = Math.max(8, lineCount * 2 + result.totalMarketplace * 4)
   const estimatedSeconds = Math.max(1, Math.round(estimatedParts / 15))
@@ -1135,21 +1280,15 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
     copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
   }
 
-  const handleImport = () => {
-    // Copy code to clipboard
+  const handleRunInStudio = () => {
     navigator.clipboard.writeText(result.luauCode).catch(() => {})
-    setImportDone(true)
-    if (importTimerRef.current) clearTimeout(importTimerRef.current)
-    importTimerRef.current = setTimeout(() => setImportDone(false), 3000)
 
-    // If Studio is connected, also auto-send the code for execution
     if (studioConnected && studioSessionId) {
       fetch('/api/studio/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(studioJwt ? { 'Authorization': `Bearer ${studioJwt}` } : {}) },
         body: JSON.stringify({ code: result.luauCode, sessionId: studioSessionId }),
       }).catch(() => {})
-      // Trigger a re-scan after 2s so viewport updates
       setTimeout(() => {
         fetch('/api/studio/scan', {
           method: 'POST',
@@ -1157,6 +1296,15 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
           body: JSON.stringify({ sessionId: studioSessionId }),
         }).catch(() => {})
       }, 2000)
+      setRunSent(true)
+      showToast({ variant: 'success', title: 'Sent to Studio!', description: 'Script is executing in Roblox Studio.', duration: 4000 })
+      if (runTimerRef.current) clearTimeout(runTimerRef.current)
+      runTimerRef.current = setTimeout(() => setRunSent(false), 3000)
+    } else {
+      setImportDone(true)
+      showToast({ variant: 'success', title: 'Code copied!', description: 'Studio not connected. Paste into a Script in Roblox Studio.', duration: 5000 })
+      if (importTimerRef.current) clearTimeout(importTimerRef.current)
+      importTimerRef.current = setTimeout(() => setImportDone(false), 3000)
     }
   }
 
@@ -1187,13 +1335,12 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
       {result.foundAssets.length > 0 && (
         <div className="px-3 py-3">
           <p className="text-[9px] text-gray-600 uppercase tracking-wider font-medium mb-2">
-            From Roblox Creator Store — free &amp; ready to use
+            From Roblox Creator Store &mdash; free &amp; ready to use
           </p>
           <div className="flex flex-wrap gap-2">
             {result.foundAssets.map((asset) => (
               <AssetPill key={asset.assetId} asset={asset} />
             ))}
-            {/* Custom placeholders */}
             {result.missingTerms.map((term) => (
               <div key={term} className="flex flex-col items-center gap-1">
                 <div
@@ -1244,7 +1391,6 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
         <div className="flex-1" />
         <span className="text-[9px] text-gray-700 uppercase tracking-wider">Preview</span>
         <svg className="w-14 h-6 flex-shrink-0" viewBox="0 0 56 24" fill="none" aria-hidden>
-          {/* Mini isometric build preview */}
           <rect x="4" y="10" width="16" height="12" rx="1" fill="#1E3A5F" stroke="#3B6EA8" strokeWidth="0.8"/>
           <rect x="4" y="4" width="16" height="8" rx="0.5" fill="#2E5A8A" stroke="#4A7DC0" strokeWidth="0.6"/>
           <rect x="24" y="12" width="12" height="10" rx="1" fill="#3A2010" stroke="#7A5230" strokeWidth="0.8"/>
@@ -1254,73 +1400,80 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
         </svg>
       </div>
 
-      {/* Luau code section */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-        <button
-          onClick={() => setShowCode((s) => !s)}
-          className="w-full flex items-center justify-between px-3 py-2 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <path d="M4 3l-3 3 3 3M8 3l3 3-3 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            View Luau Code
-          </span>
-          <svg className={`w-3 h-3 transition-transform ${showCode ? 'rotate-180' : ''}`} viewBox="0 0 12 12" fill="none">
-            <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
-        </button>
-        {showCode && (
-          <div className="relative">
-            <pre
-              className="px-3 py-2 text-[9px] font-mono overflow-x-auto leading-relaxed"
-              style={{ background: 'rgba(0,0,0,0.5)', maxHeight: '180px', tabSize: 2 }}
-            >
-              <LuauHighlighted code={result.luauCode} />
-            </pre>
-            <button
-              onClick={handleCopy}
-              className="absolute top-1.5 right-2 flex items-center gap-1 text-[9px] px-2 py-0.5 rounded transition-all"
-              style={{
-                background: copied ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)',
-                color: copied ? '#4ADE80' : '#B0B0B0',
-                border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
-              }}
-            >
-              {copied ? (
-                <>
-                  <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none"><path d="M2 5l2.5 2.5L8 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none"><rect x="1" y="3" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.2"/><path d="M3 3V2a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                  Copy to Clipboard
-                </>
-              )}
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Professional code editor block */}
+      <LuauCodeBlock
+        code={result.luauCode}
+        collapsed={codeCollapsed}
+        onToggle={() => setCodeCollapsed((s) => !s)}
+      />
 
-      {/* Import to Studio CTA */}
-      <div className="px-3 pb-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+      {/* Action bar: Copy + Run in Studio */}
+      <div
+        className="flex items-center gap-2 px-3 py-2.5"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#0D1117' }}
+      >
+        {/* Copy — always visible */}
         <button
-          onClick={handleImport}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg font-semibold text-xs transition-all duration-200 active:scale-[0.97]"
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-150 active:scale-[0.97]"
           style={{
-            background: importDone
-              ? 'rgba(74,222,128,0.15)'
-              : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-            color: importDone ? '#4ADE80' : '#030712',
-            border: importDone ? '1px solid rgba(74,222,128,0.3)' : 'none',
-            boxShadow: importDone ? 'none' : '0 0 16px rgba(212,175,55,0.25)',
+            background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
+            color: copied ? '#4ADE80' : '#9CA3AF',
+            border: `1px solid ${copied ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.08)'}`,
+            minWidth: 72,
           }}
         >
-          {importDone ? (
+          {copied ? (
             <>
-              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none"><path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Code copied — paste in Studio Script
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
+                <rect x="1" y="4" width="7" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.1"/>
+                <path d="M4 4V2.5A1.5 1.5 0 015.5 1h4A1.5 1.5 0 0111 2.5v5A1.5 1.5 0 019.5 9H8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+              </svg>
+              Copy
+            </>
+          )}
+        </button>
+
+        {/* Run in Studio — gold, prominent */}
+        <button
+          onClick={handleRunInStudio}
+          className="flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-150 active:scale-[0.97]"
+          style={{
+            background: runSent || importDone
+              ? 'rgba(74,222,128,0.15)'
+              : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            color: runSent || importDone ? '#4ADE80' : '#030712',
+            border: runSent || importDone ? '1px solid rgba(74,222,128,0.3)' : '1px solid transparent',
+            boxShadow: runSent || importDone ? 'none' : '0 0 18px rgba(212,175,55,0.3), 0 2px 6px rgba(0,0,0,0.4)',
+          }}
+        >
+          {runSent ? (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Sent to Studio!
+            </>
+          ) : importDone ? (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <path d="M2 7l4 4 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Copied &mdash; paste in Script
+            </>
+          ) : studioConnected ? (
+            <>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+                <polygon points="3,2 12,7 3,12" fill="currentColor"/>
+              </svg>
+              Run in Studio
             </>
           ) : (
             <>
@@ -1328,10 +1481,30 @@ const BuildResultCard = memo(function BuildResultCard({ result, studioConnected,
                 <path d="M7 1v8M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M1 11h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
               </svg>
-              Import to Studio
+              Run in Studio
             </>
           )}
         </button>
+
+        {/* Studio connection pill */}
+        <div
+          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[9px] flex-shrink-0"
+          style={{
+            background: studioConnected ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
+            border: `1px solid ${studioConnected ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)'}`,
+            color: studioConnected ? '#4ADE80' : '#4B5563',
+          }}
+          title={studioConnected ? 'Roblox Studio connected' : 'Roblox Studio not connected'}
+        >
+          <div
+            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{
+              background: studioConnected ? '#4ADE80' : '#374151',
+              boxShadow: studioConnected ? '0 0 5px #4ADE80' : 'none',
+            }}
+          />
+          {studioConnected ? 'Live' : 'Offline'}
+        </div>
       </div>
     </div>
   )
@@ -1945,10 +2118,10 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
         </button>
       </div>
 
-      {/* TOP-RIGHT: view mode + grid + zoom */}
+      {/* TOP-RIGHT: view mode + grid + zoom — condensed on mobile */}
       <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end pointer-events-auto">
         <div
-          className="flex gap-0.5 rounded-lg overflow-hidden"
+          className="hidden md:flex gap-0.5 rounded-lg overflow-hidden"
           style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           {(['Perspective', 'Top', 'Front', 'Side'] as const).map(mode => (
@@ -1968,7 +2141,7 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
         <div className="flex gap-1">
           <button
             onClick={() => setShowGrid(g => !g)}
-            className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors"
+            className="px-2.5 py-2 md:py-1.5 rounded-lg text-[10px] font-medium transition-colors"
             style={{
               background: 'rgba(0,0,0,0.6)',
               backdropFilter: 'blur(8px)',
@@ -1984,14 +2157,14 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
           >
             <button
               onClick={() => setZoom((z) => Math.max(25, z - 25))}
-              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
+              className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
               title="Zoom out"
             >−</button>
             <span className="text-[9px] text-gray-500 w-8 text-center font-mono">{zoom}%</span>
             <div className="w-px self-stretch bg-white/[0.08]" />
             <button
               onClick={() => setZoom((z) => Math.min(400, z + 25))}
-              className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
+              className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center text-gray-400 hover:text-white transition-colors text-sm font-bold"
               title="Zoom in"
             >+</button>
           </div>
@@ -2260,6 +2433,7 @@ function IconBtn({
 
 export function EditorClient() {
   const { show: showToast } = useToast()
+  const { settings: editorSettings, update: updateEditorSetting } = useEditorSettings()
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -2292,6 +2466,10 @@ export function EditorClient() {
   const [editingProjectName, setEditingProjectName] = useState(false)
   const [showBuildOverlay, setShowBuildOverlay] = useState(false)
   const projectNameInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Slash commands state ────────────────────────────────────────────────────
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false)
+  const [slashFilter, setSlashFilter] = useState('')
 
   // Guest mode — allow 3 free messages before prompting sign-up
   // Persisted to sessionStorage so a page refresh doesn't reset the counter.
@@ -2691,6 +2869,32 @@ export function EditorClient() {
     [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount],
   )
 
+  // ── Helper: extract last code block from messages ────────────────────────
+  const getLastCodeBlock = useCallback((): string | null => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg.role === 'assistant' && msg.content) {
+        const match = msg.content.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+        if (match?.[1]?.trim()) return match[1].trim()
+      }
+      if (msg.buildResult?.luauCode) return msg.buildResult.luauCode
+    }
+    return null
+  }, [messages])
+
+  // ── Helper: clear conversation ────────────────────────────────────────────
+  const clearConversation = useCallback(() => {
+    setMessages([{
+      id: uid(),
+      role: 'system',
+      content: 'ForjeAI ready — describe what you want to build',
+      timestamp: new Date(),
+    }])
+    setSuggestedReplies([])
+    setInput('')
+    setTimeout(() => textareaRef.current?.focus(), 50)
+  }, [])
+
   // ── Editor-level keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
     const PANEL_KEYS: Record<string, PanelId> = {
@@ -2704,11 +2908,14 @@ export function EditorClient() {
     function handler(e: KeyboardEvent) {
       const mod = e.ctrlKey || e.metaKey
 
-      // Ctrl/Cmd+K — command palette (GlobalShortcuts handles it globally;
-      // this duplicate ensures it works when an editor input is focused)
+      // Ctrl/Cmd+K — focus chat input; if textarea already focused, toggle command palette
       if (mod && e.key === 'k') {
         e.preventDefault()
-        setPaletteOpen((v) => !v)
+        if (document.activeElement === textareaRef.current) {
+          setPaletteOpen((v) => !v)
+        } else {
+          textareaRef.current?.focus()
+        }
         return
       }
 
@@ -2736,7 +2943,6 @@ export function EditorClient() {
 
       // Ctrl+Enter — send message (textarea may or may not be focused)
       if (mod && e.key === 'Enter') {
-        // Only fire if a textarea in this editor is NOT already handling it
         const active = document.activeElement
         if (!active || active.tagName !== 'TEXTAREA') {
           e.preventDefault()
@@ -2745,11 +2951,66 @@ export function EditorClient() {
         return
       }
 
-      // Escape — close open panel / deselect object
-      if (e.key === 'Escape' && !paletteOpen && !shortcutsOpen) {
-        setActivePanel(null)
-        setSelectedObjectId(null)
-        setPropertiesPanelOpen(false)
+      // Ctrl+Shift+C — copy last code block
+      if (mod && e.shiftKey && e.key === 'C') {
+        e.preventDefault()
+        const code = getLastCodeBlock()
+        if (code) {
+          void navigator.clipboard.writeText(code).then(() => {
+            showToast({ variant: 'success', title: 'Copied', description: 'Last code block copied to clipboard.', duration: 2000 })
+          })
+        } else {
+          showToast({ variant: 'info', title: 'No code yet', description: 'Generate a build first.', duration: 2000 })
+        }
+        return
+      }
+
+      // Ctrl+Shift+R — run last code in Studio
+      if (mod && e.shiftKey && e.key === 'R') {
+        e.preventDefault()
+        const code = getLastCodeBlock()
+        if (!code) {
+          showToast({ variant: 'info', title: 'No code yet', description: 'Generate a build first.', duration: 2000 })
+          return
+        }
+        if (!studioStatus.sessionId) {
+          showToast({ variant: 'info', title: 'Studio not connected', description: 'Connect Studio first.', duration: 2500 })
+          return
+        }
+        setExecuteStatus('sending')
+        fetch('/api/studio/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, sessionId: studioStatus.sessionId }),
+        })
+          .then((r) => {
+            setExecuteStatus(r.ok ? 'done' : 'error')
+            showToast({ variant: r.ok ? 'success' : 'error', title: r.ok ? 'Sent to Studio' : 'Execution failed', duration: 3000 })
+          })
+          .catch(() => {
+            setExecuteStatus('error')
+            showToast({ variant: 'error', title: 'Studio unreachable', duration: 3000 })
+          })
+          .finally(() => setTimeout(() => setExecuteStatus('idle'), 3000))
+        return
+      }
+
+      // Ctrl+N — new conversation
+      if (mod && e.key === 'n') {
+        e.preventDefault()
+        clearConversation()
+        return
+      }
+
+      // Escape — close slash menu first, then panel / deselect
+      if (e.key === 'Escape') {
+        if (slashMenuOpen) { setSlashMenuOpen(false); return }
+        if (!paletteOpen && !shortcutsOpen) {
+          setActivePanel(null)
+          setSelectedObjectId(null)
+          setPropertiesPanelOpen(false)
+        }
+        return
       }
 
       // Tool shortcuts (V/G/R/S) — only when not in a text input
@@ -2772,10 +3033,24 @@ export function EditorClient() {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [paletteOpen, shortcutsOpen, input, submit])
+  }, [paletteOpen, shortcutsOpen, slashMenuOpen, input, submit, getLastCodeBlock, clearConversation, studioStatus, showToast])
+
+  // ── Textarea keydown: Enter to send, slash to trigger command menu ────────
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Slash at start of empty input → open slash menu
+    if (e.key === '/' && input === '') {
+      setSlashMenuOpen(true)
+      setSlashFilter('')
+      return
+    }
+    if (slashMenuOpen && e.key === 'Escape') {
+      e.preventDefault()
+      setSlashMenuOpen(false)
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
+      if (slashMenuOpen) { setSlashMenuOpen(false) }
       submit(input)
     }
   }
@@ -2822,6 +3097,23 @@ export function EditorClient() {
           <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.41 1.41M14.37 14.37l1.41 1.41M4.22 15.78l1.41-1.41M14.37 5.63l1.41-1.41" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
       </IconBtn>
+      {/* Build history — clock icon with badge */}
+      <div className="relative">
+        <IconBtn id="history" label="Build History" active={activePanel === 'history'} onClick={togglePanel}>
+          <svg className="w-5 h-5" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M10 6.5v4l2.5 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </IconBtn>
+        {buildHistory.length > 0 && (
+          <span
+            className="absolute flex items-center justify-center rounded-full text-[8px] font-bold pointer-events-none"
+            style={{ top: 4, right: 4, width: 13, height: 13, background: '#D4AF37', color: '#030712' }}
+          >
+            {buildHistory.length > 9 ? '9+' : buildHistory.length}
+          </span>
+        )}
+      </div>
     </>
   )
 
@@ -3166,7 +3458,14 @@ export function EditorClient() {
         .forge-focus:focus-visible { outline: 2px solid #D4AF37; outline-offset: 2px; }
       `}</style>
 
-      <div className="flex h-screen overflow-hidden" style={{ height: '100dvh', background: '#09090b' }}>
+      <div
+      className="flex h-screen overflow-hidden"
+      style={{
+        height: '100dvh',
+        background: THEME_BG_MAP[editorSettings.theme],
+        fontSize: FONT_SIZE_MAP[editorSettings.fontSize],
+      }}
+    >
 
         {/* ── Left icon bar (desktop) ─────────────────────────────────────── */}
         <div className="hidden md:flex flex-col items-center gap-0.5 py-3 px-1 w-11 flex-shrink-0" style={{ background: '#09090b', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
@@ -3196,7 +3495,18 @@ export function EditorClient() {
               {activePanel === 'assets'   && <MarketplacePanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
               {activePanel === 'dna'      && <DnaPanel />}
               {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
-              {activePanel === 'settings' && <SettingsPanel studioStatus={studioStatus} />}
+              {activePanel === 'settings' && (
+                <SettingsPanel
+                  studioStatus={studioStatus}
+                  totalTokens={totalTokens}
+                  onDisconnect={() => { stopConnectPolling(); setStudioStatus({ connected: false }); setConnectFlow('idle') }}
+                  onRescanWorkspace={() => {
+                    if (studioStatus.sessionId) {
+                      fetch('/api/studio/status?sessionId=' + studioStatus.sessionId).catch(() => {})
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         )}
@@ -3218,7 +3528,18 @@ export function EditorClient() {
                 {activePanel === 'assets'   && <MarketplacePanel onInsertAsset={(luau, name) => { submit(`Insert asset "${name}" into the build:\n\`\`\`lua\n${luau}\n\`\`\``) }} />}
                 {activePanel === 'dna'      && <DnaPanel />}
                 {activePanel === 'tokens'   && <TokensPanel tokensUsed={totalTokens} />}
-                {activePanel === 'settings' && <SettingsPanel studioStatus={studioStatus} />}
+                {activePanel === 'settings' && (
+                <SettingsPanel
+                  studioStatus={studioStatus}
+                  totalTokens={totalTokens}
+                  onDisconnect={() => { stopConnectPolling(); setStudioStatus({ connected: false }); setConnectFlow('idle') }}
+                  onRescanWorkspace={() => {
+                    if (studioStatus.sessionId) {
+                      fetch('/api/studio/status?sessionId=' + studioStatus.sessionId).catch(() => {})
+                    }
+                  }}
+                />
+              )}
               </div>
             </div>
           </div>
@@ -3340,7 +3661,70 @@ export function EditorClient() {
               )}
 
               {/* ── Flat input bar ───────────────────────────────────────── */}
-              <div className="flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 -1px 0 rgba(255,255,255,0.03)' }}>
+              <div className="flex-shrink-0 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 -1px 0 rgba(255,255,255,0.03)' }}>
+
+                {/* ── Slash commands dropdown ──────────────────────────── */}
+                {slashMenuOpen && (
+                  <div
+                    className="absolute bottom-full left-0 right-0 mx-3 mb-1 rounded-xl overflow-hidden z-50"
+                    style={{ background: '#111113', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 -8px 32px rgba(0,0,0,0.5)' }}
+                  >
+                    <div className="px-3 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold">Commands</span>
+                    </div>
+                    <ul className="py-1 max-h-56 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(212,175,55,0.2) transparent' }}>
+                      {SLASH_COMMANDS.filter((cmd) =>
+                        slashFilter === '' || cmd.command.includes(slashFilter) || cmd.description.toLowerCase().includes(slashFilter.toLowerCase())
+                      ).map((cmd) => (
+                        <li key={cmd.command}>
+                          <button
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              if (cmd.immediate) {
+                                setSlashMenuOpen(false)
+                                if (cmd.command === '/clear') {
+                                  clearConversation()
+                                } else if (cmd.command === '/help') {
+                                  setShortcutsOpen(true)
+                                  setInput('')
+                                } else if (cmd.command === '/export') {
+                                  const code = getLastCodeBlock()
+                                  if (code) {
+                                    void navigator.clipboard.writeText(code).then(() => {
+                                      showToast({ variant: 'success', title: 'Exported', description: 'Code copied to clipboard.', duration: 2000 })
+                                    })
+                                  } else {
+                                    showToast({ variant: 'info', title: 'No code yet', description: 'Generate a build first.', duration: 2000 })
+                                  }
+                                  setInput('')
+                                } else {
+                                  // /optimize, /undo — submit as-is
+                                  setInput('')
+                                  submit(cmd.command)
+                                }
+                              } else {
+                                setInput(cmd.command + ' ')
+                                setSlashMenuOpen(false)
+                                setTimeout(() => textareaRef.current?.focus(), 0)
+                              }
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-white/5"
+                          >
+                            <span className="text-xs font-mono font-semibold flex-shrink-0" style={{ color: '#D4AF37', minWidth: 80 }}>{cmd.command}</span>
+                            <span className="text-xs text-zinc-400 flex-1 truncate">{cmd.description}</span>
+                            {cmd.placeholder && (
+                              <span className="text-[10px] text-zinc-600 flex-shrink-0 hidden sm:block">{cmd.placeholder}</span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="px-3 py-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span className="text-[10px] text-zinc-600">Type to filter · Enter to select · Esc to dismiss</span>
+                    </div>
+                  </div>
+                )}
+
                 {imageFile && (
                   <div className="flex items-center gap-2 px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <svg className="w-3 h-3 text-zinc-500 flex-shrink-0" viewBox="0 0 16 16" fill="none">
@@ -3378,9 +3762,19 @@ export function EditorClient() {
                   <textarea
                     ref={textareaRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setInput(val)
+                      // Update slash filter as user types after /
+                      if (val.startsWith('/')) {
+                        setSlashMenuOpen(true)
+                        setSlashFilter(val.slice(1))
+                      } else if (slashMenuOpen && !val.startsWith('/')) {
+                        setSlashMenuOpen(false)
+                      }
+                    }}
                     onKeyDown={handleKeyDown}
-                    placeholder={listening ? 'Listening...' : 'Describe what to build...'}
+                    placeholder={listening ? 'Listening...' : 'Describe what to build... or type / for commands'}
                     disabled={loading}
                     rows={1}
                     maxLength={4000}
@@ -3415,6 +3809,46 @@ export function EditorClient() {
                   </button>
                 </div>
 
+                {/* ── Quick actions bar ────────────────────────────────── */}
+                <div className="flex items-center gap-1.5 px-3 pb-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                  {POWER_QUICK_ACTIONS.map((action) => (
+                    <button
+                      key={action.label}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        if (action.prefix.trim() === '/optimize') {
+                          setInput('')
+                          submit('/optimize')
+                        } else {
+                          setInput(action.prefix)
+                          setSlashMenuOpen(false)
+                          setTimeout(() => textareaRef.current?.focus(), 0)
+                        }
+                      }}
+                      className="flex-shrink-0 text-[10px] font-medium px-2.5 py-1 rounded-full transition-all hover:scale-105"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        color: '#71717a',
+                      }}
+                      onMouseEnter={(e) => {
+                        const t = e.currentTarget
+                        t.style.background = 'rgba(212,175,55,0.08)'
+                        t.style.borderColor = 'rgba(212,175,55,0.2)'
+                        t.style.color = 'rgba(212,175,55,0.9)'
+                      }}
+                      onMouseLeave={(e) => {
+                        const t = e.currentTarget
+                        t.style.background = 'rgba(255,255,255,0.04)'
+                        t.style.borderColor = 'rgba(255,255,255,0.08)'
+                        t.style.color = '#71717a'
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+
                 {/* Model + hint row */}
                 <div className="flex items-center gap-2 px-3 pb-2">
                   <ModelSelector value={selectedModel} onChange={setSelectedModel} />
@@ -3431,6 +3865,16 @@ export function EditorClient() {
                     </svg>
                   </button>
                   <div className="flex-1" />
+                  {/* ? button — shortcuts overlay */}
+                  <button
+                    onClick={() => setShortcutsOpen(true)}
+                    aria-label="Keyboard shortcuts"
+                    title="Keyboard shortcuts (?)"
+                    className="flex items-center justify-center w-5 h-5 rounded text-zinc-700 hover:text-zinc-400 transition-colors text-[11px] font-bold"
+                    style={{ fontFamily: 'monospace' }}
+                  >
+                    ?
+                  </button>
                   <span className="text-[10px] text-zinc-700 hidden lg:block">Enter to send</span>
                 </div>
               </div>
@@ -3450,10 +3894,10 @@ export function EditorClient() {
                     <Viewport sceneBlocks={sceneBlocks} />
                   </div>
 
-                  {/* Top-right: Connect Studio button */}
-                  <div className="absolute top-3 right-3 z-20">
+                  {/* Top-right: Connect Studio button — larger tap target on mobile */}
+                  <div className="absolute top-2 right-2 md:top-3 md:right-3 z-20">
                     {studioConnected ? (
-                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px]"
+                      <div className="flex items-center gap-2 px-3 py-2 md:py-1.5 rounded-lg text-[11px]"
                         style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)' }}>
                         <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981', boxShadow: '0 0 4px #10B981' }} />
                         <span className="text-emerald-400 font-medium">Studio Connected</span>
@@ -3461,15 +3905,12 @@ export function EditorClient() {
                     ) : (
                       <button
                         onClick={() => {
-                          // Generate code and show it in a simple prompt
-                          handleConnectToStudio().then(() => {
-                            // connectCode state will be set
-                          })
+                          handleConnectToStudio().then(() => {})
                         }}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all hover:brightness-110"
-                        style={{ background: '#D4AF37', color: '#030712' }}
+                        className="flex items-center gap-2 px-3 py-2 md:py-1.5 rounded-lg text-[11px] font-medium transition-all hover:brightness-110 active:scale-95"
+                        style={{ background: '#D4AF37', color: '#030712', minHeight: 36 }}
                       >
-                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg className="w-3.5 h-3.5 md:w-3 md:h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
                           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
                         </svg>
@@ -3573,9 +4014,56 @@ export function EditorClient() {
 
           </div>
 
-          {/* ── Mobile bottom icon bar ───────────────────────────────────── */}
-          <div className="md:hidden flex items-center justify-around px-2 py-1 flex-shrink-0" style={{ background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}>
-            {iconBarButtons}
+          {/* ── Mobile bottom bar — Chat/Preview tabs + icon buttons */}
+          <div
+            className="md:hidden flex-shrink-0"
+            style={{ background: '#09090b', borderTop: '1px solid rgba(255,255,255,0.06)', paddingBottom: 'env(safe-area-inset-bottom, 4px)' }}
+          >
+            {/* Tab switcher */}
+            <div className="flex items-center px-2 pt-1.5 gap-1">
+              <button
+                onClick={() => setMobileTab('chat')}
+                aria-label="Chat panel"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  minHeight: 44,
+                  background: mobileTab === 'chat' ? 'rgba(212,175,55,0.12)' : 'transparent',
+                  color: mobileTab === 'chat' ? '#D4AF37' : '#71717a',
+                  border: mobileTab === 'chat' ? '1px solid rgba(212,175,55,0.25)' : '1px solid transparent',
+                }}
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="none">
+                  <path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v7a2 2 0 01-2 2H7l-4 3V5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+                </svg>
+                Chat
+              </button>
+              <button
+                onClick={() => setMobileTab('preview')}
+                aria-label="3D preview"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium transition-all"
+                style={{
+                  minHeight: 44,
+                  background: mobileTab === 'preview' ? 'rgba(212,175,55,0.12)' : 'transparent',
+                  color: mobileTab === 'preview' ? '#D4AF37' : '#71717a',
+                  border: mobileTab === 'preview' ? '1px solid rgba(212,175,55,0.25)' : '1px solid transparent',
+                }}
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="none">
+                  <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                  <path d="M2 8h16" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+                Preview
+                {sceneBlocks.length > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(212,175,55,0.2)', color: '#D4AF37' }}>
+                    {sceneBlocks.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            {/* Tool icon buttons row */}
+            <div className="flex items-center justify-around px-2 py-1">
+              {iconBarButtons}
+            </div>
           </div>
         </div>
       </div>

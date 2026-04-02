@@ -5,15 +5,83 @@ import { GlassPanel } from './GlassPanel'
 import type { ChatMessage, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
 
-// ─── Quick action chips ───────────────────────────────────────────────────────
+// ─── Showcase example prompts (empty state) ───────────────────────────────────
 
-const QUICK_ACTIONS = [
-  { label: 'Castle',     icon: '🏰', prompt: 'Build a medieval castle with towers and a moat' },
-  { label: 'Forest',     icon: '🌲', prompt: 'Generate a dense forest biome with trees and rocks' },
-  { label: 'City Block', icon: '🏙️', prompt: 'Build a city district with roads and tall buildings' },
-  { label: 'Dungeon',    icon: '⚔️', prompt: 'Generate a dungeon with corridors and traps' },
-  { label: 'NPC',        icon: '🧑', prompt: 'Create an NPC with patrol AI and dialogue system' },
-]
+const SHOWCASE_EXAMPLES = [
+  {
+    emoji: '🏰',
+    label: 'Medieval Castle',
+    desc: 'Towers, moat & drawbridge',
+    prompt: 'Build me a medieval castle with towers, iron portcullis, and a water moat with drawbridge',
+    color: '#8B5CF6',
+    bg: 'rgba(139,92,246,0.08)',
+    border: 'rgba(139,92,246,0.2)',
+  },
+  {
+    emoji: '🌆',
+    label: 'Neon City',
+    desc: 'Skyscrapers & neon lights',
+    prompt: 'Create a neon city with tall skyscrapers, glowing signs, and busy streets',
+    color: '#06B6D4',
+    bg: 'rgba(6,182,212,0.08)',
+    border: 'rgba(6,182,212,0.2)',
+  },
+  {
+    emoji: '🔥',
+    label: 'Lava Obby',
+    desc: 'Obstacle course over lava',
+    prompt: 'Make an obstacle course over lava with moving platforms, jump pads, and checkpoints',
+    color: '#F97316',
+    bg: 'rgba(249,115,22,0.08)',
+    border: 'rgba(249,115,22,0.2)',
+  },
+  {
+    emoji: '☕',
+    label: 'Cozy Cafe',
+    desc: 'Interior with furniture',
+    prompt: 'Design a cozy cafe interior with tables, chairs, a coffee counter, and warm lighting',
+    color: '#D4AF37',
+    bg: 'rgba(212,175,55,0.08)',
+    border: 'rgba(212,175,55,0.25)',
+  },
+  {
+    emoji: '🚀',
+    label: 'Space Station',
+    desc: 'Sci-fi orbital base',
+    prompt: 'Build a space station with docking bays, corridors, control rooms, and starfield windows',
+    color: '#4ADE80',
+    bg: 'rgba(74,222,128,0.08)',
+    border: 'rgba(74,222,128,0.2)',
+  },
+  {
+    emoji: '🌲',
+    label: 'Forest & Lake',
+    desc: 'Paths, trees & water',
+    prompt: 'Create a forest with winding paths, tall trees, a peaceful lake, and a small wooden dock',
+    color: '#22C55E',
+    bg: 'rgba(34,197,94,0.08)',
+    border: 'rgba(34,197,94,0.2)',
+  },
+] as const
+
+// ─── Tip of the day data ───────────────────────────────────────────────────────
+
+const TIPS = [
+  "Try saying 'make it bigger' to scale your last build",
+  "Say 'add lighting' for atmosphere",
+  "Use 'add NPCs' to populate any scene with characters",
+  "Say 'optimize this' to reduce part count and improve FPS",
+  "Try 'add sound effects' to bring your world to life",
+  "Say 'change the style to sci-fi' to retheme any build",
+  "Use 'add a spawn point' to set player start location",
+  "Say 'make it more detailed' for a higher-quality build",
+  'Try /build, /script, or /terrain for targeted generation',
+  'Connect Studio to push builds live — no copy-paste ever',
+] as const
+
+const LS_TIP_KEY = 'fg_tip_session_count'
+const LS_TIP_DISMISSED = 'fg_tip_dismissed_v1'
+const MAX_TIP_SESSIONS = 10
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -78,38 +146,16 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div
         style={{
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.05) 100%)',
-          border: '1px solid rgba(212,175,55,0.25)',
-          borderRadius: 16,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
+          padding: '12px 14px',
+          borderRadius: 14,
+          background: 'rgba(212,175,55,0.07)',
+          border: '1px solid rgba(212,175,55,0.2)',
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.7)',
+          fontFamily: 'Inter, sans-serif',
         }}
       >
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white', fontFamily: 'Inter, sans-serif' }}>
-          Token balance exhausted
-        </p>
-        <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif' }}>
-          Upgrade your plan to keep building.
-        </p>
-        <a
-          href="/billing"
-          style={{
-            display: 'inline-block',
-            padding: '8px 16px',
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-            color: '#030712',
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: 'Inter, sans-serif',
-            textDecoration: 'none',
-            textAlign: 'center',
-          }}
-        >
-          Upgrade Plan
-        </a>
+        {msg.content}
       </div>
     )
   }
@@ -118,38 +164,16 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div
         style={{
-          background: 'rgba(99,60,180,0.1)',
-          border: '1px solid rgba(99,60,180,0.25)',
-          borderRadius: 16,
-          padding: '16px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
+          padding: '12px 14px',
+          borderRadius: 14,
+          background: 'rgba(99,102,241,0.07)',
+          border: '1px solid rgba(99,102,241,0.2)',
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.7)',
+          fontFamily: 'Inter, sans-serif',
         }}
       >
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'white', fontFamily: 'Inter, sans-serif' }}>
-          Sign up for more messages
-        </p>
-        <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif' }}>
-          Free accounts get unlimited builds.
-        </p>
-        <a
-          href="/sign-up"
-          style={{
-            display: 'inline-block',
-            padding: '8px 16px',
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, #6B3CB3 0%, #8B5CF6 100%)',
-            color: 'white',
-            fontSize: 13,
-            fontWeight: 700,
-            fontFamily: 'Inter, sans-serif',
-            textDecoration: 'none',
-            textAlign: 'center',
-          }}
-        >
-          Create Free Account
-        </a>
+        {msg.content}
       </div>
     )
   }
@@ -158,21 +182,16 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 12px',
-          background: 'rgba(74,222,128,0.06)',
-          border: '1px solid rgba(74,222,128,0.12)',
+          padding: '8px 12px',
           borderRadius: 10,
-          alignSelf: 'center',
-          maxWidth: '90%',
+          background: 'rgba(255,255,255,0.03)',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.3)',
+          fontFamily: 'Inter, sans-serif',
+          textAlign: 'center',
         }}
       >
-        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', flexShrink: 0 }} />
-        <span style={{ fontSize: 12, color: 'rgba(74,222,128,0.9)', fontFamily: 'Inter, sans-serif' }}>
-          {msg.content}
-        </span>
+        {msg.content}
       </div>
     )
   }
@@ -182,14 +201,14 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <div
           style={{
-            maxWidth: '78%',
+            maxWidth: '82%',
             padding: '10px 14px',
-            borderRadius: '16px 16px 4px 16px',
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.12) 100%)',
-            border: '1px solid rgba(212,175,55,0.25)',
+            borderRadius: '16px 4px 16px 16px',
+            background: 'rgba(212,175,55,0.12)',
+            border: '1px solid rgba(212,175,55,0.2)',
           }}
         >
-          <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {msg.content}
           </p>
         </div>
@@ -239,81 +258,246 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   )
 }
 
+// ─── Showcase card ─────────────────────────────────────────────────────────────
+
+interface ShowcaseExample {
+  readonly emoji: string
+  readonly label: string
+  readonly desc: string
+  readonly prompt: string
+  readonly color: string
+  readonly bg: string
+  readonly border: string
+}
+
+function ShowcaseCard({
+  example,
+  delay,
+  onSelect,
+}: {
+  example: ShowcaseExample
+  delay: number
+  onSelect: (prompt: string) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const [cardVisible, setCardVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setCardVisible(true), delay + 120)
+    return () => clearTimeout(t)
+  }, [delay])
+
+  return (
+    <button
+      onClick={() => onSelect(example.prompt)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: 6,
+        padding: '12px',
+        borderRadius: 12,
+        border: `1px solid ${hovered ? example.border : 'rgba(255,255,255,0.07)'}`,
+        background: hovered ? example.bg : 'rgba(255,255,255,0.025)',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'all 0.18s ease-out',
+        opacity: cardVisible ? 1 : 0,
+        transform: cardVisible ? (hovered ? 'translateY(-2px)' : 'translateY(0)') : 'translateY(10px)',
+        boxShadow: hovered ? `0 4px 16px ${example.bg}` : 'none',
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          background: hovered ? example.bg : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${hovered ? example.border : 'rgba(255,255,255,0.06)'}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 18,
+          transition: 'all 0.18s',
+          flexShrink: 0,
+        }}
+      >
+        {example.emoji}
+      </div>
+      <div>
+        <div style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: hovered ? '#fafafa' : '#a1a1aa',
+          fontFamily: 'Inter, sans-serif',
+          lineHeight: 1.3,
+          transition: 'color 0.18s',
+        }}>
+          {example.label}
+        </div>
+        <div style={{
+          fontSize: 11,
+          color: '#3f3f46',
+          fontFamily: 'Inter, sans-serif',
+          lineHeight: 1.4,
+          marginTop: 2,
+        }}>
+          {example.desc}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+// ─── Empty state / showcase ────────────────────────────────────────────────────
+
 function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void }) {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 80)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <div
       style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 24,
-        padding: '32px 20px',
+        gap: 20,
+        padding: '24px 4px 8px',
+        transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(12px)',
       }}
     >
-      <div style={{ textAlign: 'center' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', paddingBottom: 4 }}>
         <div
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 20,
-            background: 'linear-gradient(135deg, rgba(255,184,28,0.15) 0%, rgba(212,175,55,0.08) 100%)',
-            border: '1px solid rgba(255,184,28,0.2)',
+            width: 52,
+            height: 52,
+            borderRadius: 16,
+            background: 'linear-gradient(135deg, rgba(255,184,28,0.15) 0%, rgba(212,175,55,0.07) 100%)',
+            border: '1px solid rgba(255,184,28,0.18)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 16px',
+            margin: '0 auto 12px',
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-            <path d="M14 3L16.5 9.5H23L17.5 13.5l2 6.5L14 16l-5.5 4 2-6.5L5 9.5h6.5L14 3z" fill="#FFB81C" opacity={0.9}/>
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#FFB81C" opacity={0.9}/>
           </svg>
         </div>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white', fontFamily: 'Inter, sans-serif' }}>
-          ForjeAI is ready
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif' }}>
+          What do you want to build?
         </h2>
-        <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}>
-          Describe what you want to build in Roblox Studio
+        <p style={{ margin: '5px 0 0', fontSize: 12, color: '#52525b', fontFamily: 'Inter, sans-serif' }}>
+          Pick an example or describe anything
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', maxWidth: 340 }}>
-        {QUICK_ACTIONS.map((action) => (
-          <button
-            key={action.label}
-            onClick={() => onQuickAction(action.prompt)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '7px 14px',
-              borderRadius: 20,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.03)',
-              color: 'rgba(255,255,255,0.65)',
-              fontSize: 13,
-              fontWeight: 500,
-              fontFamily: 'Inter, sans-serif',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,184,28,0.08)'
-              e.currentTarget.style.borderColor = 'rgba(255,184,28,0.2)'
-              e.currentTarget.style.color = '#FFB81C'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.65)'
-            }}
-          >
-            <span>{action.icon}</span>
-            {action.label}
-          </button>
+      {/* 6-card showcase grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {SHOWCASE_EXAMPLES.map((ex, i) => (
+          <ShowcaseCard
+            key={ex.label}
+            example={ex}
+            delay={i * 40}
+            onSelect={onQuickAction}
+          />
         ))}
       </div>
+    </div>
+  )
+}
+
+// ─── Tip of the day ────────────────────────────────────────────────────────────
+
+export function TipOfTheDay() {
+  const [tip, setTip] = useState<string | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(LS_TIP_DISMISSED) === 'true') return
+      const raw = localStorage.getItem(LS_TIP_KEY)
+      const count = raw ? parseInt(raw, 10) : 0
+      if (count >= MAX_TIP_SESSIONS) return
+      localStorage.setItem(LS_TIP_KEY, String(count + 1))
+      const idx = count % TIPS.length
+      setTip(TIPS[idx])
+      const t = setTimeout(() => setVisible(true), 600)
+      return () => clearTimeout(t)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const dismiss = useCallback(() => {
+    setVisible(false)
+    setTimeout(() => {
+      try { localStorage.setItem(LS_TIP_DISMISSED, 'true') } catch { /* ignore */ }
+      setDismissed(true)
+    }, 250)
+  }, [])
+
+  if (!tip || dismissed) return null
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '7px 12px',
+        borderRadius: 10,
+        background: 'rgba(212,175,55,0.06)',
+        border: '1px solid rgba(212,175,55,0.15)',
+        transition: 'opacity 0.25s ease-out, transform 0.25s ease-out',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(6px)',
+        marginBottom: 2,
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
+        <path d="M6 1a3.5 3.5 0 0 1 2 6.4V9H4V7.4A3.5 3.5 0 0 1 6 1z" stroke="#FFB81C" strokeWidth="1.1" fill="none"/>
+        <path d="M4.5 10.5h3" stroke="#FFB81C" strokeWidth="1.1" strokeLinecap="round"/>
+      </svg>
+      <span style={{ flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+        <span style={{ color: 'rgba(212,175,55,0.7)', fontWeight: 600, marginRight: 4 }}>Tip:</span>
+        {tip}
+      </span>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss tip"
+        style={{
+          flexShrink: 0,
+          width: 16,
+          height: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'rgba(255,255,255,0.2)',
+          padding: 0,
+          borderRadius: 4,
+          transition: 'color 0.15s',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.2)' }}
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <path d="M2 2l6 6M8 2L2 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      </button>
     </div>
   )
 }
@@ -571,6 +755,9 @@ export function ChatPanel({
           gap: 8,
         }}
       >
+        {/* Tip of the day — dismissable, shown for first 10 sessions */}
+        <TipOfTheDay />
+
         {/* Top row: model selector + token counter */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <ModelSelector selected={selectedModel} onChange={setSelectedModel} />

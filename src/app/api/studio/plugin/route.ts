@@ -18,12 +18,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.0.0
+const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.1.0
 -- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxm (Windows)
 --          or ~/Documents/Roblox/Plugins/ForjeGames.rbxm (Mac)
 -- Then fully close and reopen Roblox Studio.
 
-local PLUGIN_VER     = "4.0.0"
+local PLUGIN_VER     = "4.1.0"
 local PROD_URL       = "INJECTED_BASE_URL"  -- replaced at serve time with NEXT_PUBLIC_APP_URL
 local SYNC_INTERVAL  = 1      -- seconds between command polls
 local HB_INTERVAL    = 30     -- seconds between keepalive heartbeats
@@ -59,6 +59,12 @@ local lastSync       = 0
 local lastHB         = 0
 local fails          = 0
 local isReconnecting = false
+-- Auto-reconnect state
+local reconnectAttempts   = 0
+local MAX_RECONNECT_TRIES = 5
+local RECONNECT_INTERVAL  = 10  -- seconds between auto-reconnect attempts
+-- Build progress state
+local isBuildRunning = false
 
 -- ============================================================
 -- Persistent auth helpers
@@ -403,6 +409,64 @@ footerLabel.TextSize         = 10
 footerLabel.TextXAlignment   = Enum.TextXAlignment.Right
 footerLabel.LayoutOrder      = 8
 
+-- === BUILD PROGRESS BAR (shown during execute_luau) ===
+local progressContainer = Instance.new("Frame", root)
+progressContainer.Size             = UDim2.new(1, 0, 0, 36)
+progressContainer.BackgroundTransparency = 1
+progressContainer.LayoutOrder      = 9
+progressContainer.Visible          = false
+
+local progressLayout = Instance.new("UIListLayout", progressContainer)
+progressLayout.SortOrder     = Enum.SortOrder.LayoutOrder
+progressLayout.Padding        = UDim.new(0, 4)
+progressLayout.FillDirection  = Enum.FillDirection.Vertical
+
+local progressLabel = Instance.new("TextLabel", progressContainer)
+progressLabel.Size             = UDim2.new(1, 0, 0, 14)
+progressLabel.BackgroundTransparency = 1
+progressLabel.Text             = "Building..."
+progressLabel.TextColor3       = Color3.fromRGB(212, 175, 55)
+progressLabel.Font             = Enum.Font.GothamBold
+progressLabel.TextSize         = 11
+progressLabel.TextXAlignment   = Enum.TextXAlignment.Left
+progressLabel.LayoutOrder      = 1
+
+local progressTrack = Instance.new("Frame", progressContainer)
+progressTrack.Size             = UDim2.new(1, 0, 0, 6)
+progressTrack.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+progressTrack.BorderSizePixel  = 0
+progressTrack.LayoutOrder      = 2
+Instance.new("UICorner", progressTrack).CornerRadius = UDim.new(1, 0)
+
+local progressFill = Instance.new("Frame", progressTrack)
+progressFill.Size              = UDim2.new(0, 0, 1, 0)
+progressFill.BackgroundColor3  = Color3.fromRGB(212, 175, 55)
+progressFill.BorderSizePixel   = 0
+Instance.new("UICorner", progressFill).CornerRadius = UDim.new(1, 0)
+
+-- === UPDATE NOTIFICATION BANNER ===
+local updateBanner = Instance.new("Frame", root)
+updateBanner.Size             = UDim2.new(1, 0, 0, 32)
+updateBanner.BackgroundColor3 = Color3.fromRGB(30, 20, 0)
+updateBanner.BorderSizePixel  = 0
+updateBanner.LayoutOrder      = 10
+updateBanner.Visible          = false
+Instance.new("UICorner", updateBanner).CornerRadius = UDim.new(0, 6)
+local updateStroke = Instance.new("UIStroke", updateBanner)
+updateStroke.Color     = Color3.fromRGB(212, 175, 55)
+updateStroke.Thickness = 1
+
+local updateLabel = Instance.new("TextLabel", updateBanner)
+updateLabel.Size             = UDim2.new(1, -8, 1, 0)
+updateLabel.Position         = UDim2.new(0, 8, 0, 0)
+updateLabel.BackgroundTransparency = 1
+updateLabel.Text             = "Update available -- re-download plugin"
+updateLabel.TextColor3       = Color3.fromRGB(212, 175, 55)
+updateLabel.Font             = Enum.Font.GothamBold
+updateLabel.TextSize         = 10
+updateLabel.TextWrapped      = true
+updateLabel.TextXAlignment   = Enum.TextXAlignment.Left
+
 -- ============================================================
 -- UI state machine
 -- ============================================================
@@ -450,9 +514,52 @@ local function setUI(state)
 		connectBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
 		disconnectBtn.Visible      = false
 		-- mainBtn is a PluginToolbarButton — cannot set .Text after creation
+		progressContainer.Visible  = false
 	end
 end
 
+
+
+-- Build progress helpers
+local function showBuildProgress(label)
+	isBuildRunning = true
+	progressContainer.Visible = true
+	progressLabel.Text = label or "Building..."
+	progressLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+	progressFill.Size = UDim2.new(0, 0, 1, 0)
+	progressFill.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+	-- Animate fill to ~90% (indeterminate -- completes when done)
+	task.spawn(function()
+		local steps = 40
+		for i = 1, steps do
+			if not isBuildRunning then break end
+			progressFill.Size = UDim2.new(i / (steps + 10), 0, 1, 0)
+			task.wait(0.05)
+		end
+	end)
+end
+
+local function hideBuildProgress(success, errorMsg)
+	isBuildRunning = false
+	if success then
+		progressFill.Size = UDim2.new(1, 0, 1, 0)
+		progressLabel.Text = "Done!"
+		progressLabel.TextColor3 = Color3.fromRGB(16, 185, 129)
+	else
+		progressFill.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+		progressLabel.Text = errorMsg and ("Build failed: " .. errorMsg:sub(1, 40)) or "Build failed"
+		progressLabel.TextColor3 = Color3.fromRGB(220, 60, 60)
+	end
+	task.delay(3, function()
+		progressContainer.Visible = false
+		progressFill.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+	end)
+end
+
+local function showUpdateBanner()
+	updateBanner.Visible = true
+	updateLabel.Text = "Update available -- download at: " .. BASE_URL .. "/api/studio/plugin"
+end
 -- ============================================================
 -- Session management
 -- ============================================================
@@ -475,19 +582,36 @@ end
 local function onFail(reason)
 	fails = fails + 1
 	if fails >= MAX_FAILURES then
-		-- Try auto-reconnect before giving up
+		-- Kick off auto-reconnect loop (up to MAX_RECONNECT_TRIES, every RECONNECT_INTERVAL s)
 		if authToken and authToken ~= "" and not isReconnecting then
 			isReconnecting = true
-			warn("[ForjeGames] Could not reach ForjeGames server. Attempting auto-reconnect...")
-			fails = 0
+			reconnectAttempts = 0
+			warn("[ForjeGames] Connection lost. Starting auto-reconnect...")
 			setUI("reconnecting")
+			fails = 0
 			task.spawn(function()
-				local ok = tryReconnect(authToken, sessionId)
-				isReconnecting = false
-				if not ok then
-					warn("[ForjeGames] Session expired. Re-enter your connection code.")
-					disconnect(true)
+				while reconnectAttempts < MAX_RECONNECT_TRIES do
+					reconnectAttempts = reconnectAttempts + 1
+					statusLabel.Text = "Reconnecting... (" .. reconnectAttempts .. "/" .. MAX_RECONNECT_TRIES .. ")"
+					local ok = tryReconnect(authToken, sessionId)
+					if ok then
+						isReconnecting = false
+						reconnectAttempts = 0
+						return
+					end
+					if reconnectAttempts < MAX_RECONNECT_TRIES then
+						for i = RECONNECT_INTERVAL, 1, -1 do
+							if not isReconnecting then return end
+							statusLabel.Text = "Retry in " .. i .. "s (" .. reconnectAttempts .. "/" .. MAX_RECONNECT_TRIES .. ")"
+							task.wait(1)
+						end
+					end
 				end
+				-- All attempts exhausted
+				isReconnecting = false
+				reconnectAttempts = 0
+				warn("[ForjeGames] Auto-reconnect failed after " .. MAX_RECONNECT_TRIES .. " attempts. Re-enter your code.")
+				disconnect(true)
 			end)
 		else
 			if reason then
@@ -498,7 +622,6 @@ local function onFail(reason)
 			disconnect(true)
 		end
 	elseif fails % 5 == 0 then
-		-- Periodic warning so users aren't left wondering what's happening
 		local retryIn = math.min(fails, 30)
 		statusLabel.Text = "Connection issue. Retrying in " .. retryIn .. "s..."
 	end
@@ -551,11 +674,20 @@ local function executeCommand(cmd)
 			return
 		end
 
+		-- Show build progress in the widget
+		local promptLabel = (data.prompt or "build"):sub(1, 28)
+		showBuildProgress("Building: " .. promptLabel .. "...")
+
+		-- Save a waypoint BEFORE execution (pre-build bookend for clean undo)
 		-- Wrap in ChangeHistoryService recording for atomic undo
 		local recordId = nil
 		pcall(function()
 			recordId = ChangeHistoryService:TryBeginRecording("ForjeGames: " .. (data.prompt or "build"):sub(1, 40))
 		end)
+		-- Fallback for older Studio that lacks TryBeginRecording
+		if not recordId then
+			pcall(function() ChangeHistoryService:SetWaypoint("ForjeGames: pre-build") end)
+		end
 
 		-- Expose shared state as globals so AI code can access them
 		_G._forje_state = _forje_state
@@ -564,8 +696,10 @@ local function executeCommand(cmd)
 
 		local fn, compErr = loadstring(code)
 		if not fn then
+			local errMsg = "COMPILE_ERROR: " .. tostring(compErr)
 			warn("[ForjeGames] Compile error: " .. tostring(compErr))
-			reportResult(cmdId, cmdType, false, "COMPILE_ERROR: " .. tostring(compErr))
+			hideBuildProgress(false, tostring(compErr):sub(1, 40))
+			reportResult(cmdId, cmdType, false, errMsg)
 			if recordId then pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end) end
 			return
 		end
@@ -575,21 +709,26 @@ local function executeCommand(cmd)
 
 		local ok, runErr = pcall(fn)
 		if not ok then
+			local errMsg = "RUNTIME_ERROR: " .. tostring(runErr)
 			warn("[ForjeGames] Runtime error: " .. tostring(runErr))
-			-- Rollback on failure
+			hideBuildProgress(false, tostring(runErr):sub(1, 40))
+			-- Rollback on failure -- undo partial build
 			if recordId then
 				pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end)
 			end
-			reportResult(cmdId, cmdType, false, "RUNTIME_ERROR: " .. tostring(runErr))
+			reportResult(cmdId, cmdType, false, errMsg)
 			return
 		end
 
-		-- Finish recording (enables undo)
+		-- Finish recording + post-build waypoint (second bookend for clean undo range)
 		if recordId then
 			pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Commit) end)
 		else
-			ChangeHistoryService:SetWaypoint("ForjeGames: execute_luau")
+			ChangeHistoryService:SetWaypoint("ForjeGames: post-build")
 		end
+
+		-- Show Done! in the widget progress bar
+		hideBuildProgress(true, nil)
 
 		-- Verification: count new instances created
 		local afterCount = #workspace:GetDescendants()
@@ -597,18 +736,21 @@ local function executeCommand(cmd)
 
 		-- Report success with verification data
 		reportResult(cmdId, cmdType, true, nil)
-		-- Send enriched result
+		-- Send enriched result + screenshotReady so website triggers screenshot poll
+		local _sid = sessionId
+		local _tok = authToken
 		task.spawn(function()
 			jsonRequest("POST", "/api/studio/update", {
-				sessionId    = sessionId,
-				sessionToken = authToken,
+				sessionId    = _sid,
+				sessionToken = _tok,
 				event        = "command_result",
 				changes      = {{
-					id           = cmdId,
-					type         = "command_result",
-					success      = true,
+					id               = cmdId,
+					type             = "command_result",
+					success          = true,
 					instancesCreated = created,
-					timestamp    = os.time(),
+					screenshotReady  = true,
+					timestamp        = os.time(),
 				}},
 			})
 		end)
@@ -1198,9 +1340,10 @@ local function doConnect(code)
 		saveAuth(authToken, sessionId)
 		setUI("connected")
 		print("[ForjeGames] Connected to " .. placeName .. " via " .. BASE_URL)
-		-- Check for update notice
+		-- Check for update notice -- show in-widget banner
 		if data.updateAvailable then
-			warn("[ForjeGames] Plugin update available! Download the latest version from: " .. BASE_URL .. (data.updateUrl or "/api/studio/plugin"))
+			warn("[ForjeGames] Plugin update available! Download: " .. BASE_URL .. "/api/studio/plugin")
+			pcall(showUpdateBanner)
 		end
 		return true, nil
 	end
@@ -1513,15 +1656,45 @@ RunService.Heartbeat:Connect(function()
 			if ok and data then
 				onSuccess()
 
-				-- Version update notice (non-blocking)
+				-- Version update notice -- show in-widget banner
 				if data.updateAvailable then
-					warn("[ForjeGames] Plugin update available! Download the latest version from: " .. BASE_URL .. (data.updateUrl or "/api/studio/plugin"))
+					warn("[ForjeGames] Plugin update available! Download: " .. BASE_URL .. "/api/studio/plugin")
+					pcall(showUpdateBanner)
 				end
 
-				-- Server requesting re-auth (session evicted from cold start)
+				-- Server requesting re-auth -- try auto-reconnect loop first
 				if data.reconnect then
-					warn("[ForjeGames] Session expired. Re-enter your connection code.")
-					disconnect(true)
+					if authToken and authToken ~= "" and not isReconnecting then
+						isReconnecting = true
+						reconnectAttempts = 0
+						setUI("reconnecting")
+						task.spawn(function()
+							while reconnectAttempts < MAX_RECONNECT_TRIES do
+								reconnectAttempts = reconnectAttempts + 1
+								statusLabel.Text = "Reconnecting... (" .. reconnectAttempts .. "/" .. MAX_RECONNECT_TRIES .. ")"
+								local ok = tryReconnect(authToken, sessionId)
+								if ok then
+									isReconnecting = false
+									reconnectAttempts = 0
+									return
+								end
+								if reconnectAttempts < MAX_RECONNECT_TRIES then
+									for i = RECONNECT_INTERVAL, 1, -1 do
+										if not isReconnecting then return end
+										statusLabel.Text = "Retry in " .. i .. "s (" .. reconnectAttempts .. "/" .. MAX_RECONNECT_TRIES .. ")"
+										task.wait(1)
+									end
+								end
+							end
+							isReconnecting = false
+							reconnectAttempts = 0
+							warn("[ForjeGames] Session expired after reconnect attempts. Re-enter your code.")
+							disconnect(true)
+						end)
+					else
+						warn("[ForjeGames] Session expired. Re-enter your connection code.")
+						disconnect(true)
+					end
 					return
 				end
 
@@ -1603,7 +1776,7 @@ export async function GET(req: NextRequest) {
   const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
 
   const rbxm = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <!-- ForjeGames Studio Plugin v4.0.0 -->
+  <!-- ForjeGames Studio Plugin v4.1.0 -->
   <!-- Generated dynamically — ${new Date().toISOString()} -->
   <Item class="Script" referent="RBX0001">
     <Properties>
