@@ -922,7 +922,7 @@ NEON CITY: ClockTime=0, Ambient=20,15,35, Brightness=0.25
            Sky: StarCount=1000
 
 LIGHTING CODE PATTERN (always clear old effects first):
-```lua
+\`\`\`lua
 local L=game:GetService("Lighting")
 local CH=game:GetService("ChangeHistoryService")
 local rid=CH:TryBeginRecording("ForjeAI_Lighting")
@@ -945,7 +945,7 @@ local ok,err=pcall(function()
 end)
 if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
 if not ok then warn("[ForjeAI] Lighting: "..tostring(err)) end
-```
+\`\`\`
 
 === TERRAIN GENERATION TEMPLATES ===
 
@@ -953,7 +953,7 @@ When user asks for terrain (hills, mountains, water, forest, desert, islands, ca
 MATERIALS: Grass, Sand, Rock, Snow, Ice, Mud, Ground, LeafyGrass, Sandstone, Limestone, Water, SmoothRock, Glacier, CrackedLava, Basalt, Cobblestone
 
 TERRAIN BOILERPLATE:
-```lua
+\`\`\`lua
 local CH=game:GetService("ChangeHistoryService")
 local rid=CH:TryBeginRecording("ForjeAI_Terrain")
 local T=workspace.Terrain
@@ -965,7 +965,7 @@ local ok,err=pcall(function()
 end)
 if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
 if not ok then warn("[ForjeAI] Terrain: "..tostring(err)) end
-```
+\`\`\`
 
 ROLLING HILLS: noise loop x/z -150..150 step 8. h=math.noise((ox+x)*0.025,(oz+z)*0.025)*14+math.noise((ox+x)*2.1,(oz+z)*2.3)*5. mat=(h>8 and Enum.Material.Rock) or (h>1 and Enum.Material.LeafyGrass) or Enum.Material.Grass. T:FillBlock(CFrame.new(ox+x,h-2,oz+z),Vector3.new(9,h+8,9),mat). Add T:FillBlock(CFrame.new(ox,0,oz),Vector3.new(340,1,340),Enum.Material.Water) for valley water.
 MOUNTAINS: T:FillBall(Vector3.new(ox,80,oz),100,Enum.Material.Rock) + FillBall(ox,140,oz,65,SmoothRock) + FillBall(ox,185,oz,38,Snow) + FillBall(ox,208,oz,18,Snow). 6 foothills at radius 110 each 60deg: FillBall(r=55,Rock)+FillBall(r=28,SmoothRock). Ground FillBlock(500x8x500,Ground).
@@ -981,7 +981,7 @@ CAVES: Rock cliff FillBlock(120x80x60,Rock)+FillBall(ox,40,oz-40,55,SmoothRock).
 When user asks for rain/snow/fog/sandstorm, generate ParticleEmitters. Destroy old WeatherSystem first.
 
 WEATHER BOILERPLATE:
-```lua
+\`\`\`lua
 local CH=game:GetService("ChangeHistoryService")
 local rid=CH:TryBeginRecording("ForjeAI_Weather")
 local old=workspace:FindFirstChild("WeatherSystem") if old then old:Destroy() end
@@ -997,7 +997,7 @@ local ok,err=pcall(function()
 end)
 if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
 if not ok then warn("[ForjeAI] Weather: "..tostring(err)) end
-```
+\`\`\`
 
 RAIN: pe.Texture="rbxassetid://6101261426" pe.Rate=400 pe.Lifetime=NumberRange.new(1.5,2.2) pe.Speed=NumberRange.new(80,120) pe.SpreadAngle=Vector2.new(8,8) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.06),NumberSequenceKeypoint.new(1,0.04)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.8)}) pe.Color=ColorSequence.new(Color3.fromRGB(180,200,225)) pe.LightEmission=0.05 pe.LightInfluence=0.9 pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=0.8 L.ClockTime=12 local atmo=Instance.new("Atmosphere") atmo.Density=0.65 atmo.Haze=3 atmo.Color=Color3.fromRGB(160,165,175) atmo.Parent=L
 SNOW: pe.Rate=180 pe.Lifetime=NumberRange.new(3.5,6) pe.Speed=NumberRange.new(8,18) pe.SpreadAngle=Vector2.new(25,25) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.3),NumberSequenceKeypoint.new(1,0.05)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.8,0.1),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(240,245,255)) pe.LightEmission=0.3 pe.LightInfluence=0.8 pe.RotSpeed=NumberRange.new(-15,15) pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=1.1 L.Ambient=Color3.fromRGB(200,210,225)
@@ -2323,13 +2323,6 @@ Token cost: 2 tokens`,
   help: `I'm ForjeAI — your Roblox game dev partner. I can build maps, write scripts, generate 3D models, search the marketplace, and design game systems. Just tell me what you want.\n\n[SUGGESTIONS]\nBuild me a medieval castle\nCreate a coin collection script\nSearch marketplace for tree assets`,
 
   publish: `To publish: File → Publish to Roblox (Ctrl+P). Set your game name, description, thumbnail, and privacy. Check Output for errors before going public.\n\n[SUGGESTIONS]\nHelp me set up a game pass\nCreate a welcome screen\nBuild an admin commands script`,
-
-  weather: `Weather effects add atmosphere. I can create rain, snow, fog, sandstorms using ParticleEmitters and Atmosphere settings.
-
-[SUGGESTIONS]
-Add rain with puddle reflections
-Create a snowstorm
-Set up dynamic fog`,
 
   multiscript: `For full game systems I generate multiple scripts with clear separation. Say "build me a [system] system" and I'll output all the files with labels.\n\n[SUGGESTIONS]\nBuild me a pet system\nCreate a trading system\nMake a leaderboard system with DataStore`,
 

@@ -10,6 +10,8 @@ export interface ViewportPreviewProps {
   state: ViewportState
   /** How many blocks to show in the "complete" scene (clamped 0-12) */
   builtBlockCount?: number
+  /** When true, renders a pulse skeleton instead of the viewport scene */
+  isLoading?: boolean
   className?: string
 }
 
@@ -232,7 +234,7 @@ const PARTICLES = makeParticles(18)
 
 // ─── ViewportPreview component ──────────────────────────────────────────────────
 
-export function ViewportPreview({ state, builtBlockCount = 0, className = '' }: ViewportPreviewProps) {
+export function ViewportPreview({ state, builtBlockCount = 0, isLoading = false, className = '' }: ViewportPreviewProps) {
   // Track which blocks are visible (for building animation stagger)
   const [visibleSet, setVisibleSet] = useState<Set<string>>(new Set())
   const [animatingSet, setAnimatingSet] = useState<Set<string>>(new Set())
@@ -284,6 +286,57 @@ export function ViewportPreview({ state, builtBlockCount = 0, className = '' }: 
   const showParticles = state === 'idle'
   const showBuilding  = state === 'building'
   const showComplete  = state === 'complete'
+
+  // Loading skeleton — shown before the viewport is ready
+  if (isLoading) {
+    return (
+      <div
+        className={`relative w-full h-full overflow-hidden select-none ${className}`}
+        style={{ background: 'linear-gradient(170deg, #0A1628 0%, #0D1F3C 45%, #0f0f0f 100%)' }}
+        aria-label="Viewport loading"
+        role="status"
+        aria-busy="true"
+      >
+        {/* Skeleton grid lines */}
+        <div className="absolute inset-0 opacity-20" aria-hidden="true">
+          {[20, 40, 60, 80].map((pct) => (
+            <div
+              key={`h-${pct}`}
+              className="absolute left-0 right-0 h-px animate-pulse"
+              style={{ top: `${pct}%`, background: 'rgba(212,175,55,0.3)' }}
+            />
+          ))}
+          {[20, 40, 60, 80].map((pct) => (
+            <div
+              key={`v-${pct}`}
+              className="absolute top-0 bottom-0 w-px animate-pulse"
+              style={{ left: `${pct}%`, background: 'rgba(96,165,250,0.2)' }}
+            />
+          ))}
+        </div>
+        {/* Skeleton block placeholders */}
+        <div className="absolute inset-0 flex items-center justify-center gap-3" aria-hidden="true">
+          {[40, 64, 48, 56, 36].map((h, i) => (
+            <div
+              key={i}
+              className="animate-pulse rounded-sm"
+              style={{
+                width: '28px',
+                height: `${h}px`,
+                background: 'rgba(212,175,55,0.08)',
+                border: '1px solid rgba(212,175,55,0.15)',
+                animationDelay: `${i * 120}ms`,
+              }}
+            />
+          ))}
+        </div>
+        {/* Loading label */}
+        <div className="absolute inset-0 flex items-end justify-center pb-8 pointer-events-none">
+          <span className="text-[10px] text-white/30 animate-pulse">Loading viewport...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

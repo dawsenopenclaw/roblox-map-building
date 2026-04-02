@@ -548,12 +548,26 @@ export function useChat(options: UseChatOptions = {}) {
         const errMsg = err instanceof Error ? err.message : 'Unknown error'
         console.error('[ForjeAI] Chat error:', errMsg)
         setStreaming(false)
+
+        let friendlyError: string
+        if (errMsg.includes('401') || errMsg.includes('403') || errMsg.toLowerCase().includes('unauthorized') || errMsg.toLowerCase().includes('forbidden')) {
+          friendlyError = 'Please sign in to continue.'
+        } else if (errMsg.includes('402') || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('token limit') || errMsg.toLowerCase().includes('insufficient_tokens')) {
+          friendlyError = 'Token limit reached — upgrade your plan to continue.'
+        } else if (errMsg.includes('API error 5') || errMsg.includes('500') || errMsg.includes('502') || errMsg.includes('503') || errMsg.includes('504')) {
+          friendlyError = 'Server error — try again in a moment.'
+        } else if (errMsg.toLowerCase().includes('fetch') || errMsg.toLowerCase().includes('network') || errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('load')) {
+          friendlyError = 'Network error — check your connection.'
+        } else {
+          friendlyError = 'Server error — try again.'
+        }
+
         setMessagesSync((prev) => [
           ...prev.filter((m) => m.id !== statusMsgId),
           {
             id: uid(),
             role: 'assistant',
-            content: `Hit a snag — ${errMsg.includes('API error') ? 'server returned an error' : 'could not reach the server'}. Please try again.`,
+            content: friendlyError,
             timestamp: new Date(),
             model: selectedModel,
           },

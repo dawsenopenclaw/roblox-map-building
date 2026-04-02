@@ -269,6 +269,7 @@ export function useStudioConnection() {
       activity: [],
       commandsSent: 0,
       studioContext: { camera: null, partCount: 0, nearbyParts: [] },
+      connectionError: null,
     })
   }, [stopAllPolling])
 
