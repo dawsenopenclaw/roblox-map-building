@@ -12,7 +12,30 @@ import {
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { queueCommand, getSession, getSessionByToken } from '@/lib/studio-session'
 import Anthropic from '@anthropic-ai/sdk'
+
+// Extract ```lua code blocks from AI response text
+function extractLuauCode(text: string): string | null {
+  const match = text.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+  return match?.[1]?.trim() || null
+}
+
+// Queue extracted code to Studio plugin for execution
+async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
+  if (!sessionId || !code) return false
+  try {
+    const session = await getSession(sessionId)
+    if (!session) return false
+    const result = await queueCommand(sessionId, {
+      type: 'execute_luau',
+      data: { code },
+    })
+    return result.ok
+  } catch {
+    return false
+  }
+}
 
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
 
@@ -1603,14 +1626,22 @@ PLACEMENT RULES:
         }
       }
 
+      // Auto-execute any Luau code in Studio
+      const luau = extractLuauCode(responseText)
+      let executedInStudio = false
+      if (luau && sessionId) {
+        executedInStudio = await sendCodeToStudio(sessionId, luau)
+      }
+
       return NextResponse.json({
         message: responseText,
-        tokensUsed: tokenCost, // Report the charged cost, not raw API tokens
+        tokensUsed: tokenCost,
         intent,
         model: aiResponse.model,
+        executedInStudio,
         ...(mcpResult  ? { mcpResult }  : {}),
         ...(meshResult ? { meshResult } : {}),
-      } satisfies ChatResponsePayload & { model: string })
+      })
     } catch (err: unknown) {
       // Rate limit — surface a clean error, don't fall through to demo
       if (err instanceof Anthropic.RateLimitError) {
@@ -1694,12 +1725,19 @@ PLACEMENT RULES:
         const groqData = await groqRes.json() as GroqResponse
         const text = groqData.choices?.[0]?.message?.content ?? ''
         if (text) {
+          // Auto-execute any Luau code in Studio
+          const luau = extractLuauCode(text)
+          let executedInStudio = false
+          if (luau && sessionId) {
+            executedInStudio = await sendCodeToStudio(sessionId, luau)
+          }
           return NextResponse.json({
             message: text,
             tokensUsed: tokenCost,
             intent,
             model: 'llama-3.3-70b',
-          } satisfies ChatResponsePayload & { model: string })
+            executedInStudio,
+          } satisfies ChatResponsePayload & { model: string; executedInStudio: boolean })
         }
       }
     } catch (err) {
