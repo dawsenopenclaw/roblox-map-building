@@ -50,6 +50,9 @@ import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
 import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
 import { BuildHistory, useBuildHistory } from '@/components/editor/BuildHistory'
+import { OnboardingOverlay, useOnboarding } from '@/components/editor/OnboardingOverlay'
+import { AIContextPanel } from '@/components/editor/AIContextPanel'
+import { CodePreview } from '@/components/editor/CodePreview'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -1007,7 +1010,23 @@ function StudioConnectBanner({ onDismiss, autoConnectSignal = 0 }: StudioConnect
 
 // ─── Typing Indicator ──────────────────────────────────────────────────────────
 
+const THINKING_PHRASES = [
+  'Thinking...',
+  'Planning your build...',
+  'Generating code...',
+  'Almost ready...',
+]
+
 function TypingIndicator() {
+  const [phraseIdx, setPhraseIdx] = useState(0)
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPhraseIdx((p) => (p + 1) % THINKING_PHRASES.length)
+    }, 1800)
+    return () => clearInterval(id)
+  }, [])
+
   return (
     <div className="flex items-center gap-3">
       {/* Avatar */}
@@ -1017,14 +1036,20 @@ function TypingIndicator() {
           <path d="M7 2L8.5 5.5H12L9 7.5l1 3.5L7 9l-3 2 1-3.5-3-2h3.5L7 2z"/>
         </svg>
       </div>
-      {/* Bubble with dots + label */}
+      {/* Bubble with rotating status + dots */}
       <div className="flex items-center gap-3 px-4 py-2.5 rounded-2xl rounded-tl-sm"
         style={{
           background: 'linear-gradient(135deg, rgba(13,18,49,1) 0%, rgba(17,24,64,1) 100%)',
           border: '1px solid rgba(255,184,28,0.15)',
           boxShadow: '0 0 20px rgba(255,184,28,0.06)',
         }}>
-        <span className="text-xs text-[#FFB81C]/70 font-medium">ForjeGames is building</span>
+        <span
+          key={phraseIdx}
+          className="text-xs text-[#FFB81C]/70 font-medium"
+          style={{ animation: 'word-fade-in 0.3s ease-out forwards' }}
+        >
+          {THINKING_PHRASES[phraseIdx]}
+        </span>
         <div className="flex gap-1 items-center">
           {[0, 150, 300].map((d) => (
             <div
@@ -1631,9 +1656,13 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
     )
   }
 
-  // assistant — words fade in progressively
+  // assistant — strip any residual [SUGGESTIONS] blocks before rendering
+  const displayContent = msg.content
+    .replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/gi, '')
+    .trim()
+
   const modelColor = MODELS.find((m) => m.id === msg.model)?.color ?? '#FFB81C'
-  const words = msg.content.split(' ')
+  const words = displayContent.split(' ')
 
   return (
     <div
@@ -1679,6 +1708,10 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
         </div>
         {/* Marketplace-first build result card */}
         {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
+        {/* Code preview — shown when a build result has Luau code */}
+        {msg.buildResult?.luauCode && (
+          <CodePreview code={msg.buildResult.luauCode} />
+        )}
         <div className="flex items-center gap-2 pl-1">
           {msg.tokensUsed !== undefined && (
             <span className="text-[10px] text-zinc-600 flex items-center gap-1">
@@ -2440,8 +2473,8 @@ export function EditorClient() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: uid(),
-      role: 'system',
-      content: 'ForjeAI ready — describe what you want to build',
+      role: 'assistant',
+      content: "Hey! I'm Forje — your game dev partner. Tell me what you want to build, or pick a quick action below to get started.",
       timestamp: new Date(),
     },
   ])
@@ -2558,6 +2591,9 @@ export function EditorClient() {
 
   // ── Build history ────────────────────────────────────────────────────────────
   const { entries: buildHistory, addBuild } = useBuildHistory()
+
+  // ── Onboarding ───────────────────────────────────────────────────────────────
+  const { showOnboarding, dismissOnboarding, triggerOnboarding } = useOnboarding()
 
   // Studio state — must be declared before submit so the callback closes over them
   const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
@@ -2725,12 +2761,24 @@ export function EditorClient() {
         tokensUsed = data.tokensUsed ?? tokensUsed
         const buildResult = data.buildResult
 
-        // Store suggestions for clickable chips
-        if (data.suggestions && data.suggestions.length > 0) {
-          setSuggestedReplies(data.suggestions)
-        } else {
-          setSuggestedReplies([])
+        // Parse [SUGGESTIONS] block from message text, strip from display
+        let inlineSuggestions: string[] = []
+        if (responseText) {
+          const suggMatch = responseText.match(/\[SUGGESTIONS\]([\s\S]*?)\[\/SUGGESTIONS\]/i)
+          if (suggMatch) {
+            inlineSuggestions = suggMatch[1]
+              .split('\n')
+              .map((s) => s.replace(/^[-•*]\s*/, '').trim())
+              .filter(Boolean)
+            responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/i, '').trim()
+          }
         }
+
+        // Store suggestions — prefer API field, fall back to inline block
+        const finalSuggestions = (data.suggestions && data.suggestions.length > 0)
+          ? data.suggestions
+          : inlineSuggestions
+        setSuggestedReplies(finalSuggestions)
 
         setTotalTokens((prev) => prev + tokensUsed)
 
@@ -2913,8 +2961,8 @@ export function EditorClient() {
   const clearConversation = useCallback(() => {
     setMessages([{
       id: uid(),
-      role: 'system',
-      content: 'ForjeAI ready — describe what you want to build',
+      role: 'assistant',
+      content: "Hey! I'm Forje — your game dev partner. Tell me what you want to build, or pick a quick action below to get started.",
       timestamp: new Date(),
     }])
     setSuggestedReplies([])
@@ -3652,12 +3700,12 @@ export function EditorClient() {
               <EditorIntegrations
                 onSendMessage={(msg) => submit(msg)}
                 studioSessionId={studioStatus.sessionId}
-                hasMessages={messages.length > 1}
+                hasMessages={messages.some((m) => m.role === 'user')}
               />
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto forge-scroll px-4 py-5 space-y-4 min-h-0">
-                {messages.length === 1 && (
+                {!messages.some((m) => m.role === 'user') && (
                   <EditorEmptyState
                     firstName={editorFirstName}
                     onSelectPrompt={(prompt) => submit(prompt)}
@@ -3671,16 +3719,33 @@ export function EditorClient() {
 
               {/* ── Suggested reply chips ───────────────────────────────── */}
               {suggestedReplies.length > 0 && !loading && (
-                <div className="flex-shrink-0 px-3 py-2 flex flex-wrap gap-1.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div
+                  className="flex-shrink-0 px-3 py-2.5 flex flex-wrap gap-2"
+                  style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                >
                   {suggestedReplies.map((s, i) => (
                     <button
                       key={i}
                       onClick={() => { setSuggestedReplies([]); submit(s) }}
-                      className="text-xs px-3 py-1.5 rounded-full transition-all duration-200 hover:scale-105"
+                      className="text-xs px-3 py-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
                       style={{
-                        background: 'rgba(212,175,55,0.1)',
-                        border: '1px solid rgba(212,175,55,0.25)',
-                        color: 'rgba(212,175,55,0.9)',
+                        background: 'rgba(212,175,55,0.08)',
+                        border: '1px solid rgba(212,175,55,0.3)',
+                        color: 'rgba(212,175,55,0.95)',
+                        boxShadow: '0 0 8px rgba(212,175,55,0.08)',
+                        animation: `word-fade-in 0.25s ease-out forwards`,
+                        animationDelay: `${i * 60}ms`,
+                        opacity: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        const el = e.currentTarget
+                        el.style.background = 'rgba(212,175,55,0.16)'
+                        el.style.boxShadow = '0 0 14px rgba(212,175,55,0.2)'
+                      }}
+                      onMouseLeave={(e) => {
+                        const el = e.currentTarget
+                        el.style.background = 'rgba(212,175,55,0.08)'
+                        el.style.boxShadow = '0 0 8px rgba(212,175,55,0.08)'
                       }}
                     >
                       {s}
@@ -3894,6 +3959,19 @@ export function EditorClient() {
                     </svg>
                   </button>
                   <div className="flex-1" />
+                  {/* Tutorial button */}
+                  <button
+                    onClick={triggerOnboarding}
+                    aria-label="Open tutorial"
+                    title="Tutorial"
+                    className="flex items-center justify-center w-5 h-5 rounded text-zinc-700 hover:text-zinc-400 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.3"/>
+                      <path d="M6 5.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      <circle cx="6" cy="3.5" r="0.65" fill="currentColor"/>
+                    </svg>
+                  </button>
                   {/* ? button — shortcuts overlay */}
                   <button
                     onClick={() => setShortcutsOpen(true)}
@@ -4014,6 +4092,12 @@ export function EditorClient() {
                   </div>
                 </>
 
+                {/* ── AI Context Panel ──────────────────────────────────────── */}
+                <AIContextPanel
+                  studioConnected={studioConnected}
+                  studioContext={null}
+                />
+
                 {/* Legacy panels removed — viewport is always visible now */}
                 {false && (
                     <div>
@@ -4122,6 +4206,11 @@ export function EditorClient() {
       {/* ── API Keys Modal ─────────────────────────────────────────────────── */}
       {apiKeysOpen && (
         <ApiKeysModal onClose={() => setApiKeysOpen(false)} />
+      )}
+
+      {/* ── Onboarding overlay ─────────────────────────────────────────────── */}
+      {showOnboarding && (
+        <OnboardingOverlay onComplete={dismissOnboarding} onSkip={dismissOnboarding} />
       )}
 
       {/* ── Quick tip toast ────────────────────────────────────────────────── */}
