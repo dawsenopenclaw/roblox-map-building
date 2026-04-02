@@ -60,7 +60,29 @@ export async function POST(req: NextRequest) {
   const secret = process.env.STUDIO_PLUGIN_SECRET
   let existingSession = undefined
 
-  if (secret && body.token !== secret) {
+  // SECURITY: If no STUDIO_PLUGIN_SECRET is set, we MUST still validate the token
+  // is either a valid JWT or matches a known session. Never accept arbitrary tokens.
+  if (!secret) {
+    // No static secret configured — token MUST be a valid JWT shape
+    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
+    if (!isJwtShape) {
+      return NextResponse.json(
+        { error: 'invalid_token', message: 'Token must be a valid JWT from the pairing flow' },
+        { status: 401, headers: CORS_HEADERS },
+      )
+    }
+    // Verify the JWT sessionId maps to an existing session
+    const jwtSessionId = extractSessionIdFromJwt(body.token)
+    if (jwtSessionId) {
+      existingSession = await getSession(jwtSessionId) ?? getSessionByToken(body.token) ?? undefined
+    }
+    if (!existingSession) {
+      return NextResponse.json(
+        { error: 'session_not_found', message: 'Complete the pairing flow first at forjegames.com/editor' },
+        { status: 401, headers: CORS_HEADERS },
+      )
+    }
+  } else if (body.token !== secret) {
     // Not the static secret — try memory lookup first (fast path)
     existingSession = getSessionByToken(body.token)
 
