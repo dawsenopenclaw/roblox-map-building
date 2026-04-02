@@ -453,6 +453,9 @@ end
 -- Session management
 -- ============================================================
 
+-- Forward declaration (defined after executeCommand)
+local tryReconnect
+
 local function disconnect(silent)
 	authToken   = nil
 	sessionId   = nil
@@ -610,7 +613,7 @@ end
 -- Auth handshake helpers
 -- ============================================================
 
-local function tryReconnect(savedToken, savedSession)
+tryReconnect = function(savedToken, savedSession)
 	-- Validate the saved token with the server
 	local ok, data = jsonRequest("GET",
 		"/api/studio/status?sessionId=" .. HttpService:UrlEncode(savedSession or "")
