@@ -170,9 +170,10 @@ export function getServerEnv(): ServerEnv {
       .join('\n')
 
     if (process.env.NODE_ENV === 'production' && !isBuildPhase()) {
-      // Hard crash in production — misconfigured servers must not silently serve broken state
-      throw new Error(
-        `[env] Critical environment variables missing or invalid in production:\n${errorMessages}\n\nFix your deployment config and redeploy.`
+      // Log warning but continue — missing vars will degrade individual features,
+      // not crash the entire server. Each feature checks its own requirements.
+      console.warn(
+        `[env] WARNING: Environment variables missing or invalid in production:\n${errorMessages}\n\nSome features will be unavailable. Add the missing vars and redeploy.`
       )
     }
 
