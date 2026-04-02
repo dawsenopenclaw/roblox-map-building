@@ -293,8 +293,9 @@ export function useChat(options: UseChatOptions = {}) {
                     timestamp: new Date(),
                   }])
                 }
-              } catch { /* silent */ }
-              retryListenerRef.current = false
+              } catch { /* silent */ } finally {
+                retryListenerRef.current = false
+              }
             }
             void checkResult()
           }
@@ -317,7 +318,7 @@ export function useChat(options: UseChatOptions = {}) {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, onBuildComplete, messages],
+    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, messages],
   )
 
   return {

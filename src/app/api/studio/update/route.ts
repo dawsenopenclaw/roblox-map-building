@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
 
   // Push to SSE subscribers — instant browser updates, no polling needed
   try {
-    const { pushToSession } = await import('@/app/api/studio/stream/route')
+    const { pushToSession } = await import('@/lib/studio-sse-bus')
     if (extra.camera || extra.nearbyParts || extra.selected) {
       pushToSession(body.sessionId, 'context', {
         camera: extra.camera ?? null,

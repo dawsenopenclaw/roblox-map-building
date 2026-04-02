@@ -55,9 +55,10 @@ local BASE_URL    = PROD_URL  -- resolved by detectBaseUrl()
 local authToken   = nil
 local sessionId   = nil
 local isConnected = false
-local lastSync    = 0
-local lastHB      = 0
-local fails       = 0
+local lastSync       = 0
+local lastHB         = 0
+local fails          = 0
+local isReconnecting = false
 
 -- ============================================================
 -- Persistent auth helpers
@@ -475,12 +476,14 @@ local function onFail(reason)
 	fails = fails + 1
 	if fails >= MAX_FAILURES then
 		-- Try auto-reconnect before giving up
-		if authToken and authToken ~= "" then
-			warn("[ForjeGames] Could not reach ForjeGames server. Check your internet connection. Attempting auto-reconnect...")
+		if authToken and authToken ~= "" and not isReconnecting then
+			isReconnecting = true
+			warn("[ForjeGames] Could not reach ForjeGames server. Attempting auto-reconnect...")
 			fails = 0
 			setUI("reconnecting")
 			task.spawn(function()
 				local ok = tryReconnect(authToken, sessionId)
+				isReconnecting = false
 				if not ok then
 					warn("[ForjeGames] Session expired. Re-enter your connection code.")
 					disconnect(true)
@@ -554,11 +557,10 @@ local function executeCommand(cmd)
 			recordId = ChangeHistoryService:TryBeginRecording("ForjeGames: " .. (data.prompt or "build"):sub(1, 40))
 		end)
 
-		-- Inject shared state + helpers into execution environment
-		local env = setfenv(loadstring("return getfenv()")(), getfenv())
-		rawset(env, "_forje_state", _forje_state)
-		rawset(env, "_forje_cam", workspace.CurrentCamera)
-		rawset(env, "_forje_selection", game:GetService("Selection"))
+		-- Expose shared state as globals so AI code can access them
+		_G._forje_state = _forje_state
+		_G._forje_cam = workspace.CurrentCamera
+		_G._forje_selection = game:GetService("Selection")
 
 		local fn, compErr = loadstring(code)
 		if not fn then
@@ -635,6 +637,7 @@ local function executeCommand(cmd)
 		end
 		model.Parent = workspace
 		ChangeHistoryService:SetWaypoint("ForjeGames: insert_asset")
+		reportResult(cmdId, cmdType, true, nil)
 
 	elseif cmdType == "delete_model" then
 		local path = data.instancePath or data.name
@@ -651,8 +654,9 @@ local function executeCommand(cmd)
 		if target and not PROTECTED[target.Name] then
 			target:Destroy()
 			ChangeHistoryService:SetWaypoint("ForjeGames: delete_model")
+			reportResult(cmdId, cmdType, true, nil)
 		else
-			warn("[ForjeGames] delete_model: instance not found or protected: " .. tostring(path))
+			reportResult(cmdId, cmdType, false, "not found or protected: " .. tostring(path))
 		end
 
 	elseif cmdType == "update_property" then
@@ -674,8 +678,9 @@ local function executeCommand(cmd)
 				return
 			end
 			ChangeHistoryService:SetWaypoint("ForjeGames: update_property")
+			reportResult(cmdId, cmdType, true, nil)
 		else
-			warn("[ForjeGames] update_property: instance not found: " .. tostring(path))
+			reportResult(cmdId, cmdType, false, "instance not found: " .. tostring(path))
 		end
 
 	-- ── UNDO — revert last AI build ──────────────────────────────────────
@@ -704,6 +709,7 @@ local function executeCommand(cmd)
 		if clone then
 			clone.Parent = target.Parent
 			ChangeHistoryService:SetWaypoint("ForjeGames: clone")
+			reportResult(cmdId, cmdType, true, nil)
 		end
 
 	-- ── MODIFY_SELECTED — change properties of whatever user has selected ─
@@ -732,6 +738,7 @@ local function executeCommand(cmd)
 			end
 		end
 		ChangeHistoryService:SetWaypoint("ForjeGames: modify_selected")
+		reportResult(cmdId, cmdType, true, nil)
 
 	-- ── SET_LIGHTING — change time of day, atmosphere, mood ──────────────
 	elseif cmdType == "set_lighting" then
