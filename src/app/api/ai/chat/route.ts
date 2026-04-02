@@ -516,6 +516,14 @@ MINIMUM 15 parts. Use proper materials (Slate, Granite, WoodPlanks, Glass, Metal
 
     if (codeResponse) {
       luauCode = extractLuauCode(codeResponse)
+      // Fallback: if no ```lua block found but response contains Luau code, use it raw
+      if (!luauCode && codeResponse.includes('Instance.new') && codeResponse.includes('workspace')) {
+        // Strip any markdown artifacts and use the raw code
+        luauCode = codeResponse
+          .replace(/^```\w*\s*/gm, '')
+          .replace(/^```\s*$/gm, '')
+          .trim()
+      }
     }
 
     // Auto-execute in Studio
