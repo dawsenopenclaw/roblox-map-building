@@ -530,7 +530,7 @@ body {
 /* ─── Global Interactive Transitions ────────────────────────────────────────── */
 /* Buttery smooth state changes on all interactive elements                      */
 
-*:not(*::before):not(*::after):not(input):not(textarea):not([data-no-transition]) {
+*:not(input):not(textarea):not([data-no-transition]) {
   transition-property: color, background-color, border-color, box-shadow, opacity, transform;
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);

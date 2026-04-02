@@ -367,7 +367,7 @@ function DownloadTab({ pluginFolder }: { pluginFolder: string }) {
           <p className="text-[12px] font-medium text-zinc-200 mb-2">Download the plugin</p>
           <a
             href="/api/studio/plugin"
-            download="ForjeGames.lua"
+            download="ForjeGames.rbxm"
             onClick={() => setTimeout(() => setStep('copied'), 500)}
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:brightness-110 active:scale-[0.98]"
             style={{ background: '#D4AF37', color: '#030712' }}
@@ -377,7 +377,7 @@ function DownloadTab({ pluginFolder }: { pluginFolder: string }) {
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Download ForjeGames.lua
+            Download ForjeGames.rbxm
           </a>
         </div>
       </div>

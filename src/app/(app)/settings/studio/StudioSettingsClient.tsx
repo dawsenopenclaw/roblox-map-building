@@ -107,12 +107,12 @@ function InstallSection() {
         <StepCard number={1} title="Download the ForjeGames plugin">
           <a
             href="/api/studio/plugin"
-            download="ForjeGames.lua"
+            download="ForjeGames.rbxm"
             className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-xl text-sm font-semibold
               bg-[#D4AF37] hover:bg-[#c4a030] text-black transition-colors"
           >
             <Download size={14} />
-            Download ForjeGames.lua
+            Download ForjeGames.rbxm
           </a>
         </StepCard>
 

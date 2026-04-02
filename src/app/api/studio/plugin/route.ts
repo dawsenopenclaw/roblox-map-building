@@ -16,11 +16,11 @@
  * - Clean DockWidget UI: status dot, code entry, place info, disconnect button
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.0.0
--- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.lua (Windows)
---          or ~/Documents/Roblox/Plugins/ForjeGames.lua (Mac)
+-- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxm (Windows)
+--          or ~/Documents/Roblox/Plugins/ForjeGames.rbxm (Mac)
 -- Then fully close and reopen Roblox Studio.
 
 local PLUGIN_VER     = "4.0.0"
@@ -616,6 +616,58 @@ local function executeCommand(cmd)
 		else
 			warn("[ForjeGames] update_property: instance not found: " .. tostring(path))
 		end
+
+	elseif cmdType == "scan_workspace" then
+		local snapshot = {objects = {}, spawns = {}, stats = {parts=0, models=0}, bounds = {min={999999,999999,999999}, max={-999999,-999999,-999999}}}
+		local count = 0
+		local function round(n) return math.floor(n * 10 + 0.5) / 10 end
+		local function addBounds(pos)
+			snapshot.bounds.min = {math.min(snapshot.bounds.min[1], pos.X), math.min(snapshot.bounds.min[2], pos.Y), math.min(snapshot.bounds.min[3], pos.Z)}
+			snapshot.bounds.max = {math.max(snapshot.bounds.max[1], pos.X), math.max(snapshot.bounds.max[2], pos.Y), math.max(snapshot.bounds.max[3], pos.Z)}
+		end
+		local function scan(parent, depth)
+			if count >= 500 or depth > 8 then return end
+			for _, child in parent:GetChildren() do
+				if count >= 500 then break end
+				if child:IsA("BasePart") then
+					count = count + 1
+					snapshot.stats.parts = snapshot.stats.parts + 1
+					local p, s = child.Position, child.Size
+					addBounds(p)
+					table.insert(snapshot.objects, {
+						n = child.Name:sub(1, 40),
+						cls = child.ClassName,
+						p = {round(p.X), round(p.Y), round(p.Z)},
+						s = {round(s.X), round(s.Y), round(s.Z)},
+						m = child.Material.Name,
+						c = {math.floor(child.Color.R*255), math.floor(child.Color.G*255), math.floor(child.Color.B*255)},
+					})
+					if child:IsA("SpawnLocation") then
+						table.insert(snapshot.spawns, {n = child.Name, p = {round(p.X), round(p.Y), round(p.Z)}})
+					end
+				elseif child:IsA("Model") then
+					snapshot.stats.models = snapshot.stats.models + 1
+					scan(child, depth + 1)
+				end
+			end
+		end
+		scan(workspace, 0)
+		-- Lighting
+		local lt = game:GetService("Lighting")
+		snapshot.lighting = {time = lt.ClockTime, brightness = lt.Brightness, ambient = {math.floor(lt.Ambient.R*255), math.floor(lt.Ambient.G*255), math.floor(lt.Ambient.B*255)}}
+		snapshot.stats.total = count
+		-- Send back
+		reportResult(cmdId, cmdType, true, nil)
+		local mySessionId = sessionId
+		local authToken_snap = authToken
+		task.spawn(function()
+			jsonRequest("POST", "/api/studio/update", {
+				sessionId = mySessionId, sessionToken = authToken_snap,
+				event = "workspace_snapshot",
+				snapshot = snapshot,
+			})
+		end)
+		return
 	end
 
 	reportResult(cmdId, cmdType, true, nil)
@@ -859,20 +911,47 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS })
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   // Inject the app URL at serve time so the plugin knows which server to connect to.
-  // In dev: NEXT_PUBLIC_APP_URL = http://localhost:3000  → plugin targets local server
-  // In prod: NEXT_PUBLIC_APP_URL = https://forjegames.com → plugin targets production
-  // This eliminates the localhost probe that caused 5-10s delays for prod users.
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com').replace(/\/$/, '')
   const finalLua = PLUGIN_LUA.replace('INJECTED_BASE_URL', appUrl)
 
-  return new NextResponse(finalLua, {
+  // Check if caller wants raw .lua (e.g. ?format=lua)
+  const format = req.nextUrl.searchParams.get('format')
+
+  if (format === 'lua') {
+    return new NextResponse(finalLua, {
+      status: 200,
+      headers: {
+        ...CORS,
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
+  // Default: serve as .rbxm (XML Roblox Model) — Studio loads this natively
+  // Escape the Lua source for XML CDATA (handle ]]> sequences)
+  const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
+
+  const rbxm = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  <!-- ForjeGames Studio Plugin v4.0.0 -->
+  <!-- Generated dynamically — ${new Date().toISOString()} -->
+  <Item class="Script" referent="RBX0001">
+    <Properties>
+      <string name="Name">ForjeGames</string>
+      <ProtectedString name="Source"><![CDATA[${escapedLua}]]></ProtectedString>
+    </Properties>
+  </Item>
+</roblox>`
+
+  return new NextResponse(rbxm, {
     status: 200,
     headers: {
       ...CORS,
       'Content-Type': 'application/octet-stream',
-      'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
+      'Content-Disposition': 'attachment; filename="ForjeGames.rbxm"',
       'Cache-Control': 'no-store',
     },
   })

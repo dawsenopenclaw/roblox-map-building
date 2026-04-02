@@ -383,7 +383,7 @@ function HeroSection() {
       <div className="flex flex-wrap gap-3">
         <a
           href="/api/studio/plugin"
-          download="ForjeGames.lua"
+          download="ForjeGames.rbxm"
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#D4AF37] hover:bg-[#c9a832] text-black text-sm font-bold rounded-xl transition-colors"
         >
           <Download size={15} />
@@ -488,9 +488,9 @@ function InstallSteps() {
           https://forjegames.com/api/studio/plugin
         </code>.
         Alternatively,{' '}
-        <a href="/api/studio/plugin" download="ForjeGames.lua"
+        <a href="/api/studio/plugin" download="ForjeGames.rbxm"
           className="text-[#D4AF37] hover:underline inline-flex items-center gap-0.5">
-          <Download size={11} />download ForjeGames.lua
+          <Download size={11} />download ForjeGames.rbxm
         </a>{' '}
         and place it in{' '}
         <code className="text-xs bg-black/40 px-1 py-0.5 rounded text-gray-300">
@@ -592,7 +592,7 @@ function FeaturesList() {
 const TROUBLESHOOT_ITEMS = [
   {
     q: 'The plugin does not appear in the toolbar',
-    a: 'Make sure ForjeGames.lua is placed directly in the Plugins folder (not a subfolder). Restart Roblox Studio completely and check the Plugins tab.',
+    a: 'Make sure ForjeGames.rbxm is placed directly in the Plugins folder (not a subfolder). Restart Roblox Studio completely and check the Plugins tab.',
   },
   {
     q: '"HttpService is not enabled" error',
@@ -671,7 +671,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How do I update the plugin?',
-    a: 'Re-download ForjeGames.lua from the link above and replace the file in your Plugins folder. The current version is shown in the toolbar label next to "ForjeGames".',
+    a: 'Re-download ForjeGames.rbxm from the link above and replace the file in your Plugins folder. The current version is shown in the toolbar label next to "ForjeGames".',
   },
 ]
 
@@ -764,7 +764,7 @@ export default function StudioDocsClient() {
             </span>
             <a
               href="/api/studio/plugin"
-              download="ForjeGames.lua"
+              download="ForjeGames.rbxm"
               className="flex items-center gap-1.5 text-xs text-[#D4AF37] hover:text-[#c9a832] transition-colors font-medium"
             >
               <Download size={12} />
@@ -804,7 +804,7 @@ export default function StudioDocsClient() {
             <Link href="/settings/studio" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
               Studio Settings
             </Link>
-            <a href="/api/studio/plugin" download="ForjeGames.lua" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
+            <a href="/api/studio/plugin" download="ForjeGames.rbxm" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
               Download Plugin
             </a>
             <Link href="/docs" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
@@ -870,11 +870,11 @@ export default function StudioDocsClient() {
             <div className="flex flex-wrap gap-3 mt-4">
               <a
                 href="/api/studio/plugin"
-                download="ForjeGames.lua"
+                download="ForjeGames.rbxm"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/20 rounded-xl transition-colors font-medium"
               >
                 <Download size={14} />
-                Download ForjeGames.lua
+                Download ForjeGames.rbxm
               </a>
             </div>
           </Section>

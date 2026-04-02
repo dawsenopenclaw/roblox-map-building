@@ -300,10 +300,10 @@ function buildHtml(sessionId: string | null): string {
         <div class="step-content">
           <div class="step-title">Download the plugin file</div>
           <div class="step-desc">
-            Download the <code style="color:#D4AF37;font-size:12px">ForjeGames.lua</code> plugin file to your computer.
+            Download the <code style="color:#D4AF37;font-size:12px">ForjeGames.rbxm</code> plugin file to your computer.
           </div>
-          <a href="/api/studio/plugin" download="ForjeGames.lua" class="btn-download">
-            ↓ Download ForjeGames.lua
+          <a href="/api/studio/plugin" download="ForjeGames.rbxm" class="btn-download">
+            ↓ Download ForjeGames.rbxm
           </a>
         </div>
       </div>
@@ -323,12 +323,12 @@ function buildHtml(sessionId: string | null): string {
           </div>
 
           <div class="win-content active">
-            <div class="code-block">%LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.lua</div>
+            <div class="code-block">%LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxm</div>
             <div class="code-note">Tip: paste this path into File Explorer's address bar to open the folder directly.</div>
           </div>
 
           <div class="mac-content">
-            <div class="code-block">~/Documents/Roblox/Plugins/ForjeGames.lua</div>
+            <div class="code-block">~/Documents/Roblox/Plugins/ForjeGames.rbxm</div>
             <div class="code-note">Tip: In Finder press ⌘ + Shift + G and paste the path to jump there.</div>
           </div>
         </div>

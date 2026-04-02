@@ -1298,7 +1298,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const intent = detectIntent(message)
 
-  // ── Fetch live camera data from Studio if session is connected ──────────
+  // ── Fetch live camera + workspace snapshot from Studio ───────────────────
   let cameraContext = ''
   if (sessionId) {
     try {
@@ -1314,8 +1314,46 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${c.lookX}, ${c.posY}, ${c.lookZ}) as the base position so the user can see what you build. Offset from there as needed.`
       }
+
+      // Inject workspace snapshot spatial context when available
+      const worldSnapshot = studioSession?.latestState?.worldSnapshot as Record<string, unknown> | undefined
+      if (worldSnapshot) {
+        type SnapObj     = { n: string; p: [number, number, number] }
+        type SnapBounds  = { min: [number, number, number]; max: [number, number, number] }
+        type SnapSpawn   = { n: string; p: [number, number, number] }
+        type SnapStats   = { total?: number; parts?: number; models?: number }
+        type SnapLighting = { time?: number; brightness?: number }
+
+        const objects  = (worldSnapshot.objects  as SnapObj[]      | undefined) ?? []
+        const spawns   = (worldSnapshot.spawns   as SnapSpawn[]    | undefined) ?? []
+        const bounds   = (worldSnapshot.bounds   as SnapBounds     | undefined)
+        const stats    = (worldSnapshot.stats    as SnapStats      | undefined) ?? {}
+        const lighting = (worldSnapshot.lighting as SnapLighting   | undefined)
+
+        const top20     = objects.slice(0, 20).map(o => `${o.n}@(${o.p[0]},${o.p[1]},${o.p[2]})`).join(', ')
+        const spawnList = spawns.map(s => `${s.n}@(${s.p[0]},${s.p[1]},${s.p[2]})`).join(', ') || 'none'
+        const boundsStr = bounds
+          ? `min(${bounds.min[0]},${bounds.min[1]},${bounds.min[2]}) to max(${bounds.max[0]},${bounds.max[1]},${bounds.max[2]})`
+          : 'unknown'
+        const lightStr  = lighting
+          ? `ClockTime=${lighting.time ?? '?'}, Brightness=${lighting.brightness ?? '?'}`
+          : 'unknown'
+
+        cameraContext += `\n\nCURRENT WORKSPACE STATE (from Roblox Studio scan):
+- World bounds: ${boundsStr}
+- ${stats.total ?? objects.length} objects in workspace (${stats.parts ?? 0} parts, ${stats.models ?? 0} models)
+- Objects: ${top20 || 'none'}
+- Spawn points: ${spawnList}
+- Lighting: ${lightStr}
+
+PLACEMENT RULES:
+- Place new objects relative to existing ones
+- A character is 5.5 studs tall
+- Don't overlap existing objects
+- Place on ground (Y = terrain level or nearest floor)`
+      }
     } catch {
-      // No camera data — that's fine, place at origin
+      // No camera/snapshot data — that's fine, place at origin
     }
   }
 

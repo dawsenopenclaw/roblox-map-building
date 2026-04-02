@@ -19,6 +19,7 @@ export type ChangeType =
   | 'update_property'
   | 'execute_luau'
   | 'insert_asset'
+  | 'scan_workspace'
 
 export interface PendingCommand {
   id:        string

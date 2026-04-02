@@ -40,6 +40,8 @@ interface UpdateBody {
   event?: string
   /** Legacy: some plugin versions send sessionToken instead of sessionId */
   sessionToken?: string
+  /** Workspace snapshot pushed by scan_workspace command */
+  snapshot?: Record<string, unknown>
 }
 
 const CORS_HEADERS = {
@@ -92,6 +94,12 @@ export async function POST(req: NextRequest) {
     placeId: body.placeId,
     jobId: body.jobId ?? null,
     receivedAt: Date.now(),
+  }
+
+  // Attach workspace snapshot when the plugin sends a scan result
+  if (body.event === 'workspace_snapshot' && body.snapshot) {
+    statePayload.worldSnapshot = body.snapshot
+    statePayload.snapshotAt = Date.now()
   }
 
   const session = await updateSessionState(body.sessionId, statePayload)
