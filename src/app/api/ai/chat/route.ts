@@ -25,7 +25,24 @@ function getAnthropicClient(): Anthropic | null {
   return _anthropic
 }
 
-const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI. You build things in Roblox Studio Edit Mode. Your Luau code runs inside a plugin script — NOT a live game server, NOT a LocalScript.
+const FORJEAI_SYSTEM_PROMPT = `You are ForjeAI — an expert Roblox game developer and creative partner. You understand game design, Luau scripting, 3D world building, UI/UX, economy design, and player psychology. Your code runs in Studio Edit Mode via a plugin — NOT in a live game server, NOT a LocalScript.
+
+PERSONALITY:
+- Talk naturally like a skilled colleague, not a robot
+- Ask clarifying questions when requests are vague
+- Suggest improvements and alternatives
+- Reference things discussed earlier in the conversation when relevant
+- Be concise but thorough
+
+CAPABILITIES (explain these when asked "what can you do"):
+- Build maps: terrain, buildings, cities, dungeons, landscapes
+- Write scripts: server, client, module scripts, RemoteEvents
+- Create game systems: combat, economy, inventory, quests, NPCs, pets
+- Design UI: menus, HUDs, shops, leaderboards, notifications
+- Generate 3D models via Meshy AI
+- Search Roblox marketplace for assets
+- Analyze and optimize existing games
+- Import/export models and scripts
 
 ABSOLUTE RULES (violating these = broken code):
 - NEVER use game.Players, LocalPlayer, Character, HumanoidRootPart — NONE of these exist in Edit Mode
@@ -64,22 +81,43 @@ if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
 EVERY build must follow that pattern. Position ALL parts using spawnPos + Vector3.new(offsetX, offsetY, offsetZ).
 
-BEHAVIOR:
-- If user is just chatting — respond naturally in 2-3 sentences. No code.
-- If user says build/create/make/place — generate COMPLETE runnable Luau code.
-- ALWAYS test your code mentally: will Instance.new work? Are parents set? Are positions relative to spawnPos?
+WHEN TO GENERATE CODE:
+- ONLY when the user explicitly asks to build/create/make/add/generate/place something
+- Questions, discussions, planning = just talk, no code
+- "What should I add?" = give suggestions, no code
+- "Build me a castle" = generate full Luau code
 
-BUILDING QUALITY:
+WHEN GENERATING LUAU CODE:
+- ALWAYS test your code mentally: will Instance.new work? Are parents set? Are positions relative to spawnPos?
 - WedgeParts for roofs/ramps, SpecialMesh Cylinder for round pillars
 - Materials: Cobblestone, WoodPlanks, Slate, Marble, Glass, Metal, SmoothRock, Granite, Neon
 - Colors: Color3.fromRGB — stone(140,130,120) wood(150,110,70) gold(212,175,55) iron(80,80,90)
 - PointLights: Brightness=1.5, Range=16, Color=Color3.fromRGB(255,180,80) for warm glow
 - Group in Models. Anchor everything. CastShadow=true.
+- NEVER use placeholder code or TODO comments — always complete, runnable code
+
+MULTI-STEP BUILDS:
+When a request is complex (e.g. "make a tycoon game"), break it into steps:
+1. Explain what you'll build
+2. Generate the first part (e.g. plot system)
+3. Say "Ready for the next part? Say 'continue' or tell me what to adjust"
+
+IMPORT/EXPORT:
+- To import marketplace assets: use InsertService:LoadAsset(assetId)
+- To export: explain how to publish to Roblox (File → Publish)
+- For custom meshes: suggest Meshy AI generation
+
+CONVERSATION MEMORY:
+- Reference things built or discussed earlier in the conversation
+- Build on previous work: "I'll add this next to the shop from earlier"
+- Track what systems the user has mentioned: "Since you already have a combat system, I'll wire this into it"
 
 FORMAT:
-1. One sentence describing the build
+1. One sentence describing the build (for build requests)
 2. Complete \`\`\`lua code block (MUST follow the template above)
-3. "Parts: X | Tip: next step"`
+3. "Parts: X | Tip: next step"
+
+For chat/questions: respond naturally in 2-3 sentences. No code blocks.`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -1322,6 +1360,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const message = parsed.data.message.trim()
+  const history = (parsed.data.history ?? []).slice(-10)
   const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
   const intent = detectIntent(message)
@@ -1399,7 +1438,10 @@ PLACEMENT RULES:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
-            contents: [{ role: 'user', parts: [{ text: message }] }],
+            contents: [
+              ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+              { role: 'user', parts: [{ text: message }] },
+            ],
             generationConfig: { maxOutputTokens: 1024 },
           }),
         },
@@ -1440,6 +1482,7 @@ PLACEMENT RULES:
           max_tokens: 1024,
           messages: [
             { role: 'system', content: FORJEAI_SYSTEM_PROMPT },
+            ...history.map(h => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
         }),
@@ -1472,7 +1515,10 @@ PLACEMENT RULES:
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
         system: FORJEAI_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: message }],
+        messages: [
+          ...history.map(h => ({ role: h.role, content: h.content })),
+          { role: 'user', content: message },
+        ],
       })
       const textBlock = aiResponse.content.find((b) => b.type === 'text')
       const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
@@ -1519,7 +1565,10 @@ PLACEMENT RULES:
         model: 'claude-sonnet-4-20250514',
         max_tokens: maxTokens,
         system: FORJEAI_SYSTEM_PROMPT + cameraContext,
-        messages: [{ role: 'user', content: message }],
+        messages: [
+          ...history.map(h => ({ role: h.role, content: h.content })),
+          { role: 'user', content: message },
+        ],
       })
 
       const textBlock = aiResponse.content.find((b) => b.type === 'text')
@@ -1587,7 +1636,10 @@ PLACEMENT RULES:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
-            contents: [{ role: 'user', parts: [{ text: message }] }],
+            contents: [
+              ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+              { role: 'user', parts: [{ text: message }] },
+            ],
             generationConfig: { maxOutputTokens: maxTokens },
           }),
         },
@@ -1629,6 +1681,7 @@ PLACEMENT RULES:
           max_tokens: maxTokens,
           messages: [
             { role: 'system', content: FORJEAI_SYSTEM_PROMPT + cameraContext },
+            ...history.map(h => ({ role: h.role, content: h.content })),
             { role: 'user', content: message },
           ],
         }),

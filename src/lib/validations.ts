@@ -14,6 +14,10 @@ export const chatMessageSchema = z.object({
   conversationId: z.string().optional(),
   model: z.string().optional(),
   gameContext: z.any().optional(),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).optional(),
 })
 
 export const meshGenerateSchema = z.object({

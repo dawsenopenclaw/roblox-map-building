@@ -2437,12 +2437,19 @@ export function EditorClient() {
           chatHeaders['x-studio-session'] = studioStatus.sessionId
         }
 
+        // Build conversation history from the last 10 user/assistant messages
+        const history = messages
+          .filter((m) => m.role === 'user' || m.role === 'assistant')
+          .slice(-10)
+          .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
+
         // Fire both in parallel: chat + optional mesh generation
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
           headers: chatHeaders,
           body: JSON.stringify({
             message: trimmed,
+            history,
             model: selectedModel,
             gameContext: activeGame
               ? { id: activeGame.id, name: activeGame.name, genre: activeGame.genre, sessionId: studioStatus.sessionId }
