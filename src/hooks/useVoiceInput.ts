@@ -179,8 +179,10 @@ export function useVoiceInput(options: UseVoiceInputOptions = {}): UseVoiceInput
     }
 
     rec.onend = () => {
-      // Auto-restart if still in listening state (continuous mode workaround)
-      if (recognitionRef.current === rec && state === 'listening') {
+      // Auto-restart if still in listening state (continuous mode workaround).
+      // Compare ref directly — state closure would be stale here, so we check
+      // whether the ref still points to this recognition instance.
+      if (recognitionRef.current === rec) {
         try {
           rec.start()
         } catch {

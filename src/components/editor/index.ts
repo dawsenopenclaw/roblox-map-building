@@ -18,3 +18,15 @@ export { Toolbar } from './Toolbar'
 export type { ToolMode, ToolbarProps } from './Toolbar'
 
 export { StudioConnectionBanner } from './StudioConnectionBanner'
+
+export { BuildProgressDashboard } from './BuildProgressDashboard'
+export type { BuildProgressProps } from './BuildProgressDashboard'
+
+export { GameTypeSelector } from './GameTypeSelector'
+export type { GameTypeSelectorProps } from './GameTypeSelector'
+
+export { VoiceInputButton } from './VoiceInputButton'
+export type { VoiceInputButtonProps } from './VoiceInputButton'
+
+export { AISuggestions } from './AISuggestions'
+export type { AISuggestionsProps } from './AISuggestions'

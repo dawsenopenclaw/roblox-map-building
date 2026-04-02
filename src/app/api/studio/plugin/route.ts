@@ -1,59 +1,182 @@
 /**
  * GET /api/studio/plugin
- *
  * Serves the ForjeGames Roblox Studio plugin as a downloadable .lua file.
  */
 
 import { NextResponse } from 'next/server'
 
-const PLUGIN_LUA = `-- ForjeGames Studio Plugin v2.0.0
--- Save as ForjeGames.lua in your Plugins folder, then restart Studio.
+const PLUGIN_LUA = `-- ForjeGames Studio Plugin v3.0.0
+-- Save this file in your Plugins folder, then FULLY CLOSE and reopen Studio.
 --   Windows: %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.lua
 --   Mac:     ~/Documents/Roblox/Plugins/ForjeGames.lua
 
 local BASE_URL = "https://forjegames.com"
-local POLL_INTERVAL = 1
-local HEARTBEAT_INTERVAL = 5
-local PLUGIN_VER = "2.0.0"
+local PLUGIN_VER = "3.0.0"
 local MAX_FAILURES = 5
 
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
-local MarketplaceService = game:GetService("MarketplaceService")
 
 pcall(function() HttpService.HttpEnabled = true end)
 
+-- State
 local authToken = nil
 local mySessionId = nil
 local isConnected = false
 local lastSync = 0
-local lastHeartbeat = 0
-local failures = 0
+local lastHB = 0
+local fails = 0
 local placeId = tostring(game.PlaceId)
-local placeName = "Unnamed Place"
+local placeName = game.Name ~= "" and game.Name or "Unnamed Place"
 
 pcall(function()
-	local info = MarketplaceService:GetProductInfo(game.PlaceId)
+	local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
 	if info and info.Name then placeName = info.Name end
 end)
-if placeName == "Unnamed Place" and game.Name ~= "" then placeName = game.Name end
 
+-- Toolbar
 local toolbar = plugin:CreateToolbar("ForjeGames")
-local btn = toolbar:CreateButton("ForjeGames", "Connect to ForjeGames.com", "")
-btn.ClickableWhenViewportHidden = true
+local mainBtn = toolbar:CreateButton("ForjeGames", "Connect to ForjeGames.com", "")
+mainBtn.ClickableWhenViewportHidden = true
 
-local function updateButton()
-	if isConnected then
-		btn.Text = "ForjeGames: Connected"
-	else
-		btn.Text = "ForjeGames: Connect"
-	end
-end
-updateButton()
+-- Create the dock widget (this is the ONLY way to show GUI in modern Studio plugins)
+local widgetInfo = DockWidgetPluginGuiInfo.new(
+	Enum.InitialDockState.Float,
+	false,  -- start hidden
+	false,  -- don't override saved
+	320, 300,  -- default size
+	280, 250   -- min size
+)
+local widget = plugin:CreateDockWidgetPluginGui("ForjeGamesConnect", widgetInfo)
+widget.Title = "ForjeGames"
+widget.Enabled = false
 
+-- Build the UI inside the widget
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+bg.BorderSizePixel = 0
+bg.Parent = widget
+
+local pad = Instance.new("UIPadding")
+pad.PaddingTop = UDim.new(0, 12)
+pad.PaddingBottom = UDim.new(0, 12)
+pad.PaddingLeft = UDim.new(0, 14)
+pad.PaddingRight = UDim.new(0, 14)
+pad.Parent = bg
+
+local layout = Instance.new("UIListLayout")
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Padding = UDim.new(0, 8)
+layout.Parent = bg
+
+-- Title
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 24)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "ForjeGames"
+titleLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 18
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.LayoutOrder = 1
+titleLabel.Parent = bg
+
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 18)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Not connected"
+statusLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 12
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.LayoutOrder = 2
+statusLabel.Parent = bg
+
+-- Instructions
+local instrLabel = Instance.new("TextLabel")
+instrLabel.Size = UDim2.new(1, 0, 0, 32)
+instrLabel.BackgroundTransparency = 1
+instrLabel.Text = "Enter the code from forjegames.com/editor:"
+instrLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
+instrLabel.Font = Enum.Font.Gotham
+instrLabel.TextSize = 11
+instrLabel.TextWrapped = true
+instrLabel.TextXAlignment = Enum.TextXAlignment.Left
+instrLabel.LayoutOrder = 3
+instrLabel.Parent = bg
+
+-- Code input background
+local inputFrame = Instance.new("Frame")
+inputFrame.Size = UDim2.new(1, 0, 0, 48)
+inputFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+inputFrame.BorderSizePixel = 0
+inputFrame.LayoutOrder = 4
+inputFrame.Parent = bg
+Instance.new("UICorner", inputFrame).CornerRadius = UDim.new(0, 8)
+
+local inputStroke = Instance.new("UIStroke")
+inputStroke.Color = Color3.fromRGB(60, 60, 60)
+inputStroke.Thickness = 1
+inputStroke.Parent = inputFrame
+
+local codeInput = Instance.new("TextBox")
+codeInput.Size = UDim2.new(1, -12, 1, 0)
+codeInput.Position = UDim2.new(0, 6, 0, 0)
+codeInput.BackgroundTransparency = 1
+codeInput.TextColor3 = Color3.fromRGB(212, 175, 55)
+codeInput.Font = Enum.Font.GothamBold
+codeInput.TextSize = 26
+codeInput.PlaceholderText = "ABC123"
+codeInput.PlaceholderColor3 = Color3.fromRGB(50, 50, 50)
+codeInput.Text = ""
+codeInput.ClearTextOnFocus = true
+codeInput.TextXAlignment = Enum.TextXAlignment.Center
+codeInput.Parent = inputFrame
+
+-- Error label
+local errLabel = Instance.new("TextLabel")
+errLabel.Size = UDim2.new(1, 0, 0, 14)
+errLabel.BackgroundTransparency = 1
+errLabel.Text = ""
+errLabel.TextColor3 = Color3.fromRGB(255, 90, 90)
+errLabel.Font = Enum.Font.Gotham
+errLabel.TextSize = 11
+errLabel.TextXAlignment = Enum.TextXAlignment.Center
+errLabel.LayoutOrder = 5
+errLabel.Parent = bg
+
+-- Connect button
+local connectBtn = Instance.new("TextButton")
+connectBtn.Size = UDim2.new(1, 0, 0, 40)
+connectBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+connectBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+connectBtn.Font = Enum.Font.GothamBold
+connectBtn.TextSize = 14
+connectBtn.Text = "Connect"
+connectBtn.BorderSizePixel = 0
+connectBtn.AutoButtonColor = true
+connectBtn.LayoutOrder = 6
+connectBtn.Parent = bg
+Instance.new("UICorner", connectBtn).CornerRadius = UDim.new(0, 8)
+
+-- Place info
+local placeLabel = Instance.new("TextLabel")
+placeLabel.Size = UDim2.new(1, 0, 0, 14)
+placeLabel.BackgroundTransparency = 1
+placeLabel.Text = placeName .. " (ID: " .. placeId .. ")"
+placeLabel.TextColor3 = Color3.fromRGB(70, 70, 70)
+placeLabel.Font = Enum.Font.Gotham
+placeLabel.TextSize = 10
+placeLabel.TextXAlignment = Enum.TextXAlignment.Center
+placeLabel.LayoutOrder = 7
+placeLabel.Parent = bg
+
+-- HTTP helpers
 local function httpRequest(method, path, body)
-	local success, result = pcall(function()
+	local ok, result = pcall(function()
 		local opts = {
 			Url = BASE_URL .. path,
 			Method = method,
@@ -64,44 +187,63 @@ local function httpRequest(method, path, body)
 		if res.Success then return HttpService:JSONDecode(res.Body) end
 		return nil
 	end)
-	return success, result
+	return ok, result
 end
 
-local function httpRetry(method, path, body, retries)
-	retries = retries or 3
-	local waitTime = 2
-	for i = 1, retries + 1 do
+local function httpRetry(method, path, body, maxRetries)
+	maxRetries = maxRetries or 2
+	local delay = 2
+	for i = 1, maxRetries + 1 do
 		local ok, data = httpRequest(method, path, body)
 		if ok and data ~= nil then return true, data end
-		if i <= retries then task.wait(waitTime); waitTime = waitTime * 2 end
+		if i <= maxRetries then task.wait(delay); delay = delay * 2 end
 	end
 	return false, nil
 end
 
-local function onFail()
-	failures = failures + 1
-	if failures >= MAX_FAILURES then
-		authToken = nil
-		mySessionId = nil
-		isConnected = false
-		failures = 0
-		updateButton()
-		warn("[ForjeGames] Lost connection. Click ForjeGames button to reconnect.")
+local function updateUI()
+	if isConnected then
+		mainBtn.Text = "ForjeGames (On)"
+		statusLabel.Text = "Connected to " .. placeName
+		statusLabel.TextColor3 = Color3.fromRGB(16, 185, 129)
+		instrLabel.Visible = false
+		inputFrame.Visible = false
+		connectBtn.Text = "Disconnect"
+		connectBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		errLabel.Text = ""
+	else
+		mainBtn.Text = "ForjeGames"
+		statusLabel.Text = "Not connected"
+		statusLabel.TextColor3 = Color3.fromRGB(140, 140, 140)
+		instrLabel.Visible = true
+		inputFrame.Visible = true
+		connectBtn.Text = "Connect"
+		connectBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
 	end
 end
 
-local function onSuccess() failures = 0 end
+local function onFail()
+	fails = fails + 1
+	if fails >= MAX_FAILURES then
+		authToken = nil
+		mySessionId = nil
+		isConnected = false
+		fails = 0
+		updateUI()
+		warn("[ForjeGames] Lost connection. Click ForjeGames to reconnect.")
+	end
+end
 
-local function reportResult(cmdType, ok, errMsg)
+local function onSuccess() fails = 0 end
+
+local function reportResult(cmdType, success, errMsg)
 	if not authToken then return end
 	task.spawn(function()
 		httpRequest("POST", "/api/studio/update", {
-			sessionId = mySessionId,
-			sessionToken = authToken,
-			placeId = placeId,
-			placeName = placeName,
+			sessionId = mySessionId, sessionToken = authToken,
+			placeId = placeId, placeName = placeName,
 			event = "command_completed",
-			changes = {{type = "command_completed", command = cmdType, success = ok, error = errMsg, timestamp = os.time()}},
+			changes = {{type = "command_completed", command = cmdType, success = success, error = errMsg, timestamp = os.time()}},
 		})
 	end)
 end
@@ -111,172 +253,68 @@ local function executeCommand(cmd)
 	if cmdType == "execute_luau" or cmdType == "execute_code" then
 		local code = (cmd.data and cmd.data.code) or cmd.code or ""
 		if code ~= "" then
-			local fn, err = loadstring(code)
+			local fn, compErr = loadstring(code)
 			if fn then
-				local runOk, runErr = pcall(fn)
-				if not runOk then
+				local ok, runErr = pcall(fn)
+				if not ok then
 					warn("[ForjeGames] Runtime error: " .. tostring(runErr))
 					reportResult(cmdType, false, tostring(runErr))
 					return
 				end
-				ChangeHistoryService:SetWaypoint("ForjeGames: Execute")
+				ChangeHistoryService:SetWaypoint("ForjeGames Build")
 			else
-				warn("[ForjeGames] Compile error: " .. tostring(err))
-				reportResult(cmdType, false, tostring(err))
+				warn("[ForjeGames] Compile error: " .. tostring(compErr))
+				reportResult(cmdType, false, tostring(compErr))
 				return
 			end
 		end
 	elseif cmdType == "insert_model" then
 		local assetId = cmd.data and cmd.data.assetId
 		if assetId then
-			local insertOk, model = pcall(function()
+			local ok, model = pcall(function()
 				return game:GetService("InsertService"):LoadAsset(tonumber(assetId))
 			end)
-			if insertOk and model then
+			if ok and model then
 				model.Parent = workspace
-				ChangeHistoryService:SetWaypoint("ForjeGames: Insert " .. tostring(assetId))
+				ChangeHistoryService:SetWaypoint("ForjeGames Insert")
 			else
 				reportResult(cmdType, false, tostring(model))
 				return
 			end
 		end
 	elseif cmdType == "delete_model" then
-		local path = cmd.data and cmd.data.instancePath
-		if path then
-			local target = workspace:FindFirstChild(path, true)
-			if target then target:Destroy(); ChangeHistoryService:SetWaypoint("ForjeGames: Delete") end
+		local p = cmd.data and cmd.data.instancePath
+		if p then
+			local t = workspace:FindFirstChild(p, true)
+			if t then t:Destroy(); ChangeHistoryService:SetWaypoint("ForjeGames Delete") end
 		end
 	end
 	reportResult(cmdType, true, nil)
 end
 
-local function showConnectDialog()
-	local old = game:GetService("CoreGui"):FindFirstChild("ForjeGamesConnect")
-	if old then old:Destroy() end
+-- Connect button handler
+connectBtn.MouseButton1Click:Connect(function()
+	if isConnected then
+		authToken = nil
+		mySessionId = nil
+		isConnected = false
+		fails = 0
+		updateUI()
+		print("[ForjeGames] Disconnected.")
+		return
+	end
 
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "ForjeGamesConnect"
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	gui.Parent = game:GetService("CoreGui")
+	local code = string.upper(string.gsub(codeInput.Text, "%s", ""))
+	if #code < 4 then
+		errLabel.Text = "Enter the 6-char code from the website"
+		return
+	end
 
-	local overlay = Instance.new("TextButton")
-	overlay.Size = UDim2.new(1, 0, 1, 0)
-	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	overlay.BackgroundTransparency = 0.4
-	overlay.BorderSizePixel = 0
-	overlay.Text = ""
-	overlay.AutoButtonColor = false
-	overlay.Parent = gui
-	overlay.MouseButton1Click:Connect(function() gui:Destroy() end)
-
-	local card = Instance.new("Frame")
-	card.Size = UDim2.new(0, 360, 0, 280)
-	card.Position = UDim2.new(0.5, -180, 0.5, -140)
-	card.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-	card.BorderSizePixel = 0
-	card.Parent = gui
-	Instance.new("UICorner", card).CornerRadius = UDim.new(0, 14)
-
-	local accent = Instance.new("Frame")
-	accent.Size = UDim2.new(1, 0, 0, 3)
-	accent.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
-	accent.BorderSizePixel = 0
-	accent.Parent = card
-
-	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -32, 0, 28)
-	title.Position = UDim2.new(0, 16, 0, 18)
-	title.BackgroundTransparency = 1
-	title.Text = "ForjeGames"
-	title.TextColor3 = Color3.fromRGB(212, 175, 55)
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 20
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Parent = card
-
-	local sub = Instance.new("TextLabel")
-	sub.Size = UDim2.new(1, -32, 0, 40)
-	sub.Position = UDim2.new(0, 16, 0, 50)
-	sub.BackgroundTransparency = 1
-	sub.Text = "Enter the 6-character code shown at forjegames.com/editor (right panel)"
-	sub.TextColor3 = Color3.fromRGB(150, 150, 150)
-	sub.Font = Enum.Font.Gotham
-	sub.TextSize = 12
-	sub.TextWrapped = true
-	sub.TextXAlignment = Enum.TextXAlignment.Left
-	sub.Parent = card
-
-	local inputBg = Instance.new("Frame")
-	inputBg.Size = UDim2.new(1, -32, 0, 54)
-	inputBg.Position = UDim2.new(0, 16, 0, 100)
-	inputBg.BackgroundColor3 = Color3.fromRGB(8, 8, 8)
-	inputBg.BorderSizePixel = 0
-	inputBg.Parent = card
-	Instance.new("UICorner", inputBg).CornerRadius = UDim.new(0, 10)
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(60, 60, 60)
-	stroke.Thickness = 1
-	stroke.Parent = inputBg
-
-	local input = Instance.new("TextBox")
-	input.Size = UDim2.new(1, -16, 1, 0)
-	input.Position = UDim2.new(0, 8, 0, 0)
-	input.BackgroundTransparency = 1
-	input.TextColor3 = Color3.fromRGB(212, 175, 55)
-	input.Font = Enum.Font.GothamBold
-	input.TextSize = 30
-	input.PlaceholderText = "ABC123"
-	input.PlaceholderColor3 = Color3.fromRGB(50, 50, 50)
-	input.Text = ""
-	input.ClearTextOnFocus = true
-	input.TextXAlignment = Enum.TextXAlignment.Center
-	input.Parent = inputBg
-
-	local errLabel = Instance.new("TextLabel")
-	errLabel.Size = UDim2.new(1, -32, 0, 18)
-	errLabel.Position = UDim2.new(0, 16, 0, 162)
-	errLabel.BackgroundTransparency = 1
+	connectBtn.Text = "Connecting..."
+	connectBtn.Active = false
 	errLabel.Text = ""
-	errLabel.TextColor3 = Color3.fromRGB(255, 90, 90)
-	errLabel.Font = Enum.Font.Gotham
-	errLabel.TextSize = 11
-	errLabel.TextXAlignment = Enum.TextXAlignment.Center
-	errLabel.Parent = card
 
-	local connectBtn2 = Instance.new("TextButton")
-	connectBtn2.Size = UDim2.new(1, -32, 0, 44)
-	connectBtn2.Position = UDim2.new(0, 16, 0, 186)
-	connectBtn2.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
-	connectBtn2.TextColor3 = Color3.fromRGB(0, 0, 0)
-	connectBtn2.Font = Enum.Font.GothamBold
-	connectBtn2.TextSize = 15
-	connectBtn2.Text = "Connect"
-	connectBtn2.BorderSizePixel = 0
-	connectBtn2.AutoButtonColor = true
-	connectBtn2.Parent = card
-	Instance.new("UICorner", connectBtn2).CornerRadius = UDim.new(0, 10)
-
-	local info = Instance.new("TextLabel")
-	info.Size = UDim2.new(1, -32, 0, 16)
-	info.Position = UDim2.new(0, 16, 0, 240)
-	info.BackgroundTransparency = 1
-	info.Text = placeName .. " (ID: " .. placeId .. ")"
-	info.TextColor3 = Color3.fromRGB(70, 70, 70)
-	info.Font = Enum.Font.Gotham
-	info.TextSize = 10
-	info.TextXAlignment = Enum.TextXAlignment.Center
-	info.Parent = card
-
-	connectBtn2.MouseButton1Click:Connect(function()
-		local code = string.upper(string.gsub(input.Text, "%s", ""))
-		if #code < 4 then
-			errLabel.Text = "Enter the code from the website"
-			return
-		end
-		connectBtn2.Text = "Connecting..."
-		connectBtn2.Active = false
-		errLabel.Text = ""
-
+	task.spawn(function()
 		local ok, data = httpRetry("POST", "/api/studio/auth", {
 			code = code,
 			placeId = placeId,
@@ -288,41 +326,29 @@ local function showConnectDialog()
 			authToken = data.token or data.sessionToken
 			mySessionId = data.sessionId
 			isConnected = true
-			failures = 0
-			updateButton()
-			print("[ForjeGames] Connected to " .. placeName)
-			gui:Destroy()
+			fails = 0
+			updateUI()
+			print("[ForjeGames] Connected to " .. placeName .. "!")
 		else
-			errLabel.Text = "Invalid or expired code. Get a new one from the website."
-			connectBtn2.Text = "Connect"
-			connectBtn2.Active = true
+			errLabel.Text = "Invalid or expired code. Get a new one."
+			connectBtn.Text = "Connect"
+			connectBtn.Active = true
 		end
 	end)
-
-	task.delay(0.1, function()
-		if input and input.Parent then input:CaptureFocus() end
-	end)
-end
-
-btn.Click:Connect(function()
-	if isConnected then
-		authToken = nil
-		mySessionId = nil
-		isConnected = false
-		failures = 0
-		updateButton()
-		print("[ForjeGames] Disconnected.")
-	else
-		showConnectDialog()
-	end
 end)
 
+-- Toggle widget on toolbar click
+mainBtn.Click:Connect(function()
+	widget.Enabled = not widget.Enabled
+end)
+
+-- Main loop
 RunService.Heartbeat:Connect(function()
 	if not authToken then return end
 	local now = tick()
 
-	if now - lastHeartbeat >= HEARTBEAT_INTERVAL then
-		lastHeartbeat = now
+	if now - lastHB >= 5 then
+		lastHB = now
 		task.spawn(function()
 			local ok = httpRequest("POST", "/api/studio/update", {
 				sessionId = mySessionId, sessionToken = authToken,
@@ -333,18 +359,17 @@ RunService.Heartbeat:Connect(function()
 		end)
 	end
 
-	if now - lastSync >= POLL_INTERVAL then
+	if now - lastSync >= 1 then
 		lastSync = now
 		task.spawn(function()
-			local sid = mySessionId or ""
-			local tok = authToken or ""
 			local ok, data = httpRetry("GET",
-				"/api/studio/sync?sessionId=" .. HttpService:UrlEncode(sid)
-				.. "&token=" .. HttpService:UrlEncode(tok), nil, 1)
+				"/api/studio/sync?sessionId=" .. HttpService:UrlEncode(mySessionId or "")
+				.. "&token=" .. HttpService:UrlEncode(authToken or ""), nil, 1)
 			if ok and data then
 				onSuccess()
-				local cmds = data.commands or data.changes or {}
-				for _, cmd in ipairs(cmds) do task.spawn(executeCommand, cmd) end
+				for _, cmd in ipairs(data.commands or data.changes or {}) do
+					task.spawn(executeCommand, cmd)
+				end
 			else
 				onFail()
 			end
@@ -352,7 +377,13 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
-print("[ForjeGames] Plugin v" .. PLUGIN_VER .. " loaded. Click the ForjeGames button in the toolbar.")
+-- Cleanup
+plugin.Unloading:Connect(function()
+	widget:Destroy()
+end)
+
+updateUI()
+print("[ForjeGames] Plugin v" .. PLUGIN_VER .. " loaded. Click ForjeGames in the toolbar.")
 `
 
 const CORS = {
