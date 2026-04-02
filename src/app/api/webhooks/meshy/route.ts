@@ -229,7 +229,9 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'meshy', status: payload.status },
       extra: { meshyTaskId },
     })
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Return 200 so Meshy does not retry — the error is captured in Sentry.
+    // A 5xx causes indefinite retries which could thrash the DB on a persistent error.
+    return NextResponse.json({ received: true })
   }
 
   return NextResponse.json({ received: true })

@@ -158,9 +158,17 @@ const CATEGORY_KEYWORDS: Record<AssetCategory, string[]> = {
 function detectAssetCategory(prompt: string): AssetCategory {
   const lower = prompt.toLowerCase()
 
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS) as [AssetCategory, string[]][]) {
-    if (category === 'prop' || category === 'default') continue
-    if (keywords.some((kw) => lower.includes(kw))) return category
+  // Check high-specificity categories first (character, building, weapon, vehicle,
+  // furniture, environment) before the broad 'prop' catch-all.
+  const PRIORITY_ORDER: AssetCategory[] = [
+    'character', 'building', 'weapon', 'vehicle', 'furniture', 'environment', 'prop',
+  ]
+
+  for (const category of PRIORITY_ORDER) {
+    const keywords = CATEGORY_KEYWORDS[category]
+    if (keywords.length > 0 && keywords.some((kw) => lower.includes(kw))) {
+      return category
+    }
   }
 
   return 'prop'
@@ -187,8 +195,9 @@ const PROMPT_TEMPLATES: Record<AssetCategory, string> = {
     '{prompt}, high quality 3D model, clean topology, proper UV unwrap, PBR materials, game-ready, optimized for real-time rendering, Roblox compatible',
 }
 
+// Truncated to fit Meshy's 200-char negative_prompt limit
 const NEGATIVE_PROMPT =
-  'low quality, blurry, distorted, oversized, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, texture seams visible, NSFW, watermark, text, signature, deformed, ugly, extra limbs'
+  'low quality, blurry, distorted, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, NSFW, watermark, text, deformed, ugly'
 
 // Style detection from user prompt
 const STYLE_MODIFIERS: Record<string, string> = {
@@ -210,6 +219,11 @@ const STYLE_MODIFIERS: Record<string, string> = {
   'stylized':    ', stylized art, hand-painted look, clean silhouette, game-ready',
 }
 
+// Meshy v2 enforces a 500-char limit on the prompt field and a 200-char limit
+// on negative_prompt. Exceeding either causes a 422 validation error from the API.
+const MESHY_PROMPT_MAX_CHARS     = 500
+const MESHY_NEG_PROMPT_MAX_CHARS = 200
+
 function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
   const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
   let result = template.replace('{prompt}', rawPrompt)
@@ -221,6 +235,11 @@ function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
       result += modifier
       break
     }
+  }
+
+  // Hard-truncate to Meshy's limit — truncate at a word boundary where possible
+  if (result.length > MESHY_PROMPT_MAX_CHARS) {
+    result = result.slice(0, MESHY_PROMPT_MAX_CHARS).replace(/[,\s]+$/, '')
   }
 
   return result
@@ -434,9 +453,16 @@ function generateMeshPartLuau(params: {
   const collisionFidelity = COLLISION_FIDELITY[category]
   const [sx, sy, sz] = DEFAULT_SIZES[category]
 
-  // Sanitize prompt for use in Lua identifiers
-  const safeName = prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)
-  const displayName = prompt.slice(0, 50)
+  // Sanitize for Lua identifier — must start with a letter, no special chars
+  const identBase = prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)
+  // Prefix with 'asset_' if first character is a digit or the string is empty
+  const safeName = /^[0-9_]/.test(identBase) || identBase.length === 0
+    ? `asset_${identBase}`.slice(0, 46)
+    : identBase
+
+  // Sanitize for use inside Lua double-quoted string literals — escape backslashes
+  // and double-quotes so the generated code is always syntactically valid.
+  const displayName = prompt.slice(0, 50).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')
 
   const meshLine = meshUrl
     ? `-- IMPORTANT: Upload the GLB file to Roblox and replace this MeshId\n\tmeshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"  -- source: ${meshUrl}`

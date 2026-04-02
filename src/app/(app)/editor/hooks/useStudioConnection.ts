@@ -150,12 +150,12 @@ export function useStudioConnection() {
     try {
       const res = await fetch('/api/studio/auth?action=generate')
       if (!res.ok) throw new Error('Failed to generate code')
-      const data = await res.json() as { code: string; token: string }
+      const data = await res.json() as { code: string; expiresAt?: number }
       const code = data.code.toUpperCase()
 
-      // Store pending code + signed token so claim polling can verify the claim
+      // Store pending code so claim polling can use it
       pendingCodeRef.current = code
-      pendingTokenRef.current = data.token ?? ''
+      pendingTokenRef.current = '' // server no longer issues a token at generate time
 
       setState((prev) => ({
         ...prev,
@@ -204,6 +204,7 @@ export function useStudioConnection() {
               connectFlow: 'connected',
               connectionError: null,
               sessionId: realSessionId,
+              jwt: pollData.jwt ?? null,
               placeName: pollData.placeName ?? prev.placeName ?? 'Roblox Studio',
               placeId: pollData.placeId ? Number(pollData.placeId) : prev.placeId,
               connectCode: '',
@@ -242,7 +243,7 @@ export function useStudioConnection() {
     flowRef.current = state.connectFlow
   }, [state.connectFlow, state.isConnected, generateCode])
 
-  const confirmConnected = useCallback((overrideSessionId?: string) => {
+  const confirmConnected = useCallback((overrideSessionId?: string, overrideJwt?: string) => {
     // Stop claim polling — auto-detect already resolved or user manually confirmed
     if (claimPollRef.current) { clearInterval(claimPollRef.current); claimPollRef.current = null }
     if (codeTimerRef.current) { clearInterval(codeTimerRef.current); codeTimerRef.current = null }
@@ -256,6 +257,7 @@ export function useStudioConnection() {
       isConnected: true,
       connectFlow: 'connected',
       sessionId,
+      jwt: overrideJwt ?? null,
       placeName: prev.placeName || 'Roblox Studio',
       connectCode: '',
       connectTimer: 300,
@@ -274,6 +276,7 @@ export function useStudioConnection() {
     setState({
       isConnected: false,
       sessionId: null,
+      jwt: null,
       placeName: '',
       placeId: null,
       screenshotUrl: null,

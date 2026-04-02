@@ -165,6 +165,8 @@ export const studioUpdateSchema = z
     placeId: z.string().optional(),
     jobId: z.string().optional(),
     event: z.string().optional(),
+    /** Workspace snapshot sent with workspace_snapshot events */
+    snapshot: z.record(z.unknown()).optional(),
   })
   .refine((b) => b.sessionId ?? b.sessionToken, { message: 'sessionId is required' })
 

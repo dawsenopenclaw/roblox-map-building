@@ -467,7 +467,22 @@ function generateInsertServiceLuau(params: {
   dims:      { x: number; y: number; z: number }
 }): string {
   const { prompt, type, taskId, polyCount, dims } = params
-  const safeName  = prompt.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40)
+
+  // Lua identifier: must start with a letter, alphanumeric + underscore only
+  const identBase = prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)
+  const safeName  = /^[0-9_]/.test(identBase) || identBase.length === 0
+    ? `asset_${identBase}`.slice(0, 46)
+    : identBase
+
+  // Safe for Lua double-quoted strings: escape backslashes, double-quotes, newlines
+  const displayName = prompt.slice(0, 50)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\r?\n/g, ' ')
+
+  // Safe for Lua block comment: prevent premature comment close
+  const safePromptComment = prompt.replace(/--\]\]/g, '-- ]]').replace(/\r?\n/g, ' ')
+
   const anchorLine = ['terrain', 'building', 'furniture', 'prop'].includes(type)
     ? 'meshPart.Anchored = true'
     : 'meshPart.Anchored = false  -- vehicle/character/weapon — anchor manually if needed'
@@ -485,7 +500,7 @@ function generateInsertServiceLuau(params: {
   }
 
   return `--[[
-  ForjeAI 3D Asset: ${prompt}
+  ForjeAI 3D Asset: ${safePromptComment}
   Type:         ${type}
   Poly count:   ${polyCount?.toLocaleString() ?? 'pending'}
   Dimensions:   ${dims.x}w x ${dims.y}h x ${dims.z}d studs
@@ -499,11 +514,11 @@ function generateInsertServiceLuau(params: {
 
 local function create_${safeName}()
   local model    = Instance.new("Model")
-  model.Name     = "${prompt.slice(0, 50)}"
+  model.Name     = "${displayName}"
   model.Parent   = workspace
 
   local meshPart            = Instance.new("MeshPart")
-  meshPart.Name             = "${prompt.slice(0, 50)}"
+  meshPart.Name             = "${displayName}"
   meshPart.MeshId           = "rbxassetid://YOUR_ASSET_ID_HERE"  -- replace after upload completes
   meshPart.Size             = Vector3.new(${dims.x}, ${dims.y}, ${dims.z})
   meshPart.CFrame           = CFrame.new(0, ${dims.y / 2}, 0)
@@ -664,10 +679,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const enhanced    = enhancePromptForPro(input.prompt, input.type, input.style)
 
   try {
-    // Enqueue async pipeline — returns immediately
+    // Enqueue async pipeline — returns immediately.
+    // Pass input.prompt (raw user intent) rather than the fully-enhanced string:
+    // mesh-pipeline.ts's enrichPrompt() already appends type/style/technical suffixes
+    // and enforces Meshy's 500-char limit. Feeding the pre-enhanced prompt would
+    // double-stack enrichments and reliably overflow the char limit.
     const { assetId, jobId } = await startMeshPipeline({
       userId,
-      prompt:     enhanced,   // pipeline receives the professional-enhanced prompt
+      prompt:     input.prompt,
       type:       input.type,
       style:      input.style,
       polyTarget: input.polyTarget,

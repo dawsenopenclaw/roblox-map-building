@@ -29,7 +29,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionByToken, createSession, SESSION_TTL_MS } from '@/lib/studio-session'
+import { getSession, getSessionByToken, SESSION_TTL_MS } from '@/lib/studio-session'
 
 const MINIMUM_PLUGIN_VERSION = '4.0.0'
 
@@ -77,17 +77,11 @@ export async function GET(req: NextRequest) {
     if (session) sessionId = session.sessionId
   }
 
-  // ── Fallback 2: token valid but session evicted — auto-recreate ───────────
-  if (!session && token && token.length >= 32) {
-    const newSession = createSession({
-      placeId:       searchParams.get('placeId')   ?? 'unknown',
-      placeName:     searchParams.get('placeName') ?? 'Reconnected Session',
-      pluginVersion: pluginVer || '1.0.0',
-      authToken:     token,
-    })
-    session   = newSession
-    sessionId = newSession.sessionId
-  }
+  // ── Fallback 2: token present but no session found anywhere ──────────────
+  // Previously this auto-created a session for any token ≥ 32 chars, which
+  // allowed arbitrary callers to pollute the session store. Removed — the
+  // /sync route handles stateless JWT reconstruction; /status should only
+  // report what exists, not create new sessions on miss.
 
   // ── No session at all — server-alive ping ────────────────────────────────
   if (!sessionId && !session) {

@@ -41,9 +41,10 @@ export async function POST(req: NextRequest) {
   // Token validation — accept either a static env secret OR a valid session auth token.
   // The plugin sends its auth token (from code exchange) in body.token.
   const secret = process.env.STUDIO_PLUGIN_SECRET
+  let existingSession = undefined
   if (secret && body.token !== secret) {
     // Not the static secret — check if it's a valid session auth token
-    const existingSession = getSessionByToken(body.token)
+    existingSession = getSessionByToken(body.token)
     if (!existingSession) {
       return NextResponse.json(
         { error: 'invalid_token' },
@@ -52,12 +53,21 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const session = createSession({
+  // If an existing session was found by token, reuse it (touch heartbeat) instead
+  // of creating a duplicate. Previously a new session was always created here,
+  // which orphaned the old session along with any queued commands.
+  const session = existingSession ?? createSession({
     placeId: String(body.placeId),
     placeName: body.placeName ?? 'Unknown Place',
     pluginVersion: body.pluginVersion ?? '0.0.0',
     authToken: body.token,
   })
+  if (existingSession) {
+    // Refresh heartbeat so the reconnect is reflected immediately
+    existingSession.lastHeartbeat  = Date.now()
+    existingSession.connected      = true
+    existingSession.pluginVersion  = body.pluginVersion ?? existingSession.pluginVersion
+  }
 
   return NextResponse.json(
     {

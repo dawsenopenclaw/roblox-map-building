@@ -2961,7 +2961,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           pipeline.incr(key)
           pipeline.expire(key, DAY_SEC * 2)
           const results = await pipeline.exec()
-          const count = (results?.[0]?.[1] as number) ?? GUEST_LIMIT + 1
+          // If Redis is unavailable (returns null), allow the request through
+          const count = (results?.[0]?.[1] as number) ?? 1
           const resetAt = (dayBucket + 1) * DAY_SEC * 1000
           if (count > GUEST_LIMIT) {
             return NextResponse.json(
@@ -2971,7 +2972,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               },
               {
                 status: 429,
-                headers: rateLimitHeaders({ allowed: false, remaining: 0, resetAt }),
+                headers: rateLimitHeaders({ allowed: false, limit: 3, remaining: 0, resetAt }),
               },
             )
           }

@@ -242,9 +242,11 @@ export default function NewEditorClient() {
     async (luauCode: string, prompt: string, sessionId: string | null) => {
       studio.recordCommand(`Executing: ${prompt.slice(0, 60)}${prompt.length > 60 ? '...' : ''}`)
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (studio.jwt) headers['Authorization'] = `Bearer ${studio.jwt}`
         await fetch('/api/studio/execute', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ code: luauCode, prompt, sessionId }),
         })
         studio.addActivity(`Build executed in Studio`)

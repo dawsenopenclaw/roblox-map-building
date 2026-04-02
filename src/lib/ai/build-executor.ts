@@ -392,8 +392,10 @@ export async function executeBuildPlan(
 
       const finalProgress = await readProgress(buildId)
       if (finalProgress) {
-        const hasFailed = finalProgress.tasks.every((t) => t.status === 'failed')
-        finalProgress.status = hasFailed ? 'failed' : 'complete'
+        // 'failed' if ANY task failed (not just all tasks) — partial failure
+        // should not be reported as 'complete' to the client.
+        const anyFailed = finalProgress.tasks.some((t) => t.status === 'failed')
+        finalProgress.status = anyFailed ? 'failed' : 'complete'
         finalProgress.completedAt = new Date().toISOString()
         finalProgress.progress = 100
         await writeProgress(finalProgress)

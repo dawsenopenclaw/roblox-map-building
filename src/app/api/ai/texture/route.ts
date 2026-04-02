@@ -125,8 +125,11 @@ function generateSurfaceAppearanceLuau(params: {
   roughnessUrl: string | null
 }): string {
   const { prompt, albedoUrl, normalUrl, roughnessUrl } = params
+  // Sanitise prompt for use inside a Lua block comment — "--]]" would close the
+  // comment early and break the script. Replace with a safe equivalent.
+  const safePromptComment = prompt.replace(/--\]\]/g, '-- ]]').replace(/\r?\n/g, ' ')
   return `--[[
-  Generated PBR Texture: ${prompt}
+  Generated PBR Texture: ${safePromptComment}
 
   SETUP:
   1. Download the texture URLs below and upload each to Roblox (Asset Manager)

@@ -122,12 +122,22 @@ const TECHNICAL_SUFFIX =
   'optimized for Roblox import, no floating geometry, watertight mesh, proper UV unwrap, ' +
   'correct face normals, game-ready topology, centered on world origin'
 
+// Meshy v2 hard limit on the prompt field.
+const MESHY_PROMPT_CHAR_LIMIT = 500
+
 function enrichPrompt(prompt: string, type: string, style: string): string {
   const typeDetail  = TYPE_ENRICHMENTS[type]  ?? TYPE_ENRICHMENTS.custom
   const styleSuffix = STYLE_SUFFIXES[style]   ?? 'game asset, clean topology'
 
   // Build: [user prompt], [type detail], [style direction], [technical requirements]
-  return `${prompt}, ${typeDetail}, ${styleSuffix}, ${TECHNICAL_SUFFIX}`
+  const full = `${prompt}, ${typeDetail}, ${styleSuffix}, ${TECHNICAL_SUFFIX}`
+
+  // Hard-truncate to Meshy's 500-char limit — trim at last comma/space boundary
+  if (full.length > MESHY_PROMPT_CHAR_LIMIT) {
+    return full.slice(0, MESHY_PROMPT_CHAR_LIMIT).replace(/[,\s]+$/, '')
+  }
+
+  return full
 }
 
 // ── Roblox scale calculation ──────────────────────────────────────────────────

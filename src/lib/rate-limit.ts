@@ -19,6 +19,8 @@ import { getRedis } from './redis'
 export interface RateLimitResult {
   /** Whether the request is allowed to proceed. */
   allowed: boolean
+  /** Maximum requests allowed in the window. */
+  limit: number
   /** Remaining requests in the current window. */
   remaining: number
   /** Unix timestamp (ms) when the window resets. */
@@ -41,22 +43,36 @@ async function checkLimit(
   limit: number,
   windowSec: number,
 ): Promise<RateLimitResult> {
-  const redis = getRedis()
+  const redisInstance = getRedis()
+  const resetAt = (Math.floor(Date.now() / 1000 / windowSec) + 1) * windowSec * 1000
+
+  // Fail open when Redis is unavailable — a Redis outage should not take down
+  // the application. Requests are allowed through; Sentry will surface the issue.
+  if (!redisInstance) {
+    return { allowed: true, limit, remaining: limit, resetAt }
+  }
+
   // Bucket by window so we get a coarse sliding window
   const bucket = Math.floor(Date.now() / 1000 / windowSec)
   const key = `rl:${identifier}:${windowSec}:${bucket}`
 
-  // Atomic increment + set TTL on first write
-  const pipeline = redis!.pipeline()
-  pipeline.incr(key)
-  pipeline.expire(key, windowSec * 2) // 2× TTL so the previous bucket lingers for overlap
-  const results = await pipeline.exec()
-
-  const count = (results?.[0]?.[1] as number) ?? limit + 1
-  const resetAt = (bucket + 1) * windowSec * 1000
+  let count: number
+  try {
+    // Atomic increment + set TTL on first write
+    const pipeline = redisInstance.pipeline()
+    pipeline.incr(key)
+    pipeline.expire(key, windowSec * 2) // 2× TTL so the previous bucket lingers for overlap
+    const results = await pipeline.exec()
+    count = (results?.[0]?.[1] as number) ?? 1
+  } catch {
+    // Redis error mid-request — fail open rather than blocking all traffic
+    console.warn('[rate-limit] Redis pipeline error — failing open for', identifier)
+    return { allowed: true, limit, remaining: limit, resetAt }
+  }
 
   return {
     allowed: count <= limit,
+    limit,
     remaining: Math.max(0, limit - count),
     resetAt,
   }
@@ -113,6 +129,7 @@ export async function generalRateLimit(userId: string): Promise<RateLimitResult>
  */
 export function rateLimitHeaders(result: RateLimitResult): Record<string, string> {
   return {
+    'X-RateLimit-Limit': String(result.limit),
     'X-RateLimit-Remaining': String(result.remaining),
     'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
     ...(result.allowed ? {} : { 'Retry-After': String(Math.ceil((result.resetAt - Date.now()) / 1000)) }),

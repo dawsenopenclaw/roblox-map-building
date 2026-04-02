@@ -60,12 +60,14 @@ function verifyJwt(token: string): JwtPayload | null {
     const payloadB64 = token.slice(0, dot)
     const sig = token.slice(dot + 1)
 
-    // Verify HMAC
+    // Verify HMAC — use timingSafeEqual to prevent timing-based side-channel attacks
     const expectedSig = crypto
       .createHmac('sha256', SECRET)
       .update(payloadB64)
       .digest('base64url')
-    if (sig !== expectedSig) return null
+    const sigBuf = Buffer.from(sig)
+    const expBuf = Buffer.from(expectedSig)
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null
 
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as JwtPayload
     if (!payload.sid || !payload.pid) return null

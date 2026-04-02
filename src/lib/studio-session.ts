@@ -104,9 +104,10 @@ function redisKey(id: string): string {
   return `${REDIS_PREFIX}${id}`
 }
 
-/** Serialize a session for Redis. Screenshots are excluded — too large. */
+/** Serialize a session for Redis. Screenshots are excluded — too large for Redis. */
 function serialize(session: StudioSession): string {
-  const { latestScreenshot: _, ...rest } = session
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { latestScreenshot: _ls, beforeScreenshot: _bs, ...rest } = session
   return JSON.stringify(rest)
 }
 
