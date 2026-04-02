@@ -418,11 +418,17 @@ async function callGemini(
         }),
       },
     )
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[callGemini] HTTP', res.status, await res.text().catch(() => ''))
+      return null
+    }
     type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
     const data = await res.json() as GeminiRes
-    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
-  } catch {
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+    if (!text) console.error('[callGemini] Empty response:', JSON.stringify(data).slice(0, 200))
+    return text
+  } catch (e) {
+    console.error('[callGemini] Error:', (e as Error).message)
     return null
   }
 }
@@ -454,11 +460,17 @@ async function callGroq(
         ],
       }),
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.error('[callGroq] HTTP', res.status, await res.text().catch(() => ''))
+      return null
+    }
     type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
     const data = await res.json() as GroqRes
-    return data.choices?.[0]?.message?.content ?? null
-  } catch {
+    const text = data.choices?.[0]?.message?.content ?? null
+    if (!text) console.error('[callGroq] Empty response:', JSON.stringify(data).slice(0, 200))
+    return text
+  } catch (e) {
+    console.error('[callGroq] Error:', (e as Error).message)
     return null
   }
 }
@@ -525,10 +537,13 @@ Use the template pattern: ChangeHistoryService, camera spawn position, create Mo
 MINIMUM 15 parts. Use proper materials (Slate, Granite, WoodPlanks, Glass, Metal). Add PointLights.`
 
     // Try Gemini first for code gen (better at following structured output)
+    console.log('[Pass2] Starting code gen for:', message.slice(0, 50))
     let codeResponse = await callGemini(codePrompt, buildInstruction, [], 4096)
+    console.log('[Pass2] Gemini result:', codeResponse ? `${codeResponse.length} chars` : 'null')
 
     if (!codeResponse) {
       codeResponse = await callGroq(codePrompt, buildInstruction, [], 4096)
+      console.log('[Pass2] Groq result:', codeResponse ? `${codeResponse.length} chars` : 'null')
     }
 
     if (codeResponse) {
@@ -2878,6 +2893,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch {
         // Redis unavailable — allow through
       }
+    } else {
+      // Guest (unauthenticated) — enforce server-side IP rate limit so the
+      // client-side GUEST_MESSAGE_LIMIT=3 cap cannot be bypassed via direct API calls.
+      // Limit: 3 requests per 24 hours per IP (mirrors client cap).
+      const clientIp =
+        req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+        req.headers.get('x-real-ip') ??
+        'unknown'
+      try {
+        const { getRedis } = await import('@/lib/redis')
+        const redis = getRedis()
+        if (redis) {
+          const GUEST_LIMIT = 3
+          const DAY_SEC = 86400
+          const dayBucket = Math.floor(Date.now() / 1000 / DAY_SEC)
+          const key = `rl:guest:ip:${clientIp}:${DAY_SEC}:${dayBucket}`
+          const pipeline = redis.pipeline()
+          pipeline.incr(key)
+          pipeline.expire(key, DAY_SEC * 2)
+          const results = await pipeline.exec()
+          const count = (results?.[0]?.[1] as number) ?? GUEST_LIMIT + 1
+          const resetAt = (dayBucket + 1) * DAY_SEC * 1000
+          if (count > GUEST_LIMIT) {
+            return NextResponse.json(
+              {
+                error: 'Guest message limit reached. Sign up for free to continue.',
+                signUpRequired: true,
+              },
+              {
+                status: 429,
+                headers: rateLimitHeaders({ allowed: false, remaining: 0, resetAt }),
+              },
+            )
+          }
+        }
+      } catch {
+        // Redis unavailable — allow through
+      }
     }
     // Guest users (no userId) fall through — they get demo responses
     // but can try the product before signing up
@@ -2900,7 +2953,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ((parsed.data as Record<string, unknown>).messages ??
       parsed.data.history ??
       []) as HistoryMessage[]
-  ).slice(-20)
+  )
+    .slice(-20)
+    .map((h) => ({ role: h.role, content: h.content.slice(0, 2000) }))
 
   // Auto-fix loop: Studio plugin sends the execution error back here so the AI
   // can generate a corrected script without the user having to describe the failure.

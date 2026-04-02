@@ -15,7 +15,18 @@ import crypto from 'crypto'
 
 const CODE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET || 'forjegames-studio-default-secret'
+// STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
+// secret is generated — tokens issued in a previous process will be invalid
+// after a restart, which is the safe failure mode.
+const SECRET: string = (() => {
+  const s = process.env.STUDIO_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY
+  if (!s) {
+    const fallback = crypto.randomBytes(32).toString('hex')
+    console.warn('[studio/auth] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')
+    return fallback
+  }
+  return s
+})()
 
 // ── Claimed code store (Redis-backed for serverless, in-memory fallback) ────
 // Key: code → { sessionId, placeName, placeId, claimedAt }

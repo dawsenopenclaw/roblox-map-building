@@ -36,7 +36,18 @@ import { parseBody } from '@/lib/validations'
 // for local dev. Never rely on CLERK_SECRET_KEY for HMAC — it is a Clerk API key,
 // not a symmetric signing secret, and sharing it broadens the blast radius of
 // any credential leak. Set STUDIO_AUTH_SECRET to an independent 32-byte random value.
-const SECRET = process.env.STUDIO_AUTH_SECRET || process.env.CLERK_SECRET_KEY || 'forjegames-studio-default-secret'
+// STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
+// secret is generated — tokens issued in a previous process will be invalid
+// after a restart, which is the safe failure mode.
+const SECRET: string = (() => {
+  const s = process.env.STUDIO_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY
+  if (!s) {
+    const fallback = crypto.randomBytes(32).toString('hex')
+    console.warn('[studio/execute] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')
+    return fallback
+  }
+  return s
+})()
 
 interface JwtPayload {
   sid: string

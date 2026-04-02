@@ -2061,7 +2061,8 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   // Inject the app URL at serve time so the plugin knows which server to connect to.
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com').replace(/\/$/, '')
+  // Trim whitespace/newlines that may appear in env vars (e.g. a trailing \n from a .env file)
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com').trim().replace(/\/$/, '')
   const finalLua = PLUGIN_LUA.replace('INJECTED_BASE_URL', appUrl)
 
   // Check if caller wants raw .lua (e.g. ?format=lua)
