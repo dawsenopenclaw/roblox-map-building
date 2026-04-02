@@ -37,8 +37,17 @@ import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 type Quality = 'draft' | 'standard' | 'premium'
 
-// postBodySchema lives in @/lib/validations — see meshGenerateSchema
+type AssetCategory =
+  | 'character'
+  | 'building'
+  | 'weapon'
+  | 'vehicle'
+  | 'prop'
+  | 'furniture'
+  | 'environment'
+  | 'default'
 
+// postBodySchema lives in @/lib/validations — see meshGenerateSchema
 
 interface MeshyTask {
   id: string
@@ -82,24 +91,143 @@ const COST_MESH: Record<Quality, number> = {
 }
 const COST_TEXTURE = 0.08  // Fal PBR texture set
 
+// Professional quality-specific polygon targets — tuned for Roblox
+const POLY_TARGETS: Record<Quality, number> = {
+  draft:    3000,   // fast preview
+  standard: 8000,   // good for Roblox real-time
+  premium:  15000,  // high detail, LOD-friendly
+}
+
+// ── Category detection ────────────────────────────────────────────────────────
+
+const CATEGORY_KEYWORDS: Record<AssetCategory, string[]> = {
+  character: [
+    'character', 'person', 'human', 'player', 'npc', 'hero', 'villain',
+    'warrior', 'soldier', 'knight', 'mage', 'wizard', 'zombie', 'monster',
+    'creature', 'alien', 'robot', 'avatar', 'humanoid', 'figure', 'man',
+    'woman', 'child', 'guard', 'boss',
+  ],
+  building: [
+    'building', 'house', 'castle', 'tower', 'shop', 'store', 'skyscraper',
+    'warehouse', 'barn', 'church', 'temple', 'palace', 'mansion', 'cottage',
+    'hut', 'fort', 'fortress', 'dungeon', 'structure', 'architecture',
+    'office', 'hospital', 'school', 'library', 'museum',
+  ],
+  weapon: [
+    'weapon', 'sword', 'gun', 'rifle', 'pistol', 'shotgun', 'bow', 'arrow',
+    'axe', 'spear', 'staff', 'wand', 'dagger', 'knife', 'hammer', 'mace',
+    'crossbow', 'shield', 'cannon', 'blade', 'katana', 'scythe',
+  ],
+  vehicle: [
+    'vehicle', 'car', 'truck', 'bus', 'bike', 'motorcycle', 'plane',
+    'airplane', 'helicopter', 'boat', 'ship', 'submarine', 'tank', 'spaceship',
+    'rocket', 'train', 'tram', 'ufo', 'drone', 'jeep', 'van', 'ambulance',
+  ],
+  furniture: [
+    'furniture', 'chair', 'table', 'sofa', 'couch', 'desk', 'bed', 'shelf',
+    'bookcase', 'cabinet', 'wardrobe', 'dresser', 'bench', 'stool', 'lamp',
+    'bookshelf', 'nightstand', 'ottoman', 'throne',
+  ],
+  environment: [
+    'environment', 'terrain', 'rock', 'tree', 'cliff', 'mountain', 'island',
+    'cave', 'ruins', 'bridge', 'path', 'road', 'ground', 'tile', 'platform',
+    'pillar', 'column', 'wall', 'floor', 'landscape', 'nature', 'forest',
+    'plant', 'bush', 'mushroom', 'crystal', 'gem',
+  ],
+  prop: [],    // catch-all — matched if no other category wins
+  default: [], // fallback
+}
+
+function detectAssetCategory(prompt: string): AssetCategory {
+  const lower = prompt.toLowerCase()
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS) as [AssetCategory, string[]][]) {
+    if (category === 'prop' || category === 'default') continue
+    if (keywords.some((kw) => lower.includes(kw))) return category
+  }
+
+  return 'prop'
+}
+
+// ── Prompt templates ──────────────────────────────────────────────────────────
+
+const PROMPT_TEMPLATES: Record<AssetCategory, string> = {
+  character:
+    '{prompt}, 3D character model, clean topology, T-pose ready for rigging, quad-dominant mesh, uniform UVs, game-ready, Roblox proportions, PBR textures, 4K detail',
+  building:
+    '{prompt}, 3D architectural model, clean geometry, proper UV unwrap, modular design, real-world scale, PBR materials, game-optimized LOD-friendly mesh',
+  weapon:
+    '{prompt}, 3D weapon model, hard-surface modeling, beveled edges, clean normals, centered pivot, proper UV islands, metallic PBR, game-ready topology',
+  vehicle:
+    '{prompt}, 3D vehicle model, clean hard-surface, proper wheel pivots, separated body panels, aerodynamic form, PBR car paint material, game-ready',
+  prop:
+    '{prompt}, 3D game prop, clean mesh, optimized triangle count, proper UV mapping, PBR textures, suitable for real-time rendering, Roblox compatible',
+  furniture:
+    '{prompt}, 3D furniture model, clean geometry, real-world proportions, wood/fabric PBR materials, game-ready mesh, optimized for Roblox',
+  environment:
+    '{prompt}, 3D environment piece, tileable edges where applicable, clean LOD mesh, PBR terrain materials, optimized for streaming',
+  default:
+    '{prompt}, high quality 3D model, clean topology, proper UV unwrap, PBR materials, game-ready, optimized for real-time rendering, Roblox compatible',
+}
+
+const NEGATIVE_PROMPT =
+  'low quality, blurry, distorted, oversized, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, texture seams visible, NSFW, watermark, text, signature, deformed, ugly, extra limbs'
+
+function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
+  const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
+  return template.replace('{prompt}', rawPrompt)
+}
+
+// ── Collision fidelity per category ──────────────────────────────────────────
+
+const COLLISION_FIDELITY: Record<AssetCategory, string> = {
+  character:   'Enum.CollisionFidelity.Hull',
+  building:    'Enum.CollisionFidelity.Box',
+  weapon:      'Enum.CollisionFidelity.Hull',
+  vehicle:     'Enum.CollisionFidelity.Hull',
+  prop:        'Enum.CollisionFidelity.Box',
+  furniture:   'Enum.CollisionFidelity.Box',
+  environment: 'Enum.CollisionFidelity.Box',
+  default:     'Enum.CollisionFidelity.Hull',
+}
+
+// Default sizes in studs per category (X, Y, Z)
+const DEFAULT_SIZES: Record<AssetCategory, [number, number, number]> = {
+  character:   [4,  6,  4],
+  building:    [20, 20, 20],
+  weapon:      [1,  8,  1],
+  vehicle:     [12, 6,  20],
+  prop:        [4,  4,  4],
+  furniture:   [6,  5,  6],
+  environment: [16, 8,  16],
+  default:     [6,  6,  6],
+}
+
 // ── Meshy helpers ─────────────────────────────────────────────────────────────
 
 async function createMeshyTask(
-  prompt: string,
+  rawPrompt: string,
   quality: Quality,
   apiKey: string,
+  category?: AssetCategory,
+  retryWithCleanMesh = false,
 ): Promise<string> {
-  const isRefine = quality !== 'draft'
-  const body: Record<string, unknown> = {
-    mode: 'preview',
-    prompt: `${prompt}, game asset, optimized for real-time rendering`,
-    negative_prompt: 'low quality, blurry, distorted, oversized, floating parts, disconnected mesh',
-    art_style: quality === 'premium' ? 'pbr' : 'realistic',
-    topology: 'quad',
-    target_polycount: quality === 'draft' ? 10000 : quality === 'standard' ? 20000 : 30000,
+  const resolvedCategory = category ?? detectAssetCategory(rawPrompt)
+  let builtPrompt = buildMeshyPrompt(rawPrompt, resolvedCategory)
+  if (retryWithCleanMesh) {
+    builtPrompt = `${builtPrompt}, clean mesh`
   }
 
-  if (isRefine) {
+  const body: Record<string, unknown> = {
+    mode: 'preview',
+    prompt: builtPrompt,
+    negative_prompt: NEGATIVE_PROMPT,
+    art_style: quality === 'premium' ? 'pbr' : 'realistic',
+    topology: 'quad',
+    target_polycount: POLY_TARGETS[quality],
+  }
+
+  if (quality !== 'draft') {
     body.enable_pbr = quality === 'premium'
   }
 
@@ -162,12 +290,14 @@ async function generateFalTextures(
   apiKey: string,
   resolution = 1024,
 ): Promise<{ albedo: string; normal: string; roughness: string } | null> {
+  const texturePrompt = `${prompt}, seamless PBR game texture, physically based rendering, 4K detail, no visible tiling, clean UV mapping, consistent lighting, neutral lighting conditions`
+
   // Submit to Fal queue
   const submitRes = await fetch(`${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
     body: JSON.stringify({
-      prompt: `${prompt}, seamless PBR texture, game asset, physically based rendering`,
+      prompt: texturePrompt,
       resolution,
       output_format: 'png',
     }),
@@ -186,19 +316,25 @@ async function generateFalTextures(
   for (let i = 0; i < 15; i++) {
     await new Promise((r) => setTimeout(r, 4_000))
 
-    const statusRes = await fetch(`${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}/status`, {
-      headers: { Authorization: `Key ${apiKey}` },
-      signal: AbortSignal.timeout(8_000),
-    })
+    const statusRes = await fetch(
+      `${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}/status`,
+      {
+        headers: { Authorization: `Key ${apiKey}` },
+        signal: AbortSignal.timeout(8_000),
+      },
+    )
 
     if (!statusRes.ok) continue
 
     const status = (await statusRes.json()) as FalStatusResponse
     if (status.status === 'COMPLETED') {
-      const resultRes = await fetch(`${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}`, {
-        headers: { Authorization: `Key ${apiKey}` },
-        signal: AbortSignal.timeout(10_000),
-      })
+      const resultRes = await fetch(
+        `${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}`,
+        {
+          headers: { Authorization: `Key ${apiKey}` },
+          signal: AbortSignal.timeout(10_000),
+        },
+      )
       if (!resultRes.ok) return null
 
       const output = (await resultRes.json()) as FalTextureOutput
@@ -233,62 +369,95 @@ function generateMeshPartLuau(params: {
   textures: { albedo: string; normal: string; roughness: string } | null
   polygonCount: number | null
   taskId: string
+  category?: AssetCategory
 }): string {
   const { prompt, meshUrl, textures, taskId } = params
+  const category: AssetCategory = params.category ?? detectAssetCategory(prompt)
+  const collisionFidelity = COLLISION_FIDELITY[category]
+  const [sx, sy, sz] = DEFAULT_SIZES[category]
+
+  // Sanitize prompt for use in Lua identifiers
+  const safeName = prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)
+  const displayName = prompt.slice(0, 50)
 
   const meshLine = meshUrl
-    ? `-- IMPORTANT: Upload the GLB file to Roblox and replace this MeshId\n  meshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"  -- from: ${meshUrl}`
-    : `-- No mesh URL yet — poll /api/ai/mesh?taskId=${taskId} then upload the GLB`
+    ? `-- IMPORTANT: Upload the GLB file to Roblox and replace this MeshId\n\tmeshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"  -- source: ${meshUrl}`
+    : `-- No mesh URL yet — poll GET /api/ai/mesh?taskId=${taskId} then upload the GLB`
 
-  const textureLinesAlbedo = textures?.albedo
+  const surfaceAppearanceBlock = textures?.albedo
     ? `
-  -- Albedo (diffuse) texture — upload to Roblox and replace asset ID
-  local surfaceAppearance = Instance.new("SurfaceAppearance")
-  surfaceAppearance.ColorMapType = Enum.ColorMapType.Color
-  surfaceAppearance.ColorMap = "rbxassetid://ALBEDO_ASSET_ID"   -- from: ${textures.albedo}
-  surfaceAppearance.NormalMap = "rbxassetid://NORMAL_ASSET_ID"  -- from: ${textures.normal}
-  surfaceAppearance.RoughnessMap = "rbxassetid://ROUGHNESS_ASSET_ID"  -- from: ${textures.roughness}
-  surfaceAppearance.Parent = meshPart`
-    : ''
+\tlocal sa = Instance.new("SurfaceAppearance")
+\tsa.AlphaMode = Enum.AlphaMode.Overlay
+\t-- Upload textures to Roblox Asset Manager and paste the asset IDs below
+\tsa.ColorMap    = "rbxassetid://ALBEDO_ASSET_ID"    -- source: ${textures.albedo}
+\tsa.NormalMap   = "rbxassetid://NORMAL_ASSET_ID"    -- source: ${textures.normal}
+\tsa.RoughnessMap = "rbxassetid://ROUGHNESS_ASSET_ID" -- source: ${textures.roughness}
+\tsa.MetalnessMap = ""  -- optional: upload a metalness map if available
+\tsa.Parent = meshPart`
+    : `
+\t-- No textures generated. Add a SurfaceAppearance manually if needed.`
 
-  return `--[[
-  Generated 3D Mesh: ${prompt}
+  return `--!strict
+--[[
+  ForjeAI Generated Mesh: ${displayName}
+  Category:      ${category}
   Polygon Count: ${params.polygonCount?.toLocaleString() ?? 'unknown'}
-  Task ID: ${taskId}
+  Quality:       auto-detected
+  Task ID:       ${taskId}
 
   SETUP INSTRUCTIONS:
-  1. Download the GLB file from the meshUrl returned by the API
-  2. Upload it to Roblox via Studio > Asset Manager > Import 3D
-  3. Copy the new asset ID and paste it into MeshId below
-  4. Optionally: upload albedo/normal/roughness textures and update SurfaceAppearance
+  1. Download the GLB from the meshUrl in the API response
+  2. In Studio: Asset Manager > Import 3D > select your GLB
+  3. Copy the new rbxassetid and paste it into MeshId below
+  4. (Optional) Upload albedo/normal/roughness PNGs and update SurfaceAppearance IDs
+  5. Adjust Size and CFrame to match your scene layout
 --]]
 
-local function create_${prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)}()
-  local model = Instance.new("Model")
-  model.Name = "${prompt.slice(0, 50)}"
-  model.Parent = workspace
+local CollectionService  = game:GetService("CollectionService")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local Selection          = game:GetService("Selection")
 
-  local meshPart = Instance.new("MeshPart")
-  meshPart.Name = "${prompt.slice(0, 50)}"
-  ${meshLine}
-  meshPart.Size = Vector3.new(10, 10, 10)  -- adjust to match your asset's real dimensions
-  meshPart.CFrame = CFrame.new(0, 5, 0)    -- adjust position as needed
-  meshPart.Anchored = true
-  meshPart.CastShadow = true
-  meshPart.CollisionFidelity = Enum.CollisionFidelity.Default
-  meshPart.RenderFidelity = Enum.RenderFidelity.Automatic
-  meshPart.Parent = model
-${textureLinesAlbedo}
+local function create_${safeName}(): Model
+\t-- Place near the camera so it lands in view immediately
+\tlocal camera  = workspace.CurrentCamera
+\tlocal spawnCF = camera.CFrame * CFrame.new(0, 0, -${Math.max(sx, sy, sz) * 2})
 
-  -- Set as primary part for easy manipulation
-  model.PrimaryPart = meshPart
+\tlocal model = Instance.new("Model")
+\tmodel.Name = "${displayName}"
 
-  return model
+\tlocal meshPart = Instance.new("MeshPart")
+\tmeshPart.Name = "${displayName}"
+\t${meshLine}
+\tmeshPart.Size             = Vector3.new(${sx}, ${sy}, ${sz})
+\tmeshPart.CFrame           = spawnCF
+\tmeshPart.Anchored         = true
+\tmeshPart.CastShadow       = true
+\tmeshPart.CollisionFidelity = ${collisionFidelity}
+\tmeshPart.RenderFidelity   = Enum.RenderFidelity.Automatic
+\tmeshPart.Parent           = model
+${surfaceAppearanceBlock}
+
+\tmodel.PrimaryPart = meshPart
+\tmodel.Parent      = workspace
+
+\t-- Tag for ForjeAI asset tracking
+\tCollectionService:AddTag(model, "ForjeAI")
+\tCollectionService:AddTag(meshPart, "ForjeAI")
+
+\treturn model
 end
 
--- Create and place the model
-local builtModel = create_${prompt.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 40)}()
-print("[ForjeAI] Placed:", builtModel.Name)
+-- Record for undo support
+ChangeHistoryService:SetWaypoint("Before ForjeAI Place: ${displayName}")
+
+local builtModel = create_${safeName}()
+
+-- Select the placed model in Studio Explorer
+Selection:Set({ builtModel })
+
+ChangeHistoryService:SetWaypoint("After ForjeAI Place: ${displayName}")
+
+print(string.format("[ForjeAI] Placed '%s' (%s) — polygon count: ${params.polygonCount?.toLocaleString() ?? 'unknown'}", builtModel.Name, "${category}"))
 `
 }
 
@@ -307,6 +476,7 @@ const DEMO_THUMBNAIL =
 // ── Demo response ─────────────────────────────────────────────────────────────
 
 function demoResponse(prompt: string) {
+  const category = detectAssetCategory(prompt)
   return NextResponse.json({
     meshUrl: null,
     fbxUrl: null,
@@ -314,10 +484,18 @@ function demoResponse(prompt: string) {
     videoUrl: null,
     polygonCount: null,
     textures: null,
-    luauCode: generateMeshPartLuau({ prompt, meshUrl: null, textures: null, polygonCount: null, taskId: 'demo-task' }),
+    luauCode: generateMeshPartLuau({
+      prompt,
+      meshUrl: null,
+      textures: null,
+      polygonCount: null,
+      taskId: 'demo-task',
+      category,
+    }),
     costEstimateUsd: 0,
     actualCostUsd: 0,
     status: 'demo',
+    category,
     message: 'Set MESHY_API_KEY to generate real 3D models. Set FAL_KEY to generate textures.',
   })
 }
@@ -331,6 +509,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const tierDenied = await requireTier(userId, 'HOBBY')
     if (tierDenied) return tierDenied
   }
+
   const taskId = req.nextUrl.searchParams.get('taskId')
   if (!taskId) {
     return NextResponse.json({ error: 'taskId query param required' }, { status: 400 })
@@ -404,6 +583,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const meshyKey = process.env.MESHY_API_KEY
   const falKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY
 
+  // Detect category once — used for both prompt building and Luau code gen
+  const category = detectAssetCategory(prompt)
+
   // Cost estimate (always returned even in demo)
   const costEstimateUsd = COST_MESH[quality] + (withTextures && falKey ? COST_TEXTURE : 0)
 
@@ -415,14 +597,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let actualCostUsd = 0
 
   try {
-    // Start Meshy task
-    const taskId = await createMeshyTask(prompt, quality, meshyKey)
+    // Start Meshy task — with one retry on failure
+    let taskId: string
+    try {
+      taskId = await createMeshyTask(prompt, quality, meshyKey, category)
+    } catch (firstErr) {
+      // Retry once with "clean mesh" appended to the prompt
+      try {
+        taskId = await createMeshyTask(prompt, quality, meshyKey, category, true)
+      } catch {
+        // Surface the original error if retry also fails
+        throw firstErr
+      }
+    }
+
     actualCostUsd += COST_MESH[quality]
 
     // Start Fal texture generation in parallel (non-blocking)
     const texturePromise: Promise<{ albedo: string; normal: string; roughness: string } | null> =
       withTextures && falKey
-        ? generateFalTextures(prompt, falKey).then((t) => { if (t) actualCostUsd += COST_TEXTURE; return t })
+        ? generateFalTextures(prompt, falKey).then((t) => {
+            if (t) actualCostUsd += COST_TEXTURE
+            return t
+          })
         : Promise.resolve(null)
 
     // Poll Meshy (up to ~2.5 minutes)
@@ -438,10 +635,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         videoUrl: null,
         polygonCount: null,
         textures,
-        luauCode: generateMeshPartLuau({ prompt, meshUrl: null, textures, polygonCount: null, taskId }),
+        luauCode: generateMeshPartLuau({ prompt, meshUrl: null, textures, polygonCount: null, taskId, category }),
         costEstimateUsd,
         actualCostUsd,
         status: 'pending',
+        category,
         taskId,
         message: `3D model still generating. Poll GET /api/ai/mesh?taskId=${taskId}`,
       })
@@ -457,6 +655,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       textures,
       polygonCount: task.polygon_count ?? null,
       taskId,
+      category,
     })
 
     return NextResponse.json({
@@ -470,6 +669,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       costEstimateUsd,
       actualCostUsd,
       status: 'complete',
+      category,
       taskId,
     })
   } catch (err) {

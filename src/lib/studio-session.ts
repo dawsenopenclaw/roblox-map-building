@@ -86,8 +86,9 @@ function getRedis() {
   try {
     // Dynamic require keeps this from crashing at build time
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { redis } = require('./redis') as { redis: import('ioredis').Redis }
-    return redis
+    const mod = require('./redis') as { getRedis?: () => import('ioredis').Redis | null }
+    // Use the getRedis function which properly returns null when REDIS_URL is missing
+    return mod.getRedis ? mod.getRedis() : null
   } catch {
     return null
   }

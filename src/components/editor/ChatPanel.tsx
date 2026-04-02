@@ -248,11 +248,18 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.content}
         </p>
-        {msg.tokensUsed !== undefined && (
-          <span style={{ display: 'block', marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
-            {msg.tokensUsed.toLocaleString()} tokens
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+          {msg.hasCode && (
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: 'rgba(34,197,94,0.8)', fontFamily: 'Inter, sans-serif' }}>
+              Built in Studio
+            </span>
+          )}
+          {msg.tokensUsed !== undefined && (
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
+              {msg.tokensUsed.toLocaleString()} tokens
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -677,6 +684,7 @@ interface ChatPanelProps {
   setSelectedModel: (id: ModelId) => void
   totalTokens: number
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>
+  suggestions?: string[]
 }
 
 export function ChatPanel({
@@ -689,6 +697,7 @@ export function ChatPanel({
   setSelectedModel,
   totalTokens,
   textareaRef: externalRef,
+  suggestions = [],
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -740,6 +749,39 @@ export function ChatPanel({
           messages.map((msg) => (
             <MessageBubble key={msg.id} msg={msg} />
           ))
+        )}
+        {/* Suggestion chips — clickable next actions */}
+        {suggestions.length > 0 && !loading && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4 }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => onSend(s)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  background: 'rgba(212,175,55,0.08)',
+                  border: '1px solid rgba(212,175,55,0.2)',
+                  color: 'rgba(212,175,55,0.9)',
+                  fontSize: 12,
+                  fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.15)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

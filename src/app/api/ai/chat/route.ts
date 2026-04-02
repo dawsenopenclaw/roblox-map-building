@@ -23,7 +23,12 @@ function extractLuauCode(text: string): string | null {
 
 // Strip code blocks from response — user only sees friendly text
 function stripCodeBlocks(text: string): string {
-  return text.replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '').replace(/\n{3,}/g, '\n\n').trim()
+  return text
+    .replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '')
+    .replace(/\\n/g, '\n')           // fix literal \n from some models
+    .replace(/\n{3,}/g, '\n\n')      // collapse excessive newlines
+    .replace(/^\s*\n/gm, '\n')       // remove lines that are only whitespace
+    .trim()
 }
 
 // Extract [SUGGESTIONS] from response and return them separately
@@ -2344,12 +2349,23 @@ PLACEMENT RULES:
         const geminiData = await geminiRes.json() as GeminiResponse
         const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
         if (text) {
+          // Auto-execute any Luau code in Studio, strip it from response
+          const luau = extractLuauCode(text)
+          let executedInStudio = false
+          if (luau && sessionId) {
+            executedInStudio = await sendCodeToStudio(sessionId, luau)
+          }
+          const stripped = luau ? stripCodeBlocks(text) : text
+          const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
           return NextResponse.json({
-            message: text,
+            message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : text),
             tokensUsed: tokenCost,
             intent,
+            hasCode: luau !== null,
             model: 'gemini-2.0-flash',
-          } satisfies ChatResponsePayload & { model: string })
+            executedInStudio,
+            suggestions,
+          })
         }
       }
     } catch (err) {

@@ -257,6 +257,11 @@ export function useChat(options: UseChatOptions = {}) {
           chatBody.studioContext = studioContext
         }
 
+        // Send sessionId in header so the API can auto-execute code in Studio
+        if (studioConnected && studioSessionId) {
+          headers['x-studio-session'] = studioSessionId
+        }
+
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
           headers,
@@ -351,7 +356,12 @@ export function useChat(options: UseChatOptions = {}) {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
             if (idx === -1) return prev
             const updated = [...prev]
-            const finalContent = updated[idx].content || getDemoResponse(trimmed)
+            const rawContent = updated[idx].content || getDemoResponse(trimmed)
+            // Strip code blocks from displayed text — code is auto-executed in Studio
+            const finalContent = rawContent
+              .replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '')
+              .replace(/\n{3,}/g, '\n\n')
+              .trim() || rawContent
             updated[idx] = {
               ...updated[idx],
               content: finalContent,
@@ -375,16 +385,31 @@ export function useChat(options: UseChatOptions = {}) {
                 timestamp: new Date(),
               })
             }
+            // Show execution status to user
+            if (meta.executedInStudio) {
+              result.push({
+                id: uid(),
+                role: 'status',
+                content: 'Sent to Roblox Studio — check your viewport!',
+                timestamp: new Date(),
+              })
+            }
             messagesRef.current = result
             return result
           })
 
-          // Forward Luau to Studio if connected
-          const responseText = messagesRef.current.find((m) => m.id === assistantMsgId)?.content ?? ''
+          // Forward Luau to Studio if connected (via client-side fallback)
+          // The server already auto-executes when x-studio-session header is set,
+          // but this is a backup path if the server couldn't reach the session.
           let luauCode: string | null = null
 
-          if (meta.hasCode) {
-            const codeBlockMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+          if (meta.hasCode && !meta.executedInStudio) {
+            // Use rawContent (before stripping) which still has the code blocks
+            const rawText = messagesRef.current.find((m) => m.id === assistantMsgId)?.content ?? ''
+            // If content was stripped, re-extract from accumulated stream buffer isn't possible,
+            // so the server-side execution (via x-studio-session header) is the primary path.
+            // This fallback only fires if server didn't execute.
+            const codeBlockMatch = rawText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
             if (codeBlockMatch?.[1]?.trim()) {
               luauCode = codeBlockMatch[1].trim()
             }

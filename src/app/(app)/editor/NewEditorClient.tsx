@@ -339,6 +339,7 @@ export default function NewEditorClient() {
               setSelectedModel={chat.setSelectedModel}
               totalTokens={chat.totalTokens}
               textareaRef={chat.textareaRef}
+              suggestions={chat.suggestions}
             />
           </div>
 

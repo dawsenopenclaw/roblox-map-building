@@ -24,10 +24,17 @@ export function getRedis(): Redis | null {
   return _redis
 }
 
-// Proxy so existing `redis.get(...)` call-sites keep working unchanged
+// Proxy so existing `redis.get(...)` call-sites keep working unchanged.
+// Returns no-op functions when Redis is not configured (no REDIS_URL).
 export const redis = new Proxy({} as Redis, {
   get: (_, prop) => {
     const r = getRedis()
+    if (!r) {
+      // Redis not configured — return no-op for method calls, undefined for props
+      return typeof prop === 'string' && ['get', 'set', 'del', 'expire', 'exists', 'incr', 'decr', 'hget', 'hset', 'keys', 'scan', 'pipeline', 'multi'].includes(prop)
+        ? () => Promise.resolve(null)
+        : undefined
+    }
     const val = (r as unknown as Record<string, unknown>)[prop as string]
     return typeof val === 'function' ? val.bind(r) : val
   },
