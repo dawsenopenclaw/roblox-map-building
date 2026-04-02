@@ -46,6 +46,8 @@ export interface StudioSession {
   latestState:     Record<string, unknown> | null
   /** Latest viewport screenshot (base64 PNG) */
   latestScreenshot: string | null
+  /** Unix ms when latestScreenshot was last stored */
+  latestScreenshotAt: number | null
   /** Pre-build screenshot for before/after comparison */
   beforeScreenshot: string | null
   /** Unix ms when beforeScreenshot was captured */
@@ -114,8 +116,9 @@ function serialize(session: StudioSession): string {
 function deserialize(raw: string): StudioSession | null {
   try {
     const obj = JSON.parse(raw) as StudioSession
-    obj.latestScreenshot   = null  // never stored in Redis
-    obj.beforeScreenshot   = null  // never stored in Redis
+    obj.latestScreenshot     = null  // never stored in Redis
+    obj.latestScreenshotAt ??= null
+    obj.beforeScreenshot     = null  // never stored in Redis
     obj.beforeScreenshotAt ??= null
     return obj
   } catch {
@@ -242,10 +245,11 @@ export function createSession(opts: {
     authToken:        opts.authToken,
     lastHeartbeat:    Date.now(),
     connected:        true,
-    latestState:        null,
-    latestScreenshot:   null,
-    beforeScreenshot:   null,
-    beforeScreenshotAt: null,
+    latestState:          null,
+    latestScreenshot:     null,
+    latestScreenshotAt:   null,
+    beforeScreenshot:     null,
+    beforeScreenshotAt:   null,
     camera:             null,
     partCount:        0,
     commandQueue:     [],
@@ -299,7 +303,8 @@ export async function storeScreenshot(
   let session = sessions.get(sessionId) ?? await redisLoad(sessionId)
   if (!session) return false
   touchHeartbeat(session)
-  session.latestScreenshot = base64Png
+  session.latestScreenshot   = base64Png
+  session.latestScreenshotAt = Date.now()
   sessions.set(sessionId, session)
   // Persist everything except the screenshot
   redisPersist(session)

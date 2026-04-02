@@ -14,10 +14,15 @@ export function getRedis(): Redis | null {
     return _redis
   }
   const redisUrl = serverEnv.REDIS_URL
-  if (!redisUrl) return null
+  if (!redisUrl || redisUrl.trim().length < 10) return null
+  const isTls = redisUrl.startsWith('rediss://')
   const instance = new Redis(redisUrl, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
+    ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+    // Upstash free tier has 1 connection limit — reuse aggressively
+    enableReadyCheck: false,
+    connectTimeout: 5000,
   })
   if (serverEnv.NODE_ENV !== 'production') globalForRedis.redis = instance
   _redis = instance

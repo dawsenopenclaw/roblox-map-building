@@ -22,8 +22,6 @@ import crypto from 'crypto'
 import { z } from 'zod'
 import {
   queueCommand,
-  listSessions,
-  getSession,
   getSessionSync,
   createSession,
   type ChangeType,

@@ -217,13 +217,14 @@ export async function GET(req: NextRequest) {
   if (action === 'generate') {
     const code      = generateCode()
     const expiresAt = Date.now() + CODE_TTL_MS
+    const token     = signCode(code, expiresAt)
 
     // Store in memory (same Lambda) and Redis (cross-Lambda)
     pendingCodes.set(code, { expiresAt })
     await redisSavePending(code, expiresAt)
 
     return NextResponse.json(
-      { code, expiresInSeconds: CODE_TTL_MS / 1000, expiresAt },
+      { code, token, expiresInSeconds: CODE_TTL_MS / 1000, expiresAt },
       { status: 200, headers: CORS },
     )
   }

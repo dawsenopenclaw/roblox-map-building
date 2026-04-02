@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
       sessionId,
       /** Base64 PNG without data URI prefix — caller adds it for <img> src */
       image: session.latestScreenshot,
-      capturedAt: session.lastHeartbeat,
+      capturedAt: session.latestScreenshotAt ?? session.lastHeartbeat,
       beforeImage: session.beforeScreenshot ?? null,
       beforeImageAt: session.beforeScreenshotAt ?? null,
       serverTime: Date.now(),
