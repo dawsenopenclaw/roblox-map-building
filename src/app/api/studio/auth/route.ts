@@ -217,7 +217,10 @@ export async function GET(req: NextRequest) {
   if (action === 'generate') {
     const code      = generateCode()
     const expiresAt = Date.now() + CODE_TTL_MS
-    const token     = signCode(code, expiresAt)
+
+    // Sign the code so the client can use it for claim verification
+    const hmac = crypto.createHmac('sha256', SECRET).update(`${code}:${expiresAt}`).digest('hex').slice(0, 16)
+    const token = Buffer.from(`${code}:${expiresAt}:${hmac}`).toString('base64url')
 
     // Store in memory (same Lambda) and Redis (cross-Lambda)
     pendingCodes.set(code, { expiresAt })
