@@ -33,15 +33,16 @@ const ORBS: Orb[] = [
   { size: 120, left: '25%',  top: '55%',  color: 'rgba(251,191,36,0.06)',  duration: 19, delay: 9,    blur: 45,  opacity: 1, xRange: 30, yRange: 45 },
 ]
 
-// Tiny star dots
-const STARS = Array.from({ length: 80 }, (_, i) => ({
+// Tiny star dots — more stars, wider twinkle amplitude
+const STARS = Array.from({ length: 120 }, (_, i) => ({
   id: i,
   left: `${Math.round(((i * 127 + 31) % 100))}%`,
   top: `${Math.round(((i * 83 + 17) % 100))}%`,
-  size: i % 5 === 0 ? 2 : i % 3 === 0 ? 1.5 : 1,
-  opacity: 0.2 + (i % 5) * 0.08,
-  duration: 3 + (i % 4),
-  delay: i % 6,
+  size: i % 7 === 0 ? 2.5 : i % 5 === 0 ? 2 : i % 3 === 0 ? 1.5 : 1,
+  opacity: 0.15 + (i % 7) * 0.09,
+  // stagger across 5 different durations for a more organic feel
+  duration: 2 + (i % 5) * 0.9,
+  delay: (i * 0.31) % 7,
 }))
 
 export function SpaceBackground() {
@@ -57,16 +58,30 @@ export function SpaceBackground() {
         background: 'radial-gradient(ellipse at 20% 20%, #0a0520 0%, #050510 40%, #02020d 100%)',
       }}
     >
-      {/* Subtle nebula sweeps */}
+      {/* Nebula sweeps — deeper, more saturated sci-fi colors */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           background: `
-            radial-gradient(ellipse 80% 50% at 70% 30%, rgba(99,60,180,0.08) 0%, transparent 60%),
-            radial-gradient(ellipse 60% 40% at 20% 70%, rgba(59,130,246,0.06) 0%, transparent 55%),
-            radial-gradient(ellipse 50% 60% at 85% 75%, rgba(139,92,246,0.05) 0%, transparent 50%)
+            radial-gradient(ellipse 90% 55% at 70% 25%, rgba(79,44,200,0.12) 0%, transparent 60%),
+            radial-gradient(ellipse 65% 45% at 18% 68%, rgba(6,182,212,0.09) 0%, transparent 55%),
+            radial-gradient(ellipse 55% 65% at 88% 78%, rgba(139,92,246,0.1) 0%, transparent 50%),
+            radial-gradient(ellipse 40% 30% at 50% 10%, rgba(212,175,55,0.05) 0%, transparent 45%)
           `,
+          animation: 'nebulaDrift 60s ease-in-out infinite alternate',
+        }}
+      />
+      {/* Second nebula layer — offset drift for depth */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `
+            radial-gradient(ellipse 50% 40% at 30% 40%, rgba(56,189,248,0.06) 0%, transparent 50%),
+            radial-gradient(ellipse 70% 50% at 60% 80%, rgba(167,139,250,0.07) 0%, transparent 55%)
+          `,
+          animation: 'nebulaDrift2 45s ease-in-out infinite alternate',
         }}
       />
 
@@ -111,8 +126,9 @@ export function SpaceBackground() {
 
       <style>{`
         @keyframes starTwinkle {
-          0%   { opacity: 0.1; }
-          100% { opacity: 0.5; }
+          0%   { opacity: 0.05; transform: scale(0.85); }
+          50%  { opacity: 0.7; transform: scale(1.2); }
+          100% { opacity: 0.15; transform: scale(1); }
         }
         @keyframes floatOrb0 {
           0%   { transform: translate(-50%, -50%) translate(0px, 0px); }
@@ -129,6 +145,14 @@ export function SpaceBackground() {
         @keyframes floatOrb3 {
           0%   { transform: translate(-50%, -50%) translate(0px, 0px); }
           100% { transform: translate(-50%, -50%) translate(-25px, -30px); }
+        }
+        @keyframes nebulaDrift {
+          0%   { transform: scale(1) translate(0px, 0px); }
+          100% { transform: scale(1.06) translate(-12px, 8px); }
+        }
+        @keyframes nebulaDrift2 {
+          0%   { transform: scale(1) translate(0px, 0px); }
+          100% { transform: scale(1.04) translate(10px, -6px); }
         }
       `}</style>
     </div>

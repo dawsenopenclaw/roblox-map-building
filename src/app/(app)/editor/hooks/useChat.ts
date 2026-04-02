@@ -36,6 +36,8 @@ export interface ChatMessage {
   intent?: string
   hasCode?: boolean
   streaming?: boolean
+  /** Raw Luau code extracted from AI response — used for build preview rendering */
+  luauCode?: string
   /** Set on 'build-error' messages — the raw Studio error text */
   buildError?: string
   /** Set on 'build-error' messages — which attempt number this was (1-based) */
@@ -480,21 +482,27 @@ export function useChat(options: UseChatOptions = {}) {
             return result
           })
 
-          // Forward Luau to Studio if connected (via client-side fallback)
-          // The server already auto-executes when x-studio-session header is set,
-          // but this is a backup path if the server couldn't reach the session.
+          // Extract code from raw stream buffer for preview + execution
           let luauCode: string | null = null
-
-          if (meta.hasCode && !meta.executedInStudio) {
-            // Use rawStreamBuffer which still contains the original code blocks —
-            // the displayed content was already stripped during streaming.
+          if (meta.hasCode) {
             const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
             if (codeBlockMatch?.[1]?.trim()) {
               luauCode = codeBlockMatch[1].trim()
             }
           }
-
           luauCode = luauCode ?? meshData?.luauCode ?? null
+
+          // Store luauCode on the message for build preview rendering
+          if (luauCode) {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === assistantMsgId)
+              if (idx === -1) return prev
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], luauCode }
+              messagesRef.current = updated
+              return updated
+            })
+          }
 
           if (studioConnected && luauCode && onBuildComplete) {
             lastLuauRef.current = luauCode

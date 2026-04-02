@@ -121,7 +121,7 @@ function stripCodeBlocksForDisplay(content: string): string {
   return result.replace(/\n{3,}/g, '\n\n').trim()
 }
 
-// Pulse animation for "Sent to Studio" success dot
+// Pulse animation for "Sent to Studio" success dot + all chat sci-fi animations
 const PULSE_STYLE = `
   @keyframes statusPulse {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -130,6 +130,32 @@ const PULSE_STYLE = `
   @keyframes thinkingPulse {
     0%, 100% { opacity: 0.4; }
     50%       { opacity: 1; }
+  }
+  @keyframes avatarGlow {
+    0%, 100% { box-shadow: 0 0 8px rgba(255,184,28,0.45), 0 0 16px rgba(255,107,53,0.25); }
+    50%       { box-shadow: 0 0 14px rgba(255,184,28,0.7), 0 0 28px rgba(255,107,53,0.4), 0 0 40px rgba(212,175,55,0.2); }
+  }
+  @keyframes msgFadeUp {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scanLine {
+    0%   { top: 0%; opacity: 0.7; }
+    100% { top: 100%; opacity: 0; }
+  }
+  @keyframes chipGlow {
+    0%, 100% { box-shadow: 0 0 0px rgba(212,175,55,0); }
+    50%       { box-shadow: 0 0 10px rgba(212,175,55,0.3), 0 0 20px rgba(212,175,55,0.15); }
+  }
+  @keyframes sparkleFloat {
+    0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+    50%  { transform: translateY(-6px) scale(1.2); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 0.6; }
+  }
+  @keyframes inputPanelGlow {
+    0%, 100% { border-color: rgba(56,189,248,0.15); }
+    33%       { border-color: rgba(139,92,246,0.2); }
+    66%       { border-color: rgba(212,175,55,0.22); }
   }
 `
 
