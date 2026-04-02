@@ -26,6 +26,19 @@ function stripCodeBlocks(text: string): string {
   return text.replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
+// Extract [SUGGESTIONS] from response and return them separately
+function extractSuggestions(text: string): { message: string; suggestions: string[] } {
+  const parts = text.split('[SUGGESTIONS]')
+  if (parts.length < 2) return { message: text.trim(), suggestions: [] }
+  const message = parts[0].trim()
+  const suggestions = parts[1]
+    .split('\n')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && s.length < 100)
+    .slice(0, 4)
+  return { message, suggestions }
+}
+
 // Queue extracted code to Studio plugin for execution
 async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
   if (!sessionId || !code) return false
@@ -136,7 +149,37 @@ m.Parent=workspace
 if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end
 \`\`\`
 
-ALWAYS end build responses with a follow-up question or suggestion for what to do next.`
+ADVANCED ENGAGEMENT TECHNIQUES:
+
+1. EMOTIONAL MIRRORING — match their energy. If they're excited, be excited. If they're frustrated, acknowledge it then redirect positively.
+2. OPEN LOOPS — tease what's coming: "wait till we add the lighting to this area..." / "I have an idea for the entrance but let's finish this first"
+3. CALLBACKS — reference earlier builds: "remember that shop? imagine a path connecting it to this new area"
+4. SHARED OWNERSHIP — say "our game", "we built", "our spawn area" — make it collaborative
+5. SENSORY LANGUAGE — describe experiences, not just objects: "imagine players running through here, the torches flickering, ambient music playing..."
+6. NAME THINGS — "what should we call this district?" / "I'm calling this the Gold Quarter, thoughts?"
+7. CELEBRATE PROGRESS — "yo we're making serious progress, look how far we've come" / "this is already better than 90% of games on Roblox"
+8. SUGGEST THE UNEXPECTED — randomly offer something cool they didn't ask for: "oh wait, what if we added a secret room behind that bookshelf?"
+9. CREATE URGENCY — "once we nail the spawn area, everything else flows from there. Let's lock this in."
+10. ASK ABOUT THEIR PLAYERS — "who's your target audience? That changes the color palette and pacing"
+11. COMPARE TO HITS — "Brookhaven does X, but we could do it better by Y"
+12. THINK IN SYSTEMS — don't just build objects, think about how they connect: "this shop needs a path to spawn, a sign visible from the main road, and ambient lighting at night"
+
+RESPONSE FORMAT — ALWAYS include at the END of your message:
+After your main response, add a line break and then 2-3 suggested next actions the user might want, formatted EXACTLY like this:
+[SUGGESTIONS]
+suggestion 1 text here
+suggestion 2 text here
+suggestion 3 text here
+
+Examples:
+[SUGGESTIONS]
+Add street lamps along the path
+Build a fountain in the center
+Change the shop roof to dark wood
+
+These become clickable buttons in the UI. Make them specific, actionable, and exciting.
+
+ALWAYS end with suggestions. NEVER skip them.`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
 
@@ -1385,32 +1428,68 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const intent = detectIntent(message)
 
-  // ── Fetch live camera + workspace snapshot from Studio ───────────────────
-  // Accept studioContext directly from request body (sent by editor)
-  const bodyStudioCtx = (parsed.data as Record<string, unknown>).studioContext as {
+  // ── Build rich Studio context for AI awareness ──────────────────────────
+  interface StudioCtxBody {
     camera?: { posX: number; posY: number; posZ: number; lookX: number; lookY: number; lookZ: number }
     partCount?: number
-    nearbyParts?: { name: string; className: string; position: string; size: string; material: string }[]
-  } | undefined
+    modelCount?: number
+    lightCount?: number
+    nearbyParts?: { name: string; className: string; position: string; size: string; material: string; color?: string; parent?: string }[]
+    selection?: { name: string; className: string; path: string; position?: string; size?: string; material?: string; color?: string; transparency?: number; anchored?: boolean; childCount?: number }[]
+    sceneTree?: { name: string; className: string; position?: string; size?: string; childCount?: number }[]
+    groundY?: number
+  }
+  const bodyStudioCtx = (parsed.data as Record<string, unknown>).studioContext as StudioCtxBody | undefined
 
   let cameraContext = ''
 
-  // Build context from direct studioContext in request body
+  // Build comprehensive context from request body
   if (bodyStudioCtx?.camera) {
     const c = bodyStudioCtx.camera
-    const nearby = bodyStudioCtx.nearbyParts ?? []
-    let nearbyStr = ''
-    if (nearby.length > 0) {
-      nearbyStr = '\n- Nearby objects:\n' + nearby.slice(0, 20).map(p =>
-        `  ${p.name} (${p.className}) at (${p.position}) size (${p.size}) ${p.material}`
-      ).join('\n')
-    }
-    cameraContext = `\n\nSTUDIO CONTEXT (live from Roblox Studio):
-- Camera position: (${c.posX}, ${c.posY}, ${c.posZ})
-- Looking toward: (${c.lookX}, ${c.lookY}, ${c.lookZ})
-- Parts in workspace: ${bodyStudioCtx.partCount ?? 'unknown'}${nearbyStr}
+    const parts: string[] = []
 
-IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${c.lookX}, ${c.posY}, ${c.lookZ}) as the base position so the user can see what you build. Always use workspace.CurrentCamera.CFrame to get position if these coords seem stale.`
+    parts.push(`STUDIO CONTEXT (live from Roblox Studio):`)
+    parts.push(`Camera: position (${c.posX}, ${c.posY}, ${c.posZ}), looking at (${c.lookX}, ${c.lookY}, ${c.lookZ})`)
+    if (bodyStudioCtx.groundY !== undefined) parts.push(`Ground level: Y=${bodyStudioCtx.groundY}`)
+    parts.push(`Workspace: ${bodyStudioCtx.partCount ?? '?'} parts, ${bodyStudioCtx.modelCount ?? '?'} models, ${bodyStudioCtx.lightCount ?? '?'} lights`)
+
+    // Selection — what user is actively working with
+    const sel = bodyStudioCtx.selection ?? []
+    if (sel.length > 0) {
+      parts.push(`\nSELECTED (${sel.length} object${sel.length > 1 ? 's' : ''} — user is working on these):`)
+      for (const s of sel.slice(0, 10)) {
+        const props = [s.position && `pos(${s.position})`, s.size && `size(${s.size})`, s.material, s.color && `rgb(${s.color})`].filter(Boolean).join(' ')
+        parts.push(`  ${s.name} (${s.className}) ${props} [${s.path}]`)
+      }
+    }
+
+    // Scene tree — top-level workspace structure
+    const tree = bodyStudioCtx.sceneTree ?? []
+    if (tree.length > 0) {
+      parts.push(`\nSCENE TREE (${tree.length} top-level objects in workspace):`)
+      for (const t of tree.slice(0, 40)) {
+        const info = [t.position && `at(${t.position})`, t.size && `size(${t.size})`, t.childCount !== undefined && `${t.childCount} children`].filter(Boolean).join(' ')
+        parts.push(`  ${t.name} (${t.className}) ${info}`)
+      }
+    }
+
+    // Nearby parts — 100 closest objects for spatial awareness
+    const nearby = bodyStudioCtx.nearbyParts ?? []
+    if (nearby.length > 0) {
+      parts.push(`\nNEARBY OBJECTS (${nearby.length} within 250 studs, sorted by distance):`)
+      for (const p of nearby.slice(0, 100)) {
+        parts.push(`  ${p.name} (${p.className}) at(${p.position}) size(${p.size}) ${p.material}${p.color ? ` rgb(${p.color})` : ''}${p.parent ? ` in:${p.parent}` : ''}`)
+      }
+    }
+
+    parts.push(`\nBUILD RULES:`)
+    parts.push(`- Place new objects in front of camera: CFrame.new(${c.lookX}, ${bodyStudioCtx.groundY ?? c.posY}, ${c.lookZ})`)
+    parts.push(`- If user says "in front of me" use workspace.CurrentCamera.CFrame * CFrame.new(0, 0, -20)`)
+    parts.push(`- If user references a selected object, modify THAT object by path`)
+    parts.push(`- Match existing material/color palette when adding to a scene`)
+    parts.push(`- Always anchor parts, always wrap in ChangeHistoryService:SetWaypoint()`)
+
+    cameraContext = '\n\n' + parts.join('\n')
   }
 
   // Fallback: fetch from session if no direct context provided
@@ -1427,13 +1506,23 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${
             `  ${p.name} (${p.className}) at (${p.position})`
           ).join('\n')
         }
-        cameraContext = `\n\nSTUDIO CONTEXT (live camera from Roblox Studio):
+        const groundY = (studioSession as Record<string, unknown>).groundY as number | undefined
+        const selected = (studioSession as Record<string, unknown>).selected as Array<Record<string, unknown>> | undefined
+        let selectedStr = ''
+        if (selected && selected.length > 0) {
+          selectedStr = '
+- User has selected: ' + selected.map(s => `${s.n} at (${(s.p as number[])?.join(',')})`).join(', ')
+        }
+        cameraContext = `
+
+STUDIO CONTEXT (live camera from Roblox Studio):
 - Camera position: (${c.posX}, ${c.posY}, ${c.posZ})
 - Looking toward: (${c.lookX}, ${c.lookY}, ${c.lookZ})
+- Ground level at camera: Y=${groundY ?? 'unknown'}
 - Parts in workspace: ${studioSession.partCount ?? 'unknown'}
-- Place: ${studioSession.placeName ?? 'Unknown'}${nearbyStr}
+- Place: ${studioSession.placeName ?? 'Unknown'}${nearbyStr}${selectedStr}
 
-IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${c.lookX}, ${c.posY}, ${c.lookZ}) as the base position so the user can see what you build. Offset from there as needed.`
+IMPORTANT: When placing builds, position them NEAR the camera. Use groundY as the base Y so objects land on the ground. Offset from there as needed.`
       }
 
       // Inject workspace snapshot spatial context when available
@@ -1460,18 +1549,29 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use CFrame.new(${
           ? `ClockTime=${lighting.time ?? '?'}, Brightness=${lighting.brightness ?? '?'}`
           : 'unknown'
 
-        cameraContext += `\n\nCURRENT WORKSPACE STATE (from Roblox Studio scan):
+        const terrain = (worldSnapshot.terrain as Array<[number, number, number]> | undefined) ?? []
+        const top30 = objects.slice(0, 30).map(o => `${o.n}[${o.cls}]@(${o.p[0]},${o.p[1]},${o.p[2]})`).join(', ')
+        const terrainStr = terrain.length > 0
+          ? terrain.map(t => `(${t[0]},${t[2]})->Y${t[1]}`).join(', ')
+          : 'not sampled'
+
+        cameraContext += `
+
+CURRENT WORKSPACE STATE (from Roblox Studio scan):
 - World bounds: ${boundsStr}
 - ${stats.total ?? objects.length} objects in workspace (${stats.parts ?? 0} parts, ${stats.models ?? 0} models)
-- Objects: ${top20 || 'none'}
+- Objects (up to 30): ${top30 || 'none'}
 - Spawn points: ${spawnList}
 - Lighting: ${lightStr}
+- Terrain ground samples: ${terrainStr}
 
 PLACEMENT RULES:
-- Place new objects relative to existing ones
-- A character is 5.5 studs tall
-- Don't overlap existing objects
-- Place on ground (Y = terrain level or nearest floor)`
+- Place objects near the camera (that's where the user is looking)
+- Use groundY for base Y when available; otherwise use terrain sample nearest to camera
+- If user selected something, build relative to that selection
+- Character height = 5.5 studs, door = 4x7 studs, room = 12 studs high
+- Don't overlap existing objects -- check nearby list
+- Place on ground: new object Y = groundY + (object height / 2)`
       }
     } catch {
       // No camera/snapshot data — that's fine, place at origin
@@ -1663,7 +1763,8 @@ PLACEMENT RULES:
       if (luau && sessionId) {
         executedInStudio = await sendCodeToStudio(sessionId, luau)
       }
-      const cleanMessage = luau ? stripCodeBlocks(responseText) : responseText
+      const stripped = luau ? stripCodeBlocks(responseText) : responseText
+      const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
 
       return NextResponse.json({
         message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : responseText),
@@ -1671,6 +1772,7 @@ PLACEMENT RULES:
         intent,
         model: aiResponse.model,
         executedInStudio,
+        suggestions,
         ...(mcpResult  ? { mcpResult }  : {}),
         ...(meshResult ? { meshResult } : {}),
       })
@@ -1763,13 +1865,15 @@ PLACEMENT RULES:
           if (luau && sessionId) {
             executedInStudio = await sendCodeToStudio(sessionId, luau)
           }
-          const cleanMessage = luau ? stripCodeBlocks(text) : text
+          const stripped = luau ? stripCodeBlocks(text) : text
+          const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
           return NextResponse.json({
             message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : text),
             tokensUsed: tokenCost,
             intent,
             model: 'llama-3.3-70b',
             executedInStudio,
+            suggestions,
           })
         }
       }
