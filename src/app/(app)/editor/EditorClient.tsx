@@ -594,6 +594,129 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode, onConf
   )
 }
 
+// ─── Plugin Connection Section (collapsible, shown below "How it works") ──────
+
+function PluginConnectionSection({
+  connectFlow,
+  connectCode,
+  connectTimer,
+  onGenerateCode,
+  onConfirmConnected,
+}: {
+  connectFlow: 'idle' | 'generating' | 'code' | 'connected'
+  connectCode: string
+  connectTimer: number
+  onGenerateCode: () => void
+  onConfirmConnected: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="rounded-lg overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-3.5 py-3 text-left transition-colors hover:bg-white/[0.02]"
+        style={{ background: 'rgba(255,255,255,0.015)' }}
+      >
+        <div className="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0 text-zinc-500">
+            <rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.2"/>
+            <path d="M4 7h6M7 5v4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          <span className="text-[11px] font-medium text-zinc-400">Advanced: Live Plugin Connection</span>
+        </div>
+        <svg
+          width="12" height="12" viewBox="0 0 12 12" fill="none"
+          className="flex-shrink-0 text-zinc-600 transition-transform"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div className="px-3.5 pb-4 pt-3 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Install the ForjeGames plugin in Roblox Studio to have AI commands run automatically.{' '}
+            <span className="text-zinc-600">Works best when Studio stays open.</span>
+          </p>
+
+          {/* Generate code button / code display */}
+          {connectFlow === 'idle' || connectFlow === 'generating' ? (
+            <button
+              onClick={onGenerateCode}
+              disabled={connectFlow === 'generating'}
+              className="w-full rounded-lg px-4 py-2.5 flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+              style={{ background: 'rgba(212,175,55,0.10)', border: '1px solid rgba(212,175,55,0.22)', color: '#D4AF37', fontWeight: 600, fontSize: 12 }}
+            >
+              {connectFlow === 'generating' ? (
+                <>
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 14 14" fill="none">
+                    <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="8 8"/>
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                'Generate Connection Code'
+              )}
+            </button>
+          ) : (
+            <div className="space-y-2.5">
+              <div className="rounded-lg px-4 py-3 flex items-center justify-between gap-3" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.22)' }}>
+                <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 24, fontWeight: 700, letterSpacing: '0.18em', color: '#D4AF37', lineHeight: 1 }}>
+                  {connectCode}
+                </span>
+                <CodeCopyButton code={connectCode} />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span key={i} className="w-1 h-1 rounded-full bg-zinc-600" style={{ animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                  ))}
+                </div>
+                <p className="text-[10px] text-zinc-500">
+                  Enter this code in the plugin.{' '}
+                  <span style={{ fontFamily: '"JetBrains Mono", monospace' }}>
+                    {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
+                  </span>
+                </p>
+              </div>
+
+              <button
+                onClick={onConfirmConnected}
+                className="w-full py-2 rounded-lg text-[12px] font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+                style={{ background: '#10B981', color: '#fff' }}
+              >
+                I&apos;ve connected the plugin ✓
+              </button>
+            </div>
+          )}
+
+          {/* Install plugin hint */}
+          <p className="text-[10px] text-zinc-600 leading-relaxed">
+            Don&apos;t have the plugin?{' '}
+            <a
+              href="/api/studio/plugin"
+              download
+              className="text-zinc-500 hover:text-zinc-300 underline underline-offset-2 transition-colors"
+            >
+              Download it
+            </a>
+            {' '}or paste{' '}
+            <code className="text-[10px]" style={{ fontFamily: '"JetBrains Mono", monospace', color: '#D4AF37' }}>
+              loadstring(game:HttpGet(&quot;https://forjegames.com/api/studio/plugin&quot;))()
+            </code>
+            {' '}into Studio&apos;s Command Bar.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Model Selector ────────────────────────────────────────────────────────────
 
 function ModelSelector({ value, onChange }: { value: ModelId; onChange: (id: ModelId) => void }) {
@@ -2485,7 +2608,10 @@ export function EditorClient() {
               })
           }
         }
-      } catch {
+      } catch (err) {
+        // Show actual error in dev, graceful message in prod
+        const errMsg = err instanceof Error ? err.message : 'Unknown error'
+        console.error('[ForjeAI] Chat error:', errMsg)
         setMessages((prev) => {
           const without = prev.filter((m) => m.id !== statusMsg.id)
           return [
@@ -2493,7 +2619,7 @@ export function EditorClient() {
             {
               id: uid(),
               role: 'assistant',
-              content: 'Something went wrong. Please try again.',
+              content: `I hit a snag — ${errMsg.includes('API error') ? 'the server returned an error' : 'couldn\'t reach the server'}. Try sending your message again.`,
               timestamp: new Date(),
               model: selectedModel,
             },
@@ -3307,32 +3433,51 @@ export function EditorClient() {
                     </div>
                   )
                 ) : (
-                  /* Not connected — show how to use the code */
-                  <div className="absolute inset-0 flex flex-col items-center justify-center px-6">
+                  /* Not connected — show how to use the code + optional plugin connection */
+                  <div className="absolute inset-0 overflow-y-auto">
                     <ViewportPreview state={viewportState} builtBlockCount={sceneBlocks.length} className="absolute inset-0" />
-                    <div className="relative z-10 max-w-sm w-full text-center space-y-4">
-                      <h2 className="text-lg font-semibold text-zinc-100">How it works</h2>
-                      <p className="text-[12px] text-zinc-500 leading-relaxed">
-                        Chat with ForjeAI on the left. When it generates Luau code, click <strong className="text-zinc-300">&quot;Import to Studio&quot;</strong> to copy it. Then paste it into a Script in Roblox Studio.
-                      </p>
-                      <div className="space-y-2 text-left">
-                        {[
-                          { n: '1', text: 'Ask ForjeAI to build something (e.g. "build a castle")' },
-                          { n: '2', text: 'Click the gold "Import to Studio" button on the code' },
-                          { n: '3', text: 'In Studio: Insert → Script → paste → run (F5)' },
-                        ].map((s) => (
-                          <div key={s.n} className="flex items-start gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: '#D4AF37', color: '#000' }}>{s.n}</span>
-                            <p className="text-[11px] text-zinc-400 leading-relaxed">{s.text}</p>
-                          </div>
-                        ))}
+                    <div className="relative z-10 flex flex-col items-center px-6 py-8 min-h-full">
+                      <div className="max-w-sm w-full space-y-4">
+
+                        {/* ── Primary method: copy/paste ─────────────────── */}
+                        <div className="text-center">
+                          <h2 className="text-lg font-semibold text-zinc-100">How it works</h2>
+                          <p className="text-[12px] text-zinc-500 leading-relaxed mt-1">
+                            Chat with ForjeAI on the left. When it generates Luau code, click{' '}
+                            <strong className="text-zinc-300">&quot;Import to Studio&quot;</strong>{' '}
+                            to copy it. Then paste it into a Script in Roblox Studio.
+                          </p>
+                        </div>
+                        <div className="space-y-2 text-left">
+                          {[
+                            { n: '1', text: 'Ask ForjeAI to build something (e.g. "build a castle")' },
+                            { n: '2', text: 'Click the gold "Import to Studio" button on the code' },
+                            { n: '3', text: 'In Studio: Insert → Script → paste → run (F5)' },
+                          ].map((s) => (
+                            <div key={s.n} className="flex items-start gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                              <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: '#D4AF37', color: '#000' }}>{s.n}</span>
+                              <p className="text-[11px] text-zinc-400 leading-relaxed">{s.text}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setDemoMode(true)}
+                          className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                        >
+                          Show 3D preview instead
+                        </button>
+
+                        {/* ── Advanced: Plugin Connection (collapsible) ──── */}
+                        <PluginConnectionSection
+                          connectFlow={connectFlow}
+                          connectCode={connectCode}
+                          connectTimer={connectTimer}
+                          onGenerateCode={handleConnectToStudio}
+                          onConfirmConnected={confirmStudioConnected}
+                        />
+
                       </div>
-                      <button
-                        onClick={() => setDemoMode(true)}
-                        className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                      >
-                        Show 3D preview instead
-                      </button>
                     </div>
                   </div>
                 )}

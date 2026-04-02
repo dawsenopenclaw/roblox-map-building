@@ -12,6 +12,8 @@ export const paginationSchema = z.object({
 export const chatMessageSchema = z.object({
   message: z.string().min(1, 'message is required').max(4000, 'message exceeds 4000 characters'),
   conversationId: z.string().optional(),
+  model: z.string().optional(),
+  gameContext: z.any().optional(),
 })
 
 export const meshGenerateSchema = z.object({
