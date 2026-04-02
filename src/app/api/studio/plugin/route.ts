@@ -23,7 +23,7 @@ local PLUGIN_VER     = "4.0.0"
 local PROD_URL       = "https://forjegames.com"
 local SYNC_INTERVAL  = 1      -- seconds between command polls
 local HB_INTERVAL    = 30     -- seconds between keepalive heartbeats
-local MAX_FAILURES   = 8      -- consecutive failures before disconnect
+local MAX_FAILURES   = 30     -- consecutive failures before disconnect (generous for cold starts)
 local RETRY_MAX      = 3      -- http retry attempts
 local RETRY_BASE     = 2      -- seconds, doubles each attempt (max 30)
 
@@ -473,8 +473,21 @@ end
 local function onFail()
 	fails = fails + 1
 	if fails >= MAX_FAILURES then
-		warn("[ForjeGames] Lost connection after " .. fails .. " failures. Re-enter your code to reconnect.")
-		disconnect(true)
+		-- Try auto-reconnect before giving up
+		if authToken and authToken ~= "" then
+			warn("[ForjeGames] Connection lost. Attempting auto-reconnect...")
+			fails = 0
+			setUI("reconnecting")
+			task.spawn(function()
+				local ok = tryReconnect(authToken, sessionId)
+				if not ok then
+					warn("[ForjeGames] Auto-reconnect failed. Re-enter your code.")
+					disconnect(true)
+				end
+			end)
+		else
+			disconnect(true)
+		end
 	end
 end
 

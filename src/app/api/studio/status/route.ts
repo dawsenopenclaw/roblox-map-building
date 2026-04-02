@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getSession, getSessionByToken, SESSION_TTL_MS } from '@/lib/studio-session'
+import { getSession, getSessionByToken, createSession, SESSION_TTL_MS } from '@/lib/studio-session'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -46,6 +46,16 @@ export async function GET(req: NextRequest) {
       session = getSessionByToken(token)
       if (session) {
         sessionId = session.sessionId
+      } else if (token.length >= 32) {
+        // Auto-recreate session on Vercel cold start
+        const newSession = createSession({
+          placeId: searchParams.get('placeId') ?? 'unknown',
+          placeName: 'Reconnected Session',
+          pluginVersion: '1.0.0',
+          authToken: token,
+        })
+        session = newSession
+        sessionId = newSession.sessionId
       }
     }
   }

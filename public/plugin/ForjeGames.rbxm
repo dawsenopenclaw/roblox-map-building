@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-02T00:55:58.016Z -->
+  <!-- Built by build-plugin.js on 2026-04-02T01:04:14.571Z -->
   <Item class="Folder" referent="ROOT0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -581,7 +581,7 @@ local function getBaseUrl()
       Url    = LOCAL_URL .. "/api/health",
       Method = "GET",
     })
-    if res and res.StatusCode and res.StatusCode < 500 then
+    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
       _baseUrl = LOCAL_URL
     end
   end)
@@ -1208,7 +1208,7 @@ local function resolveBaseUrl()
       Url    = LOCAL_URL .. "/api/health",
       Method = "GET",
     })
-    if res and res.StatusCode and res.StatusCode < 500 then
+    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
       _baseUrl = LOCAL_URL
     end
   end)
@@ -1472,7 +1472,7 @@ local function sendConnect()
   local payload = {
     token         = _token,
     placeId       = game.PlaceId,
-    placeName     = tostring(game.PlaceId),
+    placeName     = game.Name ~= "" and game.Name or tostring(game.PlaceId),
     pluginVersion = "1.0.0",
     sessionId     = _sessionId,
   }
@@ -1497,6 +1497,9 @@ local function pollSync()
   local path = "/api/studio/sync?lastSync=" .. tostring(math.floor(_lastSync))
   if _sessionId then
     path = path .. "&sessionId=" .. _sessionId
+  end
+  if _token then
+    path = path .. "&token=" .. _token
   end
 
   local result = httpGet(path)

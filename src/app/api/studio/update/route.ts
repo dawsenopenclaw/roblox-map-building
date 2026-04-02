@@ -20,7 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { updateSessionState, getSessionByToken } from '@/lib/studio-session'
+import { updateSessionState, getSessionByToken, createSession } from '@/lib/studio-session'
 import { studioUpdateSchema, parseBody } from '@/lib/validations'
 
 interface PluginChange {
@@ -65,6 +65,15 @@ export async function POST(req: NextRequest) {
     const sessionByToken = getSessionByToken(rawBody.sessionToken)
     if (sessionByToken) {
       sessionId = sessionByToken.sessionId
+    } else if (rawBody.sessionToken.length >= 32) {
+      // Auto-recreate session on Vercel cold start
+      const newSession = createSession({
+        placeId: rawBody.placeId ?? 'unknown',
+        placeName: rawBody.placeName ?? 'Reconnected Session',
+        pluginVersion: '1.0.0',
+        authToken: rawBody.sessionToken,
+      })
+      sessionId = newSession.sessionId
     }
   }
   if (!sessionId) {

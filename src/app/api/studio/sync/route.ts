@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { drainCommands, getSession, getSessionByToken } from '@/lib/studio-session'
+import { drainCommands, getSession, getSessionByToken, createSession } from '@/lib/studio-session'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -38,8 +38,8 @@ export async function GET(req: NextRequest) {
 
   const lastSyncRaw = searchParams.get('lastSync')
 
-  // Resolve session: prefer sessionId param, fall back to token param
-  let sessionId = searchParams.get('sessionId')
+  // Resolve session: prefer sessionId param, then X-Session-Id header
+  let sessionId = searchParams.get('sessionId') ?? req.headers.get('x-session-id')
   let session = sessionId ? await getSession(sessionId) : undefined
 
   if (!session) {
@@ -56,6 +56,28 @@ export async function GET(req: NextRequest) {
       if (session) {
         sessionId = session.sessionId
       }
+    }
+  }
+
+  // If session not found but we have a token, auto-recreate the session.
+  // This handles Vercel cold starts that lose the in-memory session store.
+  if (!session) {
+    let token = searchParams.get('token')
+    if (!token) {
+      const authHeader = req.headers.get('authorization') ?? ''
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
+    if (token && token.length >= 32) {
+      const newSession = createSession({
+        placeId: searchParams.get('placeId') ?? 'unknown',
+        placeName: searchParams.get('placeName') ?? 'Unknown Place',
+        pluginVersion: req.headers.get('x-plugin-version') ?? '1.0.0',
+        authToken: token,
+      })
+      session = newSession
+      sessionId = newSession.sessionId
     }
   }
 

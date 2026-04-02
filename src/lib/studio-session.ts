@@ -55,16 +55,19 @@ export interface StudioSession {
 // Constants
 // ---------------------------------------------------------------------------
 
-export const SESSION_TTL_MS      = 60_000   // 60 s — in-memory / connected threshold
-export const REDIS_TTL_SECS      = 120      // Redis key TTL
+export const SESSION_TTL_MS      = 300_000  // 5 min — in-memory / connected threshold
+export const REDIS_TTL_SECS      = 600     // 10 min Redis key TTL
 export const COMMAND_QUEUE_MAX   = 50
-export const MIN_POLL_INTERVAL_MS = 1_000
+export const MIN_POLL_INTERVAL_MS = 800
 
 // ---------------------------------------------------------------------------
-// In-memory store (primary)
+// In-memory store (primary) — survives hot-reloads via globalThis
 // ---------------------------------------------------------------------------
 
-const sessions = new Map<string, StudioSession>()
+// @ts-expect-error — attach to globalThis to survive Next.js hot-reload / Vercel warm instances
+const sessions: Map<string, StudioSession> = (globalThis.__fjStudioSessions ??= new Map())
+// @ts-expect-error
+globalThis.__fjStudioSessions = sessions
 
 // ---------------------------------------------------------------------------
 // Redis helpers (secondary — all errors are silently swallowed)
@@ -316,9 +319,13 @@ export async function drainCommands(
   if (!session) return []
 
   const now = Date.now()
+
+  // Always touch heartbeat to keep session alive, even when rate-limited
+  touchHeartbeat(session)
+  sessions.set(sessionId, session)
+
   if (now - session.lastPollAt < MIN_POLL_INTERVAL_MS) return null
 
-  touchHeartbeat(session)
   session.lastPollAt = now
 
   const pending    = session.commandQueue.filter((c) => c.timestamp > since)
