@@ -1510,8 +1510,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const selected = (studioSession as Record<string, unknown>).selected as Array<Record<string, unknown>> | undefined
         let selectedStr = ''
         if (selected && selected.length > 0) {
-          selectedStr = '
-- User has selected: ' + selected.map(s => `${s.n} at (${(s.p as number[])?.join(',')})`).join(', ')
+          selectedStr = '\n- User has selected: ' + selected.map(s => `${s.n} at (${(s.p as number[])?.join(',')})`).join(', ')
         }
         cameraContext = `
 
@@ -1528,42 +1527,143 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use groundY as th
       // Inject workspace snapshot spatial context when available
       const worldSnapshot = studioSession?.latestState?.worldSnapshot as Record<string, unknown> | undefined
       if (worldSnapshot) {
-        type SnapObj     = { n: string; p: [number, number, number] }
-        type SnapBounds  = { min: [number, number, number]; max: [number, number, number] }
-        type SnapSpawn   = { n: string; p: [number, number, number] }
-        type SnapStats   = { total?: number; parts?: number; models?: number }
-        type SnapLighting = { time?: number; brightness?: number }
+        type SnapObj      = { n: string; cls?: string; p: [number, number, number]; s?: [number, number, number]; m?: string; c?: [number, number, number] }
+        type SnapBounds   = { min: [number, number, number]; max: [number, number, number] }
+        type SnapSpawn    = { n: string; p: [number, number, number] }
+        type SnapStats    = { total?: number; parts?: number; models?: number; totalInstances?: number; totalMeshParts?: number; totalUnions?: number }
+        type SnapLighting = { time?: number; brightness?: number; fogEnd?: number; fogStart?: number; technology?: string; globalShadows?: boolean }
+        type SnapAtmo     = { density?: number; haze?: number; color?: [number, number, number] }
+        type SnapFx       = { type: string; intensity?: number; size?: number; threshold?: number; contrast?: number; saturation?: number }
+        type SnapWorkspace = { gravity?: number; streamingEnabled?: boolean; streamingTargetRadius?: number }
+        type SnapLight    = { type: string; brightness: number; range: number; color: [number, number, number]; parentName: string; p: [number, number, number] }
+        type SnapScripts  = { server: number; local_: number; module: number; names: string[] }
+        type SnapGui      = { n: string; enabled: boolean; children: number }
+        type SnapTeam     = { n: string; color: [number, number, number] }
+        type SnapNpc      = { n: string; health: number; maxHealth: number; walkSpeed: number; p: [number, number, number] }
+        type SnapParticle = { n: string; rate: number; lifetime: number; parentName: string; p: [number, number, number] }
+        type SnapConstraints = { welds: number; hinges: number; springs: number; ropes: number }
+        type SnapRemote   = { n: string; type: string; path: string }
+        type SnapFolder   = { n: string; children: number }
+        type SnapTag      = { tag: string; count: number }
+        type SnapMesh     = { n: string; meshId: string; p: [number, number, number]; s: [number, number, number] }
+        type SnapDecal    = { type: string; texture: string; face: string; parentName: string }
+        type SnapSound    = { n: string; soundId: string; volume: number; looped: boolean; playing: boolean }
+        type SnapPlace    = { id: string; name: string }
 
-        const objects  = (worldSnapshot.objects  as SnapObj[]      | undefined) ?? []
-        const spawns   = (worldSnapshot.spawns   as SnapSpawn[]    | undefined) ?? []
-        const bounds   = (worldSnapshot.bounds   as SnapBounds     | undefined)
-        const stats    = (worldSnapshot.stats    as SnapStats      | undefined) ?? {}
-        const lighting = (worldSnapshot.lighting as SnapLighting   | undefined)
+        const objects     = (worldSnapshot.objects     as SnapObj[]         | undefined) ?? []
+        const spawns      = (worldSnapshot.spawns      as SnapSpawn[]       | undefined) ?? []
+        const bounds      = (worldSnapshot.bounds      as SnapBounds        | undefined)
+        const stats       = (worldSnapshot.stats       as SnapStats         | undefined) ?? {}
+        const lighting    = (worldSnapshot.lighting    as SnapLighting      | undefined)
+        const atmosphere  = (worldSnapshot.atmosphere  as SnapAtmo          | undefined)
+        const postFx      = (worldSnapshot.postProcessing as SnapFx[]       | undefined) ?? []
+        const wsSettings  = (worldSnapshot.workspace   as SnapWorkspace     | undefined)
+        const lights      = (worldSnapshot.lights      as SnapLight[]       | undefined) ?? []
+        const scripts     = (worldSnapshot.scripts     as SnapScripts       | undefined)
+        const guis        = (worldSnapshot.guis        as SnapGui[]         | undefined) ?? []
+        const teams       = (worldSnapshot.teams       as SnapTeam[]        | undefined) ?? []
+        const npcs        = (worldSnapshot.npcs        as SnapNpc[]         | undefined) ?? []
+        const particles   = (worldSnapshot.particles   as SnapParticle[]    | undefined) ?? []
+        const constraints = (worldSnapshot.constraints as SnapConstraints   | undefined)
+        const remotes     = (worldSnapshot.remotes     as SnapRemote[]      | undefined) ?? []
+        const folders     = (worldSnapshot.folders     as SnapFolder[]      | undefined) ?? []
+        const tags        = (worldSnapshot.tags        as SnapTag[]         | undefined) ?? []
+        const meshParts   = (worldSnapshot.meshParts   as SnapMesh[]        | undefined) ?? []
+        const decals      = (worldSnapshot.decals      as SnapDecal[]       | undefined) ?? []
+        const sounds      = (worldSnapshot.sounds      as SnapSound[]       | undefined) ?? []
+        const place       = (worldSnapshot.place       as SnapPlace         | undefined)
+        const terrain     = (worldSnapshot.terrain     as Array<[number, number, number]> | undefined) ?? []
 
-        const top20     = objects.slice(0, 20).map(o => `${o.n}@(${o.p[0]},${o.p[1]},${o.p[2]})`).join(', ')
+        const top30 = objects.slice(0, 30).map(o => `${o.n}[${o.cls ?? '?'}]@(${o.p[0]},${o.p[1]},${o.p[2]})`).join(', ')
         const spawnList = spawns.map(s => `${s.n}@(${s.p[0]},${s.p[1]},${s.p[2]})`).join(', ') || 'none'
         const boundsStr = bounds
           ? `min(${bounds.min[0]},${bounds.min[1]},${bounds.min[2]}) to max(${bounds.max[0]},${bounds.max[1]},${bounds.max[2]})`
           : 'unknown'
-        const lightStr  = lighting
-          ? `ClockTime=${lighting.time ?? '?'}, Brightness=${lighting.brightness ?? '?'}`
-          : 'unknown'
-
-        const terrain = (worldSnapshot.terrain as Array<[number, number, number]> | undefined) ?? []
-        const top30 = objects.slice(0, 30).map(o => `${o.n}[${o.cls}]@(${o.p[0]},${o.p[1]},${o.p[2]})`).join(', ')
         const terrainStr = terrain.length > 0
           ? terrain.map(t => `(${t[0]},${t[2]})->Y${t[1]}`).join(', ')
           : 'not sampled'
 
+        const lightStr = lighting
+          ? [
+              `ClockTime=${lighting.time ?? '?'}`,
+              `Brightness=${lighting.brightness ?? '?'}`,
+              lighting.technology ? `Tech=${lighting.technology}` : '',
+              lighting.fogEnd != null ? `Fog=${lighting.fogStart ?? 0}-${lighting.fogEnd}` : '',
+              lighting.globalShadows != null ? `Shadows=${lighting.globalShadows}` : '',
+            ].filter(Boolean).join(', ')
+          : 'unknown'
+
+        const atmoStr = atmosphere
+          ? `Density=${atmosphere.density ?? '?'}, Haze=${atmosphere.haze ?? '?'}` +
+            (atmosphere.color ? `, Color=rgb(${atmosphere.color.join(',')})` : '')
+          : 'none'
+
+        const fxStr = postFx.length > 0
+          ? postFx.map(fx => {
+              if (fx.type === 'Bloom') return `Bloom(i=${fx.intensity},s=${fx.size},t=${fx.threshold})`
+              if (fx.type === 'ColorCorrection') return `CC(contrast=${fx.contrast},sat=${fx.saturation})`
+              return fx.type
+            }).join(', ')
+          : 'none'
+
+        const scriptsStr = scripts
+          ? `${scripts.server} server, ${scripts.local_} local, ${scripts.module} modules`
+          : 'unknown'
+
+        const npcStr = npcs.length > 0
+          ? npcs.map(n => `${n.n}@(${n.p[0]},${n.p[1]},${n.p[2]}) HP:${n.health}/${n.maxHealth}`).join(', ')
+          : 'none'
+
+        const remotesStr = remotes.length > 0 ? remotes.map(r => r.n).join(', ') : 'none'
+        const lightsStr = lights.length > 0
+          ? lights.slice(0, 10).map(l => `${l.type}@${l.parentName}(${l.p[0]},${l.p[1]},${l.p[2]}) b=${l.brightness} r=${l.range}`).join(', ')
+          : 'none'
+        const soundsStr = sounds.length > 0
+          ? sounds.map(s => `${s.n}(vol=${s.volume}${s.looped ? ',loop' : ''}${s.playing ? ',playing' : ''})`).join(', ')
+          : 'none'
+        const particlesStr = particles.length > 0
+          ? particles.map(p => `${p.n}@${p.parentName}(rate=${p.rate})`).join(', ')
+          : 'none'
+        const constraintsStr = constraints
+          ? `welds=${constraints.welds}, hinges=${constraints.hinges}, springs=${constraints.springs}, ropes=${constraints.ropes}`
+          : 'unknown'
+        const foldersStr = folders.length > 0 ? folders.map(f => `${f.n}(${f.children})`).join(', ') : 'none'
+        const tagsStr = tags.length > 0 ? tags.map(t => `${t.tag}x${t.count}`).join(', ') : 'none'
+        const teamsStr = teams.length > 0 ? teams.map(t => t.n).join(', ') : 'none'
+        const guisStr = guis.length > 0
+          ? guis.map(g => `${g.n}(${g.children} children${g.enabled ? '' : ',disabled'})`).join(', ')
+          : 'none'
+        const wsStr = wsSettings
+          ? `gravity=${wsSettings.gravity ?? '?'}, streaming=${wsSettings.streamingEnabled ? 'on(r=' + wsSettings.streamingTargetRadius + ')' : 'off'}`
+          : 'unknown'
+        const instanceStr = stats.totalInstances != null
+          ? `${stats.totalInstances} total (${stats.totalParts ?? stats.parts ?? 0} parts, ${stats.totalMeshParts ?? 0} meshes, ${stats.totalUnions ?? 0} unions, ${stats.models ?? 0} models)`
+          : `${stats.total ?? objects.length} scanned (${stats.parts ?? 0} parts, ${stats.models ?? 0} models)`
+
         cameraContext += `
 
 CURRENT WORKSPACE STATE (from Roblox Studio scan):
-- World bounds: ${boundsStr}
-- ${stats.total ?? objects.length} objects in workspace (${stats.parts ?? 0} parts, ${stats.models ?? 0} models)
-- Objects (up to 30): ${top30 || 'none'}
-- Spawn points: ${spawnList}
-- Lighting: ${lightStr}
-- Terrain ground samples: ${terrainStr}
+Place: ${place ? place.name + ' (id=' + place.id + ')' : 'unknown'}
+World bounds: ${boundsStr}
+Instances: ${instanceStr}
+Objects (up to 30): ${top30 || 'none'}
+Spawn points: ${spawnList}
+Folders: ${foldersStr}
+Lighting: ${lightStr}
+Atmosphere: ${atmoStr}
+Post-processing: ${fxStr}
+Scripts: ${scriptsStr}
+Remotes (architecture): ${remotesStr}
+NPCs: ${npcStr}
+Lights: ${lightsStr}
+Particles: ${particlesStr}
+Sounds: ${soundsStr}
+Constraints: ${constraintsStr}
+CollectionService tags: ${tagsStr}
+Teams: ${teamsStr}
+GUIs: ${guisStr}
+Workspace settings: ${wsStr}
+Terrain ground samples: ${terrainStr}
 
 PLACEMENT RULES:
 - Place objects near the camera (that's where the user is looking)
@@ -1571,8 +1671,10 @@ PLACEMENT RULES:
 - If user selected something, build relative to that selection
 - Character height = 5.5 studs, door = 4x7 studs, room = 12 studs high
 - Don't overlap existing objects -- check nearby list
-- Place on ground: new object Y = groundY + (object height / 2)`
+- Place on ground: new object Y = groundY + (object height / 2)
+- Match existing material/color palette from objects list`
       }
+
     } catch {
       // No camera/snapshot data — that's fine, place at origin
     }
