@@ -1,8 +1,13 @@
 /**
- * GET /api/studio/status?sessionId=<id>
+ * GET /api/studio/status?sessionId=<id>&token=<tok>&pluginVer=<ver>
  *
- * Connection health check. Called by the web editor (and optionally the plugin)
- * to determine whether a Studio session is live.
+ * Connection health check. Called by the web editor and plugin to determine
+ * whether a Studio session is live.
+ *
+ * Resolution order:
+ *  1. sessionId param → async getSession() (memory + Redis)
+ *  2. token param / Authorization header → getSessionByToken() (memory)
+ *  3. If token looks valid (≥32 chars) but no session found → auto-recreate
  *
  * Response:
  * {
@@ -14,14 +19,31 @@
  *   sessionId: string | null,
  *   queueDepth: number,
  *   serverTime: number,
+ *   updateAvailable?: boolean,
+ *   updateUrl?: string,
+ *   reconnect?: boolean,            // true when re-auth is needed
  * }
  *
- * Returns 200 regardless of connection state so the web editor can always
+ * Returns 200 regardless of connection state so callers can always
  * read the response body without catching HTTP errors.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession, getSessionByToken, createSession, SESSION_TTL_MS } from '@/lib/studio-session'
+
+const MINIMUM_PLUGIN_VERSION = '4.0.0'
+
+function isOutdated(pluginVer: string): boolean {
+  try {
+    const [pMaj, pMin, pPatch] = pluginVer.split('.').map(Number)
+    const [mMaj, mMin, mPatch] = MINIMUM_PLUGIN_VERSION.split('.').map(Number)
+    if (pMaj !== mMaj) return pMaj < mMaj
+    if (pMin !== mMin) return pMin < mMin
+    return pPatch < mPatch
+  } catch {
+    return false
+  }
+}
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -36,83 +58,93 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
 
-  // Resolve session: prefer sessionId param, fall back to token param
+  const pluginVer = searchParams.get('pluginVer') ?? req.headers.get('x-plugin-version') ?? ''
+
+  // ── Resolve token (query param or Authorization header) ──────────────────
+  let token = searchParams.get('token')
+  if (!token) {
+    const authHeader = req.headers.get('authorization') ?? ''
+    if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7)
+  }
+
+  // ── Resolve session: sessionId → async getSession (memory + Redis) ────────
   let sessionId = searchParams.get('sessionId')
   let session = sessionId ? await getSession(sessionId) : undefined
 
-  if (!session) {
-    const token = searchParams.get('token')
-    if (token) {
-      session = getSessionByToken(token)
-      if (session) {
-        sessionId = session.sessionId
-      } else if (token.length >= 32) {
-        // Auto-recreate session on Vercel cold start
-        const newSession = createSession({
-          placeId: searchParams.get('placeId') ?? 'unknown',
-          placeName: 'Reconnected Session',
-          pluginVersion: '1.0.0',
-          authToken: token,
-        })
-        session = newSession
-        sessionId = newSession.sessionId
-      }
-    }
+  // ── Fallback 1: look up by token in memory ────────────────────────────────
+  if (!session && token) {
+    session = getSessionByToken(token)
+    if (session) sessionId = session.sessionId
   }
 
+  // ── Fallback 2: token valid but session evicted — auto-recreate ───────────
+  if (!session && token && token.length >= 32) {
+    const newSession = createSession({
+      placeId:       searchParams.get('placeId')   ?? 'unknown',
+      placeName:     searchParams.get('placeName') ?? 'Reconnected Session',
+      pluginVersion: pluginVer || '1.0.0',
+      authToken:     token,
+    })
+    session   = newSession
+    sessionId = newSession.sessionId
+  }
+
+  // ── No session at all — server-alive ping ────────────────────────────────
   if (!sessionId && !session) {
-    // No session specified — return a simple server-alive ping
     return NextResponse.json(
       {
-        connected: false,
+        connected:     false,
         lastHeartbeat: null,
-        placeId: null,
-        placeName: null,
+        placeId:       null,
+        placeName:     null,
         pluginVersion: null,
-        sessionId: null,
-        queueDepth: 0,
-        serverTime: Date.now(),
-        error: 'sessionId query param is required',
+        sessionId:     null,
+        queueDepth:    0,
+        serverTime:    Date.now(),
+        error:         'sessionId or token query param is required',
       },
       { status: 200, headers: CORS_HEADERS },
     )
   }
 
+  // ── Session ID provided but genuinely not found anywhere ─────────────────
   if (!session) {
     return NextResponse.json(
       {
-        connected: false,
+        connected:     false,
         lastHeartbeat: null,
-        placeId: null,
-        placeName: null,
+        placeId:       null,
+        placeName:     null,
         pluginVersion: null,
         sessionId,
-        queueDepth: 0,
-        serverTime: Date.now(),
-        reconnect: true,
+        queueDepth:    0,
+        serverTime:    Date.now(),
+        reconnect:     true,
+        message:       'Session expired. Re-enter your connection code.',
       },
       { status: 200, headers: CORS_HEADERS },
     )
   }
 
   const staleCutoff = Date.now() - SESSION_TTL_MS
-  const connected = session.lastHeartbeat > staleCutoff
+  const connected   = session.lastHeartbeat > staleCutoff
 
-  return NextResponse.json(
-    {
-      connected,
-      lastHeartbeat: session.lastHeartbeat,
-      /** Seconds since last heartbeat — useful for UI indicators */
-      secondsSinceHeartbeat: Math.floor(
-        (Date.now() - session.lastHeartbeat) / 1000,
-      ),
-      placeId: session.placeId,
-      placeName: session.placeName,
-      pluginVersion: session.pluginVersion,
-      sessionId: session.sessionId,
-      queueDepth: session.commandQueue.length,
-      serverTime: Date.now(),
-    },
-    { status: 200, headers: CORS_HEADERS },
-  )
+  const body: Record<string, unknown> = {
+    connected,
+    lastHeartbeat: session.lastHeartbeat,
+    secondsSinceHeartbeat: Math.floor((Date.now() - session.lastHeartbeat) / 1000),
+    placeId:       session.placeId,
+    placeName:     session.placeName,
+    pluginVersion: session.pluginVersion,
+    sessionId:     session.sessionId,
+    queueDepth:    session.commandQueue.length,
+    serverTime:    Date.now(),
+  }
+
+  if (pluginVer && isOutdated(pluginVer)) {
+    body.updateAvailable = true
+    body.updateUrl       = '/api/studio/plugin'
+  }
+
+  return NextResponse.json(body, { status: 200, headers: CORS_HEADERS })
 }

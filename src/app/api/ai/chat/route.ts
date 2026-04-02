@@ -79,8 +79,9 @@ type IntentKey =
 
 // Token costs per intent — cheap for conversation, expensive for generation
 const INTENT_TOKEN_COST: Record<IntentKey, number> = {
-  chat: 2,          // Simple conversation
-  default: 5,       // General questions
+  conversation: 0,  // Free — chatting, questions, learning
+  chat: 0,          // Free — alias for conversation
+  default: 5,       // General build request
   analysis: 5,      // Analyzing existing work
   script: 10,       // Script help
   ui: 10,           // UI advice
@@ -201,15 +202,24 @@ const CHAT_PATTERNS = [
 ]
 
 function detectIntent(message: string): IntentKey {
-  // Check specific build intents first
+  const trimmed = message.trim()
+
+  // 1. Check conversation patterns FIRST — greetings, questions, etc. are never builds
+  if (CHAT_PATTERNS.some((p) => p.test(trimmed))) {
+    return 'conversation'
+  }
+
+  // 2. Check if user has an explicit build verb (build, create, generate, make, add, place, etc.)
+  const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design)\b/i.test(trimmed)
+  if (!hasBuildVerb) {
+    return 'conversation' // No build verb = just chatting
+  }
+
+  // 3. Match specific build intents
   for (const entry of KEYWORD_INTENT_MAP) {
-    if (entry.patterns.some((p) => p.test(message))) {
+    if (entry.patterns.some((p) => p.test(trimmed))) {
       return entry.intent
     }
-  }
-  // Check if it's just conversation
-  if (CHAT_PATTERNS.some((p) => p.test(message.trim()))) {
-    return 'chat'
   }
   return 'default'
 }
@@ -217,6 +227,15 @@ function detectIntent(message: string): IntentKey {
 // ─── Demo responses ───────────────────────────────────────────────────────────
 
 const DEMO_RESPONSES: Record<IntentKey, string> = {
+  conversation: `Hey! I'm ForjeAI, your Roblox game development assistant. I can help you:
+
+• **Build maps** — castles, cities, forests, dungeons, race tracks
+• **Generate scripts** — NPCs, combat systems, economy, UI
+• **Create 3D models** — custom meshes via AI generation
+• **Design game systems** — progression, quests, shops
+
+Just tell me what you want to build! For example: "Build me a medieval castle" or "Create an NPC shopkeeper"`,
+
   mesh: `✓ 3D Model Generated
 
 ForjeAI processed your description through the Meshy AI pipeline:
@@ -1379,8 +1398,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const anthropic = getAnthropicClient()
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
   if (anthropic) {
-    // Deduct tokens before calling the AI — cost depends on intent type
-    if (!isDemo && authedUserId) {
+    // Deduct tokens before calling the AI — conversation is FREE, builds cost tokens
+    if (!isDemo && authedUserId && tokenCost > 0) {
       try {
         await spendTokens(authedUserId, tokenCost, `AI ${intent} request`, { prompt: message.slice(0, 100), intent })
       } catch (err) {

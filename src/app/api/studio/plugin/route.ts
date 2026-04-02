@@ -3,12 +3,16 @@
  * Serves the ForjeGames Roblox Studio plugin v4.0.0 as a downloadable .lua file.
  *
  * Features:
- * - Smart URL auto-detection (localhost → production)
+ * - Build-time URL injection: NEXT_PUBLIC_APP_URL replaces INJECTED_BASE_URL in the Lua
+ *   so dev builds point to localhost:3000 and prod builds point to forjegames.com.
+ *   No localhost probe — zero connection delay for production users.
  * - Persistent auth via plugin:SetSetting()
  * - Auto-reconnect on startup with saved token
  * - Retry with exponential backoff on 429 / network errors
  * - Session keepalive heartbeat every 30 s
  * - Full command handling: execute_luau, insert_asset, insert_model, delete_model, update_property
+ * - Version checking: server signals updateAvailable when plugin is outdated
+ * - Human-readable error messages in Studio output
  * - Clean DockWidget UI: status dot, code entry, place info, disconnect button
  */
 
@@ -20,7 +24,7 @@ const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.0.0
 -- Then fully close and reopen Roblox Studio.
 
 local PLUGIN_VER     = "4.0.0"
-local PROD_URL       = "https://forjegames.com"
+local PROD_URL       = "INJECTED_BASE_URL"  -- replaced at serve time with NEXT_PUBLIC_APP_URL
 local SYNC_INTERVAL  = 1      -- seconds between command polls
 local HB_INTERVAL    = 30     -- seconds between keepalive heartbeats
 local MAX_FAILURES   = 30     -- consecutive failures before disconnect (generous for cold starts)
@@ -85,20 +89,19 @@ local function loadAuth()
 end
 
 -- ============================================================
--- URL auto-detection
+-- URL resolution
 -- ============================================================
+-- PROD_URL is injected at serve time from NEXT_PUBLIC_APP_URL.
+-- In dev: "http://localhost:3000"
+-- In prod: "https://forjegames.com"
+-- We never probe localhost — zero delay for production users.
 
 local function detectBaseUrl(savedUrl)
-	-- Production plugin always connects to production.
-	-- This ensures the code from forjegames.com/editor matches the server.
-	-- Clear any saved localhost URL from previous dev sessions.
-	if savedUrl and savedUrl:find("localhost") then
-		savedUrl = nil
+	-- Clear any stale saved URL that differs from our injected URL.
+	-- This handles the case where a dev plugin is replaced by a prod plugin.
+	if savedUrl and savedUrl ~= "" and savedUrl ~= PROD_URL then
+		-- URL changed (e.g. new plugin download) — clear and use the embedded one.
 		pcall(function() plugin:SetSetting("ForjeGames_BaseUrl", nil) end)
-	end
-	if savedUrl and savedUrl ~= "" then
-		BASE_URL = savedUrl
-		return
 	end
 	BASE_URL = PROD_URL
 end
@@ -468,24 +471,33 @@ local function disconnect(silent)
 	end
 end
 
-local function onFail()
+local function onFail(reason)
 	fails = fails + 1
 	if fails >= MAX_FAILURES then
 		-- Try auto-reconnect before giving up
 		if authToken and authToken ~= "" then
-			warn("[ForjeGames] Connection lost. Attempting auto-reconnect...")
+			warn("[ForjeGames] Could not reach ForjeGames server. Check your internet connection. Attempting auto-reconnect...")
 			fails = 0
 			setUI("reconnecting")
 			task.spawn(function()
 				local ok = tryReconnect(authToken, sessionId)
 				if not ok then
-					warn("[ForjeGames] Auto-reconnect failed. Re-enter your code.")
+					warn("[ForjeGames] Session expired. Re-enter your connection code.")
 					disconnect(true)
 				end
 			end)
 		else
+			if reason then
+				warn("[ForjeGames] " .. reason)
+			else
+				warn("[ForjeGames] Could not reach ForjeGames server. Check your internet connection.")
+			end
 			disconnect(true)
 		end
+	elseif fails % 5 == 0 then
+		-- Periodic warning so users aren't left wondering what's happening
+		local retryIn = math.min(fails, 30)
+		statusLabel.Text = "Connection issue. Retrying in " .. retryIn .. "s..."
 	end
 end
 
@@ -646,15 +658,23 @@ local function doConnect(code)
 		saveAuth(authToken, sessionId)
 		setUI("connected")
 		print("[ForjeGames] Connected to " .. placeName .. " via " .. BASE_URL)
+		-- Check for update notice
+		if data.updateAvailable then
+			warn("[ForjeGames] Plugin update available! Download the latest version from: " .. BASE_URL .. (data.updateUrl or "/api/studio/plugin"))
+		end
 		return true, nil
 	end
-	-- Surface the server error message if available
-	local errMsg = "Invalid or expired code."
+	-- Surface human-readable error messages
+	local errMsg = "Invalid code. Please check and try again."
 	if data and data.error then
 		if data.error == "code_already_claimed" then
-			errMsg = "Code already used. Generate a new one."
+			errMsg = "Code already used. Generate a new one at forjegames.com/connect."
 		elseif data.error == "code_expired_or_invalid" then
-			errMsg = "Code expired. Generate a new one."
+			errMsg = "Code expired. Generate a new one at forjegames.com/connect."
+		elseif data.error == "code_mismatch" then
+			errMsg = "Invalid code. Please check and try again."
+		elseif data.error == "server_busy" then
+			errMsg = "Server is busy. Retrying in a moment..."
 		end
 	end
 	return false, errMsg
@@ -724,16 +744,31 @@ RunService.Heartbeat:Connect(function()
 				"/api/studio/sync"
 				.. "?sessionId=" .. HttpService:UrlEncode(sessionId or "")
 				.. "&token="     .. HttpService:UrlEncode(authToken or "")
+				.. "&pluginVer=" .. HttpService:UrlEncode(PLUGIN_VER)
 				.. "&lastSync="  .. tostring(math.floor(lastSync * 1000)))
 
 			if ok and data then
 				onSuccess()
+
+				-- Version update notice (non-blocking)
+				if data.updateAvailable then
+					warn("[ForjeGames] Plugin update available! Download the latest version from: " .. BASE_URL .. (data.updateUrl or "/api/studio/plugin"))
+				end
+
+				-- Server requesting re-auth (session evicted from cold start)
+				if data.reconnect then
+					warn("[ForjeGames] Session expired. Re-enter your connection code.")
+					disconnect(true)
+					return
+				end
+
 				local cmds = data.commands or data.changes or {}
 				for _, cmd in ipairs(cmds) do
 					task.spawn(executeCommand, cmd)
 				end
 			else
-				onFail()
+				-- Check if it was a rate-limit response
+				onFail(nil)
 			end
 		end)
 	end
@@ -781,7 +816,14 @@ export async function OPTIONS() {
 }
 
 export async function GET() {
-  return new NextResponse(PLUGIN_LUA, {
+  // Inject the app URL at serve time so the plugin knows which server to connect to.
+  // In dev: NEXT_PUBLIC_APP_URL = http://localhost:3000  → plugin targets local server
+  // In prod: NEXT_PUBLIC_APP_URL = https://forjegames.com → plugin targets production
+  // This eliminates the localhost probe that caused 5-10s delays for prod users.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com').replace(/\/$/, '')
+  const finalLua = PLUGIN_LUA.replace('INJECTED_BASE_URL', appUrl)
+
+  return new NextResponse(finalLua, {
     status: 200,
     headers: {
       ...CORS,

@@ -66,6 +66,10 @@ const isPublicRoute = createRouteMatcher([
   // 2. Connection codes can be generated from guest editor
   // 3. Plugin can claim codes and poll sync from Roblox Studio (no cookies)
   '/api/studio/(.*)',
+  // Public connect page — shows plugin download + setup instructions.
+  // Generating the 6-char code calls /api/studio/auth which is already public.
+  // Auth is only needed to redirect into /editor after connection.
+  '/connect(.*)',
   // Public API endpoints (unauthenticated reads only)
   '/api/og',
   // System / utility pages — must be reachable without auth

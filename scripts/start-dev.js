@@ -167,15 +167,19 @@ info('\n[3/5] Starting MCP servers...')
 const mcpScript = resolve(ROOT, 'packages/mcp/start-all.js')
 
 if (existsSync(mcpScript)) {
-  spawnBackground({
-    name: 'mcp',
-    cmd: process.execPath, // node
-    args: [mcpScript],
-    cwd: ROOT,
-  })
-  ok('MCP servers starting (asset-alchemist :3002, city-architect :3003, terrain-forge :3004)')
+  try {
+    spawnBackground({
+      name: 'mcp',
+      cmd: process.execPath, // use full node path to avoid space issues
+      args: [mcpScript],
+      cwd: resolve(ROOT, 'packages/mcp'),
+    })
+    ok('MCP servers starting (asset-alchemist :3002, city-architect :3003, terrain-forge :3004)')
+  } catch (e) {
+    warn(`MCP servers failed to start: ${e.message} — AI will use demo fallbacks`)
+  }
 } else {
-  warn('packages/mcp/start-all.js not found — MCP servers not started')
+  warn('packages/mcp/start-all.js not found — MCP servers not started (AI uses demo fallbacks)')
 }
 
 // ── Step 4: Mesh worker ───────────────────────────────────────────────────────
@@ -187,15 +191,21 @@ const workerScriptJs = resolve(ROOT, 'src/workers/mesh-worker.js')
 const workerEntry = existsSync(workerScript) ? workerScript : (existsSync(workerScriptJs) ? workerScriptJs : null)
 
 if (workerEntry) {
-  const isTsx = workerEntry.endsWith('.ts')
-  spawnBackground({
-    name: 'worker',
-    cmd: 'npx',
-    args: isTsx ? ['tsx', workerEntry] : [process.execPath, workerEntry],
-    cwd: ROOT,
-    env: { WORKER_MODE: 'mesh' },
-  })
-  ok(`Mesh worker starting (${workerEntry.replace(ROOT, '.')})`)
+  try {
+    const tsxBin = resolve(ROOT, 'node_modules/.bin/tsx')
+    const isTsx = workerEntry.endsWith('.ts')
+    spawnBackground({
+      name: 'worker',
+      cmd: isTsx ? tsxBin : process.execPath,
+      args: [workerEntry],
+      cwd: ROOT,
+      env: { WORKER_MODE: 'mesh', SERVER_ONLY_BYPASS: '1' },
+    })
+    ok(`Mesh worker starting (${workerEntry.replace(ROOT, '.')})`)
+} else {
+  } catch (e) {
+    warn(`Mesh worker failed to start: ${e.message} — async generation unavailable`)
+  }
 } else {
   warn('Mesh worker not found at src/workers/mesh-worker.ts — skipping')
 }
