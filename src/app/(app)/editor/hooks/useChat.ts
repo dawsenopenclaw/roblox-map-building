@@ -238,7 +238,16 @@ export function useChat(options: UseChatOptions = {}) {
         })
 
         // Forward Luau to Studio if connected
-        const luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
+        let luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
+
+        // If no explicit buildResult, extract Lua code blocks from the AI's text response
+        if (!luauCode && responseText) {
+          const codeBlockMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+          if (codeBlockMatch?.[1]?.trim()) {
+            luauCode = codeBlockMatch[1].trim()
+          }
+        }
+
         if (studioConnected && luauCode && onBuildComplete) {
           onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
         }

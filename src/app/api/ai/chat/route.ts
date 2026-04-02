@@ -1383,7 +1383,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const message = parsed.data.message.trim()
-  const history = (parsed.data.history ?? []).slice(-10)
+  // Full conversation history — AI remembers all builds, code, positions
+  const history = (parsed.data.history ?? []).slice(-50)
   const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
   const intent = detectIntent(message)

@@ -2437,10 +2437,11 @@ export function EditorClient() {
           chatHeaders['x-studio-session'] = studioStatus.sessionId
         }
 
-        // Build conversation history from the last 10 user/assistant messages
+        // Build conversation history — include ALL user/assistant messages so
+        // the AI remembers every build, every discussion, the full context
         const history = messages
           .filter((m) => m.role === 'user' || m.role === 'assistant')
-          .slice(-10)
+          .slice(-50)
           .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }))
 
         // Fire both in parallel: chat + optional mesh generation
