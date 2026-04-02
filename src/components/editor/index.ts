@@ -30,3 +30,6 @@ export type { VoiceInputButtonProps } from './VoiceInputButton'
 
 export { AISuggestions } from './AISuggestions'
 export type { AISuggestionsProps } from './AISuggestions'
+
+export { UsageDashboard } from './UsageDashboard'
+export type { UsageDashboardProps } from './UsageDashboard'

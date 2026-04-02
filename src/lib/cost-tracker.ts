@@ -88,7 +88,7 @@ export async function trackCost(params: TrackCostParams): Promise<void> {
       tokensUsed:   tokensCost,
       costUsdMicro: costMicro,
       success:      true,
-      metadata:     metadata ?? {},
+      metadata:     (metadata ?? {}) as Record<string, string | number | boolean | null>,
     },
   })
 

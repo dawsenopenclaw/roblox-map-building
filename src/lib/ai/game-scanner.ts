@@ -255,8 +255,8 @@ export async function scanGame(
         engagementLoop:    genome.engagementLoop,
         updateCadence:     genome.updateCadence,
         communitySize:     genome.communitySize,
-        scores:            genome.scores,
-        genreAverages:     null,
+        scores:            genome.scores as unknown as Record<string, number>,
+        genreAverages:     undefined,
         rawRobloxData:     {
           name:           info.name,
           genre:          info.genre,
@@ -265,7 +265,7 @@ export async function scanGame(
           playing:        info.playing,
           maxPlayers:     info.maxPlayers,
         },
-        visionAnalysis:    null,
+        visionAnalysis:    undefined,
         recommendations:   genome.recommendations,
       },
     })

@@ -12,6 +12,12 @@ import { checkGenerationLimit, incrementGenerationCounter } from '@/lib/generati
 import { scanGame } from '@/lib/ai/game-scanner'
 import { db } from '@/lib/db'
 
+// Resolve internal DB userId from Clerk userId
+async function resolveInternalUserId(clerkId: string): Promise<string | null> {
+  const user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
+  return user?.id ?? null
+}
+
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const scanSchema = z.object({
@@ -38,8 +44,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const tierDenied = await requireTier(userId, 'CREATOR')
   if (tierDenied) return tierDenied
 
+  const internalId = await resolveInternalUserId(userId)
+  if (!internalId) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
   // Check build counter (scanner counts as a "build" operation)
-  const limit = await checkGenerationLimit(userId, 'build')
+  const limit = await checkGenerationLimit(internalId, 'build')
   if (!limit.allowed) {
     return NextResponse.json(
       {
@@ -59,9 +68,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const input = (placeId ?? gameUrl) as string
 
   try {
-    const result = await scanGame(input, userId)
+    const result = await scanGame(input, internalId)
     // Increment counter only after a successful scan
-    await incrementGenerationCounter(userId, 'build')
+    await incrementGenerationCounter(internalId, 'build')
 
     return NextResponse.json(result)
   } catch (err) {

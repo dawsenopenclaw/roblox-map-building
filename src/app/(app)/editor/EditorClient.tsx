@@ -392,12 +392,11 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
         {tab === 'download' && (
           <div className="space-y-3">
             <p className="text-[11px] text-zinc-400 leading-relaxed">
-              <strong className="text-zinc-200">Easiest method.</strong> Download the plugin file and drop it in your Plugins folder.
+              <strong className="text-zinc-200">One-click install.</strong> Downloads and installs the plugin automatically.
             </p>
             <a
-              href="/api/studio/plugin"
-              download="ForjeGames.lua"
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+              href="/api/studio/install"
+              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold transition-all hover:brightness-110 active:scale-[0.98]"
               style={{ background: '#D4AF37', color: '#030712' }}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -405,15 +404,25 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Download ForjeGames.lua
+              Install Plugin (1-click)
             </a>
-            <div className="rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <p className="text-[10px] text-zinc-500 mb-1">Put it here:</p>
-              <code className="text-[11px] text-zinc-300 break-all" style={{ fontFamily: '"JetBrains Mono", monospace' }}>
-                {PLUGIN_FOLDER}
-              </code>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              Run the downloaded file. It installs the plugin to the right folder automatically.
+              Then close and reopen Studio.
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <span className="text-[9px] text-zinc-700">or download manually</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
             </div>
-            <p className="text-[10px] text-zinc-600">Then restart Studio. The plugin appears in the toolbar.</p>
+            <a
+              href="/api/studio/plugin"
+              download="ForjeGames.lua"
+              className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-[11px] font-medium transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', color: '#a1a1aa', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              Download ForjeGames.lua → put in {PLUGIN_FOLDER}
+            </a>
           </div>
         )}
 
