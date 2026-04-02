@@ -1481,7 +1481,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const tokensUsed = estimateTokens(message)
+  const tokensUsed = intent === 'conversation' || intent === 'chat' ? 0 : estimateTokens(message)
 
   // ── Community asset search (runs for all build-related intents) ───────────
   // Preferred over generating from scratch: finds relevant pre-built 3D meshes
