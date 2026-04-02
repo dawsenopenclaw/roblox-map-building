@@ -504,7 +504,8 @@ export function useChat(options: UseChatOptions = {}) {
             })
           }
 
-          if (studioConnected && luauCode && onBuildComplete) {
+          // Client-side fallback execution (only if server didn't already execute)
+          if (studioConnected && luauCode && !meta.executedInStudio && onBuildComplete) {
             lastLuauRef.current = luauCode
             onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
 

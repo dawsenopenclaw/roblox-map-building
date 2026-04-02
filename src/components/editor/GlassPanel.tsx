@@ -43,26 +43,27 @@ export function GlassPanel({
         background: 'rgba(6, 4, 22, 0.55)',
         backdropFilter: 'blur(32px)',
         WebkitBackdropFilter: 'blur(32px)',
+        border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: '20px',
         padding: PADDING_MAP[padding],
+        animation: 'glassPanelBorder 10s ease-in-out infinite',
         ...glowStyle,
         ...style,
       }}
     >
-      {/* Animated border glow — pseudo-border via inset shadow + outline trick */}
+      {/* Animated border glow — top-edge highlight that shifts hue */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute',
-          inset: 0,
-          borderRadius: '20px',
-          padding: '1px',
-          background: 'linear-gradient(135deg, rgba(56,189,248,0.18), rgba(139,92,246,0.18), rgba(212,175,55,0.14), rgba(56,189,248,0.12))',
-          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-          WebkitMaskComposite: 'xor',
-          maskComposite: 'exclude',
-          pointerEvents: 'none',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '1px',
+          borderRadius: '20px 20px 0 0',
+          background: 'linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.5) 25%, rgba(139,92,246,0.55) 50%, rgba(212,175,55,0.45) 75%, transparent 100%)',
           animation: 'glassBorderShift 8s linear infinite',
+          pointerEvents: 'none',
         }}
       />
       {/* Inner glow overlay */}
@@ -81,8 +82,17 @@ export function GlassPanel({
       </div>
       <style>{`
         @keyframes glassBorderShift {
-          0%   { filter: hue-rotate(0deg); }
-          100% { filter: hue-rotate(360deg); }
+          0%   { opacity: 0.6; }
+          33%  { opacity: 1; }
+          66%  { opacity: 0.75; }
+          100% { opacity: 0.6; }
+        }
+        @keyframes glassPanelBorder {
+          0%   { border-color: rgba(56,189,248,0.12); }
+          25%  { border-color: rgba(139,92,246,0.16); }
+          50%  { border-color: rgba(212,175,55,0.14); }
+          75%  { border-color: rgba(6,182,212,0.13); }
+          100% { border-color: rgba(56,189,248,0.12); }
         }
       `}</style>
     </div>

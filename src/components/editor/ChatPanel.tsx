@@ -411,14 +411,21 @@ function MessageBubble({
       .replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
       .replace(/^\[FORJE_STEP:\d+\/\d+\]\s*/, '')
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          animation: 'msgFadeUp 0.25s ease-out forwards',
+        }}
+      >
         <div
           style={{
             maxWidth: '82%',
             padding: '10px 14px',
             borderRadius: '16px 4px 16px 16px',
             background: 'rgba(212,175,55,0.12)',
-            border: '1px solid rgba(212,175,55,0.2)',
+            border: '1px solid rgba(212,175,55,0.22)',
+            boxShadow: '0 0 16px rgba(212,175,55,0.06)',
           }}
         >
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -431,7 +438,15 @@ function MessageBubble({
 
   // Assistant message
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        animation: 'msgFadeUp 0.3s ease-out forwards',
+      }}
+    >
+      {/* Avatar with pulsing glow */}
       <div
         style={{
           width: 28,
@@ -443,6 +458,7 @@ function MessageBubble({
           justifyContent: 'center',
           flexShrink: 0,
           marginTop: 2,
+          animation: 'avatarGlow 3s ease-in-out infinite',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="#030712">
@@ -455,9 +471,26 @@ function MessageBubble({
           padding: '10px 14px',
           borderRadius: '4px 16px 16px 16px',
           background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
+        {/* Scanning line — visible while streaming */}
+        {msg.streaming && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              height: 2,
+              background: 'linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.6) 40%, rgba(139,92,246,0.5) 60%, transparent 100%)',
+              animation: 'scanLine 1.4s linear infinite',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
@@ -994,16 +1027,23 @@ export function ChatPanel({
                   fontSize: 12,
                   fontFamily: 'Inter, sans-serif',
                   cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  transition: 'all 0.2s ease-out',
                   whiteSpace: 'nowrap',
+                  animation: `chipGlow 3s ease-in-out ${i * 0.4}s infinite`,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(212,175,55,0.15)'
-                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.18)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.5)'
+                  e.currentTarget.style.boxShadow = '0 0 14px rgba(212,175,55,0.35), 0 0 28px rgba(212,175,55,0.15)'
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.color = 'rgba(255,200,50,1)'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
                   e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
+                  e.currentTarget.style.boxShadow = ''
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.color = 'rgba(212,175,55,0.9)'
                 }}
               >
                 {s}
@@ -1023,8 +1063,34 @@ export function ChatPanel({
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
+          position: 'relative',
         }}
       >
+        {/* Sparkle particles near input */}
+        {[
+          { left: '8%',  top: '18px', delay: 0,   size: 3 },
+          { left: '15%', top: '8px',  delay: 0.7, size: 2 },
+          { left: '88%', top: '14px', delay: 1.4, size: 2.5 },
+          { left: '94%', top: '6px',  delay: 0.3, size: 2 },
+          { left: '50%', top: '4px',  delay: 1.1, size: 2 },
+        ].map((p, i) => (
+          <div
+            key={i}
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              left: p.left,
+              top: p.top,
+              width: p.size,
+              height: p.size,
+              borderRadius: '50%',
+              background: 'rgba(56,189,248,0.8)',
+              boxShadow: '0 0 4px rgba(56,189,248,0.6)',
+              animation: `sparkleFloat 2.4s ease-in-out ${p.delay}s infinite`,
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
         {/* Tip of the day — dismissable, shown for first 10 sessions */}
         <TipOfTheDay />
 
@@ -1044,14 +1110,20 @@ export function ChatPanel({
             display: 'flex',
             alignItems: 'flex-end',
             gap: 8,
-            background: 'rgba(255,255,255,0.03)',
+            background: 'rgba(3,7,18,0.6)',
             border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: 14,
             padding: '10px 12px',
-            transition: 'border-color 0.15s',
+            transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
           }}
-          onFocusCapture={(e) => { e.currentTarget.style.borderColor = 'rgba(255,184,28,0.25)' }}
-          onBlurCapture={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)' }}
+          onFocusCapture={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(56,189,248,0.35)'
+            e.currentTarget.style.boxShadow = '0 0 0 1px rgba(56,189,248,0.1), 0 0 20px rgba(56,189,248,0.06)'
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
         >
           <textarea
             ref={taRef}

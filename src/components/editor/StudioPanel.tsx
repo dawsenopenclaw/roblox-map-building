@@ -427,14 +427,18 @@ function ConnectedView({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ position: 'relative', width: 10, height: 10 }}>
+          {/* Enhanced pulsing indicator — two rings */}
+          <div style={{ position: 'relative', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div
               style={{
-                width: 10,
-                height: 10,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
                 background: '#4ADE80',
-                boxShadow: '0 0 8px #4ADE80',
+                boxShadow: '0 0 8px #4ADE80, 0 0 16px rgba(74,222,128,0.5)',
+                position: 'relative',
+                zIndex: 2,
+                animation: 'connectedCorePulse 2s ease-in-out infinite',
               }}
             />
             <div
@@ -442,8 +446,17 @@ function ConnectedView({
                 position: 'absolute',
                 inset: -3,
                 borderRadius: '50%',
-                border: '2px solid rgba(74,222,128,0.3)',
+                border: '1.5px solid rgba(74,222,128,0.4)',
                 animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: -6,
+                borderRadius: '50%',
+                border: '1px solid rgba(74,222,128,0.15)',
+                animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) 0.4s infinite',
               }}
             />
           </div>
@@ -484,8 +497,24 @@ function ConnectedView({
           background: 'rgba(0,0,0,0.4)',
           border: '1px solid rgba(255,255,255,0.06)',
           position: 'relative',
+          boxShadow: '0 0 0 1px rgba(56,189,248,0.08)',
         }}
       >
+        {/* Holographic scan overlay — fires on new activity (most recent command) */}
+        {activity.length > 0 && (
+          <div
+            aria-hidden="true"
+            key={activity[0]?.id}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(56,189,248,0.08) 0%, transparent 40%)',
+              animation: 'holoFlash 1.2s ease-out forwards',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          />
+        )}
         {screenshotUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -560,7 +589,7 @@ function ConnectedView({
             Recent Activity
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {activity.slice(0, 8).map((item) => (
+            {activity.slice(0, 8).map((item, idx) => (
               <div
                 key={item.id}
                 style={{
@@ -568,9 +597,13 @@ function ConnectedView({
                   alignItems: 'flex-start',
                   gap: 8,
                   padding: '8px 12px',
-                  background: 'rgba(255,255,255,0.025)',
+                  background: idx === 0 ? 'rgba(56,189,248,0.05)' : 'rgba(255,255,255,0.025)',
                   borderRadius: 10,
-                  border: '1px solid rgba(255,255,255,0.05)',
+                  border: `1px solid ${idx === 0 ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)'}`,
+                  animation: `activitySlideIn 0.28s ease-out forwards`,
+                  opacity: 0,
+                  animationDelay: `${idx * 0.06}s`,
+                  animationFillMode: 'forwards',
                 }}
               >
                 <div
@@ -578,12 +611,13 @@ function ConnectedView({
                     width: 6,
                     height: 6,
                     borderRadius: '50%',
-                    background: '#4ADE80',
+                    background: idx === 0 ? '#38BDF8' : '#4ADE80',
                     flexShrink: 0,
                     marginTop: 4,
+                    boxShadow: idx === 0 ? '0 0 6px rgba(56,189,248,0.6)' : '0 0 4px rgba(74,222,128,0.4)',
                   }}
                 />
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
+                <span style={{ fontSize: 12, color: idx === 0 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5 }}>
                   {item.message}
                 </span>
               </div>
@@ -595,8 +629,21 @@ function ConnectedView({
       <style>{`
         @keyframes ping {
           0%   { transform: scale(1); opacity: 0.6; }
-          75%  { transform: scale(1.8); opacity: 0; }
-          100% { transform: scale(1.8); opacity: 0; }
+          75%  { transform: scale(2); opacity: 0; }
+          100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes connectedCorePulse {
+          0%, 100% { box-shadow: 0 0 8px #4ADE80, 0 0 16px rgba(74,222,128,0.5); }
+          50%       { box-shadow: 0 0 14px #4ADE80, 0 0 28px rgba(74,222,128,0.8), 0 0 40px rgba(74,222,128,0.3); }
+        }
+        @keyframes holoFlash {
+          0%   { opacity: 0; transform: translateY(-4px); }
+          15%  { opacity: 1; }
+          100% { opacity: 0; transform: translateY(4px); }
+        }
+        @keyframes activitySlideIn {
+          0%   { opacity: 0; transform: translateX(-8px); }
+          100% { opacity: 1; transform: translateX(0); }
         }
       `}</style>
     </div>
