@@ -439,11 +439,13 @@ function DownloadTab({ pluginFolder }: { pluginFolder: string }) {
 
 type InstallTab = 'download' | 'command' | 'manual'
 
-function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
+function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode, onConfirmConnected, onGenerateCode }: {
   connectFlow: 'idle' | 'code'
   connectCode: string
   connectTimer: number
   onDemoMode: () => void
+  onConfirmConnected: () => void
+  onGenerateCode: () => void
 }) {
   const [tab, setTab] = useState<InstallTab>('download')
   const PLUGIN_FOLDER = navigator.userAgent.includes('Mac')
@@ -540,9 +542,13 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
           Enter this code in the plugin
         </p>
         {connectFlow === 'idle' ? (
-          <div className="rounded-lg px-4 py-3 flex items-center justify-center" style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}>
-            <span className="text-zinc-700 text-sm" style={{ fontFamily: '"JetBrains Mono", monospace' }}>— — — — — —</span>
-          </div>
+          <button
+            onClick={onGenerateCode}
+            className="w-full rounded-lg px-4 py-3 flex items-center justify-center gap-2 transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)', color: '#D4AF37', fontWeight: 600, fontSize: 13 }}
+          >
+            Generate Connection Code
+          </button>
         ) : (
           <div className="rounded-lg px-4 py-3 flex items-center justify-between gap-3" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.25)' }}>
             <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 28, fontWeight: 700, letterSpacing: '0.2em', color: '#D4AF37', lineHeight: 1 }}>
@@ -570,6 +576,16 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
         </div>
       )}
 
+      {/* Confirm connected */}
+      {connectFlow === 'code' && (
+        <button
+          onClick={onConfirmConnected}
+          className="w-full py-2.5 rounded-lg text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98] mb-2"
+          style={{ background: '#10B981', color: '#fff' }}
+        >
+          I&apos;ve connected the plugin ✓
+        </button>
+      )}
       {/* Skip */}
       <button onClick={onDemoMode} className="text-[11px] text-zinc-700 hover:text-zinc-500 transition-colors">
         Skip — use demo preview
@@ -2752,70 +2768,22 @@ export function EditorClient() {
       // a sessionId, then mark as connected. The plugin will claim separately
       // and create its own session — commands route to it via the sync endpoint.
       let webSessionId: string | null = null
-      connectCodePollRef.current = setInterval(async () => {
-        try {
-          // If we haven't claimed yet, claim the code to get a sessionId
-          if (!webSessionId) {
-            const claimRes = await fetch('/api/studio/auth', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                code: data.code,
-                token: data.token,
-                placeId: 'web-editor',
-                placeName: 'ForjeGames Editor',
-                pluginVer: 'web',
-              }),
-            })
-            if (claimRes.ok) {
-              const claimData = await claimRes.json() as { sessionId?: string; token?: string }
-              if (claimData.sessionId) {
-                webSessionId = claimData.sessionId
-                // Store auth token for execute calls
-                setStudioStatus((prev) => ({
-                  ...prev,
-                  sessionId: claimData.sessionId!,
-                  connected: true,
-                  placeName: 'Waiting for Studio plugin...',
-                }))
-              }
-            }
-          }
-
-          // Check if the plugin has connected (real session with real placeId)
-          if (webSessionId) {
-            const sessRes = await fetch('/api/studio/sessions')
-            if (sessRes.ok) {
-              const sessData = await sessRes.json() as { sessions: Array<{ sessionId: string; connected: boolean; placeName?: string; placeId?: string }> }
-              const pluginSess = sessData.sessions?.find(
-                (s) => s.connected && s.placeId && s.placeId !== 'web-editor' && s.placeId !== 'unknown'
-              )
-              if (pluginSess) {
-                // Plugin connected! Switch to its session
-                stopConnectPolling()
-                setStudioStatus({
-                  connected: true,
-                  sessionId: pluginSess.sessionId,
-                  placeName: pluginSess.placeName,
-                  placeId: pluginSess.placeId ? Number(pluginSess.placeId) : undefined,
-                })
-                setConnectFlow('connected')
-                handleStartPolling()
-                return
-              }
-            }
-
-            // Plugin not yet connected but we have a web session — show as "connected" after 2 polls
-            stopConnectPolling()
-            setConnectFlow('connected')
-            handleStartPolling()
-          }
-        } catch { /* keep polling */ }
-      }, 2000)
+      // No auto-claim — just show the code and wait for user to confirm
     } catch {
       setConnectFlow('idle')
     }
   }, [stopConnectPolling, handleStartPolling])
+
+  // User confirms they connected the plugin in Studio
+  const confirmStudioConnected = useCallback(() => {
+    stopConnectPolling()
+    setStudioStatus({
+      connected: true,
+      sessionId: 'manual-' + Date.now(),
+      placeName: 'Roblox Studio',
+    })
+    setConnectFlow('connected')
+  }, [stopConnectPolling])
 
   // Clean up on unmount
   useEffect(() => () => stopConnectPolling(), [stopConnectPolling])
@@ -2829,16 +2797,13 @@ export function EditorClient() {
     } catch { /* ignore */ }
   }, [studioStatus])
 
-  // Auto-generate connection code — ONLY if not already connected
+  // On mount: restore connection from localStorage OR show setup
   useEffect(() => {
-    // If restored from localStorage as connected, skip auto-connect
     if (studioStatus.connected) {
+      // Already connected (restored from localStorage) — skip setup
       setConnectFlow('connected')
-      return
     }
-    if (connectFlow === 'idle' && !demoMode) {
-      handleConnectToStudio()
-    }
+    // Don't auto-generate a code — let the user click when ready
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Run once on mount
 
@@ -3394,6 +3359,8 @@ export function EditorClient() {
                           connectCode={connectCode}
                           connectTimer={connectTimer}
                           onDemoMode={() => setDemoMode(true)}
+                          onConfirmConnected={confirmStudioConnected}
+                          onGenerateCode={handleConnectToStudio}
                         />
                       )}
 
