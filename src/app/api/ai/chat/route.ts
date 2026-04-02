@@ -112,8 +112,10 @@ WHAT YOU DO:
 6. BRAINSTORM — wild ideas, "what if" scenarios, creative directions
 7. HYPE — celebrate wins: "YO that looks so good already, we're like 20% done and it already slaps"
 
-BUILDING RESPONSES (code is hidden, auto-executes):
-NEVER mention code, scripts, Luau, Studio commands. Just describe what you did + next step.
+BUILDING RESPONSES:
+CRITICAL: When the user asks you to BUILD anything, you MUST include a \`\`\`lua code block in your response. The code block is automatically extracted, hidden from the user, and executed in Studio. The user only sees your friendly description.
+Your response format for builds: friendly description of what you built + engagement hook + a \`\`\`lua code block (this gets auto-extracted and run).
+In conversation, NEVER mention code, scripts, or Luau to the user. Just describe what you built naturally.
 - "Dropped a sick light pole with amber glow right in front of you. The base is stone, pole is brushed metal. Want me to line 5 of these down a street? We could build out a whole downtown strip."
 - "Threw down a shop frame — wooden walls, dark slate roof, big glass storefront. It's empty inside though. Should I furnish it or you wanna do the next building first?"
 
@@ -229,6 +231,10 @@ type IntentKey =
 const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   conversation: 0,  // Free — chatting, questions, learning
   chat: 0,          // Free — alias for conversation
+  undo: 0,          // Free — informational only
+  help: 0,          // Free — capability explanation
+  publish: 0,       // Free — publishing guidance
+  multiscript: 30,  // Multi-file system generation
   default: 5,       // General build request
   analysis: 5,      // Analyzing existing work
   script: 10,       // Script help
@@ -247,10 +253,6 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   fullgame: 50,     // Full game generation
   mesh: 100,        // 3D mesh generation (Meshy API)
   texture: 50,      // Texture generation (Fal.ai)
-  undo: 0,          // Undo last action (free)
-  help: 0,          // Help/info request (free)
-  publish: 5,       // Publish game
-  multiscript: 30,  // Multiple scripts generation
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
@@ -1146,6 +1148,14 @@ Tip: Say "fix the EnemyAI performance issue" to get an optimized script.`,
 Just tell me what you're working on and I'll help! You can ask me anything about game design, scripting, UI, maps, or say "build me a castle" when you want me to generate code.
 
 Token cost: 2 tokens`,
+
+  undo: `To undo your last build in Roblox Studio, press **Ctrl+Z**. ForjeAI uses ChangeHistoryService, so everything is undoable.\n\n[SUGGESTIONS]\nBuild something different instead\nUndo multiple times to go back further\nTry again with more specific instructions`,
+
+  help: `I'm ForjeAI — your Roblox game dev partner. I can build maps, write scripts, generate 3D models, search the marketplace, and design game systems. Just tell me what you want.\n\n[SUGGESTIONS]\nBuild me a medieval castle\nCreate a coin collection script\nSearch marketplace for tree assets`,
+
+  publish: `To publish: File → Publish to Roblox (Ctrl+P). Set your game name, description, thumbnail, and privacy. Check Output for errors before going public.\n\n[SUGGESTIONS]\nHelp me set up a game pass\nCreate a welcome screen\nBuild an admin commands script`,
+
+  multiscript: `For full game systems I generate multiple scripts with clear separation. Say "build me a [system] system" and I'll output all the files with labels.\n\n[SUGGESTIONS]\nBuild me a pet system\nCreate a trading system\nMake a leaderboard system with DataStore`,
 
   default: `✓ Request Processed
 

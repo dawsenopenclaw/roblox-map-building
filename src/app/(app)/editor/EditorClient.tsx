@@ -49,9 +49,7 @@ import { ObjectList } from '@/components/editor/ObjectList'
 import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
 import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
-import { BuildHistoryPanel, BuildTimeline } from '@/components/editor/BuildHistoryPanel'
-import type { BuildSnapshot } from '@/components/editor/BuildHistoryPanel'
-import { useBuildHistory } from '@/components/editor/BuildHistory'
+import { BuildHistory, useBuildHistory } from '@/components/editor/BuildHistory'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -1680,7 +1678,7 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
           </p>
         </div>
         {/* Marketplace-first build result card */}
-        {msg.buildResult && <BuildResultCard result={msg.buildResult} studioConnected={studioConnected} studioSessionId={studioStatus.sessionId} />}
+        {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
         <div className="flex items-center gap-2 pl-1">
           {msg.tokensUsed !== undefined && (
             <span className="text-[10px] text-zinc-600 flex items-center gap-1">
@@ -2559,7 +2557,7 @@ export function EditorClient() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat')
 
   // ── Build history ────────────────────────────────────────────────────────────
-  const { entries: buildHistory } = useBuildHistory()
+  const { entries: buildHistory, addBuild } = useBuildHistory()
 
   // Studio state — must be declared before submit so the callback closes over them
   const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
@@ -2803,6 +2801,25 @@ export function EditorClient() {
           } : {}),
         })
 
+        // Save to build history
+        {
+          const rawCode = buildResult?.luauCode ?? meshData?.luauCode ?? (() => {
+            if (!responseText) return null
+            const m = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            return m?.[1]?.trim() ?? null
+          })()
+          if (rawCode) {
+            addBuild({
+              title: trimmed.slice(0, 40) + (trimmed.length > 40 ? '…' : ''),
+              description: trimmed,
+              intent: 'other',
+              luauCode: rawCode,
+              tokensUsed,
+              model: selectedModel,
+            })
+          }
+        }
+
         // If Studio is actually connected (not demo), send Luau code to Studio for execution
         if (studioStatus.connected || connectFlow === 'connected') {
           // Extract Luau from buildResult, mesh data, OR from code blocks in the AI response
@@ -2876,7 +2893,7 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount],
+    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, addBuild],
   )
 
   // ── Helper: extract last code block from messages ────────────────────────
@@ -3517,6 +3534,7 @@ export function EditorClient() {
                   }}
                 />
               )}
+              {activePanel === 'history' && <BuildHistory style={{ height: '100%' }} />}
             </div>
           </div>
         )}
@@ -3550,6 +3568,7 @@ export function EditorClient() {
                   }}
                 />
               )}
+                {activePanel === 'history' && <BuildHistory style={{ height: '100%' }} />}
               </div>
             </div>
           </div>
