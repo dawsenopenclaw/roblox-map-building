@@ -31,8 +31,8 @@ function buildConnection(): ConnectionOptions {
     process.env.REDIS_URL ??
     process.env.UPSTASH_REDIS_REST_URL
 
-  if (!redisUrl) {
-    // In local dev without Redis, BullMQ will fail at enqueue time, not at import time
+  if (!redisUrl || redisUrl.trim().length < 10) {
+    // No valid Redis URL — BullMQ will fail at enqueue time, not at import time
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[job-queue] REDIS_URL not set — BullMQ operations will fail at runtime')
     }
