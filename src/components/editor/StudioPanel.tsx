@@ -273,7 +273,7 @@ function DisconnectedView({
 
       {/* Download button */}
       <a
-        href="/api/studio/plugin/download"
+        href="/api/studio/plugin"
         download="ForjeGames.rbxm"
         style={{
           display: 'flex',

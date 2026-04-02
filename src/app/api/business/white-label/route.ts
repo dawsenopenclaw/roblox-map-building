@@ -4,7 +4,7 @@ import { whiteLabelBrandingSchema, whiteLabelAgentSchema, whiteLabelDomainSchema
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type WhiteLabelBranding = {
+type WhiteLabelBranding = {
   logoUrl:       string | null
   faviconUrl:    string | null
   primaryColor:  string
@@ -15,7 +15,7 @@ export type WhiteLabelBranding = {
   domainVerified: boolean
 }
 
-export type AgentConfig = {
+type AgentConfig = {
   id:          string
   name:        string
   description: string
@@ -25,7 +25,7 @@ export type AgentConfig = {
   costMultiplier: number
 }
 
-export type MarketplaceStorefront = {
+type MarketplaceStorefront = {
   slug:          string
   displayName:   string
   description:   string | null
@@ -35,14 +35,14 @@ export type MarketplaceStorefront = {
   totalSales:     number
 }
 
-export type RateLimitConfig = {
+type RateLimitConfig = {
   requestsPerMinute:  number
   requestsPerHour:    number
   requestsPerDay:     number
   tokensPerMonth:     number
 }
 
-export type WhiteLabelConfig = {
+type WhiteLabelConfig = {
   businessId:   string
   branding:     WhiteLabelBranding
   agents:       AgentConfig[]

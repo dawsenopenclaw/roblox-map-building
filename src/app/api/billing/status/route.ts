@@ -73,8 +73,17 @@ export async function GET() {
         monthlyPrice: monthlyPriceDisplay,
         cancelAtPeriodEnd: user.subscription?.cancelAtPeriodEnd ?? false,
       })
-    } catch {
-      // DB not connected — return null so client shows Free plan defaults
+    } catch (dbErr) {
+      // DB not reachable at all (e.g. cold start, misconfigured) — return null so
+      // the client can show Free plan defaults rather than a hard error screen.
+      // Re-throw anything that isn't a connectivity error so it surfaces in Sentry.
+      const msg = dbErr instanceof Error ? dbErr.message : String(dbErr)
+      const isConnectivityError =
+        msg.includes('Connection refused') ||
+        msg.includes('Can\'t reach database') ||
+        msg.includes('ECONNREFUSED') ||
+        msg.includes('connect ETIMEDOUT')
+      if (!isConnectivityError) throw dbErr
       return NextResponse.json(null, { status: 200 })
     }
   } catch {

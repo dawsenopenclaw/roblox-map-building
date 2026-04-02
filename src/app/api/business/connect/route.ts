@@ -12,9 +12,9 @@ const connectPayloadSchema = z.object({
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type BusinessType = 'LLC' | 'CORPORATION' | 'SOLE_PROPRIETOR' | 'PARTNERSHIP' | 'NONPROFIT'
+type BusinessType = 'LLC' | 'CORPORATION' | 'SOLE_PROPRIETOR' | 'PARTNERSHIP' | 'NONPROFIT'
 
-export type BusinessVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'UNVERIFIED'
+type BusinessVerificationStatus = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'UNVERIFIED'
 
 export type BusinessProfile = {
   id: string

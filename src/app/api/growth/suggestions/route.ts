@@ -17,7 +17,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type BuildSuggestion = {
+type BuildSuggestion = {
   id: string
   title: string
   rationale: string
@@ -28,7 +28,7 @@ export type BuildSuggestion = {
   keywords: string[]
 }
 
-export type TargetingSuggestion = {
+type TargetingSuggestion = {
   id: string
   segmentName: string
   description: string
@@ -38,7 +38,7 @@ export type TargetingSuggestion = {
   expectedConversionRate: number
 }
 
-export type PricingSuggestion = {
+type PricingSuggestion = {
   id: string
   title: string
   rationale: string
@@ -48,7 +48,7 @@ export type PricingSuggestion = {
   confidence: 'high' | 'medium' | 'low'
 }
 
-export type EngagementTiming = {
+type EngagementTiming = {
   id: string
   trigger: string
   timing: string

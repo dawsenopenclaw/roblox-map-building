@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface CatalogItem {
+interface CatalogItem {
   id: number
   name: string
   creatorName: string

@@ -6,7 +6,7 @@ import { teamInviteSchema, teamUpdateMemberSchema, parseBody } from '@/lib/valid
 
 export type TeamRole = 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER'
 
-export type TeamMember = {
+type TeamMember = {
   id: string
   email: string
   displayName: string
@@ -20,7 +20,7 @@ export type TeamMember = {
   status: 'ACTIVE' | 'INVITED' | 'SUSPENDED'
 }
 
-export type TeamTokenPool = {
+type TeamTokenPool = {
   totalMonthly: number
   usedThisMonth: number
   remaining: number

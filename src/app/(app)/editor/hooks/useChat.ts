@@ -5,7 +5,7 @@ import { useUser } from '@clerk/nextjs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup'
+export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error'
 
 export type ModelId =
   | 'claude-4'
@@ -36,6 +36,10 @@ export interface ChatMessage {
   intent?: string
   hasCode?: boolean
   streaming?: boolean
+  /** Set on 'build-error' messages — the raw Studio error text */
+  buildError?: string
+  /** Set on 'build-error' messages — which attempt number this was (1-based) */
+  retryAttempt?: number
 }
 
 export const MODELS: ModelOption[] = [
@@ -207,6 +211,15 @@ export function useChat(options: UseChatOptions = {}) {
   const mountedRef = useRef(true)
   // Ref used to read current messages inside async callbacks without stale closure
   const messagesRef = useRef<ChatMessage[]>([])
+  // Auto-retry cap: tracks how many consecutive Studio execution errors have been
+  // auto-fixed for the CURRENT build. Reset to 0 when the user sends a new message.
+  const retryCountRef = useRef(0)
+  // The last Luau code sent to Studio — passed back on retry so the AI has full context
+  const lastLuauRef = useRef<string | null>(null)
+  // The original user prompt that triggered the current build
+  const lastBuildPromptRef = useRef<string>('')
+  // When true, the next sendMessage call is an internal auto-retry — skip the retry counter reset
+  const isAutoRetryRef = useRef(false)
 
   // Mark unmounted so in-flight async callbacks don't call setState after cleanup.
   useEffect(() => {
@@ -232,6 +245,12 @@ export function useChat(options: UseChatOptions = {}) {
       setImageFile(null)
       setLoading(true)
       setSuggestions([])
+      // Reset retry counter only for genuine user messages, not internal auto-retries
+      if (!isAutoRetryRef.current) {
+        retryCountRef.current = 0
+        lastBuildPromptRef.current = trimmed
+      }
+      isAutoRetryRef.current = false
 
       const userMsg: ChatMessage = {
         id: uid(),
@@ -462,6 +481,7 @@ export function useChat(options: UseChatOptions = {}) {
           luauCode = luauCode ?? meshData?.luauCode ?? null
 
           if (studioConnected && luauCode && onBuildComplete) {
+            lastLuauRef.current = luauCode
             onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
 
             if (typeof window !== 'undefined' && !retryListenerRef.current) {
@@ -469,7 +489,6 @@ export function useChat(options: UseChatOptions = {}) {
               const retryAbort = new AbortController()
               const checkResult = async () => {
                 await new Promise<void>((r) => setTimeout(r, 3000))
-                // Abort and skip state update if the component unmounted while waiting.
                 if (!mountedRef.current || retryAbort.signal.aborted) {
                   retryListenerRef.current = false
                   return
@@ -478,17 +497,63 @@ export function useChat(options: UseChatOptions = {}) {
                   const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`, { signal: retryAbort.signal })
                   if (!statusRes.ok) return
                   const statusData = await statusRes.json() as { lastCommandError?: string }
-                  if (mountedRef.current && statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                  if (!mountedRef.current || !statusData.lastCommandError || !statusData.lastCommandError.includes('ERROR')) return
+
+                  const MAX_RETRIES = 3
+                  retryCountRef.current += 1
+                  const attempt = retryCountRef.current
+
+                  if (attempt > MAX_RETRIES) {
+                    // Hard stop — show actionable error card
                     setMessagesSync((prev) => [
                       ...prev,
                       {
                         id: uid(),
-                        role: 'system',
-                        content: `Build error detected — auto-fixing: ${statusData.lastCommandError}`,
+                        role: 'build-error' as MessageRole,
+                        content: `Build failed after ${MAX_RETRIES} attempts.`,
+                        buildError: statusData.lastCommandError,
+                        retryAttempt: attempt,
                         timestamp: new Date(),
                       },
                     ])
+                    retryCountRef.current = 0
+                    return
                   }
+
+                  // Show progress indicator
+                  setMessagesSync((prev) => [
+                    ...prev,
+                    {
+                      id: uid(),
+                      role: 'status',
+                      content: `Auto-fixing (attempt ${attempt}/${MAX_RETRIES})...`,
+                      timestamp: new Date(),
+                    },
+                  ])
+
+                  // Re-trigger the AI with the error context and previous code
+                  const fixPrompt = lastBuildPromptRef.current || trimmed
+                  const retryBody: Record<string, unknown> = {
+                    message: fixPrompt,
+                    model: selectedModel,
+                    stream: true,
+                    lastError: statusData.lastCommandError,
+                    retryAttempt: attempt,
+                  }
+                  if (lastLuauRef.current) {
+                    retryBody.previousCode = lastLuauRef.current
+                  }
+                  if (studioConnected && studioContext) {
+                    retryBody.studioContext = studioContext
+                  }
+                  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+                  if (studioSessionId) headers['x-studio-session'] = studioSessionId
+
+                  retryListenerRef.current = false
+                  // Fire via sendMessage so all state (loading, messages, etc.) flows correctly.
+                  // Set isAutoRetryRef so the reset-on-new-message guard is skipped.
+                  isAutoRetryRef.current = true
+                  void sendMessage(`[AUTO-RETRY attempt ${attempt}/${MAX_RETRIES}] ${fixPrompt}`)
                 } catch { /* silent — includes AbortError */ } finally {
                   retryListenerRef.current = false
                 }
@@ -557,6 +622,7 @@ export function useChat(options: UseChatOptions = {}) {
           }
 
           if (studioConnected && luauCode && onBuildComplete) {
+            lastLuauRef.current = luauCode
             onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
 
             if (typeof window !== 'undefined' && !retryListenerRef.current) {
@@ -564,7 +630,6 @@ export function useChat(options: UseChatOptions = {}) {
               const retryAbort = new AbortController()
               const checkResult = async () => {
                 await new Promise<void>((r) => setTimeout(r, 3000))
-                // Abort and skip state update if the component unmounted while waiting.
                 if (!mountedRef.current || retryAbort.signal.aborted) {
                   retryListenerRef.current = false
                   return
@@ -573,17 +638,41 @@ export function useChat(options: UseChatOptions = {}) {
                   const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`, { signal: retryAbort.signal })
                   if (!statusRes.ok) return
                   const statusData = await statusRes.json() as { lastCommandError?: string }
-                  if (mountedRef.current && statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                  if (!mountedRef.current || !statusData.lastCommandError || !statusData.lastCommandError.includes('ERROR')) return
+
+                  const MAX_RETRIES = 3
+                  retryCountRef.current += 1
+                  const attempt = retryCountRef.current
+
+                  if (attempt > MAX_RETRIES) {
                     setMessagesSync((prev) => [
                       ...prev,
                       {
                         id: uid(),
-                        role: 'system',
-                        content: `Build error detected — auto-fixing: ${statusData.lastCommandError}`,
+                        role: 'build-error' as MessageRole,
+                        content: `Build failed after ${MAX_RETRIES} attempts.`,
+                        buildError: statusData.lastCommandError,
+                        retryAttempt: attempt,
                         timestamp: new Date(),
                       },
                     ])
+                    retryCountRef.current = 0
+                    return
                   }
+
+                  setMessagesSync((prev) => [
+                    ...prev,
+                    {
+                      id: uid(),
+                      role: 'status',
+                      content: `Auto-fixing (attempt ${attempt}/${MAX_RETRIES})...`,
+                      timestamp: new Date(),
+                    },
+                  ])
+
+                  retryListenerRef.current = false
+                  isAutoRetryRef.current = true
+                  void sendMessage(`[AUTO-RETRY attempt ${attempt}/${MAX_RETRIES}] ${lastBuildPromptRef.current || trimmed}`)
                 } catch { /* silent — includes AbortError */ } finally {
                   retryListenerRef.current = false
                 }
@@ -625,8 +714,16 @@ export function useChat(options: UseChatOptions = {}) {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
+    // retryCountRef / isAutoRetryRef / lastLuauRef / lastBuildPromptRef are refs — intentionally omitted
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync],
   )
+
+  /** Exposed so UI error actions ("Try again") can reset the retry counter */
+  const resetRetryCount = useCallback(() => {
+    retryCountRef.current = 0
+    isAutoRetryRef.current = false
+  }, [])
 
   return {
     messages,
@@ -636,6 +733,7 @@ export function useChat(options: UseChatOptions = {}) {
     streaming,
     suggestions,
     sendMessage,
+    resetRetryCount,
     selectedModel,
     setSelectedModel,
     imageFile,

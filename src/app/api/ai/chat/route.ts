@@ -3011,18 +3011,81 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const lastError = (
     (parsed.data as Record<string, unknown>).lastError as string | undefined
   )?.trim()
+
+  // Hard cap: if the client has already retried 3 times, stop trying to fix
+  // and return a clear error so the user can change their approach.
+  const retryAttempt = Number(
+    (parsed.data as Record<string, unknown>).retryAttempt ?? 0
+  )
+  const MAX_AUTO_RETRIES = 3
+  if (lastError && retryAttempt >= MAX_AUTO_RETRIES) {
+    const errBody = JSON.stringify({
+      error: 'max_retries_exceeded',
+      message:
+        `Build failed after ${MAX_AUTO_RETRIES} attempts. ` +
+        `The last error was: ${lastError.slice(0, 500)}`,
+      lastError,
+      retryAttempt,
+    })
+    if ((parsed.data as Record<string, unknown>).stream === true) {
+      // Return a streamed error so the client's stream reader doesn't hang
+      const encoder = new TextEncoder()
+      const stream = new ReadableStream({
+        start(controller) {
+          const msg =
+            `Build failed after ${MAX_AUTO_RETRIES} attempts. ` +
+            `Try describing what you want differently.`
+          controller.enqueue(encoder.encode(msg))
+          const meta = JSON.stringify({
+            __meta: true,
+            error: 'max_retries_exceeded',
+            hasCode: false,
+            suggestions: ['Describe the build differently', 'Simplify the request', 'Start fresh'],
+          })
+          controller.enqueue(encoder.encode('\x00' + meta))
+          controller.close()
+        },
+      })
+      return new Response(stream, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Retry-Exceeded': '1' },
+      })
+    }
+    return NextResponse.json(JSON.parse(errBody), { status: 200 })
+  }
+
   if (lastError) {
+    // Include the previous code attempt so the AI doesn't repeat the same fix
+    const previousCode = (
+      (parsed.data as Record<string, unknown>).previousCode as string | undefined
+    )?.trim()
+
+    const attemptLabel = retryAttempt > 0
+      ? ` (attempt ${retryAttempt}/${MAX_AUTO_RETRIES})`
+      : ''
+
+    let fixContent =
+      `[STUDIO EXECUTION ERROR — auto-injected by plugin${attemptLabel}]\n` +
+      `The last script I ran in Roblox Studio failed:\n\`\`\`\n` +
+      lastError +
+      `\n\`\`\`\n`
+
+    if (previousCode) {
+      fixContent +=
+        `\nThe code that caused this error was:\n\`\`\`lua\n` +
+        previousCode.slice(0, 3000) +
+        `\n\`\`\`\n`
+    }
+
+    fixContent += `Please output a corrected version that avoids this specific error. Do not repeat the same approach.`
+
     rawHistory.push({
       role: 'user' as const,
-      content:
-        '[STUDIO EXECUTION ERROR — auto-injected by plugin]\n' +
-        'The last script I ran in Roblox Studio failed:\n```\n' +
-        lastError +
-        '\n```\nPlease output a corrected version.',
+      content: fixContent,
     })
     rawHistory.push({
       role: 'assistant' as const,
-      content: 'Got it — I can see the error. Let me fix that.',
+      content: 'Got it — I can see the error. Let me fix that with a different approach.',
     })
   }
 

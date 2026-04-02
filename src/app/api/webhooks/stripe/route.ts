@@ -348,7 +348,8 @@ export async function POST(req: NextRequest) {
           select: { id: true, email: true, displayName: true },
         })
         if (user) {
-          await db.subscription.update({
+          // updateMany is safe when the row is absent — avoids P2025 on missing subscription
+          await db.subscription.updateMany({
             where: { userId: user.id },
             data: { status: 'PAST_DUE' },
           })
@@ -458,7 +459,11 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      case 'invoice.payment_action_required': {
+      // Stripe sends both names depending on SDK/API version — handle both
+      case 'invoice.payment_action_required':
+      // falls through
+      // @ts-ignore — older Stripe API versions emit this alias
+      case 'invoice.requires_action': {
         // Fires when SCA / 3D Secure authentication is required before an invoice can be paid.
         const invoice = event.data.object as Stripe.Invoice
         const customerId = invoice.customer as string

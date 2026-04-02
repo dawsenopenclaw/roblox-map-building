@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface AssetTemplate {
+interface AssetTemplate {
   id:          string
   name:        string
   prompt:      string
@@ -25,7 +25,7 @@ export interface AssetTemplate {
   tags:        string[]
 }
 
-export interface TemplateCategory {
+interface TemplateCategory {
   name:      string
   slug:      string
   icon:      string

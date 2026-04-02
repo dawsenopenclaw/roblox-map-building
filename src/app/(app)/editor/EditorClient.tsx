@@ -1574,8 +1574,115 @@ const MessageTimestamp = memo(function MessageTimestamp({ ts }: { ts: Date }) {
 
 // ─── Message bubble ────────────────────────────────────────────────────────────
 
-const Message = memo(function Message({ msg, studioConnected, studioSessionId, studioJwt }: { msg: ChatMessage; studioConnected?: boolean; studioSessionId?: string; studioJwt?: string }) {
+const Message = memo(function Message({
+  msg,
+  studioConnected,
+  studioSessionId,
+  studioJwt,
+  onRetry,
+  onBuildDifferently,
+  onDismiss,
+}: {
+  msg: ChatMessage
+  studioConnected?: boolean
+  studioSessionId?: string
+  studioJwt?: string
+  /** "Try again" — resets retry counter and resends the last build prompt */
+  onRetry?: () => void
+  /** "Build it differently" — clears context and opens a fresh prompt */
+  onBuildDifferently?: () => void
+  /** "Skip this" — dismisses the error card */
+  onDismiss?: (id: string) => void
+}) {
   const [showTs, setShowTs] = useState(false)
+
+  if (msg.role === 'build-error') {
+    return (
+      <div className="flex justify-start my-3 px-1">
+        <div
+          style={{
+            background: 'rgba(239,68,68,0.06)',
+            border: '1px solid rgba(239,68,68,0.25)',
+            borderRadius: 14,
+            padding: '18px 22px',
+            maxWidth: 460,
+          }}
+        >
+          <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, marginBottom: 6 }}>
+            Build failed after 3 attempts
+          </p>
+          {msg.buildError && (
+            <pre
+              style={{
+                color: '#A1A1AA',
+                fontSize: 11,
+                lineHeight: 1.5,
+                marginBottom: 14,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                maxHeight: 120,
+                overflowY: 'auto',
+              }}
+            >
+              {msg.buildError.slice(0, 600)}
+            </pre>
+          )}
+          <p style={{ color: '#71717A', fontSize: 12, marginBottom: 14 }}>
+            Try describing what you want differently, or start fresh.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={onRetry}
+              style={{
+                background: 'rgba(212,175,55,0.15)',
+                color: '#D4AF37',
+                border: '1px solid rgba(212,175,55,0.35)',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={onBuildDifferently}
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                color: '#D4D4D8',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Build it differently
+            </button>
+            <button
+              onClick={() => onDismiss?.(msg.id)}
+              style={{
+                background: 'transparent',
+                color: '#71717A',
+                border: '1px solid rgba(255,255,255,0.07)',
+                padding: '8px 16px',
+                borderRadius: 8,
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              Skip this
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (msg.role === 'system') {
     return (

@@ -55,7 +55,7 @@ const jsonBodySchema = z.object({
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ImageAnalysisResult {
+interface ImageAnalysisResult {
   /** High-level theme detected, e.g. "medieval castle", "tropical beach", "sci-fi city" */
   theme: string
   /** Art style, e.g. "cartoon", "realistic", "low-poly", "anime" */

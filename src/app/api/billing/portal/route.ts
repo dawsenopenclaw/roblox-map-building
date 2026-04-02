@@ -17,13 +17,14 @@ export async function POST(req: NextRequest) {
       const { clientEnv } = await import('@/lib/env')
 
       const user = await db.user.findUnique({ where: { clerkId }, include: { subscription: true } })
-      if (!user?.subscription?.stripeCustomerId) {
-        // No Stripe customer yet — send to pricing
+      const customerId = user?.subscription?.stripeCustomerId
+      if (!customerId || customerId.startsWith('pending_')) {
+        // No real Stripe customer yet — send to pricing
         return NextResponse.json({ url: '/pricing', demo: false })
       }
 
       const session = await createBillingPortalSession({
-        customerId: user.subscription.stripeCustomerId,
+        customerId,
         returnUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard`,
       })
       return NextResponse.json({ url: session.url })

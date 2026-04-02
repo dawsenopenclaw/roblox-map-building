@@ -40,11 +40,11 @@ interface HealthResponse {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function fetchWithTimeout(url: string, timeoutMs = 2000): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs = 2000, headers?: Record<string, string>): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    return await fetch(url, { signal: controller.signal })
+    return await fetch(url, { signal: controller.signal, headers })
   } finally {
     clearTimeout(timer)
   }
@@ -81,10 +81,12 @@ async function checkRedis(): Promise<CheckStatus> {
 
   if (!redisUrl && !upstashUrl) return 'unconfigured'
 
-  // Upstash: HTTP ping
+  // Upstash: HTTP ping — Authorization header required, otherwise Upstash returns 401 (not PONG)
   if (upstashUrl && upstashToken) {
     try {
-      const res = await fetchWithTimeout(`${upstashUrl}/ping`)
+      const res = await fetchWithTimeout(`${upstashUrl}/ping`, 2000, {
+        Authorization: `Bearer ${upstashToken}`,
+      })
       const body = await res.text()
       return body.includes('PONG') ? 'ok' : 'degraded'
     } catch {

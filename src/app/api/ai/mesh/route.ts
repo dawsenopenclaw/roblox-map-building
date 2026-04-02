@@ -32,6 +32,11 @@ import { z } from 'zod'
 import { meshGenerateSchema, parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import {
+  downloadAndUpload,
+  downloadAndUploadTexture,
+  type UploadAssetResult,
+} from '@/lib/roblox-asset-upload'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -447,6 +452,9 @@ function generateMeshPartLuau(params: {
   polygonCount: number | null
   taskId: string
   category?: AssetCategory
+  /** Real rbxassetid:// strings from Roblox Open Cloud upload — skips manual steps */
+  rbxMeshId?: string
+  rbxTextureIds?: { albedo: string; normal: string; roughness: string }
 }): string {
   const { prompt, meshUrl, textures, taskId } = params
   const category: AssetCategory = params.category ?? detectAssetCategory(prompt)
@@ -464,12 +472,25 @@ function generateMeshPartLuau(params: {
   // and double-quotes so the generated code is always syntactically valid.
   const displayName = prompt.slice(0, 50).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ')
 
-  const meshLine = meshUrl
-    ? `-- IMPORTANT: Upload the GLB file to Roblox and replace this MeshId\n\tmeshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"  -- source: ${meshUrl}`
-    : `-- No mesh URL yet — poll GET /api/ai/mesh?taskId=${taskId} then upload the GLB`
+  // Prefer the real rbxassetid:// if the upload already succeeded
+  const meshLine = params.rbxMeshId
+    ? `meshPart.MeshId = "${params.rbxMeshId}"`
+    : meshUrl
+      ? `-- IMPORTANT: Upload the GLB file to Roblox and replace this MeshId\n\tmeshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"  -- source: ${meshUrl}`
+      : `-- No mesh URL yet — poll GET /api/ai/mesh?taskId=${taskId} then upload the GLB`
 
-  const surfaceAppearanceBlock = textures?.albedo
+  // Prefer real uploaded texture IDs; fall back to placeholder comment with source URLs
+  const surfaceAppearanceBlock = params.rbxTextureIds
     ? `
+\tlocal sa = Instance.new("SurfaceAppearance")
+\tsa.AlphaMode    = Enum.AlphaMode.Overlay
+\tsa.ColorMap     = "${params.rbxTextureIds.albedo}"
+\tsa.NormalMap    = "${params.rbxTextureIds.normal}"
+\tsa.RoughnessMap = "${params.rbxTextureIds.roughness}"
+\tsa.MetalnessMap = ""  -- optional: add a metalness map if available
+\tsa.Parent = meshPart`
+    : textures?.albedo
+      ? `
 \tlocal sa = Instance.new("SurfaceAppearance")
 \tsa.AlphaMode = Enum.AlphaMode.Overlay
 \t-- Upload textures to Roblox Asset Manager and paste the asset IDs below
@@ -478,7 +499,7 @@ function generateMeshPartLuau(params: {
 \tsa.RoughnessMap = "rbxassetid://ROUGHNESS_ASSET_ID" -- source: ${textures.roughness}
 \tsa.MetalnessMap = ""  -- optional: upload a metalness map if available
 \tsa.Parent = meshPart`
-    : `
+      : `
 \t-- No textures generated. Add a SurfaceAppearance manually if needed.`
 
   // Plain number string — no locale commas — so the Lua print line is valid.
@@ -497,12 +518,16 @@ function generateMeshPartLuau(params: {
   ChangeHistoryService and Selection, which are Plugin-only services.
 
   SETUP INSTRUCTIONS:
-  1. Download the GLB from the meshUrl in the API response
+${params.rbxMeshId
+  ? `  Assets were automatically uploaded to Roblox — MeshId and textures are pre-filled.
+  1. Paste this script into the Studio Command Bar and press Enter
+  2. Adjust Size and CFrame to match your scene layout`
+  : `  1. Download the GLB from the meshUrl in the API response
   2. In Studio: Asset Manager > Import 3D > select your GLB
   3. Copy the new rbxassetid and paste it into MeshId below
   4. (Optional) Upload albedo/normal/roughness PNGs and update SurfaceAppearance IDs
   5. Paste this script into the Studio Command Bar and press Enter
-  6. Adjust Size and CFrame to match your scene layout
+  6. Adjust Size and CFrame to match your scene layout`}
 --]]
 
 local CollectionService  = game:GetService("CollectionService")
@@ -616,8 +641,26 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ status: 'pending', progress: task.progress ?? 0, taskId })
     }
 
+    const glbUrl = task.model_urls?.glb ?? task.model_urls?.fbx ?? null
+
+    // Attempt Roblox upload so the polled response also gets real asset IDs
+    let rbxMeshId: string | undefined
+
+    const robloxApiKey  = process.env.ROBLOX_OPEN_CLOUD_API_KEY
+    const robloxCreator = process.env.ROBLOX_CREATOR_ID
+
+    if (robloxApiKey && robloxCreator && glbUrl) {
+      const meshResult = await downloadAndUpload(glbUrl, `mesh_${taskId}`, {
+        description: `ForjeAI polled mesh — task ${taskId}`,
+      }).catch((err: unknown) => {
+        console.error('[mesh GET] Roblox mesh upload failed:', err instanceof Error ? err.message : err)
+        return null
+      })
+      if (meshResult) rbxMeshId = meshResult.rbxAssetId
+    }
+
     return NextResponse.json({
-      meshUrl: task.model_urls?.glb ?? task.model_urls?.fbx ?? null,
+      meshUrl: glbUrl,
       fbxUrl: task.model_urls?.fbx ?? null,
       thumbnailUrl: task.thumbnail_url ?? null,
       videoUrl: task.video_url ?? null,
@@ -625,13 +668,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       textures: null,
       luauCode: generateMeshPartLuau({
         prompt: `mesh_${taskId}`,
-        meshUrl: task.model_urls?.glb ?? null,
+        meshUrl: glbUrl,
         textures: null,
         polygonCount: task.polygon_count ?? null,
         taskId,
+        rbxMeshId,
       }),
       status: 'complete',
       taskId,
+      rbxMeshId:     rbxMeshId ?? null,
+      rbxTextureIds: null,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
@@ -742,6 +788,52 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (textureBilled) actualCostUsd += COST_TEXTURE
 
     const meshUrl = task.model_urls?.glb ?? task.model_urls?.fbx ?? null
+
+    // ── Roblox Open Cloud upload ─────────────────────────────────────────────
+    // Upload the mesh and all three texture maps to Roblox in parallel so the
+    // generated Luau code contains real rbxassetid:// URLs — no manual steps.
+    let rbxMeshId: string | undefined
+    let rbxTextureIds: { albedo: string; normal: string; roughness: string } | undefined
+
+    const robloxApiKey   = process.env.ROBLOX_OPEN_CLOUD_API_KEY
+    const robloxCreator  = process.env.ROBLOX_CREATOR_ID
+
+    if (robloxApiKey && robloxCreator && meshUrl) {
+      const safeDisplayName = prompt.slice(0, 50)
+
+      // Upload mesh + textures concurrently — texture uploads are independent
+      const meshUploadPromise = downloadAndUpload(meshUrl, safeDisplayName, {
+        description: `ForjeAI generated mesh (${category}) — task ${taskId}`,
+      }).catch((err: unknown) => {
+        console.error('[mesh POST] Roblox mesh upload failed:', err instanceof Error ? err.message : err)
+        return null
+      })
+
+      const textureUploadPromise: Promise<{ albedo: string; normal: string; roughness: string } | null> =
+        textures
+          ? Promise.all([
+              downloadAndUploadTexture(textures.albedo,   `${safeDisplayName} Albedo`,   { description: `Albedo map — ${taskId}` }),
+              downloadAndUploadTexture(textures.normal,   `${safeDisplayName} Normal`,   { description: `Normal map — ${taskId}` }),
+              downloadAndUploadTexture(textures.roughness,`${safeDisplayName} Roughness`,{ description: `Roughness map — ${taskId}` }),
+            ])
+              .then(([a, n, r]: [UploadAssetResult, UploadAssetResult, UploadAssetResult]) => ({
+                albedo:    a.rbxAssetId,
+                normal:    n.rbxAssetId,
+                roughness: r.rbxAssetId,
+              }))
+              .catch((err: unknown) => {
+                console.error('[mesh POST] Roblox texture upload failed:', err instanceof Error ? err.message : err)
+                return null
+              })
+          : Promise.resolve(null)
+
+      const [meshResult, textureResult] = await Promise.all([meshUploadPromise, textureUploadPromise])
+
+      if (meshResult) rbxMeshId = meshResult.rbxAssetId
+      if (textureResult) rbxTextureIds = textureResult
+    }
+    // ── End Roblox upload ────────────────────────────────────────────────────
+
     const luauCode = generateMeshPartLuau({
       prompt,
       meshUrl,
@@ -749,6 +841,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       polygonCount: task.polygon_count ?? null,
       taskId,
       category,
+      rbxMeshId,
+      rbxTextureIds,
     })
 
     return NextResponse.json({
@@ -764,6 +858,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       status: 'complete',
       category,
       taskId,
+      // Expose the real IDs so the client can use them directly if needed
+      rbxMeshId:     rbxMeshId ?? null,
+      rbxTextureIds: rbxTextureIds ?? null,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'

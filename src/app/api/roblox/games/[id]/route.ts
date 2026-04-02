@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-export interface RobloxGameDetails {
+interface RobloxGameDetails {
   id: string
   name: string
   description: string

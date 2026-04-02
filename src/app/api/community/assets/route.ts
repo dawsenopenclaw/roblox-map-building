@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-export type AssetCategory =
+type AssetCategory =
   | 'Buildings'
   | 'Vehicles'
   | 'Nature'
@@ -11,7 +11,7 @@ export type AssetCategory =
   | 'Furniture'
   | 'Weapons'
 
-export interface CommunityAsset {
+interface CommunityAsset {
   id: string
   name: string
   description: string

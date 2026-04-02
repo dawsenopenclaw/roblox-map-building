@@ -3,14 +3,14 @@ import { auth } from '@clerk/nextjs/server'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type RevenueBreakdown = {
+type RevenueBreakdown = {
   marketplaceSales:    number   // cents
   subscriptions:       number   // cents
   whiteLabelLicenses:  number   // cents
   total:               number   // cents
 }
 
-export type TokenMetrics = {
+type TokenMetrics = {
   totalUsedThisMonth: number
   totalUsedAllTime:   number
   usedByMember: {
@@ -21,7 +21,7 @@ export type TokenMetrics = {
   }[]
 }
 
-export type ProjectMetrics = {
+type ProjectMetrics = {
   active:    number
   total:     number
   shipped:   number
@@ -35,13 +35,13 @@ export type ProjectMetrics = {
   }[]
 }
 
-export type GrowthProjection = {
+type GrowthProjection = {
   period:    string
   actual:    number | null   // cents, null if future
   projected: number          // cents
 }
 
-export type RoiMetrics = {
+type RoiMetrics = {
   tokensSpent:          number
   estimatedRevenuePerToken: number
   totalRevenueCents:    number
