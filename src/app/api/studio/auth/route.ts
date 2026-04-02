@@ -12,7 +12,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-import { createSession, getSessionByToken } from '@/lib/studio-session'
 
 const CODE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -150,17 +149,24 @@ export async function POST(req: NextRequest) {
 
   // Generate auth token for this session
   const authToken = crypto.randomBytes(32).toString('hex')
+  const sessionId = crypto.randomBytes(8).toString('hex')
   const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 days
 
-  const session = createSession({
-    placeId,
-    placeName,
-    pluginVersion: pluginVer,
-    authToken,
-  })
+  // Try to create a session in the session store (non-fatal if it fails)
+  try {
+    const { createSession } = await import('@/lib/studio-session')
+    createSession({
+      placeId,
+      placeName,
+      pluginVersion: pluginVer,
+      authToken,
+    })
+  } catch (e) {
+    console.warn('[studio/auth] Session store unavailable:', (e as Error).message)
+  }
 
   return NextResponse.json(
-    { token: authToken, sessionId: session.sessionId, expiresAt },
+    { token: authToken, sessionId, expiresAt },
     { status: 200, headers: CORS },
   )
 }

@@ -420,6 +420,7 @@ function buildMcpServer(): McpServer {
 
   // ── generate-terrain ────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference with Zod v3
   mcp.registerTool(
     'generate-terrain',
     {
@@ -514,6 +515,7 @@ function buildMcpServer(): McpServer {
 
   // ── paint-terrain ───────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'paint-terrain',
     {
@@ -565,6 +567,7 @@ function buildMcpServer(): McpServer {
 
   // ── create-water ────────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'create-water',
     {

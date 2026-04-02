@@ -278,6 +278,8 @@ function buildMcpServer(): McpServer {
 
   // ── text-to-3d ─────────────────────────────────────────────────────────────
 
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference with Zod v3
   mcp.registerTool(
     'text-to-3d',
     {
@@ -337,6 +339,7 @@ function buildMcpServer(): McpServer {
 
   // ── generate-texture ────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'generate-texture',
     {
@@ -357,6 +360,7 @@ function buildMcpServer(): McpServer {
 
   // ── optimize-mesh ───────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'optimize-mesh',
     {

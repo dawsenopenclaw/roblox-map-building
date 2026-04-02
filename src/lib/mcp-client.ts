@@ -101,6 +101,30 @@ function buildDemoResult(
 const RETRY_DELAYS_MS = [500, 1_000, 2_000] as const
 const REQUEST_TIMEOUT_MS = 15_000
 
+/**
+ * Parses an MCP response body that may be either plain JSON or SSE
+ * (text/event-stream).  The StreamableHTTP transport wraps every response in
+ * SSE, so we need to extract the `data:` line and parse the embedded JSON.
+ */
+async function parseMcpResponseBody(res: Response): Promise<unknown> {
+  const contentType = res.headers.get('content-type') ?? ''
+
+  if (contentType.includes('text/event-stream')) {
+    const text = await res.text()
+    // SSE format: "event: message\ndata: {...}\n\n"
+    // Extract the last non-empty "data:" line.
+    const dataLine = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.startsWith('data:'))
+      .at(-1)
+    if (!dataLine) throw new Error('SSE response contained no data line')
+    return JSON.parse(dataLine.slice('data:'.length).trim())
+  }
+
+  return res.json()
+}
+
 async function httpCallWithRetry(
   url: string,
   body: z.infer<typeof mcpRequestSchema>,
@@ -108,7 +132,11 @@ async function httpCallWithRetry(
 ): Promise<McpSuccessResponse> {
   const res = await fetch(`${url}/mcp`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // StreamableHTTP transport requires both content types in Accept
+      Accept: 'application/json, text/event-stream',
+    },
     body:    JSON.stringify(body),
     signal:  AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
@@ -127,7 +155,7 @@ async function httpCallWithRetry(
     throw new Error(`MCP server at ${url} failed after ${attempt + 1} attempts: ${text}`)
   }
 
-  const raw: unknown = await res.json()
+  const raw: unknown = await parseMcpResponseBody(res)
 
   // Check for JSON-RPC error envelope first
   const errorParsed = mcpErrorResponseSchema.safeParse(raw)

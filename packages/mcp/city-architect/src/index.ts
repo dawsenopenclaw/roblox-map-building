@@ -490,6 +490,7 @@ function buildMcpServer(): McpServer {
 
   // ── plan-city ──────────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference with Zod v3
   mcp.registerTool(
     'plan-city',
     {
@@ -521,6 +522,7 @@ function buildMcpServer(): McpServer {
 
   // ── generate-building ──────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'generate-building',
     {
@@ -552,6 +554,7 @@ function buildMcpServer(): McpServer {
 
   // ── layout-district ────────────────────────────────────────────────────────
 
+  // @ts-ignore — TS2589: MCP SDK zod-compat deep type inference
   mcp.registerTool(
     'layout-district',
     {
