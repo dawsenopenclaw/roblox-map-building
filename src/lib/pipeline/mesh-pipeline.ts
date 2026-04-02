@@ -107,7 +107,7 @@ function enrichPrompt(prompt: string, type: string, style: string): string {
 export async function startMeshPipeline(
   params: StartMeshPipelineParams,
 ): Promise<StartMeshPipelineResult> {
-  const { userId, prompt, type, style, polyTarget, textured, tokensCost } = params
+  const { userId, prompt, type, style, polyTarget, tokensCost } = params
 
   // 1. Create the DB record up-front so the client has an ID to poll against
   const asset = await db.generatedAsset.create({
@@ -125,27 +125,25 @@ export async function startMeshPipeline(
   const enrichedPrompt = enrichPrompt(prompt, type, style)
   const artStyle       = toMeshyArtStyle(style)
 
-  // 2. Enqueue the first job — the worker picks it up and drives the rest
-  const jobId = await addJob({
-    type:       'mesh-generation',
-    prompt:     enrichedPrompt,
-    artStyle,
-    quality:    'standard',
-    polyTarget,
-    userId,
-    // Carry the DB asset ID so the worker can update it
-    // We store it in the job name suffix via metadata
-  }, {
-    // metadata for asset tracking — we tag the job with assetId via priority key
-    // (BullMQ doesn't have first-class metadata, so we pack assetId into the job
-    // via a custom field in the payload — see note in worker)
-  })
-
-  // 3. Update the record with the BullMQ job ID for cross-referencing
-  await db.generatedAsset.update({
-    where: { id: asset.id },
-    data:  { status: 'queued' },
-  })
+  // 2. Enqueue the first job — the worker picks it up and drives the rest.
+  //
+  // We extend the typed MeshGenerationPayload with a _assetId field so the
+  // worker can look up and update the GeneratedAsset record without a separate
+  // DB query. The Zod schema in job-queue.ts uses z.object() (not .strict()),
+  // so BullMQ serialises the extra field through without issues; the worker
+  // reads it back via the MeshGenerationPayloadWithAsset intersection type.
+  const jobId = await addJob(
+    {
+      type:       'mesh-generation',
+      prompt:     enrichedPrompt,
+      artStyle,
+      quality:    'standard',
+      polyTarget,
+      userId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      _assetId: asset.id,
+    } as any, // safe: BullMQ passes unknown fields through; worker reads _assetId
+  )
 
   console.log(`[mesh-pipeline] Started pipeline for asset ${asset.id} (job ${jobId})`)
 

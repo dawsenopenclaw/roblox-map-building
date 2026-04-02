@@ -16,3 +16,5 @@ export { ObjectList } from './ObjectList'
 
 export { Toolbar } from './Toolbar'
 export type { ToolMode, ToolbarProps } from './Toolbar'
+
+export { StudioConnectionBanner } from './StudioConnectionBanner'
