@@ -17,10 +17,28 @@
 import { spawn, execSync } from 'node:child_process'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(__dirname, '..')
+
+// ── Load .env.local into process.env (Next.js does this automatically, Node doesn't) ──
+for (const envFile of ['.env.local', '.env']) {
+  const envPath = resolve(ROOT, envFile)
+  if (existsSync(envPath)) {
+    const lines = readFileSync(envPath, 'utf8').split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const eqIndex = trimmed.indexOf('=')
+      if (eqIndex < 0) continue
+      const key = trimmed.slice(0, eqIndex).trim()
+      const val = trimmed.slice(eqIndex + 1).trim().replace(/^["']|["']$/g, '')
+      if (!process.env[key]) process.env[key] = val
+    }
+    console.log(`${'\x1b[32m'}✓${'\x1b[0m'} Loaded ${envFile}`)
+  }
+}
 
 // ── ANSI helpers ────────────────────────────────────────────────────────────
 const GREEN  = '\x1b[32m'
@@ -40,10 +58,13 @@ const warn = (msg) => console.log(`  ${YELLOW}⚠${RESET} ${msg}`)
 info('\n[1/5] Checking environment variables...')
 
 const REQUIRED_ENV = [
-  'ANTHROPIC_API_KEY',
   'CLERK_SECRET_KEY',
   'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
   'DATABASE_URL',
+]
+
+const SOFT_REQUIRED = [
+  { key: 'ANTHROPIC_API_KEY', fallback: 'AI chat will use demo mode — add key from console.anthropic.com' },
 ]
 
 const OPTIONAL_ENV = [
@@ -67,6 +88,14 @@ for (const key of REQUIRED_ENV) {
   } else {
     console.log(`  ${RED}✗${RESET} ${key} ${RED}MISSING${RESET}`)
     missingRequired = true
+  }
+}
+
+for (const { key, fallback } of SOFT_REQUIRED) {
+  if (process.env[key]) {
+    ok(key)
+  } else {
+    warn(`${key} not set — ${fallback}`)
   }
 }
 

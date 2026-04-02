@@ -2628,7 +2628,11 @@ export function EditorClient() {
   const [studioPolling, setStudioPolling] = useState(false)
   const studioIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Studio status polling — needs sessionId to get real status
+  // Studio status polling — on serverless, sessions are in-memory per Lambda.
+  // Polling /status hits random Lambdas that don't have the session, returning
+  // connected:false which causes a disconnect/reconnect loop.
+  // Fix: once connected, DON'T overwrite connected state from server responses.
+  // Only update non-connection fields (placeName, queueDepth, etc).
   const pollStudioStatus = useCallback(async () => {
     try {
       const sid = studioStatus.sessionId
@@ -2636,10 +2640,22 @@ export function EditorClient() {
       const res = await fetch(`/api/studio/status?sessionId=${sid}`)
       if (!res.ok) return
       const data = await res.json() as StudioStatus
-      // Preserve sessionId from our state (status endpoint may not return it)
-      setStudioStatus((prev) => ({ ...data, sessionId: data.sessionId ?? prev.sessionId }))
+      setStudioStatus((prev) => {
+        // If we're already connected, KEEP connected status regardless of
+        // what the server says (serverless can't reliably track sessions)
+        if (prev.connected) {
+          return {
+            ...prev,
+            // Only update informational fields, never overwrite connected
+            placeName: data.placeName ?? prev.placeName,
+            placeId: data.placeId ?? prev.placeId,
+            screenshotUrl: data.screenshotUrl ?? prev.screenshotUrl,
+          }
+        }
+        return { ...data, sessionId: data.sessionId ?? prev.sessionId }
+      })
     } catch {
-      // Network error — don't crash, just keep polling
+      // Network error — don't crash, don't disconnect
     }
   }, [studioStatus.sessionId])
 

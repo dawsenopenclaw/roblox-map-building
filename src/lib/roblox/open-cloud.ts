@@ -131,7 +131,7 @@ export async function uploadToRoblox(params: UploadToRobloxParams): Promise<Uplo
     },
     // Node 18+ fetch does not support FormData from the `form-data` package directly
     // so we convert to a Buffer first
-    body: await streamToBuffer(form),
+    body: await streamToBuffer(form) as unknown as BodyInit,
     signal: AbortSignal.timeout(120_000),
   })
 

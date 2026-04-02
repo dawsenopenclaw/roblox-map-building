@@ -130,8 +130,8 @@ async function processMeshGeneration(
   if (assetId) {
     await updateAssetStatus(assetId, 'optimizing', {
       meshyTaskId:  taskId,
-      meshUrl,
-      thumbnailUrl,
+      meshUrl:      meshUrl ?? undefined,
+      thumbnailUrl: thumbnailUrl ?? undefined,
       polyCount,
       albedoUrl:    textures?.albedo    ?? undefined,
       normalUrl:    textures?.normal    ?? undefined,

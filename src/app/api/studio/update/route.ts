@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       // Auto-recreate session on Vercel cold start
       const newSession = createSession({
         placeId: rawBody.placeId ?? 'unknown',
-        placeName: rawBody.placeName ?? 'Reconnected Session',
+        placeName: (rawBody as Record<string, unknown>).placeName as string ?? 'Reconnected Session',
         pluginVersion: '1.0.0',
         authToken: rawBody.sessionToken,
       })
