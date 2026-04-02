@@ -284,7 +284,7 @@ function buildMcpServer(): McpServer {
       title: 'Text to 3D',
       description:
         'Generate a Roblox-ready 3D mesh from a text prompt using Meshy AI. Polls until complete and returns the mesh URL, thumbnail, and polygon count.',
-      inputSchema: z.object({
+      inputSchema: {
         prompt: z.string().min(3).describe('Description of the 3D asset to generate'),
         style: z
           .enum(['realistic', 'stylized', 'lowpoly', 'roblox', 'cartoon', 'pbr', 'low_poly'])
@@ -301,7 +301,7 @@ function buildMcpServer(): McpServer {
           .boolean()
           .default(false)
           .describe('Use Claude to enrich the prompt before sending to Meshy'),
-      }),
+      },
     },
     async ({ prompt, style, polyTarget, enrichPromptWithAI }) => {
       const artStyle = ART_STYLE_MAP[style] ?? 'low-poly'
@@ -343,9 +343,9 @@ function buildMcpServer(): McpServer {
       title: 'Generate PBR Texture',
       description:
         'Generate a seamless PBR texture set (albedo, normal, roughness, metallic) via Fal AI for use in Roblox SurfaceAppearance.',
-      inputSchema: z.object({
+      inputSchema: {
         prompt: z.string().min(3).describe('Description of the material or surface to texture'),
-      }),
+      },
     },
     async ({ prompt }) => {
       const textures = await generatePbrTextures(prompt)
@@ -363,10 +363,10 @@ function buildMcpServer(): McpServer {
       title: 'Optimise Mesh',
       description:
         'Returns prioritised Roblox-specific mesh optimisation recommendations based on polygon count. No external API call — instant result.',
-      inputSchema: z.object({
+      inputSchema: {
         meshUrl: z.string().url().describe('URL of the mesh to analyse'),
         polyCount: z.number().int().min(0).describe('Current polygon count of the mesh'),
-      }),
+      },
     },
     async ({ meshUrl, polyCount }) => {
       const result = buildOptimisationRecommendations(polyCount)

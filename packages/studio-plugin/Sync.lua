@@ -53,7 +53,7 @@ local function resolveBaseUrl()
       Url    = LOCAL_URL .. "/api/health",
       Method = "GET",
     })
-    if res and res.StatusCode and res.StatusCode < 500 then
+    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
       _baseUrl = LOCAL_URL
     end
   end)
@@ -315,10 +315,11 @@ local function sendConnect()
   if not _token then return end
 
   local payload = {
-    placeId   = game.PlaceId,
-    jobId     = game.JobId,
-    pluginVer = "1.0.0",
-    sessionId = _sessionId,
+    token         = _token,
+    placeId       = game.PlaceId,
+    placeName     = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+    pluginVersion = "1.0.0",
+    sessionId     = _sessionId,
   }
 
   local result = httpPost("/api/studio/connect", payload)
@@ -341,6 +342,9 @@ local function pollSync()
   local path = "/api/studio/sync?lastSync=" .. tostring(math.floor(_lastSync))
   if _sessionId then
     path = path .. "&sessionId=" .. _sessionId
+  end
+  if _token then
+    path = path .. "&token=" .. _token
   end
 
   local result = httpGet(path)

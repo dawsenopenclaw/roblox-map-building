@@ -496,7 +496,7 @@ function buildMcpServer(): McpServer {
       title: 'Plan City',
       description:
         'Use Claude to generate a complete city layout plan with zones, roads, building positions, and color palette. Returns structured JSON ready for Studio insertion.',
-      inputSchema: z.object({
+      inputSchema: {
         cityType: z
           .string()
           .min(2)
@@ -509,7 +509,7 @@ function buildMcpServer(): McpServer {
           .string()
           .default('modern')
           .describe('Visual style (e.g. "modern", "cyberpunk", "fantasy", "industrial")'),
-      }),
+      },
     },
     async ({ cityType, size, style }) => {
       const layout = await planCity({ cityType, size, style })
@@ -527,7 +527,7 @@ function buildMcpServer(): McpServer {
       title: 'Generate Building',
       description:
         'Design a single building spec using Claude (dimensions, materials, style). Optionally kick off a Meshy 3D mesh generation task.',
-      inputSchema: z.object({
+      inputSchema: {
         buildingType: z
           .string()
           .min(2)
@@ -540,7 +540,7 @@ function buildMcpServer(): McpServer {
           .boolean()
           .default(false)
           .describe('Start a Meshy text-to-3D task and return the task ID'),
-      }),
+      },
     },
     async ({ buildingType, style, kickOffMesh }) => {
       const spec = await generateBuilding({ buildingType, style, kickOffMesh })
@@ -558,7 +558,7 @@ function buildMcpServer(): McpServer {
       title: 'Layout District',
       description:
         'Generate an array of building placements with positions, rotations, and scales for a given district type. No AI call — instant deterministic result.',
-      inputSchema: z.object({
+      inputSchema: {
         districtType: z
           .enum(['commercial', 'residential', 'industrial', 'park', 'civic', 'mixed'])
           .describe('Type of district to populate'),
@@ -582,7 +582,7 @@ function buildMcpServer(): McpServer {
           .string()
           .default('modern')
           .describe('Visual style applied to all buildings'),
-      }),
+      },
     },
     async ({ districtType, width, height, density, style }) => {
       const buildings = layoutDistrict({ districtType, width, height, density, style })

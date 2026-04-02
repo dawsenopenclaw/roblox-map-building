@@ -2,7 +2,7 @@
   ForjeGames Studio Plugin — Main Entry
   Dark theme: background #1a1a1a, gold accents #c9a227
 
-  Auth flow: user enters 6-char code from forjegames.com/settings/studio
+  Auth flow: user enters 6-char code from forjegames.com/editor
   Sync loop: polls /api/studio/sync every 2-5s, applies server changes
   execute_luau: handled inside Sync.lua via loadstring + pcall
 --]]
@@ -267,7 +267,7 @@ local function buildFallbackUI()
   -- Sub-label: instructions when not authed
   local instrLabel = Instance.new("TextLabel")
   instrLabel.Name                  = "InstrLabel"
-  instrLabel.Text                  = "Get your code at forjegames.com/settings/studio"
+  instrLabel.Text                  = "Get your code at forjegames.com/editor"
   instrLabel.Font                  = Enum.Font.Gotham
   instrLabel.TextSize              = 10
   instrLabel.TextColor3            = COLORS.textDim

@@ -365,6 +365,53 @@ Valid materials: ${ROBLOX_MATERIALS.join(', ')}`,
 }
 
 // ---------------------------------------------------------------------------
+// Noise helpers (deterministic, no external deps)
+// ---------------------------------------------------------------------------
+
+function createRng(seed: number): () => number {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff
+    return (s >>> 0) / 0x100000000
+  }
+}
+
+function seedHash(nx: number, nz: number, octave: number): number {
+  const ix = Math.floor(nx * 1000)
+  const iz = Math.floor(nz * 1000)
+  let h = (ix * 374761393 + iz * 668265263 + octave * 2246822519) >>> 0
+  h ^= h >>> 13
+  h = Math.imul(h, 1540483477) >>> 0
+  h ^= h >>> 15
+  return h / 0x100000000
+}
+
+function noiseOctaves(
+  _rng: () => number,
+  nx: number,
+  nz: number,
+  profile: string,
+): number {
+  const octaves = profile === 'mountainous' ? 5 : profile === 'hilly' ? 4 : 3
+  let value = 0
+  let amplitude = 1
+  let frequency = 1
+  let maxValue = 0
+  for (let i = 0; i < octaves; i++) {
+    const h = seedHash(nx * frequency, nz * frequency, i) * 2 - 1
+    value += amplitude * h * Math.sin(nx * frequency * Math.PI) * Math.cos(nz * frequency * Math.PI)
+    maxValue += amplitude
+    amplitude *= 0.5
+    frequency *= 2
+  }
+  const normalized = value / maxValue
+  if (profile === 'flat') return normalized * 0.2
+  if (profile === 'rolling') return normalized * 0.6
+  if (profile === 'hilly') return normalized * 0.8
+  return normalized
+}
+
+// ---------------------------------------------------------------------------
 // MCP server — tool registration
 // ---------------------------------------------------------------------------
 
@@ -379,7 +426,7 @@ function buildMcpServer(): McpServer {
       title: 'Generate Terrain',
       description:
         'Generate a Roblox Luau script that creates terrain using Terrain:FillBlock and FillBall. Pass the returned luauScript to the Studio plugin to instantly create the terrain.',
-      inputSchema: z.object({
+      inputSchema: {
         biome: z
           .string()
           .min(2)
@@ -397,7 +444,7 @@ function buildMcpServer(): McpServer {
         originZ: z.number().default(0).describe('World Z origin in studs'),
         voxelSize: z.number().int().default(4).describe('Voxel size in studs (4 = default Roblox terrain)'),
         seed: z.number().optional().describe('Seed for reproducible noise'),
-      }),
+      },
     },
     async ({ biome, size, features, originX, originY, originZ, voxelSize, seed }) => {
       const meta = await getBiomeMeta(
@@ -473,7 +520,7 @@ function buildMcpServer(): McpServer {
       title: 'Paint Terrain',
       description:
         'Generate a Roblox Luau script that paints a rectangular region of terrain with a specified Roblox material using Terrain:FillBlock.',
-      inputSchema: z.object({
+      inputSchema: {
         material: z
           .string()
           .describe(`Roblox terrain material. Valid: ${ROBLOX_MATERIALS.join(', ')}`),
@@ -488,7 +535,7 @@ function buildMcpServer(): McpServer {
         originZ: z.number().default(0),
         voxelSize: z.number().int().default(4),
         terrainHeight: z.number().default(20).describe('Height of each painted voxel column in studs'),
-      }),
+      },
     },
     async ({ material, region, originX, originY, originZ, voxelSize, terrainHeight }) => {
       if (!ROBLOX_MATERIALS.includes(material)) {
@@ -524,7 +571,7 @@ function buildMcpServer(): McpServer {
       title: 'Create Water',
       description:
         'Generate a Roblox Luau script that creates water terrain using Terrain:FillBlock (ocean/river) or Terrain:FillBall (lake).',
-      inputSchema: z.object({
+      inputSchema: {
         waterType: z
           .enum(['ocean', 'river', 'lake'])
           .describe('Type of water body to create'),
@@ -534,7 +581,7 @@ function buildMcpServer(): McpServer {
         width: z.number().default(256).describe('Water width in studs (X axis)'),
         depth: z.number().default(20).describe('Water depth in studs'),
         length: z.number().default(256).describe('Water length in studs (Z axis)'),
-      }),
+      },
     },
     async ({ waterType, x, y, z, width, depth, length }) => {
       const luauScript = generateWaterLuau({ waterType, x, y, z, width, depth, length })

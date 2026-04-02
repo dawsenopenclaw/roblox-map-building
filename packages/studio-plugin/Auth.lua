@@ -2,7 +2,7 @@
   ForjeGames Studio Plugin — Auth.lua
 
   Simple 6-character code auth flow:
-  1. User visits forjegames.com/settings/studio → sees a 6-character code
+  1. User visits forjegames.com/editor → sees a 6-character code
   2. User enters the code in the plugin TextBox
   3. Plugin POSTs /api/studio/auth with { code }
   4. Server returns { token, sessionId, expiresAt }
@@ -28,7 +28,7 @@ local function getBaseUrl()
       Url    = LOCAL_URL .. "/api/health",
       Method = "GET",
     })
-    if res and res.StatusCode and res.StatusCode < 500 then
+    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
       _baseUrl = LOCAL_URL
     end
   end)
@@ -42,7 +42,7 @@ end
 -- ============================================================
 function Auth.exchangeCode(code, pluginRef, callback)
   if not code or #code < 6 then
-    callback(nil, nil, "Please enter the 6-character code from forjegames.com/settings/studio")
+    callback(nil, nil, "Please enter the 6-character code from forjegames.com/editor")
     return
   end
 
@@ -91,7 +91,7 @@ function Auth.exchangeCode(code, pluginRef, callback)
       end
 
     elseif status == 400 then
-      callback(nil, nil, "Invalid or expired code. Get a fresh code from forjegames.com/settings/studio")
+      callback(nil, nil, "Invalid or expired code. Get a fresh code from forjegames.com/editor")
 
     elseif status == 429 then
       callback(nil, nil, "Too many attempts. Wait a moment and try again.")

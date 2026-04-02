@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSession } from '@/lib/studio-session'
+import { createSession, getSessionByToken } from '@/lib/studio-session'
 import { studioConnectSchema, parseBody } from '@/lib/validations'
 
 interface ConnectBody {
@@ -38,14 +38,18 @@ export async function POST(req: NextRequest) {
   }
   const body = parsedBody.data
 
-  // Token validation — compare against env secret (or allow any non-empty token
-  // in development when STUDIO_PLUGIN_SECRET is not set)
+  // Token validation — accept either a static env secret OR a valid session auth token.
+  // The plugin sends its auth token (from code exchange) in body.token.
   const secret = process.env.STUDIO_PLUGIN_SECRET
   if (secret && body.token !== secret) {
-    return NextResponse.json(
-      { error: 'invalid_token' },
-      { status: 401, headers: CORS_HEADERS },
-    )
+    // Not the static secret — check if it's a valid session auth token
+    const existingSession = getSessionByToken(body.token)
+    if (!existingSession) {
+      return NextResponse.json(
+        { error: 'invalid_token' },
+        { status: 401, headers: CORS_HEADERS },
+      )
+    }
   }
 
   const session = createSession({

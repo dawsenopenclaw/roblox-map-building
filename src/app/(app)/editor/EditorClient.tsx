@@ -664,7 +664,7 @@ function StudioConnectBanner({ onDismiss, autoConnectSignal = 0 }: StudioConnect
   const generateCode = async () => {
     setPhase('loading')
     try {
-      const res = await fetch('/api/studio/auth', { method: 'POST' })
+      const res = await fetch('/api/studio/auth?action=generate')
       if (!res.ok) throw new Error('non-2xx response')
       const data = await res.json() as { code?: string }
       if (typeof data.code === 'string' && data.code.length > 0) {
@@ -2703,7 +2703,7 @@ export function EditorClient() {
     try {
       const res = await fetch('/api/studio/auth?action=generate')
       if (!res.ok) throw new Error('Failed to generate code')
-      const data = await res.json() as { code: string }
+      const data = await res.json() as { code: string; token?: string }
       setConnectCode(data.code)
       setConnectTimer(300)
       setConnectFlow('code')
@@ -2713,24 +2713,23 @@ export function EditorClient() {
         setConnectTimer((t) => {
           if (t <= 1) {
             stopConnectPolling()
-            setConnectFlow('idle')
-            return 0
+            setTimeout(() => handleConnectToStudio(), 100)
+            return 300
           }
           return t - 1
         })
       }, 1000)
 
-      // Poll for claim
+      // Poll for any active session (plugin creates one when it claims the code)
       connectCodePollRef.current = setInterval(async () => {
         try {
-          const statusRes = await fetch(`/api/studio/auth?action=status&code=${data.code}`)
-          if (!statusRes.ok) return
-          const statusData = await statusRes.json() as { claimed: boolean; sessionId?: string }
-          if (statusData.claimed) {
+          const sessRes = await fetch('/api/studio/sessions')
+          if (!sessRes.ok) return
+          const sessData = await sessRes.json() as { sessions: Array<{ sessionId: string; connected: boolean; placeName?: string }> }
+          const active = sessData.sessions?.find((s) => s.connected)
+          if (active) {
             stopConnectPolling()
-            if (statusData.sessionId) {
-              setStudioStatus((prev) => ({ ...prev, sessionId: statusData.sessionId }))
-            }
+            setStudioStatus((prev) => ({ ...prev, sessionId: active.sessionId, connected: true, placeName: active.placeName }))
             setConnectFlow('connected')
             handleStartPolling()
           }

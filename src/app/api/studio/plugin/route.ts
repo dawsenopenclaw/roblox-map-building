@@ -281,7 +281,7 @@ codeSectionLayout.Padding   = UDim.new(0, 8)
 local instrLabel = Instance.new("TextLabel", codeSection)
 instrLabel.Size             = UDim2.new(1, 0, 0, 36)
 instrLabel.BackgroundTransparency = 1
-instrLabel.Text             = "Go to forjegames.com/connect to get your 6-character code, then enter it below:"
+instrLabel.Text             = "Go to forjegames.com/editor to get your 6-character code, then enter it below:"
 instrLabel.TextColor3       = Color3.fromRGB(160, 160, 160)
 instrLabel.Font             = Enum.Font.Gotham
 instrLabel.TextSize         = 11
@@ -424,7 +424,7 @@ local function setUI(state)
 		placeIdLabel.Text          = "Place ID: " .. placeId
 		urlLabel.Text              = BASE_URL
 		-- Toolbar
-		mainBtn.Text               = "ForjeGames (On)"
+		-- mainBtn is a PluginToolbarButton — cannot set .Text after creation
 		errLabel.Text              = ""
 
 	elseif state == "connecting" then
@@ -450,7 +450,7 @@ local function setUI(state)
 		connectBtn.Active          = true
 		connectBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
 		disconnectBtn.Visible      = false
-		mainBtn.Text               = "ForjeGames"
+		-- mainBtn is a PluginToolbarButton — cannot set .Text after creation
 	end
 end
 
@@ -655,7 +655,7 @@ end
 
 connectBtn.MouseButton1Click:Connect(function()
 	local code = string.upper(string.gsub(codeInput.Text, "%s+", ""))
-	if #code < 4 then
+	if #code < 6 then
 		errLabel.Text = "Enter the 6-character code from the website."
 		return
 	end

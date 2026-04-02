@@ -43,7 +43,14 @@ export async function GET(req: NextRequest) {
   let session = sessionId ? await getSession(sessionId) : undefined
 
   if (!session) {
-    const token = searchParams.get('token')
+    // Fall back to token — check query param first, then Authorization header
+    let token = searchParams.get('token')
+    if (!token) {
+      const authHeader = req.headers.get('authorization') ?? ''
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7)
+      }
+    }
     if (token) {
       session = getSessionByToken(token)
       if (session) {

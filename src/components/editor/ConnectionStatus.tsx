@@ -19,6 +19,8 @@ interface ConnectionStatusProps {
   compact?: boolean
   /** Override the auto-detected state (for storybook/demo) */
   overrideState?: ConnectionState
+  /** Session ID to poll status for */
+  sessionId?: string | null
   className?: string
 }
 
@@ -46,7 +48,7 @@ const LABELS: Record<ConnectionState, string> = {
 // ---------------------------------------------------------------------------
 // ConnectionStatus component
 // ---------------------------------------------------------------------------
-export function ConnectionStatus({ compact = false, overrideState, className = '' }: ConnectionStatusProps) {
+export function ConnectionStatus({ compact = false, overrideState, sessionId, className = '' }: ConnectionStatusProps) {
   const [state, setState]       = useState<ConnectionState>('connecting')
   const [status, setStatus]     = useState<StatusResponse | null>(null)
   const [showHelp, setShowHelp] = useState(false)
@@ -60,7 +62,8 @@ export function ConnectionStatus({ compact = false, overrideState, className = '
 
     async function poll() {
       try {
-        const res = await fetch('/api/studio/status', { credentials: 'include' })
+        const url = sessionId ? `/api/studio/status?sessionId=${sessionId}` : '/api/studio/status'
+        const res = await fetch(url, { credentials: 'include' })
         if (!res.ok) {
           setState('disconnected')
           return

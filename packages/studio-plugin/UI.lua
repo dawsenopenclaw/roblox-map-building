@@ -231,8 +231,11 @@ function UI.build(widget, state, COLORS, pluginRef)
   syncLayout.Parent         = syncCard
 
   local syncPadding = Instance.new("UIPadding")
-  syncPadding.PaddingAll = UDim.new(0, 10)
-  syncPadding.Parent     = syncCard
+  syncPadding.PaddingTop    = UDim.new(0, 10)
+  syncPadding.PaddingBottom = UDim.new(0, 10)
+  syncPadding.PaddingLeft   = UDim.new(0, 10)
+  syncPadding.PaddingRight  = UDim.new(0, 10)
+  syncPadding.Parent        = syncCard
 
   local connStatusLabel = label(
     syncCard, "ConnStatus", "Studio Sync: Disconnected",
