@@ -678,8 +678,7 @@ local function executeCommand(cmd)
 		local promptLabel = (data.prompt or "build"):sub(1, 28)
 		showBuildProgress("Building: " .. promptLabel .. "...")
 
-		-- Save a waypoint BEFORE execution (pre-build bookend for clean undo)
-		-- Wrap in ChangeHistoryService recording for atomic undo
+		-- ── ChangeHistoryService: begin atomic undo recording ──────────────
 		local recordId = nil
 		pcall(function()
 			recordId = ChangeHistoryService:TryBeginRecording("ForjeGames: " .. (data.prompt or "build"):sub(1, 40))
@@ -689,30 +688,53 @@ local function executeCommand(cmd)
 			pcall(function() ChangeHistoryService:SetWaypoint("ForjeGames: pre-build") end)
 		end
 
-		-- Expose shared state as globals so AI code can access them
-		_G._forje_state = _forje_state
-		_G._forje_cam = workspace.CurrentCamera
+		-- ── Shared state: persist across multi-step builds ─────────────────
+		-- AI code accesses this via: local _forje_state = _G._forje_state
+		if not _G._forje_state then _G._forje_state = {} end
+		_forje_state = _G._forje_state  -- keep local ref in sync
+
+		-- ── Camera-relative spawn position (sp) ────────────────────────────
+		-- AI code can use "sp" as a Vector3 anchor point at the camera target,
+		-- snapped to ground level via raycast. This prevents builds at origin.
+		local spawnPos = Vector3.new(0, 0, 0)
+		pcall(function()
+			local cam = workspace.CurrentCamera
+			local camPos = cam.CFrame.Position
+			local lookVec = cam.CFrame.LookVector
+			-- Project forward 25 studs from camera
+			local projected = camPos + lookVec * 25
+			-- Raycast downward to find ground (start 50 studs above, cast 200 down)
+			local rayOrigin = projected + Vector3.new(0, 50, 0)
+			local rayDir = Vector3.new(0, -200, 0)
+			local raycastParams = RaycastParams.new()
+			raycastParams.FilterDescendantsInstances = {cam}
+			raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+			local hit = workspace:Raycast(rayOrigin, rayDir, raycastParams)
+			local groundY = hit and hit.Position.Y or projected.Y
+			spawnPos = Vector3.new(projected.X, groundY, projected.Z)
+		end)
+
+		-- Expose all helpers as globals so AI code can reference them directly
+		_G._forje_state     = _G._forje_state
+		_G._forje_sp        = spawnPos        -- camera-relative ground anchor
+		_G._forje_cam       = workspace.CurrentCamera
 		_G._forje_selection = game:GetService("Selection")
 
-		local fn, compErr = loadstring(code)
+		-- Prepend sp + _forje_state bootstrap so AI code never has to declare them
+		local preamble = table.concat({
+			"if not _G._forje_state then _G._forje_state = {} end",
+			"local _forje_state = _G._forje_state",
+			"local sp = _G._forje_sp or Vector3.new(0, 0, 0)",
+		}, "\n") .. "\n"
+
+		local fullCode = preamble .. code
+
+		-- ── Compile ────────────────────────────────────────────────────────
+		local fn, compErr = loadstring(fullCode)
 		if not fn then
 			local errMsg = "COMPILE_ERROR: " .. tostring(compErr)
 			warn("[ForjeGames] Compile error: " .. tostring(compErr))
 			hideBuildProgress(false, tostring(compErr):sub(1, 40))
-			reportResult(cmdId, cmdType, false, errMsg)
-			if recordId then pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end) end
-			return
-		end
-
-		-- Count instances before execution for verification
-		local beforeCount = #workspace:GetDescendants()
-
-		local ok, runErr = pcall(fn)
-		if not ok then
-			local errMsg = "RUNTIME_ERROR: " .. tostring(runErr)
-			warn("[ForjeGames] Runtime error: " .. tostring(runErr))
-			hideBuildProgress(false, tostring(runErr):sub(1, 40))
-			-- Rollback on failure -- undo partial build
 			if recordId then
 				pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end)
 			end
@@ -720,12 +742,117 @@ local function executeCommand(cmd)
 			return
 		end
 
-		-- Finish recording + post-build waypoint (second bookend for clean undo range)
+		-- Snapshot workspace children before execution so we can identify new top-level objects
+		local beforeChildren = {}
+		for _, child in ipairs(workspace:GetChildren()) do
+			beforeChildren[child] = true
+		end
+		local beforeCount = #workspace:GetDescendants()
+
+		-- ── Execute (protected) ────────────────────────────────────────────
+		local ok, runErr = pcall(fn)
+
+		if not ok then
+			local errMsg = "RUNTIME_ERROR: " .. tostring(runErr)
+			warn("[ForjeGames] Runtime error: " .. tostring(runErr))
+			hideBuildProgress(false, tostring(runErr):sub(1, 40))
+
+			-- Rollback: cancel recording reverts all changes made during this run
+			if recordId then
+				pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end)
+			else
+				-- No recording available — manually destroy any partially created top-level objects
+				pcall(function()
+					for _, child in ipairs(workspace:GetChildren()) do
+						if not beforeChildren[child] and not PROTECTED[child.Name] then
+							child:Destroy()
+						end
+					end
+				end)
+			end
+
+			reportResult(cmdId, cmdType, false, errMsg)
+			return
+		end
+
+		-- ── Commit ChangeHistory recording ─────────────────────────────────
 		if recordId then
 			pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Commit) end)
 		else
-			ChangeHistoryService:SetWaypoint("ForjeGames: post-build")
+			pcall(function() ChangeHistoryService:SetWaypoint("ForjeGames: post-build") end)
 		end
+
+		-- ── Post-build: identify new model, select + focus camera ──────────
+		local newModel = nil
+		local partCount = 0
+		local modelName = "Build"
+		local boundMin = {0, 0, 0}
+		local boundMax = {0, 0, 0}
+
+		pcall(function()
+			-- Find the first new top-level child added to workspace
+			for _, child in ipairs(workspace:GetChildren()) do
+				if not beforeChildren[child] and not PROTECTED[child.Name] then
+					if child:IsA("Model") or child:IsA("BasePart") or child:IsA("Folder") then
+						newModel = child
+						break
+					end
+				end
+			end
+
+			if newModel then
+				modelName = newModel.Name or "Build"
+
+				-- Count parts
+				if newModel:IsA("BasePart") then
+					partCount = 1
+					boundMin = {newModel.Position.X, newModel.Position.Y, newModel.Position.Z}
+					boundMax = boundMin
+				else
+					local parts = {}
+					local minX, minY, minZ =  math.huge,  math.huge,  math.huge
+					local maxX, maxY, maxZ = -math.huge, -math.huge, -math.huge
+					for _, desc in ipairs(newModel:GetDescendants()) do
+						if desc:IsA("BasePart") then
+							partCount = partCount + 1
+							local p = desc.Position
+							if p.X < minX then minX = p.X end
+							if p.Y < minY then minY = p.Y end
+							if p.Z < minZ then minZ = p.Z end
+							if p.X > maxX then maxX = p.X end
+							if p.Y > maxY then maxY = p.Y end
+							if p.Z > maxZ then maxZ = p.Z end
+						end
+					end
+					if partCount > 0 then
+						boundMin = {math.floor(minX * 10 + 0.5) / 10, math.floor(minY * 10 + 0.5) / 10, math.floor(minZ * 10 + 0.5) / 10}
+						boundMax = {math.floor(maxX * 10 + 0.5) / 10, math.floor(maxY * 10 + 0.5) / 10, math.floor(maxZ * 10 + 0.5) / 10}
+					end
+				end
+
+				-- Select the new model in Studio's selection
+				local Selection = game:GetService("Selection")
+				Selection:Set({newModel})
+
+				-- Focus camera on the new model's center
+				local cx = (boundMin[1] + boundMax[1]) / 2
+				local cy = (boundMin[2] + boundMax[2]) / 2
+				local cz = (boundMin[3] + boundMax[3]) / 2
+				local span = math.max(
+					boundMax[1] - boundMin[1],
+					boundMax[2] - boundMin[2],
+					boundMax[3] - boundMin[3],
+					10  -- minimum distance so camera doesn't clip into small objects
+				)
+				local cam = workspace.CurrentCamera
+				local camDist = span * 1.5
+				-- Orbit slightly above and in front of the model
+				cam.CFrame = CFrame.new(
+					Vector3.new(cx + camDist * 0.6, cy + camDist * 0.4, cz + camDist * 0.6),
+					Vector3.new(cx, cy, cz)
+				)
+			end
+		end)
 
 		-- Show Done! in the widget progress bar
 		hideBuildProgress(true, nil)
@@ -734,9 +861,8 @@ local function executeCommand(cmd)
 		local afterCount = #workspace:GetDescendants()
 		local created = afterCount - beforeCount
 
-		-- Report success with verification data
+		-- Report success with enriched metadata
 		reportResult(cmdId, cmdType, true, nil)
-		-- Send enriched result + screenshotReady so website triggers screenshot poll
 		local _sid = sessionId
 		local _tok = authToken
 		task.spawn(function()
@@ -749,6 +875,11 @@ local function executeCommand(cmd)
 					type             = "command_result",
 					success          = true,
 					instancesCreated = created,
+					partCount        = partCount,
+					modelName        = modelName,
+					boundMin         = boundMin,
+					boundMax         = boundMax,
+					spawnPos         = {spawnPos.X, spawnPos.Y, spawnPos.Z},
 					screenshotReady  = true,
 					timestamp        = os.time(),
 				}},

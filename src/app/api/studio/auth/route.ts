@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
           sessionId: claim.sessionId,
           placeName: claim.placeName,
           placeId: claim.placeId,
-          jwt: claim.jwt ?? null,
+          jwt: (claim as Record<string, unknown>).jwt ?? null,
         },
         { status: 200, headers: CORS },
       )

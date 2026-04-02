@@ -54,6 +54,8 @@ import { OnboardingOverlay, useOnboarding } from '@/components/editor/Onboarding
 import { AIContextPanel } from '@/components/editor/AIContextPanel'
 import { CodePreview } from '@/components/editor/CodePreview'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
+import { getContextualEnhancements } from '@/lib/ai/build-enhancer'
+import type { Enhancement } from '@/lib/ai/build-enhancer'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -2480,7 +2482,7 @@ export function EditorClient() {
     {
       id: uid(),
       role: 'assistant',
-      content: "Hey! I'm Forje — your game dev partner. Tell me what you want to build, or pick a quick action below to get started.",
+      content: "Hey! I'm Forje — your game dev partner. Hit the mic and say \"build me a castle\" or type what you want. I'll build it right into Studio with pro details — window depth, lighting, plants, the works. Let's make something insane.",
       timestamp: new Date(),
     },
   ])
@@ -2566,9 +2568,19 @@ export function EditorClient() {
     if (editingProjectName) projectNameInputRef.current?.select()
   }, [editingProjectName])
 
+  const submitRef = useRef<((text: string) => void) | null>(null)
   const handleVoiceResult = useCallback((text: string) => {
-    setInput((prev) => (prev ? prev + ' ' + text : text))
-    textareaRef.current?.focus()
+    if (!text.trim()) return
+    // Auto-submit voice commands that sound like build requests
+    const isBuildCommand = /^(build|create|make|add|place|generate|spawn|put|drop|give me|set up|design)/i.test(text.trim())
+    if (isBuildCommand && submitRef.current) {
+      // Auto-send build commands immediately — voice-first experience
+      submitRef.current(text.trim())
+    } else {
+      // For questions/conversation, put in input so user can review
+      setInput((prev) => (prev ? prev + ' ' + text : text))
+      textareaRef.current?.focus()
+    }
   }, [])
 
   const { listening, supported, start, stop } = useSpeechRecognition(handleVoiceResult)
@@ -2795,7 +2807,20 @@ export function EditorClient() {
         const finalSuggestions = (data.suggestions && data.suggestions.length > 0)
           ? data.suggestions
           : inlineSuggestions
-        setSuggestedReplies(finalSuggestions)
+
+        // Generate professional enhancement suggestions for this build and merge with
+        // any suggestions the API returned — enhancements appear after API suggestions.
+        if (responseText) {
+          const enhancements = getContextualEnhancements(trimmed, responseText, 4)
+          if (enhancements.length > 0) {
+            const enhancementPrompts = enhancements.map((e: Enhancement) => e.prompt)
+            setSuggestedReplies([...finalSuggestions, ...enhancementPrompts].slice(0, 6))
+          } else {
+            setSuggestedReplies(finalSuggestions)
+          }
+        } else {
+          setSuggestedReplies(finalSuggestions)
+        }
 
         setTotalTokens((prev) => prev + tokensUsed)
 
@@ -2974,12 +2999,15 @@ export function EditorClient() {
     return null
   }, [messages])
 
+  // Keep submitRef in sync so voice auto-submit works
+  useEffect(() => { submitRef.current = submit }, [submit])
+
   // ── Helper: clear conversation ────────────────────────────────────────────
   const clearConversation = useCallback(() => {
     setMessages([{
       id: uid(),
       role: 'assistant',
-      content: "Hey! I'm Forje — your game dev partner. Tell me what you want to build, or pick a quick action below to get started.",
+      content: "Hey! I'm Forje — your game dev partner. Hit the mic and say \"build me a castle\" or type what you want. I'll build it right into Studio with pro details — window depth, lighting, plants, the works. Let's make something insane.",
       timestamp: new Date(),
     }])
     setSuggestedReplies([])

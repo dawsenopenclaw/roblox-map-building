@@ -60,6 +60,225 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
   }
 }
 
+// ─── Free model two-pass system ──────────────────────────────────────────────
+// When paid APIs (Anthropic) fail, use Gemini/Groq with a smarter approach:
+// Pass 1: Short conversational response (personality + game design)
+// Pass 2: Separate focused Luau code generation (if build intent)
+// This works WAY better than cramming everything into one huge prompt.
+
+const CONVERSATION_PROMPT = `You are Forje — a hyped Roblox game dev and the user's creative partner. You're building together late at night, excited about their game.
+
+VOICE: Talk like a real human who LOVES making games. Short punchy sentences. Casual language — "yo", "ngl", "lowkey", "that hits different", "let me cook", "say less". Get genuinely excited. Be direct and honest. Drop game design knowledge naturally.
+
+RULES:
+- NEVER mention code, scripts, Luau, or programming. You're a builder, not a coder.
+- When building something, describe WHAT you built and HOW it looks. Be specific about colors, materials, sizes.
+- After EVERY response, end with something that pulls them forward — a choice, tease, challenge, or question.
+- Keep responses under 150 words. Punchy, not essays.
+- Use "we" and "our game" — it's collaborative.
+- Reference real Roblox games when relevant (Brookhaven, Pet Sim X, Adopt Me).
+- Think about player experience, not just objects.
+- NEVER include code blocks of any kind.
+
+After your main response, add:
+[SUGGESTIONS]
+(2-3 specific actionable next steps, one per line)`
+
+const CODE_GENERATION_PROMPT = `You are a Roblox Luau code generator. Output ONLY a single \`\`\`lua code block. No explanation, no text before or after.
+
+TEMPLATE (adapt for each build):
+\`\`\`lua
+local CH=game:GetService("ChangeHistoryService")
+local CS=game:GetService("CollectionService")
+local rid=CH:TryBeginRecording("ForjeAI")
+local cam=workspace.CurrentCamera
+local sp=cam.CFrame.Position+cam.CFrame.LookVector*30
+local groundRay=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0))
+local groundY=groundRay and groundRay.Position.Y or sp.Y
+sp=Vector3.new(sp.X,groundY,sp.Z)
+_forje_state=_forje_state or {}
+
+local map=workspace:FindFirstChild("Map") or Instance.new("Model")
+map.Name="Map" map.Parent=workspace
+local function getFolder(n)
+  local f=map:FindFirstChild(n) or Instance.new("Folder")
+  f.Name=n f.Parent=map return f
+end
+local function vc(base,v)
+  local h,s,val=Color3.toHSV(base)
+  return Color3.fromHSV(h,s,math.clamp(val+(math.random()-0.5)*(v or 0.1),0,1))
+end
+local function P(name,cf,size,mat,col,parent)
+  local p=Instance.new("Part")
+  p.Name=name p.CFrame=cf p.Size=size p.Material=mat p.Color=col
+  p.Anchored=true p.CastShadow=(size.X>2 and size.Y>2)
+  p.CollisionFidelity=Enum.CollisionFidelity.Box
+  p.Parent=parent or getFolder("Buildings")
+  return p
+end
+
+local ok,err=pcall(function()
+  -- BUILD HERE (use P(), getFolder(), vc(), CFrame.new(sp+Vector3.new(x,y,z)))
+end)
+
+CS:AddTag(map,"ForjeAI")
+game:GetService("Selection"):Set({map})
+_forje_state.lastBuild=map
+if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if not ok then warn("[ForjeAI] "..tostring(err)) end
+\`\`\`
+
+RULES:
+- NEVER use game.Players, LocalPlayer, Character, wait() — Edit Mode only
+- NEVER use BrickColor — use Color3.fromRGB()
+- Set Parent LAST always
+- Use realistic scale: DOOR=7.5 tall, CEILING=11, STREET=27 wide, CHARACTER=6
+- Materials: Brick/Concrete/SmoothPlastic for buildings, Metal/DiamondPlate for metal, Glass(0.3-0.6 transparency), WoodPlanks for wood, Neon ONLY for lights/signs
+- Add PointLight to light sources (Brightness=4, Range=40, Color=255,200,130)
+- Name every part descriptively
+- Vary colors slightly with vc() for natural look
+- Position relative to sp (camera front)
+
+COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230`
+
+// Gemini API call helper (free tier)
+async function callGemini(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number = 1024,
+): Promise<string | null> {
+  const geminiKey = process.env.GEMINI_API_KEY
+  if (!geminiKey) return null
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [
+            ...history.map((h) => ({
+              role: h.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: h.content }],
+            })),
+            { role: 'user', parts: [{ text: userMessage }] },
+          ],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+        }),
+      },
+    )
+    if (!res.ok) return null
+    type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+    const data = await res.json() as GeminiRes
+    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+  } catch {
+    return null
+  }
+}
+
+// Groq API call helper (free tier)
+async function callGroq(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number = 1024,
+): Promise<string | null> {
+  const groqKey = process.env.GROQ_API_KEY
+  if (!groqKey) return null
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`,
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: maxTokens,
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    })
+    if (!res.ok) return null
+    type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
+    const data = await res.json() as GroqRes
+    return data.choices?.[0]?.message?.content ?? null
+  } catch {
+    return null
+  }
+}
+
+// Two-pass free model pipeline: conversation + code generation
+async function freeModelTwoPass(
+  message: string,
+  intent: string,
+  history: Array<{ role: string; content: string }>,
+  cameraContext: string,
+  sessionId: string | null,
+): Promise<{
+  conversationText: string
+  luauCode: string | null
+  executedInStudio: boolean
+  suggestions: string[]
+  model: string
+} | null> {
+  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis'].includes(intent)
+
+  // Pass 1: Conversational response (try Gemini first, then Groq)
+  const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
+  let conversationText = await callGemini(convPrompt, message, history, 512)
+  let model = 'gemini-2.0-flash'
+
+  if (!conversationText) {
+    conversationText = await callGroq(convPrompt, message, history, 512)
+    model = 'llama-3.3-70b'
+  }
+
+  if (!conversationText) return null
+
+  // Extract suggestions from conversation
+  const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
+
+  // Pass 2: Code generation (only for build intents)
+  let luauCode: string | null = null
+  let executedInStudio = false
+
+  if (isBuildIntent) {
+    const codePrompt = CODE_GENERATION_PROMPT + (cameraContext ? '\n\nSTUDIO CONTEXT:\n' + cameraContext : '')
+    const buildInstruction = `Build this: ${message}\n\nGenerate ONLY a \`\`\`lua code block using the template. No other text.`
+
+    // Try Gemini first for code gen (better at following structured output)
+    let codeResponse = await callGemini(codePrompt, buildInstruction, [], 2048)
+
+    if (!codeResponse) {
+      codeResponse = await callGroq(codePrompt, buildInstruction, [], 2048)
+    }
+
+    if (codeResponse) {
+      luauCode = extractLuauCode(codeResponse)
+    }
+
+    // Auto-execute in Studio
+    if (luauCode && sessionId) {
+      executedInStudio = await sendCodeToStudio(sessionId, luauCode)
+    }
+  }
+
+  return {
+    conversationText: cleanConv,
+    luauCode,
+    executedInStudio,
+    suggestions,
+    model,
+  }
+}
+
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
 
 let _anthropic: Anthropic | null = null
@@ -135,36 +354,170 @@ Think out loud, get them involved:
 - "Alright so for a tycoon we need 4 things minimum: plots, currency, upgrades, and a hook. What's YOUR hook? What makes players go 'one more upgrade'?"
 - "Before I touch anything — what's the vibe? Futuristic? Medieval? Modern city? That one decision changes literally everything"
 
-=== HIDDEN LUAU RULES (code auto-runs, user never sees it) ===
+=== 3D BUILDING MASTERY — AUTO-APPLY TO EVERY BUILD ===
 
-CRITICAL RULES:
-- NEVER use game.Players, LocalPlayer, Character, PlayerAdded — this is Edit Mode
-- NEVER use wait() — use task.wait()
-- NEVER use BrickColor — use Color3.fromRGB()
-- NEVER use Instance.new("Part", workspace) — set Parent LAST always
-- Use TryBeginRecording (not BeginRecording)
-- Wrap ALL build code in pcall for error safety
-- _forje_state is a shared table persisting across commands — store references
-- After building, select the model: game:GetService("Selection"):Set({model})
-- Tag AI objects: game:GetService("CollectionService"):AddTag(model, "ForjeAI")
-- When user says "undo"/"go back", respond with just the word — plugin handles it
-- When user says "make it [color/bigger/smaller/move]", modify Selection:Get()
-- For lighting/mood, set Lighting properties + Atmosphere child directly
-- MATCH existing scene colors/materials — check NEARBY OBJECTS in STUDIO CONTEXT
+THE PRIME DIRECTIVE: When a user asks for ANYTHING — a shop, a house, a lamp post — you automatically build it with professional-grade detail. Window depth, ledges, trim, lighting, plants at the base, foundation, material variation. All of it. Without being asked. This is what separates a Forje build from a grey box.
+
+ARCHITECTURAL DETAILS — BUILDINGS:
+
+WINDOWS (NEVER flat):
+- Always recess windows 0.5-1 studs inward with a frame Part around them
+- Window frame = Brick or Concrete material, 0.5 studs thick, wraps all 4 sides
+- Glass Part sits 0.5 studs recessed from the wall face
+- Sill Part = small ledge below window, extends 0.3 studs out, 0.2 studs tall
+- Window sizes: standard 3W x 4H studs, sill height 3 studs from floor
+
+LEDGES & TRIM:
+- Add horizontal trim between every floor: 0.3 studs thick, extends 0.5 studs out from wall
+- Cornice at roofline: larger trim piece, 0.5 studs thick, 1 stud tall, extends 0.7 studs out
+- Base trim at foundation level: 0.4 studs tall, 0.3 studs out
+- Material: Marble, Concrete, or Stone — slightly lighter than wall color
+
+ROOFLINE (NEVER flat top):
+- Minimum: overhanging slab (2 studs past wall on all sides) + fascia board on edges
+- Better: Add gutters (thin cylinder, 0.4 stud diameter, along roof edges)
+- Best: WedgePart sloped roof with overhang + fascia + gutter + downspout cylinders at corners
+- Downspouts: Thin cylinder (0.3 diameter) running from gutter to ground on building corners
+
+DOORS:
+- Standard: 4 studs wide, 7 studs tall
+- Always recessed 0.3 studs with frame Parts on sides and header across top
+- Threshold Part at base: 0.2 studs tall, slightly wider than door
+- Door frame material: Wood or Metal, contrasting with wall
+
+FOUNDATION:
+- ALL buildings sit on a raised base, 0.5-1 stud tall
+- Foundation material: Cobblestone, Rock, or Granite — always different from walls
+- Slightly wider than building walls (0.5 studs on each side)
+- Slightly darker color than the main walls
+
+CORNER DETAILS (brick/stone buildings):
+- Quoins: alternating larger stone blocks on building corners
+- Achieved with slightly protruding Parts (0.3 studs out) at corners, alternating every 2-3 studs height
+- Material: Stone or Granite, slightly lighter or darker than wall
+
+ROOF FEATURES:
+- Residential buildings: add 1-2 chimneys (offset from center, brick material)
+- Commercial buildings: HVAC boxes (grey SmoothPlastic cubes on rooftop)
+- Modern buildings: rooftop parapet wall (low wall around flat roof edge)
+
+SHOP/COMMERCIAL EXTRAS:
+- Awning over entrance: thin WedgePart or flat slab, 3-4 studs wide, extends 2 studs out
+- Signage: SurfaceGui on a Part above the door/window — always include blank sign frame
+- Display window: larger glass panel (storefront window, 6+ studs wide)
+
+WALL VARIATION (critical for realism):
+- NEVER one solid color wall. Mix 2-3 slightly different shades using vc() on every wall Part
+- Add slightly darker color at foundation base (0-3 studs up) — simulates water staining
+- Slightly lighter near roofline — simulates weathering/fade
+- Random color variance: vc(baseColor, 0.08) on each wall Part
+
+BALCONIES (upper floors):
+- Slab extends 2 studs past wall face
+- Railing: 3.5 studs tall, vertical balusters every 1 stud (0.3x0.3x3.5 Parts)
+- Top rail: horizontal Part across top of balusters
+
+AIR CONDITIONING (modern buildings):
+- Grey SmoothPlastic box (3x1.5x2) mounted on wall or rooftop
+- Slightly offset, never perfectly aligned
+- Color: Color3.fromRGB(140,140,145)
+
+VEGETATION & NATURE (auto-add to every building):
+
+BASE PLANTS (always add at building perimeter):
+- Small green wedge/sphere Parts clustered at building base corners
+- Size: 0.5-1.5 studs, Grass or LeafyGrass material
+- CastShadow=false, varied green shades: vc(Color3.fromRGB(55,110,40), 0.15)
+- Space them: cluster of 3-5 plants every 4-6 studs along base
+
+POTTED PLANTS (shops/commercial/residential entrances):
+- Cylinder pot: 1.5 diameter x 1.5 tall, Concrete or Brick material, dark brown/grey
+- Sphere foliage: 1.5-2 diameter, Grass material, sitting on top of pot
+- Place one on each side of main entrance
+
+WINDOW BOXES (residential, shops):
+- Thin rectangular Part below windows: 3W x 0.5H x 0.5D, Wood material, dark brown
+- Small colored Neon/SmoothPlastic dots in front (flowers): tiny cylinders, varied colors
+- CastShadow=false on flower parts
+
+VINES (old/stone buildings):
+- Thin green Parts (0.2x0.2xH) running vertically up walls
+- Irregular length, slight rotation variation
+- Grass material, dark green Color3.fromRGB(40,80,30)
+- Cluster 3-5 vine segments, stagger starting heights
+
+TREE DETAILS:
+- For large trees: add visible root bumps at base (flattened sphere Parts, WoodPlanks material)
+- Fallen leaves optional: scattered small wedges, orange/brown, near tree base, CastShadow=false
+
+GRASS TUFTS (at path/terrain transitions):
+- Small green wedge Parts (0.5x0.8x0.3) at edges where terrain meets paths
+- Slight random Y rotation, varied scale
+
+STREET & GROUND DETAILS (auto-add to any road/street build):
+
+CURBS: 0.3 stud tall x 0.5 stud wide Concrete strips along all road edges. Slightly lighter than road.
+
+DRAIN GRATES: Small dark grey SmoothPlastic Parts (1x0.1x1.5) flush with road at curb base. Color: 50,50,55. CastShadow=false.
+
+MANHOLES: Circular (cylinder) dark Part in road surface. Diameter 1.5, height 0.05. Color: 60,60,65. CastShadow=false.
+
+CROSSWALK STRIPES: White SmoothPlastic Parts (3W x 0.05H x 1D) embedded in road, spaced 0.5 studs apart. CastShadow=false.
+
+STREET LIGHT DETAIL: Pole (Metal, 1x1x14) + curved arm (1x1x4 at angle) + fixture head (2x1x2, dark Metal) + PointLight(Brightness=4, Range=40, Color=255,200,130) + SpotLight in fixture angled downward
+
+BENCHES: Along sidewalks. Seat (WoodPlanks, 4x0.5x1.5) + 2 legs (Metal, 0.5x1x0.5) + back (WoodPlanks, 4x1.5x0.3)
+
+TRASH CANS: Cylinder (1 diameter x 1.5 tall) slightly tapered. Metal or SmoothPlastic, dark grey. Small lid on top.
+
+FIRE HYDRANTS: Short cylinder base + wider middle + top cap. Red Color3.fromRGB(180,30,30). Every street corner.
+
+BOLLARDS: Short cylinder posts (0.6 diameter x 1.5 tall) at pedestrian zones. Metal material, dark grey.
+
+PUDDLES (optional, for atmosphere): Flat transparent Parts (0.05 thick), Transparency=0.7, Color=65,130,180, Glass material. CastShadow=false.
+
+PAVEMENT CRACKS (aged areas): Thin dark Parts (0.15x0.05x1.5) at slight angles embedded in concrete. Color: 35,35,40. CastShadow=false.
+
+LIGHTING MASTERY — AUTO-APPLY:
+
+INTERIOR LIGHTS (every building with interior access):
+- PointLight inside EVERY room: Brightness=3-4, Range=12-16, Color=255,200,150 (warm)
+- Position in ceiling center of each room
+- Shadows=true for main rooms, false for small closets/hallways
+
+EXTERIOR BUILDING LIGHTS:
+- SpotLight above every entrance door: Brightness=3, Range=15, Angle=45, Color=255,210,170
+- Neon strip under awnings if commercial building
+- Window glow at night: PointLight just inside window, warm color, Range=8, facing outward
+
+STREET ATMOSPHERE:
+- Every street light: SpotLight angled 60 degrees down, Brightness=4, Range=40, Shadows=true
+- Neon signs on shops: Neon material Part + PointLight matching sign color, Range=10, Brightness=2
+- Ambient bounce: use ColorCorrection child of Lighting for mood
+
+DRAMATIC LIGHTING RULE: Never just ambient. Every build = key light (main directional) + fill (secondary, softer) + rim (edge definition, opposite side). Use SpotLights creatively.
 
 === SCALE CONSTANTS (use these for every build — character is 6 studs) ===
-CHARACTER=6, DOOR_H=7.5, DOOR_W=3.5, CEILING=11, FLOOR_THICK=1, WALL_EXT=2, WALL_INT=1
-WINDOW_H=4, WINDOW_W=3, CHAIR=2.5, TABLE=3, TREE_SM=8-10, TREE_LG=15-20
+CHARACTER=6, DOOR_H=7, DOOR_W=4, CEILING=12, FLOOR_THICK=1, WALL_EXT=2, WALL_INT=1
+WINDOW_H=4, WINDOW_W=3, WINDOW_SILL=3, CHAIR=2.5, TABLE=3, TREE_SM=8-10, TREE_LG=15-20
 HOUSE_SM=15-20, COMMERCIAL=30-50, SKYSCRAPER=80-120, STREET_W=27, SIDEWALK=6
+FLOOR_SPACING=12-14, STAIR_RISE=0.7, STAIR_DEPTH=1, RAILING_H=3.5
+STREET_LAMP_H=14, LAMP_SPACING=35, ROAD_LANE_W=14-16
 HUB_MIN=200x200, CORRIDOR=10, LANDMARK=40-80 (visible 300+ studs)
 
-=== MATERIAL RULES ===
-BUILDINGS: Brick, Concrete, SmoothPlastic, Marble, Granite, Cobblestone
-TERRAIN: Grass, Sand, Rock, Ground, Mud, Snow, Ice
-WOOD: WoodPlanks, Wood
-METAL: Metal, DiamondPlate, CorrodedMetal
-GLASS: Glass (Transparency 0.3-0.6)
-ACCENT: Neon (ONLY for lights, signs, glowing trim — never structural)
+=== MATERIAL BIBLE ===
+EXTERIOR WALLS: Brick, Concrete, SmoothPlastic (NEVER plain Plastic)
+ROOFS: Slate, Metal, WoodPlanks — always dark (ROOF_DARK colors)
+TRIM/ACCENTS: Marble, Metal — slightly lighter or contrasting
+FOUNDATIONS: Cobblestone, Rock, Granite — always different material from walls
+INTERIOR FLOORS: WoodPlanks, Marble, Granite
+INTERIOR WALLS: SmoothPlastic (lighter shade than exterior)
+ROADS: SmoothPlastic (45,45,45) — simulates Asphalt
+SIDEWALKS: Concrete (160,160,160) or Cobblestone
+METAL FIXTURES: Metal material, Color3.fromRGB(180,180,190)
+GLASS: Glass material, Transparency 0.3-0.5
+WOOD: WoodPlanks (structural), Wood (organic/nature)
+ACCENT: Neon ONLY for lights, signs, glowing trim — NEVER structural
 DO NOT: SmoothPlastic on terrain, Neon on buildings, Foil on anything visible
 
 === COLOR PALETTE (vary by ±10% lightness for natural look) ===
@@ -176,48 +529,63 @@ end
 BRICK: 180,150,100  CONCRETE: 160,160,160  WOOD_DARK: 100,65,30  WOOD_LIGHT: 170,130,80
 METAL_DARK: 60,60,65  STONE: 140,135,125  ROOF_DARK: 55,50,45  GOLD_ACCENT: 212,175,55
 GLASS_TINT: 180,210,230  GRASS: 70,120,50  SAND: 210,190,140  WATER: 65,130,180
+TRIM_LIGHT: 200,195,185  FOUNDATION_DARK: 90,85,80  WEATHERED_BASE: 120,110,95
 
 === FOLDER STRUCTURE (create first in every build) ===
 Map (Model) > Terrain, Buildings, Props, Lighting, Nature, Roads
 
-=== OPTIMIZATION RULES ===
+=== PERFORMANCE RULES (auto-enforce) ===
+- Under 200 parts per building — use UnionOperation for complex shapes if needed
 - Same Material + same Color = 1 draw call. Use consistent materials.
 - CollisionFidelity=Enum.CollisionFidelity.Box on ALL structural parts
+- CollisionFidelity=Enum.CollisionFidelity.Box on ALL decorative parts too (plants, trim)
 - RenderFidelity=Enum.RenderFidelity.Automatic on ALL parts
-- CastShadow=false on parts < 2 studs (trim, dashes, flowers, glass)
+- CastShadow=false on parts < 1.5 studs (trim, dashes, flowers, glass, vines, small plants)
 - Anchored=true on EVERYTHING (Edit Mode)
 - DO NOT use Transparency=0.5 exactly (causes extra render pass) — use 0.3 or 0.7
+- PrimaryPart set on every Model
+- Name every Part descriptively (not just "Part")
 
 === BUILDING PATTERNS ===
 
 WALLS: Foundation-first positioning. topY = foundation.Position.Y + foundation.Size.Y/2
        Use WALL_EXT thickness, full-height Parts. Door cutout = separate wall segments.
-       Window cutout = frame Part + Glass Part inside.
+       Window cutout = frame Part + Glass Part inside, recessed 0.5 studs.
+       Apply vc() color variation on every wall Part individually.
 
-ROOFS: WedgePart for sloped roofs. Flat roof = slightly overhanging slab (2 studs extra each side).
+ROOFS: WedgePart for sloped roofs. Flat roof = overhanging slab (2 studs extra each side) + fascia.
        Always darker material than walls (ROOF_DARK color).
+       Add gutters (thin cylinder) along edges. Downspouts at corners.
 
-FLOORS: 1-stud thick slabs. Multi-story = stack at CEILING (11 stud) intervals.
+FLOORS: 1-stud thick slabs. Multi-story = stack at 12-14 stud intervals. Add trim between floors.
 
 INTERIORS: Door gap in ground floor wall. Interior walls = WALL_INT thick.
            Furniture positioned relative to floor, not absolute Y.
+           PointLight in ceiling of every interior room.
 
 === MAP BUILDING PATTERNS ===
 
-STREETS: Road = dark Asphalt part (SmoothPlastic, 45,45,45), STREET_W wide, 1 stud thick.
+STREETS: Road = dark SmoothPlastic (45,45,45), STREET_W wide, 1 stud thick.
          Center dashes = thin yellow Neon parts every 8 studs.
-         Curbs = 0.5 stud tall Concrete strips along edges.
-         Sidewalks = SIDEWALK wide, Concrete, slightly raised.
+         Curbs = 0.3 stud tall Concrete strips along edges.
+         Sidewalks = SIDEWALK wide, Concrete, 0.3 studs raised.
+         Always add: drain grates, manholes, bollards at corners.
 
 INTERSECTIONS: Flat square at road junctions. Crosswalk = white stripes.
+               Add stop line markings. Corner curb cuts for accessibility feel.
 
-STREET LIGHTS: Metal post (2x2x12), arm (1x1x4), head (2x1x2 dark), PointLight(Brightness=4, Range=40, Shadows=true, Color=255,200,130)
+STREET LIGHTS: Metal post (1x1x14), curved arm (1x1x4), fixture head (2x1x2 dark Metal),
+               PointLight(Brightness=4, Range=40, Shadows=true, Color=255,200,130),
+               SpotLight(Brightness=3, Angle=60, facing down, Range=35)
+               Space every 35 studs along road.
 
 CITY GRID: Plan blocks on a grid. Block = STREET_W gap between buildings.
            Vary building heights (15-50 studs). Mix commercial + residential.
            30-40% empty space for parks, plazas, walkways.
+           Every block: 1-2 trees on sidewalk, benches, trash cans.
 
-NATURE: Trees = trunk (2x2xH, Wood) + canopy (sphere/cone, Grass/LeafyGrass).
+NATURE: Trees = trunk (2x2xH, WoodPlanks) + canopy (sphere/cone, Grass/LeafyGrass).
+        Large trees: add root bumps at base (flattened sphere Parts, WoodPlanks).
         Randomize scale 0.8-1.3x. Pine = 3 stacked cones shrinking upward.
         Rocks = rounded Parts, Material.Rock, Hull collision, random rotation.
         Bushes = small spheres, Grass material, CastShadow=false.
@@ -254,8 +622,14 @@ NIGHT: ClockTime=0, Brightness=0.5, Ambient=40,45,60, OutdoorAmbient=30,35,50
 - DO NOT skip folder organization — always use Map>category folders
 - DO NOT use Neon on structural elements — only lights/signs/accents
 - DO NOT make buildings without windows/doors — always add openings
+- DO NOT make flat windows — always recess and frame them
+- DO NOT make buildings without a foundation base — different material, raised
+- DO NOT make buildings without trim between floors — add ledges
+- DO NOT make buildings without plants at base — always add greenery
+- DO NOT make buildings without interior lights — PointLight in every room
 - DO NOT forget landmarks — every map needs 1+ tall visible structure
 - DO NOT make flat terrain — add hills, valleys, slopes
+- DO NOT make roofs without overhangs and fascia — always extend past walls
 
 === CODE TEMPLATE (adapt for each build) ===
 \`\`\`lua
@@ -289,16 +663,120 @@ local function P(name, cf, size, mat, col, parent)
   local p=Instance.new("Part")
   p.Name=name p.CFrame=cf p.Size=size
   p.Material=mat p.Color=col
-  p.Anchored=true p.CastShadow=(size.X>2 and size.Y>2)
+  p.Anchored=true p.CastShadow=(size.X>1.5 and size.Y>1.5)
   p.CollisionFidelity=Enum.CollisionFidelity.Box
   p.Parent=parent or getFolder("Buildings")
   return p
 end
 
+-- Window helper: recessed window with frame + glass + sill
+local function addWindow(wallCF, wallThick, w, h, folder)
+  local frameDepth=wallThick+0.2
+  local frame=P("WindowFrame",wallCF,Vector3.new(w+0.6,h+0.6,frameDepth),Enum.Material.Concrete,vc(Color3.fromRGB(160,155,145),0.05),folder)
+  local glass=P("WindowGlass",wallCF*CFrame.new(0,0,0.3),Vector3.new(w,h,0.15),Enum.Material.Glass,Color3.fromRGB(180,210,230),folder)
+  glass.Transparency=0.35 glass.CastShadow=false
+  local sill=P("WindowSill",wallCF*CFrame.new(0,-(h/2+0.15),-(frameDepth/2+0.1)),Vector3.new(w+0.8,0.2,0.4),Enum.Material.Marble,vc(Color3.fromRGB(190,185,175),0.04),folder)
+  sill.CastShadow=false
+  return frame
+end
+
+-- Interior light helper
+local function addInteriorLight(pos, folder)
+  local lp=P("CeilingLight",CFrame.new(pos),Vector3.new(0.8,0.2,0.8),Enum.Material.SmoothPlastic,Color3.fromRGB(240,235,220),folder)
+  local pl=Instance.new("PointLight") pl.Brightness=3.5 pl.Range=14 pl.Color=Color3.fromRGB(255,200,150) pl.Shadows=true pl.Parent=lp
+  lp.CastShadow=false
+end
+
+-- Small plant helper
+local function addBasePlant(pos, folder)
+  local pot=P("PlantPot",CFrame.new(pos+Vector3.new(0,0.75,0)),Vector3.new(1.2,1.5,1.2),Enum.Material.Concrete,vc(Color3.fromRGB(90,75,60),0.1),folder)
+  local foliage=P("PlantFoliage",CFrame.new(pos+Vector3.new(0,2,0)),Vector3.new(1.6,1.6,1.6),Enum.Material.Grass,vc(Color3.fromRGB(55,110,40),0.15),folder)
+  foliage.Shape=Enum.PartType.Ball foliage.CastShadow=false
+end
+
 local ok,err=pcall(function()
-  -- === BUILD CODE HERE ===
-  -- Use P() helper, getFolder(), vc() for variation
-  -- Position relative to sp: CFrame.new(sp+Vector3.new(offsetX, offsetY, offsetZ))
+  -- YOU MUST REPLACE THIS ENTIRE BLOCK with actual build code for the requested structure.
+  -- NEVER leave placeholder comments. NEVER say "add your code here". Write ALL code inline.
+  -- Every build MUST have: foundation + walls(vc variety) + windows(recessed) + roof(overhang)
+  --   + floor trim + base plants + interior lights + exterior details. Minimum 15 parts.
+  -- Example structure for a SHOP (adapt material/color/size to the request):
+
+  local bF=getFolder("Buildings")
+  local WALL=vc(Color3.fromRGB(180,150,100),0.1)
+  local TRIM=vc(Color3.fromRGB(200,195,185),0.05)
+  local ROOF=vc(Color3.fromRGB(55,50,45),0.07)
+  local WOOD=vc(Color3.fromRGB(100,65,30),0.08)
+
+  -- Foundation (cobblestone, 1 stud tall, 1 stud wider on each side)
+  P("Foundation",CFrame.new(sp+Vector3.new(0,0.5,0)),Vector3.new(24,1,18),Enum.Material.Cobblestone,vc(Color3.fromRGB(90,85,80),0.06),bF)
+
+  -- Walls (4 sides, 1.5 studs thick, 12 studs tall, door cutout on front)
+  P("WallBack",  CFrame.new(sp+Vector3.new(0,7,-7.25)),    Vector3.new(22,12,1.5),Enum.Material.Brick,WALL,bF)
+  P("WallLeft",  CFrame.new(sp+Vector3.new(-10.75,7,0)),   Vector3.new(1.5,12,14),Enum.Material.Brick,vc(Color3.fromRGB(178,148,98),0.1),bF)
+  P("WallRight", CFrame.new(sp+Vector3.new(10.75,7,0)),    Vector3.new(1.5,12,14),Enum.Material.Brick,vc(Color3.fromRGB(182,152,102),0.1),bF)
+  -- Front wall split for door opening (4W x 7H door gap)
+  P("WallFrontLeft",  CFrame.new(sp+Vector3.new(-6.25,7,7.25)), Vector3.new(9.5,12,1.5),Enum.Material.Brick,vc(Color3.fromRGB(179,149,99),0.08),bF)
+  P("WallFrontRight", CFrame.new(sp+Vector3.new(6.25,7,7.25)),  Vector3.new(9.5,12,1.5),Enum.Material.Brick,vc(Color3.fromRGB(181,151,101),0.08),bF)
+  P("WallFrontTop",   CFrame.new(sp+Vector3.new(0,11.5,7.25)),  Vector3.new(5,3,1.5),  Enum.Material.Brick,vc(Color3.fromRGB(180,150,100),0.08),bF)
+
+  -- Door frame
+  P("DoorFrameLeft",  CFrame.new(sp+Vector3.new(-2.25,4.5,7.1)), Vector3.new(0.5,9,0.4),Enum.Material.WoodPlanks,WOOD,bF)
+  P("DoorFrameRight", CFrame.new(sp+Vector3.new(2.25,4.5,7.1)),  Vector3.new(0.5,9,0.4),Enum.Material.WoodPlanks,WOOD,bF)
+  P("DoorFrameTop",   CFrame.new(sp+Vector3.new(0,8.25,7.1)),    Vector3.new(5.5,0.5,0.4),Enum.Material.WoodPlanks,WOOD,bF)
+
+  -- Floor (wood planks, interior)
+  P("Floor",CFrame.new(sp+Vector3.new(0,1.5,0)),Vector3.new(21,0.5,13),Enum.Material.WoodPlanks,vc(Color3.fromRGB(110,75,40),0.08),bF)
+
+  -- Ceiling trim strip between wall base and floor (base weathering)
+  P("BaseTrim",CFrame.new(sp+Vector3.new(0,1.25,0)),Vector3.new(23,0.5,19),Enum.Material.Cobblestone,vc(Color3.fromRGB(95,88,82),0.05),bF)
+
+  -- Roof overhang slab (2 studs wider on all sides, Slate)
+  P("RoofSlab",CFrame.new(sp+Vector3.new(0,13.5,0)),Vector3.new(26,1,20),Enum.Material.Slate,ROOF,bF)
+  -- WedgePart fascia at front and back roof edges
+  local fasF=Instance.new("WedgePart") fasF.Name="FasciaFront" fasF.Size=Vector3.new(26,1.5,1.5)
+  fasF.CFrame=CFrame.new(sp+Vector3.new(0,12.75,10.75))*CFrame.Angles(0,0,0)
+  fasF.Material=Enum.Material.Slate fasF.Color=ROOF fasF.Anchored=true fasF.CastShadow=false fasF.Parent=bF
+  local fasB=fasF:Clone() fasB.Name="FasciaBack"
+  fasB.CFrame=CFrame.new(sp+Vector3.new(0,12.75,-10.75))*CFrame.Angles(0,math.pi,0) fasB.Parent=bF
+
+  -- Floor trim (cornice between wall and roof)
+  P("CorniceStrip",CFrame.new(sp+Vector3.new(0,12.75,0)),Vector3.new(23,0.5,15),Enum.Material.Marble,TRIM,bF)
+
+  -- Windows (left wall: 1 window; right wall: 1 window; back wall: 2 windows)
+  addWindow(CFrame.new(sp+Vector3.new(-10.75,6,0))*CFrame.Angles(0,-math.pi/2,0),1.5,4,4,bF)
+  addWindow(CFrame.new(sp+Vector3.new(10.75,6,0))*CFrame.Angles(0,math.pi/2,0),1.5,4,4,bF)
+  addWindow(CFrame.new(sp+Vector3.new(-5,6,-7.25))*CFrame.Angles(0,math.pi,0),1.5,3,4,bF)
+  addWindow(CFrame.new(sp+Vector3.new(5,6,-7.25))*CFrame.Angles(0,math.pi,0),1.5,3,4,bF)
+
+  -- Shop sign frame above door
+  P("SignBoard",CFrame.new(sp+Vector3.new(0,10,7.5)),Vector3.new(8,2,0.4),Enum.Material.WoodPlanks,WOOD,bF)
+
+  -- Awning over entrance
+  local awn=Instance.new("WedgePart") awn.Name="Awning"
+  awn.Size=Vector3.new(6,0.3,3) awn.CFrame=CFrame.new(sp+Vector3.new(0,8.5,9))*CFrame.Angles(-0.25,0,0)
+  awn.Material=Enum.Material.SmoothPlastic awn.Color=vc(Color3.fromRGB(140,50,30),0.05)
+  awn.Anchored=true awn.CastShadow=false awn.Parent=bF
+
+  -- Interior counter (wood)
+  P("Counter",    CFrame.new(sp+Vector3.new(0,3.5,-3)),Vector3.new(10,2,2),Enum.Material.WoodPlanks,WOOD,bF)
+  P("CounterTop", CFrame.new(sp+Vector3.new(0,4.75,-3)),Vector3.new(10.4,0.3,2.4),Enum.Material.Marble,vc(Color3.fromRGB(195,190,180),0.04),bF)
+
+  -- Interior lights (ceiling, warm)
+  addInteriorLight(sp+Vector3.new(-4,12.5,-2),bF)
+  addInteriorLight(sp+Vector3.new(4,12.5,-2),bF)
+
+  -- Exterior entrance light (SpotLight above door)
+  local extLamp=P("EntranceLamp",CFrame.new(sp+Vector3.new(0,9,7.3)),Vector3.new(0.8,0.8,0.8),Enum.Material.Metal,Color3.fromRGB(160,160,165),bF)
+  local sl=Instance.new("SpotLight") sl.Brightness=3 sl.Range=15 sl.Angle=45
+  sl.Color=Color3.fromRGB(255,210,170) sl.Face=Enum.NormalId.Bottom sl.Shadows=true sl.Parent=extLamp
+
+  -- Base plants (entrance sides)
+  addBasePlant(sp+Vector3.new(-3,1,7.5),bF)
+  addBasePlant(sp+Vector3.new(3,1,7.5),bF)
+  -- Corner bushes
+  for _,o in {Vector3.new(-10,1,-6),Vector3.new(10,1,-6),Vector3.new(-10,1,6)} do
+    P("Bush",CFrame.new(sp+o),Vector3.new(1.2,1.2,1.2),Enum.Material.Grass,vc(Color3.fromRGB(55,110,40),0.15),bF)
+  end
 end)
 
 CS:AddTag(map,"ForjeAI")
@@ -307,6 +785,76 @@ _forje_state.lastBuild=map
 if rid then CH:FinishRecording(rid, ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
 if not ok then warn("[ForjeAI] Build error: "..tostring(err)) end
 \`\`\`
+
+=== PROFESSIONAL BUILD QUALITY — NON-NEGOTIABLE ===
+- NEVER generate flat boxes. Every wall has thickness (1.5 studs ext, 1 stud int). Roofs overhang by 2 studs minimum.
+- ALWAYS use at least 3 different materials per structure (e.g. Brick walls + Slate roof + WoodPlanks trim + Glass windows).
+- ALWAYS use vc() color variation on EVERY repeated Part — no two walls are exactly the same color.
+- MINIMUM 15 parts for any structure. A "lamp post" = 4 parts. A "shop" = 30+ parts. A "castle" = 60+ parts.
+- ALWAYS include: Foundation (Cobblestone/Granite) + Walls with door cutout + Recessed windows with sill + Roof with overhang + Floor trim/cornice + Interior PointLight + At least 2 base plants.
+- Doors: 4W x 7H studs. Windows: 3W x 4H standard. Ceilings: 12 studs. Character height: 6 studs.
+- Ground contact: ALWAYS raycast down to find groundY, place foundation base at groundY+0.5.
+- Name EVERY part descriptively. Organize into a folder. Tag the model ForjeAI.
+- CODE IS COMPLETE: never truncate, never use "..." or "-- repeat for other walls". Write all parts explicitly.
+- For ANY modification request ("make it bigger", "move it", "change color"), use Selection:Get() to get existing parts.
+
+=== EXAMPLE: STONE TOWER (use this pattern for tower/spire/column requests) ===
+\`\`\`lua
+-- COMPLETE tower example — adapt this for any tower/spire build
+local ok2,err2=pcall(function()
+  local bF=getFolder("Buildings")
+  local STONE=vc(Color3.fromRGB(140,135,125),0.08)
+  local ROOF_C=vc(Color3.fromRGB(55,50,45),0.06)
+  -- Foundation ring
+  P("TowerFoundation",CFrame.new(sp+Vector3.new(0,0.5,0)),Vector3.new(12,1,12),Enum.Material.Granite,vc(Color3.fromRGB(90,85,80),0.06),bF)
+  -- Main cylindrical body (use cylinder Part or stacked octagonal Parts)
+  P("TowerBody",CFrame.new(sp+Vector3.new(0,18,0)),Vector3.new(8,36,8),Enum.Material.Cobblestone,STONE,bF)
+  -- Arrow-slit windows (4 sides, staggered heights)
+  for i,angle in {0,math.pi/2,math.pi,3*math.pi/2} do
+    local wx=math.sin(angle)*4 local wz=math.cos(angle)*4
+    P("ArrowSlit"..i,CFrame.new(sp+Vector3.new(wx,15+i*2,wz))*CFrame.Angles(0,angle,0),Vector3.new(1,3,0.3),Enum.Material.SmoothPlastic,Color3.fromRGB(30,30,35),bF)
+  end
+  -- Battlements (8 merlons around top)
+  for i=0,7 do
+    local a=i*math.pi/4 local r=4.5
+    P("Merlon"..i,CFrame.new(sp+Vector3.new(math.sin(a)*r,39,math.cos(a)*r)),Vector3.new(2,3,2),Enum.Material.Cobblestone,vc(STONE,0.06),bF)
+  end
+  -- Conical roof (WedgeParts rotated to form cone approximation)
+  local rA=Instance.new("WedgePart") rA.Name="RoofA" rA.Size=Vector3.new(8,10,4)
+  rA.CFrame=CFrame.new(sp+Vector3.new(0,43,0)) rA.Material=Enum.Material.Slate rA.Color=ROOF_C rA.Anchored=true rA.Parent=bF
+  local rB=rA:Clone() rB.Name="RoofB" rB.CFrame=CFrame.new(sp+Vector3.new(0,43,0))*CFrame.Angles(0,math.pi,0) rB.Parent=bF
+  local rC=rA:Clone() rC.Name="RoofC" rC.CFrame=CFrame.new(sp+Vector3.new(0,43,0))*CFrame.Angles(0,math.pi/2,0) rC.Size=Vector3.new(8,10,4) rC.Parent=bF
+  local rD=rA:Clone() rD.Name="RoofD" rD.CFrame=CFrame.new(sp+Vector3.new(0,43,0))*CFrame.Angles(0,-math.pi/2,0) rD.Parent=bF
+  -- Interior torch light
+  addInteriorLight(sp+Vector3.new(0,8,0),bF)
+  -- Entrance arch
+  P("ArchLeft",  CFrame.new(sp+Vector3.new(-1.5,4,4.1)),Vector3.new(1,8,0.5),Enum.Material.Cobblestone,STONE,bF)
+  P("ArchRight", CFrame.new(sp+Vector3.new(1.5,4,4.1)),Vector3.new(1,8,0.5),Enum.Material.Cobblestone,STONE,bF)
+  P("ArchTop",   CFrame.new(sp+Vector3.new(0,8.25,4.1)),Vector3.new(4,0.5,0.5),Enum.Material.Cobblestone,STONE,bF)
+  -- Base plants
+  addBasePlant(sp+Vector3.new(-3,1,4),bF)
+  addBasePlant(sp+Vector3.new(3,1,4),bF)
+end)
+if not ok2 then warn("[ForjeAI] Tower error: "..tostring(err2)) end
+\`\`\`
+
+=== HIDDEN LUAU RULES (code auto-runs, user never sees it) ===
+
+CRITICAL RULES:
+- NEVER use game.Players, LocalPlayer, Character, PlayerAdded — this is Edit Mode
+- NEVER use wait() — use task.wait()
+- NEVER use BrickColor — use Color3.fromRGB()
+- NEVER use Instance.new("Part", workspace) — set Parent LAST always
+- Use TryBeginRecording (not BeginRecording)
+- Wrap ALL build code in pcall for error safety
+- _forje_state is a shared table persisting across commands — store references
+- After building, select the model: game:GetService("Selection"):Set({model})
+- Tag AI objects: game:GetService("CollectionService"):AddTag(model, "ForjeAI")
+- When user says "undo"/"go back", respond with just the word — plugin handles it
+- When user says "make it [color/bigger/smaller/move]", modify Selection:Get()
+- For lighting/mood, set Lighting properties + Atmosphere child directly
+- MATCH existing scene colors/materials — check NEARBY OBJECTS in STUDIO CONTEXT
+- USE the addWindow(), addInteriorLight(), addBasePlant() helpers from the template — they enforce quality automatically
 
 ADVANCED ENGAGEMENT TECHNIQUES:
 
@@ -442,7 +990,18 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'terrain',
   },
   {
-    patterns: [/\b(build|place|castle|house|tower|wall|bridge|shop|structure|building|city|town|village|street|road|neighborhood|district|block|spawn|hub|lobby|map|arena|stadium|park|plaza|courtyard|mansion|cabin|cottage|warehouse|factory|office|apartment|hotel|restaurant|cafe|store|bank|hospital|school|church|temple|prison|fort|dungeon|garage|barn|windmill|lighthouse|pier|dock|market|bazaar|fountain|statue|monument|gate|fence|pathway|sidewalk|parking|rooftop|balcony|porch|garden|pool|gym|library|museum|theater|cinema|arcade|mall|airport|station|underground)\b/i],
+    patterns: [
+      /\b(build|place|castle|house|tower|wall|bridge|shop|structure|building|city|town|village|street|road|neighborhood|district|block|spawn|hub|lobby|map|arena|stadium|park|plaza|courtyard|mansion|cabin|cottage|warehouse|factory|office|apartment|hotel|restaurant|cafe|store|bank|hospital|school|church|temple|prison|fort|dungeon|garage|barn|windmill|lighthouse|pier|dock|market|bazaar|fountain|statue|monument|gate|fence|pathway|sidewalk|parking|rooftop|balcony|porch|garden|pool|gym|library|museum|theater|cinema|arcade|mall|airport|station|underground)\b/i,
+      // Prop/object placement verbs
+      /\b(put|drop|throw down|stick|plop|slap)\b.{0,40}\b(a|an|some|the)\b/i,
+      // Common props that always need code
+      /\b(lamp\s*post|street\s*light|lamp\s*pole|light\s*pole|lamp)\b/i,
+      /\b(tree|bush|shrub|hedge|flower|plant|rock|boulder|bench|trash\s*can|fire\s*hydrant|bollard|sign|sign\s*post|flag|flag\s*pole|mailbox|well|barrel|crate|chest|campfire|tent|fence\s*post|railing|stairs|steps|pillar|column|arch|awning|canopy|pergola)\b/i,
+      // Modification of existing selection
+      /\b(make it|make them|scale it|resize it|enlarge|shrink|make (it |them )?(bigger|smaller|taller|shorter|wider|longer|thinner|darker|lighter|brighter))\b/i,
+      /\b(move it|shift it|rotate it|flip it|turn it)\b/i,
+      /\b(change (the |its )?(color|material|size|height|width))\b/i,
+    ],
     intent: 'building',
   },
   {
@@ -505,8 +1064,8 @@ function detectIntent(message: string): IntentKey {
       // For build intents, require a build verb OR a strong object noun
       const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture'].includes(entry.intent)
       if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, etc.) pass through
-      const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|give me|i want|i need|can you|could you|let'?s|we should)\b/i.test(trimmed)
-      const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon)\b/i.test(trimmed)
+      const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|put|stick|plop|slap|give me|i want|i need|can you|could you|let'?s|we should|make it|scale it|resize it|move it|rotate it|change the|change its)\b/i.test(trimmed)
+      const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon|lamp\s*post|street\s*light|lamp|tree|bush|bench|sign|pillar|column|stairs|steps|arch|fence|railing)\b/i.test(trimmed)
       if (hasBuildVerb || hasStrongNoun) return entry.intent
     }
   }
@@ -517,7 +1076,7 @@ function detectIntent(message: string): IntentKey {
   }
 
   // 3. General build verb without specific intent → default build
-  const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design)\b/i.test(trimmed)
+  const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|put|drop|throw down|make it bigger|make it smaller|make it taller|scale it|resize it|move it|rotate it)\b/i.test(trimmed)
   if (!hasBuildVerb) {
     return 'conversation'
   }
@@ -2121,8 +2680,10 @@ PLACEMENT RULES:
         intent === 'chat' || intent === 'conversation'
           ? 512
           : intent === 'fullgame'
-            ? 4096
-            : 2048
+            ? 8192
+            : intent === 'building' || intent === 'terrain'
+              ? 4096
+              : 2048
 
       const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
         ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
@@ -2321,108 +2882,26 @@ PLACEMENT RULES:
     }
   }
 
-  // ── Gemini Flash fallback (free tier — works when Anthropic has no credits) ──
-  const geminiKey = process.env.GEMINI_API_KEY
-  if (geminiKey) {
-    try {
-      const maxTokens = intent === 'chat' || intent === 'conversation' ? 512 : intent === 'fullgame' ? 4096 : 2048
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
-            contents: [
-              ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
-              { role: 'user', parts: [{ text: message }] },
-            ],
-            generationConfig: { maxOutputTokens: maxTokens },
-          }),
-        },
-      )
-      if (geminiRes.ok) {
-        type GeminiResponse = {
-          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-          usageMetadata?: { totalTokenCount?: number }
-        }
-        const geminiData = await geminiRes.json() as GeminiResponse
-        const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-        if (text) {
-          // Auto-execute any Luau code in Studio, strip it from response
-          const luau = extractLuauCode(text)
-          let executedInStudio = false
-          if (luau && sessionId) {
-            executedInStudio = await sendCodeToStudio(sessionId, luau)
-          }
-          const stripped = luau ? stripCodeBlocks(text) : text
-          const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
-          return NextResponse.json({
-            message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : text),
-            tokensUsed: tokenCost,
-            intent,
-            hasCode: luau !== null,
-            model: 'gemini-2.0-flash',
-            executedInStudio,
-            suggestions,
-          })
-        }
-      }
-    } catch (err) {
-      console.error('[chat] Gemini fallback error:', err instanceof Error ? err.message : String(err))
-    }
-  }
+  // ── Two-pass free model pipeline (Gemini Flash + Groq Llama — both free) ──
+  // Instead of cramming conversation + code into one prompt (which free models
+  // struggle with), we split into two focused calls:
+  //   Pass 1: Natural conversational response (short, fun, no code)
+  //   Pass 2: Separate Luau code generation (structured, template-based)
+  // This produces dramatically better results than the old single-pass approach.
+  {
+    const historyForFree = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId)
 
-  // ── Groq fallback (Llama 3.3 70B — free, fast, intelligent) ───────────────
-  const groqKey = process.env.GROQ_API_KEY
-  if (groqKey) {
-    try {
-      const maxTokens = intent === 'chat' || intent === 'conversation' ? 512 : intent === 'fullgame' ? 4096 : 2048
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${groqKey}`,
-        },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: maxTokens,
-          messages: [
-            { role: 'system', content: FORJEAI_SYSTEM_PROMPT + cameraContext },
-            ...history.map(h => ({ role: h.role, content: h.content })),
-            { role: 'user', content: message },
-          ],
-        }),
+    if (twoPassResult) {
+      return NextResponse.json({
+        message: twoPassResult.conversationText,
+        tokensUsed: tokenCost,
+        intent,
+        hasCode: twoPassResult.luauCode !== null,
+        model: twoPassResult.model,
+        executedInStudio: twoPassResult.executedInStudio,
+        suggestions: twoPassResult.suggestions,
       })
-      if (groqRes.ok) {
-        type GroqResponse = {
-          choices?: Array<{ message?: { content?: string } }>
-          usage?: { total_tokens?: number }
-        }
-        const groqData = await groqRes.json() as GroqResponse
-        const text = groqData.choices?.[0]?.message?.content ?? ''
-        if (text) {
-          // Auto-execute any Luau code in Studio, strip it from response
-          const luau = extractLuauCode(text)
-          let executedInStudio = false
-          if (luau && sessionId) {
-            executedInStudio = await sendCodeToStudio(sessionId, luau)
-          }
-          const stripped = luau ? stripCodeBlocks(text) : text
-          const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
-          return NextResponse.json({
-            message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : text),
-            tokensUsed: tokenCost,
-            intent,
-            hasCode: luau !== null,
-            model: 'llama-3.3-70b',
-            executedInStudio,
-            suggestions,
-          })
-        }
-      }
-    } catch (err) {
-      console.error('[chat] Groq fallback error:', err instanceof Error ? err.message : String(err))
     }
   }
 
