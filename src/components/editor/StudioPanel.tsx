@@ -226,77 +226,162 @@ function DisconnectedView({
         </button>
       )}
 
-      {/* Step-by-step instructions */}
+      {/* Step-by-step setup guide */}
       <div
         style={{
           width: '100%',
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(255,255,255,0.05)',
           borderRadius: 16,
-          padding: '16px 20px',
+          padding: '20px',
         }}
       >
-        <p style={{ margin: '0 0 12px', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>
-          Setup Steps
+        <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: 'rgba(255,184,28,0.9)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>
+          Quick Setup (2 minutes)
         </p>
-        {[
-          { n: 1, text: 'Download the ForjeGames plugin below' },
-          { n: 2, text: 'Place it in your Roblox Plugins folder' },
-          { n: 3, text: 'Open Studio, click Connect, enter code above' },
-        ].map(({ n, text }) => (
-          <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: n < 3 ? 10 : 0 }}>
-            <div
+
+        {/* Step 1 */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 2v8M5 7l3 3 3-3" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 11v1.5a1 1 0 001 1h8a1 1 0 001-1V11" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif' }}>
+              Download the plugin
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+              Click the button below to get <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames.rbxm</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Step 2 */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 4.5A1.5 1.5 0 013.5 3h3.293a1 1 0 01.707.293L8.5 4.293a1 1 0 00.707.293H12.5A1.5 1.5 0 0114 6.086V11.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 11.5V4.5z" stroke="#FFB81C" strokeWidth="1.3"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif' }}>
+              Move it to your Plugins folder
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+              Open File Explorer and paste this path:
+            </p>
+            <button
+              onClick={() => {
+                const isWin = typeof navigator !== 'undefined' && navigator.userAgent.includes('Win')
+                const path = isWin
+                  ? '%LOCALAPPDATA%\\Roblox\\Plugins'
+                  : '~/Documents/Roblox/Plugins'
+                navigator.clipboard.writeText(path).catch(() => {})
+              }}
               style={{
-                width: 22,
-                height: 22,
-                borderRadius: 7,
-                background: 'rgba(255,184,28,0.12)',
-                border: '1px solid rgba(255,184,28,0.2)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: 6,
+                marginTop: 6,
+                padding: '6px 10px',
+                borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(0,0,0,0.4)',
+                color: 'rgba(255,255,255,0.7)',
                 fontSize: 11,
-                fontWeight: 700,
-                color: '#FFB81C',
-                flexShrink: 0,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                width: '100%',
+                textAlign: 'left',
               }}
             >
-              {n}
-            </div>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, paddingTop: 2 }}>
-              {text}
-            </span>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+                <rect x="1" y="3" width="7" height="7.5" rx="1" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+                <path d="M4 3V2a1 1 0 011-1h4a1 1 0 011 1v6a1 1 0 01-1 1H9" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+              </svg>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {typeof navigator !== 'undefined' && navigator.userAgent?.includes('Win')
+                  ? '%LOCALAPPDATA%\\Roblox\\Plugins'
+                  : '~/Documents/Roblox/Plugins'}
+              </span>
+              <span style={{ fontSize: 9, color: 'rgba(255,184,28,0.6)', marginLeft: 'auto', flexShrink: 0 }}>click to copy</span>
+            </button>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
+              Drop the .rbxm file into that folder
+            </p>
           </div>
-        ))}
+        </div>
+
+        {/* Step 3 */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="#FFB81C" strokeWidth="1.3"/>
+              <path d="M6 8l2 2 4-4" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif' }}>
+              Restart Studio & open the plugin
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+              Fully close and reopen Roblox Studio. Look for <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames</span> in the Plugins tab at the top.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 4 */}
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4.5 8h7M8 4.5v7" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="8" r="6" stroke="#FFB81C" strokeWidth="1.3"/>
+            </svg>
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif' }}>
+              Enter the code above
+            </p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+              Click the ForjeGames button in Studio, type the 6-character code, and hit Connect. You&apos;re done!
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Download button */}
+      {/* Download button — prominent */}
       <a
         href="/api/studio/plugin"
         download="ForjeGames.rbxm"
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '10px 20px',
-          borderRadius: 12,
-          border: '1px solid rgba(255,255,255,0.1)',
-          background: 'rgba(255,255,255,0.04)',
-          color: 'rgba(255,255,255,0.7)',
-          fontSize: 13,
-          fontWeight: 600,
+          justifyContent: 'center',
+          gap: 10,
+          width: '100%',
+          padding: '14px 24px',
+          borderRadius: 14,
+          border: 'none',
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(255,184,28,0.15) 100%)',
+          color: '#FFB81C',
+          fontSize: 14,
+          fontWeight: 700,
           fontFamily: 'Inter, sans-serif',
           textDecoration: 'none',
           cursor: 'pointer',
-          transition: 'all 0.15s',
+          transition: 'all 0.2s',
+          boxShadow: '0 0 20px rgba(212,175,55,0.15)',
         }}
       >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1v8M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M2 10v1a1 1 0 001 1h8a1 1 0 001-1v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M9 2v10M5.5 8.5L9 12l3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M3 13v1.5a1.5 1.5 0 001.5 1.5h9a1.5 1.5 0 001.5-1.5V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-        Download Plugin (.rbxm)
+        Download ForjeGames Plugin
+        <span style={{ fontSize: 11, opacity: 0.6, fontWeight: 500 }}>(.rbxm)</span>
       </a>
 
       <style>{`

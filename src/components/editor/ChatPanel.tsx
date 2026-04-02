@@ -133,12 +133,115 @@ const PULSE_STYLE = `
   }
 `
 
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+function MessageBubble({
+  msg,
+  onRetry,
+  onBuildDifferently,
+  onDismiss,
+}: {
+  msg: ChatMessage
+  onRetry?: () => void
+  onBuildDifferently?: () => void
+  onDismiss?: (id: string) => void
+}) {
   const isUser = msg.role === 'user'
   const isSystem = msg.role === 'system'
   const isStatus = msg.role === 'status'
   const isUpgrade = msg.role === 'upgrade'
   const isSignup = msg.role === 'signup'
+  const isBuildError = msg.role === 'build-error'
+
+  if (isBuildError) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0' }}>
+        <div
+          style={{
+            background: 'rgba(239,68,68,0.07)',
+            border: '1px solid rgba(239,68,68,0.28)',
+            borderRadius: 14,
+            padding: '16px 20px',
+            maxWidth: 460,
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          <p style={{ color: '#f87171', fontWeight: 700, fontSize: 14, margin: '0 0 8px 0' }}>
+            Build failed after 3 attempts
+          </p>
+          {msg.buildError && (
+            <pre
+              style={{
+                color: 'rgba(255,255,255,0.38)',
+                fontSize: 11,
+                lineHeight: 1.5,
+                margin: '0 0 12px 0',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: 8,
+                padding: '8px 10px',
+                maxHeight: 110,
+                overflowY: 'auto',
+              }}
+            >
+              {msg.buildError.slice(0, 600)}
+            </pre>
+          )}
+          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, margin: '0 0 14px 0' }}>
+            Try describing what you want differently, or start fresh.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={onRetry}
+              style={{
+                background: 'rgba(212,175,55,0.14)',
+                color: '#D4AF37',
+                border: '1px solid rgba(212,175,55,0.32)',
+                padding: '7px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={onBuildDifferently}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                color: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '7px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Build it differently
+            </button>
+            <button
+              onClick={() => onDismiss?.(msg.id)}
+              style={{
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.35)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                padding: '7px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Skip this
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isStatus) {
     const isSuccess = msg.content.toLowerCase().includes('studio') && !msg.content.toLowerCase().includes('thinking')
@@ -277,6 +380,10 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   }
 
   if (isUser) {
+    // Strip internal prefixes ([AUTO-RETRY attempt N/M], [FORJE_STEP:N/M]) from display
+    const displayContent = msg.content
+      .replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
+      .replace(/^\[FORJE_STEP:\d+\/\d+\]\s*/, '')
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <div
@@ -289,7 +396,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           }}
         >
           <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {msg.content}
+            {displayContent}
           </p>
         </div>
       </div>
@@ -765,6 +872,12 @@ interface ChatPanelProps {
   totalTokens: number
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>
   suggestions?: string[]
+  /** Called when user clicks "Try again" on a build-error card */
+  onRetry?: () => void
+  /** Called when user clicks "Build it differently" — clears context */
+  onBuildDifferently?: () => void
+  /** Called when user clicks "Skip this" — dismisses the error by message id */
+  onDismiss?: (id: string) => void
 }
 
 export function ChatPanel({
@@ -778,6 +891,9 @@ export function ChatPanel({
   totalTokens,
   textareaRef: externalRef,
   suggestions = [],
+  onRetry,
+  onBuildDifferently,
+  onDismiss,
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -827,7 +943,13 @@ export function ChatPanel({
           <EmptyState onQuickAction={(prompt) => onSend(prompt)} />
         ) : (
           messages.map((msg) => (
-            <MessageBubble key={msg.id} msg={msg} />
+            <MessageBubble
+              key={msg.id}
+              msg={msg}
+              onRetry={onRetry}
+              onBuildDifferently={onBuildDifferently}
+              onDismiss={onDismiss}
+            />
           ))
         )}
         {/* Suggestion chips — clickable next actions */}

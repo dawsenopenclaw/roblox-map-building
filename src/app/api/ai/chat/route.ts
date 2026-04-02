@@ -257,11 +257,20 @@ HYBRID RULE:
 `
 
 
-// Extract ```lua code blocks from AI response text
+// Extract ```lua code blocks from AI response text.
+// Handles: Windows \r\n, optional newline after fence, multiple blocks (picks largest).
 function extractLuauCode(text: string | null | undefined): string | null {
   if (!text) return null
-  const match = text.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
-  return match?.[1]?.trim() || null
+  const blocks: string[] = []
+  const re = /```(?:lua|luau)?\s*\r?\n?([\s\S]*?)```/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    const code = m[1]?.trim()
+    if (code) blocks.push(code)
+  }
+  if (blocks.length === 0) return null
+  // Prefer the longest block — short blocks are often examples, long ones are the real build
+  return blocks.reduce((a, b) => (a.length >= b.length ? a : b))
 }
 
 // Strip code blocks from response — user only sees friendly text
@@ -2990,7 +2999,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: parsed.error }, { status: parsed.status })
   }
 
-  const message = parsed.data.message.trim()
+  // Strip the internal [AUTO-RETRY attempt N/M] prefix that the client injects —
+  // the AI should see only the clean original prompt.
+  const message = parsed.data.message.trim().replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
   if (!message) {
     return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 })
   }
@@ -3046,7 +3057,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           controller.close()
         },
       })
-      return new Response(stream, {
+      return new NextResponse(stream, {
         status: 200,
         headers: { 'Content-Type': 'text/plain; charset=utf-8', 'X-Retry-Exceeded': '1' },
       })
@@ -4016,10 +4027,57 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     }
   }
 
-  // ── Marketplace-first building pipeline ──────────────────────────────────
+  // ── Building pipeline — generate Luau code and send to Studio ────────────
+  // The marketplace search pipeline was removed because it returned confusing
+  // Meshy/asset messages instead of actually building in Studio. The AI should
+  // generate Luau code and auto-execute it.
   if (intent === 'building' || intent === 'terrain' || intent === 'fullgame') {
+    // Try one more time to generate code with a simpler prompt
+    const lastChanceCode = await callGroq(
+      `You are a Roblox Luau code generator for Edit Mode. Output ONLY a \`\`\`lua code block. No other text.
+Use ChangeHistoryService, camera-relative placement, proper materials (Slate, WoodPlanks, Glass, Metal, Granite), realistic colors, group in a Model.
+Minimum 10 parts. Add PointLights. Character is 5.5 studs tall. Doors 4x7, windows 4x4.`,
+      `Generate a complete Luau script that builds: ${message}
+
+Output ONLY the code inside \`\`\`lua fences. No explanation.`,
+      [],
+      4096,
+    )
+    if (lastChanceCode) {
+      let luau = extractLuauCode(lastChanceCode)
+      if (!luau && lastChanceCode.includes('Instance.new')) {
+        luau = lastChanceCode.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
+      }
+      if (luau) {
+        // Auto-execute in Studio if connected
+        let executedInStudio = false
+        if (sessionId) {
+          executedInStudio = await sendCodeToStudio(sessionId, luau)
+        }
+        return NextResponse.json({
+          message: `I built that for you! ${executedInStudio ? 'Check your Studio — it should appear near your camera.' : 'Click "Import to Studio" to paste the code.'}\n\nWhat would you like to change or add next?`,
+          tokensUsed,
+          intent,
+          hasCode: true,
+          luauCode: luau,
+          executedInStudio,
+          model: 'llama-3.3-70b',
+        })
+      }
+    }
+
+    // Final fallback — return the demo response (no marketplace garbage)
+    return NextResponse.json({
+      message: DEMO_RESPONSES[intent] ?? "I'll build that for you! Let me generate the code...",
+      tokensUsed,
+      intent,
+      hasCode: false,
+    })
+  }
+
+  // Dead code below — kept for reference but never reached for building intents
+  if (false && intent === 'building') {
     try {
-      // 1. Extract what assets we need from the prompt
       const searchTerms = extractSearchTerms(message)
 
       if (searchTerms.length > 0) {
@@ -4111,7 +4169,7 @@ Tip: Run the Luau snippet in Studio Command Bar to insert all marketplace assets
       // Fall through to default demo message if marketplace search fails
     }
     return NextResponse.json(payload)
-  }
+  } // end dead marketplace block
 
   return NextResponse.json(payload)
 }

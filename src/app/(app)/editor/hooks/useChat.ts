@@ -220,6 +220,10 @@ export function useChat(options: UseChatOptions = {}) {
   const lastBuildPromptRef = useRef<string>('')
   // When true, the next sendMessage call is an internal auto-retry — skip the retry counter reset
   const isAutoRetryRef = useRef(false)
+  // Pending error context to inject into the next request body (set before calling sendMessage on retry)
+  const pendingLastErrorRef = useRef<string | null>(null)
+  const pendingRetryAttemptRef = useRef<number>(0)
+  const pendingPreviousCodeRef = useRef<string | null>(null)
 
   // Mark unmounted so in-flight async callbacks don't call setState after cleanup.
   useEffect(() => {
@@ -310,6 +314,18 @@ export function useChat(options: UseChatOptions = {}) {
         }
         if (studioConnected && studioContext) {
           chatBody.studioContext = studioContext
+        }
+        // Inject pending retry context (set by checkResult before calling sendMessage)
+        if (pendingLastErrorRef.current) {
+          chatBody.lastError = pendingLastErrorRef.current
+          chatBody.retryAttempt = pendingRetryAttemptRef.current
+          if (pendingPreviousCodeRef.current) {
+            chatBody.previousCode = pendingPreviousCodeRef.current
+          }
+          // Consume — clear after injecting so normal messages aren't affected
+          pendingLastErrorRef.current = null
+          pendingRetryAttemptRef.current = 0
+          pendingPreviousCodeRef.current = null
         }
 
         // Send sessionId in header so the API can auto-execute code in Studio
@@ -531,23 +547,11 @@ export function useChat(options: UseChatOptions = {}) {
                     },
                   ])
 
-                  // Re-trigger the AI with the error context and previous code
+                  // Set pending retry context — sendMessage reads and injects these into the request body
                   const fixPrompt = lastBuildPromptRef.current || trimmed
-                  const retryBody: Record<string, unknown> = {
-                    message: fixPrompt,
-                    model: selectedModel,
-                    stream: true,
-                    lastError: statusData.lastCommandError,
-                    retryAttempt: attempt,
-                  }
-                  if (lastLuauRef.current) {
-                    retryBody.previousCode = lastLuauRef.current
-                  }
-                  if (studioConnected && studioContext) {
-                    retryBody.studioContext = studioContext
-                  }
-                  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-                  if (studioSessionId) headers['x-studio-session'] = studioSessionId
+                  pendingLastErrorRef.current = statusData.lastCommandError
+                  pendingRetryAttemptRef.current = attempt
+                  pendingPreviousCodeRef.current = lastLuauRef.current
 
                   retryListenerRef.current = false
                   // Fire via sendMessage so all state (loading, messages, etc.) flows correctly.
@@ -670,6 +674,11 @@ export function useChat(options: UseChatOptions = {}) {
                     },
                   ])
 
+                  // Set pending retry context — sendMessage reads and injects these into the request body
+                  pendingLastErrorRef.current = statusData.lastCommandError
+                  pendingRetryAttemptRef.current = attempt
+                  pendingPreviousCodeRef.current = lastLuauRef.current
+
                   retryListenerRef.current = false
                   isAutoRetryRef.current = true
                   void sendMessage(`[AUTO-RETRY attempt ${attempt}/${MAX_RETRIES}] ${lastBuildPromptRef.current || trimmed}`)
@@ -725,6 +734,11 @@ export function useChat(options: UseChatOptions = {}) {
     isAutoRetryRef.current = false
   }, [])
 
+  /** Remove a message by id — used to dismiss build-error cards */
+  const dismissMessage = useCallback((id: string) => {
+    setMessagesSync((prev) => prev.filter((m) => m.id !== id))
+  }, [setMessagesSync])
+
   return {
     messages,
     input,
@@ -734,6 +748,7 @@ export function useChat(options: UseChatOptions = {}) {
     suggestions,
     sendMessage,
     resetRetryCount,
+    dismissMessage,
     selectedModel,
     setSelectedModel,
     imageFile,

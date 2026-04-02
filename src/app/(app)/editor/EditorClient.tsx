@@ -65,7 +65,7 @@ const Viewport3D = dynamic(
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup'
+type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error'
 
 // ─── Marketplace build result type (mirrors API shape) ─────────────────────
 
@@ -108,6 +108,8 @@ interface ChatMessage {
   buildResult?: BuildResult
   /** Present when this message is part of a multi-step build sequence */
   buildPlan?: BuildPlan
+  /** Error message from a failed build attempt */
+  buildError?: string
 }
 
 type ModelId =

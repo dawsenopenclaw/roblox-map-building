@@ -265,6 +265,32 @@ export default function NewEditorClient() {
     studioContext: studio.studioContext,
   })
 
+  // ── Build-error action handlers ────────────────────────────────────────────
+
+  /** "Try again" — resets the retry counter then re-sends the last build prompt */
+  const handleRetry = useCallback(() => {
+    chat.resetRetryCount()
+    // Re-send the input (user can edit first, or we pull from the last user message)
+    const lastUserMsg = [...chat.messages].reverse().find((m) => m.role === 'user')
+    if (lastUserMsg) {
+      void chat.sendMessage(lastUserMsg.content)
+    }
+  }, [chat])
+
+  /** "Build it differently" — clears the input field so user can rephrase */
+  const handleBuildDifferently = useCallback(() => {
+    chat.resetRetryCount()
+    chat.setInput('')
+    setTimeout(() => chat.textareaRef.current?.focus(), 50)
+  }, [chat])
+
+  /** "Skip this" — removes the error card from the message list */
+  const handleDismissError = useCallback((id: string) => {
+    chat.dismissMessage(id)
+    chat.resetRetryCount()
+    setTimeout(() => chat.textareaRef.current?.focus(), 50)
+  }, [chat])
+
   return (
     <div
       style={{
@@ -342,6 +368,9 @@ export default function NewEditorClient() {
               totalTokens={chat.totalTokens}
               textareaRef={chat.textareaRef}
               suggestions={chat.suggestions}
+              onRetry={handleRetry}
+              onBuildDifferently={handleBuildDifferently}
+              onDismiss={handleDismissError}
             />
           </div>
 

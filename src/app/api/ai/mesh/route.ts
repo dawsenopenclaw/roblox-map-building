@@ -564,15 +564,20 @@ ${surfaceAppearanceBlock}
 \treturn model
 end
 
--- Record for undo support
-ChangeHistoryService:SetWaypoint("Before ForjeAI Place: ${displayName}")
+-- Record for undo support (TryBeginRecording is the modern API)
+local rid = ChangeHistoryService:TryBeginRecording("ForjeAI Place: ${displayName}")
 
-local builtModel = create_${safeName}()
+local ok, builtModel = pcall(create_${safeName})
 
--- Select the placed model in Studio Explorer
-Selection:Set({ builtModel })
+if ok and builtModel then
+\t-- Select the placed model in Studio Explorer
+\tSelection:Set({ builtModel })
+end
 
-ChangeHistoryService:SetWaypoint("After ForjeAI Place: ${displayName}")
+if rid then
+\tChangeHistoryService:FinishRecording(rid, ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel)
+end
+if not ok then warn("[ForjeAI] Mesh placement error: " .. tostring(builtModel)) end
 
 print(string.format("[ForjeAI] Placed '%s' (%s) — polygon count: ${polyCountDisplay}", builtModel.Name, "${category}"))
 `
