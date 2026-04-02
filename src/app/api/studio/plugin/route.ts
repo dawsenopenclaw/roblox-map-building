@@ -530,6 +530,12 @@ local function reportResult(cmdId, cmdType, success, errMsg)
 	end)
 end
 
+-- Shared state store: persists across multi-step AI commands
+local _forje_state = {}
+
+-- Protected instances that AI cannot delete
+local PROTECTED = {Terrain=true, Camera=true, Baseplate=true, SpawnLocation=true}
+
 local function executeCommand(cmd)
 	local cmdId   = cmd.id or ""
 	local cmdType = cmd.type or cmd.command or "unknown"
@@ -541,19 +547,69 @@ local function executeCommand(cmd)
 			reportResult(cmdId, cmdType, false, "no code provided")
 			return
 		end
+
+		-- Wrap in ChangeHistoryService recording for atomic undo
+		local recordId = nil
+		pcall(function()
+			recordId = ChangeHistoryService:TryBeginRecording("ForjeGames: " .. (data.prompt or "build"):sub(1, 40))
+		end)
+
+		-- Inject shared state + helpers into execution environment
+		local env = setfenv(loadstring("return getfenv()")(), getfenv())
+		rawset(env, "_forje_state", _forje_state)
+		rawset(env, "_forje_cam", workspace.CurrentCamera)
+		rawset(env, "_forje_selection", game:GetService("Selection"))
+
 		local fn, compErr = loadstring(code)
 		if not fn then
 			warn("[ForjeGames] Compile error: " .. tostring(compErr))
-			reportResult(cmdId, cmdType, false, tostring(compErr))
+			reportResult(cmdId, cmdType, false, "COMPILE_ERROR: " .. tostring(compErr))
+			if recordId then pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end) end
 			return
 		end
+
+		-- Count instances before execution for verification
+		local beforeCount = #workspace:GetDescendants()
+
 		local ok, runErr = pcall(fn)
 		if not ok then
 			warn("[ForjeGames] Runtime error: " .. tostring(runErr))
-			reportResult(cmdId, cmdType, false, tostring(runErr))
+			-- Rollback on failure
+			if recordId then
+				pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Cancel) end)
+			end
+			reportResult(cmdId, cmdType, false, "RUNTIME_ERROR: " .. tostring(runErr))
 			return
 		end
-		ChangeHistoryService:SetWaypoint("ForjeGames: execute_luau")
+
+		-- Finish recording (enables undo)
+		if recordId then
+			pcall(function() ChangeHistoryService:FinishRecording(recordId, Enum.FinishRecordingOperation.Commit) end)
+		else
+			ChangeHistoryService:SetWaypoint("ForjeGames: execute_luau")
+		end
+
+		-- Verification: count new instances created
+		local afterCount = #workspace:GetDescendants()
+		local created = afterCount - beforeCount
+
+		-- Report success with verification data
+		reportResult(cmdId, cmdType, true, nil)
+		-- Send enriched result
+		task.spawn(function()
+			jsonRequest("POST", "/api/studio/update", {
+				sessionId    = sessionId,
+				sessionToken = authToken,
+				event        = "command_result",
+				changes      = {{
+					id           = cmdId,
+					type         = "command_result",
+					success      = true,
+					instancesCreated = created,
+					timestamp    = os.time(),
+				}},
+			})
+		end)
 
 	elseif cmdType == "insert_asset" or cmdType == "insert_model" then
 		local assetId = data.assetId or data.modelId
@@ -586,12 +642,17 @@ local function executeCommand(cmd)
 			reportResult(cmdId, cmdType, false, "instancePath is required")
 			return
 		end
+		-- Sandbox: protect critical instances
+		if PROTECTED[path] then
+			reportResult(cmdId, cmdType, false, "PROTECTED: cannot delete " .. path)
+			return
+		end
 		local target = workspace:FindFirstChild(path, true)
-		if target then
+		if target and not PROTECTED[target.Name] then
 			target:Destroy()
 			ChangeHistoryService:SetWaypoint("ForjeGames: delete_model")
 		else
-			warn("[ForjeGames] delete_model: instance not found: " .. tostring(path))
+			warn("[ForjeGames] delete_model: instance not found or protected: " .. tostring(path))
 		end
 
 	elseif cmdType == "update_property" then
@@ -616,6 +677,91 @@ local function executeCommand(cmd)
 		else
 			warn("[ForjeGames] update_property: instance not found: " .. tostring(path))
 		end
+
+	-- ── UNDO — revert last AI build ──────────────────────────────────────
+	elseif cmdType == "undo" then
+		pcall(function() ChangeHistoryService:Undo() end)
+		reportResult(cmdId, cmdType, true, nil)
+
+	-- ── REDO — redo last undone build ────────────────────────────────────
+	elseif cmdType == "redo" then
+		pcall(function() ChangeHistoryService:Redo() end)
+		reportResult(cmdId, cmdType, true, nil)
+
+	-- ── CLONE — duplicate an object with optional offset ─────────────────
+	elseif cmdType == "clone" then
+		local path = data.instancePath or data.name
+		if not path then reportResult(cmdId, cmdType, false, "instancePath required"); return end
+		local target = workspace:FindFirstChild(path, true)
+		if not target then reportResult(cmdId, cmdType, false, "not found: " .. path); return end
+		local clone = target:Clone()
+		if clone and data.offset and clone:IsA("BasePart") then
+			clone.Position = clone.Position + Vector3.new(data.offset.x or 0, data.offset.y or 0, data.offset.z or 0)
+		end
+		if clone and data.offset and clone:IsA("Model") and clone.PrimaryPart then
+			clone:SetPrimaryPartCFrame(clone.PrimaryPart.CFrame + Vector3.new(data.offset.x or 0, data.offset.y or 0, data.offset.z or 0))
+		end
+		if clone then
+			clone.Parent = target.Parent
+			ChangeHistoryService:SetWaypoint("ForjeGames: clone")
+		end
+
+	-- ── MODIFY_SELECTED — change properties of whatever user has selected ─
+	elseif cmdType == "modify_selected" then
+		local sel = Selection:Get()
+		if #sel == 0 then reportResult(cmdId, cmdType, false, "nothing selected"); return end
+		local props = data.properties or {}
+		local modified = 0
+		for _, obj in ipairs(sel) do
+			for propName, propVal in pairs(props) do
+				pcall(function()
+					-- Handle special property types
+					if propName == "Color" and type(propVal) == "table" then
+						obj[propName] = Color3.fromRGB(propVal.r or propVal[1] or 255, propVal.g or propVal[2] or 255, propVal.b or propVal[3] or 255)
+					elseif propName == "Position" and type(propVal) == "table" then
+						obj[propName] = Vector3.new(propVal.x or propVal[1] or 0, propVal.y or propVal[2] or 0, propVal.z or propVal[3] or 0)
+					elseif propName == "Size" and type(propVal) == "table" then
+						obj[propName] = Vector3.new(propVal.x or propVal[1] or 1, propVal.y or propVal[2] or 1, propVal.z or propVal[3] or 1)
+					elseif propName == "Material" then
+						obj[propName] = Enum.Material[propVal] or obj[propName]
+					else
+						obj[propName] = propVal
+					end
+					modified = modified + 1
+				end)
+			end
+		end
+		ChangeHistoryService:SetWaypoint("ForjeGames: modify_selected")
+
+	-- ── SET_LIGHTING — change time of day, atmosphere, mood ──────────────
+	elseif cmdType == "set_lighting" then
+		pcall(function()
+			local Lighting = game:GetService("Lighting")
+			local props = data.properties or data
+			for k, v in pairs(props) do
+				if k == "ClockTime" or k == "Brightness" or k == "EnvironmentDiffuseScale" or k == "EnvironmentSpecularScale" or k == "ExposureCompensation" or k == "GeographicLatitude" then
+					Lighting[k] = tonumber(v) or Lighting[k]
+				elseif k == "Ambient" and type(v) == "table" then
+					Lighting.Ambient = Color3.fromRGB(v.r or v[1] or 0, v.g or v[2] or 0, v.b or v[3] or 0)
+				elseif k == "OutdoorAmbient" and type(v) == "table" then
+					Lighting.OutdoorAmbient = Color3.fromRGB(v.r or v[1] or 0, v.g or v[2] or 0, v.b or v[3] or 0)
+				elseif k == "FogColor" and type(v) == "table" then
+					Lighting.FogColor = Color3.fromRGB(v.r or v[1] or 0, v.g or v[2] or 0, v.b or v[3] or 0)
+				elseif k == "FogEnd" then
+					Lighting.FogEnd = tonumber(v) or Lighting.FogEnd
+				elseif k == "FogStart" then
+					Lighting.FogStart = tonumber(v) or Lighting.FogStart
+				end
+			end
+			-- Handle Atmosphere child
+			if data.atmosphere then
+				local atmo = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere", Lighting)
+				for ak, av in pairs(data.atmosphere) do
+					pcall(function() atmo[ak] = (type(av) == "table") and Color3.fromRGB(av[1] or 0, av[2] or 0, av[3] or 0) or av end)
+				end
+			end
+			ChangeHistoryService:SetWaypoint("ForjeGames: set_lighting")
+		end)
 
 	elseif cmdType == "scan_workspace" then
 		local snapshot = {objects = {}, spawns = {}, stats = {parts=0, models=0}, bounds = {min={999999,999999,999999}, max={-999999,-999999,-999999}}}
@@ -652,10 +798,345 @@ local function executeCommand(cmd)
 			end
 		end
 		scan(workspace, 0)
-		-- Lighting
-		local lt = game:GetService("Lighting")
-		snapshot.lighting = {time = lt.ClockTime, brightness = lt.Brightness, ambient = {math.floor(lt.Ambient.R*255), math.floor(lt.Ambient.G*255), math.floor(lt.Ambient.B*255)}}
 		snapshot.stats.total = count
+
+		-- 6. Lighting details
+		pcall(function()
+			local lt = game:GetService("Lighting")
+			snapshot.lighting = {
+				time = lt.ClockTime,
+				brightness = lt.Brightness,
+				ambient = {math.floor(lt.Ambient.R*255), math.floor(lt.Ambient.G*255), math.floor(lt.Ambient.B*255)},
+				outdoorAmbient = {math.floor(lt.OutdoorAmbient.R*255), math.floor(lt.OutdoorAmbient.G*255), math.floor(lt.OutdoorAmbient.B*255)},
+				fogColor = {math.floor(lt.FogColor.R*255), math.floor(lt.FogColor.G*255), math.floor(lt.FogColor.B*255)},
+				fogStart = lt.FogStart,
+				fogEnd = lt.FogEnd,
+				shadowSoftness = lt.ShadowSoftness,
+				technology = lt.Technology.Name,
+				environmentDiffuseScale = lt.EnvironmentDiffuseScale,
+				environmentSpecularScale = lt.EnvironmentSpecularScale,
+				globalShadows = lt.GlobalShadows,
+			}
+		end)
+
+		-- 7. Atmosphere
+		pcall(function()
+			local atmo = game:GetService("Lighting"):FindFirstChildOfClass("Atmosphere")
+			if atmo then
+				snapshot.atmosphere = {
+					density = atmo.Density,
+					offset = atmo.Offset,
+					color = {math.floor(atmo.Color.R*255), math.floor(atmo.Color.G*255), math.floor(atmo.Color.B*255)},
+					decay = {math.floor(atmo.Decay.R*255), math.floor(atmo.Decay.G*255), math.floor(atmo.Decay.B*255)},
+					glare = atmo.Glare,
+					haze = atmo.Haze,
+				}
+			end
+		end)
+
+		-- 8. Sky settings
+		pcall(function()
+			local sky = game:GetService("Lighting"):FindFirstChildOfClass("Sky")
+			if sky then
+				snapshot.sky = {
+					sunAngularSize = sky.SunAngularSize,
+					moonAngularSize = sky.MoonAngularSize,
+					starCount = sky.StarCount,
+					celestialBodiesShown = sky.CelestialBodiesShown,
+				}
+			end
+		end)
+
+		-- 9. Post-processing effects
+		pcall(function()
+			local lt = game:GetService("Lighting")
+			local effects = {}
+			for _, child in lt:GetChildren() do
+				if child:IsA("BloomEffect") then
+					table.insert(effects, {type="Bloom", intensity=child.Intensity, size=child.Size, threshold=child.Threshold})
+				elseif child:IsA("BlurEffect") then
+					table.insert(effects, {type="Blur", size=child.Size})
+				elseif child:IsA("ColorCorrectionEffect") then
+					table.insert(effects, {type="ColorCorrection", brightness=child.Brightness, contrast=child.Contrast, saturation=child.Saturation})
+				elseif child:IsA("SunRaysEffect") then
+					table.insert(effects, {type="SunRays", intensity=child.Intensity, spread=child.Spread})
+				elseif child:IsA("DepthOfFieldEffect") then
+					table.insert(effects, {type="DepthOfField", focusDistance=child.FocusDistance, nearIntensity=child.NearIntensity, farIntensity=child.FarIntensity})
+				end
+			end
+			if #effects > 0 then snapshot.postProcessing = effects end
+		end)
+
+		-- 10. Workspace settings
+		pcall(function()
+			snapshot.workspace = {
+				gravity = workspace.Gravity,
+				fallenPartsDestroyHeight = workspace.FallenPartsDestroyHeight,
+				streamingEnabled = workspace.StreamingEnabled,
+				streamingMinRadius = workspace.StreamingMinRadius,
+				streamingTargetRadius = workspace.StreamingTargetRadius,
+			}
+		end)
+
+		-- 11. All lights in workspace
+		pcall(function()
+			local lights = {}
+			local lightCount = 0
+			local function roundI(n) return math.floor(n + 0.5) end
+			for _, desc in workspace:GetDescendants() do
+				if lightCount >= 30 then break end
+				if desc:IsA("PointLight") or desc:IsA("SpotLight") or desc:IsA("SurfaceLight") then
+					lightCount = lightCount + 1
+					local parent = desc.Parent
+					local pos = parent and parent:IsA("BasePart") and parent.Position or Vector3.zero
+					table.insert(lights, {
+						type = desc.ClassName,
+						brightness = desc.Brightness,
+						range = desc.Range,
+						color = {math.floor(desc.Color.R*255), math.floor(desc.Color.G*255), math.floor(desc.Color.B*255)},
+						parentName = parent and parent.Name or "none",
+						p = {roundI(pos.X), roundI(pos.Y), roundI(pos.Z)},
+					})
+				end
+			end
+			if #lights > 0 then snapshot.lights = lights end
+		end)
+
+		-- 12. Scripts summary
+		pcall(function()
+			local scripts = {server=0, local_=0, module=0, names={}}
+			for _, desc in workspace:GetDescendants() do
+				if desc:IsA("Script") and not desc:IsA("LocalScript") and not desc:IsA("ModuleScript") then
+					scripts.server = scripts.server + 1
+					if #scripts.names < 20 then table.insert(scripts.names, desc:GetFullName():sub(1,60)) end
+				elseif desc:IsA("LocalScript") then
+					scripts.local_ = scripts.local_ + 1
+				elseif desc:IsA("ModuleScript") then
+					scripts.module = scripts.module + 1
+				end
+			end
+			snapshot.scripts = scripts
+		end)
+
+		-- 13. GUI elements
+		pcall(function()
+			local guis = {}
+			local sg = game:GetService("StarterGui")
+			for _, gui in sg:GetChildren() do
+				if gui:IsA("ScreenGui") then
+					table.insert(guis, {n=gui.Name, enabled=gui.Enabled, children=#gui:GetChildren()})
+				end
+			end
+			if #guis > 0 then snapshot.guis = guis end
+		end)
+
+		-- 14. Teams
+		pcall(function()
+			local teams = {}
+			for _, team in game:GetService("Teams"):GetChildren() do
+				if team:IsA("Team") then
+					table.insert(teams, {n=team.Name, color={math.floor(team.TeamColor.Color.R*255), math.floor(team.TeamColor.Color.G*255), math.floor(team.TeamColor.Color.B*255)}})
+				end
+			end
+			if #teams > 0 then snapshot.teams = teams end
+		end)
+
+		-- 15. Humanoids/NPCs
+		pcall(function()
+			local npcs = {}
+			local npcCount = 0
+			local function roundI(n) return math.floor(n + 0.5) end
+			for _, desc in workspace:GetDescendants() do
+				if npcCount >= 20 then break end
+				if desc:IsA("Humanoid") and desc.Parent then
+					npcCount = npcCount + 1
+					local root = desc.Parent:FindFirstChild("HumanoidRootPart")
+					local pos = root and root.Position or Vector3.zero
+					table.insert(npcs, {
+						n = desc.Parent.Name:sub(1,40),
+						health = desc.Health,
+						maxHealth = desc.MaxHealth,
+						walkSpeed = desc.WalkSpeed,
+						jumpHeight = desc.JumpHeight,
+						p = {roundI(pos.X), roundI(pos.Y), roundI(pos.Z)},
+					})
+				end
+			end
+			if #npcs > 0 then snapshot.npcs = npcs end
+		end)
+
+		-- 16. Particle emitters
+		pcall(function()
+			local particles = {}
+			local pCount = 0
+			local function roundI(n) return math.floor(n + 0.5) end
+			for _, desc in workspace:GetDescendants() do
+				if pCount >= 15 then break end
+				if desc:IsA("ParticleEmitter") then
+					pCount = pCount + 1
+					local parent = desc.Parent
+					local pos = parent and parent:IsA("BasePart") and parent.Position or Vector3.zero
+					table.insert(particles, {
+						n = desc.Name,
+						rate = desc.Rate,
+						lifetime = desc.Lifetime.Max,
+						parentName = parent and parent.Name or "none",
+						p = {roundI(pos.X), roundI(pos.Y), roundI(pos.Z)},
+					})
+				end
+			end
+			if #particles > 0 then snapshot.particles = particles end
+		end)
+
+		-- 17. Constraints (welds, hinges, springs)
+		pcall(function()
+			local constraints = {welds=0, hinges=0, springs=0, ropes=0, other=0}
+			for _, desc in workspace:GetDescendants() do
+				if desc:IsA("WeldConstraint") or desc:IsA("Weld") then constraints.welds = constraints.welds + 1
+				elseif desc:IsA("HingeConstraint") then constraints.hinges = constraints.hinges + 1
+				elseif desc:IsA("SpringConstraint") then constraints.springs = constraints.springs + 1
+				elseif desc:IsA("RopeConstraint") then constraints.ropes = constraints.ropes + 1
+				elseif desc:IsA("Constraint") then constraints.other = constraints.other + 1
+				end
+			end
+			snapshot.constraints = constraints
+		end)
+
+		-- 18. Remote events/functions (game architecture)
+		pcall(function()
+			local remotes = {}
+			local rs = game:GetService("ReplicatedStorage")
+			for _, child in rs:GetDescendants() do
+				if #remotes >= 30 then break end
+				if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+					table.insert(remotes, {n=child.Name, type=child.ClassName, path=child:GetFullName():sub(1,80)})
+				end
+			end
+			if #remotes > 0 then snapshot.remotes = remotes end
+		end)
+
+		-- 19. Folders structure (top-level organization)
+		pcall(function()
+			local folders = {}
+			for _, child in workspace:GetChildren() do
+				if child:IsA("Folder") then
+					table.insert(folders, {n=child.Name, children=#child:GetChildren()})
+				end
+			end
+			if #folders > 0 then snapshot.folders = folders end
+		end)
+
+		-- 20. CollectionService tags
+		pcall(function()
+			local cs = game:GetService("CollectionService")
+			local tags = {}
+			for _, tag in cs:GetAllTags() do
+				local tagged = cs:GetTagged(tag)
+				if #tagged > 0 then
+					table.insert(tags, {tag=tag, count=#tagged})
+				end
+				if #tags >= 20 then break end
+			end
+			if #tags > 0 then snapshot.tags = tags end
+		end)
+
+		-- 21. MeshParts with mesh IDs
+		pcall(function()
+			local meshes = {}
+			local mCount = 0
+			local function roundI(n) return math.floor(n + 0.5) end
+			for _, desc in workspace:GetDescendants() do
+				if mCount >= 20 then break end
+				if desc:IsA("MeshPart") and desc.MeshId ~= "" then
+					mCount = mCount + 1
+					local p = desc.Position
+					table.insert(meshes, {
+						n = desc.Name:sub(1,40),
+						meshId = desc.MeshId:sub(1,60),
+						p = {roundI(p.X), roundI(p.Y), roundI(p.Z)},
+						s = {roundI(desc.Size.X), roundI(desc.Size.Y), roundI(desc.Size.Z)},
+					})
+				end
+			end
+			if #meshes > 0 then snapshot.meshParts = meshes end
+		end)
+
+		-- 22. Decals and textures
+		pcall(function()
+			local decals = {}
+			local dCount = 0
+			for _, desc in workspace:GetDescendants() do
+				if dCount >= 15 then break end
+				if desc:IsA("Decal") or desc:IsA("Texture") then
+					dCount = dCount + 1
+					table.insert(decals, {
+						type = desc.ClassName,
+						texture = desc.Texture:sub(1,60),
+						face = desc.Face.Name,
+						parentName = desc.Parent and desc.Parent.Name or "none",
+					})
+				end
+			end
+			if #decals > 0 then snapshot.decals = decals end
+		end)
+
+		-- 23. Sound objects
+		pcall(function()
+			local sounds = {}
+			local sCount = 0
+			for _, desc in workspace:GetDescendants() do
+				if sCount >= 10 then break end
+				if desc:IsA("Sound") then
+					sCount = sCount + 1
+					table.insert(sounds, {
+						n = desc.Name:sub(1,40),
+						soundId = desc.SoundId:sub(1,60),
+						volume = desc.Volume,
+						looped = desc.Looped,
+						playing = desc.Playing,
+					})
+				end
+			end
+			if #sounds > 0 then snapshot.sounds = sounds end
+		end)
+
+		-- 24. Instance count totals
+		pcall(function()
+			snapshot.stats.totalInstances = #workspace:GetDescendants()
+			snapshot.stats.totalParts = 0
+			snapshot.stats.totalMeshParts = 0
+			snapshot.stats.totalUnions = 0
+			for _, desc in workspace:GetDescendants() do
+				if desc:IsA("Part") then snapshot.stats.totalParts = snapshot.stats.totalParts + 1
+				elseif desc:IsA("MeshPart") then snapshot.stats.totalMeshParts = snapshot.stats.totalMeshParts + 1
+				elseif desc:IsA("UnionOperation") then snapshot.stats.totalUnions = snapshot.stats.totalUnions + 1
+				end
+			end
+		end)
+
+		-- 25. Place info
+		snapshot.place = {
+			id = placeId,
+			name = placeName,
+		}
+
+		-- Sample terrain at grid points to find ground level
+		local terrainSamples = {}
+		pcall(function()
+			local bMin = snapshot.bounds.min
+			local bMax = snapshot.bounds.max
+			local step = math.max(20, math.floor((bMax[1] - bMin[1]) / 10))
+			for x = bMin[1], bMax[1], step do
+				for z = bMin[3], bMax[3], step do
+					local ray = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1000, 0))
+					if ray then
+						local function round(n) return math.floor(n + 0.5) end
+						table.insert(terrainSamples, {round(x), round(ray.Position.Y), round(z)})
+					end
+				end
+			end
+		end)
+		snapshot.terrain = terrainSamples
 		-- Send back
 		reportResult(cmdId, cmdType, true, nil)
 		local mySessionId = sessionId
@@ -765,18 +1246,170 @@ mainBtn.Click:Connect(function()
 end)
 
 -- ============================================================
--- Main loop — heartbeat + sync poll
+-- Selection tracking (fires on every selection change)
+-- ============================================================
+
+local Selection = game:GetService("Selection")
+local cachedSelection = {}
+
+local function updateSelection()
+	local sel = {}
+	pcall(function()
+		for _, obj in ipairs(Selection:Get()) do
+			local entry = {
+				name = obj.Name,
+				className = obj.ClassName,
+				path = obj:GetFullName(),
+			}
+			if obj:IsA("BasePart") then
+				entry.position = string.format("%.1f,%.1f,%.1f", obj.Position.X, obj.Position.Y, obj.Position.Z)
+				entry.size = string.format("%.1f,%.1f,%.1f", obj.Size.X, obj.Size.Y, obj.Size.Z)
+				entry.material = tostring(obj.Material)
+				entry.color = string.format("%d,%d,%d", math.floor(obj.Color.R*255), math.floor(obj.Color.G*255), math.floor(obj.Color.B*255))
+				entry.transparency = obj.Transparency
+				entry.anchored = obj.Anchored
+			elseif obj:IsA("Model") then
+				entry.childCount = #obj:GetChildren()
+				if obj.PrimaryPart then
+					entry.position = string.format("%.1f,%.1f,%.1f", obj.PrimaryPart.Position.X, obj.PrimaryPart.Position.Y, obj.PrimaryPart.Position.Z)
+				end
+			end
+			sel[#sel + 1] = entry
+			if #sel >= 15 then break end
+		end
+	end)
+	cachedSelection = sel
+end
+
+pcall(function() Selection.SelectionChanged:Connect(updateSelection) end)
+
+-- ============================================================
+-- Scene tree — workspace top-level structure for AI map awareness
+-- ============================================================
+
+local cachedSceneTree = {}
+local lastTreeScan = 0
+
+local function scanSceneTree()
+	local now = tick()
+	if now - lastTreeScan < 10 then return end
+	lastTreeScan = now
+	local tree = {}
+	pcall(function()
+		for _, child in ipairs(workspace:GetChildren()) do
+			if child.Name ~= "Terrain" and child.Name ~= "Camera" then
+				local node = { name = child.Name, className = child.ClassName }
+				if child:IsA("Model") then
+					node.childCount = #child:GetDescendants()
+					if child.PrimaryPart then
+						node.position = string.format("%.0f,%.0f,%.0f", child.PrimaryPart.Position.X, child.PrimaryPart.Position.Y, child.PrimaryPart.Position.Z)
+					end
+				elseif child:IsA("BasePart") then
+					node.position = string.format("%.0f,%.0f,%.0f", child.Position.X, child.Position.Y, child.Position.Z)
+					node.size = string.format("%.1f,%.1f,%.1f", child.Size.X, child.Size.Y, child.Size.Z)
+				elseif child:IsA("Folder") then
+					node.childCount = #child:GetChildren()
+				end
+				tree[#tree + 1] = node
+				if #tree >= 80 then break end
+			end
+		end
+	end)
+	cachedSceneTree = tree
+end
+
+-- ============================================================
+-- Cached context — 100 nearest objects within 250 studs
+-- ============================================================
+
+local cachedNearby     = {}
+local cachedPartCount  = 0
+local cachedModelCount = 0
+local cachedLightCount = 0
+local lastContextScan  = 0
+local lastCamPos       = Vector3.new(0, 0, 0)
+local CONTEXT_INTERVAL = 3
+local NEARBY_RADIUS_SQ = 62500  -- 250 studs squared
+local NEARBY_MAX       = 100
+
+local function scanContext()
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+	local camPos = cam.CFrame.Position
+
+	local dx0 = camPos.X - lastCamPos.X
+	local dz0 = camPos.Z - lastCamPos.Z
+	local movedSq = dx0*dx0 + dz0*dz0
+	local now = tick()
+	if movedSq < 64 and (now - lastContextScan) < CONTEXT_INTERVAL then return end
+	lastCamPos = camPos
+	lastContextScan = now
+
+	local parts = {}
+	local totalParts = 0
+	local totalModels = 0
+	local totalLights = 0
+	pcall(function()
+		local descendants = workspace:GetDescendants()
+		for i = 1, #descendants do
+			local obj = descendants[i]
+			if obj:IsA("BasePart") then
+				totalParts = totalParts + 1
+				if obj.Name ~= "Terrain" then
+					local dx = obj.Position.X - camPos.X
+					local dy = obj.Position.Y - camPos.Y
+					local dz = obj.Position.Z - camPos.Z
+					local distSq = dx*dx + dy*dy + dz*dz
+					if distSq < NEARBY_RADIUS_SQ then
+						parts[#parts + 1] = {
+							name = obj.Name,
+							className = obj.ClassName,
+							position = string.format("%.0f,%.0f,%.0f", obj.Position.X, obj.Position.Y, obj.Position.Z),
+							size = string.format("%.1f,%.1f,%.1f", obj.Size.X, obj.Size.Y, obj.Size.Z),
+							material = tostring(obj.Material),
+							color = string.format("%d,%d,%d", math.floor(obj.Color.R*255), math.floor(obj.Color.G*255), math.floor(obj.Color.B*255)),
+							parent = obj.Parent and obj.Parent.Name or "",
+							d = distSq,
+						}
+					end
+				end
+			elseif obj:IsA("Model") then
+				totalModels = totalModels + 1
+			elseif obj:IsA("Light") then
+				totalLights = totalLights + 1
+			end
+		end
+	end)
+
+	table.sort(parts, function(a, b) return a.d < b.d end)
+	local result = {}
+	for i = 1, math.min(NEARBY_MAX, #parts) do
+		local p = parts[i]
+		p.d = nil
+		result[i] = p
+	end
+	cachedNearby = result
+	cachedPartCount = totalParts
+	cachedModelCount = totalModels
+	cachedLightCount = totalLights
+	scanSceneTree()
+end
+
+-- ============================================================
+-- Main loop — unified sync poll (fast, single request)
 -- ============================================================
 
 RunService.Heartbeat:Connect(function()
 	if not authToken then return end
 	local now = tick()
 
-	-- Keepalive heartbeat + camera data (every 30 s)
+	-- Scan context in background (cheap — skips if camera hasn't moved)
+	scanContext()
+
+	-- Heartbeat (every 30s) — piggybacks on cached context
 	if now - lastHB >= HB_INTERVAL then
 		lastHB = now
 		task.spawn(function()
-			-- Gather camera info for the web editor
 			local cam = workspace.CurrentCamera
 			local camData = nil
 			if cam then
@@ -792,12 +1425,34 @@ RunService.Heartbeat:Connect(function()
 					fov = cam.FieldOfView,
 				}
 			end
-
-			-- Count workspace children for map overview
-			local partCount = 0
+			-- Get what the user has selected in Studio
+			local selectedData = {}
 			pcall(function()
-				for _, obj in ipairs(workspace:GetDescendants()) do
-					if obj:IsA("BasePart") then partCount = partCount + 1 end
+				local sel = game:GetService("Selection"):Get()
+				for i, obj in sel do
+					if i > 5 then break end
+					local function round(n) return math.floor(n + 0.5) end
+					if obj:IsA("BasePart") then
+						local p = obj.Position
+						table.insert(selectedData, {
+							n = obj.Name:sub(1,40),
+							cls = obj.ClassName,
+							p = {round(p.X), round(p.Y), round(p.Z)},
+							s = {round(obj.Size.X), round(obj.Size.Y), round(obj.Size.Z)},
+						})
+					elseif obj:IsA("Model") then
+						table.insert(selectedData, {n = obj.Name:sub(1,40), cls = "Model"})
+					end
+				end
+			end)
+
+			-- Raycast down from camera to find ground Y
+			local groundY = 0
+			pcall(function()
+				local camPos = workspace.CurrentCamera.CFrame.Position
+				local ray = workspace:Raycast(camPos, Vector3.new(0, -500, 0))
+				if ray then
+					groundY = math.floor(ray.Position.Y + 0.5)
 				end
 			end)
 
@@ -809,17 +1464,22 @@ RunService.Heartbeat:Connect(function()
 				event        = "heartbeat",
 				timestamp    = os.time(),
 				camera       = camData,
-				partCount    = partCount,
+				partCount    = cachedPartCount,
+				modelCount   = cachedModelCount,
+				lightCount   = cachedLightCount,
+				nearbyParts  = cachedNearby,
+				selected     = cachedSelection,
+				sceneTree    = cachedSceneTree,
+				groundY      = groundY,
 			})
 			if ok then onSuccess() else onFail() end
 		end)
 	end
 
-	-- Command poll (every 1 s) — includes live camera position
+	-- Command poll (every 1s) — camera in query string, zero overhead
 	if now - lastSync >= SYNC_INTERVAL then
 		lastSync = now
 		task.spawn(function()
-			-- Quick camera snapshot for the sync URL
 			local camQ = ""
 			pcall(function()
 				local cam = workspace.CurrentCamera

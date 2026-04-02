@@ -250,11 +250,12 @@ export default function NewEditorClient() {
     [studio],
   )
 
-  // Chat
+  // Chat — pass Studio context so AI knows camera position + nearby objects
   const chat = useChat({
     onBuildComplete: handleBuildComplete,
     studioSessionId: studio.sessionId,
     studioConnected: studio.isConnected,
+    studioContext: studio.studioContext,
   })
 
   return (

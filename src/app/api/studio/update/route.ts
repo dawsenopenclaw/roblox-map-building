@@ -102,6 +102,14 @@ export async function POST(req: NextRequest) {
     statePayload.snapshotAt = Date.now()
   }
 
+  // Store camera + nearby parts + selection + ground from heartbeat for AI context
+  const extra = rawBody as Record<string, unknown>
+  if (extra.camera) statePayload.camera = extra.camera
+  if (extra.partCount !== undefined) statePayload.partCount = extra.partCount
+  if (extra.nearbyParts) statePayload.nearbyParts = extra.nearbyParts
+  if (extra.selected !== undefined) statePayload.selected = extra.selected
+  if (extra.groundY !== undefined) statePayload.groundY = extra.groundY
+
   const session = await updateSessionState(body.sessionId, statePayload)
   if (!session) {
     return NextResponse.json(
@@ -110,8 +118,33 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // TODO: forward relevant changes to connected web clients via SSE/WebSocket
-  // when a push channel is available (e.g. Pusher, Ably, or Next.js route handler SSE).
+  // Persist camera/context on the session object for status endpoint
+  const s = session as Record<string, unknown>
+  if (extra.camera) s.camera = extra.camera
+  if (extra.partCount !== undefined) s.partCount = extra.partCount
+  if (extra.modelCount !== undefined) s.modelCount = extra.modelCount
+  if (extra.lightCount !== undefined) s.lightCount = extra.lightCount
+  if (extra.nearbyParts) s.nearbyParts = extra.nearbyParts
+  if (extra.selected !== undefined) s.selected = extra.selected
+  if (extra.sceneTree !== undefined) s.sceneTree = extra.sceneTree
+  if (extra.groundY !== undefined) s.groundY = extra.groundY
+
+  // Push to SSE subscribers — instant browser updates, no polling needed
+  try {
+    const { pushToSession } = await import('@/app/api/studio/stream/route')
+    if (extra.camera || extra.nearbyParts || extra.selected) {
+      pushToSession(body.sessionId, 'context', {
+        camera: extra.camera ?? null,
+        partCount: extra.partCount,
+        modelCount: extra.modelCount,
+        lightCount: extra.lightCount,
+        nearbyParts: extra.nearbyParts,
+        selected: extra.selected,
+        sceneTree: extra.sceneTree,
+        groundY: extra.groundY,
+      })
+    }
+  } catch { /* SSE not available — browser falls back to polling */ }
 
   return NextResponse.json(
     {

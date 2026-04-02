@@ -139,6 +139,14 @@ export async function GET(req: NextRequest) {
     sessionId:     session.sessionId,
     queueDepth:    session.commandQueue.length,
     serverTime:    Date.now(),
+    camera:        (session as Record<string, unknown>).camera ?? null,
+    partCount:     (session as Record<string, unknown>).partCount ?? 0,
+    modelCount:    (session as Record<string, unknown>).modelCount ?? 0,
+    lightCount:    (session as Record<string, unknown>).lightCount ?? 0,
+    nearbyParts:   (session as Record<string, unknown>).nearbyParts ?? [],
+    selected:      (session as Record<string, unknown>).selected ?? [],
+    sceneTree:     (session as Record<string, unknown>).sceneTree ?? [],
+    groundY:       (session as Record<string, unknown>).groundY ?? 0,
   }
 
   if (pluginVer && isOutdated(pluginVer)) {

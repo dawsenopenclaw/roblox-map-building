@@ -1106,7 +1106,7 @@ function LuauHighlighted({ code }: { code: string }) {
   return <>{parts}</>
 }
 
-const BuildResultCard = memo(function BuildResultCard({ result }: { result: BuildResult }) {
+const BuildResultCard = memo(function BuildResultCard({ result, studioConnected, studioSessionId, studioJwt }: { result: BuildResult; studioConnected?: boolean; studioSessionId?: string; studioJwt?: string }) {
   const [showCode, setShowCode] = useState(false)
   const [copied, setCopied]     = useState(false)
   const [importDone, setImportDone] = useState(false)
@@ -1136,11 +1136,28 @@ const BuildResultCard = memo(function BuildResultCard({ result }: { result: Buil
   }
 
   const handleImport = () => {
-    // Copy code to clipboard and signal done
+    // Copy code to clipboard
     navigator.clipboard.writeText(result.luauCode).catch(() => {})
     setImportDone(true)
     if (importTimerRef.current) clearTimeout(importTimerRef.current)
     importTimerRef.current = setTimeout(() => setImportDone(false), 3000)
+
+    // If Studio is connected, also auto-send the code for execution
+    if (studioConnected && studioSessionId) {
+      fetch('/api/studio/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(studioJwt ? { 'Authorization': `Bearer ${studioJwt}` } : {}) },
+        body: JSON.stringify({ code: result.luauCode, sessionId: studioSessionId }),
+      }).catch(() => {})
+      // Trigger a re-scan after 2s so viewport updates
+      setTimeout(() => {
+        fetch('/api/studio/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: studioSessionId }),
+        }).catch(() => {})
+      }, 2000)
+    }
   }
 
   return (
@@ -1486,7 +1503,7 @@ const Message = memo(function Message({ msg }: { msg: ChatMessage }) {
           </p>
         </div>
         {/* Marketplace-first build result card */}
-        {msg.buildResult && <BuildResultCard result={msg.buildResult} />}
+        {msg.buildResult && <BuildResultCard result={msg.buildResult} studioConnected={studioConnected} studioSessionId={studioStatus.sessionId} />}
         <div className="flex items-center gap-2 pl-1">
           {msg.tokensUsed !== undefined && (
             <span className="text-[10px] text-zinc-600 flex items-center gap-1">
@@ -2625,6 +2642,16 @@ export function EditorClient() {
               })
               .finally(() => {
                 setTimeout(() => setExecuteStatus('idle'), 3000)
+                // Auto-scan workspace 2s after execution so viewport + AI context update
+                setTimeout(() => {
+                  if (studioStatus.sessionId) {
+                    fetch('/api/studio/scan', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ sessionId: studioStatus.sessionId }),
+                    }).catch(() => {})
+                  }
+                }, 2000)
               })
           }
         }

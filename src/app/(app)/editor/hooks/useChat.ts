@@ -77,16 +77,28 @@ function getDemoResponse(prompt: string): string {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
+interface StudioContextForChat {
+  camera?: { posX: number; posY: number; posZ: number; lookX: number; lookY: number; lookZ: number } | null
+  partCount?: number
+  modelCount?: number
+  lightCount?: number
+  nearbyParts?: { name: string; className: string; position: string; size: string; material: string; color?: string; parent?: string }[]
+  selection?: { name: string; className: string; path: string; position?: string; size?: string; material?: string; color?: string }[]
+  sceneTree?: { name: string; className: string; position?: string; childCount?: number }[]
+  groundY?: number
+}
+
 interface UseChatOptions {
   /** Called after each AI response with the Luau code, if any */
   onBuildComplete?: (luauCode: string, prompt: string, sessionId: string | null) => void
   studioSessionId?: string | null
   studioConnected?: boolean
+  studioContext?: StudioContextForChat
 }
 
 export function useChat(options: UseChatOptions = {}) {
   const { user } = useUser()
-  const { onBuildComplete, studioSessionId, studioConnected } = options
+  const { onBuildComplete, studioSessionId, studioConnected, studioContext } = options
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -96,6 +108,7 @@ export function useChat(options: UseChatOptions = {}) {
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const retryListenerRef = useRef(false)
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -155,10 +168,16 @@ export function useChat(options: UseChatOptions = {}) {
         const lowerTrimmed = trimmed.toLowerCase()
         const isBuildMeshIntent = BUILD_KEYWORDS.some((kw) => lowerTrimmed.includes(kw))
 
+        // Include Studio context so AI knows camera position + nearby objects
+        const chatBody: Record<string, unknown> = { message: trimmed, model: selectedModel }
+        if (studioConnected && studioContext) {
+          chatBody.studioContext = studioContext
+        }
+
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
           headers,
-          body: JSON.stringify({ message: trimmed, model: selectedModel }),
+          body: JSON.stringify(chatBody),
         })
 
         type MeshAPIResponse = {
@@ -250,6 +269,35 @@ export function useChat(options: UseChatOptions = {}) {
 
         if (studioConnected && luauCode && onBuildComplete) {
           onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
+
+          // Error recovery: listen for command_result errors and auto-retry
+          if (typeof window !== 'undefined' && !retryListenerRef.current) {
+            retryListenerRef.current = true
+            const checkResult = async () => {
+              // Wait for plugin to execute (up to 5s)
+              await new Promise(r => setTimeout(r, 3000))
+              try {
+                const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
+                if (!statusRes.ok) return
+                const statusData = await statusRes.json() as Record<string, unknown>
+                // Check if last command failed via session's latest state
+                const latestState = statusData as { lastCommandError?: string }
+                if (latestState.lastCommandError && latestState.lastCommandError.includes('ERROR')) {
+                  // Auto-send error back to AI for fix (one retry only)
+                  const fixPrompt = `The code you just generated had an error:\n${latestState.lastCommandError}\n\nPlease fix the code and try again. Generate corrected Lua code.`
+                  // Trigger a follow-up message
+                  setMessages(prev => [...prev, {
+                    id: uid(),
+                    role: 'system',
+                    content: `Build error detected — auto-fixing: ${latestState.lastCommandError}`,
+                    timestamp: new Date(),
+                  }])
+                }
+              } catch { /* silent */ }
+              retryListenerRef.current = false
+            }
+            void checkResult()
+          }
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Unknown error'

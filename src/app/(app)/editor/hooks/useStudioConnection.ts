@@ -10,6 +10,17 @@ export interface StudioActivity {
   timestamp: Date
 }
 
+export interface StudioCamera {
+  posX: number; posY: number; posZ: number
+  lookX: number; lookY: number; lookZ: number
+}
+
+export interface StudioContext {
+  camera: StudioCamera | null
+  partCount: number
+  nearbyParts: { name: string; className: string; position: string; size: string; material: string }[]
+}
+
 export interface StudioConnectionState {
   isConnected: boolean
   sessionId: string | null
@@ -21,6 +32,7 @@ export interface StudioConnectionState {
   connectTimer: number
   activity: StudioActivity[]
   commandsSent: number
+  studioContext: StudioContext
 }
 
 function uid() {
@@ -39,6 +51,7 @@ export function useStudioConnection() {
     connectTimer: 300,
     activity: [],
     commandsSent: 0,
+    studioContext: { camera: null, partCount: 0, nearbyParts: [] },
   })
 
   const codeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -71,15 +84,23 @@ export function useStudioConnection() {
         placeId?: number
         screenshotUrl?: string
         sessionId?: string
+        camera?: StudioCamera
+        partCount?: number
+        nearbyParts?: StudioContext['nearbyParts']
       }
       setState((prev) => {
+        const ctx: StudioContext = {
+          camera: data.camera ?? prev.studioContext.camera,
+          partCount: data.partCount ?? prev.studioContext.partCount,
+          nearbyParts: data.nearbyParts ?? prev.studioContext.nearbyParts,
+        }
         if (prev.isConnected) {
-          // Already connected — only update metadata, never flip connected off
           return {
             ...prev,
             placeName: data.placeName ?? prev.placeName,
             placeId: data.placeId ?? prev.placeId,
             screenshotUrl: data.screenshotUrl ?? prev.screenshotUrl,
+            studioContext: ctx,
           }
         }
         return {
@@ -89,6 +110,7 @@ export function useStudioConnection() {
           placeId: data.placeId ?? prev.placeId,
           screenshotUrl: data.screenshotUrl ?? prev.screenshotUrl,
           sessionId: data.sessionId ?? prev.sessionId,
+          studioContext: ctx,
         }
       })
     } catch {
@@ -162,9 +184,9 @@ export function useStudioConnection() {
     }))
     addActivity('Connected to Roblox Studio')
 
-    // Start status + screenshot polling
-    statusPollRef.current = setInterval(() => pollStatus(sessionId), 4000)
-    screenshotPollRef.current = setInterval(() => pollScreenshot(sessionId), 6000)
+    // Single fast poll — status + context every 2s, screenshots every 8s
+    statusPollRef.current = setInterval(() => pollStatus(sessionId), 2000)
+    screenshotPollRef.current = setInterval(() => pollScreenshot(sessionId), 8000)
   }, [stopAllPolling, addActivity, pollStatus, pollScreenshot])
 
   const disconnect = useCallback(() => {
@@ -180,6 +202,7 @@ export function useStudioConnection() {
       connectTimer: 300,
       activity: [],
       commandsSent: 0,
+      studioContext: { camera: null, partCount: 0, nearbyParts: [] },
     })
   }, [stopAllPolling])
 
