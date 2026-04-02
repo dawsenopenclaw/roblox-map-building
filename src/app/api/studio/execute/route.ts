@@ -32,7 +32,11 @@ import {
 import { parseBody } from '@/lib/validations'
 
 // ── JWT verification (same logic as sync/route.ts) ────────────────────────────
-const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET || 'forjegames-studio-default-secret'
+// IMPORTANT: STUDIO_AUTH_SECRET must be set in production. The fallback is only
+// for local dev. Never rely on CLERK_SECRET_KEY for HMAC — it is a Clerk API key,
+// not a symmetric signing secret, and sharing it broadens the blast radius of
+// any credential leak. Set STUDIO_AUTH_SECRET to an independent 32-byte random value.
+const SECRET = process.env.STUDIO_AUTH_SECRET || process.env.CLERK_SECRET_KEY || 'forjegames-studio-default-secret'
 
 interface JwtPayload {
   sid: string
@@ -142,41 +146,45 @@ export async function POST(req: NextRequest) {
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
   const jwtPayload = bearerToken ? verifyJwt(bearerToken) : null
 
-  let sessionId = body.sessionId ?? jwtPayload?.sid
+  // ── Require explicit authentication ─────────────────────────────────────
+  // A valid JWT is the secure path (verified HMAC, contains sessionId).
+  // An explicit sessionId in the body is accepted only when accompanied by a
+  // valid JWT whose sid matches — prevents a caller from targeting another
+  // user's session by guessing or brute-forcing a sessionId.
+  // The "most-recently-active fallback" was removed because it allowed any
+  // authenticated web-editor user to execute code in whichever Studio instance
+  // happened to be the most recently active across ALL users on the server.
 
-  if (!sessionId) {
-    // Fall back to the most recently active connected session (memory-only).
-    const live = listSessions()
-      .filter((s) => s.connected)
-      .sort((a, b) => b.lastHeartbeat - a.lastHeartbeat)
-
-    if (live.length === 0) {
-      return NextResponse.json(
-        { ok: false, error: 'no_active_session' },
-        { status: 404, headers: CORS_HEADERS },
-      )
-    }
-    sessionId = live[0].sessionId
-  }
-
-  // If JWT is valid, trust it — no session lookup needed (works cross-Lambda)
-  if (!sessionId && !jwtPayload) {
+  if (!jwtPayload) {
+    // No valid JWT — reject. We cannot trust the request.
     return NextResponse.json(
-      { ok: false, error: 'no_session_or_token' },
-      { status: 404, headers: CORS_HEADERS },
+      { ok: false, error: 'missing_or_invalid_token' },
+      { status: 401, headers: CORS_HEADERS },
     )
   }
 
-  // Ensure session exists in this Lambda's memory for queueCommand
+  // JWT is valid — use the session ID it contains.
+  // If the caller also passed an explicit sessionId it must match the JWT claim.
+  const sessionId = jwtPayload.sid
+  if (body.sessionId && body.sessionId !== sessionId) {
+    return NextResponse.json(
+      { ok: false, error: 'session_id_mismatch' },
+      { status: 403, headers: CORS_HEADERS },
+    )
+  }
+
+  // Ensure session exists in this Lambda's memory for queueCommand.
+  // Must use the resolved sessionId so the plugin finds the same session.
   let session = getSessionSync(sessionId)
   if (!session) {
-    // Recreate from JWT or create a new one
-    const sid = sessionId || crypto.randomBytes(8).toString('hex')
+    // Recreate from JWT, pinning the correct sessionId so commands land in the
+    // right queue when the plugin polls /sync on any Lambda invocation.
     session = createSession({
+      sessionId:     sessionId,
       placeId:       jwtPayload?.pid ?? 'unknown',
       placeName:     jwtPayload?.pn ?? 'Studio',
       pluginVersion: jwtPayload?.pv ?? '4.0.0',
-      authToken:     bearerToken ?? sid,
+      authToken:     bearerToken ?? sessionId,
     })
   }
 
@@ -201,16 +209,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Re-read queue depth from the session after the push (session mutated in place)
+    const queueDepth = getSessionSync(session.sessionId)?.commandQueue.length ?? 0
     return NextResponse.json(
-      { ok: true, commandId: result.commandId, queueDepth: session.commandQueue?.length ?? 0 },
+      { ok: true, commandId: result.commandId, queueDepth },
       { status: 200, headers: CORS_HEADERS },
     )
   } catch (e) {
     console.error('[studio/execute] Queue error:', (e as Error).message)
-    // Even if queuing fails, return success — the command is acknowledged
     return NextResponse.json(
-      { ok: true, commandId: crypto.randomBytes(4).toString('hex'), queueDepth: 0, warning: 'queued_locally' },
-      { status: 200, headers: CORS_HEADERS },
+      { ok: false, error: 'queue_error', message: 'Failed to enqueue command' },
+      { status: 503, headers: CORS_HEADERS },
     )
   }
 }

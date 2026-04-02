@@ -836,6 +836,9 @@ local function executeCommand(cmd)
 			return
 		end
 
+		-- Capture "before" screenshot immediately (fire-and-forget)
+		captureAndUploadScreenshot(true)
+
 		-- Show build progress in the widget
 		local promptLabel = (data.prompt or "build"):sub(1, 28)
 		showBuildProgress("Building: " .. promptLabel .. "...")
@@ -1018,6 +1021,12 @@ local function executeCommand(cmd)
 
 		-- Show Done! in the widget progress bar
 		hideBuildProgress(true, nil)
+
+		-- Capture "after" screenshot 2 seconds after build completes
+		-- to give Studio time to finish rendering the new geometry.
+		task.delay(2, function()
+			captureAndUploadScreenshot(false)  -- live screenshot (not "before")
+		end)
 
 		-- Verification: count new instances created
 		local afterCount = #workspace:GetDescendants()
@@ -1848,6 +1857,12 @@ RunService.Heartbeat:Connect(function()
 
 	-- Scan context in background (cheap — skips if camera hasn't moved)
 	scanContext()
+
+	-- Periodic screenshot (every 5s) — only when connected and not mid-build
+	if now - lastScreenshot >= SCREENSHOT_INTERVAL and not isBuildRunning then
+		lastScreenshot = now
+		captureAndUploadScreenshot(false)
+	end
 
 	-- Heartbeat (every 30s) — piggybacks on cached context
 	if now - lastHB >= HB_INTERVAL then

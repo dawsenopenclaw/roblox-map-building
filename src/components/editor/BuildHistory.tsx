@@ -183,10 +183,10 @@ export function useBuildHistory(): UseBuildHistoryReturn {
   }, [undoBuild])
 
   const redoLast = useCallback(() => {
-    // Most recently undone = earliest in the undone list (list is newest-first)
+    // Entries are newest-first, so undone[0] is the most recently undone entry (LIFO)
     const undone = _state.entries.filter(e => e.status === 'undone')
-    const last = undone[undone.length - 1]
-    if (last) redoBuild(last.id)
+    const mostRecent = undone[0]
+    if (mostRecent) redoBuild(mostRecent.id)
   }, [redoBuild])
 
   return {

@@ -111,6 +111,28 @@ function TypingDots() {
   )
 }
 
+// Strip partial or complete code blocks from streaming content so raw Lua
+// never flashes on screen. Handles both open (no closing ```) and closed blocks.
+function stripCodeBlocksForDisplay(content: string): string {
+  // Remove fully closed code blocks: ```lang\n...\n```
+  let result = content.replace(/```(?:lua|luau|[a-z]*)?\s*\n[\s\S]*?```/g, '')
+  // Remove any open (still-streaming) code block: ``` to end of string
+  result = result.replace(/```[\s\S]*$/g, '')
+  return result.replace(/\n{3,}/g, '\n\n').trim()
+}
+
+// Pulse animation for "Sent to Studio" success dot
+const PULSE_STYLE = `
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.55; transform: scale(0.85); }
+  }
+  @keyframes thinkingPulse {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 1; }
+  }
+`
+
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === 'user'
   const isSystem = msg.role === 'system'
@@ -119,25 +141,83 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isSignup = msg.role === 'signup'
 
   if (isStatus) {
+    const isSuccess = msg.content.toLowerCase().includes('studio') && !msg.content.toLowerCase().includes('thinking')
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+        <style>{PULSE_STYLE}</style>
         <div
           style={{
             width: 28,
             height: 28,
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #FFB81C 0%, #FF6B35 100%)',
+            background: isSuccess
+              ? 'linear-gradient(135deg, rgba(74,222,128,0.15) 0%, rgba(34,197,94,0.1) 100%)'
+              : 'linear-gradient(135deg, #FFB81C 0%, #FF6B35 100%)',
+            border: isSuccess ? '1px solid rgba(74,222,128,0.3)' : 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
           }}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="#030712">
-            <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
-          </svg>
+          {isSuccess ? (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2.5 6.5L5 9l4.5-5" stroke="#4ADE80" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="#030712">
+              <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
+            </svg>
+          )}
         </div>
-        <TypingDots />
+
+        {isSuccess ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '5px 10px',
+              borderRadius: 8,
+              background: 'rgba(74,222,128,0.06)',
+              border: '1px solid rgba(74,222,128,0.18)',
+            }}
+          >
+            <div
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#4ADE80',
+                boxShadow: '0 0 6px rgba(74,222,128,0.7)',
+                animation: 'statusPulse 2s ease-in-out infinite',
+              }}
+            />
+            <span
+              style={{
+                fontSize: 12,
+                color: 'rgba(74,222,128,0.9)',
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+              }}
+            >
+              {msg.content}
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.4)',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {msg.content}
+            </span>
+            <TypingDots />
+          </div>
+        )}
       </div>
     )
   }
@@ -246,7 +326,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         }}
       >
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {msg.content}
+          {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
           {msg.hasCode && (

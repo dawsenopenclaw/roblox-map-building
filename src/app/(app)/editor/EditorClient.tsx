@@ -88,6 +88,15 @@ interface BuildResult {
   estimatedCustomCost: number
 }
 
+interface BuildPlan {
+  totalSteps: number
+  currentStep: number
+  stepLabel: string
+  nextStepPrompt: string | null
+  autoNext: boolean
+  planLines: string[]
+}
+
 interface ChatMessage {
   id: string
   role: MessageRole
@@ -97,6 +106,8 @@ interface ChatMessage {
   model?: string
   /** Present for building/terrain/fullgame intents */
   buildResult?: BuildResult
+  /** Present when this message is part of a multi-step build sequence */
+  buildPlan?: BuildPlan
 }
 
 type ModelId =
@@ -1643,6 +1654,10 @@ const Message = memo(function Message({ msg, studioConnected, studioSessionId, s
   }
 
   if (msg.role === 'user') {
+    // Strip internal [FORJE_STEP:N/M] prefixes — auto-sent continuation steps
+    // look cleaner as just the step description, not a raw instruction string.
+    const displayContent = msg.content.replace(/^\[FORJE_STEP:\d+\/\d+\]\s*/, '')
+    const isContinuationStep = /^\[FORJE_STEP:\d+\/\d+\]/.test(msg.content)
     return (
       <div
         className="flex justify-end gap-2 group"
@@ -1650,6 +1665,11 @@ const Message = memo(function Message({ msg, studioConnected, studioSessionId, s
         onMouseLeave={() => setShowTs(false)}
       >
         <div className="flex flex-col items-end gap-1">
+          {isContinuationStep && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ color: '#D4AF37', background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)' }}>
+              auto-step
+            </span>
+          )}
           <div
             className="max-w-[80%] px-3.5 py-2.5 rounded-2xl rounded-tr-sm"
             style={{
@@ -1658,7 +1678,7 @@ const Message = memo(function Message({ msg, studioConnected, studioSessionId, s
               boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
             }}
           >
-            <p className="text-sm text-zinc-100 leading-relaxed">{msg.content}</p>
+            <p className="text-sm text-zinc-100 leading-relaxed">{displayContent}</p>
           </div>
           {showTs && <MessageTimestamp ts={msg.timestamp} />}
         </div>
@@ -1720,6 +1740,50 @@ const Message = memo(function Message({ msg, studioConnected, studioSessionId, s
             ))}
           </p>
         </div>
+        {/* Multi-step build progress bar */}
+        {msg.buildPlan && (
+          <div
+            className="rounded-lg p-3 mt-2"
+            style={{ background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.18)' }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold" style={{ color: '#D4AF37' }}>
+                {msg.buildPlan.autoNext ? `Building step ${msg.buildPlan.currentStep} of ${msg.buildPlan.totalSteps}...` : `Build complete — ${msg.buildPlan.totalSteps} steps done`}
+              </span>
+              <span className="text-[10px]" style={{ color: '#a1a1aa' }}>
+                {Math.round((msg.buildPlan.currentStep / msg.buildPlan.totalSteps) * 100)}%
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${Math.round((msg.buildPlan.currentStep / msg.buildPlan.totalSteps) * 100)}%`,
+                  background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+                }}
+              />
+            </div>
+            {/* Step list */}
+            <div className="mt-2 space-y-0.5">
+              {msg.buildPlan.planLines.map((line, i) => {
+                const stepNum = i + 1
+                const isDone = stepNum < msg.buildPlan!.currentStep
+                const isCurrent = stepNum === msg.buildPlan!.currentStep
+                return (
+                  <div key={i} className="flex items-start gap-1.5 text-[10px]">
+                    <span style={{ color: isDone ? '#D4AF37' : isCurrent ? '#FFB81C' : '#52525b', flexShrink: 0 }}>
+                      {isDone ? '✓' : isCurrent ? '▶' : '○'}
+                    </span>
+                    <span style={{ color: isDone ? '#a1a1aa' : isCurrent ? '#e4e4e7' : '#52525b' }}>
+                      {line}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
         {/* Marketplace-first build result card */}
         {msg.buildResult && <BuildResultCard result={msg.buildResult} studioConnected={studioConnected} studioSessionId={studioSessionId} studioJwt={studioJwt} />}
         {/* Code preview — shown when a build result has Luau code */}
@@ -2287,6 +2351,171 @@ function Viewport({ sceneBlocks, onConnectClick }: { sceneBlocks: SceneBlock[]; 
   )
 }
 
+// ─── Studio Live Viewport ──────────────────────────────────────────────────────
+// Shows real Studio screenshot when available; falls back to Three.js viewport.
+// Supports crossfade transitions and before/after slider comparison.
+
+interface StudioLiveViewportProps {
+  liveScreenshot: string | null
+  prevScreenshot: string | null
+  screenshotFading: boolean
+  beforeScreenshot: string | null
+  afterScreenshot: string | null
+  showComparison: boolean
+  sliderPos: number
+  onSliderChange: (pos: number) => void
+  onDismissComparison: () => void
+  sliderDraggingRef: React.MutableRefObject<boolean>
+  children: React.ReactNode  // Three.js viewport as fallback
+}
+
+function StudioLiveViewport({
+  liveScreenshot,
+  prevScreenshot,
+  screenshotFading,
+  beforeScreenshot,
+  afterScreenshot,
+  showComparison,
+  sliderPos,
+  onSliderChange,
+  onDismissComparison,
+  sliderDraggingRef,
+  children,
+}: StudioLiveViewportProps) {
+  const hasLive = Boolean(liveScreenshot)
+
+  // Pointer events for slider drag
+  const handleSliderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    sliderDraggingRef.current = true
+  }, [sliderDraggingRef])
+
+  const handleSliderPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!sliderDraggingRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100))
+    onSliderChange(pct)
+  }, [sliderDraggingRef, onSliderChange])
+
+  const handleSliderPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    sliderDraggingRef.current = false
+  }, [sliderDraggingRef])
+
+  return (
+    <div className="absolute inset-0">
+      {/* ── Three.js fallback — always mounted, hidden when live screenshot available ── */}
+      <div
+        className="absolute inset-0 transition-opacity duration-500"
+        style={{ opacity: hasLive ? 0 : 1, pointerEvents: hasLive ? 'none' : 'auto' }}
+      >
+        {children}
+      </div>
+
+      {/* ── Live Studio screenshot layer ── */}
+      {hasLive && (
+        <div className="absolute inset-0">
+          {/* Previous screenshot (fades out during transition) */}
+          {prevScreenshot && screenshotFading && (
+            <img
+              src={`data:image/png;base64,${prevScreenshot}`}
+              alt=""
+              draggable={false}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-600"
+              style={{ opacity: screenshotFading ? 0 : 1 }}
+            />
+          )}
+          {/* Current live screenshot */}
+          <img
+            src={`data:image/png;base64,${liveScreenshot}`}
+            alt="Studio viewport"
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-600"
+            style={{ opacity: screenshotFading ? 0.4 : 1 }}
+          />
+
+          {/* "Live from Studio" badge */}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', border: '1px solid rgba(16,185,129,0.4)' }}>
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
+                background: '#10B981',
+                boxShadow: '0 0 6px #10B981',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
+            <span className="text-[10px] font-semibold text-emerald-400 tracking-wide uppercase">Live from Studio</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Before/After comparison slider ── */}
+      {showComparison && beforeScreenshot && afterScreenshot && (
+        <div
+          className="absolute inset-0 z-20 cursor-col-resize select-none"
+          onPointerDown={handleSliderPointerDown}
+          onPointerMove={handleSliderPointerMove}
+          onPointerUp={handleSliderPointerUp}
+        >
+          {/* After (right side) */}
+          <img
+            src={`data:image/png;base64,${afterScreenshot}`}
+            alt="After build"
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Before (left clip) */}
+          <div
+            className="absolute inset-0 overflow-hidden"
+            style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+          >
+            <img
+              src={`data:image/png;base64,${beforeScreenshot}`}
+              alt="Before build"
+              draggable={false}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </div>
+          {/* Divider line */}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 z-30 pointer-events-none"
+            style={{ left: `${sliderPos}%`, background: '#D4AF37', boxShadow: '0 0 8px rgba(212,175,55,0.8)' }}
+          >
+            {/* Drag handle */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ background: '#D4AF37', boxShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+            >
+              <svg className="w-4 h-4 text-black" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5 3L2 8l3 5V3zm6 0v10l3-5-3-5z"/>
+              </svg>
+            </div>
+          </div>
+          {/* Labels */}
+          <div className="absolute bottom-12 left-3 text-[10px] font-bold text-white px-2 py-0.5 rounded"
+            style={{ background: 'rgba(0,0,0,0.7)' }}>BEFORE</div>
+          <div className="absolute bottom-12 right-3 text-[10px] font-bold text-white px-2 py-0.5 rounded"
+            style={{ background: 'rgba(0,0,0,0.7)' }}>AFTER</div>
+          {/* Dismiss button */}
+          <button
+            className="absolute top-3 right-3 z-40 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all hover:brightness-110"
+            style={{ background: 'rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.15)', color: '#a3a3a3' }}
+            onClick={onDismissComparison}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M1 1l10 10M11 1L1 11"/>
+            </svg>
+            Close
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Panel sub-components ──────────────────────────────────────────────────────
 
 function ProjectsPanel({
@@ -2626,6 +2855,20 @@ export function EditorClient() {
   const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
   const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
 
+  // Multi-step build orchestration state
+  const [pendingNextStep, setPendingNextStep] = useState<string | null>(null)
+  const [activeBuildPlan, setActiveBuildPlan] = useState<BuildPlan | null>(null)
+
+  // Live screenshot state
+  const [liveScreenshot, setLiveScreenshot]     = useState<string | null>(null)
+  const [prevScreenshot, setPrevScreenshot]     = useState<string | null>(null)
+  const [beforeScreenshot, setBeforeScreenshot] = useState<string | null>(null)
+  const [afterScreenshot, setAfterScreenshot]   = useState<string | null>(null)
+  const [showComparison, setShowComparison]     = useState(false)
+  const [sliderPos, setSliderPos]               = useState(50)
+  const [screenshotFading, setScreenshotFading] = useState(false)
+  const sliderDragging = useRef(false)
+
   const submit = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
@@ -2779,12 +3022,14 @@ export function EditorClient() {
           message?: string
           tokensUsed?: number
           buildResult?: BuildResult
+          buildPlan?: BuildPlan
           suggestions?: string[]
           executedInStudio?: boolean
         }
         responseText = data.message ?? getDemoResponse(trimmed)
         tokensUsed = data.tokensUsed ?? tokensUsed
         const buildResult = data.buildResult
+        const buildPlan = data.buildPlan
 
         // Clean AI response — strip suggestions blocks, JSON metadata, code fences
         let inlineSuggestions: string[] = []
@@ -2880,6 +3125,7 @@ export function EditorClient() {
             timestamp: new Date(),
             model: selectedModel,
             ...(buildResult ? { buildResult } : {}),
+            ...(buildPlan ? { buildPlan } : {}),
           }
           const msgs: ChatMessage[] = [...without, assistantMsg]
 
@@ -2905,12 +3151,28 @@ export function EditorClient() {
           return msgs
         })
 
+        // Multi-step auto-continue — schedule the next step after 2s
+        if (buildPlan?.autoNext && buildPlan.nextStepPrompt) {
+          setActiveBuildPlan(buildPlan)
+          setPendingNextStep(buildPlan.nextStepPrompt)
+        } else if (buildPlan && !buildPlan.autoNext) {
+          // Final step completed — clear the active plan
+          setActiveBuildPlan(null)
+          setPendingNextStep(null)
+        }
+
         showToast({
           variant: 'success',
-          title: 'Build complete!',
-          description: buildResult ? 'Copy the Luau code to import into Roblox Studio.' : 'AI response ready.',
-          duration: 5000,
-          ...(buildResult ? {
+          title: buildPlan
+            ? `Step ${buildPlan.currentStep} of ${buildPlan.totalSteps} done!`
+            : 'Build complete!',
+          description: buildPlan?.autoNext
+            ? `Building step ${buildPlan.currentStep + 1} next...`
+            : buildResult
+            ? 'Copy the Luau code to import into Roblox Studio.'
+            : 'AI response ready.',
+          duration: buildPlan?.autoNext ? 2500 : 5000,
+          ...(buildResult && !buildPlan?.autoNext ? {
             action: { label: 'View code', onClick: () => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }) },
           } : {}),
         })
@@ -3009,6 +3271,20 @@ export function EditorClient() {
     },
     [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, addBuild],
   )
+
+  // ── Multi-step auto-continue effect ──────────────────────────────────────
+  // When a step finishes and pendingNextStep is set, wait 2s then fire the
+  // next step automatically as if the user typed it.
+  useEffect(() => {
+    if (!pendingNextStep) return
+    const timer = setTimeout(() => {
+      setPendingNextStep(null)
+      if (submitRef.current) {
+        submitRef.current(pendingNextStep)
+      }
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [pendingNextStep])
 
   // ── Helper: extract last code block from messages ────────────────────────
   const getLastCodeBlock = useCallback((): string | null => {
@@ -3304,9 +3580,35 @@ export function EditorClient() {
       if (!sid) return
       const res = await fetch(`/api/studio/screenshot?sessionId=${sid}`)
       if (!res.ok) return
-      const data = await res.json() as { screenshotUrl?: string }
-      if (data.screenshotUrl) {
-        setStudioStatus((prev) => ({ ...prev, screenshotUrl: data.screenshotUrl }))
+      const data = await res.json() as {
+        image: string | null
+        beforeImage: string | null
+        beforeImageAt: number | null
+        capturedAt?: number
+      }
+      if (data.image) {
+        // Crossfade: save current as prev before swapping
+        setLiveScreenshot((prev) => {
+          if (prev !== data.image) {
+            setPrevScreenshot(prev)
+            setScreenshotFading(true)
+            // Clear fade flag after transition completes
+            setTimeout(() => setScreenshotFading(false), 600)
+          }
+          return data.image
+        })
+      }
+      if (data.beforeImage) {
+        setBeforeScreenshot(data.beforeImage)
+      }
+      // After screenshot: if we have a before and the latest screenshot is newer
+      // than beforeImageAt by at least 3s, treat it as the "after"
+      if (data.beforeImage && data.image && data.beforeImageAt) {
+        const afterAge = (data.capturedAt ?? Date.now()) - data.beforeImageAt
+        if (afterAge > 2000 && afterAge < 300_000) {
+          setAfterScreenshot(data.image)
+          setShowComparison(true)
+        }
       }
     } catch {
       // silently ignore
@@ -3900,6 +4202,43 @@ export function EditorClient() {
                 </div>
               )}
 
+              {/* ── Multi-step build progress indicator ─────────────────── */}
+              {activeBuildPlan && (
+                <div
+                  className="flex-shrink-0 px-4 py-2 flex items-center gap-3"
+                  style={{ borderTop: '1px solid rgba(212,175,55,0.12)', background: 'rgba(212,175,55,0.04)' }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold truncate" style={{ color: '#D4AF37' }}>
+                        {pendingNextStep
+                          ? `Next: building step ${activeBuildPlan.currentStep + 1} of ${activeBuildPlan.totalSteps}...`
+                          : `Multi-step build — step ${activeBuildPlan.currentStep} of ${activeBuildPlan.totalSteps}`}
+                      </span>
+                      <span className="text-[10px] flex-shrink-0 ml-2" style={{ color: '#71717a' }}>
+                        {Math.round((activeBuildPlan.currentStep / activeBuildPlan.totalSteps) * 100)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${Math.round((activeBuildPlan.currentStep / activeBuildPlan.totalSteps) * 100)}%`,
+                          background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setActiveBuildPlan(null); setPendingNextStep(null) }}
+                    className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded transition-opacity hover:opacity-70"
+                    style={{ color: '#71717a', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    stop
+                  </button>
+                </div>
+              )}
+
               {/* ── Flat input bar ───────────────────────────────────────── */}
               <div className="flex-shrink-0 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', boxShadow: '0 -1px 0 rgba(255,255,255,0.03)' }}>
 
@@ -4138,12 +4477,23 @@ export function EditorClient() {
 
               {/* Viewport area */}
               <div className="flex-1 relative min-h-0 overflow-hidden" style={{ boxShadow: 'inset 0 0 40px rgba(0,0,0,0.3)' }}>
-                {/* 3D viewport — ALWAYS visible */}
+                {/* 3D viewport with live Studio screenshot overlay */}
                 <>
                   {showBuildOverlay && (
                     <ViewportPreview state="building" builtBlockCount={sceneBlocks.length} className="absolute inset-0 z-0" />
                   )}
-                  <div className="absolute inset-0">
+                  <StudioLiveViewport
+                    liveScreenshot={studioConnected ? liveScreenshot : null}
+                    prevScreenshot={prevScreenshot}
+                    screenshotFading={screenshotFading}
+                    beforeScreenshot={beforeScreenshot}
+                    afterScreenshot={afterScreenshot}
+                    showComparison={showComparison}
+                    sliderPos={sliderPos}
+                    onSliderChange={setSliderPos}
+                    onDismissComparison={() => setShowComparison(false)}
+                    sliderDraggingRef={sliderDragging}
+                  >
                     {parsedParts.length > 0 ? (
                       <Viewport3D
                         parts={parsedParts}
@@ -4153,7 +4503,7 @@ export function EditorClient() {
                     ) : (
                       <Viewport sceneBlocks={sceneBlocks} />
                     )}
-                  </div>
+                  </StudioLiveViewport>
 
                   {/* Top-right: Connect Studio button — larger tap target on mobile */}
                   <div className="absolute top-2 right-2 md:top-3 md:right-3 z-20">
@@ -4226,7 +4576,9 @@ export function EditorClient() {
                       {/* Stats row */}
                       <div className="flex items-center gap-4 mb-1.5">
                         <span className="text-[10px] text-zinc-400">
-                          <span className="text-zinc-200 font-semibold">{sceneBlocks.length}</span> objects
+                          <span className="text-zinc-200 font-semibold">
+                            {parsedParts.length > 0 ? parsedParts.length : sceneBlocks.length}
+                          </span> objects
                         </span>
                         <span className="text-[10px] text-zinc-400">
                           <span className="text-zinc-200 font-semibold">{totalTokens}</span> tokens used
@@ -4321,9 +4673,9 @@ export function EditorClient() {
                   <path d="M2 8h16" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                 </svg>
                 Preview
-                {sceneBlocks.length > 0 && (
+                {(parsedParts.length > 0 || sceneBlocks.length > 0) && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(212,175,55,0.2)', color: '#D4AF37' }}>
-                    {sceneBlocks.length}
+                    {parsedParts.length > 0 ? parsedParts.length : sceneBlocks.length}
                   </span>
                 )}
               </button>

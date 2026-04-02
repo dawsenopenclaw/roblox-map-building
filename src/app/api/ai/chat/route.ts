@@ -3,16 +3,20 @@ import { auth } from '@clerk/nextjs/server'
 import { requireTier } from '@/lib/tier-guard'
 import { chatMessageSchema, parseBody } from '@/lib/validations'
 import {
+  GAME_SYSTEMS,
+  detectGameSystemIntent,
+  formatGameSystemResponse,
+} from '@/lib/game-systems'
+import {
   planBuildAssets,
   extractSearchTerms,
   generateMarketplaceLuau,
   type BuildAssetPlan,
-  type MarketplaceAsset,
 } from '@/lib/roblox-asset-search'
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
-import { queueCommand, getSession, getSessionByToken } from '@/lib/studio-session'
+import { queueCommand, getSession } from '@/lib/studio-session'
 import Anthropic from '@anthropic-ai/sdk'
 
 // Extract ```lua code blocks from AI response text
@@ -228,7 +232,7 @@ async function freeModelTwoPass(
   suggestions: string[]
   model: string
 } | null> {
-  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis'].includes(intent)
+  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'default'].includes(intent)
 
   // Pass 1: Conversational response (try Gemini first, then Groq)
   const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
@@ -946,6 +950,7 @@ type IntentKey =
   | 'help'
   | 'publish'
   | 'multiscript'
+  | 'gamesystem'
   | 'weather'
   | 'default'
 
@@ -957,6 +962,7 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   help: 0,          // Free — capability explanation
   publish: 0,       // Free — publishing guidance
   multiscript: 30,  // Multi-file system generation
+  gamesystem: 25,   // Pre-built game system template (currency/shop/pets/etc.)
   default: 5,       // General build request
   analysis: 5,      // Analyzing existing work
   script: 10,       // Script help
@@ -1262,7 +1268,7 @@ atmo.Glare = 0.4
 atmo.Haze = 2.2
 atmo.Parent = lighting
 
-CH:FinishRecording(id, Enum.FinishRecordingOperation.Commit, {})
+CH:FinishRecording(id, Enum.FinishRecordingOperation.Commit)
 print("Volcanic island terrain complete!")
 \`\`\`
 
@@ -1908,6 +1914,13 @@ Token cost: 2 tokens`,
 
   publish: `To publish: File → Publish to Roblox (Ctrl+P). Set your game name, description, thumbnail, and privacy. Check Output for errors before going public.\n\n[SUGGESTIONS]\nHelp me set up a game pass\nCreate a welcome screen\nBuild an admin commands script`,
 
+  weather: `Weather effects add atmosphere. I can create rain, snow, fog, sandstorms using ParticleEmitters and Atmosphere settings.
+
+[SUGGESTIONS]
+Add rain with puddle reflections
+Create a snowstorm
+Set up dynamic fog`,
+
   multiscript: `For full game systems I generate multiple scripts with clear separation. Say "build me a [system] system" and I'll output all the files with labels.\n\n[SUGGESTIONS]\nBuild me a pet system\nCreate a trading system\nMake a leaderboard system with DataStore`,
 
   default: `✓ Request Processed
@@ -2198,7 +2211,7 @@ function compressHistory(history: HistoryMessage[]): HistoryMessage[] {
   const lines: string[] = ['[Earlier conversation summary]']
   for (const msg of oldMessages) {
     if (msg.role === 'assistant') {
-      const buildMatch = msg.content.match(/✓s+(.{0,60})/)
+      const buildMatch = msg.content.match(/✓\s+(.{0,60})/)
       if (buildMatch) lines.push('- Built: ' + buildMatch[1].trim())
     } else if (msg.role === 'user' && msg.content.length > 10) {
       lines.push('- User: ' + msg.content.slice(0, 60).replace(/\s+/g, ' ').trim())
@@ -2210,6 +2223,158 @@ function compressHistory(history: HistoryMessage[]): HistoryMessage[] {
     { role: 'assistant' as const, content: 'Got it — I have context from our earlier work. Continuing.' },
     ...recentMessages,
   ]
+}
+
+// ─── Multi-step build orchestrator ───────────────────────────────────────────
+
+interface MultiStepTemplate {
+  pattern: RegExp
+  label: string
+  steps: string[]
+}
+
+const MULTI_STEP_TEMPLATES: MultiStepTemplate[] = [
+  {
+    pattern: /\b(build|create|make|generate)\b.{0,30}\b(city|town|urban|downtown|cityscape|neighborhood|district)\b/i,
+    label: 'City Build',
+    steps: [
+      'Foundation — baseplate, road grid, sidewalks, and terrain shaping',
+      'Buildings Row A — 3-4 buildings along main street (shops, apartments)',
+      'Buildings Row B — 3-4 buildings on the opposite side of the street',
+      'Central Park — trees, benches, fountain, pathways, greenery',
+      'Street Lights — lamp posts every 20 studs along all roads',
+      'Street Details — trash cans, fire hydrants, bollards, crosswalk markings, signs',
+      'Vehicles — 3-4 parked cars along the curb',
+      'Skybox & Lighting — atmospheric lighting, fog, bloom for city mood',
+    ],
+  },
+  {
+    pattern: /\b(build|create|make|generate|full|complete)\b.{0,30}\btycoon\b/i,
+    label: 'Tycoon Build',
+    steps: [
+      'Plot & Baseplate — player plot, boundaries, spawn pad, plot barrier',
+      'Droppers — 3 resource droppers (basic, medium, premium) with drop animation',
+      'Conveyor Belt — conveyor system connecting droppers to collector',
+      'Collector & Counter — collection box, currency display, value counter',
+      'Upgrade Shop — upgrade buttons panel with 4-5 upgrade tiers',
+      'Game UI — leaderboard, currency display, rebirth button, HUD',
+      'Polish — lighting, particle effects, sounds, color coding by tier',
+    ],
+  },
+  {
+    pattern: /\b(build|create|make|generate|full|complete)\b.{0,30}\b(obby|obstacle\s*course|parkour)\b/i,
+    label: 'Obby Build',
+    steps: [
+      'Start Platform — spawn area, tutorial sign, first safe platform',
+      'Easy Section — platforms, wide jumps, intro obstacles (10-12 parts)',
+      'Medium Section — moving platforms, rotating obstacles, narrower gaps',
+      'Hard Section — precise jumps, spinners, disappearing platforms',
+      'Checkpoints — checkpoint flags every 15-20 platforms with glowing rings',
+      'Finish Platform — trophy area, completion effects, win zone',
+      'Effects & Polish — kill bricks, respawn bounds, ambient particles, signs',
+    ],
+  },
+  {
+    pattern: /\b(build|create|make|generate)\b.{0,30}\b(horror|scary|haunted|creepy)\b/i,
+    label: 'Horror Map',
+    steps: [
+      'Dark Environment — baseplate, near-zero lighting, heavy fog setup',
+      'Main Hallway — long corridor with cracked walls, stained floors, debris',
+      'Rooms — 3 side rooms (bedroom, bathroom, kitchen) with horror props',
+      'Jumpscare Triggers — proximity triggers, flickering lights, scripted events',
+      'Lighting & Atmosphere — candles, red accents, dynamic shadow flicker',
+      'Sounds & Ambience — ambient creaks, distant footsteps, wind through scripts',
+      'Flashlight Mechanic — player flashlight setup with limited range',
+    ],
+  },
+  {
+    pattern: /\b(build|create|make|generate)\b.{0,30}\b(medieval|castle|fantasy|kingdom)\b.{0,30}\b(world|map|realm|kingdom|town|city|village)\b/i,
+    label: 'Medieval World',
+    steps: [
+      'Terrain — rolling hills, dirt roads, a river valley, trees and boulders',
+      'Castle — keep, outer walls, corner towers, gatehouse, moat',
+      'Village — 4-5 houses, market stalls, blacksmith, inn along cobblestone road',
+      'Castle Interior — great hall, throne room, barracks, armory',
+      'Lighting — torches, campfires, sunset atmosphere, distant fog',
+      'Details — guards, banners, barrels, crates, well, market props',
+    ],
+  },
+  {
+    pattern: /\b(build|create|make|generate)\b.{0,30}\b(dungeon|cave|underground|mine)\b/i,
+    label: 'Dungeon Build',
+    steps: [
+      'Entrance & Tunnels — cave mouth, winding entry corridor, torch sconces',
+      'Main Chamber — large central room with pillars, rubble, stalactites',
+      'Side Rooms — treasure room, trap room, locked cell block',
+      'Traps — spike pits, rolling boulders, pressure plates (decorative)',
+      'Boss Arena — circular chamber, dramatic lighting, altar',
+      'Lighting & Mood — torch glow, eerie green crystals, deep shadows',
+    ],
+  },
+]
+
+const MULTI_STEP_CONTINUATION_PATTERN = /^\[FORJE_STEP:(\d+)\/(\d+)\]\s*(.+)/
+
+/**
+ * Detect if a user message should trigger multi-step orchestration.
+ * Returns the matched template or null for single-step builds.
+ */
+function detectMultiStepRequest(message: string): MultiStepTemplate | null {
+  const trimmed = message.trim()
+  if (MULTI_STEP_CONTINUATION_PATTERN.test(trimmed)) return null
+  for (const tmpl of MULTI_STEP_TEMPLATES) {
+    if (tmpl.pattern.test(trimmed)) return tmpl
+  }
+  return null
+}
+
+/**
+ * Parse a continuation step marker and extract metadata.
+ * Returns null if the message is not a continuation.
+ */
+function parseContinuationStep(message: string): {
+  currentStep: number
+  totalSteps: number
+  stepDescription: string
+} | null {
+  const match = MULTI_STEP_CONTINUATION_PATTERN.exec(message.trim())
+  if (!match) return null
+  return {
+    currentStep: parseInt(match[1], 10),
+    totalSteps: parseInt(match[2], 10),
+    stepDescription: match[3].trim(),
+  }
+}
+
+/**
+ * Compute the buildPlan metadata to return alongside the AI response.
+ */
+function computeBuildPlan(
+  template: MultiStepTemplate,
+  currentStep: number,
+): BuildPlan {
+  const totalSteps = template.steps.length
+  const nextStep = currentStep < totalSteps ? currentStep + 1 : null
+  const nextStepDescription = nextStep ? template.steps[nextStep - 1] : null
+  const nextStepPrompt = nextStep
+    ? `[FORJE_STEP:${nextStep}/${totalSteps}] ${nextStepDescription}`
+    : null
+  return {
+    totalSteps,
+    currentStep,
+    stepLabel: template.steps[currentStep - 1] ?? `Step ${currentStep}`,
+    nextStepPrompt,
+    autoNext: nextStep !== null,
+    planLines: template.steps.map((s, i) => `Step ${i + 1}: ${s}`),
+  }
+}
+
+/**
+ * Format the [BUILD_PLAN] block for injection into the step-1 AI prompt.
+ */
+function formatBuildPlanBlock(template: MultiStepTemplate): string {
+  const lines = template.steps.map((s, i) => `Step ${i + 1}: ${s}`)
+  return `[BUILD_PLAN]\n${lines.join('\n')}\n[/BUILD_PLAN]`
 }
 
 // User-friendly error messages with context-specific next steps
@@ -2280,6 +2445,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const message = parsed.data.message.trim()
+  if (!message) {
+    return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 })
+  }
   const wantsStream = (parsed.data as Record<string, unknown>).stream === true
 
   // Merge history sources: `messages` is the frontend alias, `history` is legacy.
@@ -2315,6 +2483,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
   const intent = detectIntent(message)
+
+  // ── Multi-step build orchestration detection ─────────────────────────────
+  // Detect whether this is a new multi-step request OR a continuation step.
+  const multiStepTemplate = detectMultiStepRequest(message)
+  const continuationMeta  = parseContinuationStep(message)
+
+  // For continuation steps, recover the template by re-matching the original
+  // step description stored in the FORJE_STEP marker.
+  let activeContinuationTemplate: MultiStepTemplate | null = null
+  if (continuationMeta) {
+    // Attempt to find a template that owns this step count (best-effort match)
+    for (const tmpl of MULTI_STEP_TEMPLATES) {
+      if (tmpl.steps.length === continuationMeta.totalSteps) {
+        activeContinuationTemplate = tmpl
+        break
+      }
+    }
+    // If no exact match by step count, create a synthetic template on-the-fly
+    // so we can still compute the buildPlan without a full match.
+    if (!activeContinuationTemplate) {
+      activeContinuationTemplate = {
+        pattern: /./,
+        label: 'Multi-Step Build',
+        steps: Array.from({ length: continuationMeta.totalSteps }, (_, i) =>
+          i === continuationMeta.currentStep - 1
+            ? continuationMeta.stepDescription
+            : `Step ${i + 1}`,
+        ),
+      }
+    }
+  }
 
   // ── Build rich Studio context for AI awareness ──────────────────────────
   interface StudioCtxBody {
@@ -2599,6 +2798,58 @@ PLACEMENT RULES:
     }
   }
 
+  // ── Multi-step build context injection ───────────────────────────────────
+  // Append step-awareness to the system prompt so the AI knows which step it's
+  // on, what's already been built, and that it should use _forje_state for
+  // spatial continuity across steps.
+  let multiStepContext = ''
+
+  if (multiStepTemplate) {
+    // Step 1 — inject the full build plan so the AI knows the whole scope
+    const planBlock = formatBuildPlanBlock(multiStepTemplate)
+    multiStepContext = `
+
+=== MULTI-STEP BUILD MODE — ${multiStepTemplate.label.toUpperCase()} ===
+
+You are building a COMPLEX ${multiStepTemplate.label} in ${multiStepTemplate.steps.length} sequential steps. The user just triggered step 1.
+
+${planBlock}
+
+CURRENT TASK: Build ONLY Step 1 — "${multiStepTemplate.steps[0]}"
+Do NOT build later steps yet. Focus 100% on making Step 1 excellent.
+
+SPATIAL STATE: Store all key positions in _forje_state so future steps can reference them:
+  _forje_state.buildOrigin = sp  -- anchor for all subsequent steps
+  _forje_state.step1Done = true
+
+After your friendly response, include the Luau code for Step 1 only.
+`
+  } else if (continuationMeta && activeContinuationTemplate) {
+    // Step N continuation — remind AI of position state and the single step goal
+    const { currentStep, totalSteps, stepDescription } = continuationMeta
+    const previousSteps = activeContinuationTemplate.steps
+      .slice(0, currentStep - 1)
+      .map((s, i) => `  Step ${i + 1}: ${s} [DONE]`)
+      .join('\n')
+    multiStepContext = `
+
+=== MULTI-STEP BUILD MODE — STEP ${currentStep} OF ${totalSteps} ===
+
+You are continuing a ${activeContinuationTemplate.label} build. Here's the progress so far:
+${previousSteps}
+
+CURRENT TASK: Build ONLY Step ${currentStep} — "${stepDescription}"
+
+SPATIAL CONTINUITY: Read positions from _forje_state that previous steps stored:
+  local origin = _forje_state.buildOrigin or sp  -- use this as your base position
+Store any new reference points you create for the next step:
+  _forje_state.step${currentStep}Done = true
+
+After your friendly response, include ONLY the Luau code for Step ${currentStep}.
+${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and celebrate the completed build!' : `\nStep ${currentStep + 1} will be built next automatically.`}
+`
+  }
+
   // ── Custom user-supplied API key ─────────────────────────────────────────
   const customApiKey  = req.headers.get('x-custom-api-key')?.trim() ?? null
   const customProvider = req.headers.get('x-custom-provider')?.trim() ?? null
@@ -2612,7 +2863,7 @@ PLACEMENT RULES:
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext }] },
             contents: [
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
@@ -2630,6 +2881,7 @@ PLACEMENT RULES:
         }
         const geminiData = await geminiRes.json() as GeminiResponse
         const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        if (!text) throw new Error('Empty response from Gemini')
         const tokensUsed = geminiData.usageMetadata?.totalTokenCount ?? estimateTokens(message)
         return NextResponse.json({
           message: text,
@@ -2669,6 +2921,7 @@ PLACEMENT RULES:
         }
         const openaiData = await openaiRes.json() as OpenAIResponse
         const text = openaiData.choices?.[0]?.message?.content ?? ''
+        if (!text) throw new Error('Empty response from OpenAI')
         const tokensUsed = openaiData.usage?.total_tokens ?? estimateTokens(message)
         return NextResponse.json({
           message: text,
@@ -2765,7 +3018,7 @@ PLACEMENT RULES:
             const stream = anthropic.messages.stream({
               model: 'claude-sonnet-4-20250514',
               max_tokens: maxTokens,
-              system: FORJEAI_SYSTEM_PROMPT + cameraContext,
+              system: FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext,
               messages: claudeMessages,
             })
 
@@ -2867,7 +3120,7 @@ PLACEMENT RULES:
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: maxTokens,
-        system: FORJEAI_SYSTEM_PROMPT + cameraContext,
+        system: FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext,
         messages: claudeMessages,
       })
 
@@ -2879,7 +3132,11 @@ PLACEMENT RULES:
       let mcpResult: McpCallResult | undefined
       const mcpIntentVal = detectMcpIntent(message, responseText)
       if (mcpIntentVal) {
-        mcpResult = await callTool(mcpIntentVal.server, mcpIntentVal.tool, mcpIntentVal.args)
+        try {
+          mcpResult = await callTool(mcpIntentVal.server, mcpIntentVal.tool, mcpIntentVal.args)
+        } catch {
+          // MCP errors are non-fatal — response stands without mcpResult
+        }
       }
 
       // Auto-trigger mesh generation when user intent is mesh
@@ -2913,6 +3170,15 @@ PLACEMENT RULES:
       const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
       const hasCode = luau !== null
 
+      // Compute multi-step build plan metadata if applicable
+      const buildPlanForResponse: BuildPlan | undefined = (() => {
+        if (multiStepTemplate) return computeBuildPlan(multiStepTemplate, 1)
+        if (continuationMeta && activeContinuationTemplate) {
+          return computeBuildPlan(activeContinuationTemplate, continuationMeta.currentStep)
+        }
+        return undefined
+      })()
+
       return NextResponse.json({
         message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : responseText),
         tokensUsed,
@@ -2921,6 +3187,7 @@ PLACEMENT RULES:
         model: aiResponse.model,
         executedInStudio,
         suggestions,
+        ...(buildPlanForResponse ? { buildPlan: buildPlanForResponse } : {}),
         ...(mcpResult ? { mcpResult } : {}),
         ...(meshResult ? { meshResult } : {}),
       })
@@ -2952,6 +3219,13 @@ PLACEMENT RULES:
     const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId)
 
     if (twoPassResult) {
+      const freeModelBuildPlan: BuildPlan | undefined = (() => {
+        if (multiStepTemplate) return computeBuildPlan(multiStepTemplate, 1)
+        if (continuationMeta && activeContinuationTemplate) {
+          return computeBuildPlan(activeContinuationTemplate, continuationMeta.currentStep)
+        }
+        return undefined
+      })()
       return NextResponse.json({
         message: twoPassResult.conversationText,
         tokensUsed: tokenCost,
@@ -2960,6 +3234,7 @@ PLACEMENT RULES:
         model: twoPassResult.model,
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
+        ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
       })
     }
   }

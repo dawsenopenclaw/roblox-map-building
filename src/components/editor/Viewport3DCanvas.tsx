@@ -5,7 +5,7 @@
  * the heavy Three.js bundle is loaded only on the client via dynamic import.
  */
 
-import { useRef, useEffect, useState, useMemo, useCallback, memo } from 'react'
+import { Suspense, useRef, useEffect, useState, useMemo, memo } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment } from '@react-three/drei'
 import * as THREE from 'three'

@@ -81,7 +81,6 @@ interface FalTextureOutput {
 
 const MESHY_BASE = 'https://api.meshy.ai'
 const FAL_QUEUE_BASE = 'https://queue.fal.run'
-const FAL_RESULT_BASE = 'https://queue.fal.run'
 
 // Cost estimates in USD
 const COST_MESH: Record<Quality, number> = {
@@ -125,7 +124,7 @@ const CATEGORY_KEYWORDS: Record<AssetCategory, string[]> = {
   ],
   furniture: [
     'furniture', 'chair', 'table', 'sofa', 'couch', 'desk', 'bed', 'shelf',
-    'bookcase', 'cabinet', 'wardrobe', 'dresser', 'bench', 'stool', 'lamp',
+    'bookcase', 'cabinet', 'wardrobe', 'dresser', 'stool', 'lamp',
     'bookshelf', 'nightstand', 'ottoman', 'throne',
   ],
   environment: [
@@ -310,7 +309,14 @@ async function pollMeshyTask(
       signal: AbortSignal.timeout(10_000),
     })
 
-    if (!res.ok) continue
+    if (!res.ok) {
+      // 4xx errors (bad key, invalid taskId) are unrecoverable — fail fast
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(`Meshy poll failed with ${res.status} — check taskId and API key`)
+      }
+      // 5xx — transient, keep retrying
+      continue
+    }
 
     const task = (await res.json()) as MeshyTask
     if (task.status === 'SUCCEEDED') return task
@@ -361,12 +367,15 @@ async function generateFalTextures(
   const queue = (await submitRes.json()) as FalQueueResponse
   const requestId = queue.request_id
 
-  // Poll for completion (max 60s for textures)
+  // Poll for completion — hard cap at 45s so we never blow Vercel's 60s function limit.
+  // Each iteration: 4s wait + up to 8s fetch = 12s worst case → 3 safe iterations before cutoff.
+  const FAL_POLL_DEADLINE = Date.now() + 45_000
   for (let i = 0; i < 15; i++) {
+    if (Date.now() >= FAL_POLL_DEADLINE) return null
     await new Promise((r) => setTimeout(r, 4_000))
 
     const statusRes = await fetch(
-      `${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}/status`,
+      `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}/status`,
       {
         headers: { Authorization: `Key ${apiKey}` },
         signal: AbortSignal.timeout(8_000),
@@ -378,7 +387,7 @@ async function generateFalTextures(
     const status = (await statusRes.json()) as FalStatusResponse
     if (status.status === 'COMPLETED') {
       const resultRes = await fetch(
-        `${FAL_RESULT_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}`,
+        `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}`,
         {
           headers: { Authorization: `Key ${apiKey}` },
           signal: AbortSignal.timeout(10_000),
@@ -662,21 +671,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     actualCostUsd += COST_MESH[quality]
 
-    // Start Fal texture generation in parallel (non-blocking)
-    const texturePromise: Promise<{ albedo: string; normal: string; roughness: string } | null> =
+    // Start Fal texture generation in parallel (non-blocking).
+    // Returns a tuple [textures, textureWasBilled] to avoid closure mutation races.
+    const texturePromise: Promise<[{ albedo: string; normal: string; roughness: string } | null, boolean]> =
       withTextures && falKey
-        ? generateFalTextures(prompt, falKey).then((t) => {
-            if (t) actualCostUsd += COST_TEXTURE
-            return t
-          })
-        : Promise.resolve(null)
+        ? generateFalTextures(prompt, falKey).then((t) => [t, t !== null] as [typeof t, boolean])
+        : Promise.resolve([null, false] as [null, false])
 
     // Poll Meshy (up to ~2.5 minutes)
     const task = await pollMeshyTask(taskId, meshyKey)
 
     if (task.status === 'IN_PROGRESS') {
       // Still running — return taskId for client-side polling
-      const textures = await texturePromise  // textures may already be ready
+      const [textures, textureBilled] = await texturePromise  // textures may already be ready
+      if (textureBilled) actualCostUsd += COST_TEXTURE
       return NextResponse.json({
         meshUrl: null,
         fbxUrl: null,
@@ -695,7 +703,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // Mesh succeeded — await textures
-    const textures = await texturePromise
+    const [textures, textureBilled] = await texturePromise
+    if (textureBilled) actualCostUsd += COST_TEXTURE
 
     const meshUrl = task.model_urls?.glb ?? task.model_urls?.fbx ?? null
     const luauCode = generateMeshPartLuau({

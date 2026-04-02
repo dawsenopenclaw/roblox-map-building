@@ -30,7 +30,7 @@ async function markCodeClaimed(code: string, data: { sessionId: string; placeNam
   } catch { /* ignore */ }
 }
 
-async function getCodeClaim(code: string): Promise<{ sessionId: string; placeName: string; placeId: string; claimedAt: number } | null> {
+async function getCodeClaim(code: string): Promise<{ sessionId: string; placeName: string; placeId: string; claimedAt: number; jwt?: string } | null> {
   // Check memory first
   const mem = claimedCodes.get(code)
   if (mem) return mem
@@ -131,7 +131,7 @@ export async function GET(req: NextRequest) {
           sessionId: claim.sessionId,
           placeName: claim.placeName,
           placeId: claim.placeId,
-          jwt: (claim as Record<string, unknown>).jwt ?? null,
+          jwt: claim.jwt ?? null,
         },
         { status: 200, headers: CORS },
       )
@@ -164,33 +164,30 @@ export async function POST(req: NextRequest) {
   const placeName = String(body.placeName ?? 'Unknown Place')
   const pluginVer = String(body.pluginVer ?? body.pluginVersion ?? '1.0.0')
 
-  // Verify the signed code token
-  if (codeToken) {
-    const verified = verifyCodeToken(codeToken)
-    if (!verified) {
-      return NextResponse.json(
-        { error: 'code_expired_or_invalid' },
-        { status: 400, headers: CORS },
-      )
-    }
-    if (verified.code !== code) {
-      return NextResponse.json(
-        { error: 'code_mismatch' },
-        { status: 400, headers: CORS },
-      )
-    }
-  } else if (code.length < 4) {
+  // Verify the signed code token — this is the ONLY accepted path.
+  // The bare-code fallback was removed: a length-only check is a brute-force
+  // bypass. The 6-char code space (~1B combos) is trivially enumerable against
+  // a serverless endpoint that has no centralised rate-limit state.
+  if (!codeToken) {
     return NextResponse.json(
-      { error: 'code is required' },
+      { error: 'signed_token_required' },
       { status: 400, headers: CORS },
     )
   }
 
-  // If no signed token provided, verify the code is at least valid format
-  // (backwards compat with older plugin versions that don't send token)
-  // In serverless, we can't verify against an in-memory store, so we
-  // trust the code if it matches the format and create the session.
-  // The HMAC-signed token path above is the secure path.
+  const verified = verifyCodeToken(codeToken)
+  if (!verified) {
+    return NextResponse.json(
+      { error: 'code_expired_or_invalid' },
+      { status: 400, headers: CORS },
+    )
+  }
+  if (verified.code !== code) {
+    return NextResponse.json(
+      { error: 'code_mismatch' },
+      { status: 400, headers: CORS },
+    )
+  }
 
   // Build a self-contained JWT-style signed session token.
   // Format: base64url(payload) + '.' + base64url(hmac_sha256)

@@ -313,6 +313,11 @@ export function useChat(options: UseChatOptions = {}) {
         if (chatRes.body) {
           const assistantMsgId = uid()
 
+          // Accumulate raw stream content (including code blocks) in a ref so
+          // we can extract Luau after streaming ends, without relying on the
+          // displayed content field which gets code-stripped at finalization.
+          let rawStreamBuffer = ''
+
           // Insert the streaming assistant message (empty content to start)
           setMessagesSync((prev) => [
             ...prev.filter((m) => m.id !== statusMsgId),
@@ -329,13 +334,19 @@ export function useChat(options: UseChatOptions = {}) {
           setStreaming(true)
 
           const meta = await readStream(chatRes.body, (chunk) => {
+            rawStreamBuffer += chunk
+            // Strip code blocks from what we display during streaming so raw
+            // Lua never flashes on screen. We keep rawStreamBuffer intact for
+            // code extraction after the stream ends.
+            const displayChunk = chunk.replace(/```(?:lua|luau|[a-z]*)?\s*[\s\S]*?```/g, '').replace(/```[\s\S]*$/g, '')
+            if (!displayChunk) return
             setMessages((prev) => {
               const idx = prev.findIndex((m) => m.id === assistantMsgId)
               if (idx === -1) return prev
               const updated = [...prev]
               updated[idx] = {
                 ...updated[idx],
-                content: updated[idx].content + chunk,
+                content: updated[idx].content + displayChunk,
               }
               messagesRef.current = updated
               return updated
@@ -356,12 +367,12 @@ export function useChat(options: UseChatOptions = {}) {
             const idx = prev.findIndex((m) => m.id === assistantMsgId)
             if (idx === -1) return prev
             const updated = [...prev]
-            const rawContent = updated[idx].content || getDemoResponse(trimmed)
-            // Strip code blocks from displayed text — code is auto-executed in Studio
-            const finalContent = rawContent
-              .replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '')
+            // Content in state was already code-stripped during streaming.
+            // Fall back to demo response only if we got nothing at all.
+            const displayedContent = updated[idx].content || getDemoResponse(trimmed)
+            const finalContent = displayedContent
               .replace(/\n{3,}/g, '\n\n')
-              .trim() || rawContent
+              .trim() || displayedContent
             updated[idx] = {
               ...updated[idx],
               content: finalContent,
@@ -404,12 +415,9 @@ export function useChat(options: UseChatOptions = {}) {
           let luauCode: string | null = null
 
           if (meta.hasCode && !meta.executedInStudio) {
-            // Use rawContent (before stripping) which still has the code blocks
-            const rawText = messagesRef.current.find((m) => m.id === assistantMsgId)?.content ?? ''
-            // If content was stripped, re-extract from accumulated stream buffer isn't possible,
-            // so the server-side execution (via x-studio-session header) is the primary path.
-            // This fallback only fires if server didn't execute.
-            const codeBlockMatch = rawText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            // Use rawStreamBuffer which still contains the original code blocks —
+            // the displayed content was already stripped during streaming.
+            const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
             if (codeBlockMatch?.[1]?.trim()) {
               luauCode = codeBlockMatch[1].trim()
             }

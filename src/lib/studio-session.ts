@@ -220,17 +220,21 @@ export function getSessionSync(sessionId: string): StudioSession | undefined {
 
 /**
  * Create a new session from a plugin connection handshake.
+ * Pass `sessionId` to pin the session to a specific ID (e.g. when recreating
+ * from a JWT on a cold Lambda — the ID must match the one in the token).
  */
 export function createSession(opts: {
   placeId:       string
   placeName:     string
   pluginVersion: string
   authToken:     string
+  /** Optional: force a specific session ID instead of auto-generating one. */
+  sessionId?:    string
 }): StudioSession {
   pruneStale()
 
   const session: StudioSession = {
-    sessionId:        generateId(),
+    sessionId:        opts.sessionId ?? generateId(),
     placeId:          opts.placeId,
     placeName:        opts.placeName,
     pluginVersion:    opts.pluginVersion,
@@ -363,7 +367,11 @@ export async function drainCommands(
   touchHeartbeat(session)
   sessions.set(sessionId, session)
 
-  if (now - session.lastPollAt < MIN_POLL_INTERVAL_MS) return null
+  if (now - session.lastPollAt < MIN_POLL_INTERVAL_MS) {
+    // Still persist the heartbeat so other Lambdas see the session as live
+    redisPersist(session)
+    return null
+  }
 
   session.lastPollAt = now
 

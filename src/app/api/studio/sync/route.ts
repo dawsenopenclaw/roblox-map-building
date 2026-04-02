@@ -132,14 +132,12 @@ async function handleSync(req: NextRequest) {
       // This is the key fix: no shared state needed between Lambdas.
       if (!session) {
         session = createSession({
+          sessionId:     jwtPayload.sid,
           placeId:       jwtPayload.pid,
           placeName:     jwtPayload.pn,
           pluginVersion: jwtPayload.pv || pluginVer,
           authToken:     token,
         })
-        // Override the auto-generated sessionId to match the one in the token
-        // so the editor's sessionId stays stable across Lambda cold starts.
-        ;(session as { sessionId: string }).sessionId = jwtPayload.sid
         sessionId = jwtPayload.sid
       }
     }
