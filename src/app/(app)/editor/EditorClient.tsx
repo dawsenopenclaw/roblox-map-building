@@ -2216,7 +2216,17 @@ export function EditorClient() {
 
 
   // Studio state — must be declared before submit so the callback closes over them
-  const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })
+  const [studioStatus, setStudioStatus] = useState<StudioStatus>(() => {
+    // Restore connection state from localStorage so tabs share it
+    try {
+      const saved = localStorage.getItem('fg_studio_connection')
+      if (saved) {
+        const parsed = JSON.parse(saved) as StudioStatus
+        if (parsed.connected && parsed.sessionId) return parsed
+      }
+    } catch { /* ignore */ }
+    return { connected: false }
+  })
   const [demoMode, setDemoMode]             = useState(false)
   const [studioActivity, setStudioActivity] = useState<StudioActivity[]>([])
   const [executeStatus, setExecuteStatus]   = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
@@ -2810,9 +2820,23 @@ export function EditorClient() {
   // Clean up on unmount
   useEffect(() => () => stopConnectPolling(), [stopConnectPolling])
 
-  // Auto-generate connection code when editor loads — no button click needed
+  // Persist connection state to localStorage so other tabs can use it
   useEffect(() => {
-    if (connectFlow === 'idle' && !studioConnected && !demoMode) {
+    try {
+      if (studioStatus.connected && studioStatus.sessionId) {
+        localStorage.setItem('fg_studio_connection', JSON.stringify(studioStatus))
+      }
+    } catch { /* ignore */ }
+  }, [studioStatus])
+
+  // Auto-generate connection code — ONLY if not already connected
+  useEffect(() => {
+    // If restored from localStorage as connected, skip auto-connect
+    if (studioStatus.connected) {
+      setConnectFlow('connected')
+      return
+    }
+    if (connectFlow === 'idle' && !demoMode) {
       handleConnectToStudio()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

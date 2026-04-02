@@ -189,6 +189,20 @@ export default clerkMiddleware(async (auth, request) => {
     const preFlightResponse = handleCorsPreFlight(request)
     if (preFlightResponse) return preFlightResponse
 
+    // ── Studio API bypass — Studio plugin has no cookies/session. Skip Clerk
+    //    entirely so Roblox Studio HTTP requests always reach the route handler.
+    //    Each studio route handles its own token-based auth internally. ───────────
+    if (request.nextUrl.pathname.startsWith('/api/studio/')) {
+      const studioHeaders = new Headers(request.headers)
+      studioHeaders.set('x-pathname', request.nextUrl.pathname)
+      const res = NextResponse.next({ request: { headers: studioHeaders } })
+      // Add CORS for Studio plugin (no cookies, cross-origin from Roblox)
+      res.headers.set('Access-Control-Allow-Origin', '*')
+      res.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+      res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      return res
+    }
+
     // ── Inject x-pathname header so Server Component layouts can read the
     //    current path without relying on searchParams or unstable headers. ──────
     const requestHeaders = new Headers(request.headers)
