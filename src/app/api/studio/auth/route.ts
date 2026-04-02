@@ -17,6 +17,38 @@ const CODE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET || 'forjegames-studio-default-secret'
 
+// ── Claimed code store (Redis-backed for serverless, in-memory fallback) ────
+// Key: code → { sessionId, placeName, placeId, claimedAt }
+const claimedCodes = new Map<string, { sessionId: string; placeName: string; placeId: string; claimedAt: number }>()
+
+async function markCodeClaimed(code: string, data: { sessionId: string; placeName: string; placeId: string }) {
+  claimedCodes.set(code, { ...data, claimedAt: Date.now() })
+  // Also persist to Redis so other Lambdas can see it
+  try {
+    const { redis } = await import('@/lib/redis') as { redis: { set: (k: string, v: string, m: string, t: number) => Promise<unknown> } }
+    if (redis) await redis.set(`fj:studio:code:${code}`, JSON.stringify({ ...data, claimedAt: Date.now() }), 'EX', 600)
+  } catch { /* ignore */ }
+}
+
+async function getCodeClaim(code: string): Promise<{ sessionId: string; placeName: string; placeId: string; claimedAt: number } | null> {
+  // Check memory first
+  const mem = claimedCodes.get(code)
+  if (mem) return mem
+  // Check Redis
+  try {
+    const { redis } = await import('@/lib/redis') as { redis: { get: (k: string) => Promise<string | null> } }
+    if (redis) {
+      const raw = await redis.get(`fj:studio:code:${code}`)
+      if (raw) {
+        const data = JSON.parse(raw)
+        claimedCodes.set(code, data) // hydrate memory
+        return data
+      }
+    }
+  } catch { /* ignore */ }
+  return null
+}
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -88,9 +120,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'code param required' }, { status: 400, headers: CORS })
     }
 
-    // Check if any session was created with this code by looking at all sessions
-    // The session's authToken won't match the code, but we store code in metadata
-    // For now, just report the code is valid and pending (actual connection shown via /status)
+    // Check if this code was claimed by a plugin
+    const claim = await getCodeClaim(code)
+    if (claim) {
+      return NextResponse.json(
+        {
+          status: 'connected',
+          claimed: true,
+          code,
+          sessionId: claim.sessionId,
+          placeName: claim.placeName,
+          placeId: claim.placeId,
+        },
+        { status: 200, headers: CORS },
+      )
+    }
     return NextResponse.json(
       { status: 'pending', claimed: false, code },
       { status: 200, headers: CORS },
@@ -181,6 +225,9 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.warn('[studio/auth] Session store unavailable:', (e as Error).message)
   }
+
+  // Mark code as claimed so status endpoint can report it
+  await markCodeClaimed(code, { sessionId, placeName, placeId })
 
   return NextResponse.json(
     { token: jwtToken, sessionId, expiresAt },
