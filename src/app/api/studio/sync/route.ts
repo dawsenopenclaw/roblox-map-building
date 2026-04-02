@@ -24,7 +24,45 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { drainCommands, getSession, getSessionByToken, createSession } from '@/lib/studio-session'
+
+// ── JWT helpers (mirrors auth/route.ts) ───────────────────────────────────────
+const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET || 'forjegames-studio-default-secret'
+
+interface JwtPayload {
+  sid: string   // sessionId
+  pid: string   // placeId
+  pn:  string   // placeName
+  pv:  string   // pluginVersion
+  iat: number   // issued-at (ms)
+}
+
+/**
+ * Verify a JWT-style token produced by the auth/claim endpoint.
+ * Returns the decoded payload on success, null on any failure.
+ */
+function verifyJwt(token: string): JwtPayload | null {
+  try {
+    const dot = token.lastIndexOf('.')
+    if (dot < 1) return null
+    const payloadB64 = token.slice(0, dot)
+    const sig = token.slice(dot + 1)
+
+    // Verify HMAC
+    const expectedSig = crypto
+      .createHmac('sha256', SECRET)
+      .update(payloadB64)
+      .digest('base64url')
+    if (sig !== expectedSig) return null
+
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as JwtPayload
+    if (!payload.sid || !payload.pid) return null
+    return payload
+  } catch {
+    return null
+  }
+}
 
 /** Minimum plugin version the server accepts without flagging an update. */
 const MINIMUM_PLUGIN_VERSION = '4.0.0'
@@ -52,6 +90,16 @@ export async function OPTIONS() {
 }
 
 export async function GET(req: NextRequest) {
+  try { return await handleSync(req) } catch (err) {
+    // NEVER return 500 with empty body — plugin can't parse it
+    return NextResponse.json(
+      { serverTime: Date.now(), heartbeat: false, changes: [], error: 'internal', message: String(err) },
+      { status: 200, headers: CORS_HEADERS },
+    )
+  }
+}
+
+async function handleSync(req: NextRequest) {
   const { searchParams } = req.nextUrl
 
   const lastSyncRaw = searchParams.get('lastSync')
@@ -64,29 +112,46 @@ export async function GET(req: NextRequest) {
     if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7)
   }
 
-  // ── Resolve session: sessionId → async getSession (memory + Redis) ────────
+  // ── Resolve session ───────────────────────────────────────────────────────
+  // Priority order:
+  //   1. JWT token (stateless — every Lambda can verify independently)
+  //   2. sessionId param + memory/Redis lookup
+  //   3. Legacy plain-token memory lookup (backwards compat)
+
   let sessionId = searchParams.get('sessionId') ?? req.headers.get('x-session-id')
   let session = sessionId ? await getSession(sessionId) : undefined
 
-  // ── Fallback 1: look up by token in memory ────────────────────────────────
+  // ── Path 1: JWT — stateless, works on any Lambda invocation ──────────────
   if (!session && token) {
-    session = getSessionByToken(token)
-    if (session) sessionId = session.sessionId
+    const jwtPayload = verifyJwt(token)
+    if (jwtPayload) {
+      sessionId = jwtPayload.sid
+      // Try memory/Redis first (cheap)
+      session = await getSession(sessionId)
+      // Not there? Recreate from the self-contained JWT payload.
+      // This is the key fix: no shared state needed between Lambdas.
+      if (!session) {
+        session = createSession({
+          placeId:       jwtPayload.pid,
+          placeName:     jwtPayload.pn,
+          pluginVersion: jwtPayload.pv || pluginVer,
+          authToken:     token,
+        })
+        // Override the auto-generated sessionId to match the one in the token
+        // so the editor's sessionId stays stable across Lambda cold starts.
+        ;(session as { sessionId: string }).sessionId = jwtPayload.sid
+        sessionId = jwtPayload.sid
+      }
+    }
   }
 
-  // ── Fallback 2: token valid but not in memory — auto-recreate from cold start
-  // This handles Vercel Lambda restarts that wipe the in-memory store.
-  // Redis was checked inside getSession() already; if we're here it means
-  // Redis also missed. We trust the token (≥32 hex chars) and recreate.
-  if (!session && token && token.length >= 32) {
-    const newSession = createSession({
-      placeId:       searchParams.get('placeId')   ?? 'unknown',
-      placeName:     searchParams.get('placeName') ?? 'Unknown Place',
-      pluginVersion: pluginVer,
-      authToken:     token,
-    })
-    session   = newSession
-    sessionId = newSession.sessionId
+  // ── Path 2: Legacy plain-token memory lookup (older plugin versions) ──────
+  if (!session && token) {
+    const byToken = getSessionByToken(token)
+    if (byToken) {
+      session = byToken
+      sessionId = byToken.sessionId
+    }
   }
 
   // ── No session recoverable — tell plugin to re-auth ───────────────────────
@@ -97,7 +162,7 @@ export async function GET(req: NextRequest) {
         reconnect: true,
         message:   'Session expired. Re-enter your connection code.',
       },
-      { status: 404, headers: CORS_HEADERS },
+      { status: 200, headers: CORS_HEADERS },
     )
   }
 
@@ -112,8 +177,8 @@ export async function GET(req: NextRequest) {
   const commands = await drainCommands(sessionId, since)
   if (commands === null) {
     return NextResponse.json(
-      { error: 'rate_limited', retryAfterMs: 1000 },
-      { status: 429, headers: CORS_HEADERS },
+      { serverTime: Date.now(), heartbeat: true, changes: [], rateLimited: true, retryAfterMs: 1000 },
+      { status: 200, headers: CORS_HEADERS },
     )
   }
 

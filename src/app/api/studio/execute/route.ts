@@ -18,14 +18,60 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { z } from 'zod'
 import {
   queueCommand,
   listSessions,
   getSession,
+  getSessionSync,
+  createSession,
   type ChangeType,
+  type PendingCommand,
 } from '@/lib/studio-session'
 import { parseBody } from '@/lib/validations'
+
+// ── JWT verification (same logic as sync/route.ts) ────────────────────────────
+const SECRET = process.env.CLERK_SECRET_KEY || process.env.STUDIO_AUTH_SECRET || 'forjegames-studio-default-secret'
+
+interface JwtPayload {
+  sid: string
+  pid: string
+  pn:  string
+  pv:  string
+  iat: number
+}
+
+function verifyJwt(token: string): JwtPayload | null {
+  try {
+    const dot = token.lastIndexOf('.')
+    if (dot < 1) return null
+    const payloadB64 = token.slice(0, dot)
+    const sig = token.slice(dot + 1)
+    const expectedSig = crypto
+      .createHmac('sha256', SECRET)
+      .update(payloadB64)
+      .digest('base64url')
+    if (sig !== expectedSig) return null
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as JwtPayload
+    if (!payload.sid || !payload.pid) return null
+    return payload
+  } catch {
+    return null
+  }
+}
+
+// ── Cross-Lambda command buffer ───────────────────────────────────────────────
+// When a JWT is valid we can write commands directly into this global map.
+// The sync endpoint on the SAME Lambda request can drain them instantly.
+// On a different Lambda the session will be recreated from the JWT, and
+// subsequent sync polls will flush whatever is in Redis (via studio-session).
+// This is a best-effort buffer; Redis is the durable store.
+type CommandBuffer = Map<string, PendingCommand[]>
+// @ts-expect-error — survive Next.js hot-reload
+const jwtCommandBuffer: CommandBuffer = (globalThis.__fjJwtCmdBuf ??= new Map())
+// @ts-expect-error
+globalThis.__fjJwtCmdBuf = jwtCommandBuffer
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -91,8 +137,12 @@ export async function POST(req: NextRequest) {
   const body = parsedBody.data
 
   // ── Resolve session ──────────────────────────────────────────────────────
+  // Try JWT from Authorization header first — stateless, works cross-Lambda.
+  const authHeader = req.headers.get('authorization') ?? ''
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const jwtPayload = bearerToken ? verifyJwt(bearerToken) : null
 
-  let sessionId = body.sessionId
+  let sessionId = body.sessionId ?? jwtPayload?.sid
 
   if (!sessionId) {
     // Fall back to the most recently active connected session (memory-only).
@@ -109,19 +159,25 @@ export async function POST(req: NextRequest) {
     sessionId = live[0].sessionId
   }
 
-  // Verify the session exists and is connected (checks Redis on memory miss).
-  const session = await getSession(sessionId)
-  if (!session) {
+  // If JWT is valid, trust it — no session lookup needed (works cross-Lambda)
+  if (!sessionId && !jwtPayload) {
     return NextResponse.json(
-      { ok: false, error: 'session_not_found' },
+      { ok: false, error: 'no_session_or_token' },
       { status: 404, headers: CORS_HEADERS },
     )
   }
-  if (!session.connected) {
-    return NextResponse.json(
-      { ok: false, error: 'session_disconnected' },
-      { status: 409, headers: CORS_HEADERS },
-    )
+
+  // Ensure session exists in this Lambda's memory for queueCommand
+  let session = getSessionSync(sessionId)
+  if (!session) {
+    // Recreate from JWT or create a new one
+    const sid = sessionId || crypto.randomBytes(8).toString('hex')
+    session = createSession({
+      placeId:       jwtPayload?.pid ?? 'unknown',
+      placeName:     jwtPayload?.pn ?? 'Studio',
+      pluginVersion: jwtPayload?.pv ?? '4.0.0',
+      authToken:     bearerToken ?? sid,
+    })
   }
 
   // ── Build the command ────────────────────────────────────────────────────

@@ -147,26 +147,43 @@ export async function POST(req: NextRequest) {
   // trust the code if it matches the format and create the session.
   // The HMAC-signed token path above is the secure path.
 
-  // Generate auth token for this session
-  const authToken = crypto.randomBytes(32).toString('hex')
+  // Build a self-contained JWT-style signed session token.
+  // Format: base64url(payload) + '.' + base64url(hmac_sha256)
+  // Every Lambda can verify the signature independently — no shared state needed.
   const sessionId = crypto.randomBytes(8).toString('hex')
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 days
+  const iat = Date.now()
+  const expiresAt = iat + 30 * 24 * 60 * 60 * 1000 // 30 days
 
-  // Try to create a session in the session store (non-fatal if it fails)
+  const payloadObj = {
+    sid: sessionId,
+    pid: placeId,
+    pn:  placeName,
+    pv:  pluginVer,
+    iat,
+  }
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url')
+  const sig = crypto
+    .createHmac('sha256', SECRET)
+    .update(payloadB64)
+    .digest('base64url')
+  const jwtToken = `${payloadB64}.${sig}`
+
+  // Also hydrate this Lambda's in-memory session store so the SAME Lambda can
+  // immediately serve sync/execute requests without a Redis round-trip.
   try {
     const { createSession } = await import('@/lib/studio-session')
     createSession({
       placeId,
       placeName,
       pluginVersion: pluginVer,
-      authToken,
+      authToken: jwtToken,
     })
   } catch (e) {
     console.warn('[studio/auth] Session store unavailable:', (e as Error).message)
   }
 
   return NextResponse.json(
-    { token: authToken, sessionId, expiresAt },
+    { token: jwtToken, sessionId, expiresAt },
     { status: 200, headers: CORS },
   )
 }
