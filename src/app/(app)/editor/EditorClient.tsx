@@ -341,6 +341,99 @@ function CodeCopyButton({ code }: { code: string }) {
   )
 }
 
+// ─── Download Tab ──────────────────────────────────────────────────────────────
+
+function DownloadTab({ pluginFolder }: { pluginFolder: string }) {
+  const [step, setStep] = useState<'download' | 'copied' | 'done'>('download')
+  const [folderCopied, setFolderCopied] = useState(false)
+
+  const copyFolder = () => {
+    void navigator.clipboard.writeText(pluginFolder).then(() => {
+      setFolderCopied(true)
+      setTimeout(() => setFolderCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Step 1: Download */}
+      <div className="flex items-start gap-3">
+        <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+          style={{ background: step !== 'download' ? '#10B981' : '#D4AF37', color: '#000' }}>
+          {step !== 'download' ? '✓' : '1'}
+        </span>
+        <div className="flex-1">
+          <p className="text-[12px] font-medium text-zinc-200 mb-2">Download the plugin</p>
+          <a
+            href="/api/studio/plugin"
+            download="ForjeGames.lua"
+            onClick={() => setTimeout(() => setStep('copied'), 500)}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-bold transition-all hover:brightness-110 active:scale-[0.98]"
+            style={{ background: '#D4AF37', color: '#030712' }}
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download ForjeGames.lua
+          </a>
+        </div>
+      </div>
+
+      {/* Step 2: Move to folder */}
+      <div className="flex items-start gap-3">
+        <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+          style={{ background: step === 'done' ? '#10B981' : 'rgba(255,255,255,0.08)', color: step === 'done' ? '#000' : '#71717a' }}>
+          {step === 'done' ? '✓' : '2'}
+        </span>
+        <div className="flex-1">
+          <p className="text-[12px] font-medium text-zinc-200 mb-1.5">Move it to your Plugins folder</p>
+          <p className="text-[10px] text-zinc-500 mb-2">Open this folder and drag the file in:</p>
+          <button
+            onClick={copyFolder}
+            className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-left transition-all"
+            style={{
+              background: folderCopied ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${folderCopied ? 'rgba(212,175,55,0.3)' : 'rgba(255,255,255,0.08)'}`,
+            }}
+          >
+            <code className="flex-1 text-[11px] break-all" style={{ fontFamily: '"JetBrains Mono", monospace', color: folderCopied ? '#D4AF37' : '#a3a3a3' }}>
+              {pluginFolder}
+            </code>
+            <span className="flex-shrink-0 text-[10px] font-medium px-2 py-1 rounded"
+              style={{ background: folderCopied ? 'rgba(212,175,55,0.2)' : 'rgba(255,255,255,0.06)', color: folderCopied ? '#D4AF37' : '#71717a' }}>
+              {folderCopied ? 'Copied!' : 'Copy'}
+            </span>
+          </button>
+          <p className="text-[10px] text-zinc-600 mt-1.5">
+            Tip: Press <kbd className="px-1 py-0.5 rounded text-zinc-400" style={{ background: 'rgba(255,255,255,0.06)', fontSize: 9 }}>Win+R</kbd>, paste the path, hit Enter
+          </p>
+        </div>
+      </div>
+
+      {/* Step 3: Restart */}
+      <div className="flex items-start gap-3">
+        <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5"
+          style={{ background: 'rgba(255,255,255,0.08)', color: '#71717a' }}>3</span>
+        <div className="flex-1">
+          <p className="text-[12px] font-medium text-zinc-200 mb-1">Restart Studio</p>
+          <p className="text-[10px] text-zinc-500">Close Studio completely, then reopen it. Click &quot;ForjeGames&quot; in the toolbar.</p>
+          {step === 'copied' && (
+            <button
+              onClick={() => setStep('done')}
+              className="mt-2 text-[10px] font-medium px-3 py-1.5 rounded-md transition-all"
+              style={{ background: 'rgba(255,255,255,0.04)', color: '#a1a1aa', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              Done — I restarted Studio ✓
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Setup Panel (tabbed install methods) ──────────────────────────────────────
 
 type InstallTab = 'download' | 'command' | 'manual'
@@ -390,40 +483,7 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode }: {
       {/* Tab content */}
       <div className="text-left mb-4">
         {tab === 'download' && (
-          <div className="space-y-3">
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              <strong className="text-zinc-200">One-click install.</strong> Downloads and installs the plugin automatically.
-            </p>
-            <a
-              href="/api/studio/install"
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-lg text-sm font-bold transition-all hover:brightness-110 active:scale-[0.98]"
-              style={{ background: '#D4AF37', color: '#030712' }}
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Install Plugin (1-click)
-            </a>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Run the downloaded file. It installs the plugin to the right folder automatically.
-              Then close and reopen Studio.
-            </p>
-            <div className="flex items-center gap-2 pt-1">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-              <span className="text-[9px] text-zinc-700">or download manually</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-            <a
-              href="/api/studio/plugin"
-              download="ForjeGames.lua"
-              className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-[11px] font-medium transition-all"
-              style={{ background: 'rgba(255,255,255,0.04)', color: '#a1a1aa', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              Download ForjeGames.lua → put in {PLUGIN_FOLDER}
-            </a>
-          </div>
+          <DownloadTab pluginFolder={PLUGIN_FOLDER} />
         )}
 
         {tab === 'command' && (

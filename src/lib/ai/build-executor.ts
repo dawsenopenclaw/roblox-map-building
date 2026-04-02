@@ -239,18 +239,21 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
 // ── Studio command push ───────────────────────────────────────────────────────
 
 function pushToStudio(sessionId: string, taskId: string, luauCode: string): void {
-  const result = queueCommand(sessionId, {
+  // queueCommand is now async — fire and forget; errors are logged
+  queueCommand(sessionId, {
     type: 'execute_luau',
     data: {
       source: luauCode,
       taskId,
       origin: 'build_executor',
     },
+  }).then((result) => {
+    if (!result.ok) {
+      console.warn(`[build-executor] Failed to push task ${taskId} to Studio: ${result.error}`)
+    }
+  }).catch((err: unknown) => {
+    console.warn(`[build-executor] queueCommand threw for task ${taskId}:`, err)
   })
-
-  if (!result.ok) {
-    console.warn(`[build-executor] Failed to push task ${taskId} to Studio: ${result.error}`)
-  }
 }
 
 // ── Single task executor ──────────────────────────────────────────────────────

@@ -1,55 +1,44 @@
 #!/usr/bin/env node
 /**
- * city-architect MCP Server
- * Grid-based urban planning algorithms + Claude style interpretation.
- * Tools: generate_city_layout, generate_road_network, place_buildings
+ * City Architect MCP Server — port 3003
+ *
+ * Tools:
+ *   plan-city           → Claude-powered structured city layout JSON (zones, roads, buildings)
+ *   generate-building   → Single building spec via Claude + optional Meshy mesh kick-off
+ *   layout-district     → Array of building placements for a district type
+ *
+ * Transport: StreamableHTTP over Node http on /mcp
+ * Auth:      ANTHROPIC_API_KEY + optional MESHY_API_KEY from process.env
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  type Tool,
-} from '@modelcontextprotocol/sdk/types.js'
+import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { randomUUID } from 'node:crypto'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Token metering
+// Constants
 // ---------------------------------------------------------------------------
-interface TokenUsage {
-  inputTokens: number
-  outputTokens: number
-  costUsd: number
-  tool: string
-  timestamp: string
-}
 
-const sessionTokens: TokenUsage[] = []
-
-function meterUsage(tool: string, inputTokens: number, outputTokens: number): TokenUsage {
-  const costUsd =
-    (inputTokens / 1_000_000) * 3.0 + (outputTokens / 1_000_000) * 15.0
-  const entry: TokenUsage = {
-    inputTokens,
-    outputTokens,
-    costUsd,
-    tool,
-    timestamp: new Date().toISOString(),
-  }
-  sessionTokens.push(entry)
-  process.stderr.write(
-    `[city-architect] ${tool}: ${inputTokens}in/${outputTokens}out ($${costUsd.toFixed(6)})\n`
-  )
-  return entry
-}
+const PORT = Number(process.env.CITY_ARCHITECT_PORT ?? 3003)
+const MESHY_BASE = 'https://api.meshy.ai'
 
 // ---------------------------------------------------------------------------
-// Anthropic
+// Anthropic client
 // ---------------------------------------------------------------------------
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022'
+
+function meterUsage(tool: string, inputTokens: number, outputTokens: number): void {
+  const costUsd = (inputTokens / 1_000_000) * 3.0 + (outputTokens / 1_000_000) * 15.0
+  process.stderr.write(
+    `[city-architect] ${tool}: ${inputTokens}in/${outputTokens}out ($${costUsd.toFixed(6)})\n`,
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -293,385 +282,439 @@ function placeBuildings(
 }
 
 // ---------------------------------------------------------------------------
-// Tool: generate_city_layout
+// Tool: plan-city — Claude-generated structured city layout
 // ---------------------------------------------------------------------------
-const GenerateCityLayoutSchema = z.object({
-  description: z.string().describe('Zone/city description in natural language'),
-  bounds: z
-    .object({ width: z.number().default(1024), height: z.number().default(1024) })
-    .optional()
-    .default({ width: 1024, height: 1024 }),
-  buildingTypes: z.array(z.string()).optional().default([]),
-})
 
-async function generateCityLayout(params: z.infer<typeof GenerateCityLayoutSchema>): Promise<CityLayout> {
-  const { description, bounds = { width: 1024, height: 1024 }, buildingTypes = [] } = params
+async function planCity(params: {
+  cityType: string
+  size: 'small' | 'medium' | 'large'
+  style: string
+}): Promise<Record<string, unknown>> {
+  const { cityType, size, style } = params
 
-  // Ask Claude to interpret the style
+  const studsMap = { small: 512, medium: 1024, large: 2048 }
+  const studs = studsMap[size]
+
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 800,
-    system: `You are a Roblox city style interpreter. Output ONLY valid JSON:
+    max_tokens: 2000,
+    system: `You are a Roblox city layout architect. Given a city type, size, and style, output ONLY a single valid JSON object representing the full city plan. No prose, no markdown fences. The JSON must match this exact structure:
 {
-  "style": string (e.g. "modern-downtown", "medieval-village", "futuristic-city"),
-  "density": "sparse" | "medium" | "dense",
-  "theme": string,
-  "primaryBuildingTypes": string[],
+  "cityType": string,
+  "style": string,
+  "bounds": { "width": number, "height": number },
+  "zones": [{ "id": string, "name": string, "type": "commercial"|"residential"|"industrial"|"park"|"civic"|"mixed", "x": number, "z": number, "width": number, "height": number }],
+  "roads": [{ "id": string, "fromX": number, "fromZ": number, "toX": number, "toZ": number, "width": number, "type": "main"|"secondary"|"alley"|"highway" }],
+  "buildings": [{ "id": string, "x": number, "z": number, "width": number, "depth": number, "height": number, "floors": number, "type": string, "style": string, "rotation": number }],
+  "landmarks": [{ "id": string, "name": string, "x": number, "z": number, "type": string }],
   "atmosphere": string,
-  "landmarks": string[]
-}`,
-    messages: [{ role: 'user', content: `Interpret city style for: ${description}` }],
+  "colorPalette": { "primary": string, "accent": string, "road": string }
+}
+All coordinates are Roblox studs. The map fits within ${studs}×${studs} studs. Include 4-8 zones, a realistic road grid, and 20-50 buildings placed in their zones.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Plan a ${size} ${cityType} city with ${style} style, ${studs}×${studs} studs.`,
+      },
+    ],
   })
 
-  meterUsage('generate_city_layout', response.usage.input_tokens, response.usage.output_tokens)
+  meterUsage('plan-city', response.usage.input_tokens, response.usage.output_tokens)
 
   const raw = response.content
     .filter((b) => b.type === 'text')
     .map((b) => (b as Anthropic.TextBlock).text)
     .join('')
 
-  let metadata: Record<string, unknown>
   try {
-    metadata = JSON.parse(raw)
+    return JSON.parse(raw) as Record<string, unknown>
   } catch {
     const match = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
-    metadata = match ? JSON.parse(match[1]) : { style: 'modern', raw }
-  }
-
-  const style = (metadata.style as string) ?? 'modern'
-  const primaryTypes = (metadata.primaryBuildingTypes as string[]) ?? buildingTypes
-
-  const { roads, zones } = createUrbanGrid(bounds, style)
-  const buildings = placeBuildings(zones, primaryTypes, style)
-
-  return {
-    zones,
-    roads,
-    buildings,
-    bounds,
-    style,
-    metadata,
+    if (match) return JSON.parse(match[1]) as Record<string, unknown>
+    // Fallback: use the algorithmic generator
+    const bounds = { width: studs, height: studs }
+    const { roads, zones } = createUrbanGrid(bounds, style)
+    const buildings = placeBuildings(zones, [], style)
+    return { cityType, style, bounds, zones, roads, buildings, landmarks: [], atmosphere: style }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Tool: generate_road_network
+// Tool: generate-building — spec + optional Meshy kick-off
 // ---------------------------------------------------------------------------
-const GenerateRoadNetworkSchema = z.object({
-  bounds: z.object({
-    width: z.number(),
-    height: z.number(),
-  }),
-  style: z
-    .enum(['grid', 'radial', 'organic', 'highway'])
-    .default('grid')
-    .describe('Road network style'),
-  mainRoadSpacing: z.number().default(200).describe('Spacing between main roads in studs'),
-  includeHighways: z.boolean().default(false),
-})
 
-async function generateRoadNetwork(params: z.infer<typeof GenerateRoadNetworkSchema>) {
-  const { bounds, style, mainRoadSpacing = 200, includeHighways = false } = params
+async function generateBuilding(params: {
+  buildingType: string
+  style: string
+  kickOffMesh: boolean
+}): Promise<Record<string, unknown>> {
+  const { buildingType, style, kickOffMesh } = params
 
-  const roads: RoadSegment[] = []
-  let roadId = 0
+  const response = await anthropic.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 800,
+    system: `You are a Roblox building architect. Given a building type and style, output ONLY valid JSON:
+{
+  "name": string,
+  "buildingType": string,
+  "style": string,
+  "width": number,
+  "depth": number,
+  "floors": number,
+  "heightPerFloor": number,
+  "totalHeight": number,
+  "materials": { "facade": string, "roof": string, "trim": string },
+  "features": string[],
+  "meshPrompt": string,
+  "colorHex": string,
+  "robloxMaterial": string
+}
+All dimensions in Roblox studs. meshPrompt should be a 1-2 sentence Meshy-ready 3D generation prompt.`,
+    messages: [{ role: 'user', content: `Design a ${buildingType} in ${style} style.` }],
+  })
 
-  if (style === 'grid') {
-    // Standard grid
-    for (let x = 0; x <= bounds.width; x += mainRoadSpacing) {
-      roads.push({
-        id: `road-${roadId++}`,
-        fromX: x, fromZ: 0, toX: x, toZ: bounds.height,
-        width: x % (mainRoadSpacing * 2) === 0 ? 20 : 12,
-        type: x % (mainRoadSpacing * 2) === 0 ? 'main' : 'secondary',
+  meterUsage('generate-building', response.usage.input_tokens, response.usage.output_tokens)
+
+  const raw = response.content
+    .filter((b) => b.type === 'text')
+    .map((b) => (b as Anthropic.TextBlock).text)
+    .join('')
+
+  let spec: Record<string, unknown>
+  try {
+    spec = JSON.parse(raw) as Record<string, unknown>
+  } catch {
+    const match = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
+    spec = match ? (JSON.parse(match[1]) as Record<string, unknown>) : { buildingType, style, raw }
+  }
+
+  // Optionally kick off a Meshy task for the mesh
+  if (kickOffMesh && process.env.MESHY_API_KEY) {
+    try {
+      const meshPrompt = (spec.meshPrompt as string) ?? `${buildingType}, ${style} style, Roblox game asset`
+      const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.MESHY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          mode: 'preview',
+          prompt: meshPrompt,
+          art_style: style.includes('realistic') ? 'pbr' : 'low-poly',
+          target_polycount: 20_000,
+        }),
+        signal: AbortSignal.timeout(15_000),
       })
-    }
-    for (let z = 0; z <= bounds.height; z += mainRoadSpacing) {
-      roads.push({
-        id: `road-${roadId++}`,
-        fromX: 0, fromZ: z, toX: bounds.width, toZ: z,
-        width: z % (mainRoadSpacing * 2) === 0 ? 20 : 12,
-        type: z % (mainRoadSpacing * 2) === 0 ? 'main' : 'secondary',
-      })
-    }
-  } else if (style === 'radial') {
-    // Radial spokes from center
-    const cx = bounds.width / 2
-    const cz = bounds.height / 2
-    const spokeCount = 8
-    const ringCount = 3
-
-    for (let i = 0; i < spokeCount; i++) {
-      const angle = (i / spokeCount) * Math.PI * 2
-      roads.push({
-        id: `road-${roadId++}`,
-        fromX: cx, fromZ: cz,
-        toX: cx + Math.cos(angle) * bounds.width * 0.6,
-        toZ: cz + Math.sin(angle) * bounds.height * 0.6,
-        width: 16,
-        type: 'main',
-      })
-    }
-
-    // Concentric rings
-    for (let r = 1; r <= ringCount; r++) {
-      const radius = (r / (ringCount + 1)) * Math.min(bounds.width, bounds.height) * 0.5
-      const segments = Math.floor(spokeCount * r * 1.5)
-      for (let s = 0; s < segments; s++) {
-        const a1 = (s / segments) * Math.PI * 2
-        const a2 = ((s + 1) / segments) * Math.PI * 2
-        roads.push({
-          id: `road-${roadId++}`,
-          fromX: cx + Math.cos(a1) * radius,
-          fromZ: cz + Math.sin(a1) * radius,
-          toX: cx + Math.cos(a2) * radius,
-          toZ: cz + Math.sin(a2) * radius,
-          width: r === 1 ? 16 : 10,
-          type: r === 1 ? 'main' : 'secondary',
-        })
+      if (res.ok) {
+        const data = (await res.json()) as { result: string }
+        spec.meshTaskId = data.result
+        spec.meshStatus = 'IN_PROGRESS'
       }
-    }
-  } else if (style === 'organic') {
-    // Irregular organic layout
-    const numRoads = Math.floor((bounds.width * bounds.height) / (mainRoadSpacing * mainRoadSpacing * 2))
-    for (let i = 0; i < numRoads; i++) {
-      const x1 = (i * 137.5) % bounds.width
-      const z1 = (i * 97.3) % bounds.height
-      const angle = (i * 53.1 * Math.PI) / 180
-      const len = mainRoadSpacing * 0.5 + (i % 3) * mainRoadSpacing * 0.25
-      roads.push({
-        id: `road-${roadId++}`,
-        fromX: x1, fromZ: z1,
-        toX: Math.min(bounds.width, x1 + Math.cos(angle) * len),
-        toZ: Math.min(bounds.height, z1 + Math.sin(angle) * len),
-        width: 10 + (i % 3) * 3,
-        type: i % 5 === 0 ? 'main' : 'secondary',
-      })
+    } catch {
+      spec.meshStatus = 'skipped'
     }
   }
 
-  // Add perimeter highway
-  if (includeHighways) {
-    roads.push(
-      { id: `road-${roadId++}`, fromX: 0, fromZ: 0, toX: bounds.width, toZ: 0, width: 28, type: 'highway' },
-      { id: `road-${roadId++}`, fromX: bounds.width, fromZ: 0, toX: bounds.width, toZ: bounds.height, width: 28, type: 'highway' },
-      { id: `road-${roadId++}`, fromX: 0, fromZ: bounds.height, toX: bounds.width, toZ: bounds.height, width: 28, type: 'highway' },
-      { id: `road-${roadId++}`, fromX: 0, fromZ: 0, toX: 0, toZ: bounds.height, width: 28, type: 'highway' }
-    )
-  }
-
-  return {
-    success: true,
-    roads,
-    totalRoads: roads.length,
-    bounds,
-    style,
-  }
+  return spec
 }
 
 // ---------------------------------------------------------------------------
-// Tool: place_buildings
+// Tool: layout-district — building placements for a district type
 // ---------------------------------------------------------------------------
-const PlaceBuildingsSchema = z.object({
-  layout: z
-    .object({
-      zones: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        type: z.string(),
-        x: z.number(),
-        z: z.number(),
-        width: z.number(),
-        height: z.number(),
-      })),
-      style: z.string().optional(),
-    })
-    .describe('City layout from generate_city_layout'),
-  buildingTypes: z
-    .array(z.string())
-    .default([])
-    .describe('Building types to place (e.g. "office", "house", "shop")'),
-  density: z
-    .enum(['sparse', 'medium', 'dense'])
-    .default('medium'),
-})
 
-async function placeBuildingsFromLayout(params: z.infer<typeof PlaceBuildingsSchema>) {
-  const { layout, buildingTypes = [], density = 'medium' } = params
+function layoutDistrict(params: {
+  districtType: Zone['type']
+  width: number
+  height: number
+  density: 'sparse' | 'medium' | 'dense'
+  style: string
+}): BuildingPlacement[] {
+  const { districtType, width, height, density, style } = params
 
-  const densitySpacing: Record<string, number> = {
-    sparse: 48,
-    medium: 32,
-    dense: 20,
+  const zone: Zone = {
+    id: 'district-0',
+    name: districtType,
+    type: districtType,
+    x: 0,
+    z: 0,
+    width,
+    height,
   }
 
-  const step = densitySpacing[density]
+  const densitySpacing: Record<string, number> = { sparse: 48, medium: 32, dense: 20 }
+  const step = densitySpacing[density] ?? 32
   const buildings: BuildingPlacement[] = []
   let buildId = 0
 
-  const zoneTypeBuildingMap: Record<string, string[]> = {
-    commercial: ['office', 'shop', 'restaurant', 'hotel'],
-    residential: ['house', 'apartment', 'townhouse'],
-    industrial: ['warehouse', 'factory'],
-    park: ['pavilion'],
-    civic: ['city_hall', 'library', 'school'],
-    mixed: ['apartment', 'shop', 'cafe'],
+  const typePool: Record<Zone['type'], string[]> = {
+    commercial: ['office', 'shop', 'restaurant', 'hotel', 'mall'],
+    residential: ['house', 'apartment', 'townhouse', 'villa'],
+    industrial: ['warehouse', 'factory', 'workshop'],
+    park: ['pavilion', 'gazebo', 'fountain'],
+    civic: ['city_hall', 'library', 'school', 'hospital'],
+    mixed: ['apartment', 'shop', 'cafe', 'office'],
   }
 
-  for (const zone of layout.zones) {
-    const applicableTypes = zoneTypeBuildingMap[zone.type] ?? ['generic']
-    const pool = buildingTypes.length > 0
-      ? buildingTypes.filter((t) => applicableTypes.includes(t)).concat(applicableTypes)
-      : applicableTypes
+  const pool = typePool[districtType] ?? ['generic']
+  const padding = 6
 
-    const padding = 6
-    for (let bz = zone.z + padding; bz + 10 <= zone.z + zone.height - padding; bz += step) {
-      for (let bx = zone.x + padding; bx + 10 <= zone.x + zone.width - padding; bx += step) {
-        const selectedType = pool[buildId % pool.length]
-        const floors = zone.type === 'commercial' ? 2 + (buildId % 6) : 1 + (buildId % 2)
+  for (let bz = zone.z + padding; bz + 10 <= zone.z + height - padding; bz += step) {
+    for (let bx = zone.x + padding; bx + 10 <= zone.x + width - padding; bx += step) {
+      const selectedType = pool[buildId % pool.length]!
+      const floors = districtType === 'commercial' ? 2 + (buildId % 6) : 1 + (buildId % 3)
 
-        buildings.push({
-          id: `building-${buildId++}`,
-          x: bx,
-          z: bz,
-          width: density === 'dense' ? 12 : 16,
-          depth: density === 'dense' ? 12 : 16,
-          floors,
-          type: selectedType,
-          style: layout.style ?? 'modern',
-          rotation: 0,
-        })
-      }
+      buildings.push({
+        id: `building-${buildId++}`,
+        x: bx,
+        z: bz,
+        width: density === 'dense' ? 12 : 16,
+        depth: density === 'dense' ? 12 : 16,
+        floors,
+        type: selectedType,
+        style,
+        rotation: 0,
+      })
     }
   }
 
-  return {
-    success: true,
-    buildings,
-    totalBuildings: buildings.length,
-    density,
-  }
+  return buildings
 }
 
 // ---------------------------------------------------------------------------
-// MCP Tools definition
+// MCP server — tool registration
 // ---------------------------------------------------------------------------
-const TOOLS: Tool[] = [
-  {
-    name: 'generate_city_layout',
-    description:
-      'Generate a complete city layout with zones, road network, and building placements from a natural language description.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: { type: 'string', description: 'City/zone description (e.g. "dense Japanese downtown with neon signs")' },
-        bounds: {
-          type: 'object',
-          properties: { width: { type: 'number' }, height: { type: 'number' } },
-        },
-        buildingTypes: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['description'],
+
+function buildMcpServer(): McpServer {
+  const mcp = new McpServer({ name: 'city-architect', version: '1.0.0' })
+
+  // ── plan-city ──────────────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'plan-city',
+    {
+      title: 'Plan City',
+      description:
+        'Use Claude to generate a complete city layout plan with zones, roads, building positions, and color palette. Returns structured JSON ready for Studio insertion.',
+      inputSchema: z.object({
+        cityType: z
+          .string()
+          .min(2)
+          .describe('Type of city (e.g. "Japanese downtown", "medieval village", "futuristic megacity")'),
+        size: z
+          .enum(['small', 'medium', 'large'])
+          .default('medium')
+          .describe('City size: small=512 studs, medium=1024, large=2048'),
+        style: z
+          .string()
+          .default('modern')
+          .describe('Visual style (e.g. "modern", "cyberpunk", "fantasy", "industrial")'),
+      }),
     },
-  },
-  {
-    name: 'generate_road_network',
-    description:
-      'Generate a road network for a given area using grid, radial, organic, or highway patterns.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        bounds: {
-          type: 'object',
-          properties: { width: { type: 'number' }, height: { type: 'number' } },
-          required: ['width', 'height'],
-        },
-        style: { type: 'string', enum: ['grid', 'radial', 'organic', 'highway'] },
-        mainRoadSpacing: { type: 'number' },
-        includeHighways: { type: 'boolean' },
-      },
-      required: ['bounds'],
+    async ({ cityType, size, style }) => {
+      const layout = await planCity({ cityType, size, style })
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(layout) }],
+      }
     },
-  },
-  {
-    name: 'place_buildings',
-    description:
-      'Place buildings across zones from a city layout, returning precise coordinates for Studio insertion.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        layout: { type: 'object', description: 'Layout from generate_city_layout' },
-        buildingTypes: { type: 'array', items: { type: 'string' } },
-        density: { type: 'string', enum: ['sparse', 'medium', 'dense'] },
-      },
-      required: ['layout'],
+  )
+
+  // ── generate-building ──────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'generate-building',
+    {
+      title: 'Generate Building',
+      description:
+        'Design a single building spec using Claude (dimensions, materials, style). Optionally kick off a Meshy 3D mesh generation task.',
+      inputSchema: z.object({
+        buildingType: z
+          .string()
+          .min(2)
+          .describe('Building type (e.g. "office tower", "medieval inn", "warehouse")'),
+        style: z
+          .string()
+          .default('modern')
+          .describe('Visual style for the building'),
+        kickOffMesh: z
+          .boolean()
+          .default(false)
+          .describe('Start a Meshy text-to-3D task and return the task ID'),
+      }),
     },
-  },
-]
+    async ({ buildingType, style, kickOffMesh }) => {
+      const spec = await generateBuilding({ buildingType, style, kickOffMesh })
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(spec) }],
+      }
+    },
+  )
+
+  // ── layout-district ────────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'layout-district',
+    {
+      title: 'Layout District',
+      description:
+        'Generate an array of building placements with positions, rotations, and scales for a given district type. No AI call — instant deterministic result.',
+      inputSchema: z.object({
+        districtType: z
+          .enum(['commercial', 'residential', 'industrial', 'park', 'civic', 'mixed'])
+          .describe('Type of district to populate'),
+        width: z
+          .number()
+          .int()
+          .min(50)
+          .default(256)
+          .describe('District width in studs'),
+        height: z
+          .number()
+          .int()
+          .min(50)
+          .default(256)
+          .describe('District height in studs'),
+        density: z
+          .enum(['sparse', 'medium', 'dense'])
+          .default('medium')
+          .describe('Building density'),
+        style: z
+          .string()
+          .default('modern')
+          .describe('Visual style applied to all buildings'),
+      }),
+    },
+    async ({ districtType, width, height, density, style }) => {
+      const buildings = layoutDistrict({ districtType, width, height, density, style })
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ buildings, totalBuildings: buildings.length, districtType, density }),
+          },
+        ],
+      }
+    },
+  )
+
+  return mcp
+}
 
 // ---------------------------------------------------------------------------
-// Server
+// HTTP server — StreamableHTTP transport
 // ---------------------------------------------------------------------------
-const server = new Server(
-  { name: 'city-architect', version: '1.0.0' },
-  { capabilities: { tools: {} } }
-)
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
+const mcpServer = buildMcpServer()
+const transports = new Map<string, StreamableHTTPServerTransport>()
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params
+async function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let raw = ''
+    req.setEncoding('utf8')
+    req.on('data', (chunk: string) => { raw += chunk })
+    req.on('end', () => {
+      try { resolve(JSON.parse(raw)) } catch { resolve(undefined) }
+    })
+    req.on('error', reject)
+  })
+}
+
+function sendJson(res: ServerResponse, statusCode: number, body: unknown): void {
+  const payload = JSON.stringify(body)
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+  })
+  res.end(payload)
+}
+
+const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  if (req.url === '/health' && req.method === 'GET') {
+    sendJson(res, 200, { status: 'ok', server: 'city-architect', port: PORT })
+    return
+  }
+
+  if (req.url !== '/mcp') {
+    sendJson(res, 404, { error: 'Not found. POST /mcp or GET /health' })
+    return
+  }
 
   try {
-    let result: unknown
+    if (req.method === 'POST') {
+      const body = await readBody(req)
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
 
-    switch (name) {
-      case 'generate_city_layout': {
-        const parsed = GenerateCityLayoutSchema.parse(args)
-        result = await generateCityLayout(parsed)
-        break
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res, body)
+        return
       }
-      case 'generate_road_network': {
-        const parsed = GenerateRoadNetworkSchema.parse(args)
-        result = await generateRoadNetwork(parsed)
-        break
+
+      if (!sessionId && isInitializeRequest(body)) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (id) => { transports.set(id, transport) },
+        })
+        transport.onclose = () => {
+          if (transport.sessionId) transports.delete(transport.sessionId)
+        }
+        await mcpServer.connect(transport)
+        await transport.handleRequest(req, res, body)
+        return
       }
-      case 'place_buildings': {
-        const parsed = PlaceBuildingsSchema.parse(args)
-        result = await placeBuildingsFromLayout(parsed)
-        break
-      }
-      default:
-        throw new Error(`Unknown tool: ${name}`)
+
+      // Stateless — no session header (used by mcp-client.ts tools/call)
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+      await mcpServer.connect(transport)
+      await transport.handleRequest(req, res, body)
+      return
     }
 
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    if (req.method === 'GET') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        return
+      }
+      sendJson(res, 400, { jsonrpc: '2.0', error: { code: -32000, message: 'Invalid session' }, id: null })
+      return
     }
+
+    if (req.method === 'DELETE') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        transports.delete(sessionId)
+        return
+      }
+      sendJson(res, 404, { error: 'Session not found' })
+      return
+    }
+
+    sendJson(res, 405, { error: 'Method not allowed' })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return {
-      content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
-      isError: true,
+    process.stderr.write(`[city-architect] Request error: ${message}\n`)
+    if (!res.headersSent) {
+      sendJson(res, 500, {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error', data: message },
+        id: null,
+      })
     }
   }
 })
 
-// ---------------------------------------------------------------------------
-// Start
-// ---------------------------------------------------------------------------
-async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    process.stderr.write('[city-architect] ERROR: ANTHROPIC_API_KEY not set\n')
-    process.exit(1)
-  }
+httpServer.listen(PORT, () => {
+  process.stderr.write(`[city-architect] MCP server listening on http://localhost:${PORT}/mcp\n`)
+})
 
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  process.stderr.write('[city-architect] MCP server running on stdio\n')
-}
-
-main().catch((err) => {
-  process.stderr.write(`[city-architect] Fatal: ${err.message}\n`)
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  process.stderr.write(`[city-architect] Server error: ${err.message}\n`)
   process.exit(1)
+})
+
+process.on('SIGTERM', async () => {
+  process.stderr.write('[city-architect] Shutting down...\n')
+  await mcpServer.close()
+  httpServer.close(() => process.exit(0))
 })

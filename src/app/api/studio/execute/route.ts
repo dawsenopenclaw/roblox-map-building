@@ -62,8 +62,7 @@ const executeSchema = z
   )
 
 // ---------------------------------------------------------------------------
-// CORS helpers (browser editor calls this from the same origin, but allow
-// cross-origin for future use from the Roblox Studio plugin UI).
+// CORS helpers
 // ---------------------------------------------------------------------------
 
 const CORS_HEADERS = {
@@ -96,7 +95,7 @@ export async function POST(req: NextRequest) {
   let sessionId = body.sessionId
 
   if (!sessionId) {
-    // Fall back to the most recently active connected session.
+    // Fall back to the most recently active connected session (memory-only).
     const live = listSessions()
       .filter((s) => s.connected)
       .sort((a, b) => b.lastHeartbeat - a.lastHeartbeat)
@@ -110,8 +109,8 @@ export async function POST(req: NextRequest) {
     sessionId = live[0].sessionId
   }
 
-  // Verify the session exists and is connected.
-  const session = getSession(sessionId)
+  // Verify the session exists and is connected (checks Redis on memory miss).
+  const session = await getSession(sessionId)
   if (!session) {
     return NextResponse.json(
       { ok: false, error: 'session_not_found' },
@@ -131,12 +130,12 @@ export async function POST(req: NextRequest) {
 
   // Merge editor shorthand (code/prompt) into the payload.
   const commandData: Record<string, unknown> = { ...(body.payload ?? {}) }
-  if (body.code !== undefined) commandData.code = body.code
-  if (body.prompt !== undefined) commandData.prompt = body.prompt
+  if (body.code    !== undefined) commandData.code   = body.code
+  if (body.prompt  !== undefined) commandData.prompt = body.prompt
 
   // ── Enqueue ──────────────────────────────────────────────────────────────
 
-  const result = queueCommand(sessionId, { type: commandType, data: commandData })
+  const result = await queueCommand(sessionId, { type: commandType, data: commandData })
 
   if (!result.ok) {
     const status = result.error === 'queue_full' ? 429 : 503
@@ -147,7 +146,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Re-read queue depth for the response.
-  const updated = getSession(sessionId)
+  const updated = await getSession(sessionId)
   const queueDepth = updated?.commandQueue.length ?? 0
 
   return NextResponse.json(

@@ -1,501 +1,510 @@
 #!/usr/bin/env node
 /**
- * asset-alchemist MCP Server
- * Multi-model pipeline: Claude → Meshy (3D) + Fal (textures)
- * Tools: generate_3d_model, generate_texture, generate_asset_pack
+ * Asset Alchemist MCP Server — port 3002
+ *
+ * Tools:
+ *   text-to-3d        → Meshy v2 text-to-3D (preview mode, polls to completion)
+ *   generate-texture  → Fal AI PBR texture set (albedo/normal/roughness/metallic)
+ *   optimize-mesh     → Roblox-specific mesh optimisation recommendations
+ *
+ * Transport: StreamableHTTP over Node http on /mcp (stateless + session modes)
+ * Auth:      MESHY_API_KEY + FAL_KEY from process.env
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  type Tool,
-} from '@modelcontextprotocol/sdk/types.js'
+import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { randomUUID } from 'node:crypto'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Token metering
+// Constants
 // ---------------------------------------------------------------------------
-const tokenLog: Array<{
-  tool: string
-  provider: string
-  inputTokens?: number
-  outputTokens?: number
-  costUsd: number
-  timestamp: string
-}> = []
 
-function meterClaude(tool: string, inputTokens: number, outputTokens: number) {
-  const costUsd = (inputTokens / 1e6) * 3.0 + (outputTokens / 1e6) * 15.0
-  tokenLog.push({ tool, provider: 'claude', inputTokens, outputTokens, costUsd, timestamp: new Date().toISOString() })
-  process.stderr.write(`[asset-alchemist] claude/${tool}: $${costUsd.toFixed(6)}\n`)
-  return costUsd
+const PORT = Number(process.env.ASSET_ALCHEMIST_PORT ?? 3002)
+const MESHY_BASE = 'https://api.meshy.ai'
+const FAL_QUEUE_BASE = 'https://queue.fal.run'
+const POLL_INTERVAL_MS = 4_000
+const POLL_MAX_ATTEMPTS = 40
+
+// ---------------------------------------------------------------------------
+// Env helpers
+// ---------------------------------------------------------------------------
+
+function meshyKey(): string {
+  const k = process.env.MESHY_API_KEY
+  if (!k) throw new Error('MESHY_API_KEY is not set')
+  return k
 }
 
-function meterExternal(tool: string, provider: string, costUsd: number) {
-  tokenLog.push({ tool, provider, costUsd, timestamp: new Date().toISOString() })
-  process.stderr.write(`[asset-alchemist] ${provider}/${tool}: $${costUsd.toFixed(4)}\n`)
+function falKey(): string {
+  const k = process.env.FAL_KEY ?? process.env.FAL_API_KEY
+  if (!k) throw new Error('FAL_KEY is not set')
+  return k
 }
 
 // ---------------------------------------------------------------------------
-// Circuit breaker
+// Anthropic client (for prompt enrichment)
 // ---------------------------------------------------------------------------
-type BreakerState = 'closed' | 'open' | 'half-open'
 
-class CircuitBreaker {
-  private state: BreakerState = 'closed'
-  private failureCount = 0
-  private lastFailureTime = 0
-  private readonly threshold = 3
-  private readonly timeout = 30_000
-
-  constructor(public readonly name: string) {}
-
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
-    if (this.state === 'open') {
-      if (Date.now() - this.lastFailureTime > this.timeout) {
-        this.state = 'half-open'
-      } else {
-        throw new Error(`Circuit breaker OPEN for ${this.name}`)
-      }
-    }
-
-    try {
-      const result = await fn()
-      this.onSuccess()
-      return result
-    } catch (err) {
-      this.onFailure()
-      throw err
-    }
-  }
-
-  private onSuccess() {
-    this.failureCount = 0
-    this.state = 'closed'
-  }
-
-  private onFailure() {
-    this.failureCount++
-    this.lastFailureTime = Date.now()
-    if (this.failureCount >= this.threshold) {
-      this.state = 'open'
-      process.stderr.write(`[asset-alchemist] Circuit breaker OPENED for ${this.name}\n`)
-    }
-  }
-
-  getState(): BreakerState { return this.state }
-}
-
-const meshyBreaker = new CircuitBreaker('meshy')
-const falBreaker = new CircuitBreaker('fal')
-
-// ---------------------------------------------------------------------------
-// Anthropic client
-// ---------------------------------------------------------------------------
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+})
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022'
 
 // ---------------------------------------------------------------------------
-// Meshy API client (text-to-3D)
+// Meshy helpers — text-to-3D with polling
 // ---------------------------------------------------------------------------
-interface MeshyPreviewResult {
-  jobId: string
-  status: string
-  modelUrls?: Record<string, string>
-  thumbnailUrl?: string
+
+type MeshyStatus = 'PENDING' | 'IN_PROGRESS' | 'SUCCEEDED' | 'FAILED' | 'EXPIRED'
+
+interface MeshyTask {
+  id: string
+  status: MeshyStatus
+  model_urls?: { glb?: string; fbx?: string; obj?: string }
+  thumbnail_url?: string
+  polygon_count?: number
+  vertex_count?: number
+  progress?: number
 }
 
-async function meshyTextTo3D(prompt: string, artStyle = 'realistic'): Promise<MeshyPreviewResult> {
-  const apiKey = process.env.MESHY_API_KEY
-  if (!apiKey) throw new Error('MESHY_API_KEY not set')
-
-  // Step 1: Create preview task
-  const previewRes = await fetch('https://api.meshy.ai/openapi/v2/text-to-3d', {
+async function createMeshyTask(
+  prompt: string,
+  artStyle: string,
+  polyTarget: number,
+): Promise<string> {
+  const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${meshyKey()}`,
     },
     body: JSON.stringify({
       mode: 'preview',
       prompt,
+      negative_prompt: 'low quality, blurry, distorted, floating parts, disconnected mesh, NSFW',
       art_style: artStyle,
-      negative_prompt: 'low quality, blurry',
-      target_polycount: 20000,
+      topology: 'quad',
+      target_polycount: polyTarget,
     }),
+    signal: AbortSignal.timeout(15_000),
   })
-
-  if (!previewRes.ok) {
-    throw new Error(`Meshy preview failed: ${previewRes.status} ${await previewRes.text()}`)
-  }
-
-  const { result: jobId } = await previewRes.json() as { result: string }
-  meterExternal('generate_3d_model', 'meshy', 0.2)
-
-  return { jobId, status: 'processing' }
-}
-
-// ---------------------------------------------------------------------------
-// Fal AI texture generation
-// ---------------------------------------------------------------------------
-interface FalTextureResult {
-  url: string
-  width: number
-  height: number
-}
-
-async function falGenerateTexture(prompt: string): Promise<FalTextureResult> {
-  const apiKey = process.env.FAL_KEY
-  if (!apiKey) throw new Error('FAL_KEY not set')
-
-  const res = await fetch('https://fal.run/fal-ai/flux/schnell', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Key ${apiKey}`,
-    },
-    body: JSON.stringify({
-      prompt,
-      image_size: 'square_hd',
-      num_inference_steps: 4,
-      num_images: 1,
-    }),
-  })
-
   if (!res.ok) {
-    throw new Error(`Fal texture failed: ${res.status} ${await res.text()}`)
+    const txt = await res.text().catch(() => String(res.status))
+    throw new Error(`Meshy task creation failed (${res.status}): ${txt}`)
   }
+  const data = (await res.json()) as { result: string }
+  return data.result
+}
 
-  const data = await res.json() as { images: Array<{ url: string; width: number; height: number }> }
-  const img = data.images[0]
-  if (!img) throw new Error('No image returned from Fal')
+async function pollMeshyTask(taskId: string): Promise<MeshyTask> {
+  for (let i = 0; i < POLL_MAX_ATTEMPTS; i++) {
+    await new Promise<void>((r) => setTimeout(r, i === 0 ? 3_000 : POLL_INTERVAL_MS))
+    const res = await fetch(`${MESHY_BASE}/v2/text-to-3d/${taskId}`, {
+      headers: { Authorization: `Bearer ${meshyKey()}` },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) continue
+    const task = (await res.json()) as MeshyTask
+    if (task.status === 'SUCCEEDED') return task
+    if (task.status === 'FAILED' || task.status === 'EXPIRED') {
+      throw new Error(`Meshy task ${taskId} ended with status: ${task.status}`)
+    }
+  }
+  throw new Error(`Meshy task ${taskId} did not complete within timeout`)
+}
 
-  meterExternal('generate_texture', 'fal', 0.003)
-
-  return { url: img.url, width: img.width, height: img.height }
+const ART_STYLE_MAP: Record<string, string> = {
+  realistic: 'pbr',
+  stylized: 'cartoon',
+  lowpoly: 'low-poly',
+  roblox: 'low-poly',
+  cartoon: 'cartoon',
+  pbr: 'pbr',
+  low_poly: 'low-poly',
 }
 
 // ---------------------------------------------------------------------------
-// Claude asset prompt enrichment
+// Fal helpers — PBR texture generation (queue-based)
 // ---------------------------------------------------------------------------
-async function enrichPromptWithClaude(
-  description: string,
-  assetType: 'model' | 'texture' | 'pack'
-): Promise<{ enrichedPrompt: string; tags: string[]; style: string }> {
-  const systemPrompts: Record<typeof assetType, string> = {
-    model: `You are a Roblox 3D asset prompt engineer. Given a description, output ONLY JSON:
-{"enrichedPrompt": string, "tags": string[], "style": string, "negativePrompt": string}
-Make prompts specific, game-ready, low-poly focused.`,
-    texture: `You are a Roblox texture prompt engineer. Given a description, output ONLY JSON:
-{"enrichedPrompt": string, "tags": string[], "style": string}
-Make textures tileable, game-appropriate, PBR when possible.`,
-    pack: `You are a Roblox asset pack designer. Given a theme, output ONLY JSON:
-{"enrichedPrompt": string, "tags": string[], "style": string, "assetList": string[]}
-List 3-5 specific assets that belong in the pack.`,
-  }
 
-  const response = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 500,
-    system: systemPrompts[assetType],
-    messages: [{ role: 'user', content: description }],
+interface FalQueueResponse { request_id: string }
+interface FalStatusResponse { status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' }
+interface FalOutput {
+  albedo?: { url: string }
+  normal?: { url: string }
+  roughness?: { url: string }
+  metallic?: { url: string }
+  images?: Array<{ url: string }>
+}
+
+interface TextureSet {
+  albedo: string | null
+  normal: string | null
+  roughness: string | null
+  metallic: string | null
+}
+
+async function generatePbrTextures(prompt: string): Promise<TextureSet> {
+  const key = falKey()
+  const submitRes = await fetch(`${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Key ${key}` },
+    body: JSON.stringify({
+      prompt: `${prompt}, seamless PBR texture, physically based rendering, game asset, high detail`,
+      resolution: 1024,
+      output_format: 'png',
+    }),
+    signal: AbortSignal.timeout(15_000),
   })
+  if (!submitRes.ok) {
+    const txt = await submitRes.text().catch(() => String(submitRes.status))
+    throw new Error(`Fal texture submission failed (${submitRes.status}): ${txt}`)
+  }
+  const queue = (await submitRes.json()) as FalQueueResponse
+  const reqId = queue.request_id
 
-  meterClaude(`enrich-${assetType}`, response.usage.input_tokens, response.usage.output_tokens)
+  for (let i = 0; i < 20; i++) {
+    await new Promise<void>((r) => setTimeout(r, 4_000))
+    const statusRes = await fetch(
+      `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${reqId}/status`,
+      { headers: { Authorization: `Key ${key}` }, signal: AbortSignal.timeout(8_000) },
+    )
+    if (!statusRes.ok) continue
+    const status = (await statusRes.json()) as FalStatusResponse
+    if (status.status === 'COMPLETED') {
+      const resultRes = await fetch(
+        `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${reqId}`,
+        { headers: { Authorization: `Key ${key}` }, signal: AbortSignal.timeout(10_000) },
+      )
+      if (!resultRes.ok) throw new Error('Failed to fetch Fal result')
+      const out = (await resultRes.json()) as FalOutput
+      return {
+        albedo: out.albedo?.url ?? out.images?.[0]?.url ?? null,
+        normal: out.normal?.url ?? out.images?.[1]?.url ?? null,
+        roughness: out.roughness?.url ?? out.images?.[2]?.url ?? null,
+        metallic: out.metallic?.url ?? null,
+      }
+    }
+    if (status.status === 'FAILED') throw new Error('Fal texture generation failed')
+  }
+  throw new Error('Fal texture generation timed out')
+}
 
-  const raw = response.content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b as Anthropic.TextBlock).text)
-    .join('')
+// ---------------------------------------------------------------------------
+// Claude prompt enrichment (optional — degrades gracefully without API key)
+// ---------------------------------------------------------------------------
 
+async function enrichPrompt(description: string): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) return description
   try {
-    return JSON.parse(raw)
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 300,
+      system: `You are a Roblox 3D asset prompt engineer. Given a short description, return ONLY a single enriched prompt string (no JSON, no quotes) that is specific, game-ready, low-poly focused, Roblox-appropriate, and 1-2 sentences.`,
+      messages: [{ role: 'user', content: description }],
+    })
+    const text = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as Anthropic.TextBlock).text)
+      .join('')
+      .trim()
+    return text.length > 10 ? text : description
   } catch {
-    const match = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
-    return match ? JSON.parse(match[1]) : { enrichedPrompt: description, tags: [], style: 'realistic' }
+    return description
   }
 }
 
 // ---------------------------------------------------------------------------
-// Tool: generate_3d_model
+// Optimisation recommendations (pure logic, no API calls)
 // ---------------------------------------------------------------------------
-const Generate3DModelSchema = z.object({
-  description: z.string().describe('Description of the 3D model'),
-  artStyle: z
-    .enum(['realistic', 'cartoon', 'low_poly', 'pbr'])
-    .default('realistic'),
-  skipEnrichment: z.boolean().default(false).describe('Skip Claude prompt enrichment'),
-})
 
-async function generate3DModel(params: z.infer<typeof Generate3DModelSchema>) {
-  const { description, artStyle = 'realistic', skipEnrichment = false } = params
+interface OptimisationResult {
+  recommendations: string[]
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  estimatedSavingsPct: string
+  robloxBudget: string
+}
 
-  let enriched: { enrichedPrompt: string; tags: string[]; style: string } = {
-    enrichedPrompt: description,
-    tags: [],
-    style: artStyle,
+function buildOptimisationRecommendations(polyCount: number): OptimisationResult {
+  const recs: string[] = []
+  let priority: OptimisationResult['priority'] = 'low'
+  let budget: string
+
+  if (polyCount > 100_000) {
+    priority = 'critical'
+    budget = 'EXCEEDS Roblox recommended maximum of 100K polys — will impact performance on all devices'
+    recs.push('Decimate mesh to under 100K polygons — use Blender Decimate modifier at 0.5-0.7 ratio')
+    recs.push('Set up LOD tiers: full detail < 50 studs, 50% at 50-200 studs, 20% beyond 200 studs')
+    recs.push('Use RenderFidelity = Automatic on MeshPart so Roblox manages LOD automatically')
+    recs.push('Set CollisionFidelity = Box or Hull to reduce physics CPU cost')
+    recs.push('Consider splitting into smaller instanced meshes if structure is modular')
+  } else if (polyCount > 50_000) {
+    priority = 'high'
+    budget = 'Mobile will struggle — target under 10K for props, 20K for buildings'
+    recs.push('Target under 50K polygons for cross-device compatibility')
+    recs.push('Enable RenderFidelity = Automatic to let Roblox manage LOD')
+    recs.push('Bake high-res detail into normal maps to retain visual quality at lower poly count')
+    recs.push('Set CollisionFidelity = Hull for convex shapes, Box for simple geometry')
+  } else if (polyCount > 10_000) {
+    priority = 'medium'
+    budget = 'Acceptable for desktop; optimise further for mobile'
+    recs.push('Merge coplanar faces to eliminate redundant interior geometry')
+    recs.push('Bake ambient occlusion and normal maps from a high-res source mesh')
+    recs.push('Remove geometry hidden by other parts (interior walls, floor undersides)')
+  } else {
+    priority = 'low'
+    budget = 'Within Roblox best-practice range — good for props and small assets'
+    recs.push('Polygon count is within recommended range for Roblox game assets')
+    recs.push('Ensure UV islands are packed efficiently (< 5% wasted UV space)')
+    recs.push('Verify mesh is watertight — no open edges or internal faces')
   }
 
-  if (!skipEnrichment) {
-    enriched = await enrichPromptWithClaude(description, 'model')
-  }
+  recs.push('Combine albedo + normal + roughness into a 1024×1024 texture atlas to reduce draw calls')
+  recs.push('Set CastShadow = false on small props (< 2 studs) to reduce shadow batches')
 
-  // Use enriched.style when enrichment ran (e.g. Claude may remap "pbr" → "realistic"
-  // for better Meshy results).  Fall back to the caller-supplied artStyle only when
-  // enrichment was skipped or returned an empty style.
-  const resolvedStyle = (enriched.style && enriched.style.length > 0 ? enriched.style : artStyle) as
-    'realistic' | 'cartoon' | 'low_poly' | 'pbr'
+  const savingsPct = polyCount > 50_000 ? '40-60%' : polyCount > 10_000 ? '20-40%' : '5-15%'
+  return { recommendations: recs, priority, estimatedSavingsPct: savingsPct, robloxBudget: budget }
+}
 
-  const meshyResult = await meshyBreaker.execute(() =>
-    meshyTextTo3D(enriched.enrichedPrompt, resolvedStyle)
+// ---------------------------------------------------------------------------
+// MCP server — tool registration
+// ---------------------------------------------------------------------------
+
+function buildMcpServer(): McpServer {
+  const mcp = new McpServer({ name: 'asset-alchemist', version: '1.0.0' })
+
+  // ── text-to-3d ─────────────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'text-to-3d',
+    {
+      title: 'Text to 3D',
+      description:
+        'Generate a Roblox-ready 3D mesh from a text prompt using Meshy AI. Polls until complete and returns the mesh URL, thumbnail, and polygon count.',
+      inputSchema: z.object({
+        prompt: z.string().min(3).describe('Description of the 3D asset to generate'),
+        style: z
+          .enum(['realistic', 'stylized', 'lowpoly', 'roblox', 'cartoon', 'pbr', 'low_poly'])
+          .default('roblox')
+          .describe('Art style for the mesh'),
+        polyTarget: z
+          .number()
+          .int()
+          .min(500)
+          .max(100_000)
+          .default(10_000)
+          .describe('Target polygon count'),
+        enrichPromptWithAI: z
+          .boolean()
+          .default(false)
+          .describe('Use Claude to enrich the prompt before sending to Meshy'),
+      }),
+    },
+    async ({ prompt, style, polyTarget, enrichPromptWithAI }) => {
+      const artStyle = ART_STYLE_MAP[style] ?? 'low-poly'
+      const finalPrompt = enrichPromptWithAI
+        ? await enrichPrompt(prompt)
+        : `${prompt}, Roblox-ready game asset, no floating geometry, watertight mesh`
+
+      const taskId = await createMeshyTask(finalPrompt, artStyle, polyTarget)
+      const task = await pollMeshyTask(taskId)
+      const meshUrl =
+        task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null
+      if (!meshUrl) throw new Error('Meshy returned no downloadable mesh URL')
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              taskId: task.id,
+              meshUrl,
+              thumbnailUrl: task.thumbnail_url ?? null,
+              polygonCount: task.polygon_count ?? null,
+              vertexCount: task.vertex_count ?? null,
+              artStyle,
+              prompt: finalPrompt,
+              status: task.status,
+            }),
+          },
+        ],
+      }
+    },
   )
 
-  return {
-    success: true,
-    jobId: meshyResult.jobId,
-    status: meshyResult.status,
-    modelUrls: meshyResult.modelUrls,
-    thumbnailUrl: meshyResult.thumbnailUrl,
-    prompt: enriched.enrichedPrompt,
-    originalDescription: description,
-    tags: enriched.tags,
-    style: enriched.style,
-    provider: 'meshy',
-    circuitBreakerState: meshyBreaker.getState(),
-    tokenUsage: tokenLog.filter((t) => t.tool.startsWith('enrich')).slice(-1)[0],
-  }
-}
+  // ── generate-texture ────────────────────────────────────────────────────────
 
-// ---------------------------------------------------------------------------
-// Tool: generate_texture
-// ---------------------------------------------------------------------------
-const GenerateTextureSchema = z.object({
-  description: z.string().describe('Texture description'),
-  resolution: z.enum(['256', '512', '1024']).default('1024'),
-  skipEnrichment: z.boolean().default(false),
-})
-
-async function generateTexture(params: z.infer<typeof GenerateTextureSchema>) {
-  const { description, resolution = '1024', skipEnrichment = false } = params
-
-  let enriched = { enrichedPrompt: description, tags: [] as string[], style: 'pbr' }
-
-  if (!skipEnrichment) {
-    enriched = await enrichPromptWithClaude(description, 'texture')
-  }
-
-  const textureResult = await falBreaker.execute(() =>
-    falGenerateTexture(`${enriched.enrichedPrompt}, game texture, tileable, ${resolution}px`)
+  mcp.registerTool(
+    'generate-texture',
+    {
+      title: 'Generate PBR Texture',
+      description:
+        'Generate a seamless PBR texture set (albedo, normal, roughness, metallic) via Fal AI for use in Roblox SurfaceAppearance.',
+      inputSchema: z.object({
+        prompt: z.string().min(3).describe('Description of the material or surface to texture'),
+      }),
+    },
+    async ({ prompt }) => {
+      const textures = await generatePbrTextures(prompt)
+      return {
+        content: [{ type: 'text' as const, text: JSON.stringify(textures) }],
+      }
+    },
   )
 
-  return {
-    success: true,
-    url: textureResult.url,
-    width: textureResult.width,
-    height: textureResult.height,
-    prompt: enriched.enrichedPrompt,
-    originalDescription: description,
-    tags: enriched.tags,
-    provider: 'fal',
-    circuitBreakerState: falBreaker.getState(),
-  }
-}
+  // ── optimize-mesh ───────────────────────────────────────────────────────────
 
-// ---------------------------------------------------------------------------
-// Tool: generate_asset_pack
-// ---------------------------------------------------------------------------
-const GenerateAssetPackSchema = z.object({
-  theme: z.string().describe('Pack theme (e.g. "medieval village", "sci-fi space station")'),
-  includeTextures: z.boolean().default(true),
-  modelCount: z.number().min(1).max(5).default(3),
-})
-
-async function generateAssetPack(params: z.infer<typeof GenerateAssetPackSchema>) {
-  const { theme, includeTextures = true, modelCount = 3 } = params
-
-  // Get asset list from Claude
-  const packMeta = await enrichPromptWithClaude(theme, 'pack') as {
-    enrichedPrompt: string
-    tags: string[]
-    style: string
-    assetList?: string[]
-  }
-
-  const assetList = packMeta.assetList?.slice(0, modelCount) ?? [
-    `${theme} building`,
-    `${theme} prop`,
-    `${theme} decoration`,
-  ]
-
-  // Parallel: Meshy for each model + Fal for textures
-  const modelPromises = assetList.map((assetDesc) =>
-    meshyBreaker
-      .execute(() => meshyTextTo3D(`${assetDesc}, ${packMeta.style}, game-ready, low poly`))
-      .then((r) => ({ name: assetDesc, ...r, success: true }))
-      .catch((err) => ({
-        name: assetDesc,
-        jobId: `failed-${Date.now()}`,
-        status: 'failed',
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      }))
+  mcp.registerTool(
+    'optimize-mesh',
+    {
+      title: 'Optimise Mesh',
+      description:
+        'Returns prioritised Roblox-specific mesh optimisation recommendations based on polygon count. No external API call — instant result.',
+      inputSchema: z.object({
+        meshUrl: z.string().url().describe('URL of the mesh to analyse'),
+        polyCount: z.number().int().min(0).describe('Current polygon count of the mesh'),
+      }),
+    },
+    async ({ meshUrl, polyCount }) => {
+      const result = buildOptimisationRecommendations(polyCount)
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ meshUrl, polyCount, ...result }),
+          },
+        ],
+      }
+    },
   )
 
-  const texturePromises: Promise<unknown>[] = includeTextures
-    ? [
-        falBreaker
-          .execute(() =>
-            falGenerateTexture(`${theme} ground texture, tileable, game texture`)
-          )
-          .then((r) => ({ type: 'ground', ...r }))
-          .catch(() => ({ type: 'ground', failed: true })),
-        falBreaker
-          .execute(() =>
-            falGenerateTexture(`${theme} wall texture, tileable, seamless, game texture`)
-          )
-          .then((r) => ({ type: 'wall', ...r }))
-          .catch(() => ({ type: 'wall', failed: true })),
-      ]
-    : []
-
-  const [models, textures] = await Promise.all([
-    Promise.all(modelPromises),
-    Promise.all(texturePromises),
-  ])
-
-  const totalCost = tokenLog.reduce((sum, t) => sum + t.costUsd, 0)
-
-  return {
-    success: true,
-    theme,
-    models,
-    textures: includeTextures ? textures : [],
-    assetCount: models.length,
-    textureCount: textures.length,
-    style: packMeta.style,
-    tags: packMeta.tags,
-    totalCostUsd: Math.round(totalCost * 10000) / 10000,
-    circuitBreakers: {
-      meshy: meshyBreaker.getState(),
-      fal: falBreaker.getState(),
-    },
-  }
+  return mcp
 }
 
 // ---------------------------------------------------------------------------
-// MCP Tools definition
+// HTTP server — StreamableHTTP transport with session management
 // ---------------------------------------------------------------------------
-const TOOLS: Tool[] = [
-  {
-    name: 'generate_3d_model',
-    description:
-      'Generate a Roblox-ready 3D model from a description using Meshy AI. Returns a job ID for polling + optional model URLs when complete.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: { type: 'string', description: 'What to generate (e.g. "wooden medieval tavern")' },
-        artStyle: { type: 'string', enum: ['realistic', 'cartoon', 'low_poly', 'pbr'] },
-        skipEnrichment: { type: 'boolean', description: 'Skip Claude prompt enrichment' },
-      },
-      required: ['description'],
-    },
-  },
-  {
-    name: 'generate_texture',
-    description:
-      'Generate a game texture from a description using Fal AI. Returns a URL to the generated texture image.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: { type: 'string', description: 'Texture description (e.g. "mossy stone wall")' },
-        resolution: { type: 'string', enum: ['256', '512', '1024'] },
-        skipEnrichment: { type: 'boolean' },
-      },
-      required: ['description'],
-    },
-  },
-  {
-    name: 'generate_asset_pack',
-    description:
-      'Generate a complete themed asset pack: multiple 3D models + matching textures in parallel. Returns job IDs and texture URLs.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        theme: { type: 'string', description: 'Pack theme (e.g. "Japanese cherry blossom village")' },
-        includeTextures: { type: 'boolean', description: 'Also generate matching textures' },
-        modelCount: { type: 'number', description: 'Number of 3D models (1-5)' },
-      },
-      required: ['theme'],
-    },
-  },
-]
 
-// ---------------------------------------------------------------------------
-// Server
-// ---------------------------------------------------------------------------
-const server = new Server(
-  { name: 'asset-alchemist', version: '1.0.0' },
-  { capabilities: { tools: {} } }
-)
+const mcpServer = buildMcpServer()
+const transports = new Map<string, StreamableHTTPServerTransport>()
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
+async function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let raw = ''
+    req.setEncoding('utf8')
+    req.on('data', (chunk: string) => { raw += chunk })
+    req.on('end', () => {
+      try { resolve(JSON.parse(raw)) } catch { resolve(undefined) }
+    })
+    req.on('error', reject)
+  })
+}
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params
+function sendJson(res: ServerResponse, statusCode: number, body: unknown): void {
+  const payload = JSON.stringify(body)
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+  })
+  res.end(payload)
+}
+
+const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  if (req.url === '/health' && req.method === 'GET') {
+    sendJson(res, 200, { status: 'ok', server: 'asset-alchemist', port: PORT })
+    return
+  }
+
+  if (req.url !== '/mcp') {
+    sendJson(res, 404, { error: 'Not found. POST /mcp or GET /health' })
+    return
+  }
 
   try {
-    let result: unknown
+    if (req.method === 'POST') {
+      const body = await readBody(req)
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
 
-    switch (name) {
-      case 'generate_3d_model': {
-        const parsed = Generate3DModelSchema.parse(args)
-        result = await generate3DModel(parsed)
-        break
+      // Resume existing session
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res, body)
+        return
       }
-      case 'generate_texture': {
-        const parsed = GenerateTextureSchema.parse(args)
-        result = await generateTexture(parsed)
-        break
+
+      if (!sessionId && isInitializeRequest(body)) {
+        // New stateful session
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (id) => { transports.set(id, transport) },
+        })
+        transport.onclose = () => {
+          if (transport.sessionId) transports.delete(transport.sessionId)
+        }
+        await mcpServer.connect(transport)
+        await transport.handleRequest(req, res, body)
+        return
       }
-      case 'generate_asset_pack': {
-        const parsed = GenerateAssetPackSchema.parse(args)
-        result = await generateAssetPack(parsed)
-        break
-      }
-      default:
-        throw new Error(`Unknown tool: ${name}`)
+
+      // Stateless fallback (no session header; used by mcp-client.ts)
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+      await mcpServer.connect(transport)
+      await transport.handleRequest(req, res, body)
+      return
     }
 
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    if (req.method === 'GET') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        return
+      }
+      sendJson(res, 400, {
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Invalid or missing session ID' },
+        id: null,
+      })
+      return
     }
+
+    if (req.method === 'DELETE') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        transports.delete(sessionId)
+        return
+      }
+      sendJson(res, 404, { error: 'Session not found' })
+      return
+    }
+
+    sendJson(res, 405, { error: 'Method not allowed' })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return {
-      content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
-      isError: true,
+    process.stderr.write(`[asset-alchemist] Request error: ${message}\n`)
+    if (!res.headersSent) {
+      sendJson(res, 500, {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error', data: message },
+        id: null,
+      })
     }
   }
 })
 
-// ---------------------------------------------------------------------------
-// Start
-// ---------------------------------------------------------------------------
-async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    process.stderr.write('[asset-alchemist] ERROR: ANTHROPIC_API_KEY not set\n')
-    process.exit(1)
-  }
+httpServer.listen(PORT, () => {
+  process.stderr.write(`[asset-alchemist] MCP server listening on http://localhost:${PORT}/mcp\n`)
+})
 
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  process.stderr.write('[asset-alchemist] MCP server running on stdio\n')
-}
-
-main().catch((err) => {
-  process.stderr.write(`[asset-alchemist] Fatal: ${err.message}\n`)
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  process.stderr.write(`[asset-alchemist] Server error: ${err.message}\n`)
   process.exit(1)
+})
+
+process.on('SIGTERM', async () => {
+  process.stderr.write('[asset-alchemist] Shutting down...\n')
+  await mcpServer.close()
+  httpServer.close(() => process.exit(0))
 })

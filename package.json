@@ -26,7 +26,10 @@
     "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron-build": "electron-builder --win --mac",
     "electron-build:win": "electron-builder --win",
-    "electron-build:mac": "electron-builder --mac"
+    "electron-build:mac": "electron-builder --mac",
+    "mcp:start": "node packages/mcp/start-all.js",
+    "mcp:start:prod": "node packages/mcp/start-all.js --prod",
+    "mcp:build": "npm run build --workspace=packages/mcp/asset-alchemist && npm run build --workspace=packages/mcp/city-architect && npm run build --workspace=packages/mcp/terrain-forge"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

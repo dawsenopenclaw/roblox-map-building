@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
     const expiresAt = entry.createdAt + CODE_TTL_MS
 
     // When claimed, resolve the live session to surface placeId/placeName
-    const liveSession = entry.sessionId ? getSession(entry.sessionId) : undefined
+    const liveSession = entry.sessionId ? await getSession(entry.sessionId) : undefined
 
     return NextResponse.json(
       {

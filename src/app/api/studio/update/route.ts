@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     receivedAt: Date.now(),
   }
 
-  const session = updateSessionState(body.sessionId, statePayload)
+  const session = await updateSessionState(body.sessionId, statePayload)
   if (!session) {
     return NextResponse.json(
       { error: 'session_not_found', reconnect: true },

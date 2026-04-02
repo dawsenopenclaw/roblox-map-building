@@ -1,59 +1,44 @@
 #!/usr/bin/env node
 /**
- * terrain-forge MCP Server
- * Exposes AI terrain generation as MCP tools for Roblox Studio.
- * Tools: generate_terrain, smooth_terrain, paint_terrain
+ * Terrain Forge MCP Server — port 3004
+ *
+ * Tools:
+ *   generate-terrain  → Biome + size + features → Roblox Luau terrain script (FillBlock/FillBall/WriteVoxels)
+ *   paint-terrain     → Material + region → Luau terrain painting script
+ *   create-water      → Water type + position → Luau water creation script
+ *
+ * All tools output executable Roblox Luau code that creates real terrain when run via the Studio plugin.
+ * Transport: StreamableHTTP over Node http on /mcp
+ * Auth:      ANTHROPIC_API_KEY from process.env (used for biome metadata enrichment)
  */
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  type Tool,
-} from '@modelcontextprotocol/sdk/types.js'
+import { createServer, IncomingMessage, ServerResponse } from 'node:http'
+import { randomUUID } from 'node:crypto'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Token metering — track every Claude call
+// Constants
 // ---------------------------------------------------------------------------
-interface TokenUsage {
-  inputTokens: number
-  outputTokens: number
-  costUsd: number
-  tool: string
-  timestamp: string
-}
 
-const tokenLog: TokenUsage[] = []
-
-function meterUsage(tool: string, inputTokens: number, outputTokens: number): void {
-  const inputCostPerM = 3.0  // Claude 3.5 Sonnet
-  const outputCostPerM = 15.0
-  const costUsd =
-    (inputTokens / 1_000_000) * inputCostPerM +
-    (outputTokens / 1_000_000) * outputCostPerM
-
-  tokenLog.push({
-    inputTokens,
-    outputTokens,
-    costUsd,
-    tool,
-    timestamp: new Date().toISOString(),
-  })
-
-  // Write to stderr so it doesn't pollute MCP stdio protocol
-  process.stderr.write(
-    `[terrain-forge] ${tool}: ${inputTokens}in/${outputTokens}out ($${costUsd.toFixed(6)})\n`
-  )
-}
+const PORT = Number(process.env.TERRAIN_FORGE_PORT ?? 3004)
 
 // ---------------------------------------------------------------------------
 // Anthropic client
 // ---------------------------------------------------------------------------
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' })
 const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022'
+
+function meterUsage(tool: string, inputTokens: number, outputTokens: number): void {
+  const costUsd = (inputTokens / 1_000_000) * 3.0 + (outputTokens / 1_000_000) * 15.0
+  process.stderr.write(
+    `[terrain-forge] ${tool}: ${inputTokens}in/${outputTokens}out ($${costUsd.toFixed(6)})\n`,
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Terrain data types
@@ -108,530 +93,580 @@ const BIOME_MATERIALS: Record<string, string[]> = {
 }
 
 // ---------------------------------------------------------------------------
-// Tool: generate_terrain
+// Luau code generators — produce executable Roblox scripts
 // ---------------------------------------------------------------------------
-const GenerateTerrainSchema = z.object({
-  description: z.string().describe('Natural language biome/terrain description'),
-  size: z
-    .object({ width: z.number().default(512), height: z.number().default(512) })
-    .optional()
-    .default({ width: 512, height: 512 }),
-  seed: z.number().optional().describe('Optional seed for reproducible generation'),
-})
 
-async function generateTerrain(params: z.infer<typeof GenerateTerrainSchema>) {
-  const { description, size = { width: 512, height: 512 }, seed } = params
+/**
+ * Returns the Enum.Material string Luau expression for a material name.
+ */
+function luauMaterial(mat: string): string {
+  // Roblox Terrain materials use Enum.Material.<Name>
+  const valid = new Set(ROBLOX_MATERIALS)
+  const resolved = valid.has(mat) ? mat : 'Grass'
+  return `Enum.Material.${resolved}`
+}
 
-  // Ask Claude to parse the biome intent and generate terrain metadata
+/**
+ * Generates a Luau script that fills the terrain with FillBlock/FillBall calls
+ * based on a heightmap. The script is meant to be run via the Studio command bar
+ * or the ForjeGames Studio plugin.
+ */
+function generateTerrainLuau(params: {
+  heightmap: HeightmapPoint[]
+  originX: number
+  originY: number
+  originZ: number
+  voxelSize: number
+  biome: string
+  waterLevel: number | null
+}): string {
+  const { heightmap, originX, originY, originZ, voxelSize, biome, waterLevel } = params
+
+  const lines: string[] = [
+    `-- Generated by ForjeGames Terrain Forge`,
+    `-- Biome: ${biome}`,
+    `-- Points: ${heightmap.length}`,
+    `local terrain = workspace.Terrain`,
+    `local vs = ${voxelSize} -- voxel size in studs`,
+    ``,
+    `-- Fill base terrain layer`,
+    `terrain:Clear()`,
+    ``,
+  ]
+
+  for (const pt of heightmap) {
+    const worldX = originX + pt.x
+    const worldY = originY + pt.height
+    const worldZ = originZ + pt.z
+    const mat = luauMaterial(pt.material)
+    const blockH = Math.max(4, pt.height)
+    lines.push(
+      `terrain:FillBlock(CFrame.new(${worldX}, ${originY + blockH / 2}, ${worldZ}), ` +
+        `Vector3.new(vs, ${blockH}, vs), ${mat})`,
+    )
+  }
+
+  // Optional water layer
+  if (waterLevel !== null && waterLevel > 0) {
+    lines.push(``)
+    lines.push(`-- Water layer at elevation ${waterLevel}`)
+    for (const pt of heightmap) {
+      if (pt.height < waterLevel) {
+        const worldX = originX + pt.x
+        const worldZ = originZ + pt.z
+        const waterH = waterLevel - pt.height
+        lines.push(
+          `terrain:FillBlock(CFrame.new(${worldX}, ${originY + waterLevel - waterH / 2}, ${worldZ}), ` +
+            `Vector3.new(vs, ${waterH}, vs), Enum.Material.Water)`,
+        )
+      }
+    }
+  }
+
+  lines.push(``)
+  lines.push(`print("[TerrainForge] Terrain generation complete — ${heightmap.length} voxels placed")`)
+  return lines.join('\n')
+}
+
+/**
+ * Generates a Luau script that paints a terrain region with a given material.
+ * Uses Terrain:FillBlock on a grid of voxels within the region.
+ */
+function generatePaintTerrainLuau(params: {
+  region: TerrainRegion
+  material: string
+  originX: number
+  originY: number
+  originZ: number
+  voxelSize: number
+  terrainHeight: number
+}): string {
+  const { region, material, originX, originY, originZ, voxelSize, terrainHeight } = params
+  const mat = luauMaterial(material)
+
+  const lines: string[] = [
+    `-- Generated by ForjeGames Terrain Forge — Paint: ${material}`,
+    `local terrain = workspace.Terrain`,
+    `local vs = ${voxelSize}`,
+    ``,
+  ]
+
+  for (let z = region.z; z < region.z + region.height; z += voxelSize) {
+    for (let x = region.x; x < region.x + region.width; x += voxelSize) {
+      const worldX = originX + x
+      const worldZ = originZ + z
+      lines.push(
+        `terrain:FillBlock(CFrame.new(${worldX}, ${originY + terrainHeight / 2}, ${worldZ}), ` +
+          `Vector3.new(vs, ${terrainHeight}, vs), ${mat})`,
+      )
+    }
+  }
+
+  lines.push(``)
+  lines.push(`print("[TerrainForge] Paint complete — material: ${material}")`)
+  return lines.join('\n')
+}
+
+/**
+ * Generates a Luau script that creates water terrain in a region.
+ * Supports ocean (fills flat), river (linear strip), and lake (FillBall).
+ */
+function generateWaterLuau(params: {
+  waterType: 'ocean' | 'river' | 'lake'
+  x: number
+  y: number
+  z: number
+  width: number
+  depth: number
+  length: number
+}): string {
+  const { waterType, x, y, z, width, depth, length } = params
+
+  const lines: string[] = [
+    `-- Generated by ForjeGames Terrain Forge — Water: ${waterType}`,
+    `local terrain = workspace.Terrain`,
+    ``,
+  ]
+
+  if (waterType === 'ocean' || waterType === 'river') {
+    // FillBlock for flat water bodies
+    const cx = x + width / 2
+    const cy = y - depth / 2
+    const cz = z + length / 2
+    lines.push(
+      `terrain:FillBlock(`,
+      `  CFrame.new(${cx}, ${cy}, ${cz}),`,
+      `  Vector3.new(${width}, ${depth}, ${length}),`,
+      `  Enum.Material.Water`,
+      `)`,
+    )
+    if (waterType === 'ocean') {
+      // Also fill the sea bed with Sand
+      lines.push(``)
+      lines.push(
+        `terrain:FillBlock(`,
+        `  CFrame.new(${cx}, ${cy - depth}, ${cz}),`,
+        `  Vector3.new(${width}, ${depth}, ${length}),`,
+        `  Enum.Material.Sand`,
+        `)`,
+      )
+    }
+  } else {
+    // Lake — FillBall for natural round shape
+    const radius = Math.min(width, length) / 2
+    lines.push(
+      `terrain:FillBall(`,
+      `  Vector3.new(${x + width / 2}, ${y - radius * 0.4}, ${z + length / 2}),`,
+      `  ${radius},`,
+      `  Enum.Material.Water`,
+      `)`,
+    )
+    // Slightly larger rock basin underneath
+    lines.push(``)
+    lines.push(
+      `terrain:FillBall(`,
+      `  Vector3.new(${x + width / 2}, ${y - radius * 0.9}, ${z + length / 2}),`,
+      `  ${radius * 1.1},`,
+      `  Enum.Material.Rock`,
+      `)`,
+    )
+  }
+
+  lines.push(``)
+  lines.push(`print("[TerrainForge] Water (${waterType}) placed at ${x}, ${y}, ${z}")`)
+  return lines.join('\n')
+}
+
+// ---------------------------------------------------------------------------
+// Claude biome enrichment (optional — degrades gracefully)
+// ---------------------------------------------------------------------------
+
+interface BiomeMeta {
+  biome: string
+  elevationProfile: string
+  baseElevation: number
+  elevationVariance: number
+  primaryMaterial: string
+  secondaryMaterial: string
+  features: string[]
+  waterLevel: number | null
+}
+
+async function getBiomeMeta(description: string): Promise<BiomeMeta> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Fallback: infer from keywords
+    const lower = description.toLowerCase()
+    const biome =
+      lower.includes('snow') || lower.includes('arctic') ? 'arctic' :
+      lower.includes('desert') || lower.includes('sand') ? 'desert' :
+      lower.includes('ocean') || lower.includes('sea') ? 'ocean' :
+      lower.includes('mountain') ? 'mountains' :
+      lower.includes('volcano') || lower.includes('lava') ? 'volcanic' :
+      lower.includes('swamp') || lower.includes('marsh') ? 'swamp' :
+      lower.includes('city') || lower.includes('urban') ? 'urban' :
+      'forest'
+
+    const mats = BIOME_MATERIALS[biome] ?? BIOME_MATERIALS['forest']!
+    return {
+      biome,
+      elevationProfile: biome === 'mountains' ? 'mountainous' : biome === 'desert' ? 'flat' : 'rolling',
+      baseElevation: biome === 'ocean' ? 10 : 40,
+      elevationVariance: biome === 'mountains' ? 40 : 15,
+      primaryMaterial: mats[0]!,
+      secondaryMaterial: mats[1] ?? 'Rock',
+      features: [],
+      waterLevel: biome === 'ocean' ? 30 : biome === 'swamp' ? 25 : null,
+    }
+  }
+
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: 1500,
-    system: `You are a Roblox terrain generation engine. Given a biome description, output ONLY valid JSON with:
+    max_tokens: 600,
+    system: `You are a Roblox terrain generation engine. Given a biome description, output ONLY valid JSON:
 {
   "biome": string,
-  "elevationProfile": "flat" | "rolling" | "hilly" | "mountainous",
-  "baseElevation": number (0-100),
-  "elevationVariance": number (0-50),
-  "primaryMaterial": string (from: ${ROBLOX_MATERIALS.join(', ')}),
+  "elevationProfile": "flat"|"rolling"|"hilly"|"mountainous",
+  "baseElevation": number,
+  "elevationVariance": number,
+  "primaryMaterial": string,
   "secondaryMaterial": string,
-  "accentMaterial": string,
-  "features": string[] (e.g. ["river", "cliffs", "lake"]),
-  "waterLevel": number (0-100, null if no water),
-  "description": string
-}`,
-    messages: [{ role: 'user', content: `Generate terrain metadata for: ${description}` }],
+  "features": string[],
+  "waterLevel": number|null
+}
+Valid materials: ${ROBLOX_MATERIALS.join(', ')}`,
+    messages: [{ role: 'user', content: description }],
   })
 
-  meterUsage(
-    'generate_terrain',
-    response.usage.input_tokens,
-    response.usage.output_tokens
-  )
+  meterUsage('get-biome-meta', response.usage.input_tokens, response.usage.output_tokens)
 
-  const rawContent = response.content
+  const raw = response.content
     .filter((b) => b.type === 'text')
     .map((b) => (b as Anthropic.TextBlock).text)
     .join('')
 
-  let metadata: Record<string, unknown>
   try {
-    metadata = JSON.parse(rawContent)
+    return JSON.parse(raw) as BiomeMeta
   } catch {
-    const match = rawContent.match(/```(?:json)?\s*([\s\S]+?)```/)
-    metadata = match ? JSON.parse(match[1]) : { raw: rawContent }
-  }
-
-  // Generate heightmap using deterministic noise based on metadata
-  const rng = createRng(seed ?? Date.now())
-  const biome = (metadata.biome as string ?? 'plains').toLowerCase()
-  const baseElevation = (metadata.baseElevation as number) ?? 30
-  const elevationVariance = (metadata.elevationVariance as number) ?? 15
-  const elevationProfile = (metadata.elevationProfile as string) ?? 'rolling'
-  const primaryMaterial = (metadata.primaryMaterial as string) ?? 'Grass'
-  const waterLevel = metadata.waterLevel as number | null
-
-  const gridSize = 32 // 32x32 heightmap points
-  const heightmap: HeightmapPoint[] = []
-
-  for (let gz = 0; gz < gridSize; gz++) {
-    for (let gx = 0; gx < gridSize; gx++) {
-      const nx = gx / gridSize
-      const nz = gz / gridSize
-
-      // Multi-octave noise
-      let elevation = baseElevation
-      elevation += noiseOctaves(rng, nx, nz, elevationProfile) * elevationVariance
-
-      // Clamp
-      elevation = Math.max(0, Math.min(100, elevation))
-
-      // Material selection based on elevation and biome
-      const biomeDefaults = BIOME_MATERIALS[biome] ?? BIOME_MATERIALS['plains']
-      let material: string
-
-      if (waterLevel !== null && elevation < waterLevel) {
-        material = 'Water'
-      } else if (elevation > 80) {
-        material = biome === 'arctic' ? 'Glacier' : 'Rock'
-      } else if (elevation > 60) {
-        material = (metadata.secondaryMaterial as string) ?? biomeDefaults[1] ?? 'Rock'
-      } else {
-        material = primaryMaterial ?? biomeDefaults[0] ?? 'Grass'
-      }
-
-      heightmap.push({
-        x: Math.round((gx / gridSize) * size.width),
-        z: Math.round((gz / gridSize) * size.height),
-        height: Math.round(elevation * 10) / 10,
-        material,
-      })
+    const match = raw.match(/```(?:json)?\s*([\s\S]+?)```/)
+    if (match) return JSON.parse(match[1]) as BiomeMeta
+    // Final fallback
+    const mats = BIOME_MATERIALS['forest']!
+    return {
+      biome: 'forest',
+      elevationProfile: 'rolling',
+      baseElevation: 40,
+      elevationVariance: 15,
+      primaryMaterial: mats[0]!,
+      secondaryMaterial: mats[1] ?? 'Rock',
+      features: [],
+      waterLevel: null,
     }
-  }
-
-  return {
-    success: true,
-    metadata,
-    heightmap,
-    size,
-    gridResolution: gridSize,
-    totalPoints: heightmap.length,
-    waterLevel,
-    seed: seed ?? null,
-    tokenUsage: tokenLog[tokenLog.length - 1],
   }
 }
 
 // ---------------------------------------------------------------------------
-// Tool: smooth_terrain
+// MCP server — tool registration
 // ---------------------------------------------------------------------------
-const SmoothTerrainSchema = z.object({
-  heightmap: z
-    .array(
-      z.object({
-        x: z.number(),
-        z: z.number(),
-        height: z.number(),
-        material: z.string(),
-      })
-    )
-    .describe('Existing heightmap points'),
-  region: z
-    .object({ x: z.number(), z: z.number(), width: z.number(), height: z.number() })
-    .optional()
-    .describe('Subregion to smooth (defaults to entire map)'),
-  passes: z.number().min(1).max(10).default(3).describe('Number of smoothing passes'),
-  strength: z
-    .number()
-    .min(0)
-    .max(1)
-    .default(0.5)
-    .describe('Smoothing strength 0-1'),
-})
 
-async function smoothTerrain(params: z.infer<typeof SmoothTerrainSchema>) {
-  const { heightmap, region, passes = 3, strength = 0.5 } = params
+function buildMcpServer(): McpServer {
+  const mcp = new McpServer({ name: 'terrain-forge', version: '1.0.0' })
 
-  // Filter to region if provided
-  let pointsToSmooth = heightmap
-  if (region) {
-    pointsToSmooth = heightmap.filter(
-      (p) =>
-        p.x >= region.x &&
-        p.x <= region.x + region.width &&
-        p.z >= region.z &&
-        p.z <= region.z + region.height
-    )
-  }
+  // ── generate-terrain ────────────────────────────────────────────────────────
 
-  // Build lookup map for fast neighbor access
-  const lookup = new Map<string, HeightmapPoint>()
-  for (const p of heightmap) {
-    lookup.set(`${p.x},${p.z}`, p)
-  }
+  mcp.registerTool(
+    'generate-terrain',
+    {
+      title: 'Generate Terrain',
+      description:
+        'Generate a Roblox Luau script that creates terrain using Terrain:FillBlock and FillBall. Pass the returned luauScript to the Studio plugin to instantly create the terrain.',
+      inputSchema: z.object({
+        biome: z
+          .string()
+          .min(2)
+          .describe('Biome description (e.g. "snowy mountain range with frozen lake", "tropical jungle")'),
+        size: z
+          .object({ width: z.number().default(512), depth: z.number().default(512) })
+          .default({ width: 512, depth: 512 })
+          .describe('Terrain footprint in studs'),
+        features: z
+          .array(z.string())
+          .default([])
+          .describe('Additional features (e.g. ["river", "cliffs", "volcanic vents"])'),
+        originX: z.number().default(0).describe('World X origin in studs'),
+        originY: z.number().default(0).describe('World Y origin in studs'),
+        originZ: z.number().default(0).describe('World Z origin in studs'),
+        voxelSize: z.number().int().default(4).describe('Voxel size in studs (4 = default Roblox terrain)'),
+        seed: z.number().optional().describe('Seed for reproducible noise'),
+      }),
+    },
+    async ({ biome, size, features, originX, originY, originZ, voxelSize, seed }) => {
+      const meta = await getBiomeMeta(
+        features.length > 0 ? `${biome}, features: ${features.join(', ')}` : biome,
+      )
 
-  // Determine step size from data
-  const xs = [...new Set(heightmap.map((p) => p.x))].sort((a, b) => a - b)
-  const step = xs.length > 1 ? xs[1] - xs[0] : 16
+      const rng = createRng(seed ?? Date.now())
+      const gridSize = Math.floor(Math.min(size.width, size.depth) / voxelSize)
+      const clampedGrid = Math.min(gridSize, 64) // cap at 64×64 to keep script size sane
+      const heightmap: HeightmapPoint[] = []
 
-  // Run smoothing passes
-  let current = pointsToSmooth.map((p) => ({ ...p }))
+      for (let gz = 0; gz < clampedGrid; gz++) {
+        for (let gx = 0; gx < clampedGrid; gx++) {
+          const nx = gx / clampedGrid
+          const nz = gz / clampedGrid
+          let elevation = meta.baseElevation + noiseOctaves(rng, nx, nz, meta.elevationProfile) * meta.elevationVariance
+          elevation = Math.max(4, Math.min(100, elevation))
 
-  for (let pass = 0; pass < passes; pass++) {
-    const next = current.map((p) => {
-      const neighbors = [
-        lookup.get(`${p.x - step},${p.z}`),
-        lookup.get(`${p.x + step},${p.z}`),
-        lookup.get(`${p.x},${p.z - step}`),
-        lookup.get(`${p.x},${p.z + step}`),
-      ].filter(Boolean) as HeightmapPoint[]
+          const biomeDefaults = BIOME_MATERIALS[meta.biome] ?? BIOME_MATERIALS['forest']!
+          let material: string
+          if (meta.waterLevel !== null && elevation < meta.waterLevel) {
+            material = 'Water'
+          } else if (elevation > 80) {
+            material = meta.biome === 'arctic' ? 'Glacier' : 'Rock'
+          } else if (elevation > 60) {
+            material = meta.secondaryMaterial ?? biomeDefaults[1] ?? 'Rock'
+          } else {
+            material = meta.primaryMaterial ?? biomeDefaults[0] ?? 'Grass'
+          }
 
-      if (neighbors.length === 0) return p
-
-      const avgHeight =
-        neighbors.reduce((sum, n) => sum + n.height, 0) / neighbors.length
-      const smoothedHeight = p.height + (avgHeight - p.height) * strength
-
-      return { ...p, height: Math.round(smoothedHeight * 10) / 10 }
-    })
-
-    // Update lookup for next pass
-    for (const p of next) {
-      lookup.set(`${p.x},${p.z}`, p)
-    }
-    current = next
-  }
-
-  // Merge smoothed region back into full heightmap
-  const smoothedSet = new Map(current.map((p) => [`${p.x},${p.z}`, p]))
-  const result = heightmap.map((p) => smoothedSet.get(`${p.x},${p.z}`) ?? p)
-
-  return {
-    success: true,
-    heightmap: result,
-    smoothedPoints: current.length,
-    passes,
-    strength,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Tool: paint_terrain
-// ---------------------------------------------------------------------------
-const PaintTerrainSchema = z.object({
-  region: z.object({
-    x: z.number(),
-    z: z.number(),
-    width: z.number(),
-    height: z.number(),
-  }),
-  material: z
-    .string()
-    .describe(`Roblox material name: ${ROBLOX_MATERIALS.join(', ')}`),
-  blendEdges: z
-    .boolean()
-    .default(true)
-    .describe('Blend material at region edges'),
-  existingHeightmap: z
-    .array(z.object({ x: z.number(), z: z.number(), height: z.number(), material: z.string() }))
-    .optional()
-    .describe('Optional existing heightmap to merge with'),
-})
-
-async function paintTerrain(params: z.infer<typeof PaintTerrainSchema>) {
-  const { region, material, blendEdges = true, existingHeightmap } = params
-
-  // Validate material
-  if (!ROBLOX_MATERIALS.includes(material)) {
-    throw new Error(
-      `Invalid material "${material}". Valid materials: ${ROBLOX_MATERIALS.join(', ')}`
-    )
-  }
-
-  const materialMap: MaterialMap = {
-    region,
-    materials: [],
-  }
-
-  // Generate a grid of material assignments within the region
-  const gridStep = 16
-  for (let z = region.z; z < region.z + region.height; z += gridStep) {
-    for (let x = region.x; x < region.x + region.width; x += gridStep) {
-      let assignedMaterial = material
-
-      if (blendEdges) {
-        const edgeDistance = Math.min(
-          x - region.x,
-          region.x + region.width - x,
-          z - region.z,
-          region.z + region.height - z
-        )
-        const blendThreshold = gridStep * 2
-        if (edgeDistance < blendThreshold) {
-          // Edge blending — keep original material at edges
-          // In practice the Studio plugin would lerp; we just flag it
-          assignedMaterial = material
+          heightmap.push({
+            x: Math.round((gx / clampedGrid) * size.width),
+            z: Math.round((gz / clampedGrid) * size.depth),
+            height: Math.round(elevation * 10) / 10,
+            material,
+          })
         }
       }
 
-      materialMap.materials.push({ x, z, material: assignedMaterial })
-    }
-  }
+      const luauScript = generateTerrainLuau({
+        heightmap,
+        originX,
+        originY,
+        originZ,
+        voxelSize,
+        biome: meta.biome,
+        waterLevel: meta.waterLevel,
+      })
 
-  // If existing heightmap provided, merge material changes
-  let mergedHeightmap: HeightmapPoint[] | undefined
-  if (existingHeightmap) {
-    const paintedSet = new Map(
-      materialMap.materials.map((m) => [`${m.x},${m.z}`, m.material])
-    )
-    mergedHeightmap = existingHeightmap.map((p) => ({
-      ...p,
-      material: paintedSet.get(`${p.x},${p.z}`) ?? p.material,
-    }))
-  }
-
-  return {
-    success: true,
-    materialMap,
-    pointsModified: materialMap.materials.length,
-    material,
-    mergedHeightmap,
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Noise helpers (no external dep)
-// ---------------------------------------------------------------------------
-function createRng(seed: number): () => number {
-  let s = seed
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    // Use 0x100000000 (2^32) so result is in [0, 1) rather than [0, 1.000...]
-    return (s >>> 0) / 0x100000000
-  }
-}
-
-// seedHash produces a deterministic float in [0,1) from two positional floats and
-// an integer octave index.  Using a fixed hash avoids consuming shared RNG state
-// inside the per-point loop (which would produce non-coherent, purely random noise).
-function seedHash(nx: number, nz: number, octave: number): number {
-  // Mix bits with large primes to spread the input range
-  const ix = Math.floor(nx * 1000)
-  const iz = Math.floor(nz * 1000)
-  let h = (ix * 374761393 + iz * 668265263 + octave * 2246822519) >>> 0
-  h ^= h >>> 13
-  h = Math.imul(h, 1540483477) >>> 0
-  h ^= h >>> 15
-  return h / 0x100000000
-}
-
-function noiseOctaves(
-  _rng: () => number,  // kept for API compatibility; coherent noise uses seedHash
-  nx: number,
-  nz: number,
-  profile: string
-): number {
-  const octaves = profile === 'mountainous' ? 5 : profile === 'hilly' ? 4 : 3
-  let value = 0
-  let amplitude = 1
-  let frequency = 1
-  let maxValue = 0
-
-  for (let i = 0; i < octaves; i++) {
-    // Use position-keyed hash instead of advancing RNG so neighbouring grid
-    // points produce spatially coherent (not independent random) noise.
-    const h = seedHash(nx * frequency, nz * frequency, i) * 2 - 1
-    value += amplitude * h * Math.sin(nx * frequency * Math.PI) * Math.cos(nz * frequency * Math.PI)
-    maxValue += amplitude
-    amplitude *= 0.5
-    frequency *= 2
-  }
-
-  const normalized = value / maxValue
-
-  // Flatten for 'flat', exaggerate for 'mountainous'
-  if (profile === 'flat') return normalized * 0.2
-  if (profile === 'rolling') return normalized * 0.6
-  if (profile === 'hilly') return normalized * 0.8
-  return normalized  // mountainous
-}
-
-// ---------------------------------------------------------------------------
-// MCP Server setup
-// ---------------------------------------------------------------------------
-const TOOLS: Tool[] = [
-  {
-    name: 'generate_terrain',
-    description:
-      'Generate Roblox terrain heightmap and material mapping from a natural language biome description. Returns a grid of height values and Roblox material assignments ready for Studio import.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        description: {
-          type: 'string',
-          description: 'Natural language description of the terrain (e.g., "snowy mountain range with frozen lake")',
-        },
-        size: {
-          type: 'object',
-          properties: {
-            width: { type: 'number', default: 512 },
-            height: { type: 'number', default: 512 },
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              luauScript,
+              meta,
+              voxelCount: heightmap.length,
+              gridSize: clampedGrid,
+              size,
+              seed: seed ?? null,
+            }),
           },
-          description: 'Terrain size in Roblox studs',
-        },
-        seed: {
-          type: 'number',
-          description: 'Optional seed for reproducible generation',
-        },
-      },
-      required: ['description'],
+        ],
+      }
     },
-  },
-  {
-    name: 'smooth_terrain',
-    description:
-      'Apply Gaussian-like smoothing to an existing heightmap. Reduces sharp transitions between height values. Returns the modified heightmap.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        heightmap: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              x: { type: 'number' },
-              z: { type: 'number' },
-              height: { type: 'number' },
-              material: { type: 'string' },
-            },
-            required: ['x', 'z', 'height', 'material'],
-          },
-          description: 'Array of heightmap points from generate_terrain',
-        },
-        region: {
-          type: 'object',
-          properties: {
-            x: { type: 'number' },
-            z: { type: 'number' },
-            width: { type: 'number' },
-            height: { type: 'number' },
-          },
-          description: 'Optional subregion to smooth',
-        },
-        passes: { type: 'number', default: 3, description: 'Smoothing passes (1-10)' },
-        strength: { type: 'number', default: 0.5, description: 'Smoothing strength (0-1)' },
-      },
-      required: ['heightmap'],
+  )
+
+  // ── paint-terrain ───────────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'paint-terrain',
+    {
+      title: 'Paint Terrain',
+      description:
+        'Generate a Roblox Luau script that paints a rectangular region of terrain with a specified Roblox material using Terrain:FillBlock.',
+      inputSchema: z.object({
+        material: z
+          .string()
+          .describe(`Roblox terrain material. Valid: ${ROBLOX_MATERIALS.join(', ')}`),
+        region: z.object({
+          x: z.number().describe('Region X start in studs'),
+          z: z.number().describe('Region Z start in studs'),
+          width: z.number().describe('Region width in studs'),
+          height: z.number().describe('Region height (Z depth) in studs'),
+        }),
+        originX: z.number().default(0),
+        originY: z.number().default(0),
+        originZ: z.number().default(0),
+        voxelSize: z.number().int().default(4),
+        terrainHeight: z.number().default(20).describe('Height of each painted voxel column in studs'),
+      }),
     },
-  },
-  {
-    name: 'paint_terrain',
-    description:
-      'Assign a Roblox material to a region of terrain. Returns a material map that can be applied via the Studio plugin.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        region: {
-          type: 'object',
-          properties: {
-            x: { type: 'number' },
-            z: { type: 'number' },
-            width: { type: 'number' },
-            height: { type: 'number' },
+    async ({ material, region, originX, originY, originZ, voxelSize, terrainHeight }) => {
+      if (!ROBLOX_MATERIALS.includes(material)) {
+        throw new Error(`Invalid material "${material}". Valid: ${ROBLOX_MATERIALS.join(', ')}`)
+      }
+
+      const luauScript = generatePaintTerrainLuau({
+        region,
+        material,
+        originX,
+        originY,
+        originZ,
+        voxelSize,
+        terrainHeight,
+      })
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ luauScript, material, region, voxelSize }),
           },
-          required: ['x', 'z', 'width', 'height'],
-          description: 'Region to paint in Roblox world coordinates',
-        },
-        material: {
-          type: 'string',
-          description: `Roblox material name. Valid: ${ROBLOX_MATERIALS.join(', ')}`,
-        },
-        blendEdges: {
-          type: 'boolean',
-          default: true,
-          description: 'Blend material transitions at region boundaries',
-        },
-        existingHeightmap: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              x: { type: 'number' },
-              z: { type: 'number' },
-              height: { type: 'number' },
-              material: { type: 'string' },
-            },
-          },
-          description: 'Optional existing heightmap to merge material changes into',
-        },
-      },
-      required: ['region', 'material'],
+        ],
+      }
     },
-  },
-]
+  )
+
+  // ── create-water ────────────────────────────────────────────────────────────
+
+  mcp.registerTool(
+    'create-water',
+    {
+      title: 'Create Water',
+      description:
+        'Generate a Roblox Luau script that creates water terrain using Terrain:FillBlock (ocean/river) or Terrain:FillBall (lake).',
+      inputSchema: z.object({
+        waterType: z
+          .enum(['ocean', 'river', 'lake'])
+          .describe('Type of water body to create'),
+        x: z.number().default(0).describe('World X position in studs'),
+        y: z.number().default(0).describe('World Y position (water surface) in studs'),
+        z: z.number().default(0).describe('World Z position in studs'),
+        width: z.number().default(256).describe('Water width in studs (X axis)'),
+        depth: z.number().default(20).describe('Water depth in studs'),
+        length: z.number().default(256).describe('Water length in studs (Z axis)'),
+      }),
+    },
+    async ({ waterType, x, y, z, width, depth, length }) => {
+      const luauScript = generateWaterLuau({ waterType, x, y, z, width, depth, length })
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ luauScript, waterType, x, y, z, width, depth, length }),
+          },
+        ],
+      }
+    },
+  )
+
+  return mcp
+}
 
 // ---------------------------------------------------------------------------
-// Server instantiation
+// HTTP server — StreamableHTTP transport
 // ---------------------------------------------------------------------------
-const server = new Server(
-  { name: 'terrain-forge', version: '1.0.0' },
-  { capabilities: { tools: {} } }
-)
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
+const mcpServer = buildMcpServer()
+const transports = new Map<string, StreamableHTTPServerTransport>()
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params
+async function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let raw = ''
+    req.setEncoding('utf8')
+    req.on('data', (chunk: string) => { raw += chunk })
+    req.on('end', () => {
+      try { resolve(JSON.parse(raw)) } catch { resolve(undefined) }
+    })
+    req.on('error', reject)
+  })
+}
+
+function sendJson(res: ServerResponse, statusCode: number, body: unknown): void {
+  const payload = JSON.stringify(body)
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(payload),
+  })
+  res.end(payload)
+}
+
+const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+  if (req.url === '/health' && req.method === 'GET') {
+    sendJson(res, 200, { status: 'ok', server: 'terrain-forge', port: PORT })
+    return
+  }
+
+  if (req.url !== '/mcp') {
+    sendJson(res, 404, { error: 'Not found. POST /mcp or GET /health' })
+    return
+  }
 
   try {
-    let result: unknown
+    if (req.method === 'POST') {
+      const body = await readBody(req)
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
 
-    switch (name) {
-      case 'generate_terrain': {
-        const parsed = GenerateTerrainSchema.parse(args)
-        result = await generateTerrain(parsed)
-        break
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res, body)
+        return
       }
-      case 'smooth_terrain': {
-        const parsed = SmoothTerrainSchema.parse(args)
-        result = await smoothTerrain(parsed)
-        break
+
+      if (!sessionId && isInitializeRequest(body)) {
+        const transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (id) => { transports.set(id, transport) },
+        })
+        transport.onclose = () => {
+          if (transport.sessionId) transports.delete(transport.sessionId)
+        }
+        await mcpServer.connect(transport)
+        await transport.handleRequest(req, res, body)
+        return
       }
-      case 'paint_terrain': {
-        const parsed = PaintTerrainSchema.parse(args)
-        result = await paintTerrain(parsed)
-        break
-      }
-      default:
-        throw new Error(`Unknown tool: ${name}`)
+
+      // Stateless (used by mcp-client.ts)
+      const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+      await mcpServer.connect(transport)
+      await transport.handleRequest(req, res, body)
+      return
     }
 
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+    if (req.method === 'GET') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        return
+      }
+      sendJson(res, 400, { jsonrpc: '2.0', error: { code: -32000, message: 'Invalid session' }, id: null })
+      return
     }
+
+    if (req.method === 'DELETE') {
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+      if (sessionId && transports.has(sessionId)) {
+        await transports.get(sessionId)!.handleRequest(req, res)
+        transports.delete(sessionId)
+        return
+      }
+      sendJson(res, 404, { error: 'Session not found' })
+      return
+    }
+
+    sendJson(res, 405, { error: 'Method not allowed' })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    return {
-      content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
-      isError: true,
+    process.stderr.write(`[terrain-forge] Request error: ${message}\n`)
+    if (!res.headersSent) {
+      sendJson(res, 500, {
+        jsonrpc: '2.0',
+        error: { code: -32603, message: 'Internal server error', data: message },
+        id: null,
+      })
     }
   }
 })
 
-// ---------------------------------------------------------------------------
-// Start
-// ---------------------------------------------------------------------------
-async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    process.stderr.write('[terrain-forge] ERROR: ANTHROPIC_API_KEY not set\n')
-    process.exit(1)
-  }
+httpServer.listen(PORT, () => {
+  process.stderr.write(`[terrain-forge] MCP server listening on http://localhost:${PORT}/mcp\n`)
+})
 
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  process.stderr.write('[terrain-forge] MCP server running on stdio\n')
-}
-
-main().catch((err) => {
-  process.stderr.write(`[terrain-forge] Fatal: ${err.message}\n`)
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  process.stderr.write(`[terrain-forge] Server error: ${err.message}\n`)
   process.exit(1)
+})
+
+process.on('SIGTERM', async () => {
+  process.stderr.write('[terrain-forge] Shutting down...\n')
+  await mcpServer.close()
+  httpServer.close(() => process.exit(0))
 })

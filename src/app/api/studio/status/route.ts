@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   // Resolve session: prefer sessionId param, fall back to token param
   let sessionId = searchParams.get('sessionId')
-  let session = sessionId ? getSession(sessionId) : undefined
+  let session = sessionId ? await getSession(sessionId) : undefined
 
   if (!session) {
     const token = searchParams.get('token')

@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const ok = storeScreenshot(body.sessionId, base64)
+  const ok = await storeScreenshot(body.sessionId, base64)
   if (!ok) {
     return NextResponse.json(
       { error: 'session_not_found', reconnect: true },
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const session = getSession(sessionId)
+  const session = await getSession(sessionId)
   if (!session) {
     return NextResponse.json(
       { image: null, error: 'session_not_found' },

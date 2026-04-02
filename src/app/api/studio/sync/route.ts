@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
   // Resolve session: prefer sessionId param, fall back to token param
   let sessionId = searchParams.get('sessionId')
-  let session = sessionId ? getSession(sessionId) : undefined
+  let session = sessionId ? await getSession(sessionId) : undefined
 
   if (!session) {
     const token = searchParams.get('token')
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
   const since = Number.isFinite(lastSync) ? lastSync : 0
 
   // drainCommands returns null when rate-limited
-  const commands = drainCommands(sessionId, since)
+  const commands = await drainCommands(sessionId, since)
   if (commands === null) {
     return NextResponse.json(
       { error: 'rate_limited', retryAfterMs: 1000 },

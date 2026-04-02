@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
   const body = parsed.data
 
   // ── Resolve session ───────────────────────────────────────────────────────
-  let session = body.sessionId ? getSession(body.sessionId) : undefined
+  let session = body.sessionId ? await getSession(body.sessionId) : undefined
 
   if (!session && body.token) {
     session = getSessionByToken(body.token)
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Queue the command ─────────────────────────────────────────────────────
-  const result = queueCommand(session.sessionId, {
+  const result = await queueCommand(session.sessionId, {
     type: 'insert_asset',
     data: {
       assetId:       body.assetId,
