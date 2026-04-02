@@ -512,7 +512,7 @@ function SetupPanel({ connectFlow, connectCode, connectTimer, onDemoMode, onConf
   onGenerateCode: () => void
 }) {
   const [tab, setTab] = useState<InstallTab>('download')
-  const PLUGIN_FOLDER = navigator.userAgent.includes('Mac')
+  const PLUGIN_FOLDER = (typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac'))
     ? '~/Documents/Roblox/Plugins/'
     : '%LOCALAPPDATA%\\Roblox\\Plugins\\'
 
@@ -3269,7 +3269,8 @@ export function EditorClient() {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, addBuild],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, messages, addBuild],
   )
 
   // ── Multi-step auto-continue effect ──────────────────────────────────────
@@ -3455,7 +3456,8 @@ export function EditorClient() {
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [paletteOpen, shortcutsOpen, slashMenuOpen, input, submit, getLastCodeBlock, clearConversation, studioStatus, showToast])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paletteOpen, shortcutsOpen, slashMenuOpen, input, submit, getLastCodeBlock, clearConversation, studioStatus, showToast, selectedObjectId])
 
   // ── Textarea keydown: Enter to send, slash to trigger command menu ────────
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

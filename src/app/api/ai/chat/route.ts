@@ -17,6 +17,7 @@ import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { queueCommand, getSession } from '@/lib/studio-session'
+import { validateAndFixLuau } from '@/lib/luau-validator'
 import Anthropic from '@anthropic-ai/sdk'
 
 // Extract ```lua code blocks from AI response text
@@ -54,9 +55,14 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
   try {
     const session = await getSession(sessionId)
     if (!session) return false
+    // Validate and auto-fix common AI mistakes before sending
+    const { fixedCode, fixes } = validateAndFixLuau(code)
+    if (fixes.length > 0) {
+      console.log(`[chat] Auto-fixed ${fixes.length} Luau issues:`, fixes.join(', '))
+    }
     const result = await queueCommand(sessionId, {
       type: 'execute_luau',
-      data: { code },
+      data: { code: fixedCode },
     })
     return result.ok
   } catch {
@@ -1045,6 +1051,26 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'building',
   },
   {
+    // Game system templates — checked before generic script/economy/quest/combat patterns
+    // These return pre-built production Luau system templates (multi-file).
+    patterns: [
+      /\b(currency system|coin system|cash system)\b/i,
+      /\b(shop system|item shop|store system|purchase system)\b/i,
+      /\b(pet system|egg hatch(?:ing)?|pet rarity|pet follow(?:ing)?)\b/i,
+      /\b(inventory system|backpack system|item stacking)\b/i,
+      /\b(leaderboard system|global leaderboard|top players? system)\b/i,
+      /\b(level(?:ing)? system|xp system|experience system|level.?up system)\b/i,
+      /\b(quest system|mission system|objective system)\b/i,
+      /\b(combat system|damage system|health system|pvp system|respawn system)\b/i,
+      /\b(trading? system|player.?to.?player trade|trade system)\b/i,
+      /\b(daily rewards? system|login streak system|daily bonus system)\b/i,
+      // Natural language variants
+      /\b(add|make|create|build|implement|give me|set ?up)\b.{0,20}\b(a |an )?(currency|coin|shop|pet|inventory|leaderboard|level|xp|quest|combat|trade|trading|daily reward)\b/i,
+      /\b(a |an )(currency|shop|pet|inventory|leaderboard|leveling|xp|quest|combat|trading|daily rewards?) system\b/i,
+    ],
+    intent: 'gamesystem',
+  },
+  {
     patterns: [/\b(npc|character|enemy|mob|guard|villager|merchant|shopkeeper|quest.?giver)\b/i],
     intent: 'npc',
   },
@@ -1923,6 +1949,8 @@ Set up dynamic fog`,
 
   multiscript: `For full game systems I generate multiple scripts with clear separation. Say "build me a [system] system" and I'll output all the files with labels.\n\n[SUGGESTIONS]\nBuild me a pet system\nCreate a trading system\nMake a leaderboard system with DataStore`,
 
+  gamesystem: `Here's the complete game system — drop each script into the specified service.\n\n[SUGGESTIONS]\nAdd a currency system\nBuild a shop system\nCreate a pet system with rarities`,
+
   default: `✓ Request Processed
 
 I've analyzed your input and here's what was generated:
@@ -2186,8 +2214,17 @@ interface ChatResponsePayload {
     totalCustom: number
     estimatedCustomCost: number
   }
+  /** Whether the generated Luau code was executed in Roblox Studio */
+  executedInStudio?: boolean
   /** Auto-triggered MCP tool result when Claude response implies generation */
   mcpResult?: McpCallResult
+  /** Pre-built game system template (currency/shop/pets/etc.) */
+  gameSystem?: {
+    id: string
+    description: string
+    fileCount: number
+    files: Array<{ filename: string; scriptType: string; parent: string; code: string }>
+  }
 }
 
 // ─── History types and helpers ────────────────────────────────────────────────
@@ -2848,6 +2885,71 @@ Store any new reference points you create for the next step:
 After your friendly response, include ONLY the Luau code for Step ${currentStep}.
 ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and celebrate the completed build!' : `\nStep ${currentStep + 1} will be built next automatically.`}
 `
+  }
+
+  // ── Game system template short-circuit ──────────────────────────────────
+  // When the user asks for a named game system (currency, shop, pets, etc.),
+  // return the pre-built production template immediately without burning
+  // expensive Anthropic tokens or waiting on the AI.
+  if (intent === 'gamesystem') {
+    const systemId = detectGameSystemIntent(message)
+    const system   = systemId ? GAME_SYSTEMS[systemId] : null
+
+    if (system) {
+      const responseText = formatGameSystemResponse(system)
+      const tokenCostGs  = INTENT_TOKEN_COST.gamesystem
+
+      // Spend tokens for authenticated users
+      if (!isDemo && authedUserId && tokenCostGs > 0) {
+        try {
+          await spendTokens(authedUserId, tokenCostGs, `Game system: ${system.id}`, {
+            prompt: message.slice(0, 100),
+            intent: 'gamesystem',
+          })
+        } catch (spendErr) {
+          const errMsg = spendErr instanceof Error ? spendErr.message : 'Token error'
+          if (errMsg === 'Insufficient token balance') {
+            return NextResponse.json(
+              { error: 'insufficient_tokens', balance: 0, required: tokenCostGs },
+              { status: 402 },
+            )
+          }
+        }
+      }
+
+      const { message: cleanMsg, suggestions } = extractSuggestions(responseText)
+      const luauCode = extractLuauCode(responseText)
+
+      // Auto-execute the FIRST script file in Studio if a session is connected
+      let executedInStudio = false
+      if (sessionId && system.files.length > 0) {
+        executedInStudio = await sendCodeToStudio(sessionId, system.files[0].code)
+      }
+
+      return NextResponse.json({
+        message: cleanMsg || responseText,
+        tokensUsed: tokenCostGs,
+        intent: 'gamesystem' as IntentKey,
+        hasCode: luauCode !== null || system.files.length > 0,
+        executedInStudio,
+        suggestions: suggestions.length > 0 ? suggestions : [
+          `Add a ${system.id === 'currency' ? 'shop' : 'currency'} system to pair with this`,
+          `Connect this to your leaderboard`,
+          `Add daily rewards for extra retention`,
+        ],
+        gameSystem: {
+          id: system.id,
+          description: system.description,
+          fileCount: system.files.length,
+          files: system.files.map(f => ({
+            filename: f.filename,
+            scriptType: f.scriptType,
+            parent: f.parent,
+            code: f.code,
+          })),
+        },
+      } satisfies ChatResponsePayload)
+    }
   }
 
   // ── Custom user-supplied API key ─────────────────────────────────────────

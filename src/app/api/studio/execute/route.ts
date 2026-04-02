@@ -87,6 +87,7 @@ const VALID_COMMANDS = [
   'delete_model',
   'update_property',
   'insert_asset',
+  'scan_workspace',
 ] as const satisfies readonly ChangeType[]
 
 const executeSchema = z
@@ -107,7 +108,7 @@ const executeSchema = z
     prompt: z.string().optional(),
   })
   .refine(
-    (b) => b.code !== undefined || b.payload !== undefined,
+    (b) => b.code !== undefined || b.payload !== undefined || b.command === 'scan_workspace',
     { message: 'Either code or payload must be provided' },
   )
 

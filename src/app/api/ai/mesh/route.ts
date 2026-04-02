@@ -455,20 +455,28 @@ function generateMeshPartLuau(params: {
     : `
 \t-- No textures generated. Add a SurfaceAppearance manually if needed.`
 
+  // Plain number string — no locale commas — so the Lua print line is valid.
+  const polyCountDisplay = params.polygonCount != null ? String(params.polygonCount) : 'unknown'
+
   return `--!strict
 --[[
   ForjeAI Generated Mesh: ${displayName}
   Category:      ${category}
-  Polygon Count: ${params.polygonCount?.toLocaleString() ?? 'unknown'}
+  Polygon Count: ${polyCountDisplay}
   Quality:       auto-detected
   Task ID:       ${taskId}
+
+  IMPORTANT: Run this code in the Studio COMMAND BAR or inside a Plugin script.
+  It will NOT work as a regular Script/LocalScript in the Explorer because it uses
+  ChangeHistoryService and Selection, which are Plugin-only services.
 
   SETUP INSTRUCTIONS:
   1. Download the GLB from the meshUrl in the API response
   2. In Studio: Asset Manager > Import 3D > select your GLB
   3. Copy the new rbxassetid and paste it into MeshId below
   4. (Optional) Upload albedo/normal/roughness PNGs and update SurfaceAppearance IDs
-  5. Adjust Size and CFrame to match your scene layout
+  5. Paste this script into the Studio Command Bar and press Enter
+  6. Adjust Size and CFrame to match your scene layout
 --]]
 
 local CollectionService  = game:GetService("CollectionService")
@@ -515,7 +523,7 @@ Selection:Set({ builtModel })
 
 ChangeHistoryService:SetWaypoint("After ForjeAI Place: ${displayName}")
 
-print(string.format("[ForjeAI] Placed '%s' (%s) — polygon count: ${params.polygonCount?.toLocaleString() ?? 'unknown'}", builtModel.Name, "${category}"))
+print(string.format("[ForjeAI] Placed '%s' (%s) — polygon count: ${polyCountDisplay}", builtModel.Name, "${category}"))
 `
 }
 
