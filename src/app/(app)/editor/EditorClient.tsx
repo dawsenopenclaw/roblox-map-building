@@ -3368,54 +3368,44 @@ export function EditorClient() {
 
               {/* Viewport area */}
               <div className="flex-1 relative min-h-0 overflow-hidden" style={{ boxShadow: 'inset 0 0 40px rgba(0,0,0,0.3)' }}>
-                {studioConnected ? (
-                  /* Connected — real connection shows status panel; demo mode shows 3D viewport */
-                  demoMode ? (
-                    <>
-                      {showBuildOverlay && (
-                        <ViewportPreview
-                          state="building"
-                          builtBlockCount={sceneBlocks.length}
-                          className="absolute inset-0 z-0"
-                        />
-                      )}
-                      <div className={showBuildOverlay ? 'absolute inset-0 z-10' : 'absolute inset-0'}>
-                        <Viewport sceneBlocks={sceneBlocks} />
-                      </div>
-                    </>
-                  ) : (
-                    /* Real Studio connection — status panel */
-                    <div className="absolute inset-0 flex flex-col p-5 overflow-y-auto" style={{ background: '#09090b' }}>
-                      {/* Header */}
-                      <div className="flex items-center gap-2.5 mb-5">
-                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
-                        <span className="text-sm font-semibold text-zinc-100">Roblox Studio Connected</span>
-                      </div>
+                {/* 3D viewport — ALWAYS visible */}
+                <>
+                  {showBuildOverlay && (
+                    <ViewportPreview state="building" builtBlockCount={sceneBlocks.length} className="absolute inset-0 z-0" />
+                  )}
+                  <div className="absolute inset-0">
+                    <Viewport sceneBlocks={sceneBlocks} />
+                  </div>
 
-                      {/* Place info */}
-                      {(studioStatus.placeName ?? studioStatus.placeId) && (
-                        <div className="rounded-lg p-3.5 mb-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1">Active Place</p>
-                          <p className="text-sm font-medium text-zinc-100">{studioStatus.placeName ?? 'Untitled Place'}</p>
-                          {studioStatus.placeId && (
-                            <p className="text-[11px] text-zinc-500 mt-0.5">ID: {studioStatus.placeId}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Screenshot */}
-                      {studioStatus.screenshotUrl && (
-                        <div className="rounded-lg overflow-hidden mb-4" style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={studioStatus.screenshotUrl} alt="Studio screenshot" className="w-full object-cover" style={{ maxHeight: 180 }} />
-                        </div>
-                      )}
-
-                      {/* AI build status */}
-                      <div className="rounded-lg p-3.5 mb-4 flex items-center gap-3" style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.15)' }}>
-                        <span className="flex-shrink-0 w-2 h-2 rounded-full" style={{ background: '#D4AF37', animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }} />
-                        <p className="text-xs text-zinc-300">AI commands are building in Roblox Studio</p>
+                  {/* Build info overlay — bottom bar */}
+                  <div className="absolute bottom-0 left-0 right-0 z-20 pointer-events-none">
+                    <div className="p-3 pointer-events-auto" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.8) 40%)' }}>
+                      {/* Stats row */}
+                      <div className="flex items-center gap-4 mb-1.5">
+                        <span className="text-[10px] text-zinc-400">
+                          <span className="text-zinc-200 font-semibold">{sceneBlocks.length}</span> objects
+                        </span>
+                        <span className="text-[10px] text-zinc-400">
+                          <span className="text-zinc-200 font-semibold">{totalTokens}</span> tokens used
+                        </span>
+                        {studioConnected && (
+                          <span className="flex items-center gap-1.5 text-[10px]">
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#10B981', boxShadow: '0 0 4px #10B981' }} />
+                            <span className="text-emerald-400">Studio connected</span>
+                          </span>
+                        )}
                       </div>
+                      {/* Hint */}
+                      <p className="text-[10px] text-zinc-600">
+                        Ask AI to build → click &quot;Import to Studio&quot; on the code → paste in a Script in Studio
+                      </p>
+                    </div>
+                  </div>
+                </>
+
+                {/* Legacy panels removed — viewport is always visible now */}
+                {false && (
+                    <div>
 
                       {/* Commands counter */}
                       <div className="flex items-center justify-between mb-3">
@@ -3436,56 +3426,7 @@ export function EditorClient() {
                         </div>
                       )}
                     </div>
-                  )
-                ) : (
-                  /* Not connected — show how to use the code + optional plugin connection */
-                  <div className="absolute inset-0 overflow-y-auto">
-                    <ViewportPreview state={viewportState} builtBlockCount={sceneBlocks.length} className="absolute inset-0" />
-                    <div className="relative z-10 flex flex-col items-center px-6 py-8 min-h-full">
-                      <div className="max-w-sm w-full space-y-4">
-
-                        {/* ── Primary method: copy/paste ─────────────────── */}
-                        <div className="text-center">
-                          <h2 className="text-lg font-semibold text-zinc-100">How it works</h2>
-                          <p className="text-[12px] text-zinc-500 leading-relaxed mt-1">
-                            Chat with ForjeAI on the left. When it generates Luau code, click{' '}
-                            <strong className="text-zinc-300">&quot;Import to Studio&quot;</strong>{' '}
-                            to copy it. Then paste it into a Script in Roblox Studio.
-                          </p>
-                        </div>
-                        <div className="space-y-2 text-left">
-                          {[
-                            { n: '1', text: 'Ask ForjeAI to build something (e.g. "build a castle")' },
-                            { n: '2', text: 'Click the gold "Import to Studio" button on the code' },
-                            { n: '3', text: 'In Studio: Insert → Script → paste → run (F5)' },
-                          ].map((s) => (
-                            <div key={s.n} className="flex items-start gap-2.5 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                              <span className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: '#D4AF37', color: '#000' }}>{s.n}</span>
-                              <p className="text-[11px] text-zinc-400 leading-relaxed">{s.text}</p>
-                            </div>
-                          ))}
-                        </div>
-
-                        <button
-                          onClick={() => setDemoMode(true)}
-                          className="w-full text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
-                        >
-                          Show 3D preview instead
-                        </button>
-
-                        {/* ── Advanced: Plugin Connection (collapsible) ──── */}
-                        <PluginConnectionSection
-                          connectFlow={connectFlow}
-                          connectCode={connectCode}
-                          connectTimer={connectTimer}
-                          onGenerateCode={handleConnectToStudio}
-                          onConfirmConnected={confirmStudioConnected}
-                        />
-
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
 
