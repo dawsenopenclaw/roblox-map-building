@@ -327,6 +327,15 @@ export function getContextualTip(context: BuildContext): Tip {
  * Used in idle states, tooltips, and loading screens.
  */
 export function getRandomTip(): Tip {
+  if (TIPS.length === 0) {
+    // Defensive fallback — catalog should never be empty
+    return {
+      id: 'fallback',
+      level: 'beginner',
+      category: 'design',
+      text: 'Keep iterating — every great Roblox game started with a simple idea.',
+    }
+  }
   return TIPS[Math.floor(Math.random() * TIPS.length)]
 }
 

@@ -81,8 +81,16 @@ export async function POST(req: NextRequest) {
           })
 
           if (template && buyerId) {
+            // Check for existing purchase before upsert so we can guard the
+            // download counter increment — Prisma upsert does not expose whether
+            // a row was created or updated.
+            const existingPurchase = await db.templatePurchase.findUnique({
+              where: { templateId_buyerId: { templateId, buyerId } },
+              select: { id: true },
+            })
+
             // Upsert purchase record — idempotent
-            const purchase = await db.templatePurchase.upsert({
+            await db.templatePurchase.upsert({
               where: { templateId_buyerId: { templateId, buyerId } },
               create: {
                 templateId,
@@ -99,9 +107,8 @@ export async function POST(req: NextRequest) {
               },
             })
 
-            // Increment downloads only on first creation (upsert returns the record either way,
-            // but we guard by checking whether the stripePaymentIntentId was just set)
-            if (!purchase.stripePaymentIntentId || purchase.stripePaymentIntentId === session.payment_intent) {
+            // Only increment downloads on first purchase creation, not on replays
+            if (!existingPurchase) {
               await db.template.update({
                 where: { id: templateId },
                 data: { downloads: { increment: 1 } },
@@ -564,7 +571,10 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'stripe', eventType: event.type },
       extra: { eventId: event.id },
     })
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    // Return 200 so Stripe does not retry — the error is already captured in Sentry.
+    // A 5xx causes Stripe to redeliver, which risks double-crediting tokens or
+    // double-processing donations if any DB writes already committed.
+    return NextResponse.json({ received: true })
   }
 
   return NextResponse.json({ received: true })

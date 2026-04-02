@@ -1986,8 +1986,7 @@ for li, layer in ipairs(layers) do
     part.Material = Enum.Material.LeafyGrass
     part.Anchored = true
     part.Parent = tree
-    cone.MeshType = Enum.MeshType.FileMesh
-    cone.MeshId = "rbxasset://fonts/rightarm.mesh"
+    cone.MeshType = Enum.MeshType.Wedge
     cone.Parent = part
   end
 end

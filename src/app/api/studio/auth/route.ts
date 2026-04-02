@@ -223,9 +223,14 @@ export async function POST(req: NextRequest) {
 
   // Also hydrate this Lambda's in-memory session store so the SAME Lambda can
   // immediately serve sync/execute requests without a Redis round-trip.
+  // IMPORTANT: pass sessionId so the in-memory session uses the same ID that
+  // is encoded in the JWT. Without this pin, createSession() auto-generates a
+  // different ID, and the plugin's first /sync poll (which reconstructs the
+  // session from the JWT) will never find a matching queue entry.
   try {
     const { createSession } = await import('@/lib/studio-session')
     createSession({
+      sessionId,
       placeId,
       placeName,
       pluginVersion: pluginVer,

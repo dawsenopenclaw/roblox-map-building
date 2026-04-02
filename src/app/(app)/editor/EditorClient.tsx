@@ -2723,6 +2723,7 @@ export function EditorClient() {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const loadingRef = useRef(false)
   const [activePanel, setActivePanel] = useState<PanelId>(null)
   const [sceneBlocks, setSceneBlocks] = useState<SceneBlock[]>([])
   const [parsedParts, setParsedParts] = useState<ParsedPart[]>([])
@@ -2872,8 +2873,9 @@ export function EditorClient() {
   const submit = useCallback(
     async (text: string) => {
       const trimmed = text.trim()
-      if (!trimmed || loading) return
+      if (!trimmed || loadingRef.current) return
 
+      loadingRef.current = true
       setInput('')
       setImageFile(null)
       setLoading(true)
@@ -3041,18 +3043,27 @@ export function EditorClient() {
             responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*?\[\/SUGGESTIONS\]/i, '').trim()
           }
           // 2. Strip [SUGGESTIONS]...(end of string) (no closing tag)
+          // Only fire when [SUGGESTIONS] appears in the last 30% of the text to avoid
+          // accidentally stripping mid-response content if the AI embeds the tag early.
           const suggMatch2 = responseText.match(/\[SUGGESTIONS\]([\s\S]*)$/i)
           if (suggMatch2) {
-            const parsed = suggMatch2[1].split('\n').map((s) => s.replace(/^[-•*]\s*/, '').trim()).filter((s) => s.length > 0 && s.length < 120 && !s.startsWith('{'))
-            if (parsed.length > 0 && inlineSuggestions.length === 0) inlineSuggestions = parsed
-            responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*$/i, '').trim()
+            const tagIndex = responseText.toUpperCase().lastIndexOf('[SUGGESTIONS]')
+            const isTrailing = tagIndex >= responseText.length * 0.7
+            if (isTrailing) {
+              const parsed = suggMatch2[1].split('\n').map((s) => s.replace(/^[-•*]\s*/, '').trim()).filter((s) => s.length > 0 && s.length < 120 && !s.startsWith('{'))
+              if (parsed.length > 0 && inlineSuggestions.length === 0) inlineSuggestions = parsed
+              responseText = responseText.replace(/\[SUGGESTIONS\][\s\S]*$/i, '').trim()
+            }
           }
           // 3. Strip any trailing JSON metadata blob like ","tokensUsed":0,...}
-          responseText = responseText.replace(/[,\s]*"?(?:tokensUsed|"tokensUsed")["\s]*:\s*\d[\s\S]*$/m, '').trim()
+          // No /m flag: $ must match end-of-string. Require a JSON-context prefix (comma or
+          // opening brace) so we don't strip legitimate prose that mentions "tokensUsed".
+          responseText = responseText.replace(/[,{]\s*"tokensUsed"\s*:\s*\d[\s\S]*$/, '').trim()
           // 4. Strip any full JSON object at end of message { "tokensUsed": ... }
-          responseText = responseText.replace(/\s*\{[^{}]*"tokensUsed"[^{}]*\}\s*$/m, '').trim()
-          // 5. Strip orphaned closing braces/brackets
-          responseText = responseText.replace(/\s*[}\]]\s*$/, '').trim()
+          responseText = responseText.replace(/\s*\{\s*"tokensUsed"[^{}]*\}\s*$/, '').trim()
+          // 5. Strip orphaned closing braces/brackets only when preceded by a digit or quote
+          // (i.e., clearly the tail of a JSON fragment), not arbitrary prose.
+          responseText = responseText.replace(/(?<=["\d])\s*[}\]]\s*$/, '').trim()
         }
 
         // Store suggestions — prefer API field, fall back to inline block
@@ -3265,12 +3276,13 @@ export function EditorClient() {
           ]
         })
       } finally {
+        loadingRef.current = false
         setLoading(false)
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, messages, addBuild],
+    [selectedModel, activeGame, studioStatus, setExecuteStatus, setStudioActivity, showToast, user, guestMessageCount, messages, addBuild],
   )
 
   // ── Multi-step auto-continue effect ──────────────────────────────────────
@@ -3473,6 +3485,12 @@ export function EditorClient() {
       return
     }
     if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (slashMenuOpen) { setSlashMenuOpen(false) }
+      submit(input)
+    }
+    // Ctrl/Cmd+Enter also sends — mirrors global shortcut when textarea is focused
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault()
       if (slashMenuOpen) { setSlashMenuOpen(false) }
       submit(input)

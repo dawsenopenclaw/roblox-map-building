@@ -140,7 +140,12 @@ export function CommandPalette({ isOpen, onClose, onCommand }: CommandPalettePro
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().includes('MAC')
+  // navigator.platform is deprecated and unavailable on the server.
+  // Derive isMac client-side only to avoid hydration mismatches.
+  const [isMac, setIsMac] = useState(false)
+  useEffect(() => {
+    setIsMac(navigator.platform.toUpperCase().includes('MAC'))
+  }, [])
 
   // ── Filter and group results ──
   const filtered = useMemo(() => {

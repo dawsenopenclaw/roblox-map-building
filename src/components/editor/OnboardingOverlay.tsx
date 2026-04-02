@@ -361,9 +361,19 @@ export function OnboardingOverlay({ onComplete, onSkip }: OnboardingOverlayProps
     return () => clearTimeout(t)
   }, [])
 
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Cancel any in-flight dismiss timer on unmount to avoid setState on unmounted component
+  useEffect(() => {
+    return () => {
+      if (dismissTimerRef.current !== null) clearTimeout(dismissTimerRef.current)
+    }
+  }, [])
+
   const handleDismiss = useCallback((cb: () => void) => {
     setExiting(true)
-    setTimeout(() => {
+    dismissTimerRef.current = setTimeout(() => {
+      dismissTimerRef.current = null
       setVisible(false)
       cb()
     }, 260)

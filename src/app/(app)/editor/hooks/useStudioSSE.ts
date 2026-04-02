@@ -259,37 +259,46 @@ export function useStudioSSE(sessionId: string | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyContext, applyScreenshot, applyCommandResult, applyHeartbeat, closeSSE, stopPollingFallback])
 
-  // Defined after connect to avoid circular ref — use ref-based indirection
-  const scheduleReconnectRef = useRef<(sid: string) => void>(() => undefined)
+  // scheduleReconnect uses ref-based indirection to break the circular dependency
+  // between connect (which calls scheduleReconnect on error) and scheduleReconnect
+  // (which calls connect to retry). The ref is initialised with a real implementation
+  // immediately so it works even on the very first SSE error — before any useEffect
+  // has had a chance to run. The implementation reads connectRef/startPollingFallbackRef
+  // via stable refs so it never goes stale despite being set once.
+  const connectRef = useRef<(sid: string) => void>(() => undefined)
+  const startPollingFallbackRef = useRef<(sid: string) => void>(() => undefined)
+
+  const scheduleReconnectRef = useRef<(sid: string) => void>((sid: string) => {
+    attemptRef.current += 1
+
+    if (attemptRef.current > MAX_RECONNECT_ATTEMPTS) {
+      startPollingFallbackRef.current(sid)
+      return
+    }
+
+    const delay = Math.min(
+      BACKOFF_BASE_MS * Math.pow(2, attemptRef.current - 1),
+      BACKOFF_MAX_MS,
+    )
+
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
+    reconnectTimerRef.current = setTimeout(() => {
+      if (sessionIdRef.current === sid) {
+        connectRef.current(sid)
+      }
+    }, delay)
+  })
 
   const scheduleReconnect = useCallback((sid: string) => {
     scheduleReconnectRef.current(sid)
   }, [])
 
-  // Wire up the actual implementation into the ref after both are defined
-  useEffect(() => {
-    scheduleReconnectRef.current = (sid: string) => {
-      attemptRef.current += 1
-
-      if (attemptRef.current > MAX_RECONNECT_ATTEMPTS) {
-        // Give up on SSE — fall back to polling
-        startPollingFallback(sid)
-        return
-      }
-
-      const delay = Math.min(
-        BACKOFF_BASE_MS * Math.pow(2, attemptRef.current - 1),
-        BACKOFF_MAX_MS,
-      )
-
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = setTimeout(() => {
-        if (sessionIdRef.current === sid) {
-          connect(sid)
-        }
-      }, delay)
-    }
-  }, [connect, startPollingFallback])
+  // Keep the stable-ref proxies current so scheduleReconnectRef's inline
+  // implementation always calls the latest versions of connect and
+  // startPollingFallback (they are useCallback-stable but may change if their
+  // own deps change).
+  useEffect(() => { connectRef.current = connect }, [connect])
+  useEffect(() => { startPollingFallbackRef.current = startPollingFallback }, [startPollingFallback])
 
   // ── Effect: open/close SSE when sessionId changes ──────────────────────────
 

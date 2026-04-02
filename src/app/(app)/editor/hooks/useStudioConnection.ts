@@ -24,6 +24,8 @@ export interface StudioContext {
 export interface StudioConnectionState {
   isConnected: boolean
   sessionId: string | null
+  /** JWT for authenticating execute/sync calls */
+  jwt: string | null
   placeName: string
   placeId: number | null
   screenshotUrl: string | null
@@ -44,6 +46,7 @@ export function useStudioConnection() {
   const [state, setState] = useState<StudioConnectionState>({
     isConnected: false,
     sessionId: null,
+    jwt: null,
     placeName: '',
     placeId: null,
     screenshotUrl: null,
@@ -110,9 +113,13 @@ export function useStudioConnection() {
             studioContext: ctx,
           }
         }
+        // Only flip isConnected to true if the API also returned a valid sessionId.
+        // Without a sessionId the connection state would be isConnected=true but
+        // sessionId=null — an invalid combination that breaks all subsequent calls.
+        const canConnect = data.connected === true && !!data.sessionId
         return {
           ...prev,
-          isConnected: data.connected ?? false,
+          isConnected: canConnect ? true : (data.connected ?? false),
           placeName: data.placeName ?? prev.placeName,
           placeId: data.placeId ?? prev.placeId,
           screenshotUrl: data.screenshotUrl ?? prev.screenshotUrl,
@@ -218,15 +225,22 @@ export function useStudioConnection() {
     }
   }, [addActivity, pollStatus, pollScreenshot])
 
-  // When code resets to idle (timer expired), regenerate automatically
+  // When the countdown timer expires (code→idle), regenerate automatically.
+  // Guard: do NOT regenerate if the user disconnected (isConnected would be false
+  // but the transition could also come from disconnect() resetting the flow).
+  // We use a separate ref to distinguish timer-expiry from a manual disconnect —
+  // timer expiry resets flow to idle while keeping isConnected=false AND
+  // connectCode becomes ''. After disconnect() the state is fully reset so
+  // state.connectFlow was already 'idle' — flowRef will already equal 'idle'
+  // so the condition `flowRef.current === 'code'` won't match.
   const flowRef = useRef<ConnectFlowState>('idle')
   useEffect(() => {
-    if (state.connectFlow === 'idle' && flowRef.current === 'code') {
-      // Timer expired — auto-regenerate
+    if (state.connectFlow === 'idle' && flowRef.current === 'code' && !state.isConnected) {
+      // Timer expired while showing a code — auto-regenerate
       generateCode()
     }
     flowRef.current = state.connectFlow
-  }, [state.connectFlow, generateCode])
+  }, [state.connectFlow, state.isConnected, generateCode])
 
   const confirmConnected = useCallback((overrideSessionId?: string) => {
     // Stop claim polling — auto-detect already resolved or user manually confirmed

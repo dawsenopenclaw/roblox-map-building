@@ -209,10 +209,9 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'clerk', eventType: event.type },
       extra: { svixId },
     })
-    return NextResponse.json(
-      { error: 'Service temporarily unavailable' },
-      { status: 503 }
-    )
+    // Return 200 so Svix does not retry — the error is already captured in Sentry.
+    // A 5xx would trigger automatic retries that could re-process the same event.
+    return NextResponse.json({ ok: true })
   }
 
   return NextResponse.json({ ok: true })

@@ -203,6 +203,13 @@ export function CodePreview({ code, title, onExecute, onCopy, metadata }: CodePr
   const [editValue, setEditValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Reset active tab when the code prop changes (tab count may shrink)
+  useEffect(() => {
+    setActiveTab(0)
+    setEditing(false)
+    setEditValue('')
+  }, [code])
+
   const currentCode = tabs[activeTab]?.code ?? ''
 
   // When switching tabs, exit editing mode
@@ -266,7 +273,9 @@ export function CodePreview({ code, title, onExecute, onCopy, metadata }: CodePr
     a.href = url
     a.download = filename
     a.click()
-    URL.revokeObjectURL(url)
+    // Revoke on the next tick — some browsers need the URL to remain valid
+    // until after the click event has been fully processed.
+    setTimeout(() => URL.revokeObjectURL(url), 0)
   }, [currentCode, tabs, activeTab])
 
   const lines = currentCode.split('\n')

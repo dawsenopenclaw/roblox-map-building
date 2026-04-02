@@ -69,6 +69,8 @@ function verifyJwt(token: string): JwtPayload | null {
 
     const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as JwtPayload
     if (!payload.sid || !payload.pid) return null
+    // Reject tokens older than 30 days
+    if (payload.iat && Date.now() - payload.iat > 30 * 24 * 60 * 60 * 1000) return null
     return payload
   } catch {
     return null

@@ -791,6 +791,13 @@ export function BuildHistory({ className, style }: BuildHistoryProps) {
     setExpandedId(prev => (prev === id ? null : id))
   }
 
+  function handleClearAll() {
+    clearAll()
+    setSelectedId(null)
+    setExpandedId(null)
+    setShowClearConfirm(false)
+  }
+
   function handleUndoTo(id: string) {
     undoBuild(id)
     if (selectedId === id) setSelectedId(null)
@@ -949,7 +956,7 @@ export function BuildHistory({ className, style }: BuildHistoryProps) {
       {/* ── Clear confirmation overlay ─────────────────────────────────── */}
       {showClearConfirm && (
         <ClearConfirm
-          onConfirm={() => { clearAll(); setShowClearConfirm(false) }}
+          onConfirm={handleClearAll}
           onCancel={() => setShowClearConfirm(false)}
         />
       )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -105,29 +105,57 @@ async function readStream(
   const reader = body.getReader()
   const dec = new TextDecoder()
   let metaResult: StreamMeta = {}
+  // Accumulates bytes that have not yet been emitted as text or parsed as meta.
+  // Critical: the \x00{json} sentinel can be split across two read() calls —
+  // e.g. chunk N ends with \x00 and chunk N+1 carries the JSON body. Without
+  // this buffer the JSON would be lost and meta would silently fall back to {}.
   let leftover = ''
 
   try {
     while (true) {
       const { done, value } = await reader.read()
-      if (done) break
 
+      // On stream end, flush any remaining bytes the TextDecoder was holding
+      // for multi-byte UTF-8 sequences (emoji, CJK, etc.) and append to leftover.
+      if (done) {
+        const flushed = dec.decode() // no args = flush buffered bytes
+        if (flushed) leftover += flushed
+        // If the sentinel arrived in a prior chunk and leftover now holds the
+        // JSON tail, try to parse it.
+        const sentinelIdx = leftover.indexOf('\x00')
+        if (sentinelIdx !== -1) {
+          const textPart = leftover.slice(0, sentinelIdx)
+          const jsonPart = leftover.slice(sentinelIdx + 1)
+          if (textPart) onChunk(textPart)
+          try { metaResult = JSON.parse(jsonPart) as StreamMeta } catch { /* malformed */ }
+        } else if (leftover) {
+          onChunk(leftover)
+        }
+        break
+      }
+
+      // Decode with stream:true so multi-byte chars spanning chunks aren't broken.
       const raw = leftover + dec.decode(value, { stream: true })
       leftover = ''
 
-      // The sentinel is a \x00-prefixed JSON blob. It may arrive mid-buffer or
-      // at the end, so split on \x00 once and handle both halves.
+      // The sentinel is a \x00-prefixed JSON blob. It may arrive mid-buffer.
+      // Split on the FIRST \x00 only.
       const sentinelIdx = raw.indexOf('\x00')
       if (sentinelIdx !== -1) {
         const textPart = raw.slice(0, sentinelIdx)
         const jsonPart = raw.slice(sentinelIdx + 1)
         if (textPart) onChunk(textPart)
+        // jsonPart may be incomplete if the JSON spans into the next chunk.
+        // Attempt a parse; if it fails, buffer it and keep reading.
         try {
           metaResult = JSON.parse(jsonPart) as StreamMeta
+          break // sentinel fully consumed — stop reading
         } catch {
-          // malformed meta — ignore, keep defaults
+          // JSON was split across chunks — keep the partial in leftover and
+          // continue reading until stream ends or another parse succeeds.
+          leftover = '\x00' + jsonPart
+          continue
         }
-        break
       }
 
       onChunk(raw)
@@ -175,8 +203,16 @@ export function useChat(options: UseChatOptions = {}) {
   const [guestMessageCount, setGuestMessageCount] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryListenerRef = useRef(false)
+  // Tracks whether the hook is still mounted; guards async callbacks that call setState.
+  const mountedRef = useRef(true)
   // Ref used to read current messages inside async callbacks without stale closure
   const messagesRef = useRef<ChatMessage[]>([])
+
+  // Mark unmounted so in-flight async callbacks don't call setState after cleanup.
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   // Keep ref in sync with state
   const setMessagesSync = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
@@ -430,13 +466,19 @@ export function useChat(options: UseChatOptions = {}) {
 
             if (typeof window !== 'undefined' && !retryListenerRef.current) {
               retryListenerRef.current = true
+              const retryAbort = new AbortController()
               const checkResult = async () => {
                 await new Promise<void>((r) => setTimeout(r, 3000))
+                // Abort and skip state update if the component unmounted while waiting.
+                if (!mountedRef.current || retryAbort.signal.aborted) {
+                  retryListenerRef.current = false
+                  return
+                }
                 try {
-                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
+                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`, { signal: retryAbort.signal })
                   if (!statusRes.ok) return
                   const statusData = await statusRes.json() as { lastCommandError?: string }
-                  if (statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                  if (mountedRef.current && statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
                     setMessagesSync((prev) => [
                       ...prev,
                       {
@@ -447,7 +489,7 @@ export function useChat(options: UseChatOptions = {}) {
                       },
                     ])
                   }
-                } catch { /* silent */ } finally {
+                } catch { /* silent — includes AbortError */ } finally {
                   retryListenerRef.current = false
                 }
               }
@@ -519,13 +561,19 @@ export function useChat(options: UseChatOptions = {}) {
 
             if (typeof window !== 'undefined' && !retryListenerRef.current) {
               retryListenerRef.current = true
+              const retryAbort = new AbortController()
               const checkResult = async () => {
                 await new Promise<void>((r) => setTimeout(r, 3000))
+                // Abort and skip state update if the component unmounted while waiting.
+                if (!mountedRef.current || retryAbort.signal.aborted) {
+                  retryListenerRef.current = false
+                  return
+                }
                 try {
-                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
+                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`, { signal: retryAbort.signal })
                   if (!statusRes.ok) return
                   const statusData = await statusRes.json() as { lastCommandError?: string }
-                  if (statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                  if (mountedRef.current && statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
                     setMessagesSync((prev) => [
                       ...prev,
                       {
@@ -536,7 +584,7 @@ export function useChat(options: UseChatOptions = {}) {
                       },
                     ])
                   }
-                } catch { /* silent */ } finally {
+                } catch { /* silent — includes AbortError */ } finally {
                   retryListenerRef.current = false
                 }
               }

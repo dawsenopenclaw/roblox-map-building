@@ -258,13 +258,15 @@ HYBRID RULE:
 
 
 // Extract ```lua code blocks from AI response text
-function extractLuauCode(text: string): string | null {
+function extractLuauCode(text: string | null | undefined): string | null {
+  if (!text) return null
   const match = text.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
   return match?.[1]?.trim() || null
 }
 
 // Strip code blocks from response — user only sees friendly text
-function stripCodeBlocks(text: string): string {
+function stripCodeBlocks(text: string | null | undefined): string {
+  if (!text) return ''
   return text
     .replace(/```(?:lua|luau)?\s*\n[\s\S]*?```/g, '')
     .replace(/\\n/g, '\n')           // fix literal \n from some models
@@ -274,7 +276,8 @@ function stripCodeBlocks(text: string): string {
 }
 
 // Extract [SUGGESTIONS] from response and return them separately
-function extractSuggestions(text: string): { message: string; suggestions: string[] } {
+function extractSuggestions(text: string | null | undefined): { message: string; suggestions: string[] } {
+  if (!text) return { message: '', suggestions: [] }
   const parts = text.split('[SUGGESTIONS]')
   if (parts.length < 2) return { message: text.trim(), suggestions: [] }
   const message = parts[0].trim()
@@ -1529,7 +1532,7 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
   {
     patterns: [
       /\b(light(?:ing)?|fog|sky|ambient|sunrise|sunset|atmosphere|bloom|color.?correction|haze|overcast|dusk|dawn|noon|midday|neon.?city|horror.?lighting|fantasy.?lighting|tropical.?lighting|night.?lighting|dark.?mode)\b/i,
-      /\b(make it (night|day|dark|bright|sunset|sunrise|foggy|overcast|warm|cool|moody))\b/i,
+      /\bmake it (night|day|dark|bright|sunset|sunrise|foggy|overcast|warm|cool|moody)\b/i,
       /\b(sunset|sunrise|night|overcast|tropical|horror|fantasy|neon.?city)\s*(lighting|preset|mode|look|vibe|feel|scene|atmosphere)\b/i,
       /\b(add|set|change|update|apply)\s+(the\s+)?(lighting|atmosphere|sky|fog|bloom|haze|ambient)\b/i,
     ],
@@ -3707,11 +3710,19 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               streamErr instanceof Anthropic.RateLimitError
                 ? 'Rate limit reached. Please wait a moment and try again.'
                 : buildErrorResponse(streamErr, intent)
-            await writer.write(
-              enc.encode('\x00' + JSON.stringify({ __meta: true, error: errMsg })),
-            )
+            try {
+              await writer.write(
+                enc.encode('\x00' + JSON.stringify({ __meta: true, error: errMsg })),
+              )
+            } catch {
+              // writer already closed by client abort — ignore
+            }
           } finally {
-            await writer.close()
+            try {
+              await writer.close()
+            } catch {
+              // already closed — ignore
+            }
           }
         })()
 
