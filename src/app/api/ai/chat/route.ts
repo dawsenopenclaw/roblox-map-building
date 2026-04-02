@@ -1396,7 +1396,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
-  console.log('[chat] Anthropic client available:', !!anthropic, 'key present:', !!process.env.ANTHROPIC_API_KEY)
+  // Debug removed — key is present, just needs credits or Gemini fallback
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
   if (anthropic) {
     // Deduct tokens before calling the AI — conversation is FREE, builds cost tokens
@@ -1476,8 +1476,46 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { status: 429 },
         )
       }
-      // Any other API error — log and fall through to demo responses
+      // Any other API error — log and try Gemini fallback
       console.error('[chat] Anthropic API error:', err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  // ── Gemini Flash fallback (free tier — works when Anthropic has no credits) ──
+  const geminiKey = process.env.GEMINI_API_KEY
+  if (geminiKey) {
+    try {
+      const maxTokens = intent === 'chat' || intent === 'conversation' ? 512 : intent === 'fullgame' ? 4096 : 2048
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT }] },
+            contents: [{ role: 'user', parts: [{ text: message }] }],
+            generationConfig: { maxOutputTokens: maxTokens },
+          }),
+        },
+      )
+      if (geminiRes.ok) {
+        type GeminiResponse = {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
+          usageMetadata?: { totalTokenCount?: number }
+        }
+        const geminiData = await geminiRes.json() as GeminiResponse
+        const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+        if (text) {
+          return NextResponse.json({
+            message: text,
+            tokensUsed: tokenCost,
+            intent,
+            model: 'gemini-2.0-flash',
+          } satisfies ChatResponsePayload & { model: string })
+        }
+      }
+    } catch (err) {
+      console.error('[chat] Gemini fallback error:', err instanceof Error ? err.message : String(err))
     }
   }
 
