@@ -49,6 +49,9 @@ import { ObjectList } from '@/components/editor/ObjectList'
 import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
 import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
+import { BuildHistoryPanel, BuildTimeline } from '@/components/editor/BuildHistoryPanel'
+import type { BuildSnapshot } from '@/components/editor/BuildHistoryPanel'
+import { useBuildHistory } from '@/components/editor/BuildHistory'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -105,7 +108,7 @@ interface ModelOption {
   badge?: string
 }
 
-type PanelId = 'projects' | 'assets' | 'dna' | 'tokens' | 'settings' | null
+type PanelId = 'projects' | 'assets' | 'dna' | 'tokens' | 'settings' | 'history' | null
 
 // ─── Studio connection types ───────────────────────────────────────────────────
 
@@ -213,6 +216,7 @@ const PANEL_TITLE: Record<NonNullable<PanelId>, string> = {
   dna:      'Game DNA',
   tokens:   'Tokens',
   settings: 'Settings',
+  history:  'Build History',
 }
 
 const DEMO_GAMES: RobloxGame[] = [
@@ -2550,6 +2554,12 @@ export function EditorClient() {
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
+
+  // ── Mobile tab state ────────────────────────────────────────────────────────
+  const [mobileTab, setMobileTab] = useState<'chat' | 'preview'>('chat')
+
+  // ── Build history ────────────────────────────────────────────────────────────
+  const { entries: buildHistory } = useBuildHistory()
 
   // Studio state — must be declared before submit so the callback closes over them
   const [studioStatus, setStudioStatus] = useState<StudioStatus>({ connected: false })

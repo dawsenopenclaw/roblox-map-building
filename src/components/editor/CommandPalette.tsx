@@ -176,6 +176,14 @@ export function CommandPalette({ isOpen, onClose, onCommand }: CommandPalettePro
     activeEl?.scrollIntoView({ block: 'nearest' })
   }, [activeIndex])
 
+  const handleSelect = useCallback(
+    (cmd: Command) => {
+      onCommand(cmd.prompt)
+      onClose()
+    },
+    [onCommand, onClose],
+  )
+
   // ── Keyboard navigation ──
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -200,15 +208,7 @@ export function CommandPalette({ isOpen, onClose, onCommand }: CommandPalettePro
           break
       }
     },
-    [flatList, activeIndex, onClose],
-  )
-
-  const handleSelect = useCallback(
-    (cmd: Command) => {
-      onCommand(cmd.prompt)
-      onClose()
-    },
-    [onCommand, onClose],
+    [flatList, activeIndex, onClose, handleSelect],
   )
 
   // Reset active index when results change

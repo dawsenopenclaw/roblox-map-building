@@ -32,6 +32,10 @@ export interface ChatMessage {
   tokensUsed?: number
   timestamp: Date
   model?: string
+  suggestions?: string[]
+  intent?: string
+  hasCode?: boolean
+  streaming?: boolean
 }
 
 export const MODELS: ModelOption[] = [
@@ -75,6 +79,66 @@ function getDemoResponse(prompt: string): string {
   return DEMO_RESPONSES.default
 }
 
+// ─── Stream reader ─────────────────────────────────────────────────────────────
+//
+// The /api/ai/chat route (when stream:true) sends raw UTF-8 text chunks, then
+// a final sentinel chunk prefixed with \x00 that contains JSON metadata:
+//   { __meta: true, suggestions, intent, hasCode, tokensUsed, ... }
+//
+// This function reads the stream and calls onChunk for each text piece, then
+// returns the parsed metadata when the stream ends.
+
+interface StreamMeta {
+  suggestions?: string[]
+  intent?: string
+  hasCode?: boolean
+  tokensUsed?: number
+  executedInStudio?: boolean
+  model?: string
+  error?: string
+}
+
+async function readStream(
+  body: ReadableStream<Uint8Array>,
+  onChunk: (text: string) => void,
+): Promise<StreamMeta> {
+  const reader = body.getReader()
+  const dec = new TextDecoder()
+  let metaResult: StreamMeta = {}
+  let leftover = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const raw = leftover + dec.decode(value, { stream: true })
+      leftover = ''
+
+      // The sentinel is a \x00-prefixed JSON blob. It may arrive mid-buffer or
+      // at the end, so split on \x00 once and handle both halves.
+      const sentinelIdx = raw.indexOf('\x00')
+      if (sentinelIdx !== -1) {
+        const textPart = raw.slice(0, sentinelIdx)
+        const jsonPart = raw.slice(sentinelIdx + 1)
+        if (textPart) onChunk(textPart)
+        try {
+          metaResult = JSON.parse(jsonPart) as StreamMeta
+        } catch {
+          // malformed meta — ignore, keep defaults
+        }
+        break
+      }
+
+      onChunk(raw)
+    }
+  } finally {
+    try { reader.cancel() } catch { /* ignore */ }
+  }
+
+  return metaResult
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 interface StudioContextForChat {
@@ -103,12 +167,25 @@ export function useChat(options: UseChatOptions = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryListenerRef = useRef(false)
+  // Ref used to read current messages inside async callbacks without stale closure
+  const messagesRef = useRef<ChatMessage[]>([])
+
+  // Keep ref in sync with state
+  const setMessagesSync = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
+    setMessages((prev) => {
+      const next = updater(prev)
+      messagesRef.current = next
+      return next
+    })
+  }, [])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -118,6 +195,7 @@ export function useChat(options: UseChatOptions = {}) {
       setInput('')
       setImageFile(null)
       setLoading(true)
+      setSuggestions([])
 
       const userMsg: ChatMessage = {
         id: uid(),
@@ -125,19 +203,20 @@ export function useChat(options: UseChatOptions = {}) {
         content: trimmed,
         timestamp: new Date(),
       }
+      const statusMsgId = uid()
       const statusMsg: ChatMessage = {
-        id: uid(),
+        id: statusMsgId,
         role: 'status',
         content: 'ForjeAI is thinking...',
         timestamp: new Date(),
       }
 
-      setMessages((prev) => [...prev, userMsg, statusMsg])
+      setMessagesSync((prev) => [...prev, userMsg, statusMsg])
 
       // Guest limit
       if (!user && guestMessageCount >= GUEST_MESSAGE_LIMIT) {
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== statusMsg.id),
+        setMessagesSync((prev) => [
+          ...prev.filter((m) => m.id !== statusMsgId),
           { id: uid(), role: 'signup', content: '', timestamp: new Date() },
         ])
         setLoading(false)
@@ -169,7 +248,11 @@ export function useChat(options: UseChatOptions = {}) {
         const isBuildMeshIntent = BUILD_KEYWORDS.some((kw) => lowerTrimmed.includes(kw))
 
         // Include Studio context so AI knows camera position + nearby objects
-        const chatBody: Record<string, unknown> = { message: trimmed, model: selectedModel }
+        const chatBody: Record<string, unknown> = {
+          message: trimmed,
+          model: selectedModel,
+          stream: true,
+        }
         if (studioConnected && studioContext) {
           chatBody.studioContext = studioContext
         }
@@ -207,8 +290,8 @@ export function useChat(options: UseChatOptions = {}) {
         if (chatRes.status === 402) {
           const errData = await chatRes.json() as { error?: string }
           if (errData.error === 'insufficient_tokens') {
-            setMessages((prev) => [
-              ...prev.filter((m) => m.id !== statusMsg.id),
+            setMessagesSync((prev) => [
+              ...prev.filter((m) => m.id !== statusMsgId),
               { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
             ])
             setLoading(false)
@@ -218,93 +301,222 @@ export function useChat(options: UseChatOptions = {}) {
 
         if (!chatRes.ok) throw new Error(`API error ${chatRes.status}`)
 
-        const data = await chatRes.json() as { message?: string; tokensUsed?: number; buildResult?: { luauCode?: string } }
-        const responseText = data.message ?? getDemoResponse(trimmed)
-        const tokensUsed = data.tokensUsed ?? estimateTokens(trimmed)
+        // ── Streaming response path ───────────────────────────────────────────
+        // The API sends text chunks then a \x00{meta} sentinel.
+        // We create the assistant message immediately (empty) then append chunks.
 
-        setTotalTokens((prev) => prev + tokensUsed)
+        if (chatRes.body) {
+          const assistantMsgId = uid()
 
-        const msgs: ChatMessage[] = [
-          ...messages.filter((m) => m.id !== statusMsg.id),
-        ]
-
-        setMessages((prev) => {
-          const without = prev.filter((m) => m.id !== statusMsg.id)
-          const assistantMsg: ChatMessage = {
-            id: uid(),
-            role: 'assistant',
-            content: responseText,
-            tokensUsed,
-            timestamp: new Date(),
-            model: selectedModel,
-          }
-          const result: ChatMessage[] = [...without, assistantMsg]
-
-          if (meshData) {
-            result.push({
-              id: uid(),
-              role: 'system',
-              content: meshData.status === 'complete'
-                ? '3D mesh generated. MeshPart Luau ready — check Assets to copy it.'
-                : meshData.status === 'pending'
-                ? `3D mesh generating (task ${meshData.taskId ?? 'unknown'}). Check back shortly.`
-                : '3D mesh: demo mode — add MESHY_API_KEY to generate real meshes.',
+          // Insert the streaming assistant message (empty content to start)
+          setMessagesSync((prev) => [
+            ...prev.filter((m) => m.id !== statusMsgId),
+            {
+              id: assistantMsgId,
+              role: 'assistant',
+              content: '',
               timestamp: new Date(),
-            })
-          }
+              model: selectedModel,
+              streaming: true,
+            },
+          ])
 
-          return result
-        })
+          setStreaming(true)
 
-        // Forward Luau to Studio if connected
-        let luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
-
-        // If no explicit buildResult, extract Lua code blocks from the AI's text response
-        if (!luauCode && responseText) {
-          const codeBlockMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
-          if (codeBlockMatch?.[1]?.trim()) {
-            luauCode = codeBlockMatch[1].trim()
-          }
-        }
-
-        if (studioConnected && luauCode && onBuildComplete) {
-          onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
-
-          // Error recovery: listen for command_result errors and auto-retry
-          if (typeof window !== 'undefined' && !retryListenerRef.current) {
-            retryListenerRef.current = true
-            const checkResult = async () => {
-              // Wait for plugin to execute (up to 5s)
-              await new Promise(r => setTimeout(r, 3000))
-              try {
-                const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
-                if (!statusRes.ok) return
-                const statusData = await statusRes.json() as Record<string, unknown>
-                // Check if last command failed via session's latest state
-                const latestState = statusData as { lastCommandError?: string }
-                if (latestState.lastCommandError && latestState.lastCommandError.includes('ERROR')) {
-                  // Auto-send error back to AI for fix (one retry only)
-                  const fixPrompt = `The code you just generated had an error:\n${latestState.lastCommandError}\n\nPlease fix the code and try again. Generate corrected Lua code.`
-                  // Trigger a follow-up message
-                  setMessages(prev => [...prev, {
-                    id: uid(),
-                    role: 'system',
-                    content: `Build error detected — auto-fixing: ${latestState.lastCommandError}`,
-                    timestamp: new Date(),
-                  }])
-                }
-              } catch { /* silent */ } finally {
-                retryListenerRef.current = false
+          const meta = await readStream(chatRes.body, (chunk) => {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === assistantMsgId)
+              if (idx === -1) return prev
+              const updated = [...prev]
+              updated[idx] = {
+                ...updated[idx],
+                content: updated[idx].content + chunk,
               }
+              messagesRef.current = updated
+              return updated
+            })
+          })
+
+          setStreaming(false)
+
+          const tokensUsed = meta.tokensUsed ?? estimateTokens(trimmed)
+          setTotalTokens((prev) => prev + tokensUsed)
+
+          if (meta.suggestions && meta.suggestions.length > 0) {
+            setSuggestions(meta.suggestions)
+          }
+
+          // Finalize the assistant message with metadata
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            if (idx === -1) return prev
+            const updated = [...prev]
+            const finalContent = updated[idx].content || getDemoResponse(trimmed)
+            updated[idx] = {
+              ...updated[idx],
+              content: finalContent,
+              streaming: false,
+              tokensUsed,
+              suggestions: meta.suggestions,
+              intent: meta.intent,
+              hasCode: meta.hasCode,
             }
-            void checkResult()
+            // Append mesh result message if present
+            const result: ChatMessage[] = [...updated]
+            if (meshData) {
+              result.push({
+                id: uid(),
+                role: 'system',
+                content: meshData.status === 'complete'
+                  ? '3D mesh generated. MeshPart Luau ready — check Assets to copy it.'
+                  : meshData.status === 'pending'
+                  ? `3D mesh generating (task ${meshData.taskId ?? 'unknown'}). Check back shortly.`
+                  : '3D mesh: demo mode — add MESHY_API_KEY to generate real meshes.',
+                timestamp: new Date(),
+              })
+            }
+            messagesRef.current = result
+            return result
+          })
+
+          // Forward Luau to Studio if connected
+          const responseText = messagesRef.current.find((m) => m.id === assistantMsgId)?.content ?? ''
+          let luauCode: string | null = null
+
+          if (meta.hasCode) {
+            const codeBlockMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            if (codeBlockMatch?.[1]?.trim()) {
+              luauCode = codeBlockMatch[1].trim()
+            }
+          }
+
+          luauCode = luauCode ?? meshData?.luauCode ?? null
+
+          if (studioConnected && luauCode && onBuildComplete) {
+            onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
+
+            if (typeof window !== 'undefined' && !retryListenerRef.current) {
+              retryListenerRef.current = true
+              const checkResult = async () => {
+                await new Promise<void>((r) => setTimeout(r, 3000))
+                try {
+                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
+                  if (!statusRes.ok) return
+                  const statusData = await statusRes.json() as { lastCommandError?: string }
+                  if (statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                    setMessagesSync((prev) => [
+                      ...prev,
+                      {
+                        id: uid(),
+                        role: 'system',
+                        content: `Build error detected — auto-fixing: ${statusData.lastCommandError}`,
+                        timestamp: new Date(),
+                      },
+                    ])
+                  }
+                } catch { /* silent */ } finally {
+                  retryListenerRef.current = false
+                }
+              }
+              void checkResult()
+            }
+          }
+        } else {
+          // ── Non-streaming fallback (body is null / custom key) ────────────────
+          const data = await chatRes.json() as {
+            message?: string
+            tokensUsed?: number
+            buildResult?: { luauCode?: string }
+            suggestions?: string[]
+            intent?: string
+            hasCode?: boolean
+          }
+          const responseText = data.message ?? getDemoResponse(trimmed)
+          const tokensUsed = data.tokensUsed ?? estimateTokens(trimmed)
+
+          setTotalTokens((prev) => prev + tokensUsed)
+
+          if (data.suggestions && data.suggestions.length > 0) {
+            setSuggestions(data.suggestions)
+          }
+
+          setMessagesSync((prev) => {
+            const without = prev.filter((m) => m.id !== statusMsgId)
+            const assistantMsg: ChatMessage = {
+              id: uid(),
+              role: 'assistant',
+              content: responseText,
+              tokensUsed,
+              timestamp: new Date(),
+              model: selectedModel,
+              suggestions: data.suggestions,
+              intent: data.intent,
+              hasCode: data.hasCode,
+              streaming: false,
+            }
+            const result: ChatMessage[] = [...without, assistantMsg]
+
+            if (meshData) {
+              result.push({
+                id: uid(),
+                role: 'system',
+                content: meshData.status === 'complete'
+                  ? '3D mesh generated. MeshPart Luau ready — check Assets to copy it.'
+                  : meshData.status === 'pending'
+                  ? `3D mesh generating (task ${meshData.taskId ?? 'unknown'}). Check back shortly.`
+                  : '3D mesh: demo mode — add MESHY_API_KEY to generate real meshes.',
+                timestamp: new Date(),
+              })
+            }
+
+            return result
+          })
+
+          let luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
+
+          if (!luauCode && responseText) {
+            const codeBlockMatch = responseText.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            if (codeBlockMatch?.[1]?.trim()) {
+              luauCode = codeBlockMatch[1].trim()
+            }
+          }
+
+          if (studioConnected && luauCode && onBuildComplete) {
+            onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
+
+            if (typeof window !== 'undefined' && !retryListenerRef.current) {
+              retryListenerRef.current = true
+              const checkResult = async () => {
+                await new Promise<void>((r) => setTimeout(r, 3000))
+                try {
+                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`)
+                  if (!statusRes.ok) return
+                  const statusData = await statusRes.json() as { lastCommandError?: string }
+                  if (statusData.lastCommandError && statusData.lastCommandError.includes('ERROR')) {
+                    setMessagesSync((prev) => [
+                      ...prev,
+                      {
+                        id: uid(),
+                        role: 'system',
+                        content: `Build error detected — auto-fixing: ${statusData.lastCommandError}`,
+                        timestamp: new Date(),
+                      },
+                    ])
+                  }
+                } catch { /* silent */ } finally {
+                  retryListenerRef.current = false
+                }
+              }
+              void checkResult()
+            }
           }
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Unknown error'
         console.error('[ForjeAI] Chat error:', errMsg)
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== statusMsg.id),
+        setStreaming(false)
+        setMessagesSync((prev) => [
+          ...prev.filter((m) => m.id !== statusMsgId),
           {
             id: uid(),
             role: 'assistant',
@@ -318,7 +530,7 @@ export function useChat(options: UseChatOptions = {}) {
         setTimeout(() => textareaRef.current?.focus(), 50)
       }
     },
-    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, messages],
+    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync],
   )
 
   return {
@@ -326,6 +538,8 @@ export function useChat(options: UseChatOptions = {}) {
     input,
     setInput,
     loading,
+    streaming,
+    suggestions,
     sendMessage,
     selectedModel,
     setSelectedModel,

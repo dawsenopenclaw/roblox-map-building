@@ -62,7 +62,7 @@ export async function checkGenerationLimit(
 
   // Atomic pipeline: get current count without incrementing
   // We read first, gate, then the caller increments after success via trackCost
-  const raw = await redis.get(key)
+  const raw = await redis!.get(key)
   const current = raw === null ? 0 : parseInt(raw, 10)
 
   if (current >= limit) {
@@ -93,7 +93,7 @@ export async function incrementGenerationCounter(
 
   const redis   = getRedis()
   const key     = redisKey(userId, operation)
-  const pipe    = redis.pipeline()
+  const pipe    = redis!.pipeline()
 
   pipe.incr(key)
   pipe.expire(key, REDIS_TTL_SECS)

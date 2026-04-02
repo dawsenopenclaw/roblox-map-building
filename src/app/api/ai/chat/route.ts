@@ -219,6 +219,10 @@ type IntentKey =
   | 'marketplace'
   | 'analysis'
   | 'chat'
+  | 'undo'
+  | 'help'
+  | 'publish'
+  | 'multiscript'
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
@@ -243,6 +247,10 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   fullgame: 50,     // Full game generation
   mesh: 100,        // 3D mesh generation (Meshy API)
   texture: 50,      // Texture generation (Fal.ai)
+  undo: 0,          // Undo last action (free)
+  help: 0,          // Help/info request (free)
+  publish: 5,       // Publish game
+  multiscript: 30,  // Multiple scripts generation
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
@@ -1367,6 +1375,10 @@ interface ChatResponsePayload {
   message: string
   tokensUsed: number
   intent: IntentKey
+  /** Whether the AI response contained a Luau code block */
+  hasCode?: boolean
+  /** Clickable next-action suggestions parsed from [SUGGESTIONS] block */
+  suggestions?: string[]
   meshResult?: {
     meshUrl: string | null
     thumbnailUrl: string | null
@@ -1389,6 +1401,62 @@ interface ChatResponsePayload {
   }
   /** Auto-triggered MCP tool result when Claude response implies generation */
   mcpResult?: McpCallResult
+}
+
+// ─── History types and helpers ────────────────────────────────────────────────
+
+interface HistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// If history exceeds 30 messages, summarize the oldest turns into a compact block
+// so we don't burn tokens on verbatim early context.
+function compressHistory(history: HistoryMessage[]): HistoryMessage[] {
+  const KEEP_TAIL = 15
+  const THRESHOLD = 30
+  if (history.length <= THRESHOLD) return history
+
+  const splitPoint = history.length - KEEP_TAIL
+  const oldMessages = history.slice(0, splitPoint)
+  const recentMessages = history.slice(splitPoint)
+
+  const lines: string[] = ['[Earlier conversation summary]']
+  for (const msg of oldMessages) {
+    if (msg.role === 'assistant') {
+      const buildMatch = msg.content.match(/✓s+(.{0,60})/)
+      if (buildMatch) lines.push('- Built: ' + buildMatch[1].trim())
+    } else if (msg.role === 'user' && msg.content.length > 10) {
+      lines.push('- User: ' + msg.content.slice(0, 60).replace(/\s+/g, ' ').trim())
+    }
+  }
+  const summary = lines.join('\n')
+  return [
+    { role: 'user' as const, content: summary },
+    { role: 'assistant' as const, content: 'Got it — I have context from our earlier work. Continuing.' },
+    ...recentMessages,
+  ]
+}
+
+// User-friendly error messages with context-specific next steps
+function buildErrorResponse(err: unknown, intent: IntentKey): string {
+  const isRateLimit = err instanceof Error && /rate.?limit|429/i.test(err.message)
+  const isTimeout = err instanceof Error && /timeout|timed out/i.test(err.message)
+  const isQuota = err instanceof Error && /quota|billing|402|credit/i.test(err.message)
+
+  if (isRateLimit) return 'Hit a rate limit — wait 30 seconds and try again.'
+  if (isTimeout) return 'Request timed out. Try a shorter or simpler prompt.'
+  if (isQuota) return 'AI credits exhausted. Check your ANTHROPIC_API_KEY or use a Gemini/Groq fallback key.'
+
+  const hints: Partial<Record<IntentKey, string>> = {
+    mesh: 'Try a simpler mesh description, or check that MESHY_API_KEY is set.',
+    texture: 'Try a different texture description, or check that FAL_API_KEY is set.',
+    terrain: 'Try a simpler terrain request first to verify the connection.',
+    building: 'Try a more specific request like "build a small wooden cabin".',
+    fullgame: 'Break it down — ask for the map first, then scripts separately.',
+    script: 'Describe what the script should do step by step.',
+  }
+  return 'Something went wrong. ' + (hints[intent] ?? 'Try rephrasing your request.')
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -1438,8 +1506,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const message = parsed.data.message.trim()
-  // Full conversation history — AI remembers all builds, code, positions
-  const history = (parsed.data.history ?? []).slice(-50)
+  const wantsStream = (parsed.data as Record<string, unknown>).stream === true
+
+  // Merge history sources: `messages` is the frontend alias, `history` is legacy.
+  // Accept up to the last 20 turns from whichever field the client sends.
+  const rawHistory: HistoryMessage[] = (
+    ((parsed.data as Record<string, unknown>).messages ??
+      parsed.data.history ??
+      []) as HistoryMessage[]
+  ).slice(-20)
+
+  // Auto-fix loop: Studio plugin sends the execution error back here so the AI
+  // can generate a corrected script without the user having to describe the failure.
+  const lastError = (
+    (parsed.data as Record<string, unknown>).lastError as string | undefined
+  )?.trim()
+  if (lastError) {
+    rawHistory.push({
+      role: 'user' as const,
+      content:
+        '[STUDIO EXECUTION ERROR — auto-injected by plugin]\n' +
+        'The last script I ran in Roblox Studio failed:\n```\n' +
+        lastError +
+        '\n```\nPlease output a corrected version.',
+    })
+    rawHistory.push({
+      role: 'assistant' as const,
+      content: 'Got it — I can see the error. Let me fix that.',
+    })
+  }
+
+  // Full conversation history with token-aware compression (older turns summarized)
+  const history = compressHistory(rawHistory)
   const sessionId = req.headers.get('x-studio-session') ?? parsed.data.gameContext?.sessionId ?? null
 
   const intent = detectIntent(message)
@@ -1459,51 +1557,82 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let cameraContext = ''
 
-  // Build comprehensive context from request body
+  // Rich Studio context block — formatted so the AI can reference camera position,
+  // selected objects, scene tree, and nearby objects when generating Luau code.
   if (bodyStudioCtx?.camera) {
     const c = bodyStudioCtx.camera
     const parts: string[] = []
 
-    parts.push(`STUDIO CONTEXT (live from Roblox Studio):`)
-    parts.push(`Camera: position (${c.posX}, ${c.posY}, ${c.posZ}), looking at (${c.lookX}, ${c.lookY}, ${c.lookZ})`)
-    if (bodyStudioCtx.groundY !== undefined) parts.push(`Ground level: Y=${bodyStudioCtx.groundY}`)
-    parts.push(`Workspace: ${bodyStudioCtx.partCount ?? '?'} parts, ${bodyStudioCtx.modelCount ?? '?'} models, ${bodyStudioCtx.lightCount ?? '?'} lights`)
+    parts.push(`=== LIVE STUDIO CONTEXT (from Roblox Studio plugin) ===`)
+    parts.push(``)
+    parts.push(`CAMERA`)
+    parts.push(`  Position  : (${c.posX.toFixed(1)}, ${c.posY.toFixed(1)}, ${c.posZ.toFixed(1)})`)
+    parts.push(`  LookTarget: (${c.lookX.toFixed(1)}, ${c.lookY.toFixed(1)}, ${c.lookZ.toFixed(1)})`)
+    if (bodyStudioCtx.groundY !== undefined) parts.push(`  Ground Y  : ${bodyStudioCtx.groundY}`)
+    parts.push(``)
+    parts.push(`WORKSPACE STATS`)
+    parts.push(`  Parts: ${bodyStudioCtx.partCount ?? '?'} | Models: ${bodyStudioCtx.modelCount ?? '?'} | Lights: ${bodyStudioCtx.lightCount ?? '?'}`)
 
     // Selection — what user is actively working with
     const sel = bodyStudioCtx.selection ?? []
+    parts.push(``)
     if (sel.length > 0) {
-      parts.push(`\nSELECTED (${sel.length} object${sel.length > 1 ? 's' : ''} — user is working on these):`)
+      parts.push(`SELECTED OBJECTS (${sel.length}) — user is actively working on these:`)
       for (const s of sel.slice(0, 10)) {
-        const props = [s.position && `pos(${s.position})`, s.size && `size(${s.size})`, s.material, s.color && `rgb(${s.color})`].filter(Boolean).join(' ')
-        parts.push(`  ${s.name} (${s.className}) ${props} [${s.path}]`)
+        const props = [
+          s.position ? `pos(${s.position})` : null,
+          s.size ? `size(${s.size})` : null,
+          s.material ?? null,
+          s.color ? `rgb(${s.color})` : null,
+          s.transparency !== undefined && s.transparency > 0 ? `transparency=${s.transparency}` : null,
+          s.anchored !== undefined ? (s.anchored ? 'anchored' : 'unanchored') : null,
+        ]
+          .filter(Boolean)
+          .join(' | ')
+        parts.push(`  • ${s.name} (${s.className}) — ${props} [path: ${s.path}]`)
       }
+    } else {
+      parts.push(`SELECTED OBJECTS: none`)
     }
 
     // Scene tree — top-level workspace structure
     const tree = bodyStudioCtx.sceneTree ?? []
     if (tree.length > 0) {
-      parts.push(`\nSCENE TREE (${tree.length} top-level objects in workspace):`)
+      parts.push(``)
+      parts.push(`SCENE TREE — top-level workspace objects (${tree.length} total):`)
       for (const t of tree.slice(0, 40)) {
-        const info = [t.position && `at(${t.position})`, t.size && `size(${t.size})`, t.childCount !== undefined && `${t.childCount} children`].filter(Boolean).join(' ')
-        parts.push(`  ${t.name} (${t.className}) ${info}`)
+        const info = [
+          t.position ? `at(${t.position})` : null,
+          t.size ? `size(${t.size})` : null,
+          t.childCount !== undefined ? `${t.childCount} children` : null,
+        ]
+          .filter(Boolean)
+          .join(' | ')
+        parts.push(`  • ${t.name} (${t.className}) ${info}`)
       }
     }
 
-    // Nearby parts — 100 closest objects for spatial awareness
+    // Nearby parts — closest objects for spatial awareness
     const nearby = bodyStudioCtx.nearbyParts ?? []
     if (nearby.length > 0) {
-      parts.push(`\nNEARBY OBJECTS (${nearby.length} within 250 studs, sorted by distance):`)
+      parts.push(``)
+      parts.push(`NEARBY OBJECTS — ${nearby.length} within 250 studs (sorted by distance):`)
       for (const p of nearby.slice(0, 100)) {
-        parts.push(`  ${p.name} (${p.className}) at(${p.position}) size(${p.size}) ${p.material}${p.color ? ` rgb(${p.color})` : ''}${p.parent ? ` in:${p.parent}` : ''}`)
+        const colorStr = p.color ? ` | rgb(${p.color})` : ''
+        const parentStr = p.parent ? ` | in: ${p.parent}` : ''
+        parts.push(`  • ${p.name} (${p.className}) at(${p.position}) size(${p.size}) ${p.material}${colorStr}${parentStr}`)
       }
     }
 
-    parts.push(`\nBUILD RULES:`)
-    parts.push(`- Place new objects in front of camera: CFrame.new(${c.lookX}, ${bodyStudioCtx.groundY ?? c.posY}, ${c.lookZ})`)
-    parts.push(`- If user says "in front of me" use workspace.CurrentCamera.CFrame * CFrame.new(0, 0, -20)`)
-    parts.push(`- If user references a selected object, modify THAT object by path`)
-    parts.push(`- Match existing material/color palette when adding to a scene`)
-    parts.push(`- Always anchor parts, always wrap in ChangeHistoryService:SetWaypoint()`)
+    parts.push(``)
+    parts.push(`BUILD PLACEMENT RULES (follow these exactly):`)
+    parts.push(`  1. New objects → base position: (${c.lookX.toFixed(1)}, ${(bodyStudioCtx.groundY ?? c.posY).toFixed(1)}, ${c.lookZ.toFixed(1)})`)
+    parts.push(`  2. "in front of me" → workspace.CurrentCamera.CFrame * CFrame.new(0, 0, -20)`)
+    parts.push(`  3. If user references a selected object → modify that object by its path above`)
+    parts.push(`  4. Match existing material/color palette from NEARBY OBJECTS`)
+    parts.push(`  5. Always Anchored=true, always wrap in ChangeHistoryService recording`)
+    parts.push(`  6. Ground placement: Y = ${bodyStudioCtx.groundY ?? 'unknown'} + objectHeight/2`)
+    parts.push(`=== END STUDIO CONTEXT ===`)
 
     cameraContext = '\n\n' + parts.join('\n')
   }
@@ -1515,15 +1644,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const studioSession = await getSess(sessionId)
       if (studioSession?.camera) {
         const c = studioSession.camera
-        const nearby = (studioSession as Record<string, unknown>).nearbyParts as { name: string; className: string; position: string }[] | undefined
+        const nearby = (studioSession as unknown as Record<string, unknown>).nearbyParts as { name: string; className: string; position: string }[] | undefined
         let nearbyStr = ''
         if (nearby && nearby.length > 0) {
           nearbyStr = '\n- Nearby objects:\n' + nearby.slice(0, 20).map(p =>
             `  ${p.name} (${p.className}) at (${p.position})`
           ).join('\n')
         }
-        const groundY = (studioSession as Record<string, unknown>).groundY as number | undefined
-        const selected = (studioSession as Record<string, unknown>).selected as Array<Record<string, unknown>> | undefined
+        const groundY = (studioSession as unknown as Record<string, unknown>).groundY as number | undefined
+        const selected = (studioSession as unknown as Record<string, unknown>).selected as Array<Record<string, unknown>> | undefined
         let selectedStr = ''
         if (selected && selected.length > 0) {
           selectedStr = '\n- User has selected: ' + selected.map(s => `${s.n} at (${(s.p as number[])?.join(',')})`).join(', ')
@@ -1546,7 +1675,7 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use groundY as th
         type SnapObj      = { n: string; cls?: string; p: [number, number, number]; s?: [number, number, number]; m?: string; c?: [number, number, number] }
         type SnapBounds   = { min: [number, number, number]; max: [number, number, number] }
         type SnapSpawn    = { n: string; p: [number, number, number] }
-        type SnapStats    = { total?: number; parts?: number; models?: number; totalInstances?: number; totalMeshParts?: number; totalUnions?: number }
+        type SnapStats    = { total?: number; parts?: number; models?: number; totalInstances?: number; totalParts?: number; totalMeshParts?: number; totalUnions?: number }
         type SnapLighting = { time?: number; brightness?: number; fogEnd?: number; fogStart?: number; technology?: string; globalShadows?: boolean }
         type SnapAtmo     = { density?: number; haze?: number; color?: [number, number, number] }
         type SnapFx       = { type: string; intensity?: number; size?: number; threshold?: number; contrast?: number; saturation?: number }
@@ -1653,7 +1782,7 @@ IMPORTANT: When placing builds, position them NEAR the camera. Use groundY as th
           ? `gravity=${wsSettings.gravity ?? '?'}, streaming=${wsSettings.streamingEnabled ? 'on(r=' + wsSettings.streamingTargetRadius + ')' : 'off'}`
           : 'unknown'
         const instanceStr = stats.totalInstances != null
-          ? `${stats.totalInstances} total (${stats.totalParts ?? stats.parts ?? 0} parts, ${stats.totalMeshParts ?? 0} meshes, ${stats.totalUnions ?? 0} unions, ${stats.models ?? 0} models)`
+          ? `${stats.totalInstances} total (${stats.parts ?? 0} parts, ${stats.totalMeshParts ?? 0} meshes, ${stats.totalUnions ?? 0} unions, ${stats.models ?? 0} models)`
           : `${stats.total ?? objects.length} scanned (${stats.parts ?? 0} parts, ${stats.models ?? 0} models)`
 
         cameraContext += `
@@ -1711,7 +1840,7 @@ PLACEMENT RULES:
           body: JSON.stringify({
             system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
             contents: [
-              ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+              ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
             ],
             generationConfig: { maxOutputTokens: 1024 },
@@ -1754,7 +1883,7 @@ PLACEMENT RULES:
           max_tokens: 1024,
           messages: [
             { role: 'system', content: FORJEAI_SYSTEM_PROMPT },
-            ...history.map(h => ({ role: h.role, content: h.content })),
+            ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
         }),
@@ -1788,7 +1917,7 @@ PLACEMENT RULES:
         max_tokens: 1024,
         system: FORJEAI_SYSTEM_PROMPT,
         messages: [
-          ...history.map(h => ({ role: h.role, content: h.content })),
+          ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
           { role: 'user', content: message },
         ],
       })
@@ -1831,16 +1960,139 @@ PLACEMENT RULES:
     }
 
     try {
-      // Chat gets shorter responses, builds get full output
-      const maxTokens = intent === 'chat' ? 512 : intent === 'fullgame' ? 4096 : 2048
+      // Chat/conversation intents get shorter responses; code-heavy builds get max tokens
+      const maxTokens =
+        intent === 'chat' || intent === 'conversation'
+          ? 512
+          : intent === 'fullgame'
+            ? 4096
+            : 2048
+
+      const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+        ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
+        { role: 'user', content: message },
+      ]
+
+      // ── STREAMING PATH ───────────────────────────────────────────────────────────
+      // When the frontend sends stream:true, pipe text chunks in real time.
+      // A terminal \x00{json} chunk carries metadata: suggestions, intent, hasCode, tokensUsed.
+      if (wantsStream) {
+        const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+        const writer = writable.getWriter()
+        const enc = new TextEncoder()
+
+        void (async () => {
+          let fullText = ''
+          let tokensUsed = tokenCost
+
+          try {
+            const stream = anthropic.messages.stream({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: maxTokens,
+              system: FORJEAI_SYSTEM_PROMPT + cameraContext,
+              messages: claudeMessages,
+            })
+
+            for await (const event of stream) {
+              if (
+                event.type === 'content_block_delta' &&
+                event.delta.type === 'text_delta'
+              ) {
+                const chunk = event.delta.text
+                fullText += chunk
+                await writer.write(enc.encode(chunk))
+              }
+            }
+
+            const finalMsg = await stream.finalMessage()
+            tokensUsed = finalMsg.usage.input_tokens + finalMsg.usage.output_tokens
+
+            const luau = extractLuauCode(fullText)
+            let executedInStudio = false
+            if (luau && sessionId) {
+              executedInStudio = await sendCodeToStudio(sessionId, luau)
+            }
+            const stripped = luau ? stripCodeBlocks(fullText) : fullText
+            const { suggestions } = extractSuggestions(stripped)
+            const hasCode = luau !== null
+
+            let mcpResult: McpCallResult | undefined
+            const mcpIntentStream = detectMcpIntent(message, fullText)
+            if (mcpIntentStream) {
+              try {
+                mcpResult = await callTool(
+                  mcpIntentStream.server,
+                  mcpIntentStream.tool,
+                  mcpIntentStream.args,
+                )
+              } catch {
+                /* non-fatal */
+              }
+            }
+
+            let meshResult: ChatResponsePayload['meshResult']
+            if (intent === 'mesh') {
+              try {
+                const mesh = await generateMeshForChat(message)
+                meshResult = {
+                  meshUrl: mesh.meshUrl,
+                  thumbnailUrl: mesh.thumbnailUrl,
+                  polygonCount: mesh.polygonCount,
+                  status: mesh.status,
+                }
+              } catch {
+                meshResult = {
+                  meshUrl: null,
+                  thumbnailUrl: DEMO_THUMBNAIL_SVG,
+                  polygonCount: null,
+                  status: 'demo',
+                }
+              }
+            }
+
+            const metaChunk =
+              '\x00' +
+              JSON.stringify({
+                __meta: true,
+                suggestions,
+                intent,
+                hasCode,
+                tokensUsed,
+                executedInStudio,
+                model: finalMsg.model,
+                ...(mcpResult ? { mcpResult } : {}),
+                ...(meshResult ? { meshResult } : {}),
+              })
+            await writer.write(enc.encode(metaChunk))
+          } catch (streamErr) {
+            const errMsg =
+              streamErr instanceof Anthropic.RateLimitError
+                ? 'Rate limit reached. Please wait a moment and try again.'
+                : buildErrorResponse(streamErr, intent)
+            await writer.write(
+              enc.encode('\x00' + JSON.stringify({ __meta: true, error: errMsg })),
+            )
+          } finally {
+            await writer.close()
+          }
+        })()
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Transfer-Encoding': 'chunked',
+            'X-Accel-Buffering': 'no',
+            'Cache-Control': 'no-cache, no-transform',
+          },
+        }) as unknown as NextResponse
+      }
+
+      // ── NON-STREAMING PATH ───────────────────────────────────────────────────────
       const aiResponse = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: maxTokens,
         system: FORJEAI_SYSTEM_PROMPT + cameraContext,
-        messages: [
-          ...history.map(h => ({ role: h.role, content: h.content })),
-          { role: 'user', content: message },
-        ],
+        messages: claudeMessages,
       })
 
       const textBlock = aiResponse.content.find((b) => b.type === 'text')
@@ -1849,9 +2101,9 @@ PLACEMENT RULES:
 
       // Auto-trigger MCP tools based on what Claude said it's doing
       let mcpResult: McpCallResult | undefined
-      const mcpIntent = detectMcpIntent(message, responseText)
-      if (mcpIntent) {
-        mcpResult = await callTool(mcpIntent.server, mcpIntent.tool, mcpIntent.args)
+      const mcpIntentVal = detectMcpIntent(message, responseText)
+      if (mcpIntentVal) {
+        mcpResult = await callTool(mcpIntentVal.server, mcpIntentVal.tool, mcpIntentVal.args)
       }
 
       // Auto-trigger mesh generation when user intent is mesh
@@ -1883,27 +2135,33 @@ PLACEMENT RULES:
       }
       const stripped = luau ? stripCodeBlocks(responseText) : responseText
       const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
+      const hasCode = luau !== null
 
       return NextResponse.json({
         message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : responseText),
-        tokensUsed: tokenCost,
+        tokensUsed,
         intent,
+        hasCode,
         model: aiResponse.model,
         executedInStudio,
         suggestions,
-        ...(mcpResult  ? { mcpResult }  : {}),
+        ...(mcpResult ? { mcpResult } : {}),
         ...(meshResult ? { meshResult } : {}),
       })
     } catch (err: unknown) {
       // Rate limit — surface a clean error, don't fall through to demo
       if (err instanceof Anthropic.RateLimitError) {
         return NextResponse.json(
-          { error: 'Rate limit reached. Please wait a moment and try again.' },
+          {
+            error: 'Rate limit reached. Please wait a moment and try again.',
+            hint: buildErrorResponse(err, intent),
+          },
           { status: 429 },
         )
       }
-      // Any other API error — log and try Gemini fallback
+      // Any other API error — log and try Gemini/Groq fallbacks
       console.error('[chat] Anthropic API error:', err instanceof Error ? err.message : String(err))
+      console.warn('[chat] Actionable hint:', buildErrorResponse(err, intent))
     }
   }
 
@@ -1920,7 +2178,7 @@ PLACEMENT RULES:
           body: JSON.stringify({
             system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext }] },
             contents: [
-              ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+              ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
             ],
             generationConfig: { maxOutputTokens: maxTokens },
@@ -1989,6 +2247,7 @@ PLACEMENT RULES:
             message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : text),
             tokensUsed: tokenCost,
             intent,
+            hasCode: luau !== null,
             model: 'llama-3.3-70b',
             executedInStudio,
             suggestions,

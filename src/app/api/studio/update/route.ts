@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Persist camera/context on the session object for status endpoint
-  const s = session as Record<string, unknown>
+  const s = session as unknown as Record<string, unknown>
   if (extra.camera) s.camera = extra.camera
   if (extra.partCount !== undefined) s.partCount = extra.partCount
   if (extra.modelCount !== undefined) s.modelCount = extra.modelCount

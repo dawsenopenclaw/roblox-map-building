@@ -29,7 +29,7 @@ import { getSession, SESSION_TTL_MS } from '@/lib/studio-session'
 // Types
 // ---------------------------------------------------------------------------
 
-export type SseEventName =
+type SseEventName =
   | 'context'
   | 'screenshot'
   | 'command_result'
@@ -112,7 +112,7 @@ function keepaliveComment(): string {
  * pushToSession(sessionId, 'command_result', { commandId, success, error })
  * ```
  */
-export function pushToSession(
+function pushToSession(
   sessionId: string,
   event: SseEventName,
   data: Record<string, unknown>,

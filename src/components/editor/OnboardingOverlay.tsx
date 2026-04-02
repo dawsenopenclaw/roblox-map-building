@@ -361,6 +361,26 @@ export function OnboardingOverlay({ onComplete, onSkip }: OnboardingOverlayProps
     return () => clearTimeout(t)
   }, [])
 
+  const handleDismiss = useCallback((cb: () => void) => {
+    setExiting(true)
+    setTimeout(() => {
+      setVisible(false)
+      cb()
+    }, 260)
+  }, [])
+
+  const handleSkip = useCallback(() => {
+    handleDismiss(onSkip)
+  }, [handleDismiss, onSkip])
+
+  const handleNext = useCallback(() => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep((s) => s + 1)
+    } else {
+      handleDismiss(onComplete)
+    }
+  }, [currentStep, handleDismiss, onComplete])
+
   // Keyboard navigation
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -370,27 +390,7 @@ export function OnboardingOverlay({ onComplete, onSkip }: OnboardingOverlayProps
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  })
-
-  function handleDismiss(cb: () => void) {
-    setExiting(true)
-    setTimeout(() => {
-      setVisible(false)
-      cb()
-    }, 260)
-  }
-
-  function handleSkip() {
-    handleDismiss(onSkip)
-  }
-
-  function handleNext() {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep((s) => s + 1)
-    } else {
-      handleDismiss(onComplete)
-    }
-  }
+  }, [handleSkip, handleNext, currentStep])
 
   const step = STEPS[currentStep]
   const isLast = currentStep === STEPS.length - 1

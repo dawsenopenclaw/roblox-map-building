@@ -22,6 +22,10 @@ export interface BuildContext {
   hasNPCs?: boolean
   hasMobileSupport?: boolean
   hasRebirthSystem?: boolean
+  hasTutorial?: boolean
+  hasAnalytics?: boolean
+  hasTradingSystem?: boolean
+  hasPartySystem?: boolean
   buildSummary?: string
 }
 

@@ -47,7 +47,7 @@ async function checkLimit(
   const key = `rl:${identifier}:${windowSec}:${bucket}`
 
   // Atomic increment + set TTL on first write
-  const pipeline = redis.pipeline()
+  const pipeline = redis!.pipeline()
   pipeline.incr(key)
   pipeline.expire(key, windowSec * 2) // 2× TTL so the previous bucket lingers for overlap
   const results = await pipeline.exec()
