@@ -6,7 +6,7 @@ const globalForRedis = global as unknown as { redis: Redis | null }
 
 let _redis: Redis | null = null
 
-export function getRedis(): Redis {
+export function getRedis(): Redis | null {
   if (_redis) return _redis
   const existing = globalForRedis.redis
   if (existing) {
@@ -14,7 +14,7 @@ export function getRedis(): Redis {
     return _redis
   }
   const redisUrl = serverEnv.REDIS_URL
-  if (!redisUrl) throw new Error('REDIS_URL is not configured')
+  if (!redisUrl) return null
   const instance = new Redis(redisUrl, {
     maxRetriesPerRequest: 3,
     lazyConnect: true,
