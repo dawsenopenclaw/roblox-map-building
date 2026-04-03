@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useAuth, useClerk } from '@clerk/nextjs'
 
 function LogoMark() {
   return (
@@ -7,6 +10,22 @@ function LogoMark() {
       <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#FFB81C" opacity="0.5" />
       <circle cx="16" cy="16" r="3" fill="#FFB81C" />
     </svg>
+  )
+}
+
+function SignOutButton() {
+  const { isSignedIn, isLoaded } = useAuth()
+  const { signOut } = useClerk()
+
+  if (!isLoaded || !isSignedIn) return null
+
+  return (
+    <button
+      onClick={() => signOut({ redirectUrl: '/sign-in' })}
+      className="relative z-10 mt-4 text-xs text-zinc-500 hover:text-[#FFB81C] transition-colors"
+    >
+      Signed in with wrong account? Sign out
+    </button>
   )
 }
 
@@ -36,7 +55,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         {children}
       </div>
 
-      <p className="relative z-10 mt-6 text-xs text-zinc-600">
+      <SignOutButton />
+
+      <p className="relative z-10 mt-3 text-xs text-zinc-600">
         By continuing you agree to our{' '}
         <Link href="/terms" className="text-zinc-500 hover:text-zinc-400 transition-colors underline underline-offset-2">Terms</Link>
         {' & '}
