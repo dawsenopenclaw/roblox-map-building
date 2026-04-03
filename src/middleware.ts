@@ -40,8 +40,6 @@ const isPublicRoute = createRouteMatcher([
   '/about',
   '/blog(.*)',
   '/changelog',
-  // Editor — accessible without auth (guest mode with limited free messages)
-  '/editor(.*)',
   // AI chat — guest mode with strict rate limiting (3 messages then signup required)
   '/api/ai/chat',
   // AI feedback — anonymous thumbs up/down (POST only, GET requires auth)
