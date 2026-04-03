@@ -445,15 +445,17 @@ function MessageBubble({
       >
         <div
           style={{
-            maxWidth: '82%',
+            maxWidth: '80%',
             padding: '10px 14px',
-            borderRadius: 16,
-            background: 'rgba(212,175,55,0.11)',
-            border: '1px solid rgba(212,175,55,0.3)',
-            boxShadow: '0 0 20px rgba(212,175,55,0.07), inset 0 1px 0 rgba(255,255,255,0.04)',
+            borderRadius: '18px 18px 4px 18px',
+            background: 'rgba(255,184,28,0.08)',
+            border: '1px solid rgba(255,184,28,0.15)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            boxShadow: '0 2px 16px rgba(255,184,28,0.06), inset 0 1px 0 rgba(255,255,255,0.06)',
           }}
         >
-          <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {displayContent}
           </p>
         </div>
@@ -494,11 +496,14 @@ function MessageBubble({
       </div>
       <div
         style={{
-          maxWidth: '82%',
+          maxWidth: '85%',
           padding: '10px 14px',
-          borderRadius: '4px 16px 16px 16px',
+          borderRadius: '18px 18px 18px 4px',
           background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          boxShadow: '0 2px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04)',
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -518,7 +523,7 @@ function MessageBubble({
             }}
           />
         )}
-        <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
@@ -1233,12 +1238,13 @@ export function ChatPanel({
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: compact ? '0' : '20px 16px',
+          padding: compact ? '0' : '16px 14px',
           display: compact ? 'none' : 'flex',
           flexDirection: 'column',
-          gap: 12,
+          gap: 10,
           scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.08) transparent',
+          scrollbarColor: 'rgba(255,255,255,0.06) transparent',
+          background: 'linear-gradient(180deg, rgba(8,12,28,0.3) 0%, rgba(8,12,28,0.6) 100%)',
         }}
       >
         {!hasMessages ? (

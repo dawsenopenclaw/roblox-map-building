@@ -13,6 +13,8 @@ import { useChat } from './hooks/useChat'
 import { useStudioConnection, type StudioActivity } from './hooks/useStudioConnection'
 import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
+import { ToastProvider, useToast } from '@/components/editor/EditorToasts'
+import { ShortcutsHelp } from '@/components/editor/ShortcutsHelp'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -121,7 +123,7 @@ function SidebarButton({
           transform: 'translateY(-50%)', background: 'rgba(10,14,30,0.96)',
           border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, padding: '5px 10px',
           display: 'flex', alignItems: 'center', gap: 7, whiteSpace: 'nowrap',
-          pointerEvents: 'none', zIndex: 100, backdropFilter: 'blur(8px)',
+          pointerEvents: 'none', zIndex: 30, backdropFilter: 'blur(8px)',
           boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{label}</span>
           {shortcut && (
@@ -1005,11 +1007,15 @@ function TopBar({
   placeName,
   totalTokens,
   onNewChat,
+  onConnect,
+  onShowShortcuts,
 }: {
   isConnected: boolean
   placeName: string
   totalTokens: number
   onNewChat?: () => void
+  onConnect?: () => void
+  onShowShortcuts?: () => void
 }) {
   const { user } = useUser()
   const [newChatHovered, setNewChatHovered] = useState(false)
@@ -1025,7 +1031,7 @@ function TopBar({
         padding: '0 14px',
         background: 'rgba(8,12,28,0.85)',
         borderBottom: '1px solid rgba(255,255,255,0.04)',
-        zIndex: 10,
+        zIndex: 20,
         backdropFilter: 'blur(12px)',
         position: 'relative',
       }}
@@ -1122,28 +1128,56 @@ function TopBar({
           </div>
         )}
 
-        {!isConnected && (
-          <div
+        {!isConnected && onConnect && (
+          <button
+            onClick={onConnect}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 5,
-              padding: '3px 8px',
+              padding: '4px 10px',
               borderRadius: 6,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.2)',
+              color: 'rgba(212,175,55,0.8)',
+              fontSize: 11,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'Inter, sans-serif',
             }}
           >
-            <div
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.15)',
-              }}
-            />
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>Offline</span>
-          </div>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M5 1v3M5 6v3M1 5h3M6 5h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+            </svg>
+            Connect Studio
+          </button>
+        )}
+
+        {/* Shortcuts hint */}
+        {onShowShortcuts && (
+          <button
+            onClick={onShowShortcuts}
+            title="Keyboard shortcuts (?)"
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 6,
+              border: '1px solid rgba(255,255,255,0.06)',
+              background: 'rgba(255,255,255,0.02)',
+              color: 'rgba(255,255,255,0.2)',
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            ?
+          </button>
         )}
 
         {user && (
@@ -1304,7 +1338,7 @@ function ResizeHandle({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       style={{
-        height: 8,
+        height: 4,
         cursor: 'row-resize',
         display: 'flex',
         alignItems: 'center',
@@ -1413,12 +1447,22 @@ function loadChatHeight(): number {
 }
 
 export default function NewEditorClient() {
+  return (
+    <ToastProvider>
+      <EditorInner />
+    </ToastProvider>
+  )
+}
+
+function EditorInner() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'studio'>('chat')
   const [viewportExpanded, setViewportExpanded] = useState(false)
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null)
   const [chatHeight, setChatHeight] = useState(CHAT_DEFAULT_HEIGHT)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const chatPanelRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast()
 
   // Load persisted chat height
   useEffect(() => {
@@ -1430,6 +1474,17 @@ export default function NewEditorClient() {
 
   // Studio connection
   const studio = useStudioConnection()
+
+  // Toast on Studio connection changes
+  const prevConnected = useRef(false)
+  useEffect(() => {
+    if (studio.isConnected && !prevConnected.current) {
+      toast(`Connected to ${studio.placeName || 'Studio'}`, 'success')
+    } else if (!studio.isConnected && prevConnected.current) {
+      toast('Disconnected from Studio', 'warning')
+    }
+    prevConnected.current = studio.isConnected
+  }, [studio.isConnected, studio.placeName, toast])
 
   // Execute Luau in Studio after AI build
   const handleBuildComplete = useCallback(
@@ -1458,11 +1513,13 @@ export default function NewEditorClient() {
           return
         }
         studio.addActivity('Build sent to Studio — check your viewport!')
+        toast('Build executed in Studio', 'success')
       } catch {
         studio.addActivity('Studio execution failed — check your connection.')
+        toast('Studio execution failed', 'error')
       }
     },
-    [studio],
+    [studio, toast],
   )
 
   // Chat
@@ -1510,13 +1567,14 @@ export default function NewEditorClient() {
 
   // Keyboard shortcuts
   useEditorKeyboard({
-    focusChat: () => {
-      if (cmdPaletteOpen) return
-      setCmdPaletteOpen(true)
-    },
+    openCommandPalette: () => setCmdPaletteOpen(true),
+    focusChatInput: () => chat.textareaRef.current?.focus(),
     toggleViewport: () => setViewportExpanded((v) => !v),
+    toggleSidebar: () => setSidebarPanel((prev) => prev ? null : 'history'),
+    toggleShortcutsHelp: () => setShortcutsOpen((v) => !v),
     closeSidebar: () => {
       if (cmdPaletteOpen) { setCmdPaletteOpen(false); return }
+      if (shortcutsOpen) { setShortcutsOpen(false); return }
       setSidebarPanel(null)
     },
   })
@@ -1596,6 +1654,8 @@ export default function NewEditorClient() {
           placeName={studio.placeName}
           totalTokens={chat.totalTokens}
           onNewChat={() => window.location.reload()}
+          onConnect={() => studio.generateCode()}
+          onShowShortcuts={() => setShortcutsOpen(true)}
         />
 
         {/* Mobile tab bar */}
@@ -1622,7 +1682,7 @@ export default function NewEditorClient() {
               display: 'flex',
               flexDirection: 'column',
               minWidth: 0,
-              padding: '8px 0 8px 8px',
+              padding: '4px 0 4px 4px',
               gap: 0,
             }}
           >
@@ -1679,7 +1739,7 @@ export default function NewEditorClient() {
                 display: 'flex',
                 flexDirection: 'column',
                 transition: 'height 0.25s ease-out',
-                padding: '8px 0 0',
+                padding: '4px 0 0',
                 position: 'relative',
               }}
             >
@@ -1692,7 +1752,7 @@ export default function NewEditorClient() {
                     background: 'rgba(0,0,0,0.55)',
                     backdropFilter: 'blur(2px)',
                     borderRadius: 12,
-                    zIndex: 10,
+                    zIndex: 15,
                     pointerEvents: 'none',
                     transition: 'opacity 0.25s ease-out',
                   }}
@@ -1883,12 +1943,12 @@ export default function NewEditorClient() {
             {/* Icon rail */}
             <div
               style={{
-                width: 56,
+                width: 52,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                paddingTop: 12,
-                gap: 4,
+                paddingTop: 8,
+                gap: 2,
                 background: 'rgba(8,12,28,0.5)',
                 borderLeft: '1px solid rgba(255,255,255,0.03)',
               }}
@@ -1955,6 +2015,9 @@ export default function NewEditorClient() {
         onClose={() => setCmdPaletteOpen(false)}
         onCommand={handleCommand}
       />
+
+      {/* Shortcuts Help overlay */}
+      <ShortcutsHelp isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       <style>{`
         @keyframes slideIn {

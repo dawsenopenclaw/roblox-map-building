@@ -30,9 +30,9 @@ const VARIANT_BG: Record<PanelVariant, string> = {
 }
 
 const VARIANT_BORDER: Record<PanelVariant, string> = {
-  default:  'rgba(255,255,255,0.06)',
-  elevated: 'rgba(255,255,255,0.10)',
-  sunken:   'rgba(255,255,255,0.04)',
+  default:  'rgba(255,255,255,0.04)',
+  elevated: 'rgba(255,255,255,0.07)',
+  sunken:   'rgba(255,255,255,0.03)',
 }
 
 // Tiny SVG noise pattern as a data URL — single-tile, tileable, opacity applied via CSS
@@ -109,10 +109,10 @@ export function GlassPanel({
       style={{
         position: 'relative',
         background: bg,
-        backdropFilter: 'blur(20px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
+        backdropFilter: 'blur(16px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(16px) saturate(1.2)',
         border: `1px solid ${activeBorder}`,
-        borderRadius: 16,
+        borderRadius: 12,
         overflow: 'hidden',
         padding: PADDING_MAP[padding],
         cursor: interactive ? 'pointer' : undefined,
@@ -146,7 +146,7 @@ export function GlassPanel({
           left: '15%',
           right: '15%',
           height: 1,
-          borderRadius: '16px 16px 0 0',
+          borderRadius: '12px 12px 0 0',
           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
           pointerEvents: 'none',
           zIndex: 0,
@@ -162,7 +162,7 @@ export function GlassPanel({
           left: '20%',
           right: '20%',
           height: 1,
-          borderRadius: '0 0 16px 16px',
+          borderRadius: '0 0 12px 12px',
           background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.35), transparent)',
           pointerEvents: 'none',
           zIndex: 0,
