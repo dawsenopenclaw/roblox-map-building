@@ -729,9 +729,7 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
     <div
       className={`reveal flex flex-col rounded-2xl p-8 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'} relative overflow-hidden`}
       style={{
-        background: recommended ? 'linear-gradient(145deg, rgba(18,26,62,0.50), rgba(15,21,53,0.50))' : 'rgba(12,15,31,0.40)',
-        backdropFilter: 'blur(24px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+        background: recommended ? 'linear-gradient(145deg, #0E1530 0%, #0B1028 100%)' : '#090D1C',
         border: recommended ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
         boxShadow: recommended
           ? '0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5)'
