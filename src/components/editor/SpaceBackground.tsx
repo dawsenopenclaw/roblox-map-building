@@ -56,16 +56,17 @@ export function SpaceBackground() {
             height: star.size,
             borderRadius: '50%',
             background: 'white',
-            opacity: star.opacity,
+            '--star-min': Math.max(0.04, star.opacity - 0.08),
+            '--star-max': star.opacity,
             animation: `starPulse ${star.duration}s ease-in-out ${star.delay}s infinite alternate`,
-          }}
+          } as React.CSSProperties}
         />
       ))}
 
       <style>{`
         @keyframes starPulse {
-          0%   { opacity: 0.06; }
-          100% { opacity: 0.25; }
+          0%   { opacity: var(--star-min, 0.06); }
+          100% { opacity: var(--star-max, 0.25); }
         }
       `}</style>
     </div>

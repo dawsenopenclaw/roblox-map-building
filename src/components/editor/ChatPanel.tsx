@@ -937,6 +937,8 @@ interface ChatPanelProps {
   onBuildDifferently?: () => void
   /** Called when user clicks "Skip this" — dismisses the error by message id */
   onDismiss?: (id: string) => void
+  /** When true, shows only the input bar (viewport expanded mode) */
+  compact?: boolean
 }
 
 export function ChatPanel({
@@ -953,6 +955,7 @@ export function ChatPanel({
   onRetry,
   onBuildDifferently,
   onDismiss,
+  compact = false,
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -985,13 +988,13 @@ export function ChatPanel({
       padding="none"
       style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
-      {/* Messages area */}
+      {/* Messages area — hidden in compact mode */}
       <div
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '20px 16px',
-          display: 'flex',
+          padding: compact ? '0' : '20px 16px',
+          display: compact ? 'none' : 'flex',
           flexDirection: 'column',
           gap: 12,
           scrollbarWidth: 'thin',

@@ -92,9 +92,19 @@ function SectionHeader({ title, description }: { title: string; description: str
 // ─── Section 1: Install Plugin ────────────────────────────────────────────────
 
 function InstallSection() {
-  const [showLoadstring, setShowLoadstring] = useState(false)
-  const loadstring = `loadstring(game:HttpGet("https://forjegames.com/api/studio/plugin"))()`
-  const { copied: lsCopied, copy: copyLs } = useCopy(loadstring)
+  const [showManual, setShowManual] = useState(false)
+  const [os, setOs] = useState<'win' | 'mac'>('win')
+
+  // Detect OS on mount
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /mac/i.test(navigator.platform)) {
+      setOs('mac')
+    }
+  }, [])
+
+  const winPath = '%LOCALAPPDATA%\\Roblox\\Plugins\\'
+  const macPath = '~/Documents/Roblox/Plugins/'
+  const { copied: pathCopied, copy: copyPath } = useCopy(os === 'win' ? winPath : macPath)
 
   return (
     <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
@@ -104,68 +114,90 @@ function InstallSection() {
       />
 
       <div className="space-y-6">
-        <StepCard number={1} title="Download the ForjeGames plugin">
-          <a
-            href="/api/studio/plugin"
-            download="ForjeGames.lua"
-            className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-xl text-sm font-semibold
-              bg-[#D4AF37] hover:bg-[#c4a030] text-black transition-colors"
-          >
-            <Download size={14} />
-            Download ForjeGames.lua
-          </a>
-        </StepCard>
-
-        <StepCard number={2} title="Place it in your Plugins folder">
-          <p>Copy the downloaded file to:</p>
-          <div
-            className="flex items-center gap-2 mt-2 px-3 py-2 rounded-lg bg-black/40 border border-[#2a2a2a] font-mono text-xs text-gray-300 select-all"
-          >
-            <Terminal size={12} className="text-gray-500 flex-shrink-0" />
-            %LOCALAPPDATA%\Roblox\Plugins\
+        {/* Primary: One-click installer */}
+        <StepCard number={1} title="Run the one-click installer">
+          <p className="mb-3">
+            Downloads and installs the plugin to your Roblox Plugins folder automatically.
+          </p>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/studio/installer?os=${os}`}
+              download={os === 'win' ? 'install-forjegames.bat' : 'install-forjegames.sh'}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+                bg-[#D4AF37] hover:bg-[#c4a030] text-black transition-colors"
+            >
+              <Download size={14} />
+              {os === 'win' ? 'Download Installer (.bat)' : 'Download Installer (.sh)'}
+            </a>
+            <button
+              onClick={() => setOs(os === 'win' ? 'mac' : 'win')}
+              className="px-3 py-2.5 rounded-xl text-xs font-medium border border-[#2a2a2a]
+                text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors"
+            >
+              {os === 'win' ? 'Mac?' : 'Windows?'}
+            </button>
           </div>
-          <p className="mt-2 text-gray-500 text-xs">
-            On Mac: ~/Documents/Roblox/Plugins/
+          <p className="mt-2 text-gray-600 text-xs">
+            {os === 'win'
+              ? 'Double-click the .bat file after downloading. It will install the plugin automatically.'
+              : 'Open Terminal, run: chmod +x install-forjegames.sh && ./install-forjegames.sh'}
           </p>
         </StepCard>
 
-        <StepCard number={3} title="Open Roblox Studio">
-          The ForjeGames button appears in the Plugins toolbar. Click it to open the connection
-          dialog.
+        <StepCard number={2} title="Restart Roblox Studio">
+          <p>Fully close and reopen Roblox Studio. The <strong className="text-white">ForjeGames</strong> button
+          will appear in the Plugins toolbar.</p>
+        </StepCard>
+
+        <StepCard number={3} title="Connect">
+          Click the ForjeGames button in the toolbar, then enter the connection code from the
+          section below.
         </StepCard>
       </div>
 
-      {/* Alternative: loadstring */}
+      {/* Alternative: manual install */}
       <div className="mt-6 pt-5 border-t border-[#2a2a2a]">
         <button
-          onClick={() => setShowLoadstring((v) => !v)}
+          onClick={() => setShowManual((v) => !v)}
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
         >
           <ChevronRight
             size={14}
-            className={`transition-transform ${showLoadstring ? 'rotate-90' : ''}`}
+            className={`transition-transform ${showManual ? 'rotate-90' : ''}`}
           />
-          Or install from the Studio Command Bar
+          Or install manually
         </button>
 
-        {showLoadstring && (
-          <div className="mt-3 p-3 rounded-xl bg-black/50 border border-[#2a2a2a]">
-            <p className="text-xs text-gray-500 mb-2">
-              Open Studio &rarr; View &rarr; Command Bar, then paste:
-            </p>
-            <div className="flex items-start gap-2">
-              <code className="flex-1 text-xs font-mono text-[#D4AF37] break-all leading-relaxed">
-                {loadstring}
-              </code>
-              <button
-                onClick={copyLs}
-                className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs
+        {showManual && (
+          <div className="mt-3 p-4 rounded-xl bg-black/50 border border-[#2a2a2a] space-y-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-2">1. Download the plugin file:</p>
+              <a
+                href="/api/studio/plugin"
+                download="ForjeGames.lua"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold
                   bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
               >
-                {lsCopied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-                {lsCopied ? 'Copied' : 'Copy'}
-              </button>
+                <Download size={12} />
+                Download ForjeGames.lua
+              </a>
             </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-2">2. Move it to your Plugins folder:</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-[#2a2a2a] font-mono text-xs text-gray-300 select-all">
+                  <Terminal size={12} className="text-gray-500 flex-shrink-0" />
+                  {os === 'win' ? winPath : macPath}
+                </div>
+                <button
+                  onClick={() => copyPath()}
+                  className="flex-shrink-0 px-2 py-2 rounded-lg text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+                >
+                  {pathCopied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-600">3. Fully close and reopen Roblox Studio.</p>
           </div>
         )}
       </div>

@@ -21,6 +21,14 @@ const PADDING_MAP: Record<PaddingSize, string> = {
   lg:   '24px',
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.substring(0, 2), 16)
+  const g = parseInt(h.substring(2, 4), 16)
+  const b = parseInt(h.substring(4, 6), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
 export function GlassPanel({
   children,
   className = '',
@@ -30,10 +38,14 @@ export function GlassPanel({
   style,
   onClick,
 }: GlassPanelProps) {
+  const interactive = !!onClick
   return (
     <div
       className={className}
       onClick={onClick}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.() } } : undefined}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
       style={{
         position: 'relative',
         background: 'rgba(8, 12, 28, 0.65)',
@@ -41,9 +53,11 @@ export function GlassPanel({
         WebkitBackdropFilter: 'blur(20px)',
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 16,
+        overflow: 'hidden',
         padding: PADDING_MAP[padding],
+        cursor: interactive ? 'pointer' : undefined,
         boxShadow: glow
-          ? `0 0 40px ${glowColor}15, 0 1px 0 rgba(255,255,255,0.04) inset`
+          ? `0 0 40px ${hexToRgba(glowColor, 0.08)}, 0 1px 0 rgba(255,255,255,0.04) inset`
           : '0 1px 0 rgba(255,255,255,0.03) inset',
         ...style,
       }}

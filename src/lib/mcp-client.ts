@@ -209,39 +209,184 @@ function extractData(response: McpSuccessResponse): Record<string, unknown> {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+// ── Intent patterns ──────────────────────────────────────────────────────────
+
+interface IntentPattern {
+  server: string
+  tool: string
+  /** Patterns — at least one must match for this intent to fire */
+  patterns: RegExp[]
+  /** Negative patterns — if any match, this intent is suppressed */
+  exclude?: RegExp[]
+  /** Extract richer arguments from the user message */
+  extractArgs: (userMessage: string, aiResponse: string) => Record<string, unknown>
+  /** Priority — higher = checked first (default 0) */
+  priority?: number
+}
+
+const BIOME_KEYWORDS: Record<string, string> = {
+  forest: 'forest', jungle: 'jungle', desert: 'desert', snow: 'snow', arctic: 'snow',
+  tundra: 'tundra', swamp: 'swamp', beach: 'beach', ocean: 'ocean', volcanic: 'volcanic',
+  lava: 'volcanic', mountain: 'mountain', cave: 'cave', meadow: 'meadow', savanna: 'savanna',
+  plains: 'plains', island: 'island', canyon: 'canyon', marsh: 'swamp',
+}
+
+function detectBiome(text: string): string {
+  const lower = text.toLowerCase()
+  for (const [keyword, biome] of Object.entries(BIOME_KEYWORDS)) {
+    if (lower.includes(keyword)) return biome
+  }
+  return 'forest'
+}
+
+function detectArtStyle(text: string): string {
+  const lower = text.toLowerCase()
+  if (lower.includes('realistic') || lower.includes('photorealistic')) return 'realistic'
+  if (lower.includes('cartoon') || lower.includes('toon') || lower.includes('stylized')) return 'cartoon'
+  if (lower.includes('voxel') || lower.includes('blocky') || lower.includes('minecraft')) return 'voxel'
+  if (lower.includes('low poly') || lower.includes('low-poly')) return 'low-poly'
+  if (lower.includes('anime') || lower.includes('japanese')) return 'anime'
+  return 'game-asset'
+}
+
+function detectDensity(text: string): number {
+  const lower = text.toLowerCase()
+  if (lower.includes('dense') || lower.includes('packed') || lower.includes('crowded')) return 0.8
+  if (lower.includes('sparse') || lower.includes('spread') || lower.includes('few')) return 0.2
+  if (lower.includes('suburban') || lower.includes('residential')) return 0.4
+  if (lower.includes('downtown') || lower.includes('metropolitan')) return 0.9
+  return 0.5
+}
+
+const INTENT_PATTERNS: IntentPattern[] = [
+  // Terrain generation — highest priority for terrain-specific requests
+  {
+    server: 'terrain-forge',
+    tool: 'generate-terrain',
+    patterns: [
+      /\bterrain\b/i, /\blandscape\b/i, /\bbiome\b/i, /\bheightmap\b/i,
+      /\bsculpt\s*(the\s*)?ground/i, /\bmountain/i, /\bhill/i, /\bvalley/i,
+      /\briver\b/i, /\blake\b/i, /\bocean\b/i, /\bbeach\b/i,
+      /\bflatten\b/i, /\bgenerate\s*(a\s*)?(new\s*)?map/i,
+      /\bdesert\b/i, /\bsnow\b.*\bground/i, /\bvolcanic\b/i,
+      /\bcanyon\b/i, /\bcliff/i, /\bswamp\b/i, /\bforest\s*floor/i,
+    ],
+    exclude: [/\bcity\b/i, /\bbuilding\b/i, /\b3d\s*model\b/i],
+    priority: 2,
+    extractArgs: (msg) => ({
+      biome: detectBiome(msg),
+      seed: Date.now(),
+      size: msg.toLowerCase().includes('large') ? 2048 : msg.toLowerCase().includes('small') ? 512 : 1024,
+      roughness: msg.toLowerCase().includes('flat') ? 0.1 : msg.toLowerCase().includes('rough') ? 0.9 : 0.5,
+    }),
+  },
+
+  // City / urban planning
+  {
+    server: 'city-architect',
+    tool: 'plan-city',
+    patterns: [
+      /\bcity\b/i, /\btown\b/i, /\burban\b/i, /\broads?\b/i,
+      /\bstreet/i, /\bblock\b/i, /\bneighborhood\b/i, /\bdistrict\b/i,
+      /\bskyline\b/i, /\bskyscraper/i, /\bdowntown\b/i,
+      /\bvillage\b/i, /\bsuburb/i, /\bintersection\b/i,
+      /\bparking\s*lot\b/i, /\bsidewalk/i, /\bcrosswalk/i,
+    ],
+    exclude: [/\b3d\s*model\b/i, /\bmesh\b/i],
+    priority: 2,
+    extractArgs: (msg) => ({
+      density: detectDensity(msg),
+      style: msg.toLowerCase().includes('modern') ? 'modern'
+        : msg.toLowerCase().includes('medieval') ? 'medieval'
+        : msg.toLowerCase().includes('futuristic') ? 'futuristic'
+        : 'mixed',
+      gridSize: msg.toLowerCase().includes('large') ? 8 : msg.toLowerCase().includes('small') ? 3 : 5,
+    }),
+  },
+
+  // 3D model generation via Meshy
+  {
+    server: 'asset-alchemist',
+    tool: 'text-to-3d',
+    patterns: [
+      /\b3d\b/i, /\bmesh\b/i, /\bgenerate\s*(a\s*)?(3d\s*)?model/i,
+      /\bcreate\s*(a\s*)?(3d\s*)?model/i, /\bmake\s*(a\s*)?(3d\s*)?model/i,
+      /\bsculpt\s*(a|an)\b/i, /\bcustom\s*asset/i,
+      /\bgenerate\s*(a\s*)?mesh/i,
+    ],
+    priority: 1,
+    extractArgs: (msg) => ({
+      prompt: msg.replace(/^(generate|create|make|build)\s*(a\s*)?(3d\s*)?(model|mesh)\s*(of\s*)?/i, '').trim() || msg,
+      art_style: detectArtStyle(msg),
+      target_polycount: msg.toLowerCase().includes('low poly') ? 5000 : 15000,
+    }),
+  },
+
+  // Texture generation via Fal
+  {
+    server: 'asset-alchemist',
+    tool: 'generate-texture',
+    patterns: [
+      /\btexture\b/i, /\bpbr\b/i, /\bmaterial\s*map/i,
+      /\balbedo\b/i, /\bnormal\s*map/i, /\broughness\s*map/i,
+      /\bgenerate\s*(a\s*)?texture/i, /\bcreate\s*(a\s*)?texture/i,
+    ],
+    exclude: [/\b3d\b/i, /\bmesh\b/i],
+    priority: 1,
+    extractArgs: (msg) => ({
+      prompt: msg,
+      resolution: 1024,
+      seamless: true,
+    }),
+  },
+]
+
 /**
  * Detects which MCP server and tool to call based on the conversation context.
+ * Uses pattern matching with priority ordering, exclusion filters, and rich arg extraction.
  * Returns null if no MCP action is appropriate for this message pair.
  */
 export function detectMcpIntent(
   userMessage: string,
   aiResponse: string
 ): { server: string; tool: string; args: Record<string, unknown> } | null {
-  const lower = (userMessage + ' ' + aiResponse).toLowerCase()
+  const combined = userMessage + ' ' + aiResponse
 
-  if (lower.includes('terrain') || lower.includes('landscape') || lower.includes('biome')) {
-    return {
-      server: 'terrain-forge',
-      tool:   'generate-terrain',
-      args:   { biome: 'forest', seed: Date.now() },
-    }
-  }
-  if (lower.includes('city') || lower.includes('road') || lower.includes('urban')) {
-    return {
-      server: 'city-architect',
-      tool:   'plan-city',
-      args:   { density: 0.5 },
-    }
-  }
-  if (lower.includes('3d') || lower.includes('mesh') || lower.includes('model')) {
-    return {
-      server: 'asset-alchemist',
-      tool:   'text-to-3d',
-      args:   { prompt: userMessage },
+  // Sort by priority (highest first)
+  const sorted = [...INTENT_PATTERNS].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+
+  for (const intent of sorted) {
+    // Check exclusion patterns first
+    if (intent.exclude?.some((re) => re.test(combined))) continue
+
+    // Check if any positive pattern matches
+    if (intent.patterns.some((re) => re.test(combined))) {
+      return {
+        server: intent.server,
+        tool: intent.tool,
+        args: intent.extractArgs(userMessage, aiResponse),
+      }
     }
   }
 
   return null
+}
+
+/**
+ * Calls multiple MCP tools in parallel. Returns all results (settled).
+ * Useful for orchestrating multi-agent workflows from a single user command.
+ */
+export async function callToolsParallel(
+  calls: Array<{ server: string; tool: string; args: Record<string, unknown> }>
+): Promise<McpCallResult[]> {
+  const results = await Promise.allSettled(
+    calls.map((c) => callTool(c.server, c.tool, c.args))
+  )
+  return results.map((r, i) =>
+    r.status === 'fulfilled'
+      ? r.value
+      : buildDemoResult(calls[i].server, calls[i].tool, r.reason?.message ?? 'Unknown error')
+  )
 }
 
 /**

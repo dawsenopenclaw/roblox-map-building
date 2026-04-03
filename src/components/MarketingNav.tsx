@@ -5,18 +5,17 @@ import Link from 'next/link'
 
 const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
+  { href: '/showcase', label: 'Showcase' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/docs', label: 'Docs' },
 ]
-
-const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
 function MarketingNav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const signInHref = '/sign-in'
   const signUpHref = '/editor'
-  const menuRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -24,11 +23,11 @@ function MarketingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close menu on outside click
+  // Close menu on outside click — ref on the entire header so hamburger clicks aren't "outside"
   useEffect(() => {
     if (!menuOpen) return
     const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
       }
     }
@@ -48,6 +47,7 @@ function MarketingNav() {
 
   return (
     <header
+      ref={navRef}
       className={[
         'fixed top-0 inset-x-0 z-50 transition-all duration-300',
         scrolled
@@ -94,17 +94,7 @@ function MarketingNav() {
           </Link>
           <Link
             href={signUpHref}
-            className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
-            style={{
-              background: '#FFB81C',
-              color: '#0A0E27',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = '#E5A617'
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = '#FFB81C'
-            }}
+            className="nav-cta-gold text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FFB81C]"
           >
             Start building
           </Link>
@@ -134,8 +124,7 @@ function MarketingNav() {
       {menuOpen && (
         <div
           id="mobile-menu"
-          ref={menuRef}
-          className="md:hidden bg-[#0A0E27]/95 backdrop-blur-md border-b border-white/[0.06]"
+          className="md:hidden bg-[#0A0E27]/95 backdrop-blur-md border-b border-white/[0.06] animate-fade-in"
           role="navigation"
           aria-label="Mobile navigation"
         >
@@ -161,11 +150,7 @@ function MarketingNav() {
               <Link
                 href={signUpHref}
                 onClick={() => setMenuOpen(false)}
-                className="text-center text-sm font-medium px-4 py-3 rounded-lg transition-colors"
-                style={{
-                  background: '#D4AF37',
-                  color: '#09090b',
-                }}
+                className="nav-cta-gold text-center text-sm font-medium px-4 py-3 rounded-lg transition-colors"
               >
                 Start building
               </Link>

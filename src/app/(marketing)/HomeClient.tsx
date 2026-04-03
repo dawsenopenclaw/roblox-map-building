@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import HeroScreenshotTabs from '@/components/marketing/HeroScreenshotTabs'
 import ShowcasePreview from '@/components/marketing/ShowcasePreview'
@@ -9,254 +9,6 @@ import ComparisonSection from '@/components/marketing/ComparisonSection'
 import TestimonialsSection from '@/components/marketing/TestimonialsSection'
 import FaqSection from '@/components/marketing/FaqSection'
 // Footer rendered by marketing layout
-
-/* ─── CSS-in-JS animation styles ─────────────────────────────────────────── */
-
-const GLOBAL_STYLES = `
-  /* ── keyframes ── */
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(24px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @keyframes cursor-blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0; }
-  }
-  @keyframes badge-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.25), 0 2px 8px rgba(0,0,0,0.3); }
-    50%       { box-shadow: 0 0 0 6px rgba(212,175,55,0.0), 0 2px 8px rgba(0,0,0,0.3); }
-  }
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50%       { transform: translateY(-8px); }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
-  @keyframes glow-pulse {
-    0%, 100% { opacity: 0.5; }
-    50%       { opacity: 1; }
-  }
-  @keyframes progress-fill {
-    from { width: 0%; }
-    to   { width: 72%; }
-  }
-  @keyframes count-tick {
-    from { transform: translateY(4px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-  }
-  @keyframes slide-right {
-    from { transform: translateX(-100%); opacity: 0; }
-    to   { transform: translateX(0); opacity: 1; }
-  }
-  @keyframes gradient-shift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-  @keyframes dot-appear {
-    from { transform: scale(0); opacity: 0; }
-    to   { transform: scale(1); opacity: 1; }
-  }
-
-  /* ── scroll reveal ── */
-  .reveal {
-    opacity: 0;
-    transform: translateY(18px);
-    filter: blur(3px);
-    transition:
-      opacity  700ms cubic-bezier(0.16,1,0.3,1),
-      transform 700ms cubic-bezier(0.16,1,0.3,1),
-      filter   600ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0px);
-  }
-  .reveal-delay-1 { transition-delay: 80ms; }
-  .reveal-delay-2 { transition-delay: 160ms; }
-  .reveal-delay-3 { transition-delay: 240ms; }
-  .reveal-delay-4 { transition-delay: 320ms; }
-  .reveal-delay-5 { transition-delay: 400ms; }
-  .reveal-delay-6 { transition-delay: 480ms; }
-  .reveal-delay-7 { transition-delay: 560ms; }
-
-  /* ── cursor blink ── */
-  .cursor-blink {
-    animation: cursor-blink 1.1s step-start infinite;
-  }
-
-  /* ── bento cards ── */
-  .bento-card {
-    transition:
-      transform 300ms cubic-bezier(0.16,1,0.3,1),
-      border-color 300ms cubic-bezier(0.16,1,0.3,1),
-      box-shadow 300ms cubic-bezier(0.16,1,0.3,1);
-    position: relative;
-    overflow: hidden;
-  }
-  .bento-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(212,175,55,0.04) 0%, transparent 60%);
-    opacity: 0;
-    transition: opacity 400ms ease;
-    pointer-events: none;
-    z-index: 0;
-  }
-  .bento-card:hover::before {
-    opacity: 1;
-  }
-  .bento-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(212,175,55,0.18) !important;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
-  }
-  .bento-card > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ── feature icon ── */
-  .feature-icon {
-    transition: filter 300ms cubic-bezier(0.16,1,0.3,1), transform 300ms cubic-bezier(0.16,1,0.3,1), color 300ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .bento-card:hover .feature-icon {
-    filter: drop-shadow(0 0 12px rgba(212,175,55,0.4));
-    color: rgba(212,175,55,0.85) !important;
-    transform: scale(1.08);
-  }
-
-  /* ── pricing cards ── */
-  .pricing-card {
-    transition:
-      transform 300ms cubic-bezier(0.16,1,0.3,1),
-      box-shadow 300ms cubic-bezier(0.16,1,0.3,1),
-      border-color 300ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .pricing-card:hover { transform: translateY(-4px); }
-  .pricing-card-default:hover {
-    border-color: rgba(255,255,255,0.14) !important;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.45) !important;
-  }
-  .pricing-card-recommended:hover {
-    border-color: rgba(212,175,55,0.5) !important;
-    box-shadow: 0 0 80px rgba(212,175,55,0.18), 0 16px 48px rgba(0,0,0,0.55) !important;
-  }
-
-  /* ── CTA button ── */
-  .cta-primary {
-    transition:
-      background 200ms cubic-bezier(0.16,1,0.3,1),
-      transform  200ms cubic-bezier(0.16,1,0.3,1),
-      box-shadow 200ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .cta-primary:hover { transform: translateY(-2px); }
-
-  .cta-secondary {
-    transition:
-      color 200ms cubic-bezier(0.16,1,0.3,1),
-      border-color 200ms cubic-bezier(0.16,1,0.3,1),
-      transform 200ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .cta-secondary:hover {
-    transform: translateY(-2px);
-    color: #FAFAFA !important;
-    border-color: rgba(255,255,255,0.18) !important;
-  }
-
-  /* ── gradient text ── */
-  .gradient-text {
-    background: linear-gradient(135deg, #FFD166 0%, #FFB81C 30%, #D4AF37 60%, #FFD166 100%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: shimmer 4s linear infinite;
-  }
-
-  /* ── AI badge ── */
-  .ai-badge {
-    animation: badge-pulse 2.8s ease-in-out infinite;
-  }
-
-  /* ── floating mockup ── */
-  .mockup-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  /* ── step connector line ── */
-  .step-line {
-    background: linear-gradient(90deg, rgba(212,175,55,0.4) 0%, rgba(212,175,55,0.1) 100%);
-  }
-
-  /* ── recommended glow ── */
-  .recommended-glow {
-    animation: glow-pulse 3s ease-in-out infinite;
-  }
-
-  /* ── progress bar animation ── */
-  .progress-bar-fill {
-    animation: progress-fill 2.5s cubic-bezier(0.25,1,0.5,1) 1s both;
-  }
-
-  /* ── noise overlay ── */
-  .noise-overlay {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-  }
-
-  /* ── grid overlay ── */
-  .grid-overlay {
-    background-image:
-      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
-    background-size: 48px 48px;
-  }
-
-  /* ── trust stat hover ── */
-  .trust-stat {
-    transition: transform 250ms cubic-bezier(0.16,1,0.3,1);
-  }
-  .trust-stat:hover { transform: translateY(-2px); }
-
-  /* ── section backgrounds ── */
-  .section-void { background: #050810; }
-  .section-deep { background: #070B1A; }
-  .section-navy { background: #0A0F24; }
-
-  /* ── mobile: reduce motion ── */
-  @media (max-width: 640px) {
-    .reveal {
-      filter: none;
-      transition:
-        opacity  450ms cubic-bezier(0.16,1,0.3,1),
-        transform 450ms cubic-bezier(0.16,1,0.3,1);
-    }
-    .reveal-delay-1, .reveal-delay-2, .reveal-delay-3,
-    .reveal-delay-4, .reveal-delay-5, .reveal-delay-6, .reveal-delay-7 {
-      transition-delay: 0ms;
-    }
-    .mockup-float { animation: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .reveal { transition-duration: 0ms; filter: none; }
-    .cursor-blink, .ai-badge, .mockup-float, .gradient-text,
-    .recommended-glow, .progress-bar-fill { animation: none; }
-  }
-`
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
 
@@ -635,7 +387,7 @@ function EditorMockup() {
               <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.5)' }}>620/1k</p>
             </div>
             <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-              <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)', width: '62%' }} />
+              <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)', width: '62%', '--target-width': '62%' } as React.CSSProperties} />
             </div>
           </div>
           <div className="mx-3 mt-4">
@@ -682,7 +434,6 @@ interface BentoCardProps {
   title: string
   description: string
   size?: 'normal' | 'wide' | 'tall'
-  accent?: string
   children?: React.ReactNode
   delay?: number
 }
@@ -782,7 +533,7 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
 
         <Link
           href="/editor"
-          className="block text-center py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+          className={`block text-center py-3 rounded-xl text-sm font-semibold ${recommended ? 'pricing-cta-recommended' : 'pricing-cta-default'}`}
           style={recommended ? {
             background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
             color: '#09090b',
@@ -791,28 +542,6 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
             background: 'rgba(255,255,255,0.05)',
             color: '#A1A1AA',
             border: '1px solid rgba(255,255,255,0.08)',
-          }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLElement
-            if (recommended) {
-              el.style.boxShadow = '0 0 40px rgba(212,175,55,0.45)'
-              el.style.transform = 'translateY(-1px)'
-            } else {
-              el.style.borderColor = 'rgba(255,255,255,0.16)'
-              el.style.color = '#FAFAFA'
-              el.style.background = 'rgba(255,255,255,0.08)'
-            }
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLElement
-            if (recommended) {
-              el.style.boxShadow = '0 0 24px rgba(212,175,55,0.3)'
-              el.style.transform = 'translateY(0)'
-            } else {
-              el.style.borderColor = 'rgba(255,255,255,0.08)'
-              el.style.color = '#A1A1AA'
-              el.style.background = 'rgba(255,255,255,0.05)'
-            }
           }}
         >
           {cta}
@@ -862,7 +591,6 @@ export default function HomeClient() {
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{ __html: GLOBAL_STYLES }} />
       <div
         ref={pageRef}
         className="min-h-screen"
@@ -903,7 +631,7 @@ export default function HomeClient() {
               }}
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              Open beta is live — free to start
+              1,000+ games built — free to start
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
               <span style={{ color: '#D4AF37' }}>1,000 free tokens</span>
             </div>
@@ -917,9 +645,9 @@ export default function HomeClient() {
                 letterSpacing: '-0.02em',
               }}
             >
-              Build Roblox games
+              From idea to
               <br />
-              <span className="gradient-text">with AI in minutes</span>
+              <span className="gradient-text">Roblox game.</span>
             </h1>
 
             {/* Subheadline */}
@@ -927,9 +655,9 @@ export default function HomeClient() {
               className="reveal reveal-delay-2 text-xl leading-relaxed max-w-2xl mx-auto mb-12"
               style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
             >
-              Describe your world. ForjeGames generates terrain, builds assets,
+              Voice, image, or text — ForjeGames builds the terrain, assets,
               <br className="hidden sm:block" />
-              writes scripts, and syncs directly to your Roblox Studio — live.
+              scripts, and economy. Synced live to Roblox Studio.
             </p>
 
             {/* CTA row */}
@@ -943,20 +671,12 @@ export default function HomeClient() {
                   boxShadow: '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
                 }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.boxShadow = '0 0 48px rgba(212,175,55,0.5), 0 8px 24px rgba(0,0,0,0.5)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.boxShadow = '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)'
-                }}
               >
                 Start building free
                 <IconArrow size={15} />
               </Link>
               <Link
-                href="/editor"
+                href="/showcase"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
@@ -964,7 +684,7 @@ export default function HomeClient() {
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                Try the editor
+                See what gets built
               </Link>
             </div>
 
@@ -1155,7 +875,7 @@ export default function HomeClient() {
                 }}>
                   <div className="flex flex-col gap-1 flex-1">
                     <div className="h-1.5 rounded-full" style={{ background: 'rgba(96,165,250,0.15)' }}>
-                      <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: '#60A5FA', width: '78%' }} />
+                      <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: '#60A5FA', width: '78%', '--target-width': '78%' } as React.CSSProperties} />
                     </div>
                     <span className="text-[10px]" style={{ color: '#52525B' }}>Syncing to Studio...</span>
                   </div>
@@ -1345,21 +1065,11 @@ export default function HomeClient() {
             <div className="reveal reveal-delay-4 text-center mt-16">
               <Link
                 href="/editor"
-                className="cta-primary inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
+                className="cta-ghost-gold inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold"
                 style={{
                   background: 'rgba(212,175,55,0.1)',
                   border: '1px solid rgba(212,175,55,0.25)',
                   color: '#D4AF37',
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.background = 'rgba(212,175,55,0.15)'
-                  el.style.boxShadow = '0 0 24px rgba(212,175,55,0.15)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.background = 'rgba(212,175,55,0.1)'
-                  el.style.boxShadow = 'none'
                 }}
               >
                 Try it yourself — free
@@ -1518,10 +1228,7 @@ export default function HomeClient() {
             <div className="reveal mt-10 text-center">
               <p className="text-[13px] mb-3" style={{ color: '#3F3F46' }}>
                 10% of every payment goes to charity.{' '}
-                <Link href="/editor" className="transition-colors duration-200" style={{ color: '#71717A' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#A1A1AA' }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#71717A' }}
-                >
+                <Link href="/editor" className="link-subtle transition-colors duration-200" style={{ color: '#71717A' }}>
                   Try it free
                 </Link>
               </p>
@@ -1615,14 +1322,6 @@ export default function HomeClient() {
                   color: '#09090b',
                   boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.5)',
                   letterSpacing: '0.01em',
-                }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.boxShadow = '0 0 64px rgba(212,175,55,0.55), 0 12px 32px rgba(0,0,0,0.6)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLElement
-                  el.style.boxShadow = '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.5)'
                 }}
               >
                 Start building free

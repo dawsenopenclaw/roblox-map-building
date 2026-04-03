@@ -32,6 +32,13 @@ interface DashboardStats {
 
 const GOLD = '#FFB81C'
 
+const STARTER_PROMPTS = [
+  'Build a tycoon shop with neon signs',
+  'Make a forest map with a river',
+  'Create a combat system with health bars',
+  'Generate a medieval castle',
+]
+
 const SPARKLINE_TOKEN = [210, 190, 320, 280, 410, 390, 460]
 
 const BUILD_ACTIVITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -241,21 +248,23 @@ function RecentBuilds({ builds }: { builds: RecentBuild[] }) {
         style={{ background: '#111111' }}
       >
         {builds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 px-5 text-center">
+          <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3"
-              style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}15` }}
+              className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl mb-4"
+              style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20` }}
             >
-              ⚡
+              🏗️
             </div>
-            <p className="text-sm font-semibold text-white mb-1">No builds yet</p>
-            <p className="text-[12px] text-gray-500 mb-4">Your AI-generated assets will appear here.</p>
+            <p className="text-sm font-bold text-white mb-1.5">Your first build is one prompt away</p>
+            <p className="text-[12px] text-gray-500 mb-5 max-w-[240px] leading-relaxed">
+              Describe what you want to create and ForjeAI will build it — terrain, scripts, assets and all.
+            </p>
             <Link
               href="/editor"
-              className="text-xs font-bold px-4 py-2 rounded-lg text-black transition-all hover:opacity-90"
-              style={{ background: GOLD }}
+              className="text-xs font-bold px-5 py-2.5 rounded-xl text-black transition-all hover:opacity-90 hover:scale-[1.02]"
+              style={{ background: GOLD, boxShadow: `0 0 16px ${GOLD}30` }}
             >
-              Start building
+              Open Editor
             </Link>
           </div>
         ) : (
@@ -528,6 +537,36 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             </Link>
           </div>
         )}
+
+        {/* ── Starter Prompt Pills ───────────────────────────────────────── */}
+        <div className="flex flex-wrap gap-2">
+          {STARTER_PROMPTS.map((prompt) => (
+            <Link
+              key={prompt}
+              href={`/editor?prompt=${encodeURIComponent(prompt)}`}
+              className="group text-[12px] px-3 py-1.5 rounded-lg border transition-all duration-150"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                borderColor: 'rgba(255,255,255,0.08)',
+                color: '#71717A',
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget
+                el.style.background = 'rgba(255,184,28,0.08)'
+                el.style.borderColor = 'rgba(255,184,28,0.2)'
+                el.style.color = GOLD
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget
+                el.style.background = 'rgba(255,255,255,0.04)'
+                el.style.borderColor = 'rgba(255,255,255,0.08)'
+                el.style.color = '#71717A'
+              }}
+            >
+              {prompt}
+            </Link>
+          ))}
+        </div>
 
         {/* ── Stat Cards ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

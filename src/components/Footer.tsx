@@ -5,7 +5,9 @@ const PRODUCT_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/marketplace', label: 'Marketplace' },
+  { href: '/showcase', label: 'Showcase' },
   { href: '/docs', label: 'Documentation' },
+  { href: '/blog', label: 'Blog' },
   { href: '/download', label: 'Download' },
 ]
 
