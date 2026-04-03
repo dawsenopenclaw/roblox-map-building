@@ -1,9 +1,9 @@
 'use client'
 
-import { SignIn, useAuth } from '@clerk/nextjs'
+import { SignIn, useAuth, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const clerkAppearance = {
   variables: {
@@ -30,6 +30,7 @@ const clerkAppearance = {
     headerSubtitle: 'hidden',
     logoBox: 'hidden',
     logoImage: 'hidden',
+    footer: 'hidden',
     formFieldLabel: '!text-zinc-400 !text-xs !font-medium',
     formFieldInput: '!bg-[#1a1a1c] !border !border-white/[0.08] !text-white !rounded-lg !h-10 focus:!border-[#FFB81C] focus:!ring-1 focus:!ring-[#FFB81C]/20 !transition-colors',
     formButtonPrimary: '!bg-[#FFB81C] hover:!bg-[#E6A619] !text-black !font-semibold !rounded-lg !h-10 !shadow-none !transition-colors',
@@ -37,8 +38,6 @@ const clerkAppearance = {
     socialButtonsBlockButtonText: '!text-white !font-medium !text-sm',
     dividerLine: '!bg-white/[0.06]',
     dividerText: '!text-zinc-600 !text-xs',
-    footerActionLink: '!text-[#FFB81C] hover:!text-[#E6A619] !font-medium',
-    footerActionText: '!text-zinc-500',
     identityPreviewEditButton: '!text-[#FFB81C]',
     formResendCodeLink: '!text-[#FFB81C]',
     otpCodeFieldInput: '!border-white/[0.08] !bg-[#1a1a1c] !text-white !rounded-lg',
@@ -53,13 +52,49 @@ export default function SignInPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isSignedIn, isLoaded } = useAuth()
+  const { signOut } = useClerk()
+  const [clearing, setClearing] = useState(false)
   const redirectUrl = searchParams.get('redirect_url') || '/editor'
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (!isLoaded) return
+
+    if (isSignedIn) {
+      // Try to go to editor — if middleware bounces back, the user can sign out manually
       router.replace(redirectUrl)
     }
   }, [isLoaded, isSignedIn, router, redirectUrl])
+
+  async function handleSignOut() {
+    setClearing(true)
+    await signOut()
+    window.location.href = '/sign-in'
+  }
+
+  if (isLoaded && isSignedIn) {
+    return (
+      <div className="w-full text-center">
+        <h1 className="text-xl font-bold text-white mb-2">You&apos;re signed in</h1>
+        <p className="text-sm text-zinc-500 mb-6">Redirecting to the editor...</p>
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/editor"
+            className="w-full block rounded-lg font-semibold text-sm text-center py-2.5 transition-colors text-black"
+            style={{ background: '#FFB81C' }}
+          >
+            Go to Editor
+          </Link>
+          <button
+            onClick={handleSignOut}
+            disabled={clearing}
+            className="w-full rounded-lg text-sm py-2.5 transition-colors text-zinc-400 hover:text-white border border-white/[0.08] hover:bg-white/5"
+          >
+            {clearing ? 'Signing out...' : 'Sign out and switch account'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full">
