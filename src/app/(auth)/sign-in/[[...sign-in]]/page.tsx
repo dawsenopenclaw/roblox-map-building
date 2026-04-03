@@ -2,7 +2,7 @@
 
 import { SignIn, useAuth, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const clerkAppearance = {
@@ -49,49 +49,35 @@ const clerkAppearance = {
 }
 
 export default function SignInPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const { isSignedIn, isLoaded } = useAuth()
   const { signOut } = useClerk()
-  const [clearing, setClearing] = useState(false)
+  const [ready, setReady] = useState(false)
   const redirectUrl = searchParams.get('redirect_url') || '/editor'
 
+  // Auto-clear stale sessions. If someone lands on /sign-in while "signed in",
+  // the session is likely stale (from old Clerk app). Sign them out automatically
+  // so the form shows cleanly. If they're truly signed in, they wouldn't be here.
   useEffect(() => {
     if (!isLoaded) return
 
     if (isSignedIn) {
-      // Try to go to editor — if middleware bounces back, the user can sign out manually
-      router.replace(redirectUrl)
+      // Sign out silently, then show the form
+      signOut().then(() => {
+        setReady(true)
+      }).catch(() => {
+        setReady(true)
+      })
+    } else {
+      setReady(true)
     }
-  }, [isLoaded, isSignedIn, router, redirectUrl])
+  }, [isLoaded, isSignedIn, signOut])
 
-  async function handleSignOut() {
-    setClearing(true)
-    await signOut()
-    window.location.href = '/sign-in'
-  }
-
-  if (isLoaded && isSignedIn) {
+  if (!ready) {
     return (
-      <div className="w-full text-center">
-        <h1 className="text-xl font-bold text-white mb-2">You&apos;re signed in</h1>
-        <p className="text-sm text-zinc-500 mb-6">Redirecting to the editor...</p>
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/editor"
-            className="w-full block rounded-lg font-semibold text-sm text-center py-2.5 transition-colors text-black"
-            style={{ background: '#FFB81C' }}
-          >
-            Go to Editor
-          </Link>
-          <button
-            onClick={handleSignOut}
-            disabled={clearing}
-            className="w-full rounded-lg text-sm py-2.5 transition-colors text-zinc-400 hover:text-white border border-white/[0.08] hover:bg-white/5"
-          >
-            {clearing ? 'Signing out...' : 'Sign out and switch account'}
-          </button>
-        </div>
+      <div className="w-full flex flex-col items-center py-12 gap-3">
+        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
+        <p className="text-sm text-zinc-500">Preparing...</p>
       </div>
     )
   }

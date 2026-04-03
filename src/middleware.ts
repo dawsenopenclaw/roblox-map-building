@@ -46,6 +46,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/ai/feedback',
   // Waitlist — must be public so visitors can sign up from the landing page
   '/api/waitlist',
+  // Contact form — must be public so pricing page visitors can submit
+  '/api/contact/(.*)',
   // Legal
   '/privacy',
   '/terms',
@@ -284,10 +286,9 @@ export default clerkMiddleware(async (auth, request) => {
       }
     }
 
-    // Redirect authenticated users away from auth pages → go straight to editor
-    if (isAuthRoute(request) && userId) {
-      return NextResponse.redirect(new URL('/editor', request.url))
-    }
+    // Don't redirect signed-in users away from auth pages — the client-side
+    // pages handle stale sessions by auto-signing out. Middleware redirecting
+    // here causes loops when the session cookie is from a different Clerk app.
 
     // Protect non-public routes — isPublicRoute is the single source of truth.
     // All routes listed in the public matcher are accessible without auth.

@@ -2,7 +2,6 @@
 
 import { SignUp, useAuth, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 const clerkAppearance = {
@@ -48,44 +47,30 @@ const clerkAppearance = {
 }
 
 export default function SignUpPage() {
-  const router = useRouter()
   const { isSignedIn, isLoaded } = useAuth()
   const { signOut } = useClerk()
-  const [clearing, setClearing] = useState(false)
+  const [ready, setReady] = useState(false)
 
+  // Auto-clear stale sessions so the sign-up form always shows
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.replace('/editor')
+    if (!isLoaded) return
+
+    if (isSignedIn) {
+      signOut().then(() => {
+        setReady(true)
+      }).catch(() => {
+        setReady(true)
+      })
+    } else {
+      setReady(true)
     }
-  }, [isLoaded, isSignedIn, router])
+  }, [isLoaded, isSignedIn, signOut])
 
-  async function handleSignOut() {
-    setClearing(true)
-    await signOut()
-    window.location.href = '/sign-up'
-  }
-
-  if (isLoaded && isSignedIn) {
+  if (!ready) {
     return (
-      <div className="w-full text-center">
-        <h1 className="text-xl font-bold text-white mb-2">You&apos;re already signed in</h1>
-        <p className="text-sm text-zinc-500 mb-6">Want to create a different account?</p>
-        <div className="flex flex-col gap-3">
-          <Link
-            href="/editor"
-            className="w-full block rounded-lg font-semibold text-sm text-center py-2.5 transition-colors text-black"
-            style={{ background: '#FFB81C' }}
-          >
-            Go to Editor
-          </Link>
-          <button
-            onClick={handleSignOut}
-            disabled={clearing}
-            className="w-full rounded-lg text-sm py-2.5 transition-colors text-zinc-400 hover:text-white border border-white/[0.08] hover:bg-white/5"
-          >
-            {clearing ? 'Signing out...' : 'Sign out and create new account'}
-          </button>
-        </div>
+      <div className="w-full flex flex-col items-center py-12 gap-3">
+        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
+        <p className="text-sm text-zinc-500">Preparing...</p>
       </div>
     )
   }
