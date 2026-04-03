@@ -3,15 +3,16 @@ import { createMetadata } from '@/lib/metadata'
 import DownloadClient from './DownloadClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Desktop App — Coming Soon',
+  title: 'Download Studio Plugin | ForjeGames',
   description:
-    'The ForjeGames desktop app is coming soon. Join the waitlist to be notified at launch. In the meantime, use the full-featured web editor.',
+    'Download the ForjeGames Roblox Studio plugin to connect your Studio directly to the ForjeGames AI editor. One-click install for Windows and Mac.',
   path: '/download',
   keywords: [
-    'ForjeGames desktop app',
-    'Roblox AI desktop',
+    'ForjeGames Studio plugin',
     'Roblox Studio AI plugin',
-    'Roblox game builder',
+    'Roblox Studio plugin download',
+    'ForjeGames plugin install',
+    'Roblox AI game builder',
   ],
 })
 
