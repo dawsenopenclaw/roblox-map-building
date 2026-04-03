@@ -121,7 +121,8 @@ const GLOBAL_STYLES = `
   .bento-card:hover {
     transform: translateY(-3px);
     border-color: rgba(212,175,55,0.18) !important;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
+    background: rgba(20,25,65,0.40) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
   }
   .bento-card > * {
     position: relative;
@@ -233,9 +234,9 @@ const GLOBAL_STYLES = `
   .trust-stat:hover { transform: translateY(-2px); }
 
   /* ── section backgrounds ── */
-  .section-void { background: #09090b; }
-  .section-deep { background: #0A0E27; }
-  .section-navy { background: #0D1230; }
+  .section-void { background: rgba(9, 9, 11, 0.45); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
+  .section-deep { background: rgba(10, 14, 39, 0.40); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
+  .section-navy { background: rgba(13, 18, 48, 0.40); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
 
   /* ── mobile: reduce motion ── */
   @media (max-width: 640px) {
@@ -512,7 +513,7 @@ function EditorMockup() {
         {/* File tree */}
         <div
           className="hidden md:flex flex-col w-44 flex-shrink-0 pt-3"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#0A0D1A' }}
+          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: 'rgba(10,13,26,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
         >
           <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Explorer
@@ -614,7 +615,7 @@ function EditorMockup() {
         {/* Properties panel */}
         <div
           className="hidden lg:flex flex-col w-40 flex-shrink-0 pt-3"
-          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#0A0D1A' }}
+          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: 'rgba(10,13,26,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
         >
           <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Properties
@@ -693,9 +694,11 @@ function BentoCard({ icon, title, description, size = 'normal', children, delay 
     <div
       className={`reveal ${delayClass} bento-card rounded-2xl p-6 flex flex-col gap-4`}
       style={{
-        background: 'rgba(255,255,255,0.025)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        backdropFilter: 'blur(12px)',
+        background: 'rgba(15,20,50,0.30)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(24px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
         gridColumn: size === 'wide' ? 'span 2' : undefined,
         gridRow: size === 'tall' ? 'span 2' : undefined,
       }}
@@ -730,7 +733,9 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
     <div
       className={`reveal flex flex-col rounded-2xl p-8 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'} relative overflow-hidden`}
       style={{
-        background: recommended ? 'linear-gradient(145deg, #121A3E 0%, #0F1535 100%)' : '#0C0F1F',
+        background: recommended ? 'linear-gradient(145deg, rgba(18,26,62,0.50), rgba(15,21,53,0.50))' : 'rgba(12,15,31,0.40)',
+        backdropFilter: 'blur(24px) saturate(1.3)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
         border: recommended ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
         boxShadow: recommended
           ? '0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5)'
@@ -867,7 +872,7 @@ export default function HomeClient() {
       <div
         ref={pageRef}
         className="min-h-screen"
-        style={{ background: '#09090b', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
+        style={{ background: 'transparent', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
       >
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -1007,7 +1012,9 @@ export default function HomeClient() {
           style={{
             borderTop: '1px solid rgba(255,255,255,0.04)',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
-            background: 'linear-gradient(to bottom, #0A0E27, #09090b)',
+            background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(9,9,11,0.35))',
+            backdropFilter: 'blur(40px) saturate(1.3)',
+            WebkitBackdropFilter: 'blur(40px) saturate(1.3)',
           }}
         >
           {/* Ambient glow */}
@@ -1046,7 +1053,7 @@ export default function HomeClient() {
         <section
           id="features"
           className="py-32 px-6 relative"
-          style={{ background: '#09090b' }}
+          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
         >
           {/* Section background */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -1081,8 +1088,11 @@ export default function HomeClient() {
               <div
                 className="reveal bento-card rounded-2xl p-7 flex flex-col lg:col-span-2"
                 style={{
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(15,20,50,0.30)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  backdropFilter: 'blur(24px) saturate(1.3)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
                   minHeight: 280,
                 }}
               >
@@ -1138,8 +1148,11 @@ export default function HomeClient() {
               <div
                 className="reveal reveal-delay-1 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(15,20,50,0.30)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  backdropFilter: 'blur(24px) saturate(1.3)',
+                  WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
                   minHeight: 280,
                 }}
               >
@@ -1285,7 +1298,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, #0A0E27 0%, #0D1230 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(13,18,48,0.35))', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
         >
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
@@ -1395,7 +1408,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: '#09090b' }}
+          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
         >
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
@@ -1437,7 +1450,7 @@ export default function HomeClient() {
         <section
           id="pricing"
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, #0A0E27 0%, #0D1230 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(13,18,48,0.35))', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
         >
           {/* Glow behind pricing */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -1519,11 +1532,11 @@ export default function HomeClient() {
             <div className="reveal mt-10 text-center">
               <p className="text-[13px] mb-3" style={{ color: '#3F3F46' }}>
                 10% of every payment goes to charity.{' '}
-                <Link href="/pricing" className="transition-colors duration-200" style={{ color: '#71717A' }}
+                <Link href="/editor" className="transition-colors duration-200" style={{ color: '#71717A' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#A1A1AA' }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#71717A' }}
                 >
-                  Full pricing details
+                  Try it free
                 </Link>
               </p>
               <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -1552,7 +1565,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="relative py-48 px-6 overflow-hidden"
-          style={{ background: '#09090b' }}
+          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
         >
           {/* Multi-layer depth glow */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">

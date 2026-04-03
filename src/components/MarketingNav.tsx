@@ -51,10 +51,10 @@ function MarketingNav() {
       className={[
         'fixed top-0 inset-x-0 z-50 transition-all duration-300',
         scrolled
-          ? 'bg-[#0A0E27]/90 backdrop-blur-md border-b border-white/[0.06]'
+          ? 'backdrop-blur-xl backdrop-saturate-150 border-b border-white/[0.05]'
           : 'bg-transparent',
       ].join(' ')}
-      style={scrolled ? { boxShadow: '0 1px 0 rgba(255,255,255,0.03)' } : undefined}
+      style={scrolled ? { background: 'rgba(10,14,39,0.45)', boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(255,255,255,0.03)' } : undefined}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
 

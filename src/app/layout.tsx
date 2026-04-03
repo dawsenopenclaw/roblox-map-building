@@ -11,6 +11,7 @@ import Script from 'next/script'
 import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 import { SplashScreen } from '@/components/SplashScreen'
+import { GlassOrbEffect } from '@/components/GlassOrbEffect'
 import { CookieBanner } from '@/components/CookieBanner'
 import { GlobalShortcuts } from '@/components/GlobalShortcuts'
 
@@ -185,6 +186,7 @@ export default function RootLayout({
           */}
           <SplashScreen>
             <Suspense fallback={null}>
+              <GlassOrbEffect />
               <SkipToContent />
               <OfflineIndicator />
               <GlobalShortcuts />
