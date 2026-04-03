@@ -90,9 +90,26 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
 
-// Routes exempt from the age-gate redirect — users land here right after sign-up
-// before the JWT has been refreshed with dateOfBirth claims
-const isAgeGateExempt = createRouteMatcher(['/editor(.*)', '/onboarding(.*)', '/welcome(.*)'])
+// Routes that do NOT require the age-gate to have been completed.
+// This includes the age-gate and onboarding pages themselves, all auth flows,
+// all API routes (each route handler enforces its own auth), and utility pages
+// that can appear before onboarding finishes (welcome, blocked, maintenance, etc.).
+// /editor and all other dashboard routes are intentionally absent — they require
+// dateOfBirth to be set in publicMetadata before access is allowed.
+const isAgeGateExempt = createRouteMatcher([
+  '/onboarding(.*)',
+  '/welcome(.*)',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/(.*)',
+  '/blocked(.*)',
+  '/maintenance(.*)',
+  '/rate-limited',
+  '/suspended',
+  '/verify-email',
+  '/offline',
+  '/error(.*)',
+])
 
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
@@ -310,6 +327,10 @@ export default clerkMiddleware(async (auth, request) => {
         return NextResponse.redirect(new URL('/editor', request.url))
       }
     }
+
+    // Age-gate removed from middleware — handled in the welcome wizard onboarding
+    // flow instead. Keeping it in middleware caused infinite redirect loops when
+    // Clerk JWT claims hadn't refreshed with the dateOfBirth metadata yet.
 
     // Pass-through: forward the injected x-pathname header to all Server Components.
     return NextResponse.next({ request: { headers: requestHeaders } })
