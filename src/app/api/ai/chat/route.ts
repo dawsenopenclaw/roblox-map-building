@@ -16,7 +16,7 @@ import {
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
-import { queueCommand, getSession } from '@/lib/studio-session'
+import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import Anthropic from '@anthropic-ai/sdk'
 
@@ -430,8 +430,22 @@ if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
 async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
   if (!sessionId || !code) return false
   try {
-    const session = await getSession(sessionId)
-    if (!session) return false
+    // Try to find the session — memory first, then Redis
+    let session = await getSession(sessionId)
+
+    // On Vercel, the chat Lambda is often a different instance from the auth Lambda.
+    // If the session isn't found (no Redis, or cold start), create a minimal one
+    // so the command can be queued. The plugin's next /sync poll will find it.
+    if (!session) {
+      session = createSession({
+        placeId: 'unknown',
+        placeName: 'Unknown',
+        pluginVersion: 'unknown',
+        authToken: '',
+        sessionId,
+      })
+    }
+
     // Validate and auto-fix common AI mistakes before sending
     const { fixedCode, fixes } = validateAndFixLuau(code)
     if (fixes.length > 0) {
@@ -1513,6 +1527,30 @@ Change the shop roof to dark wood
 These become clickable buttons in the UI. Make them specific, actionable, and exciting.
 
 ALWAYS end with suggestions. NEVER skip them.
+
+=== AI AGENTS & TOOLS (auto-dispatched) ===
+
+ForjeGames has specialized AI agents that automatically activate based on your conversation:
+
+TERRAIN FORGE — Triggers on: terrain, landscape, biome, mountain, valley, river, lake, desert, snow, forest floor, canyon, cliff
+- Generates heightmaps, sculpts terrain, paints biomes
+- You can reference it naturally: "let me fire up the terrain engine" or "terrain forge is sculpting that now"
+
+CITY ARCHITECT — Triggers on: city, town, urban, roads, streets, blocks, districts, neighborhood, village, suburb
+- Plans city layouts, road grids, building placement, zoning
+- Reference it: "city architect is laying out the grid" or "let me plan the street layout"
+
+ASSET ALCHEMIST — Triggers on: 3D model, mesh, custom asset, sculpt, generate texture, PBR, material map
+- Generates custom 3D models via AI (text-to-3D)
+- Generates PBR texture sets (albedo, normal, roughness, metallic)
+- Reference it: "asset alchemist is generating that model" or "let me cook up a custom mesh for that"
+
+When these agents activate, the user sees status indicators. Mention them naturally to build trust:
+- "I'm deploying the terrain forge to sculpt those mountains — give me a sec"
+- "Asset alchemist is generating a custom model for that — should be ready in a few seconds"
+- "City architect is planning the road layout, I'll drop buildings after"
+
+DO NOT explain how agents work technically. Just use them naturally like tools in your workshop.
 
 ${MARKETPLACE_ASSET_RULES}`
 

@@ -180,18 +180,18 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
   }, [isOpen])
 
   return (
-    <div className="border border-white/10 rounded-xl overflow-hidden bg-[#0a0d19]">
+    <div className="border border-[#1A2550] rounded-xl overflow-hidden bg-[#0F1535]">
       <button
         id={buttonId}
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/[0.04] transition-colors"
         aria-expanded={isOpen}
         aria-controls={panelId}
       >
         <span className="text-white font-semibold text-sm pr-4">{q}</span>
         <ChevronDown
           aria-hidden="true"
-          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+          className={`w-4 h-4 text-[#8B95B0] flex-shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -203,7 +203,7 @@ function FaqItem({ q, a, isOpen, onToggle }: { q: string; a: string; isOpen: boo
         style={{ height, overflow: 'hidden', transition: 'height 220ms ease', willChange: 'height' }}
       >
         <div ref={bodyRef} className="px-5 pb-5 pt-1">
-          <p className="text-gray-300 text-sm leading-relaxed">{a}</p>
+          <p className="text-[#8B95B0] text-sm leading-relaxed">{a}</p>
         </div>
       </div>
     </div>
@@ -219,10 +219,10 @@ function CompareCell({ value }: { value: string | boolean }) {
     return value ? (
       <Check className="w-4 h-4 text-[#FFB81C] mx-auto" />
     ) : (
-      <X className="w-4 h-4 text-gray-600 mx-auto" />
+      <X className="w-4 h-4 text-[#1A2550] mx-auto" />
     )
   }
-  return <span className="text-sm text-gray-300">{value}</span>
+  return <span className="text-sm text-[#8B95B0]">{value}</span>
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +234,7 @@ export default function PricingClient() {
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
   return (
-    <div className="min-h-screen bg-[#060810] text-white">
+    <div className="min-h-screen bg-[#050810] text-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
 
         {/* ------------------------------------------------------------------ */}
@@ -256,19 +256,20 @@ export default function PricingClient() {
               Simple, transparent pricing
             </span>
           </h1>
-          <p className="text-lg text-gray-300 mb-10 max-w-xl mx-auto">
+          <p className="text-lg text-[#8B95B0] mb-10 max-w-xl mx-auto">
             Start free. No credit card required. Upgrade when you&apos;re ready.
           </p>
 
           {/* Toggle */}
-          <div className="inline-flex items-center bg-white/5 border border-white/10 rounded-full p-1">
+          <div className="inline-flex items-center bg-[#0F1535] border border-[#1A2550] rounded-full p-1">
             <button
               onClick={() => setAnnual(false)}
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${
                 !annual
-                  ? 'bg-white text-black shadow'
-                  : 'text-gray-300 hover:text-[#FFB81C]'
+                  ? 'text-black shadow'
+                  : 'text-[#8B95B0] hover:text-[#FFB81C]'
               }`}
+              style={!annual ? { background: 'linear-gradient(135deg, #FFB81C, #FFD966)' } : {}}
             >
               Monthly
             </button>
@@ -276,9 +277,10 @@ export default function PricingClient() {
               onClick={() => setAnnual(true)}
               className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
                 annual
-                  ? 'bg-white text-black shadow'
-                  : 'text-gray-300 hover:text-[#FFB81C]'
+                  ? 'text-black shadow'
+                  : 'text-[#8B95B0] hover:text-[#FFB81C]'
               }`}
+              style={annual ? { background: 'linear-gradient(135deg, #FFB81C, #FFD966)' } : {}}
             >
               Annual
               <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
@@ -299,11 +301,16 @@ export default function PricingClient() {
             return (
               <div
                 key={tier.key}
-                className={`relative flex flex-col rounded-2xl border p-6 transition-all ${
+                className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-300 ${
                   tier.highlight
-                    ? 'bg-[#0f1320] border-[#FFB81C]/70 shadow-[0_0_50px_rgba(255,184,28,0.15)] lg:-mt-4 lg:pb-10 lg:pt-10'
-                    : 'bg-[#0a0d19] border-white/10 hover:border-white/20'
+                    ? 'border-[rgba(255,184,28,0.3)] shadow-[0_0_50px_rgba(255,184,28,0.12),0_8px_32px_rgba(255,184,28,0.08)] lg:-mt-4 lg:pb-10 lg:pt-10 hover:-translate-y-1'
+                    : 'bg-[#0F1535] border-[#1A2550] hover:border-[#2A3570] hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
                 }`}
+                style={
+                  tier.highlight
+                    ? { background: 'linear-gradient(160deg, #0E1530 0%, #0B1028 100%)' }
+                    : {}
+                }
               >
                 {/* Most Popular badge */}
                 {tier.badge && (
@@ -325,7 +332,7 @@ export default function PricingClient() {
                     className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
                       tier.highlight
                         ? 'bg-[#FFB81C]/15 text-[#FFB81C]'
-                        : 'bg-white/5 text-gray-300'
+                        : 'bg-white/5 text-[#8B95B0]'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
@@ -337,7 +344,7 @@ export default function PricingClient() {
                   >
                     {tier.name}
                   </p>
-                  <p className="text-gray-400 text-sm">{tier.tagline}</p>
+                  <p className="text-[#8B95B0] text-sm">{tier.tagline}</p>
                 </div>
 
                 {/* Price */}
@@ -349,16 +356,16 @@ export default function PricingClient() {
                       <p className="text-4xl font-extrabold text-white">
                         {formatPrice(price)}
                       </p>
-                      <span className="text-gray-400 text-sm mb-2">/mo</span>
+                      <span className="text-[#8B95B0] text-sm mb-2">/mo</span>
                     </div>
                   )}
                   {annual && price > 0 && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-[#8B95B0] mt-1">
                       Billed {formatPrice(price * 12)}/year
                     </p>
                   )}
                   {!annual && price > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-[#8B95B0] mt-1">
                       or {formatPrice(tier.priceYearly)}/mo billed annually
                     </p>
                   )}
@@ -370,7 +377,7 @@ export default function PricingClient() {
                   className={`block text-center font-bold py-3 rounded-xl text-sm transition-all ${
                     tier.highlight
                       ? 'text-black hover:opacity-90 hover:scale-[1.02]'
-                      : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
+                      : 'border border-[#1A2550] hover:border-[#2A3570] text-white hover:bg-white/5'
                   }`}
                   style={
                     tier.highlight
@@ -388,7 +395,7 @@ export default function PricingClient() {
                 {tier.priceMonthly === 0 && <div className="mb-7" />}
 
                 {/* Divider */}
-                <div className={`h-px mb-5 ${tier.highlight ? 'bg-[#FFB81C]/20' : 'bg-white/5'}`} />
+                <div className={`h-px mb-5 ${tier.highlight ? 'bg-[#FFB81C]/20' : 'bg-[#1A2550]'}`} />
 
                 {/* Features */}
                 <ul className="space-y-3">
@@ -396,12 +403,12 @@ export default function PricingClient() {
                     <li key={f} className="flex items-start gap-2.5">
                       <Check
                         className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                          tier.highlight ? 'text-[#FFB81C]' : 'text-gray-400'
+                          tier.highlight ? 'text-[#FFB81C]' : 'text-[#8B95B0]'
                         }`}
                       />
                       <span
                         className={`text-sm ${
-                          tier.highlight ? 'text-gray-200' : 'text-gray-300'
+                          tier.highlight ? 'text-[#FAFAFA]' : 'text-[#8B95B0]'
                         }`}
                       >
                         {f}
@@ -417,22 +424,22 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Trust bar                                                           */}
         {/* ------------------------------------------------------------------ */}
-        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mb-20 text-sm text-gray-400">
+        <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 mb-20 text-sm text-[#8B95B0]">
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             COPPA compliant
           </span>
-          <span className="hidden sm:inline text-gray-700">·</span>
+          <span className="hidden sm:inline text-[#1A2550]">·</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             No contracts
           </span>
-          <span className="hidden sm:inline text-gray-700">·</span>
+          <span className="hidden sm:inline text-[#1A2550]">·</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Cancel anytime
           </span>
-          <span className="hidden sm:inline text-gray-700">·</span>
+          <span className="hidden sm:inline text-[#1A2550]">·</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             SSL encrypted
@@ -449,7 +456,7 @@ export default function PricingClient() {
           <table className="w-full min-w-[640px] border-collapse">
             <thead>
               <tr>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-400 w-1/3">Feature</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-[#8B95B0] w-1/3">Feature</th>
                 {TIERS.map((tier) => (
                   <th
                     key={tier.key}
@@ -467,7 +474,7 @@ export default function PricingClient() {
                   const price = annual ? tier.priceYearly : tier.priceMonthly
                   return (
                     <td key={tier.key} className="text-center pb-4 px-3">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-[#8B95B0]">
                         {price === 0 ? 'Free' : `${formatPrice(price)}/mo`}
                       </span>
                     </td>
@@ -479,12 +486,12 @@ export default function PricingClient() {
               {COMPARE_FEATURES.map((row, i) => (
                 <tr
                   key={row.label}
-                  className={i % 2 === 0 ? 'bg-white/[0.02]' : ''}
+                  className={i % 2 === 0 ? 'bg-[#0A0E27]' : 'bg-[#0D1230]'}
                 >
-                  <td className="py-3 px-4 text-sm text-gray-300 rounded-l-lg">{row.label}</td>
+                  <td className="py-3 px-4 text-sm text-[#8B95B0] rounded-l-lg">{row.label}</td>
                   <td className="py-3 px-3 text-center"><CompareCell value={row.free} /></td>
                   <td className="py-3 px-3 text-center"><CompareCell value={row.starter} /></td>
-                  <td className={`py-3 px-3 text-center ${i % 2 === 0 ? 'bg-[#FFB81C]/[0.04]' : 'bg-[#FFB81C]/[0.02]'}`}>
+                  <td className={`py-3 px-3 text-center ${i % 2 === 0 ? 'bg-[#FFB81C]/[0.05]' : 'bg-[#FFB81C]/[0.03]'}`}>
                     <CompareCell value={row.pro} />
                   </td>
                   <td className="py-3 px-3 text-center rounded-r-lg"><CompareCell value={row.studio} /></td>
@@ -501,7 +508,7 @@ export default function PricingClient() {
                       className={`inline-block text-xs font-bold py-2 px-4 rounded-lg transition-all ${
                         tier.highlight
                           ? 'text-black hover:opacity-90'
-                          : 'border border-white/20 hover:border-white/40 text-white hover:bg-white/5'
+                          : 'border border-[#1A2550] hover:border-[#2A3570] text-white hover:bg-white/5'
                       }`}
                       style={
                         tier.highlight
@@ -542,11 +549,11 @@ export default function PricingClient() {
         {/* Charity badge                                                       */}
         {/* ------------------------------------------------------------------ */}
         <div className="flex justify-center">
-          <div className="inline-flex items-center gap-3 bg-[#0f1320] border border-white/10 rounded-2xl px-6 py-4 text-sm">
+          <div className="inline-flex items-center gap-3 bg-[#0F1535] border border-[#1A2550] rounded-2xl px-6 py-4 text-sm">
             <Heart className="w-5 h-5 text-[#FFB81C] flex-shrink-0" />
             <div>
               <p className="text-white font-semibold">10% of all revenue donated to charity</p>
-              <p className="text-gray-400 text-xs mt-0.5">
+              <p className="text-[#8B95B0] text-xs mt-0.5">
                 Every paid plan contributes to coding &amp; STEM education nonprofits worldwide.
               </p>
             </div>

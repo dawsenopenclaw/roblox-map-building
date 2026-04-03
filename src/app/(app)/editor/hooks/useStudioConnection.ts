@@ -309,6 +309,10 @@ export function useStudioConnection() {
     try { localStorage.removeItem('fg_studio_connection') } catch { /* noop */ }
   }, [])
 
+  const requestScreenshot = useCallback(() => {
+    if (state.sessionId) void pollScreenshot(state.sessionId)
+  }, [state.sessionId, pollScreenshot])
+
   return {
     ...state,
     generateCode,
@@ -316,5 +320,6 @@ export function useStudioConnection() {
     disconnect,
     recordCommand,
     addActivity,
+    requestScreenshot,
   }
 }

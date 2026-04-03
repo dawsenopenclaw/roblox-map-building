@@ -140,17 +140,18 @@ function CodeBlock({ code, lang }: { code: string; lang: 'curl' | 'json' }) {
   const html = lang === 'curl' ? highlightCurl(code) : highlightJson(code)
 
   return (
-    <div className="relative group rounded-xl overflow-hidden border border-white/8" style={{ background: '#141414' }}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-white/8">
-        <span className="text-xs text-gray-400 font-mono">{lang === 'curl' ? 'bash' : 'json'}</span>
+    <div className="relative group rounded-xl overflow-hidden border border-[#1A2550]" style={{ background: '#0F1535' }}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-[#1A2550]">
+        <span className="text-xs font-mono" style={{ color: '#8B95B0' }}>{lang === 'curl' ? 'bash' : 'json'}</span>
         <button
           onClick={copy}
-          className="text-xs text-gray-400 hover:text-gray-200 transition-colors px-2 py-0.5 rounded"
+          className="text-xs transition-colors px-2 py-0.5 rounded hover:text-white"
+          style={{ color: '#8B95B0' }}
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>
       </div>
-      <pre className="p-5 text-sm font-mono leading-relaxed overflow-x-auto text-gray-300">
+      <pre className="p-5 text-sm font-mono leading-relaxed overflow-x-auto" style={{ color: '#8B95B0' }}>
         <code dangerouslySetInnerHTML={{ __html: html }} />
       </pre>
     </div>
@@ -166,20 +167,20 @@ interface Param {
 
 function ParamTable({ params }: { params: Param[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/8">
+    <div className="overflow-x-auto rounded-xl border border-[#1A2550]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-40">
+          <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-40" style={{ color: '#8B95B0' }}>
               Parameter
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-28" style={{ color: '#8B95B0' }}>
               Type
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-24" style={{ color: '#8B95B0' }}>
               Required
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B95B0' }}>
               Description
             </th>
           </tr>
@@ -188,8 +189,8 @@ function ParamTable({ params }: { params: Param[] }) {
           {params.map((p, i) => (
             <tr
               key={p.name}
-              className={i < params.length - 1 ? 'border-b border-white/5' : ''}
-              style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}
+              className={i < params.length - 1 ? 'border-b border-[#1A2550]' : ''}
+              style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(26,37,80,0.3)' }}
             >
               <td className="px-4 py-3">
                 <code className="text-[#FFB81C] font-mono text-xs">{p.name}</code>
@@ -201,10 +202,10 @@ function ParamTable({ params }: { params: Param[] }) {
                 {p.required ? (
                   <span className="text-xs text-rose-400 font-medium">Required</span>
                 ) : (
-                  <span className="text-xs text-gray-500">Optional</span>
+                  <span className="text-xs" style={{ color: '#71717A' }}>Optional</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-gray-300 text-sm">{p.description}</td>
+              <td className="px-4 py-3 text-sm" style={{ color: '#8B95B0' }}>{p.description}</td>
             </tr>
           ))}
         </tbody>
@@ -226,7 +227,7 @@ function SectionHeading({ id, children }: { id?: string; children: ReactNode }) 
 }
 
 function Divider() {
-  return <hr className="border-white/8 my-14" />
+  return <hr className="border-[#1A2550] my-14" />
 }
 
 // ─── Endpoint section wrapper ─────────────────────────────────────────────────
@@ -254,7 +255,7 @@ function EndpointSection({
         <MethodBadge method={method} />
         <code className="text-white font-mono text-base">{path}</code>
       </div>
-      <p className="text-gray-300 text-sm mb-7 leading-relaxed">{description}</p>
+      <p className="text-sm mb-7 leading-relaxed" style={{ color: '#8B95B0' }}>{description}</p>
 
       {params.length > 0 && (
         <div className="mb-7">
@@ -376,20 +377,20 @@ export default function DocsClient() {
         .hl-url     { color: #86efac; }
       `}</style>
 
-      <div className="min-h-screen bg-[#060918] text-gray-300">
+      <div className="min-h-screen" style={{ background: '#050810', color: '#8B95B0' }}>
 
         {/* Sub-header bar */}
         <div
-          className="sticky top-[57px] z-30 border-b border-white/8 backdrop-blur-xl"
-          style={{ background: 'rgba(6,9,24,0.85)' }}
+          className="sticky top-[57px] z-30 border-b border-[#1A2550] backdrop-blur-xl"
+          style={{ background: 'rgba(5,8,16,0.85)' }}
         >
           <div className="max-w-7xl mx-auto px-5 h-12 flex items-center gap-4">
             <span className="text-white font-semibold text-sm">Documentation</span>
-            <span className="text-[10px] border border-white/10 text-gray-400 px-2 py-0.5 rounded font-mono">v1</span>
+            <span className="text-[10px] border border-[#1A2550] px-2 py-0.5 rounded font-mono" style={{ color: '#8B95B0' }}>v1</span>
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="lg:hidden ml-auto p-1.5 rounded-lg border border-white/10 hover:border-white/25 transition-colors"
+              className="lg:hidden ml-auto p-1.5 rounded-lg border border-[#1A2550] hover:border-[#FFB81C]/40 transition-colors"
               aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
               aria-expanded={sidebarOpen}
             >
@@ -415,8 +416,8 @@ export default function DocsClient() {
             onClick={() => setSidebarOpen(false)}
           >
             <div
-              className="absolute left-0 top-0 bottom-0 w-72 border-r border-white/8 p-6 overflow-y-auto"
-              style={{ background: '#060918' }}
+              className="absolute left-0 top-0 bottom-0 w-72 border-r border-[#1A2550] p-6 overflow-y-auto"
+              style={{ background: '#050810' }}
               onClick={(e) => e.stopPropagation()}
             >
               <SidebarContent groups={groups} activeSection={activeSection} onSelect={scrollTo} />
@@ -424,7 +425,7 @@ export default function DocsClient() {
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto px-5 py-12 flex gap-12">
+        <div className="max-w-7xl mx-auto px-5 pt-24 pb-12 flex gap-12">
 
           {/* Desktop sidebar */}
           <aside className="hidden lg:block w-56 flex-shrink-0">
@@ -439,7 +440,7 @@ export default function DocsClient() {
             {/* ── Quick Start ─────────────────────────────────────────── */}
             <section id="quickstart" className="scroll-mt-28">
               <SectionHeading id="quickstart">Quick Start</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+              <p className="text-sm leading-relaxed mb-8" style={{ color: '#8B95B0' }}>
                 Go from zero to your first AI-generated Roblox map in under 5 minutes. No install required — everything
                 runs in the browser.
               </p>
@@ -450,7 +451,7 @@ export default function DocsClient() {
                   <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">1</span>
                   <h3 className="text-white font-semibold text-sm">Sign up for free</h3>
                 </div>
-                <p className="text-gray-400 text-sm leading-relaxed ml-10">
+                <p className="text-sm leading-relaxed ml-10" style={{ color: '#8B95B0' }}>
                   Create an account at{' '}
                   <Link href="/sign-up" className="text-[#FFB81C] hover:underline">forjegames.com/sign-up</Link>.
                   No credit card required. You get 10 free AI calls per day on the Free plan immediately after sign-up.
@@ -463,18 +464,18 @@ export default function DocsClient() {
                   <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">2</span>
                   <h3 className="text-white font-semibold text-sm">Open the Editor</h3>
                 </div>
-                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
                   From your dashboard, click <strong className="text-white">New Project</strong> then{' '}
                   <strong className="text-white">Open Editor</strong>. The AI editor loads in the same tab — no download needed.
                 </p>
-                <div className="ml-10 rounded-xl border border-white/8 overflow-hidden" style={{ background: '#0a0f24' }}>
-                  <div className="px-4 py-3 border-b border-white/8 flex items-center gap-2">
+                <div className="ml-10 rounded-xl border border-[#1A2550] overflow-hidden" style={{ background: '#0F1535' }}>
+                  <div className="px-4 py-3 border-b border-[#1A2550] flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full bg-rose-500/60" />
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
-                    <span className="text-xs text-gray-500 ml-2 font-mono">forjegames.com/editor</span>
+                    <span className="text-xs ml-2 font-mono" style={{ color: '#71717A' }}>forjegames.com/editor</span>
                   </div>
-                  <div className="px-5 py-4 text-xs text-gray-400 leading-relaxed">
+                  <div className="px-5 py-4 text-xs leading-relaxed" style={{ color: '#8B95B0' }}>
                     <span className="text-[#FFB81C]">ForjeGames Editor</span> — AI Build Assistant ready
                   </div>
                 </div>
@@ -486,7 +487,7 @@ export default function DocsClient() {
                   <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">3</span>
                   <h3 className="text-white font-semibold text-sm">Type or speak your first build command</h3>
                 </div>
-                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
                   Type a plain-English prompt in the command bar, or click the mic icon to speak. The AI returns a
                   Luau script, map blueprint, or 3D model — depending on what you asked for.
                 </p>
@@ -500,8 +501,8 @@ export default function DocsClient() {
                     ].map((prompt) => (
                       <div
                         key={prompt}
-                        className="rounded-lg border border-white/8 px-4 py-2.5 text-xs text-gray-300 font-mono"
-                        style={{ background: '#141414' }}
+                        className="rounded-lg border border-[#1A2550] px-4 py-2.5 text-xs font-mono"
+                        style={{ background: '#0F1535', color: '#8B95B0' }}
                       >
                         <span className="text-[#FFB81C] mr-2">&gt;</span>{prompt}
                       </div>
@@ -516,7 +517,7 @@ export default function DocsClient() {
                   <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">4</span>
                   <h3 className="text-white font-semibold text-sm">Import to Roblox Studio</h3>
                 </div>
-                <p className="text-gray-400 text-sm leading-relaxed ml-10 mb-3">
+                <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
                   Install the free <strong className="text-white">ForjeGames Studio Plugin</strong> from the Roblox
                   marketplace, then click <strong className="text-white">Export &rarr; Send to Studio</strong> inside
                   the editor. The plugin receives the build and places it in your game automatically.
@@ -537,7 +538,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── Features ────────────────────────────────────────────── */}
             <section id="features" className="scroll-mt-28">
               <SectionHeading id="features">Features</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+              <p className="text-sm leading-relaxed mb-8" style={{ color: '#8B95B0' }}>
                 Every feature is available via the web editor and the REST API. Use them individually or chain them
                 together in a single pipeline.
               </p>
@@ -632,8 +633,8 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                   return (
                     <div
                       key={f.title}
-                      className="rounded-xl border border-white/8 p-5"
-                      style={{ background: '#0a0f24' }}
+                      className="rounded-xl border border-[#1A2550] p-5"
+                      style={{ background: '#0F1535' }}
                     >
                       <div className="flex items-start gap-3 mb-3">
                         <div className={`w-9 h-9 rounded-lg ${c.bg} border ${c.border} flex items-center justify-center flex-shrink-0 ${c.text}`}>
@@ -646,7 +647,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                           </span>
                         </div>
                       </div>
-                      <p className="text-gray-400 text-xs leading-relaxed">{f.desc}</p>
+                      <p className="text-xs leading-relaxed" style={{ color: '#8B95B0' }}>{f.desc}</p>
                     </div>
                   )
                 })}
@@ -658,7 +659,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── Pricing ─────────────────────────────────────────────── */}
             <section id="pricing" className="scroll-mt-28">
               <SectionHeading id="pricing">Pricing</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+              <p className="text-sm leading-relaxed mb-8" style={{ color: '#8B95B0' }}>
                 All plans include access to every feature. The difference is in usage limits and team seats.
                 Upgrade or downgrade at any time — billing is pro-rated to the day.
               </p>
@@ -723,9 +724,9 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                     className={`rounded-xl border p-5 flex flex-col ${
                       plan.highlight
                         ? 'border-[#FFB81C]/40'
-                        : 'border-white/8'
+                        : 'border-[#1A2550]'
                     }`}
-                    style={{ background: plan.highlight ? 'rgba(255,184,28,0.04)' : '#0a0f24' }}
+                    style={{ background: plan.highlight ? 'rgba(255,184,28,0.04)' : '#0F1535' }}
                   >
                     {plan.highlight && (
                       <span className="inline-flex self-start text-[10px] font-bold text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/25 px-2 py-0.5 rounded mb-3">
@@ -735,11 +736,11 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                     <p className="text-white font-bold text-base mb-0.5">{plan.name}</p>
                     <div className="flex items-end gap-1 mb-4">
                       <span className="text-2xl font-bold text-white">{plan.price}</span>
-                      <span className="text-gray-400 text-xs mb-1">{plan.period}</span>
+                      <span className="text-xs mb-1" style={{ color: '#8B95B0' }}>{plan.period}</span>
                     </div>
                     <ul className="space-y-2 flex-1">
                       {plan.features.map((f) => (
-                        <li key={f} className="flex items-start gap-2 text-xs text-gray-300">
+                        <li key={f} className="flex items-start gap-2 text-xs" style={{ color: '#8B95B0' }}>
                           <svg className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="2 8 6 12 14 4" />
                           </svg>
@@ -752,8 +753,9 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                       className={`mt-5 block text-center text-xs font-semibold py-2 rounded-lg transition-colors ${
                         plan.highlight
                           ? 'bg-[#FFB81C] text-black hover:bg-[#e6a619]'
-                          : 'border border-white/12 text-gray-300 hover:border-white/25 hover:text-white'
+                          : 'border border-[#1A2550] hover:border-[#FFB81C]/40 hover:text-white'
                       }`}
+                      style={!plan.highlight ? { color: '#8B95B0' } : undefined}
                     >
                       {plan.name === 'Free' ? 'Get started' : 'Start free trial'}
                     </Link>
@@ -762,8 +764,8 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
               </div>
 
               <div
-                className="rounded-xl border border-white/8 p-4 text-sm text-gray-300 leading-relaxed"
-                style={{ background: '#0a0f24' }}
+                className="rounded-xl border border-[#1A2550] p-4 text-sm leading-relaxed"
+                style={{ background: '#0F1535', color: '#8B95B0' }}
               >
                 <strong className="text-white">Enterprise?</strong> Custom contracts, SLA guarantees, on-premise
                 deployment, and volume discounts are available. Contact{' '}
@@ -778,7 +780,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── Getting Started ─────────────────────────────────────── */}
             <section id="getting-started" className="scroll-mt-28">
               <SectionHeading id="getting-started">Getting Started</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-7">
+              <p className="text-sm leading-relaxed mb-7" style={{ color: '#8B95B0' }}>
                 The ForjeGames API lets you build AI-powered Roblox experiences — convert voice commands to game
                 scripts, transform images into playable maps, and search the Roblox marketplace programmatically.
                 All endpoints are REST-based and return JSON.
@@ -794,7 +796,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
 
               <div className="mb-7">
                 <SectionLabel>1. Get an API key</SectionLabel>
-                <p className="text-gray-300 text-sm mb-4">
+                <p className="text-sm mb-4" style={{ color: '#8B95B0' }}>
                   Sign in to your dashboard and navigate to{' '}
                   <Link href="/settings/api-keys" className="text-[#FFB81C] hover:underline">
                     Settings &rarr; API Keys
@@ -820,13 +822,13 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── Authentication ──────────────────────────────────────── */}
             <section id="authentication" className="scroll-mt-28">
               <SectionHeading id="authentication">Authentication</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-7">
+              <p className="text-sm leading-relaxed mb-7" style={{ color: '#8B95B0' }}>
                 All API requests must be authenticated with a Bearer token in the{' '}
-                <code className="text-[#FFB81C] font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">
+                <code className="text-[#FFB81C] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>
                   Authorization
                 </code>{' '}
                 header. API keys are prefixed with{' '}
-                <code className="text-[#FFB81C] font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">fg_sk_</code>.
+                <code className="text-[#FFB81C] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>fg_sk_</code>.
               </p>
 
               <div className="mb-7">
@@ -851,8 +853,8 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── Endpoints header ────────────────────────────────────── */}
             <div className="mb-10">
               <h2 className="text-2xl font-bold text-white mb-2">Endpoints</h2>
-              <p className="text-gray-300 text-sm">
-                All endpoints accept and return <code className="text-gray-300 font-mono text-xs">application/json</code>.
+              <p className="text-sm" style={{ color: '#8B95B0' }}>
+                All endpoints accept and return <code className="font-mono text-xs" style={{ color: '#8B95B0' }}>application/json</code>.
               </p>
             </div>
 
@@ -1102,14 +1104,14 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
             {/* ── SDKs ────────────────────────────────────────────────── */}
             <section id="sdks" className="scroll-mt-28">
               <SectionHeading id="sdks">SDKs</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-8">
+              <p className="text-sm leading-relaxed mb-8" style={{ color: '#8B95B0' }}>
                 Official client libraries handle authentication, retries, and response parsing automatically.
               </p>
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div
-                  className="rounded-xl border border-white/8 p-6"
-                  style={{ background: '#0a0f24' }}
+                  className="rounded-xl border border-[#1A2550] p-6"
+                  style={{ background: '#0F1535' }}
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
@@ -1117,7 +1119,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                     </div>
                     <div>
                       <p className="text-white text-sm font-semibold">TypeScript / Node.js</p>
-                      <p className="text-gray-400 text-xs">Node 18+</p>
+                      <p className="text-xs" style={{ color: '#8B95B0' }}>Node 18+</p>
                     </div>
                   </div>
                   <div className="mb-5">
@@ -1137,8 +1139,8 @@ const result = await fg.ai.generate({
                 </div>
 
                 <div
-                  className="rounded-xl border border-white/8 p-6"
-                  style={{ background: '#0a0f24' }}
+                  className="rounded-xl border border-[#1A2550] p-6"
+                  style={{ background: '#0F1535' }}
                 >
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-8 h-8 rounded-lg bg-yellow-500/15 border border-yellow-500/20 flex items-center justify-center">
@@ -1146,7 +1148,7 @@ const result = await fg.ai.generate({
                     </div>
                     <div>
                       <p className="text-white text-sm font-semibold">Python</p>
-                      <p className="text-gray-400 text-xs">Python 3.9+</p>
+                      <p className="text-xs" style={{ color: '#8B95B0' }}>Python 3.9+</p>
                     </div>
                   </div>
                   <div className="mb-5">
@@ -1172,16 +1174,16 @@ result = fg.ai.generate(
             {/* ── Rate Limits ─────────────────────────────────────────── */}
             <section id="rate-limits" className="scroll-mt-28">
               <SectionHeading id="rate-limits">Rate Limits</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-7">
+              <p className="text-sm leading-relaxed mb-7" style={{ color: '#8B95B0' }}>
                 Limits are enforced per API key. Current usage is exposed via response headers on every request.
               </p>
 
-              <div className="overflow-x-auto rounded-xl border border-white/8 mb-7">
+              <div className="overflow-x-auto rounded-xl border border-[#1A2550] mb-7">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
+                    <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
                       {['Plan', 'Req / min', 'Req / day', 'AI calls / day', 'Concurrent'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B95B0' }}>
                           {h}
                         </th>
                       ))}
@@ -1194,12 +1196,12 @@ result = fg.ai.generate(
                       { plan: 'Creator', rpm: '300', rpd: '50,000',    ai: '1,000',   concurrent: '10' },
                       { plan: 'Studio',  rpm: '600', rpd: 'Unlimited', ai: 'Unlimited', concurrent: '25' },
                     ].map((row, i) => (
-                      <tr key={row.plan} className={i < 3 ? 'border-b border-white/5' : ''}>
+                      <tr key={row.plan} className={i < 3 ? 'border-b border-[#1A2550]' : ''}>
                         <td className="px-4 py-3 text-white font-medium">{row.plan}</td>
-                        <td className="px-4 py-3 text-gray-300 font-mono">{row.rpm}</td>
-                        <td className="px-4 py-3 text-gray-300 font-mono">{row.rpd}</td>
-                        <td className="px-4 py-3 text-gray-300 font-mono">{row.ai}</td>
-                        <td className="px-4 py-3 text-gray-300 font-mono">{row.concurrent}</td>
+                        <td className="px-4 py-3 font-mono" style={{ color: '#8B95B0' }}>{row.rpm}</td>
+                        <td className="px-4 py-3 font-mono" style={{ color: '#8B95B0' }}>{row.rpd}</td>
+                        <td className="px-4 py-3 font-mono" style={{ color: '#8B95B0' }}>{row.ai}</td>
+                        <td className="px-4 py-3 font-mono" style={{ color: '#8B95B0' }}>{row.concurrent}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1208,7 +1210,7 @@ result = fg.ai.generate(
 
               <div className="mb-4">
                 <SectionLabel>Rate Limit Headers</SectionLabel>
-                <div className="overflow-x-auto rounded-xl border border-white/8">
+                <div className="overflow-x-auto rounded-xl border border-[#1A2550]">
                   <table className="w-full text-sm">
                     <tbody>
                       {[
@@ -1217,11 +1219,11 @@ result = fg.ai.generate(
                         { header: 'X-RateLimit-Reset',     desc: 'Unix timestamp when the window resets' },
                         { header: 'Retry-After',           desc: 'Seconds to wait before retrying (only on 429 responses)' },
                       ].map((row, i) => (
-                        <tr key={row.header} className={i < 3 ? 'border-b border-white/5' : ''}>
+                        <tr key={row.header} className={i < 3 ? 'border-b border-[#1A2550]' : ''}>
                           <td className="px-4 py-3 w-72">
                             <code className="text-[#FFB81C] font-mono text-xs">{row.header}</code>
                           </td>
-                          <td className="px-4 py-3 text-gray-300 text-sm">{row.desc}</td>
+                          <td className="px-4 py-3 text-sm" style={{ color: '#8B95B0' }}>{row.desc}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1235,11 +1237,11 @@ result = fg.ai.generate(
             {/* ── Errors ──────────────────────────────────────────────── */}
             <section id="errors" className="scroll-mt-28">
               <SectionHeading id="errors">Errors</SectionHeading>
-              <p className="text-gray-300 text-sm leading-relaxed mb-7">
+              <p className="text-sm leading-relaxed mb-7" style={{ color: '#8B95B0' }}>
                 All errors return a consistent JSON body with a machine-readable{' '}
-                <code className="text-gray-300 font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">code</code> and
+                <code className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ color: '#8B95B0', background: '#0F1535' }}>code</code> and
                 a human-readable{' '}
-                <code className="text-gray-300 font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded">message</code>.
+                <code className="font-mono text-xs px-1.5 py-0.5 rounded" style={{ color: '#8B95B0', background: '#0F1535' }}>message</code>.
               </p>
 
               <div className="mb-7">
@@ -1257,12 +1259,12 @@ result = fg.ai.generate(
                 />
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-white/8">
+              <div className="overflow-x-auto rounded-xl border border-[#1A2550]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/8" style={{ background: '#0f1629' }}>
+                    <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
                       {['Status', 'Error Code', 'Description'].map((h) => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B95B0' }}>
                           {h}
                         </th>
                       ))}
@@ -1280,12 +1282,12 @@ result = fg.ai.generate(
                       { status: '500', code: 'internal_error',     desc: 'Unexpected server error. Retry with exponential backoff.' },
                       { status: '503', code: 'service_unavailable', desc: 'Temporary downtime or maintenance. Check status.forjegames.com.' },
                     ].map((row, i, arr) => (
-                      <tr key={row.status} className={i < arr.length - 1 ? 'border-b border-white/5' : ''}>
+                      <tr key={row.status} className={i < arr.length - 1 ? 'border-b border-[#1A2550]' : ''}>
                         <td className="px-4 py-3 font-mono text-rose-400 text-sm w-16">{row.status}</td>
                         <td className="px-4 py-3 w-52">
                           <code className="text-purple-400 font-mono text-xs">{row.code}</code>
                         </td>
-                        <td className="px-4 py-3 text-gray-300 text-sm">{row.desc}</td>
+                        <td className="px-4 py-3 text-sm" style={{ color: '#8B95B0' }}>{row.desc}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1318,7 +1320,7 @@ function SidebarContent({
       {groups.map((group, gi) => (
         <div key={gi}>
           {group.label && (
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2 px-2">
+            <p className="text-xs font-semibold uppercase tracking-widest mb-2 px-2" style={{ color: '#71717A' }}>
               {group.label}
             </p>
           )}
@@ -1332,8 +1334,9 @@ function SidebarContent({
                     className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors leading-snug font-mono ${
                       isActive
                         ? 'text-[#FFB81C] bg-[#FFB81C]/8'
-                        : 'text-gray-300 hover:text-gray-200 hover:bg-white/4'
+                        : 'hover:text-white hover:bg-[#1A2550]/50'
                     }`}
+                    style={!isActive ? { color: '#8B95B0' } : undefined}
                   >
                     {item.label}
                   </button>

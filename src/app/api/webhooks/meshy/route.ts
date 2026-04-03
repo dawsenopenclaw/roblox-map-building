@@ -161,13 +161,22 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // TODO: Trigger next pipeline step here.
-        // Options:
-        //   1. Enqueue an optimization job (polygon reduction to <10k tris for Roblox)
-        //   2. Upload to R2 / S3 for CDN delivery
-        //   3. POST to Roblox Open Cloud to register as a game asset
-        // For now we log intent — wire up when those modules exist.
-        console.info('[meshy-webhook] Asset ready, enqueue optimization:', {
+        // Notify the user their asset is ready
+        await db.notification.create({
+          data: {
+            userId: asset.userId,
+            type: 'BUILD_COMPLETE',
+            title: '3D Asset Ready',
+            body: `Your 3D model is ready${payload.poly_count ? ` (${payload.poly_count.toLocaleString()} polys)` : ''}. Open the editor to preview and use it.`,
+            actionUrl: '/editor',
+          },
+        }).catch((notifErr) => {
+          // Non-fatal — asset is ready regardless
+          console.warn('[meshy-webhook] Failed to create notification:', notifErr)
+        })
+
+        // Log for future pipeline steps (optimization, CDN upload, Roblox registration)
+        console.info('[meshy-webhook] Asset ready:', {
           assetId: asset.id,
           userId: asset.userId,
           meshUrl,

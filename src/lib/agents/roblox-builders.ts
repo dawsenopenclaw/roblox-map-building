@@ -2524,7 +2524,18 @@ purchaseRemote.OnServerInvoke = function(player, itemName)
 
   -- Deduct and grant
   currencyStat.Value = currencyStat.Value - item.price
-  -- TODO: grant item to player inventory here
+
+  -- Grant item to player inventory (BoolValue under a folder)
+  local inventoryFolder = player:FindFirstChild("Inventory")
+  if not inventoryFolder then
+    inventoryFolder = Instance.new("Folder")
+    inventoryFolder.Name = "Inventory"
+    inventoryFolder.Parent = player
+  end
+  local itemTag = Instance.new("BoolValue")
+  itemTag.Name = itemName
+  itemTag.Value = true
+  itemTag.Parent = inventoryFolder
 
   return {success = true, itemName = itemName}
 end

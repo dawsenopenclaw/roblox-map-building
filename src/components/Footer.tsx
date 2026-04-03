@@ -97,14 +97,14 @@ function FooterColumn({
                 href={l.href}
                 target={l.href.startsWith('http') ? '_blank' : undefined}
                 rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}
-                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="text-sm text-[#8B95B0] hover:text-white transition-colors"
               >
                 {l.label}
               </a>
             ) : (
               <Link
                 href={l.href}
-                className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="text-sm text-[#8B95B0] hover:text-white transition-colors"
               >
                 {l.label}
               </Link>
@@ -118,7 +118,7 @@ function FooterColumn({
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#060A14] mt-auto">
+    <footer className="border-t border-white/[0.06] bg-[#0A0E27] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
 
         {/* Brand row */}
@@ -126,13 +126,13 @@ export default function Footer() {
           <div>
             <Link
               href="/"
-              className="inline-block font-extrabold text-2xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
+              className="inline-block font-extrabold text-2xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] rounded"
               aria-label="ForjeGames home"
             >
-              <span style={{ color: '#D4AF37' }}>Forje</span>
+              <span style={{ color: '#FFB81C' }}>Forje</span>
               <span className="text-white">Games</span>
             </Link>
-            <p className="text-zinc-500 text-sm mt-2 max-w-xs leading-relaxed">
+            <p className="text-[#8B95B0] text-sm mt-2 max-w-xs leading-relaxed">
               AI-powered Roblox game development.
             </p>
           </div>
@@ -148,7 +148,7 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/[0.06] pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-[#8B95B0]">
             &copy; {new Date().getFullYear()} ForjeGames LLC. All rights reserved.
           </p>
 
@@ -161,14 +161,14 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={s.label}
-                className="p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/5 transition-colors"
+                className="p-2 rounded-lg text-[#8B95B0] hover:text-white hover:bg-white/5 transition-colors"
               >
                 {s.icon}
               </a>
             ))}
           </nav>
 
-          <p className="text-xs text-zinc-600 sm:text-right">
+          <p className="text-xs text-[#6B7394] sm:text-right">
             Not affiliated with Roblox Corporation.
           </p>
         </div>

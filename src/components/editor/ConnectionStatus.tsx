@@ -166,7 +166,7 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
             </div>
           ))}
           <a
-            href="/docs/studio-plugin"
+            href="/docs/studio"
             className="inline-flex items-center gap-1 text-xs text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors mt-1"
           >
             Plugin download &amp; docs

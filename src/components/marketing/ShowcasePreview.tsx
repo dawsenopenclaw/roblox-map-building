@@ -73,16 +73,6 @@ export default function ShowcasePreview() {
               border: '1px solid rgba(255,184,28,0.25)',
               background: 'rgba(255,184,28,0.06)',
             }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLElement
-              el.style.background = 'rgba(255,184,28,0.12)'
-              el.style.borderColor = 'rgba(255,184,28,0.4)'
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLElement
-              el.style.background = 'rgba(255,184,28,0.06)'
-              el.style.borderColor = 'rgba(255,184,28,0.25)'
-            }}
           >
             View all
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -97,23 +87,11 @@ export default function ShowcasePreview() {
             <Link
               key={item.label}
               href="/showcase"
-              className="group rounded-xl overflow-hidden flex flex-col transition-all duration-300"
+              className="group rounded-xl overflow-hidden flex flex-col card-hover"
               style={{
                 background: '#0F1535',
                 border: '1px solid #1A2550',
                 textDecoration: 'none',
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLElement
-                el.style.borderColor = `${item.accentColor}40`
-                el.style.boxShadow = `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${item.accentColor}18`
-                el.style.transform = 'translateY(-3px)'
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLElement
-                el.style.borderColor = '#1A2550'
-                el.style.boxShadow = 'none'
-                el.style.transform = 'translateY(0)'
               }}
             >
               {/* Placeholder screenshot area */}

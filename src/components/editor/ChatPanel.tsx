@@ -170,6 +170,31 @@ function MessageBubble({
   onBuildDifferently?: () => void
   onDismiss?: (id: string) => void
 }) {
+  const [hovered, setHovered] = useState(false)
+  const [copied, setCopied] = useState(false)
+  // Brief scan animation: start true for already-complete messages, or fires when streaming→complete
+  const prevStreamingRef = useRef(msg.streaming)
+  const [newFlash, setNewFlash] = useState(() => !msg.streaming)
+  useEffect(() => {
+    // Streaming just finished → trigger flash
+    if (prevStreamingRef.current && !msg.streaming) {
+      setNewFlash(true)
+    }
+    prevStreamingRef.current = msg.streaming
+  }, [msg.streaming])
+  useEffect(() => {
+    if (newFlash) {
+      const t = setTimeout(() => setNewFlash(false), 1400)
+      return () => clearTimeout(t)
+    }
+  }, [newFlash])
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(msg.content).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }, [msg.content])
+
   const isUser = msg.role === 'user'
   const isSystem = msg.role === 'system'
   const isStatus = msg.role === 'status'
@@ -422,13 +447,13 @@ function MessageBubble({
           style={{
             maxWidth: '82%',
             padding: '10px 14px',
-            borderRadius: '16px 4px 16px 16px',
-            background: 'rgba(212,175,55,0.12)',
-            border: '1px solid rgba(212,175,55,0.22)',
-            boxShadow: '0 0 16px rgba(212,175,55,0.06)',
+            borderRadius: 16,
+            background: 'rgba(212,175,55,0.11)',
+            border: '1px solid rgba(212,175,55,0.3)',
+            boxShadow: '0 0 20px rgba(212,175,55,0.07), inset 0 1px 0 rgba(255,255,255,0.04)',
           }}
         >
-          <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.85)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.88)', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {displayContent}
           </p>
         </div>
@@ -445,6 +470,8 @@ function MessageBubble({
         alignItems: 'flex-start',
         animation: 'msgFadeUp 0.3s ease-out forwards',
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
     >
       {/* Avatar with pulsing glow */}
       <div
@@ -476,8 +503,8 @@ function MessageBubble({
           overflow: 'hidden',
         }}
       >
-        {/* Scanning line — visible while streaming */}
-        {msg.streaming && (
+        {/* Scanning line — visible while streaming OR briefly on new message arrival */}
+        {(msg.streaming || newFlash) && (
           <div
             aria-hidden="true"
             style={{
@@ -496,17 +523,180 @@ function MessageBubble({
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
           {msg.hasCode && (
-            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(34,197,94,0.15)', color: 'rgba(34,197,94,0.8)', fontFamily: 'Inter, sans-serif' }}>
-              Built in Studio
-            </span>
+            <CodePreviewBadge luauCode={msg.luauCode} />
           )}
           {msg.tokensUsed !== undefined && (
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
               {msg.tokensUsed.toLocaleString()} tokens
             </span>
           )}
+          {/* Copy button — appears on hover, hidden while streaming */}
+          {!msg.streaming && (
+            <button
+              onClick={handleCopy}
+              style={{
+                marginLeft: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '2px 7px',
+                borderRadius: 5,
+                border: '1px solid rgba(255,255,255,0.07)',
+                background: copied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
+                color: copied ? 'rgba(74,222,128,0.85)' : 'rgba(255,255,255,0.3)',
+                fontSize: 10,
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                opacity: hovered ? 1 : 0,
+                pointerEvents: hovered ? 'auto' : 'none',
+              }}
+              onMouseEnter={(e) => {
+                if (!copied) {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!copied) {
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+                }
+              }}
+            >
+              {copied ? (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                    <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Copied
+                </>
+              ) : (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                    <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
+                    <path d="M1 6V1h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Copy
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Code Preview Badge ──────────────────────────────────────────────────────
+
+function CodePreviewBadge({ luauCode }: { luauCode?: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!luauCode) return
+    await navigator.clipboard.writeText(luauCode).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <div style={{ width: '100%' }}>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 10,
+          padding: '2px 6px',
+          borderRadius: 4,
+          background: 'rgba(34,197,94,0.15)',
+          color: 'rgba(34,197,94,0.8)',
+          fontFamily: 'Inter, sans-serif',
+          border: 'none',
+          cursor: luauCode ? 'pointer' : 'default',
+          transition: 'all 0.15s',
+        }}
+      >
+        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+          <path d="M1 3l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+            style={{ transform: expanded ? 'rotate(180deg)' : 'none', transformOrigin: 'center', transition: 'transform 0.15s' }}
+          />
+        </svg>
+        Built in Studio
+      </button>
+
+      {expanded && luauCode && (
+        <div
+          style={{
+            marginTop: 8,
+            borderRadius: 8,
+            background: 'rgba(0,0,0,0.4)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            overflow: 'hidden',
+            animation: 'codeExpand 0.2s ease-out',
+          }}
+        >
+          {/* Toolbar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '4px 8px',
+              borderBottom: '1px solid rgba(255,255,255,0.04)',
+            }}
+          >
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono', monospace" }}>
+              Luau
+            </span>
+            <button
+              onClick={handleCopy}
+              style={{
+                fontSize: 10,
+                color: copied ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.3)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          {/* Code */}
+          <pre
+            style={{
+              margin: 0,
+              padding: '8px 10px',
+              fontSize: 11,
+              lineHeight: 1.5,
+              color: 'rgba(255,255,255,0.6)',
+              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+              overflowX: 'auto',
+              maxHeight: 200,
+              overflowY: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'rgba(255,255,255,0.06) transparent',
+            }}
+          >
+            {luauCode.slice(0, 2000)}
+            {luauCode.length > 2000 && '\n... (truncated)'}
+          </pre>
+        </div>
+      )}
+      <style>{`
+        @keyframes codeExpand {
+          from { opacity: 0; max-height: 0; }
+          to { opacity: 1; max-height: 300px; }
+        }
+      `}</style>
     </div>
   )
 }
@@ -550,25 +740,52 @@ function ShowcaseCard({
         flexDirection: 'column',
         alignItems: 'flex-start',
         gap: 6,
-        padding: '12px',
+        padding: '10px 12px',
         borderRadius: 12,
-        border: `1px solid ${hovered ? example.border : 'rgba(255,255,255,0.07)'}`,
+        border: `1px solid ${hovered ? example.color : 'rgba(255,255,255,0.07)'}`,
         background: hovered ? example.bg : 'rgba(255,255,255,0.025)',
         cursor: 'pointer',
         textAlign: 'left',
         transition: 'all 0.18s ease-out',
         opacity: cardVisible ? 1 : 0,
-        transform: cardVisible ? (hovered ? 'translateY(-2px)' : 'translateY(0)') : 'translateY(10px)',
-        boxShadow: hovered ? `0 4px 16px ${example.bg}` : 'none',
+        transform: cardVisible
+          ? hovered ? 'translateY(-2px) scale(1.02)' : 'translateY(0) scale(1)'
+          : 'translateY(10px) scale(1)',
+        boxShadow: hovered
+          ? `0 4px 16px ${example.bg}, 0 0 0 1px ${example.color}22, 0 0 18px ${example.color}33`
+          : 'none',
+        minWidth: 140,
+        flexShrink: 0,
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* "Try it" label — fades in on hover */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 7,
+          right: 8,
+          fontSize: 9,
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          color: example.color,
+          fontFamily: 'Inter, sans-serif',
+          opacity: hovered ? 1 : 0,
+          transition: 'opacity 0.18s ease-out',
+          pointerEvents: 'none',
+          textTransform: 'uppercase',
+        }}
+      >
+        Try it
+      </div>
       <div
         style={{
           width: 36,
           height: 36,
           borderRadius: 10,
           background: hovered ? example.bg : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${hovered ? example.border : 'rgba(255,255,255,0.06)'}`,
+          border: `1px solid ${hovered ? example.color : 'rgba(255,255,255,0.06)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -620,42 +837,53 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: 20,
-        padding: '24px 4px 8px',
+        gap: 12,
+        padding: '12px 4px 8px',
         transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(12px)',
       }}
     >
-      {/* Header */}
-      <div style={{ textAlign: 'center', paddingBottom: 4 }}>
+      {/* Compact header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 16,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
             background: 'linear-gradient(135deg, rgba(255,184,28,0.15) 0%, rgba(212,175,55,0.07) 100%)',
             border: '1px solid rgba(255,184,28,0.18)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 12px',
+            flexShrink: 0,
           }}
         >
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
             <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#FFB81C" opacity={0.9}/>
           </svg>
         </div>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif' }}>
-          What do you want to build?
-        </h2>
-        <p style={{ margin: '5px 0 0', fontSize: 12, color: '#52525b', fontFamily: 'Inter, sans-serif' }}>
-          Pick an example or describe anything
-        </p>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif' }}>
+            What do you want to build?
+          </h2>
+          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#52525b', fontFamily: 'Inter, sans-serif' }}>
+            Pick a starter or type anything
+          </p>
+        </div>
       </div>
 
-      {/* 6-card showcase grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      {/* Horizontal scrollable showcase */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          overflowX: 'auto',
+          paddingBottom: 4,
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255,255,255,0.06) transparent',
+        }}
+      >
         {SHOWCASE_EXAMPLES.map((ex, i) => (
           <ShowcaseCard
             key={ex.label}
@@ -707,23 +935,24 @@ export function TipOfTheDay() {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
-        padding: '7px 12px',
-        borderRadius: 10,
-        background: 'rgba(212,175,55,0.06)',
-        border: '1px solid rgba(212,175,55,0.15)',
+        gap: 6,
+        padding: '5px 10px',
+        borderRadius: 8,
+        background: 'rgba(212,175,55,0.05)',
+        border: '1px solid rgba(212,175,55,0.12)',
         transition: 'opacity 0.25s ease-out, transform 0.25s ease-out',
         opacity: visible ? 1 : 0,
         transform: visible ? 'translateY(0)' : 'translateY(6px)',
-        marginBottom: 2,
+        marginBottom: 1,
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
-        <path d="M6 1a3.5 3.5 0 0 1 2 6.4V9H4V7.4A3.5 3.5 0 0 1 6 1z" stroke="#FFB81C" strokeWidth="1.1" fill="none"/>
-        <path d="M4.5 10.5h3" stroke="#FFB81C" strokeWidth="1.1" strokeLinecap="round"/>
+      {/* Gold lightbulb icon */}
+      <svg width="11" height="11" viewBox="0 0 12 14" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M6 1a4 4 0 0 1 2.5 7.1V10H3.5V8.1A4 4 0 0 1 6 1z" fill="#D4AF37" opacity="0.85"/>
+        <path d="M4 11.5h4M4.5 13h3" stroke="#D4AF37" strokeWidth="1.1" strokeLinecap="round" opacity="0.6"/>
       </svg>
-      <span style={{ flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-        <span style={{ color: 'rgba(212,175,55,0.7)', fontWeight: 600, marginRight: 4 }}>Tip:</span>
+      <span style={{ flex: 1, fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
+        <span style={{ color: 'rgba(212,175,55,0.75)', fontWeight: 600, marginRight: 4 }}>Tip:</span>
         {tip}
       </span>
       <button
@@ -972,6 +1201,8 @@ export function ChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const [sendPressed, setSendPressed] = useState(false)
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
@@ -979,7 +1210,16 @@ export function ChatPanel({
     }
   }
 
-  const handleSend = () => onSend(input)
+  const handleSend = () => {
+    setSendPressed(true)
+    setTimeout(() => setSendPressed(false), 150)
+    onSend(input)
+  }
+
+  const MAX_INPUT = 4000
+  const showCharCount = input.length > 0
+  const charCountWarning = input.length > MAX_INPUT * 0.85
+  const showSlashHint = input === '/'
 
   const hasMessages = messages.length > 0
 
@@ -1097,22 +1337,12 @@ export function ChatPanel({
         {/* Tip of the day — dismissable, shown for first 10 sessions */}
         <TipOfTheDay />
 
-        {/* Top row: model selector + token counter */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <ModelSelector selected={selectedModel} onChange={setSelectedModel} />
-          {totalTokens > 0 && (
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: 'Inter, sans-serif' }}>
-              {totalTokens.toLocaleString()} tokens used
-            </span>
-          )}
-        </div>
-
         {/* Textarea + actions */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'flex-end',
-            gap: 8,
+            flexDirection: 'column',
+            gap: 6,
             background: 'rgba(3,7,18,0.6)',
             border: '1px solid rgba(255,255,255,0.07)',
             borderRadius: 14,
@@ -1128,6 +1358,8 @@ export function ChatPanel({
             e.currentTarget.style.boxShadow = 'none'
           }}
         >
+          {/* Textarea row */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
           <textarea
             ref={taRef}
             value={input}
@@ -1252,7 +1484,8 @@ export function ChatPanel({
               cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
               flexShrink: 0,
               boxShadow: !input.trim() || loading ? 'none' : '0 0 12px rgba(212,175,55,0.3)',
-              transition: 'all 0.15s',
+              transition: 'all 0.12s ease-out',
+              transform: sendPressed ? 'scale(0.92)' : 'scale(1)',
             }}
           >
             {loading ? (
@@ -1265,11 +1498,54 @@ export function ChatPanel({
               </svg>
             )}
           </button>
-        </div>
+          </div>
 
-        <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif', textAlign: 'center' }}>
-          Enter to send · Shift+Enter for new line
-        </p>
+          {/* Bottom row: model selector + hints + char count */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 6 }}>
+            <ModelSelector selected={selectedModel} onChange={setSelectedModel} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Estimated cost */}
+              {input.trim().length > 20 && (
+                <span style={{
+                  fontSize: 10,
+                  color: 'rgba(212,175,55,0.5)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  ~{Math.max(1, Math.ceil(input.split(/\s+/).length * 1.3 * 0.01 * 100) / 100).toFixed(2)}¢
+                </span>
+              )}
+              {/* Slash command hint */}
+              {showSlashHint && (
+                <span style={{
+                  fontSize: 10,
+                  color: 'rgba(139,92,246,0.8)',
+                  fontFamily: 'Inter, sans-serif',
+                  animation: 'msgFadeUp 0.15s ease-out forwards',
+                }}>
+                  /build · /script · /terrain
+                </span>
+              )}
+              {/* Char count — appears when typing */}
+              {showCharCount && (
+                <span style={{
+                  fontSize: 10,
+                  color: charCountWarning ? 'rgba(249,115,22,0.8)' : 'rgba(255,255,255,0.18)',
+                  fontFamily: 'Inter, sans-serif',
+                  fontVariantNumeric: 'tabular-nums',
+                  transition: 'color 0.2s',
+                }}>
+                  {input.length} / {MAX_INPUT}
+                </span>
+              )}
+              {!showCharCount && !showSlashHint && (
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', fontFamily: 'Inter, sans-serif' }}>
+                  Enter to send · Ctrl+K to focus
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <style>{`

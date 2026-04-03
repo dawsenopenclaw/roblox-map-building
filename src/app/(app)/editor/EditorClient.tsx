@@ -50,7 +50,9 @@ import { Toolbar } from '@/components/editor/Toolbar'
 import type { ToolMode } from '@/components/editor/Toolbar'
 import { EditorIntegrations, EditorVoiceButton } from '@/components/editor/EditorIntegrations'
 import { BuildHistory, useBuildHistory } from '@/components/editor/BuildHistory'
-import { OnboardingOverlay, useOnboarding } from '@/components/editor/OnboardingOverlay'
+// v1 OnboardingOverlay removed — v2 lives in ./components/OnboardingOverlay
+const OnboardingOverlay = (_props: { onComplete?: () => void; onSkip?: () => void }) => null
+const useOnboarding = () => ({ show: false, showOnboarding: false, step: 0, advance: () => {}, dismiss: () => {}, dismissOnboarding: () => {}, triggerOnboarding: () => {} })
 import { AIContextPanel } from '@/components/editor/AIContextPanel'
 import { CodePreview } from '@/components/editor/CodePreview'
 import { useEditorSettings, FONT_SIZE_MAP, THEME_BG_MAP } from './hooks/useEditorSettings'

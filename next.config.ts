@@ -75,10 +75,12 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: true, // TODO: fix 5+ type errors then remove
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true, // TODO: fix lint errors then remove
+    // ESLint config references @typescript-eslint rules not installed in project.
+    // Re-enable once eslint-plugin-typescript is properly configured.
+    ignoreDuringBuilds: true,
   },
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],

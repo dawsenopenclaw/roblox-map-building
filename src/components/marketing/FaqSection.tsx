@@ -98,7 +98,7 @@ export default function FaqSection() {
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : i)}
                   className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left transition-colors duration-150"
-                  style={{ color: isOpen ? '#FFFFFF' : '#FFFFFF' }}
+                  style={{ color: isOpen ? '#FFFFFF' : '#D0D4E4' }}
                   aria-expanded={isOpen}
                 >
                   <span className="text-sm font-medium leading-relaxed">{faq.q}</span>

@@ -158,7 +158,7 @@ export default function DownloadClient() {
   const showConfirmation = status === 'done' || alreadySigned
 
   return (
-    <div className="flex flex-col items-center px-6 py-20 text-white">
+    <div className="flex flex-col items-center px-6 py-20 text-white" style={{ paddingTop: 100 }}>
       {/* Hero */}
       <div className="text-center max-w-xl">
         {platform !== 'unknown' && (
@@ -170,7 +170,7 @@ export default function DownloadClient() {
         <h1 className="text-4xl font-bold tracking-tight mb-3">
           <span style={{ color: '#FFB81C' }}>Forje</span>Games Desktop
         </h1>
-        <p className="text-gray-300 text-lg leading-relaxed">
+        <p className="text-lg leading-relaxed" style={{ color: '#FAFAFA' }}>
           A native app that connects directly to Roblox Studio — no copy-paste.
           Join the waitlist and be first in line when{platform !== 'unknown' ? ` the ${PLATFORM_LABELS[platform]} version` : ' it'} launches.
         </p>
@@ -181,7 +181,7 @@ export default function DownloadClient() {
         {STATS.map((s) => (
           <div key={s.label} className="text-center">
             <p className="text-2xl font-bold text-white tabular-nums">{s.value}</p>
-            <p className="text-gray-400 text-xs mt-0.5">{s.label}</p>
+            <p className="text-xs mt-0.5" style={{ color: '#8B95B0' }}>{s.label}</p>
             <p className="text-[#FFB81C] text-xs mt-0.5">{s.trend}</p>
           </div>
         ))}
@@ -195,10 +195,10 @@ export default function DownloadClient() {
             {position && (
               <span className="text-white text-2xl font-bold tabular-nums">#{position.toLocaleString()}</span>
             )}
-            <span className="text-gray-300 text-sm">
+            <span className="text-sm" style={{ color: '#FAFAFA' }}>
               We&apos;ll email you the moment {platform !== 'unknown' ? `the ${PLATFORM_LABELS[platform]} app` : 'the desktop app'} is ready.
             </span>
-            <span className="text-gray-500 text-xs mt-1">
+            <span className="text-xs mt-1" style={{ color: '#71717A' }}>
               Expect early access 4-6 weeks before public launch.
             </span>
           </div>
@@ -210,7 +210,14 @@ export default function DownloadClient() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="flex-1 rounded-xl px-4 py-3 text-white text-sm focus:outline-none transition-colors"
+              style={{
+                background: '#0F1535',
+                border: '1px solid #1A2550',
+                color: '#FAFAFA',
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(255,184,28,0.5)' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#1A2550' }}
             />
             <button
               type="submit"
@@ -233,16 +240,19 @@ export default function DownloadClient() {
           <p className="mt-2 text-red-400 text-sm text-center">{errorMsg}</p>
         )}
         {!showConfirmation && (
-          <p className="text-gray-500 text-xs text-center mt-2">No spam. Unsubscribe anytime.</p>
+          <p className="text-xs text-center mt-2" style={{ color: '#71717A' }}>No spam. Unsubscribe anytime.</p>
         )}
       </div>
 
       {/* CTA — web editor */}
       <div className="mt-8 flex flex-col items-center gap-2">
-        <p className="text-gray-400 text-sm">Don&apos;t want to wait?</p>
+        <p className="text-sm" style={{ color: '#8B95B0' }}>Don&apos;t want to wait?</p>
         <Link
           href="/editor"
-          className="inline-flex items-center gap-2 border border-white/15 hover:border-[#FFB81C] text-white hover:text-[#FFB81C] font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 text-white hover:text-[#FFB81C] font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
+          style={{ border: '1px solid #1A2550' }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#FFB81C' }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#1A2550' }}
         >
           Use the web editor now
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -252,7 +262,7 @@ export default function DownloadClient() {
       </div>
 
       {/* Divider */}
-      <div className="w-full max-w-2xl border-t border-white/10 my-14" />
+      <div className="w-full max-w-2xl my-14" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
       {/* Coming soon features */}
       <div className="w-full max-w-2xl">
@@ -263,12 +273,13 @@ export default function DownloadClient() {
           {COMING_SOON_FEATURES.map((f) => (
             <div
               key={f.title}
-              className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-4"
+              className="flex items-start gap-3 rounded-xl px-4 py-4"
+              style={{ background: '#0F1535', border: '1px solid #1A2550' }}
             >
               <span className="text-[#FFB81C] mt-0.5 shrink-0">{f.icon}</span>
               <div>
                 <p className="text-white text-sm font-medium leading-snug">{f.title}</p>
-                <p className="text-gray-400 text-xs mt-1 leading-relaxed">{f.desc}</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: '#8B95B0' }}>{f.desc}</p>
               </div>
             </div>
           ))}
@@ -276,11 +287,11 @@ export default function DownloadClient() {
       </div>
 
       {/* Divider */}
-      <div className="w-full max-w-2xl border-t border-white/10 my-14" />
+      <div className="w-full max-w-2xl my-14" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }} />
 
       {/* Bottom web editor nudge */}
       <div className="text-center max-w-md">
-        <p className="text-gray-300 text-sm leading-relaxed mb-4">
+        <p className="text-sm leading-relaxed mb-4" style={{ color: '#FAFAFA' }}>
           The web editor has all the same AI features — generate maps, write Luau scripts, and build your game right now.
         </p>
         <Link

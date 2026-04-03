@@ -24,10 +24,10 @@ export default function NotFoundClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4 overflow-hidden">
+    <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
       {/* Background grid */}
       <div
-        className="pointer-events-none fixed inset-0 opacity-[0.04]"
+        className="pointer-events-none fixed inset-0 opacity-[0.03]"
         style={{
           backgroundImage:
             'linear-gradient(#FFB81C 1px, transparent 1px), linear-gradient(90deg, #FFB81C 1px, transparent 1px)',
@@ -55,14 +55,14 @@ export default function NotFoundClient() {
           404
         </p>
 
-        <div className="relative bg-[#141414]/90 backdrop-blur-sm border border-white/10 rounded-2xl p-10 shadow-2xl">
+        <div className="relative bg-[#0F1535] backdrop-blur-sm border border-[#1A2550] rounded-2xl p-10 shadow-2xl">
           {/* Icon */}
           <div className="relative w-20 h-20 mx-auto mb-5">
             <div
               className="absolute inset-0 rounded-full bg-[#FFB81C]/10 animate-ping"
               style={{ animationDuration: '3s' }}
             />
-            <div className="relative w-20 h-20 rounded-full bg-[#0a0a0a] border-2 border-[#FFB81C]/30 flex items-center justify-center">
+            <div className="relative w-20 h-20 rounded-full bg-[#050810] border-2 border-[#FFB81C]/30 flex items-center justify-center">
               <svg
                 className="w-9 h-9 text-[#FFB81C]"
                 fill="none"
@@ -79,8 +79,8 @@ export default function NotFoundClient() {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-2">Page not found</h1>
-          <p className="text-gray-300 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
+          <h1 className="text-2xl font-bold text-[#FAFAFA] mb-2">Page not found</h1>
+          <p className="text-[#8B95B0] text-sm mb-7 max-w-sm mx-auto leading-relaxed">
             This page doesn&apos;t exist or may have been moved.
             Your projects are safe — let us point you in the right direction.
           </p>
@@ -92,7 +92,7 @@ export default function NotFoundClient() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search for a page..."
-              className="flex-1 bg-[#0a0a0a] border border-white/10 focus:border-blue-400/50 text-white placeholder-gray-600 text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
+              className="flex-1 bg-[#0A0E27] border border-[#1A2550] focus:border-[#FFB81C]/40 text-[#FAFAFA] placeholder-[#8B95B0] text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
             />
             <button
               type="submit"
@@ -115,14 +115,14 @@ export default function NotFoundClient() {
           </Link>
 
           {/* Quick links */}
-          <div className="border-t border-white/10 pt-6">
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-4">Quick links</p>
+          <div className="border-t border-[#1A2550] pt-6">
+            <p className="text-xs text-[#8B95B0] uppercase tracking-wider mb-4">Quick links</p>
             <div className="flex flex-wrap justify-center gap-x-5 gap-y-2">
               {QUICK_LINKS.map(link => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm text-gray-300 hover:text-[#FFB81C] transition-colors"
+                  className="text-sm text-[#8B95B0] hover:text-[#FFB81C] transition-colors"
                 >
                   {link.label}
                 </Link>

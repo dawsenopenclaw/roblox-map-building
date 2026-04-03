@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useUser } from '@clerk/nextjs'
+import { useUser, useClerk } from '@clerk/nextjs'
 import { ShortcutHint } from '@/components/ShortcutHint'
 import { NotificationBell } from '@/components/NotificationBell'
 
@@ -72,7 +72,7 @@ function IconSignOut() {
 
 // ─── User dropdown ────────────────────────────────────────────────────────────
 
-function UserMenu({ displayName, email }: { displayName: string; email: string }) {
+function UserMenu({ displayName, email, onSignOut }: { displayName: string; email: string; onSignOut: () => void }) {
   return (
     <div
       className="absolute right-0 top-full mt-2 w-52 bg-[#0A0F20] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
@@ -90,31 +90,31 @@ function UserMenu({ displayName, email }: { displayName: string; email: string }
         <Link
           href="/settings"
           role="menuitem"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-[#D4AF37] hover:bg-white/[0.05] transition-colors"
         >
-          <span className="text-gray-400 group-hover:text-blue-400"><IconSettings /></span>
+          <span className="text-gray-400"><IconSettings /></span>
           Account
         </Link>
         <Link
           href="/settings?tab=billing"
           role="menuitem"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-[#D4AF37] hover:bg-white/[0.05] transition-colors"
         >
-          <span className="text-gray-400 group-hover:text-blue-400"><IconBilling /></span>
+          <span className="text-gray-400"><IconBilling /></span>
           Billing
         </Link>
       </div>
 
       {/* Divider + sign out */}
       <div className="border-t border-white/[0.07] py-1">
-        <Link
-          href="/sign-in"
+        <button
+          onClick={onSignOut}
           role="menuitem"
-          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-white/[0.05] transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-white/[0.05] transition-colors w-full"
         >
           <span className="text-red-500"><IconSignOut /></span>
           Sign out
-        </Link>
+        </button>
       </div>
     </div>
   )
@@ -143,6 +143,7 @@ interface AppTopNavProps {
 export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const { data } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
   const { user } = useUser()
+  const { signOut } = useClerk()
   const [profileOpen, setProfileOpen] = useState(false)
 
   const displayName = user?.firstName
@@ -193,20 +194,12 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* Open Editor */}
       <Link
         href="/editor"
-        className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5 hover-glow"
+        className="hidden sm:inline-flex items-center gap-1.5 nav-cta-gold active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5 hover-glow"
         style={{
           transition: 'transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease',
           boxShadow: '0 0 10px rgba(212,175,55,0.2)',
         }}
         aria-label="Open editor (Ctrl+N)"
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.backgroundColor = '#FFB81C'
-          ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(212,175,55,0.45)'
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.backgroundColor = '#D4AF37'
-          ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 10px rgba(212,175,55,0.2)'
-        }}
       >
         <IconPlus />
         Build
@@ -269,7 +262,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
             <IconChevronDown />
           </span>
         </button>
-        {profileOpen && <UserMenu displayName={displayName} email={email} />}
+        {profileOpen && <UserMenu displayName={displayName} email={email} onSignOut={() => signOut({ redirectUrl: '/' })} />}
       </div>
     </header>
   )

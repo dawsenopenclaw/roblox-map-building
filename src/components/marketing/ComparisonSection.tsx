@@ -1,4 +1,4 @@
-'use client'
+import Link from 'next/link'
 
 const ROWS = [
   { feature: 'Luau Scripts',        scriptOnly: true,  forje: true  },
@@ -117,22 +117,12 @@ export default function ComparisonSection() {
             <p className="text-sm" style={{ color: '#8B95B0' }}>
               One platform. Every game system.
             </p>
-            <a
+            <Link
               href="/editor"
-              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200"
-              style={{
-                background: '#FFB81C',
-                color: '#0A0E27',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = '#E5A617'
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = '#FFB81C'
-              }}
+              className="nav-cta-gold text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-200"
             >
               Start free
-            </a>
+            </Link>
           </div>
         </div>
       </div>

@@ -474,8 +474,8 @@ function BentoCard({ icon, title, description, size = 'normal', children, delay 
 
 /* ─── Pricing card ───────────────────────────────────────────────────────── */
 
-function PricingCard({ name, price, period, features, cta, recommended, description }: {
-  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string
+function PricingCard({ name, price, period, features, cta, recommended, description, href = '/editor' }: {
+  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string; href?: string
 }) {
   return (
     <div
@@ -533,7 +533,7 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
         </ul>
 
         <Link
-          href="/editor"
+          href={href}
           className={`block text-center py-3 rounded-xl text-sm font-semibold ${recommended ? 'pricing-cta-recommended' : 'pricing-cta-default'}`}
           style={recommended ? {
             background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
@@ -632,9 +632,9 @@ export default function HomeClient() {
               }}
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              1,000+ games built — free to start
+              The only Roblox AI that builds terrain, scripts, AND 3D assets
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
-              <span style={{ color: '#D4AF37' }}>1,000 free tokens</span>
+              <span style={{ color: '#D4AF37' }}>Free to start</span>
             </div>
 
             {/* Headline */}
@@ -646,9 +646,9 @@ export default function HomeClient() {
                 letterSpacing: '-0.02em',
               }}
             >
-              From idea to
+              Describe it.
               <br />
-              <span className="gradient-text">Roblox game.</span>
+              <span className="gradient-text">Watch it build.</span>
             </h1>
 
             {/* Subheadline */}
@@ -689,7 +689,7 @@ export default function HomeClient() {
               </Link>
             </div>
 
-            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#3F3F46' }}>
+            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#71717A' }}>
               No credit card required &middot; No setup &middot; Works with Roblox Studio
             </p>
           </div>
@@ -1101,47 +1101,6 @@ export default function HomeClient() {
         <TestimonialsSection />
 
         {/* ══════════════════════════════════════════════════════════════════
-            EDITOR PREVIEW — second look
-        ══════════════════════════════════════════════════════════════════ */}
-        <section
-          className="py-32 px-6 relative overflow-hidden"
-          style={{ background: '#050810' }}
-        >
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(212,175,55,0.03) 0%, transparent 70%)',
-            }} />
-          </div>
-          <div className="relative max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                The Editor
-              </p>
-              <h2
-                className="reveal reveal-delay-1 font-bold tracking-tight mb-4"
-                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
-              >
-                Chat on the left.
-                <br />
-                <span className="gradient-text">Your Roblox world on the right.</span>
-              </h2>
-              <p className="reveal reveal-delay-2 text-lg max-w-md mx-auto" style={{ color: '#71717A' }}>
-                One interface. Every tool you need. Changes are always live.
-              </p>
-            </div>
-            <div
-              className="reveal reveal-delay-3"
-              style={{
-                filter: 'drop-shadow(0 32px 64px rgba(0,0,0,0.55)) drop-shadow(0 0 40px rgba(212,175,55,0.04))',
-              }}
-            >
-              <EditorMockup />
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════════
             PRICING
         ══════════════════════════════════════════════════════════════════ */}
         <section
@@ -1207,6 +1166,7 @@ export default function HomeClient() {
                   'Email support',
                 ]}
                 cta="Start creating"
+                href="/sign-up?plan=creator"
                 recommended
               />
               <PricingCard
@@ -1223,11 +1183,12 @@ export default function HomeClient() {
                   'Priority support',
                 ]}
                 cta="Go pro"
+                href="/sign-up?plan=studio"
               />
             </div>
 
             <div className="reveal mt-10 text-center">
-              <p className="text-[13px] mb-3" style={{ color: '#3F3F46' }}>
+              <p className="text-[13px] mb-3" style={{ color: '#71717A' }}>
                 10% of every payment goes to charity.{' '}
                 <Link href="/editor" className="link-subtle transition-colors duration-200" style={{ color: '#71717A' }}>
                   Try it free
@@ -1239,7 +1200,7 @@ export default function HomeClient() {
                   { icon: <IconCheck size={12} />, label: 'No hidden fees' },
                   { icon: <IconShield size={12} />, label: 'Secure payments' },
                 ].map(({ icon, label }) => (
-                  <span key={label} className="flex items-center gap-1.5 text-[12px]" style={{ color: '#3F3F46' }}>
+                  <span key={label} className="flex items-center gap-1.5 text-[12px]" style={{ color: '#71717A' }}>
                     <span style={{ color: '#52525B' }}>{icon}</span>
                     {label}
                   </span>
@@ -1331,18 +1292,18 @@ export default function HomeClient() {
                 <IconArrow size={16} />
               </Link>
               <Link
-                href="/editor"
+                href="/pricing"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-4 rounded-xl text-base font-medium"
                 style={{
                   color: '#71717A',
                   border: '1px solid rgba(255,255,255,0.07)',
                 }}
               >
-                Try the editor
+                View pricing
               </Link>
             </div>
 
-            <p className="reveal reveal-delay-4 mt-8 text-[13px]" style={{ color: '#27272A' }}>
+            <p className="reveal reveal-delay-4 mt-8 text-[13px]" style={{ color: '#71717A' }}>
               No credit card required &middot; Cancel anytime &middot; Loved by 8,400+ creators
             </p>
           </div>

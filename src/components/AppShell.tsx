@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback, useMemo, memo } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { AppSidebar } from '@/components/AppSidebar'
 import { AppTopNav } from '@/components/AppTopNav'
 import { AchievementToastProvider } from '@/components/AchievementToast'
@@ -95,6 +95,7 @@ const AppChrome = memo(function AppChrome({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const isNewEditor = pathname === '/editor'
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -107,8 +108,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleNewProject = useCallback(() => {
-    window.location.href = '/editor'
-  }, [])
+    router.push('/editor')
+  }, [router])
 
   const shortcutHandlers = useMemo(
     () => ({

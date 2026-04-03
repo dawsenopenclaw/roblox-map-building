@@ -94,6 +94,14 @@ function getDemoResponse(prompt: string): string {
 // This function reads the stream and calls onChunk for each text piece, then
 // returns the parsed metadata when the stream ends.
 
+export interface McpAgentResult {
+  server: string
+  tool: string
+  success: boolean
+  demo: boolean
+  warning?: string
+}
+
 interface StreamMeta {
   suggestions?: string[]
   intent?: string
@@ -102,6 +110,7 @@ interface StreamMeta {
   executedInStudio?: boolean
   model?: string
   error?: string
+  mcpResult?: McpAgentResult
 }
 
 async function readStream(
@@ -203,6 +212,7 @@ export function useChat(options: UseChatOptions = {}) {
   const [loading, setLoading] = useState(false)
   const [streaming, setStreaming] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [lastMcpResult, setLastMcpResult] = useState<McpAgentResult | null>(null)
   const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
@@ -433,6 +443,12 @@ export function useChat(options: UseChatOptions = {}) {
 
           if (meta.suggestions && meta.suggestions.length > 0) {
             setSuggestions(meta.suggestions)
+          }
+
+          if (meta.mcpResult) {
+            setLastMcpResult(meta.mcpResult)
+            // Clear after 5 seconds
+            setTimeout(() => setLastMcpResult(null), 5000)
           }
 
           // Finalize the assistant message with metadata
@@ -764,5 +780,6 @@ export function useChat(options: UseChatOptions = {}) {
     setImageFile,
     totalTokens,
     textareaRef,
+    lastMcpResult,
   }
 }

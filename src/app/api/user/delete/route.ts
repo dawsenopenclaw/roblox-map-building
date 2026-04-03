@@ -106,11 +106,40 @@ export async function DELETE() {
       }
     }
 
-    // TODO: Delete PostHog person record to purge behavioural event history.
-    // Requires a server-side PostHog API key with person:delete scope.
-    // Call: DELETE https://app.posthog.com/api/projects/<project_id>/persons/<distinct_id>/
-    // See: https://posthog.com/docs/api/persons#delete-api-projects-project_id-persons-id
-    // The distinct_id used is the internal user.id (set at identify() time).
+    // Delete PostHog person record to purge behavioural event history (GDPR Art. 17).
+    const posthogKey = process.env.POSTHOG_PERSONAL_API_KEY
+    const posthogProjectId = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_ID
+    if (posthogKey && posthogProjectId) {
+      try {
+        const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com'
+        const res = await fetch(
+          `${posthogHost}/api/projects/${posthogProjectId}/persons/?distinct_id=${user.id}`,
+          {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${posthogKey}` },
+          }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          const personId = data?.results?.[0]?.id
+          if (personId) {
+            await fetch(
+              `${posthogHost}/api/projects/${posthogProjectId}/persons/${personId}/`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${posthogKey}` },
+              }
+            )
+          }
+        }
+      } catch (posthogErr) {
+        // Non-fatal: log and continue. PII in DB is already wiped.
+        Sentry.captureException(posthogErr, {
+          extra: { clerkId, context: 'user_deletion_posthog_delete' },
+        })
+        console.error('[user/delete] PostHog person deletion failed (proceeding):', posthogErr)
+      }
+    }
 
     return NextResponse.json({
       success: true,

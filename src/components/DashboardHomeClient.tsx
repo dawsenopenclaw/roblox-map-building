@@ -39,8 +39,6 @@ const STARTER_PROMPTS = [
   'Generate a medieval castle',
 ]
 
-const SPARKLINE_TOKEN = [210, 190, 320, 280, 410, 390, 460]
-
 const BUILD_ACTIVITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const ACTIVITY_MAX = 9
 
@@ -575,7 +573,6 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             value={liveBalance}
             icon="⚡"
             sub={`${liveSpent.toLocaleString()} spent lifetime`}
-            sparkline={SPARKLINE_TOKEN}
           />
           <StatCard
             label="Builds This Week"

@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const marketingPages = [
     { url: BASE_URL, priority: 1.0, changeFrequency: 'weekly' as const, lastModified: dates.homepage },
     { url: `${BASE_URL}/pricing`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: dates.pricing },
+    { url: `${BASE_URL}/showcase`, priority: 0.9, changeFrequency: 'weekly' as const, lastModified: dates.recent },
     { url: `${BASE_URL}/docs`, priority: 0.8, changeFrequency: 'monthly' as const, lastModified: dates.docs },
     { url: `${BASE_URL}/download`, priority: 0.85, changeFrequency: 'weekly' as const, lastModified: dates.recent },
     { url: `${BASE_URL}/about`, priority: 0.7, changeFrequency: 'monthly' as const, lastModified: dates.recent },
