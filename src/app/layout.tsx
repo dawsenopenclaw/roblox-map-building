@@ -157,8 +157,9 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          signInFallbackRedirectUrl="/editor"
-          signUpFallbackRedirectUrl="/onboarding"
+          signInForceRedirectUrl="/editor"
+          signUpForceRedirectUrl="/editor"
+          afterSignOutUrl="/sign-in"
           appearance={{
             variables: {
               colorPrimary: '#D4AF37',
