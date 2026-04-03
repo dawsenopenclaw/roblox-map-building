@@ -234,9 +234,9 @@ const GLOBAL_STYLES = `
   .trust-stat:hover { transform: translateY(-2px); }
 
   /* ── section backgrounds ── */
-  .section-void { background: rgba(9, 9, 11, 0.45); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
-  .section-deep { background: rgba(10, 14, 39, 0.40); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
-  .section-navy { background: rgba(13, 18, 48, 0.40); backdrop-filter: blur(40px) saturate(1.3); -webkit-backdrop-filter: blur(40px) saturate(1.3); }
+  .section-void { background: #050810; }
+  .section-deep { background: #070B1A; }
+  .section-navy { background: #0A0F24; }
 
   /* ── mobile: reduce motion ── */
   @media (max-width: 640px) {
@@ -513,7 +513,7 @@ function EditorMockup() {
         {/* File tree */}
         <div
           className="hidden md:flex flex-col w-44 flex-shrink-0 pt-3"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: 'rgba(10,13,26,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#080C18' }}
         >
           <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Explorer
@@ -615,7 +615,7 @@ function EditorMockup() {
         {/* Properties panel */}
         <div
           className="hidden lg:flex flex-col w-40 flex-shrink-0 pt-3"
-          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: 'rgba(10,13,26,0.35)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
+          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#080C18' }}
         >
           <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
             Properties
@@ -872,7 +872,7 @@ export default function HomeClient() {
       <div
         ref={pageRef}
         className="min-h-screen"
-        style={{ background: 'transparent', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
+        style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
       >
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -1012,9 +1012,7 @@ export default function HomeClient() {
           style={{
             borderTop: '1px solid rgba(255,255,255,0.04)',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
-            background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(9,9,11,0.35))',
-            backdropFilter: 'blur(40px) saturate(1.3)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.3)',
+            background: 'linear-gradient(to bottom, #070B1A, #050810)',
           }}
         >
           {/* Ambient glow */}
@@ -1053,7 +1051,7 @@ export default function HomeClient() {
         <section
           id="features"
           className="py-32 px-6 relative"
-          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
+          style={{ background: '#050810' }}
         >
           {/* Section background */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -1298,7 +1296,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(13,18,48,0.35))', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
+          style={{ background: 'linear-gradient(to bottom, #070B1A, #0A0F24)' }}
         >
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
@@ -1408,7 +1406,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
+          style={{ background: '#050810' }}
         >
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
@@ -1450,7 +1448,7 @@ export default function HomeClient() {
         <section
           id="pricing"
           className="py-32 px-6 relative overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, rgba(10,14,39,0.35), rgba(13,18,48,0.35))', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
+          style={{ background: 'linear-gradient(to bottom, #070B1A, #0A0F24)' }}
         >
           {/* Glow behind pricing */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -1565,7 +1563,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="relative py-48 px-6 overflow-hidden"
-          style={{ background: 'rgba(9,9,11,0.35)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}
+          style={{ background: '#050810' }}
         >
           {/* Multi-layer depth glow */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
