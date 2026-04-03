@@ -116,7 +116,7 @@ function FooterColumn({
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/[0.05] mt-auto" style={{ background: 'rgba(15,15,19,0.45)', backdropFilter: 'blur(40px) saturate(1.3)', WebkitBackdropFilter: 'blur(40px) saturate(1.3)' }}>
+    <footer className="border-t border-white/[0.06] bg-[#060A14] mt-auto">
       <div className="max-w-7xl mx-auto px-6 py-14">
 
         {/* Brand row */}
