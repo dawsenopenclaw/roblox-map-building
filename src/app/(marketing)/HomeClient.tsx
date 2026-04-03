@@ -8,6 +8,7 @@ import FeatureSpotlight from '@/components/marketing/FeatureSpotlight'
 import ComparisonSection from '@/components/marketing/ComparisonSection'
 import TestimonialsSection from '@/components/marketing/TestimonialsSection'
 import FaqSection from '@/components/marketing/FaqSection'
+import CharityBanner from '@/components/marketing/CharityBanner'
 // Footer rendered by marketing layout
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
@@ -967,7 +968,7 @@ export default function HomeClient() {
                 </div>
               </div>
 
-              {/* Professional Code */}
+              {/* Safe & Professional */}
               <div
                 className="reveal reveal-delay-5 bento-card rounded-2xl p-7 flex flex-col sm:flex-row gap-6 items-start sm:items-center sm:col-span-2 lg:col-span-3"
                 style={{ background: 'rgba(212,175,55,0.03)', border: '1px solid rgba(212,175,55,0.1)' }}
@@ -977,16 +978,16 @@ export default function HomeClient() {
                   <IconShield size={22} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Professional Code</h3>
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Safe &amp; Professional</h3>
                   <p className="text-sm" style={{ color: '#71717A' }}>
-                    Production-ready Luau — typed, modular, optimized. Server authority, rate limiting, and anti-cheat baked in. Ship games you are proud of.
+                    Production-ready Luau with server authority and anti-cheat built in. COPPA-compliant for young creators — parental consent, content filtering, and data protection included.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-6 flex-shrink-0">
                   {[
-                    { value: '12s',  label: 'Avg gen time' },
-                    { value: '99%',  label: 'Uptime' },
-                    { value: '0',    label: 'Config needed' },
+                    { value: '12s',    label: 'Avg gen time' },
+                    { value: 'COPPA',  label: 'Compliant' },
+                    { value: '0',      label: 'Data sold' },
                   ].map(({ value, label }) => (
                     <div key={label} className="text-center">
                       <p className="text-2xl font-bold" style={{ color: '#D4AF37' }}>{value}</p>
@@ -1247,6 +1248,8 @@ export default function HomeClient() {
             </div>
           </div>
         </section>
+
+        <CharityBanner />
 
         {/* ══════════════════════════════════════════════════════════════════
             FAQ

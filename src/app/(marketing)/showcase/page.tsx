@@ -3,20 +3,41 @@ import { createMetadata } from '@/lib/metadata'
 import ShowcaseClient from './ShowcaseClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Asset Showcase — ForjeGames',
+  title: 'Showcase',
   description:
-    'Browse AI-generated 3D asset packs for Roblox. Interactive 3D viewer with marketplace-ready models built through our Blender pipeline.',
+    'See real Roblox games built with ForjeGames AI. From first prompt to published game in hours.',
   path: '/showcase',
   keywords: [
-    'Roblox 3D assets',
-    'marketplace pack',
-    'medieval assets',
-    'low poly models',
-    'Roblox game assets',
-    'AI generated 3D',
+    'Roblox games built with AI',
+    'ForjeGames showcase',
+    'AI Roblox game examples',
+    'Roblox game demos',
+    'AI game builder results',
   ],
 })
 
+const showcaseJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'ForjeGames Showcase',
+  url: 'https://forjegames.com/showcase',
+  description:
+    'Real Roblox games built with ForjeGames AI — from first prompt to published game in hours.',
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'ForjeGames',
+    url: 'https://forjegames.com',
+  },
+}
+
 export default function ShowcasePage() {
-  return <ShowcaseClient />
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(showcaseJsonLd) }}
+      />
+      <ShowcaseClient />
+    </>
+  )
 }

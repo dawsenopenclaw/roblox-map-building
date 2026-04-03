@@ -156,7 +156,7 @@ export default function TestimonialsSection() {
           Creator Stories
         </p>
         <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
-          Wall of Love
+          What creators are saying
         </h2>
         <p className="text-lg" style={{ color: '#8B95B0' }}>
           Creators building faster with ForjeGames.
@@ -164,7 +164,7 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Row 1 — scrolls left */}
-      <div className="relative mb-4" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+      <div className="relative mb-4" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
         <div ref={track1Ref} className="flex gap-4 w-max">
           {[...firstHalf, ...firstHalf].map((t, i) => (
             <TestimonialCard key={`r1-${i}`} testimonial={t} />
@@ -173,7 +173,7 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Row 2 — scrolls right */}
-      <div className="relative" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+      <div className="relative" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
         <div ref={track2Ref} className="flex gap-4 w-max" style={{ transform: 'translateX(-50%)' }}>
           {[...secondHalf, ...secondHalf].map((t, i) => (
             <TestimonialCard key={`r2-${i}`} testimonial={t} />
