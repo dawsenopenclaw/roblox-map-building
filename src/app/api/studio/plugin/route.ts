@@ -2065,44 +2065,47 @@ export async function GET(req: NextRequest) {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com').trim().replace(/\/$/, '')
   const finalLua = PLUGIN_LUA.replace('INJECTED_BASE_URL', appUrl)
 
-  // Check if caller wants raw .lua (e.g. ?format=lua)
   const format = req.nextUrl.searchParams.get('format')
 
-  if (format === 'lua') {
-    return new NextResponse(finalLua, {
+  // ?format=rbxmx — XML Roblox Model (alternative install method)
+  if (format === 'rbxmx') {
+    const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
+    const rbxmx = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Script" referent="RBX0001">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">ForjeGames</string>
+			<string name="ScriptGuid">{00000000-0000-0000-0000-000000000001}</string>
+			<ProtectedString name="Source"><![CDATA[${escapedLua}]]></ProtectedString>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+	</Item>
+</roblox>`
+
+    return new NextResponse(rbxmx, {
       status: 200,
       headers: {
         ...CORS,
-        'Content-Type': 'application/octet-stream',
-        'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
+        'Content-Type': 'application/xml',
+        'Content-Disposition': 'attachment; filename="ForjeGames.rbxmx"',
         'Cache-Control': 'no-store',
       },
     })
   }
 
-  // Default: serve as .rbxmx (XML Roblox Model) — Studio loads this natively
-  // .rbxmx = XML format, .rbxm = binary format. Must use .rbxmx for XML content.
-  // Escape the Lua source for XML CDATA (handle ]]> sequences)
-  const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
-
-  const rbxmx = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <!-- ForjeGames Studio Plugin v4.2.0 -->
-  <!-- Generated dynamically — ${new Date().toISOString()} -->
-  <Item class="Script" referent="RBX0001">
-    <Properties>
-      <string name="Name">ForjeGames</string>
-      <bool name="Disabled">false</bool>
-      <ProtectedString name="Source"><![CDATA[${escapedLua}]]></ProtectedString>
-    </Properties>
-  </Item>
-</roblox>`
-
-  return new NextResponse(rbxmx, {
+  // Default: serve as .lua — Roblox Studio loads .lua files from the Plugins
+  // folder natively as plugin Scripts with full `plugin` global access.
+  // This is the most reliable install method across all Studio versions.
+  return new NextResponse(finalLua, {
     status: 200,
     headers: {
       ...CORS,
-      'Content-Type': 'application/xml',
-      'Content-Disposition': 'attachment; filename="ForjeGames.rbxmx"',
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
       'Cache-Control': 'no-store',
     },
   })

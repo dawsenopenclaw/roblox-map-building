@@ -121,8 +121,7 @@ const GLOBAL_STYLES = `
   .bento-card:hover {
     transform: translateY(-3px);
     border-color: rgba(212,175,55,0.18) !important;
-    background: rgba(20,25,65,0.40) !important;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) !important;
   }
   .bento-card > * {
     position: relative;
@@ -694,11 +693,8 @@ function BentoCard({ icon, title, description, size = 'normal', children, delay 
     <div
       className={`reveal ${delayClass} bento-card rounded-2xl p-6 flex flex-col gap-4`}
       style={{
-        background: 'rgba(15,20,50,0.30)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(24px) saturate(1.3)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
+        background: 'rgba(255,255,255,0.025)',
+        border: '1px solid rgba(255,255,255,0.07)',
         gridColumn: size === 'wide' ? 'span 2' : undefined,
         gridRow: size === 'tall' ? 'span 2' : undefined,
       }}
@@ -1086,11 +1082,8 @@ export default function HomeClient() {
               <div
                 className="reveal bento-card rounded-2xl p-7 flex flex-col lg:col-span-2"
                 style={{
-                  background: 'rgba(15,20,50,0.30)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  backdropFilter: 'blur(24px) saturate(1.3)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
                   minHeight: 280,
                 }}
               >
@@ -1146,11 +1139,8 @@ export default function HomeClient() {
               <div
                 className="reveal reveal-delay-1 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
-                  background: 'rgba(15,20,50,0.30)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  backdropFilter: 'blur(24px) saturate(1.3)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(1.3)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.25)',
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
                   minHeight: 280,
                 }}
               >
