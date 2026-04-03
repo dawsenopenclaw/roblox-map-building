@@ -26,143 +26,56 @@ function TopBar({ isConnected, placeName, totalTokens }: TopBarProps) {
     <div
       style={{
         flexShrink: 0,
-        height: 56,
+        height: 48,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 16px',
-        background: 'rgba(255,255,255,0.02)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(8,12,28,0.8)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
         zIndex: 10,
       }}
     >
-      {/* Left: Logo + project name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <Link
-          href="/editor"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            textDecoration: 'none',
-          }}
-        >
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 9,
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 0 12px rgba(212,175,55,0.25)',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="#030712">
-              <path d="M8 1.5L10 6H14.5L11 8.5l1.5 4.5L8 10.5l-4.5 2.5L5 8.5 1.5 6H6L8 1.5z"/>
-            </svg>
-          </div>
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: 'white',
-              fontFamily: 'Inter, sans-serif',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            ForjeGames
-          </span>
-        </Link>
+      {/* Left: Logo */}
+      <Link href="/editor" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: '#FFB81C', letterSpacing: '-0.02em' }}>Forje</span>
+        <span style={{ fontSize: 15, fontWeight: 700, color: 'white', letterSpacing: '-0.02em' }}>Games</span>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginLeft: 6 }}>Editor</span>
+      </Link>
 
-        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)' }} />
-
-        <span
-          style={{
-            fontSize: 13,
-            color: 'rgba(255,255,255,0.45)',
-            fontFamily: 'Inter, sans-serif',
-          }}
-        >
-          Editor
-        </span>
-      </div>
-
-      {/* Right: connection status + token counter + user */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Token counter */}
+      {/* Right: status indicators */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {totalTokens > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <circle cx="5" cy="5" r="4" stroke="rgba(255,184,28,0.6)" strokeWidth="1.2"/>
-              <path d="M5 3v2l1.5 1" stroke="rgba(255,184,28,0.6)" strokeWidth="1.1" strokeLinecap="round"/>
-            </svg>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}>
-              {totalTokens.toLocaleString()}
-            </span>
-          </div>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontVariantNumeric: 'tabular-nums' }}>
+            {totalTokens.toLocaleString()} tokens
+          </span>
         )}
 
-        {/* Connection status dot */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 8,
-            background: isConnected ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
-            border: `1px solid ${isConnected ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.06)'}`,
-          }}
-        >
-          <div
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: isConnected ? '#4ADE80' : 'rgba(255,255,255,0.2)',
-              boxShadow: isConnected ? '0 0 6px #4ADE80' : 'none',
-            }}
-          />
-          <span style={{ fontSize: 11, color: isConnected ? 'rgba(74,222,128,0.9)' : 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
-            {isConnected ? (placeName || 'Studio Connected') : 'Studio Offline'}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{
+            width: 5, height: 5, borderRadius: '50%',
+            background: isConnected ? '#4ADE80' : 'rgba(255,255,255,0.15)',
+            boxShadow: isConnected ? '0 0 6px rgba(74,222,128,0.5)' : 'none',
+          }} />
+          <span style={{ fontSize: 11, color: isConnected ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.25)' }}>
+            {isConnected ? (placeName || 'Connected') : 'Offline'}
           </span>
         </div>
 
-        {/* User avatar */}
         {user && (
           <Link href="/settings" style={{ textDecoration: 'none' }}>
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.1)',
-              }}
-            >
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+            }}>
               {user.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={user.imageUrl} alt={user.fullName ?? ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'white', fontFamily: 'Inter, sans-serif' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>
                   {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? '?').toUpperCase()}
                 </span>
               )}
@@ -186,38 +99,22 @@ function MobileTabBar({
   isConnected: boolean
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(255,255,255,0.02)',
-        flexShrink: 0,
-      }}
-    >
+    <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
       {(['chat', 'studio'] as const).map((tab) => (
         <button
           key={tab}
           onClick={() => onChange(tab)}
           style={{
-            flex: 1,
-            padding: '12px 0',
-            border: 'none',
-            background: 'transparent',
+            flex: 1, padding: '10px 0', border: 'none', background: 'transparent',
             borderBottom: `2px solid ${activeTab === tab ? '#FFB81C' : 'transparent'}`,
-            color: activeTab === tab ? '#FFB81C' : 'rgba(255,255,255,0.35)',
-            fontSize: 13,
-            fontWeight: activeTab === tab ? 700 : 500,
-            fontFamily: 'Inter, sans-serif',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            transition: 'all 0.15s',
+            color: activeTab === tab ? 'white' : 'rgba(255,255,255,0.3)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+            transition: 'color 0.15s',
           }}
         >
           {tab === 'studio' && isConnected && (
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', boxShadow: '0 0 6px #4ADE80' }} />
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#4ADE80' }} />
           )}
           {tab === 'chat' ? 'Chat' : 'Studio'}
         </button>
@@ -343,8 +240,8 @@ export default function NewEditorClient() {
             flex: 1,
             display: 'flex',
             overflow: 'hidden',
-            padding: '12px',
-            gap: '12px',
+            padding: 10,
+            gap: 10,
           }}
         >
           {/* LEFT: Chat panel — 45% on desktop, full on mobile chat tab */}
