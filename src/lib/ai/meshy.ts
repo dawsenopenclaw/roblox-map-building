@@ -27,9 +27,12 @@ export interface DownloadedMesh {
 
 const MESHY_BASE = 'https://api.meshy.ai'
 
-function getApiKey(): string {
+function getApiKey(): string | null {
   const key = process.env.MESHY_API_KEY
-  if (!key) throw new Error('MESHY_API_KEY is not configured')
+  if (!key) {
+    console.warn('[meshy] MESHY_API_KEY is not configured — 3D generation disabled')
+    return null
+  }
   return key
 }
 
@@ -45,6 +48,9 @@ export async function createMeshyTask(params: {
   apiKey?: string
 }): Promise<string> {
   const apiKey = params.apiKey ?? getApiKey()
+  if (!apiKey) {
+    throw new Error('[meshy] MESHY_API_KEY is not configured — 3D generation unavailable')
+  }
 
   const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
     method: 'POST',
@@ -94,6 +100,9 @@ export async function pollMeshyTask(params: {
     onProgress,
   } = params
   const apiKey = params.apiKey ?? getApiKey()
+  if (!apiKey) {
+    throw new Error('[meshy] MESHY_API_KEY is not configured — 3D generation unavailable')
+  }
 
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise<void>((r) => setTimeout(r, i === 0 ? 3_000 : intervalMs))

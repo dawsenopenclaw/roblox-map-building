@@ -17,10 +17,13 @@ import { serverEnv } from '@/lib/env'
 // ── Lazy Anthropic client ─────────────────────────────────────────────────────
 
 let _anthropic: Anthropic | null = null
-function getClient(): Anthropic {
+function getClient(): Anthropic | null {
   if (_anthropic) return _anthropic
   const key = serverEnv.ANTHROPIC_API_KEY
-  if (!key) throw new Error('[build-planner] ANTHROPIC_API_KEY is not configured')
+  if (!key) {
+    console.warn('[build-planner] ANTHROPIC_API_KEY is not configured — build planning disabled')
+    return null
+  }
   _anthropic = new Anthropic({ apiKey: key })
   return _anthropic
 }
@@ -234,6 +237,9 @@ function generatePlanId(): string {
  */
 export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> {
   const client = getClient()
+  if (!client) {
+    throw new Error('[build-planner] ANTHROPIC_API_KEY is not configured — build planning unavailable')
+  }
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-5',

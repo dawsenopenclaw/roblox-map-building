@@ -38,7 +38,11 @@ export async function DELETE() {
     if (activeStripeSubId) {
       try {
         const stripe = getStripe()
-        await stripe.subscriptions.cancel(activeStripeSubId)
+        if (stripe) {
+          await stripe.subscriptions.cancel(activeStripeSubId)
+        } else {
+          console.warn('[user/delete] Stripe not configured — skipping subscription cancellation')
+        }
       } catch (stripeErr) {
         Sentry.captureException(stripeErr, {
           extra: { clerkId, stripeSubscriptionId: activeStripeSubId, context: 'user_deletion_stripe_cancel' },
@@ -87,7 +91,11 @@ export async function DELETE() {
     if (stripeCustomerId) {
       try {
         const stripe = getStripe()
-        await stripe.customers.del(stripeCustomerId)
+        if (stripe) {
+          await stripe.customers.del(stripeCustomerId)
+        } else {
+          console.warn('[user/delete] Stripe not configured — skipping customer deletion')
+        }
       } catch (stripeErr) {
         Sentry.captureException(stripeErr, {
           extra: { clerkId, stripeCustomerId, context: 'user_deletion_stripe_customer_delete' },

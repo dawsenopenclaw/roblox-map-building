@@ -2080,27 +2080,29 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Default: serve as .rbxm (XML Roblox Model) — Studio loads this natively
+  // Default: serve as .rbxmx (XML Roblox Model) — Studio loads this natively
+  // .rbxmx = XML format, .rbxm = binary format. Must use .rbxmx for XML content.
   // Escape the Lua source for XML CDATA (handle ]]> sequences)
   const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
 
-  const rbxm = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
-  <!-- ForjeGames Studio Plugin v4.1.0 -->
+  const rbxmx = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  <!-- ForjeGames Studio Plugin v4.2.0 -->
   <!-- Generated dynamically — ${new Date().toISOString()} -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
+      <bool name="Disabled">false</bool>
       <ProtectedString name="Source"><![CDATA[${escapedLua}]]></ProtectedString>
     </Properties>
   </Item>
 </roblox>`
 
-  return new NextResponse(rbxm, {
+  return new NextResponse(rbxmx, {
     status: 200,
     headers: {
       ...CORS,
-      'Content-Type': 'application/octet-stream',
-      'Content-Disposition': 'attachment; filename="ForjeGames.rbxm"',
+      'Content-Type': 'application/xml',
+      'Content-Disposition': 'attachment; filename="ForjeGames.rbxmx"',
       'Cache-Control': 'no-store',
     },
   })

@@ -21,10 +21,13 @@ import { trackCost } from '@/lib/cost-tracker'
 // ── Anthropic client (lazy) ──────────────────────────────────────────────────
 
 let _claude: Anthropic | null = null
-function getClaude(): Anthropic {
+function getClaude(): Anthropic | null {
   if (_claude) return _claude
   const key = process.env.ANTHROPIC_API_KEY
-  if (!key) throw new Error('ANTHROPIC_API_KEY is not configured')
+  if (!key) {
+    console.warn('[game-scanner] ANTHROPIC_API_KEY is not configured — game scanning disabled')
+    return null
+  }
   _claude = new Anthropic({ apiKey: key })
   return _claude
 }
@@ -137,6 +140,9 @@ interface ClassifiedGenome {
 
 async function classifyGenome(info: RobloxUniverseInfo): Promise<ClassifiedGenome> {
   const claude = getClaude()
+  if (!claude) {
+    throw new Error('[game-scanner] ANTHROPIC_API_KEY is not configured — genome classification unavailable')
+  }
 
   const prompt = `You are a Roblox game analyst. Analyze this game and return a strict JSON response.
 

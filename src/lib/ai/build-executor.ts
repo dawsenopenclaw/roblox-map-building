@@ -33,10 +33,13 @@ import {
 // ── Lazy Anthropic client ─────────────────────────────────────────────────────
 
 let _anthropic: Anthropic | null = null
-function getClient(): Anthropic {
+function getClient(): Anthropic | null {
   if (_anthropic) return _anthropic
   const key = serverEnv.ANTHROPIC_API_KEY
-  if (!key) throw new Error('[build-executor] ANTHROPIC_API_KEY not configured')
+  if (!key) {
+    console.warn('[build-executor] ANTHROPIC_API_KEY not configured — AI execution disabled')
+    return null
+  }
   _anthropic = new Anthropic({ apiKey: key })
   return _anthropic
 }
@@ -209,6 +212,9 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
 
   // Fall through to Claude generation
   const client = getClient()
+  if (!client) {
+    throw new Error('[build-executor] ANTHROPIC_API_KEY is not configured — AI code generation unavailable')
+  }
   const systemPrompt = TASK_SYSTEM_PROMPTS[task.type]
 
   const message = await client.messages.create({

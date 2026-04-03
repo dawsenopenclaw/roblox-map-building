@@ -6,11 +6,12 @@ import { serverEnv } from '@/lib/env'
 
 let _stripe: Stripe | null = null
 
-export function getStripe(): Stripe {
+export function getStripe(): Stripe | null {
   if (_stripe) return _stripe
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) {
-    throw new Error('STRIPE_SECRET_KEY is not set')
+    console.warn('[stripe] STRIPE_SECRET_KEY is not set — billing features disabled')
+    return null
   }
   _stripe = new Stripe(key, {
     apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
@@ -19,10 +20,17 @@ export function getStripe(): Stripe {
   return _stripe
 }
 
-// Backward compat — lazy getter
+/** Throws if Stripe is not configured — use in routes that REQUIRE billing. */
+export function requireStripe(): Stripe {
+  const s = getStripe()
+  if (!s) throw new Error('STRIPE_SECRET_KEY is not set')
+  return s
+}
+
+// Backward compat — lazy getter (throws if not configured)
 export const stripe = new Proxy({} as Stripe, {
   get: (_, prop) => {
-    const s = getStripe()
+    const s = requireStripe()
     const val = (s as unknown as Record<string, unknown>)[prop as string]
     return typeof val === 'function' ? val.bind(s) : val
   },

@@ -93,10 +93,10 @@ function UserMenu({ displayName, email }: { displayName: string; email: string }
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
         >
           <span className="text-gray-400 group-hover:text-blue-400"><IconSettings /></span>
-          Settings
+          Account
         </Link>
         <Link
-          href="/billing"
+          href="/settings?tab=billing"
           role="menuitem"
           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:text-blue-400 hover:bg-white/[0.05] transition-colors"
         >
@@ -190,15 +190,15 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* Spacer on mobile */}
       <div className="flex-1 sm:hidden" />
 
-      {/* New Project */}
+      {/* Open Editor */}
       <Link
-        href="/voice"
+        href="/editor"
         className="hidden sm:inline-flex items-center gap-1.5 bg-[#D4AF37] active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5 hover-glow"
         style={{
           transition: 'transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease',
           boxShadow: '0 0 10px rgba(212,175,55,0.2)',
         }}
-        aria-label="New project (Ctrl+N)"
+        aria-label="Open editor (Ctrl+N)"
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLElement).style.backgroundColor = '#FFB81C'
           ;(e.currentTarget as HTMLElement).style.boxShadow = '0 0 24px rgba(212,175,55,0.45)'
@@ -209,25 +209,37 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
         }}
       >
         <IconPlus />
-        New
+        Build
         <ShortcutHint keys="Ctrl+N" className="opacity-60" />
       </Link>
 
-      {/* Token balance */}
-      <div
-        className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 flex-shrink-0"
-        role="status"
-        aria-label={`Token balance: ${tokenBalance} tokens`}
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <span className="text-blue-400 flex-shrink-0" aria-hidden="true">
-          <IconCoin />
-        </span>
-        <span className="text-blue-400 text-sm font-bold tabular-nums" aria-hidden="true">
-          {tokenBalance}
-        </span>
-        <span className="text-gray-500 text-xs hidden md:block" aria-hidden="true">tokens</span>
+      {/* Token balance + upgrade CTA */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <div
+          className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2"
+          role="status"
+          aria-label={`Token balance: ${tokenBalance} tokens`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className="text-[#D4AF37] flex-shrink-0" aria-hidden="true">
+            <IconCoin />
+          </span>
+          <span className="text-[#D4AF37] text-sm font-bold tabular-nums" aria-hidden="true">
+            {tokenBalance}
+          </span>
+          <span className="text-gray-500 text-xs hidden md:block" aria-hidden="true">tokens</span>
+        </div>
+
+        {/* Show upgrade pill when balance is low */}
+        {data?.balance !== undefined && data.balance < 100 && (
+          <Link
+            href="/api/billing/checkout?tier=pro"
+            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D4AF37] text-[#0a0a0a] hover:bg-[#FFB81C] transition-colors"
+          >
+            Upgrade
+          </Link>
+        )}
       </div>
 
       {/* Notification bell */}

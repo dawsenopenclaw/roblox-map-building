@@ -17,13 +17,16 @@ export function getRedis(): Redis | null {
   if (!redisUrl || redisUrl.trim().length < 10) return null
   const isTls = redisUrl.startsWith('rediss://')
   const instance = new Redis(redisUrl, {
-    maxRetriesPerRequest: 3,
+    maxRetriesPerRequest: 1,
+    retryStrategy: (times) => (times > 2 ? null : Math.min(times * 200, 1000)),
     lazyConnect: true,
     ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
-    // Upstash free tier has 1 connection limit — reuse aggressively
     enableReadyCheck: false,
-    connectTimeout: 5000,
+    connectTimeout: 3000,
+    reconnectOnError: () => false,
   })
+  // Swallow connection errors — endpoints fail-open when Redis is down
+  instance.on('error', () => { /* Redis unavailable — endpoints use in-memory fallback */ })
   if (serverEnv.NODE_ENV !== 'production') globalForRedis.redis = instance
   _redis = instance
   return _redis

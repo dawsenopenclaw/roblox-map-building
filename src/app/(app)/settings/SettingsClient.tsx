@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import useSWR from 'swr'
 import {
   User,
   Key,
@@ -23,11 +25,16 @@ import {
   TrendingUp,
   Zap,
   ChevronDown,
+  CreditCard,
+  Plug,
+  Download,
 } from 'lucide-react'
+
+const fetcher = (url: string) => fetch(url).then(r => r.json())
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'profile' | 'api-keys' | 'notifications' | 'appearance' | 'connected'
+type Tab = 'profile' | 'billing' | 'studio' | 'api-keys' | 'notifications' | 'appearance' | 'connected'
 
 type ApiKey = {
   id: string
@@ -465,9 +472,12 @@ function ProfileTab() {
 // ─── Billing Tab ──────────────────────────────────────────────────────────────
 
 function BillingTab() {
-  const plan = 'Pro'
-  const tokenBalance = 1_240
-  const tokenLimit = 5_000
+  const { data: tokenData } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
+  const { data: billingData } = useSWR('/api/billing/status', fetcher, { refreshInterval: 60_000 })
+
+  const plan = billingData?.tier ?? 'Free'
+  const tokenBalance = tokenData?.balance ?? 0
+  const tokenLimit = billingData?.tokenLimit ?? 1_000
   const tokenPct = Math.min(100, Math.round((tokenBalance / tokenLimit) * 100))
 
   return (
@@ -492,11 +502,11 @@ function BillingTab() {
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
             <Link
-              href="/pricing"
+              href="/#pricing"
               className="inline-flex items-center gap-1.5 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
             >
               <TrendingUp size={14} />
-              Upgrade Plan
+              Change Plan
             </Link>
             <button
               onClick={() => window.open('/api/billing/portal', '_blank')}
@@ -1226,23 +1236,100 @@ function ConnectedTab() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+// ─── Studio Tab ──────────────────────────────────────────────────────────────
+
+function StudioTab() {
+  const { data: studioData } = useSWR('/api/studio/status', fetcher, { refreshInterval: 10_000 })
+  const isConnected = studioData?.connected ?? false
+
+  return (
+    <div className="space-y-4">
+      {/* Connection Status */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Studio Connection</p>
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-500'}`}
+            style={isConnected ? { boxShadow: '0 0 8px #4ADE80' } : undefined}
+          />
+          <span className={`text-sm font-medium ${isConnected ? 'text-green-400' : 'text-gray-400'}`}>
+            {isConnected ? 'Connected to Roblox Studio' : 'Not connected'}
+          </span>
+        </div>
+        {!isConnected && (
+          <Link
+            href="/connect"
+            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            <Plug size={14} />
+            Connect Studio
+          </Link>
+        )}
+      </div>
+
+      {/* Plugin Download */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Studio Plugin</p>
+        <p className="text-gray-300 text-sm mb-4">
+          Install the ForjeGames plugin in Roblox Studio to sync builds directly.
+        </p>
+        <div className="space-y-3">
+          <Link
+            href="/api/studio/plugin"
+            className="inline-flex items-center gap-2 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            <Download size={14} />
+            Download Plugin
+          </Link>
+        </div>
+      </div>
+
+      {/* Quick Setup */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Setup Guide</p>
+        <ol className="space-y-3 text-sm text-gray-300">
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">1</span>
+            <span>Download and install the plugin above</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">2</span>
+            <span>Open Roblox Studio and enable the ForjeGames plugin</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">3</span>
+            <span>Click &quot;Connect&quot; in the plugin &mdash; enter the code shown in the editor</span>
+          </li>
+          <li className="flex gap-3">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">4</span>
+            <span>Start building! AI-generated code runs directly in Studio</span>
+          </li>
+        </ol>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'profile', label: 'Profile', icon: <User size={15} /> },
-  { key: 'api-keys', label: 'API Keys', icon: <Key size={15} /> },
-  { key: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
-  { key: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
-  { key: 'connected', label: 'Connected', icon: <Link2 size={15} /> },
+  { key: 'billing', label: 'Billing', icon: <CreditCard size={15} /> },
+  { key: 'studio', label: 'Studio', icon: <Plug size={15} /> },
 ]
 
 export default function SettingsClient() {
-  const [tab, setTab] = useState<Tab>('profile')
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab) || 'profile'
+  const [tab, setTab] = useState<Tab>(
+    ['profile', 'billing', 'studio'].includes(initialTab) ? initialTab : 'profile'
+  )
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Settings</h1>
-        <p className="text-gray-300 mt-1 text-sm">Manage your account and preferences.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Account</h1>
+        <p className="text-gray-300 mt-1 text-sm">Manage your profile, billing, and Studio connection.</p>
       </div>
 
       {/* Tabs */}
@@ -1265,10 +1352,8 @@ export default function SettingsClient() {
 
       {/* Content */}
       {tab === 'profile' && <ProfileTab />}
-      {tab === 'api-keys' && <ApiKeysTab />}
-      {tab === 'notifications' && <NotificationsTab />}
-      {tab === 'appearance' && <AppearanceTab />}
-      {tab === 'connected' && <ConnectedTab />}
+      {tab === 'billing' && <BillingTab />}
+      {tab === 'studio' && <StudioTab />}
     </div>
   )
 }

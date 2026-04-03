@@ -41,7 +41,7 @@ function TopBar({ isConnected, placeName, totalTokens }: TopBarProps) {
       {/* Left: Logo + project name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <Link
-          href="/dashboard"
+          href="/editor"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -144,7 +144,7 @@ function TopBar({ isConnected, placeName, totalTokens }: TopBarProps) {
 
         {/* User avatar */}
         {user && (
-          <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+          <Link href="/settings" style={{ textDecoration: 'none' }}>
             <div
               style={{
                 width: 30,

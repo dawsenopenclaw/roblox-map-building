@@ -1154,6 +1154,53 @@ export function ChatPanel({
             }}
           />
 
+          {/* Image upload button */}
+          <label
+            title="Upload an image"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 9,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)',
+              color: 'rgba(255,255,255,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+                e.currentTarget.style.color = '#D4AF37'
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+              <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
+              <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              disabled={loading}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                setInput(input ? `${input}\n[Uploaded: ${file.name}]` : `[Uploaded: ${file.name}] Describe what to build from this image`)
+                e.target.value = ''
+              }}
+            />
+          </label>
+
           {/* Voice button */}
           {speechSupported && (
             <button

@@ -28,9 +28,12 @@ interface FalTextureOutput  {
 
 const FAL_QUEUE_BASE = 'https://queue.fal.run'
 
-function getApiKey(): string {
+function getApiKey(): string | null {
   const key = process.env.FAL_KEY ?? process.env.FAL_API_KEY
-  if (!key) throw new Error('FAL_KEY is not configured')
+  if (!key) {
+    console.warn('[fal] FAL_KEY is not configured — texture generation disabled')
+    return null
+  }
   return key
 }
 
@@ -59,10 +62,8 @@ export async function generateTextures(params: {
     intervalMs  = 4_000,
   } = params
 
-  let apiKey: string
-  try {
-    apiKey = params.apiKey ?? getApiKey()
-  } catch {
+  const apiKey = params.apiKey ?? getApiKey()
+  if (!apiKey) {
     return null
   }
 

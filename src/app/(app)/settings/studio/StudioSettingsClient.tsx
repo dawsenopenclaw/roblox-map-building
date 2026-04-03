@@ -107,7 +107,7 @@ function InstallSection() {
         <StepCard number={1} title="Download the ForjeGames plugin">
           <a
             href="/api/studio/plugin"
-            download="ForjeGames.rbxm"
+            download="ForjeGames.rbxmx"
             className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-xl text-sm font-semibold
               bg-[#D4AF37] hover:bg-[#c4a030] text-black transition-colors"
           >
@@ -122,7 +122,7 @@ function InstallSection() {
             className="flex items-center gap-2 mt-2 px-3 py-2 rounded-lg bg-black/40 border border-[#2a2a2a] font-mono text-xs text-gray-300 select-all"
           >
             <Terminal size={12} className="text-gray-500 flex-shrink-0" />
-            %LOCALAPPDATA%\Roblox\Plugins\
+            %LOCALAPPDATA%\Roblox\Plugins\ForjeGames.rbxmx
           </div>
           <p className="mt-2 text-gray-500 text-xs">
             On Mac: ~/Documents/Roblox/Plugins/
