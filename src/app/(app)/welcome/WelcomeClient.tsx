@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser, UserButton } from '@clerk/nextjs'
-import Link from 'next/link'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,6 +12,9 @@ type XPLevel = 'Beginner' | 'Intermediate' | 'Expert'
 interface Prefs {
   genre: Genre | null
   xp: XPLevel | null
+  goal: string | null
+  helpAreas: string[]
+  firstProject: string
   studioChoice: 'connect' | 'skip' | null
 }
 
@@ -279,7 +281,324 @@ function StepExperience({
   )
 }
 
-// ─── Step 3 — Studio Connect ───────────────────────────────────────────────────
+// ─── Step 3 — Goal ─────────────────────────────────────────────────────────────
+
+const GOALS: { id: string; icon: string; label: string; desc: string }[] = [
+  { id: 'first-game',   icon: '🚀', label: 'Ship my first game',    desc: 'I want to publish a real Roblox game that people can play' },
+  { id: 'grow-players', icon: '📈', label: 'Grow my player count',  desc: 'I have a game but need more visits, retention, and monetization' },
+  { id: 'learn-dev',    icon: '📚', label: 'Learn game development', desc: 'I want to understand Luau, Studio, and how Roblox games work' },
+  { id: 'speed-up',     icon: '⚡', label: 'Build faster',           desc: 'I already know what I\'m doing — I want AI to 10x my speed' },
+  { id: 'make-money',   icon: '💰', label: 'Earn Robux',             desc: 'I want to build games that generate real revenue' },
+  { id: 'portfolio',    icon: '🎨', label: 'Build a portfolio',      desc: 'I\'m building a showcase of game projects for my career' },
+]
+
+function StepGoal({
+  selected,
+  onSelect,
+}: {
+  selected: string | null
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+        What are you trying to achieve?
+      </h2>
+      <p className="text-gray-400 text-sm mb-8">
+        Pick one — we'll prioritize features that get you there fastest.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {GOALS.map(({ id, icon, label, desc }) => {
+          const active = selected === id
+          return (
+            <button
+              key={id}
+              onClick={() => onSelect(id)}
+              className="flex items-start gap-3 p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.98]"
+              style={{
+                background: active ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                borderColor: active ? 'rgba(212,175,55,0.7)' : 'rgba(255,255,255,0.08)',
+                boxShadow: active ? '0 0 20px rgba(212,175,55,0.2)' : 'none',
+              }}
+            >
+              <span className="text-xl select-none flex-shrink-0 mt-0.5">{icon}</span>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="font-semibold text-sm mb-0.5 leading-tight"
+                  style={{ color: active ? '#D4AF37' : '#E5E7EB' }}
+                >
+                  {label}
+                </p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">{desc}</p>
+              </div>
+              {active && (
+                <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                    <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 4 — Help Areas ───────────────────────────────────────────────────────
+
+const HELP_AREAS: { id: string; icon: React.ReactNode; label: string; desc: string }[] = [
+  {
+    id: 'scripting',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M5 5L2 8l3 3M11 5l3 3-3 3M9 3l-2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    label: 'Luau scripting',
+    desc: 'Writing game logic, events, data stores',
+  },
+  {
+    id: 'building',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M8 2L14 5v6L8 14 2 11V5L8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M8 2v12M2 5l6 3 6-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    label: 'Map building',
+    desc: 'Terrain, buildings, decorating game worlds',
+  },
+  {
+    id: 'ui-design',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M2 6h12" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M6 9h4M6 11h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+    label: 'UI / menus',
+    desc: 'Health bars, shops, inventory screens',
+  },
+  {
+    id: 'monetization',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8 5v1m0 4v1m-1.5-4.5A1.5 1.5 0 018 5.5a1.5 1.5 0 011.5 1.5c0 .8-.6 1.3-1.5 1.5s-1.5.7-1.5 1.5A1.5 1.5 0 008 11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    ),
+    label: 'Monetization',
+    desc: 'Game passes, dev products, premium',
+  },
+  {
+    id: 'optimization',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M8 14A6 6 0 108 2a6 6 0 000 12z" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8 8L11 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="8" cy="8" r="1.2" fill="currentColor" />
+        <path d="M4 13.5l8-11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />
+      </svg>
+    ),
+    label: 'Performance',
+    desc: 'Lag, mobile optimization, streaming',
+  },
+  {
+    id: 'marketing',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M3 6h2v5H3zM5 7.5l5-4v9L5 9" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M12 6c.8.5 1.3 1.4 1.3 2.5S12.8 10.5 12 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    ),
+    label: 'Getting players',
+    desc: 'Thumbnails, descriptions, discovery',
+  },
+  {
+    id: 'animation',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    ),
+    label: 'Animation',
+    desc: 'Character animations, cutscenes, effects',
+  },
+  {
+    id: 'sound',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+        <path d="M3 6h2v4H3zM5 7l4-3v8L5 9" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+        <path d="M11 5a4 4 0 010 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <path d="M12.5 3.5a6.5 6.5 0 010 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
+      </svg>
+    ),
+    label: 'Audio / music',
+    desc: 'Sound effects, ambient audio, music',
+  },
+]
+
+const MAX_HELP = 3
+
+function StepHelp({
+  selected,
+  onToggle,
+}: {
+  selected: string[]
+  onToggle: (id: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+        Where do you struggle most?
+      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-gray-400 text-sm">
+          Pick up to 3 — ForjeAI will focus on these areas first.
+        </p>
+        <span
+          className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-3"
+          style={{
+            background: selected.length >= MAX_HELP ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+            color: selected.length >= MAX_HELP ? '#D4AF37' : '#6B7280',
+            border: `1px solid ${selected.length >= MAX_HELP ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
+          }}
+        >
+          {selected.length}/{MAX_HELP} selected
+        </span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {HELP_AREAS.map(({ id, icon, label, desc }) => {
+          const active = selected.includes(id)
+          const maxed = selected.length >= MAX_HELP && !active
+          return (
+            <button
+              key={id}
+              onClick={() => !maxed && onToggle(id)}
+              disabled={maxed}
+              className="flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-200 active:scale-[0.97] text-center"
+              style={{
+                background: active ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                borderColor: active ? 'rgba(212,175,55,0.7)' : 'rgba(255,255,255,0.08)',
+                boxShadow: active ? '0 0 20px rgba(212,175,55,0.2)' : 'none',
+                opacity: maxed ? 0.35 : 1,
+                cursor: maxed ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center"
+                style={{
+                  background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+                  color: active ? '#D4AF37' : '#9CA3AF',
+                }}
+              >
+                {icon}
+              </div>
+              <span
+                className="text-xs font-semibold leading-tight"
+                style={{ color: active ? '#D4AF37' : '#E5E7EB' }}
+              >
+                {label}
+              </span>
+              <span className="text-[10px] text-gray-500 leading-tight">{desc}</span>
+              {active && (
+                <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                    <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 5 — First Project ────────────────────────────────────────────────────
+
+const GENRE_CHIPS: Record<Genre, string[]> = {
+  RPG:       ['Fantasy Quest', 'Dungeon Crawler', 'Dragon Age RPG', 'Hero Adventure'],
+  Tycoon:    ['Pizza Tycoon', 'Car Wash Empire', 'Mining Simulator', 'Pet Shop'],
+  Simulator: ['Pet Simulator', 'Mining Tycoon', 'Fishing Simulator', 'Farm World'],
+  Obby:      ['Rainbow Obby', 'Impossible Parkour', 'Tower Escape', 'Sky Jump'],
+  Racing:    ['Street Racer', 'Drift City', 'Off-Road Arena', 'Formula Roblox'],
+  FPS:       ['Zombie Survival', 'Team Deathmatch', 'Sniper Arena', 'Base Defense'],
+  Roleplay:  ['High School RP', 'City Life', 'Hospital RP', 'Police & Robbers'],
+  Custom:    ['Unique World', 'Sandbox Game', 'Creative Space', 'Experimental'],
+}
+
+function StepFirstProject({
+  value,
+  genre,
+  onChange,
+}: {
+  value: string
+  genre: Genre | null
+  onChange: (v: string) => void
+}) {
+  const chips = genre ? GENRE_CHIPS[genre] : ['Tycoon Game', 'Adventure RPG', 'Fun Obby', 'Simulator']
+
+  return (
+    <div>
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+        What do you want to build first?
+      </h2>
+      <p className="text-gray-400 text-sm mb-6">
+        Type a short description and ForjeAI will have a plan ready in the editor.
+      </p>
+
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="e.g. A tycoon game where you build a pizza restaurant"
+        rows={3}
+        className="w-full resize-none text-sm leading-relaxed placeholder-gray-600 outline-none focus:ring-0 rounded-xl px-4 py-3.5 transition-all duration-200"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: value ? '1px solid rgba(212,175,55,0.4)' : '1px solid rgba(255,255,255,0.1)',
+          color: '#E5E7EB',
+          boxShadow: value ? '0 0 16px rgba(212,175,55,0.08)' : 'none',
+        }}
+      />
+
+      <p className="text-[11px] text-gray-600 mt-2 mb-4">
+        Optional — you can always describe your project later in the editor.
+      </p>
+
+      {/* Quick-pick chips */}
+      <div>
+        <p className="text-[11px] text-gray-500 uppercase tracking-widest mb-2.5">Quick picks</p>
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => {
+            const active = value === chip
+            return (
+              <button
+                key={chip}
+                onClick={() => onChange(active ? '' : chip)}
+                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 active:scale-[0.97]"
+                style={{
+                  background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                  color: active ? '#D4AF37' : '#9CA3AF',
+                }}
+              >
+                {chip}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 6 — Studio Connect ───────────────────────────────────────────────────
 
 const STUDIO_BENEFITS = [
   {
@@ -511,7 +830,7 @@ function StepStudio({
   )
 }
 
-// ─── Step 4 — Done ─────────────────────────────────────────────────────────────
+// ─── Step 7 — Done ─────────────────────────────────────────────────────────────
 
 function StepDone({
   firstName,
@@ -559,6 +878,22 @@ function StepDone({
             {prefs.xp}
           </span>
         )}
+        {prefs.goal && (
+          <span
+            className="px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={{ background: 'rgba(255,255,255,0.05)', color: '#E5E7EB', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            {GOALS.find((g) => g.id === prefs.goal)?.label ?? prefs.goal}
+          </span>
+        )}
+        {prefs.helpAreas.length > 0 && (
+          <span
+            className="px-3 py-1.5 rounded-full text-xs font-semibold"
+            style={{ background: 'rgba(255,255,255,0.05)', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            {prefs.helpAreas.length} focus area{prefs.helpAreas.length > 1 ? 's' : ''}
+          </span>
+        )}
         {prefs.studioChoice === 'connect' ? (
           <span
             className="px-3 py-1.5 rounded-full text-xs font-semibold"
@@ -594,7 +929,8 @@ function StepDone({
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 7
+const STEP_LABELS = ['Build', 'Level', 'Goal', 'Help', 'Project', 'Studio', 'Done']
 
 export default function WelcomePage() {
   const router = useRouter()
@@ -607,6 +943,9 @@ export default function WelcomePage() {
   const [prefs, setPrefs] = useState<Prefs>({
     genre: null,
     xp: null,
+    goal: null,
+    helpAreas: [],
+    firstProject: '',
     studioChoice: null,
   })
 
@@ -673,7 +1012,10 @@ export default function WelcomePage() {
   const canAdvance = useCallback(() => {
     if (step === 1) return prefs.genre !== null
     if (step === 2) return prefs.xp !== null
-    if (step === 3) return prefs.studioChoice !== null
+    if (step === 3) return prefs.goal !== null
+    if (step === 4) return prefs.helpAreas.length >= 1
+    if (step === 5) return true  // optional
+    if (step === 6) return prefs.studioChoice !== null
     return true
   }, [step, prefs])
 
@@ -683,6 +1025,13 @@ export default function WelcomePage() {
     } catch {
       // ignore
     }
+    // Fire-and-forget to API
+    fetch('/api/onboarding/wizard-complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prefs),
+    }).catch(() => {})
+
     if (prefs.studioChoice === 'connect') {
       router.push('/settings/studio')
     } else {
@@ -701,7 +1050,15 @@ export default function WelcomePage() {
     pointerEvents: active ? 'auto' : 'none',
   })
 
-  const STEP_LABELS = ['Build', 'Experience', 'Studio', 'Done']
+  // Dynamic minHeight based on step
+  const getMinHeight = () => {
+    if (step === 3) return 480   // Goal — 6 cards 2-col
+    if (step === 4) return 500   // Help — 8 cards 4-col
+    if (step === 5) return 360   // Project — textarea + chips
+    if (step === 6) return 520   // Studio
+    if (step === 7) return 380   // Done
+    return 340
+  }
 
   return (
     <div
@@ -737,13 +1094,13 @@ export default function WelcomePage() {
           <span className="text-xs text-gray-500 font-medium">
             Step {step} of {TOTAL_STEPS}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {STEP_LABELS.map((label, i) => {
               const n = i + 1
               const done = n < step
               const active = n === step
               return (
-                <div key={label} className="flex items-center gap-1.5">
+                <div key={label} className="flex items-center gap-1">
                   <div
                     className="flex items-center justify-center rounded-full text-[9px] font-bold transition-all duration-300"
                     style={{
@@ -773,7 +1130,7 @@ export default function WelcomePage() {
                   {i < STEP_LABELS.length - 1 && (
                     <div
                       className="h-px transition-all duration-300"
-                      style={{ width: 20, background: n < step ? '#D4AF37' : 'rgba(255,255,255,0.08)' }}
+                      style={{ width: 14, background: n < step ? '#D4AF37' : 'rgba(255,255,255,0.08)' }}
                     />
                   )}
                 </div>
@@ -802,7 +1159,7 @@ export default function WelcomePage() {
 
           <div className="p-6 sm:p-8">
             {/* Steps */}
-            <div className="relative" style={{ minHeight: step === 3 ? 520 : 340 }}>
+            <div className="relative" style={{ minHeight: getMinHeight() }}>
               <div className="absolute inset-0" style={slideStyle(step === 1)}>
                 <StepGenre
                   selected={prefs.genre}
@@ -816,12 +1173,40 @@ export default function WelcomePage() {
                 />
               </div>
               <div className="absolute inset-0" style={slideStyle(step === 3)}>
+                <StepGoal
+                  selected={prefs.goal}
+                  onSelect={(id) => setPrefs((p) => ({ ...p, goal: id }))}
+                />
+              </div>
+              <div className="absolute inset-0" style={slideStyle(step === 4)}>
+                <StepHelp
+                  selected={prefs.helpAreas}
+                  onToggle={(id) =>
+                    setPrefs((p) => ({
+                      ...p,
+                      helpAreas: p.helpAreas.includes(id)
+                        ? p.helpAreas.filter((a) => a !== id)
+                        : p.helpAreas.length < MAX_HELP
+                          ? [...p.helpAreas, id]
+                          : p.helpAreas,
+                    }))
+                  }
+                />
+              </div>
+              <div className="absolute inset-0" style={slideStyle(step === 5)}>
+                <StepFirstProject
+                  value={prefs.firstProject}
+                  genre={prefs.genre}
+                  onChange={(v) => setPrefs((p) => ({ ...p, firstProject: v }))}
+                />
+              </div>
+              <div className="absolute inset-0" style={slideStyle(step === 6)}>
                 <StepStudio
                   selected={prefs.studioChoice}
                   onSelect={(v) => setPrefs((p) => ({ ...p, studioChoice: v }))}
                 />
               </div>
-              <div className="absolute inset-0" style={slideStyle(step === 4)}>
+              <div className="absolute inset-0" style={slideStyle(step === 7)}>
                 <StepDone
                   firstName={firstName}
                   prefs={prefs}
@@ -830,7 +1215,7 @@ export default function WelcomePage() {
               </div>
             </div>
 
-            {/* Navigation — hidden on step 4 */}
+            {/* Navigation — hidden on step 7 */}
             {step < TOTAL_STEPS && (
               <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {step > 1 ? (
@@ -856,7 +1241,7 @@ export default function WelcomePage() {
                     boxShadow: canAdvance() ? '0 0 16px rgba(212,175,55,0.3)' : 'none',
                   }}
                 >
-                  {step === TOTAL_STEPS - 1 ? "Finish Setup" : "Continue →"}
+                  {step === TOTAL_STEPS - 1 ? 'Finish Setup' : 'Continue →'}
                 </button>
               </div>
             )}
