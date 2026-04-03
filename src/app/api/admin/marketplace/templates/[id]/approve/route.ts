@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_adminGuard'
+import { requireAdmin } from '../../../../_adminGuard'
 import { db } from '@/lib/db'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { auth } from '@clerk/nextjs/server'
 
 type Params = { params: Promise<{ id: string }> }
 
+// POST /api/admin/marketplace/templates/[id]/approve
 export async function POST(req: NextRequest, { params }: Params) {
-  return handleApprove(req, { params })
-}
-
-export async function PUT(req: NextRequest, { params }: Params) {
-  return handleApprove(req, { params })
-}
-
-async function handleApprove(_req: NextRequest, { params }: Params) {
   try {
     const { error, user: adminUser } = await requireAdmin()
     if (error) return error
@@ -39,10 +32,10 @@ async function handleApprove(_req: NextRequest, { params }: Params) {
     const template = await db.template.update({
       where: { id },
       data: { status: 'PUBLISHED' },
-      select: { id: true, title: true, creatorId: true },
+      select: { id: true, title: true, creatorId: true, status: true },
     })
 
-    // Resolve reviewer DB id (best-effort — falls back to Clerk id or 'admin')
+    // Resolve reviewer DB id (best-effort — falls back to Clerk id)
     let reviewerDbId: string | null = adminUser?.id ?? null
     try {
       if (!reviewerDbId) {
@@ -73,8 +66,11 @@ async function handleApprove(_req: NextRequest, { params }: Params) {
       decision: 'approved',
     }).catch(() => {})
 
-    return NextResponse.json({ ok: true, template: { id: template.id, status: 'PUBLISHED', title: template.title } })
-  } catch (error) {
+    return NextResponse.json({
+      ok: true,
+      template: { id: template.id, status: template.status, title: template.title },
+    })
+  } catch {
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

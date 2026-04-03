@@ -7,43 +7,84 @@ import { adminTemplateRejectSchema, parseBody } from '@/lib/validations'
 
 type Params = { params: Promise<{ id: string }> }
 
+export async function POST(req: NextRequest, { params }: Params) {
+  return handleReject(req, { params })
+}
+
 export async function PUT(req: NextRequest, { params }: Params) {
+  return handleReject(req, { params })
+}
+
+async function handleReject(req: NextRequest, { params }: Params) {
   try {
-    const { error } = await requireAdmin()
+    const { error, user: adminUser } = await requireAdmin()
     if (error) return error
 
     const { id } = await params
     const parsed = await parseBody(req, adminTemplateRejectSchema)
     const reason = parsed.ok ? parsed.data.reason : undefined
     const isDmca = reason === 'DMCA_TAKEDOWN'
+    const newStatus = isDmca ? 'TAKEDOWN' : 'REJECTED'
+
+    // Verify template exists and is in PENDING_REVIEW state
+    const existing = await db.template.findUnique({
+      where: { id },
+      select: { id: true, status: true, title: true, creatorId: true },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Template not found' }, { status: 404 })
+    }
+    if (existing.status !== 'PENDING_REVIEW') {
+      return NextResponse.json(
+        { error: `Template is not pending review (current status: ${existing.status})` },
+        { status: 409 }
+      )
+    }
 
     const template = await db.template.update({
       where: { id },
-      data: {
-        status: isDmca ? 'TAKEDOWN' : 'REJECTED',
-      },
+      data: { status: newStatus },
       select: { id: true, title: true, creatorId: true },
     })
 
-    // Dispatch template.reviewed webhook to the template creator (best-effort)
-    let reviewerId = 'admin'
+    // Resolve reviewer DB id (best-effort)
+    let reviewerDbId: string | null = adminUser?.id ?? null
     try {
-      const session = await auth()
-      if (session?.userId) {
-        const admin = await db.user.findUnique({ where: { clerkId: session.userId }, select: { id: true } })
-        if (admin) reviewerId = admin.id
+      if (!reviewerDbId) {
+        const session = await auth()
+        if (session?.userId) {
+          const admin = await db.user.findUnique({ where: { clerkId: session.userId }, select: { id: true } })
+          if (admin) reviewerDbId = admin.id
+        }
       }
     } catch { /* auth not available in all environments */ }
 
+    // Write audit log (best-effort)
+    db.auditLog.create({
+      data: {
+        userId: reviewerDbId ?? undefined,
+        action: isDmca ? 'template.dmca_takedown' : 'template.rejected',
+        resource: 'Template',
+        resourceId: template.id,
+        metadata: {
+          templateTitle: template.title,
+          creatorId: template.creatorId,
+          reason: reason ?? null,
+          newStatus,
+        },
+      },
+    }).catch(() => {})
+
+    // Dispatch webhook to creator (best-effort)
     dispatchWebhookEvent(template.creatorId, 'template.reviewed', {
       templateId: template.id,
       templateName: template.title,
-      reviewerId,
+      reviewerId: reviewerDbId ?? 'admin',
       decision: 'rejected',
       feedback: reason ?? undefined,
     }).catch(() => {})
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, template: { id: template.id, status: newStatus, title: template.title } })
   } catch (error) {
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },

@@ -348,6 +348,15 @@ export async function GET(req: NextRequest) {
   }
 }
 
+function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  const list = (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+  return list.includes(email.toLowerCase())
+}
+
 // POST /api/marketplace/templates — create listing
 export async function POST(req: NextRequest) {
   let clerkId: string | null = null
@@ -357,13 +366,16 @@ export async function POST(req: NextRequest) {
   } catch { /* demo mode — Clerk not configured */ }
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let user: { id: string } | null = null
+  let user: { id: string; email: string; role: string } | null = null
   try {
-    user = await db.user.findUnique({ where: { clerkId }, select: { id: true } })
+    user = await db.user.findUnique({ where: { clerkId }, select: { id: true, email: true, role: true } })
   } catch (err) {
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+  // Auto-publish for admins: skip the review queue
+  const submitterIsAdmin = user.role === 'ADMIN' || isAdminEmail(user.email)
 
   const parsed = await parseBody(req, templateSubmitSchema)
   if (!parsed.ok) {
@@ -396,7 +408,7 @@ export async function POST(req: NextRequest) {
         rbxmFileUrl: rbxmFileUrl || null,
         thumbnailUrl: thumbnailUrl || null,
         tags: tags || [],
-        status: TemplateStatus.PENDING_REVIEW,
+        status: submitterIsAdmin ? TemplateStatus.PUBLISHED : TemplateStatus.PENDING_REVIEW,
         screenshots: screenshots?.length
           ? {
               createMany: {

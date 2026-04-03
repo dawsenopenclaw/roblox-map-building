@@ -1,25 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_adminGuard'
+import { requireAdmin } from '../../../../_adminGuard'
 import { db } from '@/lib/db'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { auth } from '@clerk/nextjs/server'
+import { adminTemplateRejectSchema, parseBody } from '@/lib/validations'
 
 type Params = { params: Promise<{ id: string }> }
 
+// POST /api/admin/marketplace/templates/[id]/reject
+// Body: { reason?: string }  — pass "DMCA_TAKEDOWN" to trigger TAKEDOWN status
 export async function POST(req: NextRequest, { params }: Params) {
-  return handleApprove(req, { params })
-}
-
-export async function PUT(req: NextRequest, { params }: Params) {
-  return handleApprove(req, { params })
-}
-
-async function handleApprove(_req: NextRequest, { params }: Params) {
   try {
     const { error, user: adminUser } = await requireAdmin()
     if (error) return error
 
     const { id } = await params
+    const parsed = await parseBody(req, adminTemplateRejectSchema)
+    const reason = parsed.ok ? parsed.data.reason : undefined
+    const isDmca = reason === 'DMCA_TAKEDOWN'
+    const newStatus = isDmca ? 'TAKEDOWN' : 'REJECTED'
 
     // Verify template exists and is in PENDING_REVIEW state
     const existing = await db.template.findUnique({
@@ -38,11 +37,11 @@ async function handleApprove(_req: NextRequest, { params }: Params) {
 
     const template = await db.template.update({
       where: { id },
-      data: { status: 'PUBLISHED' },
-      select: { id: true, title: true, creatorId: true },
+      data: { status: newStatus },
+      select: { id: true, title: true, creatorId: true, status: true },
     })
 
-    // Resolve reviewer DB id (best-effort — falls back to Clerk id or 'admin')
+    // Resolve reviewer DB id (best-effort)
     let reviewerDbId: string | null = adminUser?.id ?? null
     try {
       if (!reviewerDbId) {
@@ -58,10 +57,15 @@ async function handleApprove(_req: NextRequest, { params }: Params) {
     db.auditLog.create({
       data: {
         userId: reviewerDbId ?? undefined,
-        action: 'template.approved',
+        action: isDmca ? 'template.dmca_takedown' : 'template.rejected',
         resource: 'Template',
         resourceId: template.id,
-        metadata: { templateTitle: template.title, creatorId: template.creatorId },
+        metadata: {
+          templateTitle: template.title,
+          creatorId: template.creatorId,
+          reason: reason ?? null,
+          newStatus,
+        },
       },
     }).catch(() => {})
 
@@ -70,11 +74,15 @@ async function handleApprove(_req: NextRequest, { params }: Params) {
       templateId: template.id,
       templateName: template.title,
       reviewerId: reviewerDbId ?? 'admin',
-      decision: 'approved',
+      decision: 'rejected',
+      feedback: reason ?? undefined,
     }).catch(() => {})
 
-    return NextResponse.json({ ok: true, template: { id: template.id, status: 'PUBLISHED', title: template.title } })
-  } catch (error) {
+    return NextResponse.json({
+      ok: true,
+      template: { id: template.id, status: template.status, title: template.title },
+    })
+  } catch {
     return NextResponse.json(
       { error: 'Service temporarily unavailable', details: 'Database not connected' },
       { status: 503 }

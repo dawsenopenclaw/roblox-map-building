@@ -374,12 +374,6 @@ function ViewportArea({
   if (!isConnected) {
     const hasCode = connectFlow === 'code' && connectCode.length > 0
     const isGenerating = connectFlow === 'generating'
-    // Steps complete progressively as user advances the flow
-    const steps = [
-      { step: 1, text: 'Install the ForjeGames plugin in Roblox Studio', done: connectFlow === 'code' || connectFlow === 'generating' },
-      { step: 2, text: 'Open Studio and load your place', done: connectFlow === 'code' },
-      { step: 3, text: 'Click Connect below to link', done: false },
-    ]
 
     return (
       <div
@@ -387,235 +381,203 @@ function ViewportArea({
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
           background: 'rgba(6,10,20,0.5)',
           borderRadius: 12,
           position: 'relative',
           border: '1px solid rgba(255,255,255,0.04)',
-          padding: 32,
-          gap: 20,
+          padding: '24px 28px',
           overflow: 'hidden',
         }}
       >
-        {/* Grid pattern + radar sweep background */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: 12,
-            overflow: 'hidden',
-            pointerEvents: 'none',
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundImage: `
-                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)
-              `,
-              backgroundSize: '40px 40px',
-            }}
-          />
-          {/* Subtle gradient sweep — removed animation for cleaner look */}
+        {/* Grid bg */}
+        <div style={{ position: 'absolute', inset: 0, borderRadius: 12, overflow: 'hidden', pointerEvents: 'none' }}>
+          <div style={{ width: '100%', height: '100%', backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         </div>
 
-        {/* Monitor illustration */}
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <MonitorIllustration />
-        </div>
+        {/* Scrollable content */}
+        <div style={{ position: 'relative', zIndex: 1, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'white' }}>
-            Connect Roblox Studio
-          </h3>
-          <p style={{ margin: '5px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.35)', maxWidth: 300 }}>
-            Your builds will appear here in real-time
-          </p>
-        </div>
+          {/* Header */}
+          <div style={{ textAlign: 'center', paddingTop: 8 }}>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white' }}>
+              Connect to Roblox Studio
+            </h3>
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>
+              Follow these steps to link your Studio — builds will appear in real-time
+            </p>
+          </div>
 
-        {/* Connection flow */}
-        <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 360 }}>
-          {!hasCode && !isGenerating && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Steps with checkmark animations */}
-              {steps.map((s) => (
-                <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: s.done ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
-                      border: s.done ? '1px solid rgba(74,222,128,0.35)' : '1px solid rgba(255,255,255,0.08)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      transition: 'all 0.3s ease-out',
-                    }}
-                  >
-                    {s.done ? (
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 12 12"
-                        fill="none"
-                        style={{ animation: 'checkPop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards' }}
-                      >
-                        <path
-                          d="M2 6.5l2.5 2.5 5.5-5.5"
-                          stroke="#4ADE80"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    ) : (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>
-                        {s.step}
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: s.done ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.4)',
-                      transition: 'color 0.3s ease-out',
-                      textDecoration: s.done ? 'line-through' : 'none',
-                    }}
-                  >
-                    {s.text}
-                  </span>
-                </div>
-              ))}
-
-              <button
-                onClick={onGenerateCode}
-                style={{
-                  marginTop: 10,
-                  padding: '11px 24px',
-                  borderRadius: 10,
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
-                  color: '#030712',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 0 24px rgba(212,175,55,0.25)',
-                  transition: 'all 0.15s',
-                }}
-              >
-                Connect Studio
-              </button>
-
-              {/* Skip — more visible but clearly secondary */}
-              <button
-                onClick={onConfirmConnected}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.04)',
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  letterSpacing: '0.01em',
-                }}
-              >
-                Skip — use without Studio
-              </button>
-            </div>
-          )}
-
-          {isGenerating && (
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  margin: '0 auto 12px',
-                  border: '2px solid rgba(212,175,55,0.3)',
-                  borderTopColor: '#FFB81C',
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite',
-                }}
-              />
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Generating connection code...</p>
-            </div>
-          )}
-
-          {hasCode && (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
-                Enter this code in the Studio plugin:
-              </p>
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 12 }}>
-                {connectCode.split('').map((char, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 48,
-                      height: 56,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'rgba(0,0,0,0.4)',
-                      border: '1px solid rgba(212,175,55,0.3)',
-                      borderRadius: 10,
-                      fontSize: 24,
-                      fontWeight: 700,
-                      color: '#FFB81C',
-                      fontFamily: "'JetBrains Mono', monospace",
-                      textShadow: '0 0 16px rgba(255,184,28,0.5)',
-                    }}
-                  >
-                    {char}
-                  </div>
-                ))}
+          {/* ── STEP 1: Download Plugin ────────────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>1</span>
               </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(connectCode)
-                  const btn = document.getElementById('copy-code-btn')
-                  if (btn) {
-                    btn.textContent = 'Copied!'
-                    setTimeout(() => {
-                      btn.textContent = 'Copy code'
-                    }, 1500)
-                  }
-                }}
-                id="copy-code-btn"
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Download &amp; Install the Plugin</span>
+            </div>
+            <div style={{ paddingLeft: 38, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <a
+                href="/api/studio/plugin"
+                download="ForjeGames.rbxm"
                 style={{
-                  fontSize: 12,
-                  color: '#FFB81C',
-                  background: 'rgba(212,175,55,0.1)',
-                  border: '1px solid rgba(212,175,55,0.2)',
-                  borderRadius: 8,
-                  padding: '6px 16px',
-                  cursor: 'pointer',
-                  marginBottom: 8,
-                  transition: 'background 150ms ease',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 8,
+                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                  color: '#030712', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(212,175,55,0.2)', transition: 'all 0.15s',
+                  width: 'fit-content',
                 }}
               >
-                Copy code
-              </button>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-                Expires in {Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')}
-              </p>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8m0 0L4 6m3 3l3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Download ForjeGames.rbxm
+              </a>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+                <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Then install it:</strong>
+                <br />1. Open <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Roblox Studio</strong>
+                <br />2. Go to <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins</strong> tab → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins Folder</strong>
+                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.rbxm</span> file into that folder
+                <br />4. Restart Studio — the ForjeGames toolbar button appears
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* ── STEP 2: Open Studio ────────────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>2</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Open Your Game in Roblox Studio</span>
+            </div>
+            <div style={{ paddingLeft: 38, fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
+              Open the place you want to build in. The plugin works in any Baseplate or existing game.
+            </div>
+          </div>
+
+          {/* ── STEP 3: Connect with Code ────────────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: hasCode ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: hasCode ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.3s' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>3</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Pair with a Connection Code</span>
+            </div>
+
+            <div style={{ paddingLeft: 38 }}>
+              {!hasCode && !isGenerating && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', margin: 0, lineHeight: 1.5 }}>
+                    Click below to generate a 6-character code. Enter it in the ForjeGames plugin inside Studio to connect.
+                  </p>
+                  <button
+                    onClick={onGenerateCode}
+                    style={{
+                      padding: '10px 22px', borderRadius: 8, border: 'none',
+                      background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                      color: '#030712', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      boxShadow: '0 0 20px rgba(212,175,55,0.2)', transition: 'all 0.15s',
+                      width: 'fit-content',
+                    }}
+                  >
+                    Generate Connection Code
+                  </button>
+                </div>
+              )}
+
+              {isGenerating && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 20, height: 20, border: '2px solid rgba(212,175,55,0.3)', borderTopColor: '#FFB81C', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Generating code...</span>
+                </div>
+              )}
+
+              {hasCode && (
+                <div>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: '0 0 10px' }}>
+                    Enter this code in the ForjeGames plugin dialog in Studio:
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+                    {connectCode.split('').map((char, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(212,175,55,0.4)', borderRadius: 8,
+                          fontSize: 22, fontWeight: 700, color: '#FFB81C', fontFamily: "'JetBrains Mono', monospace",
+                          textShadow: '0 0 12px rgba(255,184,28,0.4)',
+                        }}
+                      >
+                        {char}
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(connectCode).catch(() => {})
+                        const el = document.getElementById('vp-copy-btn')
+                        if (el) { el.textContent = 'Copied!'; setTimeout(() => { el.textContent = 'Copy' }, 1500) }
+                      }}
+                      id="vp-copy-btn"
+                      style={{
+                        fontSize: 11, fontWeight: 600, color: '#FFB81C', background: 'rgba(212,175,55,0.1)',
+                        border: '1px solid rgba(212,175,55,0.25)', borderRadius: 8, padding: '6px 12px',
+                        cursor: 'pointer', alignSelf: 'center', marginLeft: 4, transition: 'background 150ms',
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFB81C', animation: 'monitorBlink 1.5s ease-in-out infinite' }} />
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                      Waiting for Studio to connect... ({Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')})
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Troubleshooting ────────────────────────── */}
+          <details style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 18px', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <summary style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontWeight: 500 }}>
+              Having trouble connecting?
+            </summary>
+            <div style={{ paddingTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7 }}>
+              <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugin not showing up?</strong>
+              <br />• Make sure you put the .rbxm file in the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugins</strong> folder, not Models
+              <br />• Restart Studio completely after adding the file
+              <br />• Check the Plugins tab in the ribbon — look for &quot;ForjeGames&quot;
+              <br /><br />
+              <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Code not working?</strong>
+              <br />• Make sure Studio has internet access (not behind a firewall blocking outbound)
+              <br />• The code expires after 5 minutes — generate a new one if it times out
+              <br />• Make sure you&apos;re entering the code in the ForjeGames plugin dialog, not the command bar
+              <br /><br />
+              <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugin folder location:</strong>
+              <br />• Windows: <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>%LOCALAPPDATA%\Roblox\Plugins</span>
+              <br />• Mac: <span style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.4)' }}>~/Documents/Roblox/Plugins</span>
+              <br />• Or in Studio: Plugins tab → Plugins Folder button opens it directly
+            </div>
+          </details>
+
+          {/* Skip option */}
+          <div style={{ textAlign: 'center', paddingBottom: 4 }}>
+            <button
+              onClick={onConfirmConnected}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.08)', background: 'transparent',
+                color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              Skip for now — chat without Studio
+            </button>
+          </div>
         </div>
 
         <style>{`
           @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-          @keyframes radarSweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
-          @keyframes radarRing { 0% { opacity: 0.9; transform: scale(0.7); } 100% { opacity: 0; transform: scale(1.5); } }
           @keyframes monitorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
           @keyframes checkPop {
             0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
@@ -624,9 +586,9 @@ function ViewportArea({
           }
         `}</style>
 
-        {/* 3D preview behind connection UI */}
+        {/* 3D preview behind */}
         {previewParts.length > 0 && (
-          <div style={{ position: 'absolute', inset: 0, borderRadius: 12, overflow: 'hidden', opacity: 0.3, pointerEvents: 'none', zIndex: 0 }}>
+          <div style={{ position: 'absolute', inset: 0, borderRadius: 12, overflow: 'hidden', opacity: 0.15, pointerEvents: 'none', zIndex: 0 }}>
             <Viewport3D parts={previewParts} showGrid />
           </div>
         )}
@@ -991,6 +953,118 @@ function ViewportArea({
   )
 }
 
+// ─── Layout Types ─────────────────────────────────────────────────────────────
+
+type EditorLayout = 'default' | 'chat-focus' | 'split' | 'minimal' | 'cinematic'
+
+const LAYOUT_LABELS: Record<EditorLayout, string> = {
+  default: 'Default',
+  'chat-focus': 'Chat Focus',
+  split: 'Split',
+  minimal: 'Minimal',
+  cinematic: 'Cinematic',
+}
+
+// ─── Layout Switcher ──────────────────────────────────────────────────────────
+
+function LayoutSwitcher({
+  layout,
+  onChange,
+}: {
+  layout: EditorLayout
+  onChange: (l: EditorLayout) => void
+}) {
+  const layouts: { id: EditorLayout; icon: React.ReactNode }[] = [
+    {
+      id: 'default',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="11" height="7" rx="1" fill="currentColor" opacity={0.5}/>
+          <rect x="1" y="10" width="11" height="5" rx="1" fill="currentColor" opacity={0.35}/>
+          <rect x="13" y="1" width="2" height="14" rx="1" fill="currentColor" opacity={0.25}/>
+        </svg>
+      ),
+    },
+    {
+      id: 'chat-focus',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="9" height="14" rx="1" fill="currentColor" opacity={0.5}/>
+          <rect x="11" y="1" width="4" height="6" rx="1" fill="currentColor" opacity={0.3}/>
+          <rect x="11" y="9" width="4" height="6" rx="1" fill="currentColor" opacity={0.15}/>
+        </svg>
+      ),
+    },
+    {
+      id: 'split',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="6" height="14" rx="1" fill="currentColor" opacity={0.5}/>
+          <rect x="9" y="1" width="6" height="14" rx="1" fill="currentColor" opacity={0.35}/>
+        </svg>
+      ),
+    },
+    {
+      id: 'minimal',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="14" height="14" rx="1" fill="currentColor" opacity={0.5}/>
+        </svg>
+      ),
+    },
+    {
+      id: 'cinematic',
+      icon: (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="1" y="1" width="14" height="14" rx="1" fill="currentColor" opacity={0.4}/>
+          <rect x="9" y="9" width="5" height="5" rx="1" fill="currentColor" opacity={0.85}/>
+        </svg>
+      ),
+    },
+  ]
+
+  return (
+    <div
+      role="toolbar"
+      aria-label="Layout switcher"
+      style={{ display: 'flex', alignItems: 'center', gap: 2 }}
+    >
+      {layouts.map(({ id, icon }) => {
+        const active = layout === id
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            aria-label={`Switch to ${LAYOUT_LABELS[id]} layout`}
+            aria-pressed={active}
+            title={LAYOUT_LABELS[id]}
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              border: active
+                ? '1px solid rgba(255,184,28,0.3)'
+                : '1px solid rgba(255,255,255,0.06)',
+              background: active
+                ? 'rgba(255,184,28,0.12)'
+                : 'rgba(255,255,255,0.05)',
+              color: active ? '#FFB81C' : 'rgba(255,255,255,0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-out',
+              flexShrink: 0,
+            }}
+          >
+            {icon}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Top Bar ─────────────────────────────────────────────────────────────────
 
 function TopBar({
@@ -1000,6 +1074,8 @@ function TopBar({
   onNewChat,
   onConnect,
   onShowShortcuts,
+  editorLayout,
+  onLayoutChange,
 }: {
   isConnected: boolean
   placeName: string
@@ -1007,6 +1083,8 @@ function TopBar({
   onNewChat?: () => void
   onConnect?: () => void
   onShowShortcuts?: () => void
+  editorLayout: EditorLayout
+  onLayoutChange: (l: EditorLayout) => void
 }) {
   const { user } = useUser()
   const [newChatHovered, setNewChatHovered] = useState(false)
@@ -1076,8 +1154,9 @@ function TopBar({
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>Editor</span>
       </div>
 
-      {/* Center: Connection + project name */}
+      {/* Center: Layout switcher + connection pill */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <LayoutSwitcher layout={editorLayout} onChange={onLayoutChange} />
         {isConnected && placeName && (
           <div style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(74,222,128,0.06)',
             border: '1px solid rgba(74,222,128,0.15)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1452,8 +1531,20 @@ function EditorInner() {
   const [chatHeight, setChatHeight] = useState(CHAT_DEFAULT_HEIGHT)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [cinematicChatCollapsed, setCinematicChatCollapsed] = useState(false)
+  const [showMinimalPreview, setShowMinimalPreview] = useState(false)
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+
+  // Layout state — persisted to localStorage
+  const [editorLayout, setEditorLayout] = useState<EditorLayout>(() => {
+    if (typeof window === 'undefined') return 'default'
+    return (localStorage.getItem('fg_editor_layout') as EditorLayout) || 'default'
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('fg_editor_layout', editorLayout) } catch { /* ignore */ }
+  }, [editorLayout])
 
   // Load persisted chat height
   useEffect(() => {
@@ -1647,6 +1738,8 @@ function EditorInner() {
           onNewChat={() => window.location.reload()}
           onConnect={() => studio.generateCode()}
           onShowShortcuts={() => setShortcutsOpen(true)}
+          editorLayout={editorLayout}
+          onLayoutChange={setEditorLayout}
         />
 
         {/* Mobile tab bar */}
@@ -1658,97 +1751,12 @@ function EditorInner() {
           />
         </div>
 
-        {/* Main workspace: Viewport + Chat + Sidebar */}
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Center column: Viewport (top) + Agent strip + Chat (bottom) */}
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              minWidth: 0,
-              padding: '6px 0 6px 6px',
-              gap: 0,
-            }}
-          >
-            {/* Viewport — fills remaining space */}
-            <div
-              className={mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}
-              style={{
-                flex: 1,
-                minHeight: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-            >
-              <ViewportArea
-                isConnected={studio.isConnected}
-                screenshotUrl={studio.screenshotUrl}
-                placeName={studio.placeName}
-                connectFlow={studio.connectFlow}
-                connectCode={studio.connectCode}
-                connectTimer={studio.connectTimer}
-                onGenerateCode={studio.generateCode}
-                onConfirmConnected={studio.confirmConnected}
-                onDisconnect={studio.disconnect}
-                onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
-                activity={studio.activity}
-                commandsSent={studio.commandsSent}
-                expanded={viewportExpanded}
-                onToggleExpand={() => setViewportExpanded((v) => !v)}
-                previewParts={previewParts}
-              />
-            </div>
-
-            {/* Agent activity strip */}
+        {/* Main workspace: layout-conditional */}
+        {editorLayout === 'minimal' ? (
+          /* ── Minimal: full-screen chat only ──────────────────────────────── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 6, position: 'relative' }}>
             <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
-
-            {/* Resize handle — drag to resize chat/viewport split */}
-            {!viewportExpanded && (
-              <div className="hidden md:block">
-                <ResizeHandle onDrag={handleResizeDrag} />
-              </div>
-            )}
-
-            {/* Chat panel — bottom portion */}
-            <div
-              ref={chatPanelRef}
-              className={mobileTab === 'studio' ? 'hidden md:flex' : 'flex'}
-              style={{
-                flexShrink: 0,
-                height: effectiveChatHeight,
-                minHeight: CHAT_MIN_HEIGHT,
-                maxHeight: viewportExpanded ? 56 : CHAT_MAX_HEIGHT,
-                display: 'flex',
-                flexDirection: 'column',
-                transition: 'height 0.25s ease-out',
-                padding: '4px 0 0',
-                position: 'relative',
-              }}
-            >
-              {/* Dim overlay when viewport is expanded */}
-              {viewportExpanded && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(2px)',
-                    borderRadius: 12,
-                    zIndex: 15,
-                    pointerEvents: 'none',
-                    transition: 'opacity 0.25s ease-out',
-                  }}
-                />
-              )}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
               <ChatPanel
                 messages={chat.messages}
                 input={chat.input}
@@ -1763,241 +1771,441 @@ function EditorInner() {
                 onRetry={handleRetry}
                 onBuildDifferently={handleBuildDifferently}
                 onDismiss={handleDismissError}
-                compact={viewportExpanded}
+                compact={false}
               />
             </div>
+            {/* Floating "Show Preview" toggle */}
+            {showMinimalPreview && previewParts.length > 0 && (
+              <div style={{ position: 'absolute', top: 16, right: 16, width: 320, height: 220, borderRadius: 12,
+                overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 10 }}>
+                <Viewport3D parts={previewParts} showGrid />
+              </div>
+            )}
+            <button
+              onClick={() => setShowMinimalPreview((v) => !v)}
+              aria-label={showMinimalPreview ? 'Hide preview' : 'Show preview'}
+              style={{ position: 'absolute', bottom: 16, right: 16, padding: '6px 14px', borderRadius: 8,
+                border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(8,12,28,0.85)',
+                color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                backdropFilter: 'blur(12px)', zIndex: 11 }}>
+              {showMinimalPreview ? 'Hide Preview' : 'Show Preview'}
+            </button>
           </div>
-
-          {/* Right sidebar — icon rail + panel */}
-          <div
-            className="hidden md:flex"
-            style={{
-              flexShrink: 0,
+        ) : editorLayout === 'cinematic' ? (
+          /* ── Cinematic: fullscreen viewport + floating chat ───────────────── */
+          <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden', padding: 6 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderRadius: 12, overflow: 'hidden' }}>
+              <ViewportArea
+                isConnected={studio.isConnected}
+                screenshotUrl={studio.screenshotUrl}
+                placeName={studio.placeName}
+                connectFlow={studio.connectFlow}
+                connectCode={studio.connectCode}
+                connectTimer={studio.connectTimer}
+                onGenerateCode={studio.generateCode}
+                onConfirmConnected={studio.confirmConnected}
+                onDisconnect={studio.disconnect}
+                onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                activity={studio.activity}
+                commandsSent={studio.commandsSent}
+                expanded={false}
+                onToggleExpand={() => {}}
+                previewParts={previewParts}
+              />
+            </div>
+            {/* Floating chat overlay */}
+            <div style={{
+              position: 'absolute', bottom: 12, right: 12,
+              width: 360,
+              height: cinematicChatCollapsed ? 44 : 420,
+              minHeight: cinematicChatCollapsed ? 44 : 200,
+              maxHeight: '70vh',
+              zIndex: 15,
+              borderRadius: 16,
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              transition: 'height 0.25s ease-out',
               display: 'flex',
-              flexDirection: 'row',
+              flexDirection: 'column',
+              background: 'rgba(8,12,28,0.92)',
+              backdropFilter: 'blur(16px)',
+            }}>
+              {/* Cinematic chat header with collapse toggle */}
+              <div style={{ height: 44, flexShrink: 0, display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', padding: '0 12px',
+                borderBottom: cinematicChatCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                cursor: 'pointer' }} onClick={() => setCinematicChatCollapsed((v) => !v)}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
+                  AI Chat
+                </span>
+                <button aria-label={cinematicChatCollapsed ? 'Expand chat' : 'Collapse chat'}
+                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 24, height: 24 }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d={cinematicChatCollapsed ? 'M2 4l4 4 4-4' : 'M2 8l4-4 4 4'}
+                      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+              {!cinematicChatCollapsed && (
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                  <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
+                  <ChatPanel
+                    messages={chat.messages}
+                    input={chat.input}
+                    setInput={chat.setInput}
+                    loading={chat.loading}
+                    onSend={chat.sendMessage}
+                    selectedModel={chat.selectedModel}
+                    setSelectedModel={chat.setSelectedModel}
+                    totalTokens={chat.totalTokens}
+                    textareaRef={chat.textareaRef}
+                    suggestions={chat.suggestions}
+                    onRetry={handleRetry}
+                    onBuildDifferently={handleBuildDifferently}
+                    onDismiss={handleDismissError}
+                    compact={true}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* ── Default / Chat-focus / Split: shared sidebar structure ─────── */
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              overflow: 'hidden',
             }}
           >
-            {/* Expanded panel */}
-            {sidebarPanel && (
-              <div
-                style={{
-                  width: 280,
-                  background: 'rgba(8,12,28,0.85)',
-                  borderLeft: '1px solid rgba(255,255,255,0.04)',
-                  backdropFilter: 'blur(12px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflow: 'hidden',
-                  animation: 'slideIn 0.2s ease-out',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '14px 16px',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
-                    {sidebarPanel === 'marketplace' && 'Marketplace'}
-                    {sidebarPanel === 'settings' && 'Settings'}
-                    {sidebarPanel === 'history' && 'Build History'}
-                    {sidebarPanel === 'context' && 'AI Context'}
-                    {sidebarPanel === 'help' && 'Help'}
-                  </span>
-                  <button
-                    onClick={() => setSidebarPanel(null)}
+            {/* Center column */}
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: editorLayout === 'chat-focus' || editorLayout === 'split' ? 'row' : 'column',
+                minWidth: 0,
+                padding: '6px 0 6px 6px',
+                gap: editorLayout === 'chat-focus' || editorLayout === 'split' ? 6 : 0,
+              }}
+            >
+              {editorLayout === 'default' ? (
+                /* ── Default: viewport top, chat bottom ───────────────────── */
+                <>
+                  <div
+                    className={mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}
+                    style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden' }}
+                  >
+                    <ViewportArea
+                      isConnected={studio.isConnected}
+                      screenshotUrl={studio.screenshotUrl}
+                      placeName={studio.placeName}
+                      connectFlow={studio.connectFlow}
+                      connectCode={studio.connectCode}
+                      connectTimer={studio.connectTimer}
+                      onGenerateCode={studio.generateCode}
+                      onConfirmConnected={studio.confirmConnected}
+                      onDisconnect={studio.disconnect}
+                      onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                      activity={studio.activity}
+                      commandsSent={studio.commandsSent}
+                      expanded={viewportExpanded}
+                      onToggleExpand={() => setViewportExpanded((v) => !v)}
+                      previewParts={previewParts}
+                    />
+                  </div>
+                  <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
+                  {!viewportExpanded && (
+                    <div className="hidden md:block">
+                      <ResizeHandle onDrag={handleResizeDrag} />
+                    </div>
+                  )}
+                  <div
+                    ref={chatPanelRef}
+                    className={mobileTab === 'studio' ? 'hidden md:flex' : 'flex'}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'rgba(255,255,255,0.3)',
-                      cursor: 'pointer',
-                      padding: 4,
+                      flexShrink: 0,
+                      height: effectiveChatHeight,
+                      minHeight: CHAT_MIN_HEIGHT,
+                      maxHeight: viewportExpanded ? 56 : CHAT_MAX_HEIGHT,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'height 0.25s ease-out',
+                      padding: '4px 0 0',
+                      position: 'relative',
                     }}
                   >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                  {sidebarPanel === 'marketplace' && (
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                      <p style={{ margin: '0 0 12px' }}>Browse community templates and assets.</p>
-                      <div
-                        style={{
-                          padding: 12,
-                          borderRadius: 10,
-                          background: 'rgba(212,175,55,0.06)',
-                          border: '1px solid rgba(212,175,55,0.15)',
-                          fontSize: 12,
-                          color: 'rgba(212,175,55,0.8)',
-                        }}
-                      >
-                        Type &quot;show marketplace&quot; in chat to browse assets
-                      </div>
+                    {viewportExpanded && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(2px)', borderRadius: 12, zIndex: 15,
+                        pointerEvents: 'none', transition: 'opacity 0.25s ease-out' }} />
+                    )}
+                    <ChatPanel
+                      messages={chat.messages}
+                      input={chat.input}
+                      setInput={chat.setInput}
+                      loading={chat.loading}
+                      onSend={chat.sendMessage}
+                      selectedModel={chat.selectedModel}
+                      setSelectedModel={chat.setSelectedModel}
+                      totalTokens={chat.totalTokens}
+                      textareaRef={chat.textareaRef}
+                      suggestions={chat.suggestions}
+                      onRetry={handleRetry}
+                      onBuildDifferently={handleBuildDifferently}
+                      onDismiss={handleDismissError}
+                      compact={viewportExpanded}
+                    />
+                  </div>
+                </>
+              ) : editorLayout === 'chat-focus' ? (
+                /* ── Chat-focus: chat left (60%), viewport right (40%) ──────── */
+                <>
+                  <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                      <ChatPanel
+                        messages={chat.messages}
+                        input={chat.input}
+                        setInput={chat.setInput}
+                        loading={chat.loading}
+                        onSend={chat.sendMessage}
+                        selectedModel={chat.selectedModel}
+                        setSelectedModel={chat.setSelectedModel}
+                        totalTokens={chat.totalTokens}
+                        textareaRef={chat.textareaRef}
+                        suggestions={chat.suggestions}
+                        onRetry={handleRetry}
+                        onBuildDifferently={handleBuildDifferently}
+                        onDismiss={handleDismissError}
+                        compact={false}
+                      />
                     </div>
-                  )}
-                  {sidebarPanel === 'settings' && (
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                      <p style={{ margin: '0 0 12px' }}>Editor preferences and API keys.</p>
-                      <div
-                        style={{
-                          padding: 12,
-                          borderRadius: 10,
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          fontSize: 12,
-                        }}
-                      >
-                        <Link
-                          href="/settings"
-                          style={{
-                            color: '#FFB81C',
-                            textDecoration: 'none',
-                            fontWeight: 500,
-                          }}
-                        >
-                          Open full settings
-                        </Link>
-                      </div>
+                  </div>
+                  <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column',
+                    borderRadius: 12, overflow: 'hidden' }}>
+                    <ViewportArea
+                      isConnected={studio.isConnected}
+                      screenshotUrl={studio.screenshotUrl}
+                      placeName={studio.placeName}
+                      connectFlow={studio.connectFlow}
+                      connectCode={studio.connectCode}
+                      connectTimer={studio.connectTimer}
+                      onGenerateCode={studio.generateCode}
+                      onConfirmConnected={studio.confirmConnected}
+                      onDisconnect={studio.disconnect}
+                      onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                      activity={studio.activity}
+                      commandsSent={studio.commandsSent}
+                      expanded={false}
+                      onToggleExpand={() => {}}
+                      previewParts={previewParts}
+                    />
+                  </div>
+                </>
+              ) : (
+                /* ── Split: 50/50 chat left, viewport right ──────────────── */
+                <>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
+                    <div style={{ flex: 1, minHeight: 0 }}>
+                      <ChatPanel
+                        messages={chat.messages}
+                        input={chat.input}
+                        setInput={chat.setInput}
+                        loading={chat.loading}
+                        onSend={chat.sendMessage}
+                        selectedModel={chat.selectedModel}
+                        setSelectedModel={chat.setSelectedModel}
+                        totalTokens={chat.totalTokens}
+                        textareaRef={chat.textareaRef}
+                        suggestions={chat.suggestions}
+                        onRetry={handleRetry}
+                        onBuildDifferently={handleBuildDifferently}
+                        onDismiss={handleDismissError}
+                        compact={false}
+                      />
                     </div>
-                  )}
-                  {sidebarPanel === 'history' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {buildHistory.length === 0 ? (
-                        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, margin: 0 }}>
-                          Your builds will appear here as you create.
-                        </p>
-                      ) : (
-                        buildHistory.slice(0, 20).map((item) => (
-                          <BuildHistoryItem
-                            key={item.id}
-                            prompt={item.prompt}
-                            timestamp={item.timestamp}
-                            hasCode={item.hasCode}
-                            onRerun={() => chat.sendMessage(item.prompt)}
-                          />
-                        ))
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
+                    borderRadius: 12, overflow: 'hidden' }}>
+                    <ViewportArea
+                      isConnected={studio.isConnected}
+                      screenshotUrl={studio.screenshotUrl}
+                      placeName={studio.placeName}
+                      connectFlow={studio.connectFlow}
+                      connectCode={studio.connectCode}
+                      connectTimer={studio.connectTimer}
+                      onGenerateCode={studio.generateCode}
+                      onConfirmConnected={studio.confirmConnected}
+                      onDisconnect={studio.disconnect}
+                      onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                      activity={studio.activity}
+                      commandsSent={studio.commandsSent}
+                      expanded={false}
+                      onToggleExpand={() => {}}
+                      previewParts={previewParts}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Right sidebar — hidden in chat-focus and split */}
+            {editorLayout === 'default' && (
+              <div
+                className="hidden md:flex"
+                style={{ flexShrink: 0, display: 'flex', flexDirection: 'row' }}
+              >
+                {sidebarPanel && (
+                  <div style={{ width: 280, background: 'rgba(8,12,28,0.85)',
+                    borderLeft: '1px solid rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)',
+                    display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn 0.2s ease-out' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                        {sidebarPanel === 'marketplace' && 'Marketplace'}
+                        {sidebarPanel === 'settings' && 'Settings'}
+                        {sidebarPanel === 'history' && 'Build History'}
+                        {sidebarPanel === 'context' && 'AI Context'}
+                        {sidebarPanel === 'help' && 'Help'}
+                      </span>
+                      <button onClick={() => setSidebarPanel(null)}
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 2l8 8M10 2L2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                      {sidebarPanel === 'marketplace' && (
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                          <p style={{ margin: '0 0 12px' }}>Browse community templates and assets.</p>
+                          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(212,175,55,0.06)',
+                            border: '1px solid rgba(212,175,55,0.15)', fontSize: 12, color: 'rgba(212,175,55,0.8)' }}>
+                            Type &quot;show marketplace&quot; in chat to browse assets
+                          </div>
+                        </div>
+                      )}
+                      {sidebarPanel === 'settings' && (
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                          <p style={{ margin: '0 0 12px' }}>Editor preferences and API keys.</p>
+                          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.06)', fontSize: 12 }}>
+                            <Link href="/settings" style={{ color: '#FFB81C', textDecoration: 'none', fontWeight: 500 }}>
+                              Open full settings
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                      {sidebarPanel === 'history' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {buildHistory.length === 0 ? (
+                            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, margin: 0 }}>
+                              Your builds will appear here as you create.
+                            </p>
+                          ) : (
+                            buildHistory.slice(0, 20).map((item) => (
+                              <BuildHistoryItem
+                                key={item.id}
+                                prompt={item.prompt}
+                                timestamp={item.timestamp}
+                                hasCode={item.hasCode}
+                                onRerun={() => chat.sendMessage(item.prompt)}
+                              />
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {sidebarPanel === 'context' && (
+                        <AIContextPanel
+                          studioConnected={studio.isConnected}
+                          studioContext={studio.studioContext}
+                          onSendToChat={(msg) => chat.sendMessage(msg)}
+                          buildCount={chat.messages.filter((m) => m.hasCode).length}
+                          tokenCount={chat.totalTokens}
+                        />
+                      )}
+                      {sidebarPanel === 'help' && (
+                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.6 }}>
+                          <p style={{ margin: '0 0 12px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
+                            Quick Start
+                          </p>
+                          <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <li>Type what you want to build in the chat</li>
+                            <li>Connect Roblox Studio with the plugin</li>
+                            <li>Builds execute automatically in Studio</li>
+                            <li>Iterate — &quot;make it bigger&quot;, &quot;add lighting&quot;</li>
+                          </ol>
+                          <div style={{ marginTop: 16, padding: 12, borderRadius: 10,
+                            background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.15)',
+                            fontSize: 12, color: 'rgba(212,175,55,0.8)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <span style={{ fontWeight: 600, marginBottom: 2 }}>Keyboard Shortcuts</span>
+                            <span><kbd style={kbdStyle}>Enter</kbd> Send message</span>
+                            <span><kbd style={kbdStyle}>Shift+Enter</kbd> New line</span>
+                            <span><kbd style={kbdStyle}>Ctrl+K</kbd> Focus chat</span>
+                            <span><kbd style={kbdStyle}>Ctrl+\</kbd> Expand viewport</span>
+                            <span><kbd style={kbdStyle}>Esc</kbd> Close panel</span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  )}
-                  {sidebarPanel === 'context' && (
-                    <AIContextPanel
-                      studioConnected={studio.isConnected}
-                      studioContext={studio.studioContext}
-                      onSendToChat={(msg) => chat.sendMessage(msg)}
-                      buildCount={chat.messages.filter((m) => m.hasCode).length}
-                      tokenCount={chat.totalTokens}
-                    />
-                  )}
-                  {sidebarPanel === 'help' && (
-                    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.6 }}>
-                      <p style={{ margin: '0 0 12px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
-                        Quick Start
-                      </p>
-                      <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <li>Type what you want to build in the chat</li>
-                        <li>Connect Roblox Studio with the plugin</li>
-                        <li>Builds execute automatically in Studio</li>
-                        <li>Iterate — &quot;make it bigger&quot;, &quot;add lighting&quot;</li>
-                      </ol>
-                      <div
-                        style={{
-                          marginTop: 16,
-                          padding: 12,
-                          borderRadius: 10,
-                          background: 'rgba(212,175,55,0.06)',
-                          border: '1px solid rgba(212,175,55,0.15)',
-                          fontSize: 12,
-                          color: 'rgba(212,175,55,0.8)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, marginBottom: 2 }}>Keyboard Shortcuts</span>
-                        <span><kbd style={kbdStyle}>Enter</kbd> Send message</span>
-                        <span><kbd style={kbdStyle}>Shift+Enter</kbd> New line</span>
-                        <span><kbd style={kbdStyle}>Ctrl+K</kbd> Focus chat</span>
-                        <span><kbd style={kbdStyle}>Ctrl+\</kbd> Expand viewport</span>
-                        <span><kbd style={kbdStyle}>Esc</kbd> Close panel</span>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                )}
+
+                {/* Icon rail */}
+                <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  paddingTop: 8, gap: 2, background: 'rgba(8,12,28,0.3)',
+                  borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
+                  <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
+                    active={sidebarPanel === 'marketplace'} onClick={() => toggleSidebar('marketplace')} />
+                  <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
+                    active={sidebarPanel === 'history'} onClick={() => toggleSidebar('history')} />
+                  <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
+                    active={sidebarPanel === 'settings'} onClick={() => toggleSidebar('settings')} />
+                  <SidebarButton icon={<IconContext />} label="AI Context" shortcut="⌘A"
+                    active={sidebarPanel === 'context'} onClick={() => toggleSidebar('context')}
+                    badge={studio.isConnected ? 'active' : undefined} />
+                  <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 1, margin: '4px 0' }} />
+                  <div style={{ flex: 1 }} />
+                  <SidebarButton icon={<IconHelp />} label="Help" shortcut="⌘/"
+                    active={sidebarPanel === 'help'} onClick={() => toggleSidebar('help')} />
+                  <div style={{ height: 8 }} />
                 </div>
               </div>
             )}
 
-            {/* Icon rail */}
-            <div
-              style={{
-                width: 52,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                paddingTop: 8,
-                gap: 2,
-                background: 'rgba(8,12,28,0.3)',
-                borderLeft: '1px solid rgba(255,255,255,0.03)',
-              }}
-            >
-              <SidebarButton
-                icon={<IconStore />}
-                label="Marketplace"
-                shortcut="⌘M"
-                active={sidebarPanel === 'marketplace'}
-                onClick={() => toggleSidebar('marketplace')}
-              />
-              <SidebarButton
-                icon={<IconHistory />}
-                label="Build History"
-                shortcut="⌘H"
-                active={sidebarPanel === 'history'}
-                onClick={() => toggleSidebar('history')}
-              />
-              <SidebarButton
-                icon={<IconSettings />}
-                label="Settings"
-                shortcut="⌘,"
-                active={sidebarPanel === 'settings'}
-                onClick={() => toggleSidebar('settings')}
-              />
-              <SidebarButton
-                icon={<IconContext />}
-                label="AI Context"
-                shortcut="⌘A"
-                active={sidebarPanel === 'context'}
-                onClick={() => toggleSidebar('context')}
-                badge={studio.isConnected ? 'active' : undefined}
-              />
-
-              {/* Separator */}
+            {/* Split/chat-focus: icon-rail only (no panel) */}
+            {(editorLayout === 'split' || editorLayout === 'chat-focus') && (
               <div
-                style={{
-                  width: 24,
-                  height: 1,
-                  background: 'rgba(255,255,255,0.06)',
-                  borderRadius: 1,
-                  margin: '4px 0',
-                }}
-              />
-
-              <div style={{ flex: 1 }} />
-
-              <SidebarButton
-                icon={<IconHelp />}
-                label="Help"
-                shortcut="⌘/"
-                active={sidebarPanel === 'help'}
-                onClick={() => toggleSidebar('help')}
-              />
-              <div style={{ height: 8 }} />
-            </div>
+                className="hidden md:flex"
+                style={{ flexShrink: 0, display: 'flex', flexDirection: 'row' }}
+              >
+                <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  paddingTop: 8, gap: 2, background: 'rgba(8,12,28,0.3)',
+                  borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
+                  <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('marketplace') }} />
+                  <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('history') }} />
+                  <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('settings') }} />
+                  <SidebarButton icon={<IconContext />} label="AI Context" shortcut="⌘A"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('context') }}
+                    badge={studio.isConnected ? 'active' : undefined} />
+                  <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 1, margin: '4px 0' }} />
+                  <div style={{ flex: 1 }} />
+                  <SidebarButton icon={<IconHelp />} label="Help" shortcut="⌘/"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('help') }} />
+                  <div style={{ height: 8 }} />
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Command Palette overlay */}

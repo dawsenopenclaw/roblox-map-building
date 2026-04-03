@@ -78,6 +78,21 @@ export const templateSubmitSchema = z.object({
     .optional(),
 })
 
+export const templateEditSchema = z.object({
+  title: z.string().min(1, 'title is required').max(100).optional(),
+  description: z.string().min(1, 'description cannot be empty').max(2000).optional(),
+  priceCents: z
+    .number()
+    .int('priceCents must be an integer')
+    .min(0, 'priceCents must be non-negative')
+    .max(99999, 'priceCents exceeds maximum')
+    .optional(),
+  category: z.string().min(1, 'category is required').optional(),
+  tags: z.array(z.string()).max(20).optional(),
+  thumbnailUrl: z.string().url('thumbnailUrl must be a valid URL').nullable().optional(),
+  fileUrl: z.string().url('fileUrl must be a valid URL').nullable().optional(),
+})
+
 export const reviewSchema = z.object({
   rating: z
     .number({ required_error: 'rating is required' })
