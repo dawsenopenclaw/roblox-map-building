@@ -14,6 +14,7 @@ import { SplashScreen } from '@/components/SplashScreen'
 import { GlassOrbEffect } from '@/components/GlassOrbEffect'
 import { CookieBanner } from '@/components/CookieBanner'
 import { GlobalShortcuts } from '@/components/GlobalShortcuts'
+import { GlobalUserButton } from '@/components/GlobalUserButton'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -188,6 +189,7 @@ export default function RootLayout({
           <SplashScreen>
             <Suspense fallback={null}>
               <GlassOrbEffect />
+              <GlobalUserButton />
               <SkipToContent />
               <OfflineIndicator />
               <GlobalShortcuts />
