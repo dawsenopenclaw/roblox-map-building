@@ -24,9 +24,9 @@ const PADDING_MAP: Record<PaddingSize, string> = {
 }
 
 const VARIANT_BG: Record<PanelVariant, string> = {
-  default:  'rgba(8, 12, 28, 0.65)',
-  elevated: 'rgba(12, 18, 36, 0.65)',
-  sunken:   'rgba(4, 6, 18, 0.75)',
+  default:  'rgba(10, 14, 32, 0.45)',
+  elevated: 'rgba(14, 20, 40, 0.5)',
+  sunken:   'rgba(6, 8, 22, 0.55)',
 }
 
 const VARIANT_BORDER: Record<PanelVariant, string> = {
@@ -89,13 +89,12 @@ export function GlassPanel({
     : border
 
   // Box shadow layers
-  const baseInner  = 'inset 0 1px 0 rgba(255,255,255,0.06)'
-  const baseBottom = '0 -1px 0 rgba(0,0,0,0.25) inset'
-  const baseShadow = `${baseInner}, ${baseBottom}`
+  const baseInner  = 'inset 0 1px 0 rgba(255,255,255,0.04)'
+  const baseShadow = baseInner
 
   const glowNear = `0 0 40px ${hexToRgba(glowColor, 0.12)}`
   const glowFar  = `0 0 80px ${hexToRgba(glowColor, 0.05)}`
-  const glowShadow = `${glowNear}, ${glowFar}, ${baseInner}, ${baseBottom}`
+  const glowShadow = `${glowNear}, ${glowFar}, ${baseInner}`
 
   return (
     <div
@@ -109,8 +108,8 @@ export function GlassPanel({
       style={{
         position: 'relative',
         background: bg,
-        backdropFilter: 'blur(16px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(16px) saturate(1.2)',
+        backdropFilter: 'blur(20px) saturate(1.1)',
+        WebkitBackdropFilter: 'blur(20px) saturate(1.1)',
         border: `1px solid ${activeBorder}`,
         borderRadius: 12,
         overflow: 'hidden',
@@ -121,22 +120,6 @@ export function GlassPanel({
         ...style,
       }}
     >
-      {/* Noise texture overlay */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `url("${NOISE_SVG}")`,
-          backgroundRepeat: 'repeat',
-          backgroundSize: '200px 200px',
-          opacity: 0.02,
-          pointerEvents: 'none',
-          borderRadius: 'inherit',
-          zIndex: 0,
-        }}
-      />
-
       {/* Top edge highlight */}
       <div
         aria-hidden="true"
@@ -147,23 +130,7 @@ export function GlassPanel({
           right: '15%',
           height: 1,
           borderRadius: '12px 12px 0 0',
-          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* Bottom edge shadow line */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: '20%',
-          right: '20%',
-          height: 1,
-          borderRadius: '0 0 12px 12px',
-          background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.35), transparent)',
+          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)',
           pointerEvents: 'none',
           zIndex: 0,
         }}

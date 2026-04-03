@@ -204,8 +204,7 @@ function AgentStrip({
         alignItems: 'center',
         gap: 10,
         padding: '6px 16px',
-        background: 'rgba(8,12,28,0.6)',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        background: 'rgba(8,12,28,0.3)',
         flexShrink: 0,
         animation: 'stripFade 0.2s ease-out',
       }}
@@ -295,11 +294,11 @@ function MonitorIllustration() {
     <div style={{ position: 'relative', width: 96, height: 76, margin: '0 auto 4px' }}>
       <svg width="96" height="76" viewBox="0 0 96 76" fill="none">
         {/* Radar rings behind monitor */}
-        <circle cx="48" cy="32" r="12" stroke="rgba(212,175,55,0.22)" strokeWidth="1" fill="none"
+        <circle cx="48" cy="32" r="12" stroke="rgba(212,175,55,0.08)" strokeWidth="1" fill="none"
           style={{ animation: 'radarRing 2.4s ease-out infinite' }}/>
-        <circle cx="48" cy="32" r="22" stroke="rgba(212,175,55,0.11)" strokeWidth="1" fill="none"
+        <circle cx="48" cy="32" r="22" stroke="rgba(212,175,55,0.04)" strokeWidth="1" fill="none"
           style={{ animation: 'radarRing 2.4s ease-out 0.6s infinite' }}/>
-        <circle cx="48" cy="32" r="33" stroke="rgba(212,175,55,0.05)" strokeWidth="1" fill="none"
+        <circle cx="48" cy="32" r="33" stroke="rgba(212,175,55,0.02)" strokeWidth="1" fill="none"
           style={{ animation: 'radarRing 2.4s ease-out 1.2s infinite' }}/>
         {/* Bezel */}
         <rect x="10" y="5" width="76" height="50" rx="5" stroke="rgba(212,175,55,0.3)" strokeWidth="1.5" fill="rgba(6,10,20,0.9)"/>
@@ -420,15 +419,7 @@ function ViewportArea({
               backgroundSize: '40px 40px',
             }}
           />
-          {/* Very subtle gradient sweep */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(110deg, transparent 25%, rgba(212,175,55,0.03) 50%, transparent 75%)',
-              animation: 'radarSweep 5s linear infinite',
-            }}
-          />
+          {/* Subtle gradient sweep — removed animation for cleaner look */}
         </div>
 
         {/* Monitor illustration */}
@@ -1038,7 +1029,7 @@ function TopBar({
     >
       {/* Gradient glow bottom border */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
-        background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.18) 25%, rgba(255,184,28,0.35) 50%, rgba(212,175,55,0.18) 75%, transparent 100%)',
+        background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.04) 25%, rgba(255,184,28,0.06) 50%, rgba(212,175,55,0.04) 75%, transparent 100%)',
         pointerEvents: 'none', zIndex: 1 }} />
 
       {/* Left: Logo + breadcrumb */}
@@ -1353,7 +1344,7 @@ function ResizeHandle({
           width: 40,
           height: 3,
           borderRadius: 2,
-          background: dragging ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.08)',
+          background: dragging ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.03)',
           transition: dragging ? 'none' : 'background 0.15s',
         }}
       />
@@ -1682,7 +1673,7 @@ function EditorInner() {
               display: 'flex',
               flexDirection: 'column',
               minWidth: 0,
-              padding: '4px 0 4px 4px',
+              padding: '6px 0 6px 6px',
               gap: 0,
             }}
           >
@@ -1949,7 +1940,7 @@ function EditorInner() {
                 alignItems: 'center',
                 paddingTop: 8,
                 gap: 2,
-                background: 'rgba(8,12,28,0.5)',
+                background: 'rgba(8,12,28,0.3)',
                 borderLeft: '1px solid rgba(255,255,255,0.03)',
               }}
             >

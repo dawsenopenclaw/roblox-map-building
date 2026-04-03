@@ -446,13 +446,10 @@ function MessageBubble({
         <div
           style={{
             maxWidth: '80%',
-            padding: '10px 14px',
+            padding: '14px 18px',
             borderRadius: '18px 18px 4px 18px',
-            background: 'rgba(255,184,28,0.08)',
-            border: '1px solid rgba(255,184,28,0.15)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            boxShadow: '0 2px 16px rgba(255,184,28,0.06), inset 0 1px 0 rgba(255,255,255,0.06)',
+            background: 'rgba(255,184,28,0.06)',
+            border: '1px solid rgba(255,184,28,0.10)',
           }}
         >
           <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -487,7 +484,6 @@ function MessageBubble({
           justifyContent: 'center',
           flexShrink: 0,
           marginTop: 2,
-          animation: 'avatarGlow 3s ease-in-out infinite',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="#030712">
@@ -497,32 +493,14 @@ function MessageBubble({
       <div
         style={{
           maxWidth: '85%',
-          padding: '10px 14px',
+          padding: '14px 18px',
           borderRadius: '18px 18px 18px 4px',
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          boxShadow: '0 2px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.04)',
+          background: 'rgba(255,255,255,0.025)',
+          border: '1px solid rgba(255,255,255,0.04)',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Scanning line — visible while streaming OR briefly on new message arrival */}
-        {(msg.streaming || newFlash) && (
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              height: 2,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.6) 40%, rgba(139,92,246,0.5) 60%, transparent 100%)',
-              animation: 'scanLine 1.4s linear infinite',
-              pointerEvents: 'none',
-            }}
-          />
-        )}
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
@@ -1238,13 +1216,13 @@ export function ChatPanel({
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: compact ? '0' : '16px 14px',
+          padding: compact ? '0' : '20px 16px',
           display: compact ? 'none' : 'flex',
           flexDirection: 'column',
-          gap: 10,
+          gap: 16,
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.06) transparent',
-          background: 'linear-gradient(180deg, rgba(8,12,28,0.3) 0%, rgba(8,12,28,0.6) 100%)',
+          background: 'linear-gradient(180deg, rgba(12,16,36,0.15) 0%, rgba(8,12,28,0.35) 100%)',
         }}
       >
         {!hasMessages ? (
@@ -1315,31 +1293,6 @@ export function ChatPanel({
           position: 'relative',
         }}
       >
-        {/* Sparkle particles near input */}
-        {[
-          { left: '8%',  top: '18px', delay: 0,   size: 3 },
-          { left: '15%', top: '8px',  delay: 0.7, size: 2 },
-          { left: '88%', top: '14px', delay: 1.4, size: 2.5 },
-          { left: '94%', top: '6px',  delay: 0.3, size: 2 },
-          { left: '50%', top: '4px',  delay: 1.1, size: 2 },
-        ].map((p, i) => (
-          <div
-            key={i}
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              left: p.left,
-              top: p.top,
-              width: p.size,
-              height: p.size,
-              borderRadius: '50%',
-              background: 'rgba(56,189,248,0.8)',
-              boxShadow: '0 0 4px rgba(56,189,248,0.6)',
-              animation: `sparkleFloat 2.4s ease-in-out ${p.delay}s infinite`,
-              pointerEvents: 'none',
-            }}
-          />
-        ))}
         {/* Tip of the day — dismissable, shown for first 10 sessions */}
         <TipOfTheDay />
 
@@ -1349,8 +1302,8 @@ export function ChatPanel({
             display: 'flex',
             flexDirection: 'column',
             gap: 6,
-            background: 'rgba(3,7,18,0.6)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: 'rgba(0,0,0,0.15)',
+            border: '1px solid rgba(255,255,255,0.03)',
             borderRadius: 14,
             padding: '10px 12px',
             transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
