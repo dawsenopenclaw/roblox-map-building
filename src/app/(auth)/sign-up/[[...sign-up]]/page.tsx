@@ -65,7 +65,6 @@ const clerkAppearance = {
     dividerText: '!text-zinc-500 !text-xs',
     footerActionLink: '!text-[#D4AF37] hover:!text-[#C9A227] !font-medium !transition-colors',
     footerActionText: '!text-zinc-500',
-    footer: 'hidden',
     identityPreviewEditButton: '!text-[#D4AF37] hover:!text-[#C9A227]',
     formResendCodeLink: '!text-[#D4AF37] hover:!text-[#C9A227]',
     otpCodeFieldInput: '!border-white/[0.06] !bg-[#111113] !text-[#FAFAFA]',
@@ -129,6 +128,7 @@ export default function SignUpPage() {
 
       <SignUp
         fallbackRedirectUrl="/onboarding/age-gate"
+        signInUrl="/sign-in"
         appearance={clerkAppearance}
       />
 
