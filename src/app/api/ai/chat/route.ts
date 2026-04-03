@@ -2767,34 +2767,86 @@ interface ChatMeshResult {
   polygonCount: number | null
   status: 'complete' | 'pending' | 'demo'
   taskId?: string
+  rbxAssetId?: string
 }
 
 async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   const meshyKey = process.env.MESHY_API_KEY
 
-  // Demo mode — return placeholder immediately, no API call
-  if (!meshyKey) {
-    return {
-      meshUrl: null,
-      thumbnailUrl: DEMO_THUMBNAIL_SVG,
-      polygonCount: null,
-      status: 'demo',
+  // Priority 1: Meshy (paid, best quality) — if API key is configured
+  if (meshyKey) {
+    try {
+      const taskId = await createMeshyChatTask(prompt, meshyKey)
+      const task = await pollMeshyChatTask(taskId, meshyKey)
+
+      if (task.status === 'IN_PROGRESS') {
+        return { meshUrl: null, thumbnailUrl: null, polygonCount: null, status: 'pending', taskId }
+      }
+
+      return {
+        meshUrl: task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null,
+        thumbnailUrl: task.thumbnail_url ?? null,
+        polygonCount: task.polygon_count ?? null,
+        status: 'complete',
+        taskId,
+      }
+    } catch (err) {
+      console.warn('[mesh] Meshy failed, falling through to free pipeline:', err instanceof Error ? err.message : String(err))
     }
   }
 
-  const taskId = await createMeshyChatTask(prompt, meshyKey)
-  const task = await pollMeshyChatTask(taskId, meshyKey)
+  // Priority 2: Free pipeline (HuggingFace Spaces — no API key needed)
+  try {
+    const { generateFreeMesh } = await import('@/lib/free-mesh-pipeline')
+    const freeResult = await generateFreeMesh(prompt)
 
-  if (task.status === 'IN_PROGRESS') {
-    return { meshUrl: null, thumbnailUrl: null, polygonCount: null, status: 'pending', taskId }
+    if (freeResult.status === 'complete' && freeResult.meshUrl) {
+      // Try to upload to Roblox for a real rbxassetid
+      let rbxAssetId: string | undefined
+      const robloxApiKey = process.env.ROBLOX_OPEN_CLOUD_API_KEY
+      const robloxCreator = process.env.ROBLOX_CREATOR_ID
+      if (robloxApiKey && robloxCreator) {
+        try {
+          const { downloadAndUpload: dlUpload } = await import('@/lib/roblox-asset-upload')
+          const uploadResult = await dlUpload(freeResult.meshUrl, `forjeai_${prompt.slice(0, 30).replace(/\W+/g, '_')}`, {
+            description: `ForjeAI generated mesh: ${prompt.slice(0, 100)}`,
+          })
+          if (uploadResult) rbxAssetId = uploadResult.rbxAssetId
+        } catch {
+          // Upload failed — still return the direct URL
+        }
+      }
+
+      return {
+        meshUrl: freeResult.meshUrl,
+        thumbnailUrl: freeResult.thumbnailUrl,
+        polygonCount: freeResult.polygonCount,
+        status: 'complete',
+        rbxAssetId,
+      } as ChatMeshResult
+    }
+
+    // Free pipeline returned an error but with a thumbnail (image gen worked, 3D failed)
+    if (freeResult.thumbnailUrl) {
+      return {
+        meshUrl: null,
+        thumbnailUrl: freeResult.thumbnailUrl,
+        polygonCount: null,
+        status: 'pending',
+      }
+    }
+
+    console.warn('[mesh] Free pipeline failed:', freeResult.error)
+  } catch (err) {
+    console.warn('[mesh] Free pipeline import/execution error:', err instanceof Error ? err.message : String(err))
   }
 
+  // Priority 3: Demo placeholder
   return {
-    meshUrl: task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null,
-    thumbnailUrl: task.thumbnail_url ?? null,
-    polygonCount: task.polygon_count ?? null,
-    status: 'complete',
-    taskId,
+    meshUrl: null,
+    thumbnailUrl: DEMO_THUMBNAIL_SVG,
+    polygonCount: null,
+    status: 'demo',
   }
 }
 
@@ -3063,6 +3115,48 @@ function computeBuildPlan(
 function formatBuildPlanBlock(template: MultiStepTemplate): string {
   const lines = template.steps.map((s, i) => `Step ${i + 1}: ${s}`)
   return `[BUILD_PLAN]\n${lines.join('\n')}\n[/BUILD_PLAN]`
+}
+
+// ---------------------------------------------------------------------------
+// Stream-format response helper
+// ---------------------------------------------------------------------------
+// The frontend's readStream() expects raw UTF-8 text followed by a \x00{json}
+// sentinel. When the Claude streaming path isn't used (free-model fallback,
+// demo mode, errors) we still need to speak this protocol so the client
+// doesn't display raw JSON.
+
+interface StreamResponseMeta {
+  suggestions?: string[]
+  intent?: string
+  hasCode?: boolean
+  tokensUsed?: number
+  executedInStudio?: boolean
+  model?: string
+  error?: string
+  meshResult?: unknown
+  textureResult?: unknown
+  mcpResult?: unknown
+  buildPlan?: unknown
+}
+
+function toStreamResponse(text: string, meta: StreamResponseMeta): Response {
+  const enc = new TextEncoder()
+  const metaPayload = JSON.stringify({ __meta: true, ...meta })
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(enc.encode(text))
+      controller.enqueue(enc.encode('\x00' + metaPayload))
+      controller.close()
+    },
+  })
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Transfer-Encoding': 'chunked',
+      'X-Accel-Buffering': 'no',
+      'Cache-Control': 'no-cache, no-transform',
+    },
+  })
 }
 
 // User-friendly error messages with context-specific next steps
@@ -3742,6 +3836,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
         if (!text) throw new Error('Empty response from Gemini')
         const tokensUsed = geminiData.usageMetadata?.totalTokenCount ?? estimateTokens(message)
+        if (wantsStream) {
+          return toStreamResponse(text, { intent, tokensUsed, model: 'gemini-1.5-flash (custom key)' }) as unknown as NextResponse
+        }
         return NextResponse.json({
           message: text,
           tokensUsed,
@@ -3782,6 +3879,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const text = openaiData.choices?.[0]?.message?.content ?? ''
         if (!text) throw new Error('Empty response from OpenAI')
         const tokensUsed = openaiData.usage?.total_tokens ?? estimateTokens(message)
+        if (wantsStream) {
+          return toStreamResponse(text, { intent, tokensUsed, model: 'gpt-4o (custom key)' }) as unknown as NextResponse
+        }
         return NextResponse.json({
           message: text,
           tokensUsed,
@@ -3810,6 +3910,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const textBlock = aiResponse.content.find((b) => b.type === 'text')
       const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
       const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
+      if (wantsStream) {
+        return toStreamResponse(responseText, { intent, tokensUsed, model: aiResponse.model + ' (custom key)' }) as unknown as NextResponse
+      }
       return NextResponse.json({
         message: responseText,
         tokensUsed,
@@ -3928,6 +4031,24 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                   polygonCount: mesh.polygonCount,
                   status: mesh.status,
                 }
+                // Auto-place in Studio if mesh was generated and session exists
+                if (mesh.meshUrl && sessionId) {
+                  try {
+                    const { detectObjectType, generatePlacementLuau } = await import('@/lib/free-mesh-pipeline')
+                    const objType = detectObjectType(message)
+                    const rbxId = (mesh as unknown as Record<string, unknown>).rbxAssetId as string | undefined
+                    const placementCode = generatePlacementLuau({
+                      rbxAssetId: rbxId,
+                      glbUrl: mesh.meshUrl,
+                      meshName: message.replace(/^(generate|create|make|build)\s+(a\s+|me\s+)?/i, '').trim().slice(0, 40),
+                      objectType: objType,
+                    })
+                    await sendCodeToStudio(sessionId, placementCode)
+                    executedInStudio = true
+                  } catch {
+                    // Non-fatal — mesh still available for manual download
+                  }
+                }
               } catch {
                 meshResult = {
                   meshUrl: null,
@@ -4007,6 +4128,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       }
 
       // Auto-trigger mesh generation when user intent is mesh
+      let executedInStudioMesh = false
       let meshResult: ChatResponsePayload['meshResult']
       if (intent === 'mesh') {
         try {
@@ -4016,6 +4138,21 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             thumbnailUrl: mesh.thumbnailUrl,
             polygonCount: mesh.polygonCount,
             status: mesh.status,
+          }
+          // Auto-place in Studio
+          if (mesh.meshUrl && sessionId) {
+            try {
+              const { detectObjectType, generatePlacementLuau } = await import('@/lib/free-mesh-pipeline')
+              const objType = detectObjectType(message)
+              const rbxId = mesh.rbxAssetId
+              const placementCode = generatePlacementLuau({
+                rbxAssetId: rbxId,
+                glbUrl: mesh.meshUrl,
+                meshName: message.replace(/^(generate|create|make|build)\s+(a\s+|me\s+)?/i, '').trim().slice(0, 40),
+                objectType: objType,
+              })
+              executedInStudioMesh = await sendCodeToStudio(sessionId, placementCode)
+            } catch { /* non-fatal */ }
           }
         } catch {
           meshResult = {
@@ -4093,6 +4230,22 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
         return undefined
       })()
+      if (wantsStream) {
+        // Compose display text: conversation + hidden code block for extraction
+        let streamText = twoPassResult.conversationText
+        if (twoPassResult.luauCode) {
+          streamText += '\n\n```lua\n' + twoPassResult.luauCode + '\n```'
+        }
+        return toStreamResponse(streamText, {
+          suggestions: twoPassResult.suggestions,
+          intent,
+          hasCode: twoPassResult.luauCode !== null,
+          tokensUsed: tokenCost,
+          executedInStudio: twoPassResult.executedInStudio,
+          model: twoPassResult.model,
+          ...(freeModelBuildPlan ? { buildPlan: freeModelBuildPlan } : {}),
+        }) as unknown as NextResponse
+      }
       return NextResponse.json({
         message: twoPassResult.conversationText,
         tokensUsed: tokenCost,
@@ -4160,6 +4313,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         'Mesh generation unavailable right now. Set MESHY_API_KEY for real 3D models. Used ' +
         tokensUsed + ' tokens.'
     }
+    if (wantsStream) {
+      return toStreamResponse(payload.message, {
+        intent,
+        hasCode: false,
+        tokensUsed,
+        meshResult: payload.meshResult,
+      }) as unknown as NextResponse
+    }
     return NextResponse.json(payload)
   }
 
@@ -4183,6 +4344,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       }
     } catch {
       // Leave default demo message, no textureResult attached
+    }
+    if (wantsStream) {
+      return toStreamResponse(payload.message, {
+        intent,
+        hasCode: false,
+        tokensUsed,
+        textureResult: payload.textureResult,
+      }) as unknown as NextResponse
     }
     return NextResponse.json(payload)
   }
@@ -4226,8 +4395,18 @@ Output ONLY the code inside \`\`\`lua fences. No explanation.`,
         if (sessionId) {
           executedInStudio = await sendCodeToStudio(sessionId, luau)
         }
+        const buildMsg = `I built that for you! ${executedInStudio ? 'Check your Studio — it should appear near your camera.' : 'Click "Import to Studio" to paste the code.'}\n\nWhat would you like to change or add next?`
+        if (wantsStream) {
+          return toStreamResponse(buildMsg + '\n\n```lua\n' + luau + '\n```', {
+            intent,
+            hasCode: true,
+            tokensUsed,
+            executedInStudio,
+            model: 'llama-3.3-70b',
+          }) as unknown as NextResponse
+        }
         return NextResponse.json({
-          message: `I built that for you! ${executedInStudio ? 'Check your Studio — it should appear near your camera.' : 'Click "Import to Studio" to paste the code.'}\n\nWhat would you like to change or add next?`,
+          message: buildMsg,
           tokensUsed,
           intent,
           hasCode: true,
@@ -4245,10 +4424,21 @@ Output ONLY the code inside \`\`\`lua fences. No explanation.`,
     if (fallbackLuau && sessionId) {
       fbExecuted = await sendCodeToStudio(sessionId, fallbackLuau)
     }
+    const fbMsg = fbExecuted
+      ? `Built it! Check your Studio — it should appear near your camera. What would you like to change or add?`
+      : `Here's the build code! Click "Import to Studio" to place it in your game.`
+    if (wantsStream) {
+      const fbStreamText = fallbackLuau ? fbMsg + '\n\n```lua\n' + fallbackLuau + '\n```' : fbMsg
+      return toStreamResponse(fbStreamText, {
+        intent,
+        hasCode: true,
+        tokensUsed,
+        executedInStudio: fbExecuted,
+        model: 'template',
+      }) as unknown as NextResponse
+    }
     return NextResponse.json({
-      message: fbExecuted
-        ? `Built it! Check your Studio — it should appear near your camera. What would you like to change or add?`
-        : `Here's the build code! Click "Import to Studio" to place it in your game.`,
+      message: fbMsg,
       tokensUsed,
       intent,
       hasCode: true,
@@ -4354,5 +4544,15 @@ Tip: Run the Luau snippet in Studio Command Bar to insert all marketplace assets
     return NextResponse.json(payload)
   } // end dead marketplace block
 
+  // Stream-format for all remaining paths (demo responses, conversation, etc.)
+  if (wantsStream) {
+    return toStreamResponse(payload.message, {
+      intent,
+      hasCode: false,
+      tokensUsed,
+      suggestions: (payload as unknown as Record<string, unknown>).suggestions as string[] | undefined,
+      mcpResult: payload.mcpResult,
+    }) as unknown as NextResponse
+  }
   return NextResponse.json(payload)
 }
