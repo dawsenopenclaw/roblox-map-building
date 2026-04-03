@@ -63,7 +63,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-52 bg-[#141414] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full w-52 bg-[#060A14] border-r border-white/[0.07] z-50 flex flex-col transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } lg:static lg:z-auto`}
         aria-label="Main navigation"

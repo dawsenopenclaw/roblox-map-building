@@ -60,7 +60,7 @@ const AppChrome = memo(function AppChrome({
   return (
     <>
       {/* ── Standard layout: top nav + left sidebar + padded main ── */}
-      <div className="min-h-screen bg-[#141414] flex">
+      <div className="min-h-screen bg-[#050810] flex">
         <AppSidebar isOpen={sidebarOpen} onClose={onSidebarClose} />
         <div className="flex-1 flex flex-col min-w-0">
           <AppTopNav

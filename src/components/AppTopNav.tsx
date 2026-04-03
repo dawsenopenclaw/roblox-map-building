@@ -75,7 +75,7 @@ function IconSignOut() {
 function UserMenu({ displayName, email }: { displayName: string; email: string }) {
   return (
     <div
-      className="absolute right-0 top-full mt-2 w-52 bg-[#1A2235] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-52 bg-[#0A0F20] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
       role="menu"
       aria-label="User menu"
     >
@@ -162,7 +162,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
   const tokenBalance = data?.balance !== undefined ? data.balance.toLocaleString() : '—'
 
   return (
-    <header className="h-14 bg-[#141414] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
+    <header className="h-14 bg-[#060A14] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
       {/* Hamburger (mobile) */}
       <button
         onClick={onMenuOpen}
