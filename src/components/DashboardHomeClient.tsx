@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useToast } from '@/components/ui/toast-notification'
@@ -40,7 +40,6 @@ const STARTER_PROMPTS = [
 ]
 
 const BUILD_ACTIVITY_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const ACTIVITY_MAX = 9
 
 interface RecentBuild {
   id: string
@@ -83,7 +82,49 @@ function formatDate(): string {
   }).format(new Date())
 }
 
-// ─── Sparkline (CSS-only) ─────────────────────────────────────────────────────
+// ─── Stagger animation keyframes injected once ───────────────────────────────
+
+const KEYFRAMES = `
+  @keyframes fj-fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fj-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes fj-bar-grow {
+    from { width: 0%; }
+  }
+  @keyframes fj-prompt-glow-pulse {
+    0%, 100% { box-shadow: 0 0 0px ${GOLD}00; }
+    50%       { box-shadow: 0 0 12px ${GOLD}40; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fj-animate { animation: none !important; opacity: 1 !important; }
+    .fj-bar-animate { transition: none !important; }
+  }
+`
+
+function useKeyframesOnce() {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const id = 'fj-dashboard-keyframes'
+    if (document.getElementById(id)) return
+    const style = document.createElement('style')
+    style.id = id
+    style.textContent = KEYFRAMES
+    document.head.appendChild(style)
+  }, [])
+}
+
+function staggerStyle(index: number, baseDelay = 0): React.CSSProperties {
+  return {
+    animation: `fj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) ${baseDelay + index * 80}ms both`,
+  }
+}
+
+// ─── Sparkline ────────────────────────────────────────────────────────────────
 
 function Sparkline({ data, color = GOLD }: { data: number[]; color?: string }) {
   const max = Math.max(...data)
@@ -93,31 +134,49 @@ function Sparkline({ data, color = GOLD }: { data: number[]; color?: string }) {
   const w = 80
   const pts = data.map((v, i) => {
     const x = (i / (data.length - 1)) * w
-    const y = h - ((v - min) / range) * h
+    // Smooth clamp so the line never sits exactly at 0 or h
+    const y = h - ((v - min) / range) * (h * 0.85) - h * 0.075
     return `${x},${y}`
   })
   const d = `M ${pts.join(' L ')}`
   const fill = `M 0,${h} L ${pts.join(' L ')} L ${w},${h} Z`
+  const gradId = `sg-${color.replace('#', '')}`
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
       <defs>
-        <linearGradient id={`sg-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="75%" stopColor={color} stopOpacity="0.06" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={fill} fill={`url(#sg-${color.replace('#', '')})`} />
-      <path d={d} stroke={color} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      {/* last dot */}
-      <circle cx={w} cy={h - ((data[data.length - 1] - min) / range) * h} r="2.5" fill={color} />
+      <path d={fill} fill={`url(#${gradId})`} />
+      <path
+        d={d}
+        stroke={color}
+        strokeWidth="1.75"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: `drop-shadow(0 0 3px ${color}60)` }}
+      />
+      <circle
+        cx={w}
+        cy={h - ((data[data.length - 1] - min) / range) * (h * 0.85) - h * 0.075}
+        r="2.5"
+        fill={color}
+        style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+      />
     </svg>
   )
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
+const ROYAL = '#7C3AED'
+
 function StatCard({
-  label, value, icon, trend, trendUp, sub, sparkline, sparkColor,
+  label, value, icon, trend, trendUp, sub, sparkline, sparkColor, primary, royalAccent,
 }: {
   label: string
   value: string | number
@@ -127,23 +186,57 @@ function StatCard({
   sub?: string
   sparkline?: number[]
   sparkColor?: string
+  primary?: boolean
+  royalAccent?: boolean
 }) {
+  const accentColor = primary ? GOLD : royalAccent ? ROYAL : null
   return (
     <div
-      className="rounded-2xl border border-white/[0.08] p-5 flex flex-col gap-2 transition-all duration-200 hover:border-white/20 hover:shadow-lg"
-      style={{ background: 'linear-gradient(135deg, #161616 0%, #111111 100%)' }}
+      className="group rounded-2xl border p-5 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl relative overflow-hidden"
+      style={{
+        background: primary
+          ? `linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)`
+          : royalAccent
+          ? `linear-gradient(135deg, #130d1f 0%, #111111 60%, #0d0d0d 100%)`
+          : 'linear-gradient(135deg, #161616 0%, #111111 100%)',
+        borderColor: primary ? `${GOLD}30` : royalAccent ? `${ROYAL}30` : 'rgba(255,255,255,0.08)',
+        boxShadow: primary || royalAccent ? `0 0 0 0 ${accentColor}00` : undefined,
+      }}
+      onMouseEnter={(e) => {
+        if (primary || royalAccent) {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px ${accentColor}18`
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (primary || royalAccent) {
+          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 0 ${accentColor}00`
+        }
+      }}
     >
+      {/* Accent strip on primary/royal cards */}
+      {(primary || royalAccent) && (
+        <div
+          className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+          style={{ background: `linear-gradient(90deg, ${accentColor}00, ${accentColor}80, ${accentColor}00)` }}
+        />
+      )}
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <span className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.12em]">{label}</span>
-          <p className="text-2xl font-bold text-white mt-1 leading-none tabular-nums">
+          <p
+            className="text-2xl font-bold mt-1 leading-none tabular-nums"
+            style={{ color: primary ? GOLD : royalAccent ? '#A78BFA' : '#FAFAFA' }}
+          >
             {typeof value === 'number' ? value.toLocaleString() : value}
           </p>
           {sub && <p className="text-[11px] text-gray-500 mt-1">{sub}</p>}
         </div>
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-          style={{ background: `${GOLD}12`, border: `1px solid ${GOLD}20` }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+          style={{
+            background: royalAccent ? `${ROYAL}12` : `${GOLD}12`,
+            border: `1px solid ${royalAccent ? `${ROYAL}20` : `${GOLD}20`}`,
+          }}
         >
           {icon}
         </div>
@@ -192,17 +285,27 @@ function ActivityChart({ activityVals }: { activityVals: number[] }) {
           {activityVals.map((v, i) => {
             const heightPct = (v / actMax) * 100
             const isToday = i === activityVals.length - 1
+            // Alternate: even indices use gold, odd indices use royal purple
+            const useRoyal = !isToday && i % 2 === 1
+            const barColor = isToday ? GOLD : useRoyal ? '#7C3AED' : '#374151'
+            const barColorEnd = isToday ? `${GOLD}99` : useRoyal ? '#6366F1' : '#1f2937'
+            const barGlow = isToday
+              ? `0 0 12px ${GOLD}50, 0 -2px 8px ${GOLD}30`
+              : useRoyal
+              ? '0 0 8px rgba(124,58,237,0.4)'
+              : 'none'
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <span className="text-[10px] text-gray-600 tabular-nums">{v}</span>
-                <div className="w-full rounded-t-md relative overflow-hidden" style={{ height: `${Math.max(heightPct, v > 0 ? 4 : 0)}%`, minHeight: v > 0 ? 4 : 0 }}>
+                <div
+                  className="w-full rounded-t-md relative overflow-hidden"
+                  style={{ height: `${Math.max(heightPct, v > 0 ? 4 : 0)}%`, minHeight: v > 0 ? 4 : 0 }}
+                >
                   <div
                     className="absolute inset-0 rounded-t-md"
                     style={{
-                      background: isToday
-                        ? `linear-gradient(180deg, ${GOLD} 0%, ${GOLD}99 100%)`
-                        : 'linear-gradient(180deg, #374151 0%, #1f2937 100%)',
-                      boxShadow: isToday ? `0 0 10px ${GOLD}40` : 'none',
+                      background: `linear-gradient(180deg, ${barColor} 0%, ${barColorEnd} 100%)`,
+                      boxShadow: barGlow,
                     }}
                   />
                 </div>
@@ -217,8 +320,12 @@ function ActivityChart({ activityVals }: { activityVals: number[] }) {
             <span className="text-[10px] text-gray-500">Today</span>
           </div>
           <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: '#7C3AED' }} />
+            <span className="text-[10px] text-gray-500">Active days</span>
+          </div>
+          <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-sm bg-gray-700" />
-            <span className="text-[10px] text-gray-500">Past days</span>
+            <span className="text-[10px] text-gray-500">Quiet days</span>
           </div>
         </div>
       </div>
@@ -269,13 +376,31 @@ function RecentBuilds({ builds }: { builds: RecentBuild[] }) {
           builds.map((build, idx) => (
             <div
               key={build.id}
-              className={`flex items-center gap-4 px-5 py-3.5 transition-colors hover:bg-white/[0.04] ${
+              className={`group flex items-center gap-4 px-5 py-3.5 transition-all duration-200 hover:bg-white/[0.04] ${
                 idx < builds.length - 1 ? 'border-b border-white/[0.06]' : ''
               }`}
+              style={{ borderLeftColor: 'transparent', borderLeft: '2px solid transparent' }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderLeftColor = `${GOLD}40`
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'transparent'
+              }}
             >
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}15` }}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 transition-all duration-200 group-hover:scale-110"
+                style={{
+                  background: `${GOLD}10`,
+                  border: `1px solid ${GOLD}15`,
+                  boxShadow: `0 0 0px ${GOLD}00`,
+                  transition: 'transform 200ms ease, box-shadow 200ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 10px ${GOLD}35`
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0px ${GOLD}00`
+                }}
               >
                 {build.typeIcon}
               </div>
@@ -333,15 +458,17 @@ function QuickActions() {
           <Link
             key={a.href + a.title}
             href={a.href}
-            className="group rounded-2xl border border-white/[0.08] p-4 flex flex-col gap-2 transition-all duration-200 hover:border-[#FFB81C]/30 hover:shadow-lg relative overflow-hidden"
+            className="group rounded-2xl border border-white/[0.08] p-4 flex flex-col gap-2 transition-all duration-200 hover:border-[#FFB81C]/30 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
             style={{ background: '#111111' }}
           >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+            {/* Radial hover glow */}
+            <div
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
               style={{ background: `radial-gradient(circle at 0% 0%, ${GOLD}08 0%, transparent 70%)` }}
             />
             <div className="flex items-center justify-between">
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-colors"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-all duration-200 group-hover:scale-110"
                 style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}18` }}
               >
                 {a.icon}
@@ -376,6 +503,40 @@ function QuickActions() {
 
 // ─── Achievement Progress ─────────────────────────────────────────────────────
 
+function AchievementBar({ pct }: { pct: number }) {
+  const barRef = useRef<HTMLDivElement>(null)
+  const [animated, setAnimated] = useState(false)
+
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !animated) {
+          setAnimated(true)
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [animated])
+
+  return (
+    <div ref={barRef} className="flex-1 h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
+      <div
+        className="h-full rounded-full"
+        style={{
+          width: animated ? `${pct}%` : '0%',
+          background: `linear-gradient(90deg, ${GOLD}99, ${GOLD})`,
+          transition: animated ? 'width 900ms cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+          boxShadow: animated && pct > 10 ? `0 0 6px ${GOLD}50` : 'none',
+        }}
+      />
+    </div>
+  )
+}
+
 function AchievementProgress({ achievements }: { achievements: Achievement[] }) {
   if (achievements.length === 0) return null
 
@@ -383,9 +544,9 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-bold text-white">Next Achievements</h2>
-        <Link href="/achievements" className="text-[11px] font-semibold transition-colors" style={{ color: GOLD }}>
-          View all →
-        </Link>
+        <span className="text-[11px] font-semibold" style={{ color: GOLD }}>
+          Progress
+        </span>
       </div>
       <div className="space-y-3">
         {achievements.map((a) => {
@@ -417,12 +578,7 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${GOLD}99, ${GOLD})` }}
-                  />
-                </div>
+                <AchievementBar pct={pct} />
                 <span className="text-[10px] text-gray-500 tabular-nums flex-shrink-0">
                   {a.current}/{a.target}
                 </span>
@@ -438,6 +594,8 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent, initialPrompt }: Props) {
+  useKeyframesOnce()
+
   const { data: tokenData } = useSWR<TokenData>('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
   const { data: statsData } = useSWR<DashboardStats>('/api/dashboard/stats', fetcher, { refreshInterval: 60000 })
   const { data: buildsData } = useSWR<RecentBuildsData>('/api/dashboard/recent-builds', fetcher, { refreshInterval: 60000 })
@@ -479,17 +637,31 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
         {/* ── Welcome Header ─────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div
+          className="fj-animate flex items-start justify-between gap-4 flex-wrap"
+          style={{ animation: 'fj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0ms both' }}
+        >
           <div>
             <h1 className="text-3xl font-bold text-white">
               Welcome back,{' '}
-              <span style={{ color: GOLD }}>{firstName}</span>
+              <span
+                style={{
+                  color: GOLD,
+                  display: 'inline-block',
+                  animation: 'fj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 80ms both',
+                }}
+              >
+                {firstName}
+              </span>
             </h1>
-            <p className="text-gray-500 text-sm mt-1.5">
+            <p
+              className="text-gray-500 text-sm mt-1.5"
+              style={{ animation: 'fj-fade-in 0.5s ease 180ms both' }}
+            >
               {currentDate || <span className="opacity-0">loading</span>}
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3 flex-shrink-0" style={{ animation: 'fj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 120ms both' }}>
             <span
               className="text-[11px] font-bold px-3 py-1.5 rounded-full border"
               style={{ color: GOLD, borderColor: `${GOLD}35`, background: `${GOLD}10` }}
@@ -512,8 +684,12 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
         {/* ── Onboarding Prompt Banner ───────────────────────────────────── */}
         {initialPrompt && (
           <div
-            className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border p-5"
-            style={{ background: `${GOLD}08`, borderColor: `${GOLD}30` }}
+            className="fj-animate flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border p-5"
+            style={{
+              background: `${GOLD}08`,
+              borderColor: `${GOLD}30`,
+              animation: 'fj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 160ms both',
+            }}
           >
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.1em] mb-1" style={{ color: GOLD }}>
@@ -537,28 +713,34 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
         )}
 
         {/* ── Starter Prompt Pills ───────────────────────────────────────── */}
-        <div className="flex flex-wrap gap-2">
-          {STARTER_PROMPTS.map((prompt) => (
+        <div
+          className="fj-animate flex flex-wrap gap-2"
+          style={{ animation: 'fj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 200ms both' }}
+        >
+          {STARTER_PROMPTS.map((prompt, i) => (
             <Link
               key={prompt}
               href={`/editor?prompt=${encodeURIComponent(prompt)}`}
-              className="group text-[12px] px-3 py-1.5 rounded-lg border transition-all duration-150"
+              className="relative text-[12px] px-3 py-1.5 rounded-lg border transition-all duration-200"
               style={{
                 background: 'rgba(255,255,255,0.04)',
                 borderColor: 'rgba(255,255,255,0.08)',
                 color: '#71717A',
+                animationDelay: `${240 + i * 40}ms`,
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget
                 el.style.background = 'rgba(255,184,28,0.08)'
-                el.style.borderColor = 'rgba(255,184,28,0.2)'
+                el.style.borderColor = 'rgba(255,184,28,0.25)'
                 el.style.color = GOLD
+                el.style.boxShadow = `0 0 14px ${GOLD}28`
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget
                 el.style.background = 'rgba(255,255,255,0.04)'
                 el.style.borderColor = 'rgba(255,255,255,0.08)'
                 el.style.color = '#71717A'
+                el.style.boxShadow = 'none'
               }}
             >
               {prompt}
@@ -568,31 +750,43 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
         {/* ── Stat Cards ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard
-            label="Token Balance"
-            value={liveBalance}
-            icon="⚡"
-            sub={`${liveSpent.toLocaleString()} spent lifetime`}
-          />
-          <StatCard
-            label="Builds This Week"
-            value={buildsThisWeek}
-            icon="🔨"
-            sub="Across all projects"
-            sparkColor="#34D399"
-          />
-          <StatCard
-            label="Active Projects"
-            value={activeProjects}
-            icon="🗂️"
-            sparkColor="#60A5FA"
-          />
-          <StatCard
-            label="Streak Days"
-            value={streakDays}
-            icon="🔥"
-            sparkColor="#F59E0B"
-          />
+          {[
+            <StatCard
+              key="balance"
+              label="Token Balance"
+              value={liveBalance}
+              icon="⚡"
+              sub={`${liveSpent.toLocaleString()} spent lifetime`}
+              primary
+            />,
+            <StatCard
+              key="builds"
+              label="Builds This Week"
+              value={buildsThisWeek}
+              icon="🔨"
+              sub="Across all projects"
+              sparkColor="#34D399"
+            />,
+            <StatCard
+              key="projects"
+              label="Active Projects"
+              value={activeProjects}
+              icon="🗂️"
+              sparkColor="#7C3AED"
+              royalAccent
+            />,
+            <StatCard
+              key="streak"
+              label="Streak Days"
+              value={streakDays}
+              icon="🔥"
+              sparkColor="#F59E0B"
+            />,
+          ].map((card, i) => (
+            <div key={i} className="fj-animate" style={staggerStyle(i, 280)}>
+              {card}
+            </div>
+          ))}
         </div>
 
         {/* ── Body Grid ──────────────────────────────────────────────────── */}
@@ -600,38 +794,48 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
           {/* Left 2/3 */}
           <div className="xl:col-span-2 space-y-6">
-            <ActivityChart activityVals={activityVals} />
-            <RecentBuilds builds={recentBuilds} />
+            <div className="fj-animate" style={staggerStyle(0, 450)}>
+              <ActivityChart activityVals={activityVals} />
+            </div>
+            <div className="fj-animate" style={staggerStyle(1, 450)}>
+              <RecentBuilds builds={recentBuilds} />
+            </div>
           </div>
 
           {/* Right 1/3 */}
           <div className="space-y-6">
-            <QuickActions />
-            <AchievementProgress achievements={[]} />
+            <div className="fj-animate" style={staggerStyle(2, 450)}>
+              <QuickActions />
+            </div>
+            <div className="fj-animate" style={staggerStyle(3, 450)}>
+              <AchievementProgress achievements={[]} />
+            </div>
 
             {/* Token CTA for FREE users */}
             {subscription === 'FREE' && (
-              <section>
-                <div
-                  className="rounded-2xl border p-5"
-                  style={{ background: '#111111', borderColor: `${GOLD}25` }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span style={{ color: GOLD }}>⚡</span>
-                    <p className="text-sm font-bold text-white">Running low?</p>
-                  </div>
-                  <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-                    Upgrade to Pro for unlimited tokens and priority AI generation.
-                  </p>
-                  <Link
-                    href="/billing"
-                    className="block text-center w-full py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
-                    style={{ background: GOLD }}
+              <div className="fj-animate" style={staggerStyle(4, 450)}>
+                <section>
+                  <div
+                    className="rounded-2xl border p-5"
+                    style={{ background: '#111111', borderColor: `${GOLD}25` }}
                   >
-                    Upgrade to Pro
-                  </Link>
-                </div>
-              </section>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span style={{ color: GOLD }}>⚡</span>
+                      <p className="text-sm font-bold text-white">Running low?</p>
+                    </div>
+                    <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
+                      Upgrade to Pro for unlimited tokens and priority AI generation.
+                    </p>
+                    <Link
+                      href="/billing"
+                      className="block text-center w-full py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
+                      style={{ background: GOLD }}
+                    >
+                      Upgrade to Pro
+                    </Link>
+                  </div>
+                </section>
+              </div>
             )}
           </div>
         </div>

@@ -46,57 +46,6 @@ const fetcher = (url: string) =>
 const fmt = (cents: number) =>
   `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-// ─── Demo data — shown when API errors or not yet connected ──────────────────
-
-function makeSale(id: string, title: string, priceCents: number, daysAgo: number, status: string): Sale {
-  const creatorPayout = Math.round(priceCents * 0.7)
-  const platformFee   = priceCents - creatorPayout
-  const d = new Date(Date.now() - daysAgo * 86_400_000)
-  return {
-    id,
-    amountCents: priceCents,
-    platformFeeCents: platformFee,
-    creatorPayoutCents: creatorPayout,
-    payoutStatus: status,
-    createdAt: d.toISOString(),
-    template: { id: `t-${id}`, title },
-  }
-}
-
-const DEMO_SALES: Sale[] = [
-  makeSale('s1',  'Combat System v2',       1999, 1,  'PAID'),
-  makeSale('s2',  'Modern UI Kit',           999, 2,  'PAID'),
-  makeSale('s3',  'Combat System v2',       1999, 4,  'PAID'),
-  makeSale('s4',  'Tycoon Framework',       2499, 5,  'PAID'),
-  makeSale('s5',  'Modern UI Kit',           999, 7,  'PAID'),
-  makeSale('s6',  'Combat System v2',       1999, 9,  'PAID'),
-  makeSale('s7',  'Inventory UI Pack',       799, 11, 'PENDING'),
-  makeSale('s8',  'Tycoon Framework',       2499, 13, 'PAID'),
-  makeSale('s9',  'Combat System v2',       1999, 15, 'PAID'),
-  makeSale('s10', 'Modern UI Kit',           999, 18, 'PROCESSING'),
-  makeSale('s11', 'Tycoon Framework',       2499, 20, 'PAID'),
-  makeSale('s12', 'Combat System v2',       1999, 22, 'PAID'),
-  makeSale('s13', 'Inventory UI Pack',       799, 25, 'PAID'),
-  makeSale('s14', 'Modern UI Kit',           999, 27, 'PAID'),
-  makeSale('s15', 'Combat System v2',       1999, 29, 'PAID'),
-]
-
-const DEMO_TOTAL_CENTS = DEMO_SALES.reduce((sum, s) => sum + s.creatorPayoutCents, 0)  // ~$24.50
-const DEMO_PENDING_CENTS = DEMO_SALES
-  .filter(s => s.payoutStatus !== 'PAID')
-  .reduce((sum, s) => sum + s.creatorPayoutCents, 0)
-
-const DEMO: EarningsData = {
-  connected: true,
-  chargesEnabled: true,
-  payoutsEnabled: true,
-  detailsSubmitted: true,
-  pendingBalanceCents: DEMO_PENDING_CENTS,
-  totalEarnedCents: DEMO_TOTAL_CENTS,
-  lastPayoutAt: new Date(Date.now() - 14 * 86_400_000).toISOString(),
-  recentSales: DEMO_SALES,
-}
-
 /** Build monthly bar-chart data from recentSales (last 6 months) */
 function buildChartData(sales: Sale[]) {
   const months: Record<string, number> = {}
@@ -140,9 +89,11 @@ export default function EarningsClient() {
   const [onboarding, setOnboarding] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
 
-  const isShowingDemo = !!error || !raw
-  const data: EarningsData = isShowingDemo ? DEMO : raw
-  const chartData = buildChartData(data.recentSales ?? [])
+  const hasError = !!error && !raw
+
+  // Show empty state when the API errors and there is no cached data
+  const data: EarningsData | null = raw ?? null
+  const chartData = buildChartData(data?.recentSales ?? [])
   const chartMax = Math.max(...chartData.map(d => d.value), 10)
 
   async function handleConnectStripe() {
@@ -204,23 +155,39 @@ export default function EarningsClient() {
         )}
       </div>
 
-      {/* ── Demo mode banner ── */}
-      {isShowingDemo && (
-        <div className="bg-[#D4AF37]/8 border border-[#D4AF37]/20 rounded-xl px-4 py-3 text-[#D4AF37]/70 text-sm flex items-center justify-between gap-4">
-          <span>Preview mode — showing demo earnings data. Connect Stripe to see live revenue.</span>
-          {error && (
-            <button
-              onClick={() => mutate()}
-              className="text-xs underline underline-offset-2 hover:text-[#D4AF37] flex-shrink-0"
-            >
-              Retry
-            </button>
-          )}
+      {/* ── API error banner ── */}
+      {hasError && (
+        <div className="bg-red-500/8 border border-red-500/20 rounded-xl px-4 py-3 text-red-400/80 text-sm flex items-center justify-between gap-4">
+          <span>Could not load earnings data. Please try again.</span>
+          <button
+            onClick={() => mutate()}
+            className="text-xs underline underline-offset-2 hover:text-red-300 flex-shrink-0"
+          >
+            Retry
+          </button>
         </div>
       )}
 
-      {/* ── Stripe Connect CTA (not yet connected) ── */}
-      {!data.connected && (
+      {/* ── No data yet — empty state ── */}
+      {!data && !hasError && (
+        <div className="bg-[#141414] border border-white/10 rounded-2xl p-12 text-center">
+          <ShoppingBag size={36} className="text-gray-700 mx-auto mb-4" />
+          <p className="text-white font-semibold text-base mb-1">No earnings yet</p>
+          <p className="text-gray-400 text-sm max-w-xs mx-auto mb-6">
+            Start selling templates on the marketplace to earn revenue.
+          </p>
+          <Link
+            href="/marketplace"
+            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A618] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+          >
+            <ShoppingBag size={13} />
+            Go to Marketplace
+          </Link>
+        </div>
+      )}
+
+      {/* ── Stripe Connect CTA / full dashboard — only when data is available ── */}
+      {data && !data.connected && (
         <div className="bg-[#141414] border border-[#FFB81C]/30 rounded-2xl p-8 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFB81C]/10 mb-4">
             <Zap size={24} className="text-[#FFB81C]" />
@@ -259,7 +226,7 @@ export default function EarningsClient() {
       )}
 
       {/* ── Connected: full dashboard ── */}
-      {data.connected && (
+      {data && data.connected && (
         <>
           {/* Stripe setup incomplete */}
           {!data.chargesEnabled && (

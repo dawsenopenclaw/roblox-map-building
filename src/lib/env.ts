@@ -53,7 +53,7 @@ const serverSchema = z.object({
 
   // ── Auth — Clerk ──────────────────────────────────────────────────────────
   CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
-  CLERK_WEBHOOK_SECRET: z.string().optional(),
+  CLERK_WEBHOOK_SECRET: prodRequired('CLERK_WEBHOOK_SECRET'),
   CLERK_JWT_KEY: z.string().optional(),
 
   // ── Payments — Stripe ─────────────────────────────────────────────────────

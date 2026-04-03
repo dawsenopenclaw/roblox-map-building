@@ -6,17 +6,18 @@ import { motion } from 'framer-motion'
 interface GlowCardProps {
   children: React.ReactNode
   className?: string
-  /** Size of the rotating border glow in degrees-per-second. Default 360 (one full rotation per second). */
+  /** Rotation speed in degrees-per-second. Default 90 (one full rotation per 4s). */
   speed?: number
   /** Whether to show the animated border glow. Default true. */
   glow?: boolean
 }
 
 /**
- * Card with an animated conic-gradient border glow on hover.
+ * Card with an animated conic-gradient gold border glow on hover.
+ * Design system colors: #D4AF37 / #FFD700 / #FFB81C.
  * Respects prefers-reduced-motion — falls back to a static gold border glow.
  */
-export function GlowCard({ children, className = '', glow = true }: GlowCardProps) {
+export function GlowCard({ children, className = '', speed = 90, glow = true }: GlowCardProps) {
   const [angle, setAngle] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
   const [prefersReduced, setPrefersReduced] = useState(false)
@@ -36,13 +37,13 @@ export function GlowCard({ children, className = '', glow = true }: GlowCardProp
     const tick = (timestamp: number) => {
       if (lastRef.current !== null) {
         const delta = timestamp - lastRef.current
-        setAngle((a) => (a + (delta / 1000) * 360) % 360)
+        setAngle((a) => (a + (delta / 1000) * speed) % 360)
       }
       lastRef.current = timestamp
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
-  }, [prefersReduced])
+  }, [prefersReduced, speed])
 
   const stopAnimation = useCallback(() => {
     if (rafRef.current !== null) {
@@ -63,20 +64,17 @@ export function GlowCard({ children, className = '', glow = true }: GlowCardProp
     setAngle(0)
   }
 
-  const borderGlow = glow && isHovered
-    ? prefersReduced
-      ? 'rgba(255,184,28,0.6)'
-      : undefined
-    : 'transparent'
-
   return (
     <motion.div
       onHoverStart={handleHoverStart}
       onHoverEnd={handleHoverEnd}
       className={`relative rounded-2xl ${className}`}
       style={{ isolation: 'isolate' }}
+      whileHover={{
+        transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
+      }}
     >
-      {/* Rotating conic gradient border */}
+      {/* Rotating conic gradient border — gold design system colors */}
       {glow && (
         <div
           aria-hidden="true"
@@ -85,27 +83,27 @@ export function GlowCard({ children, className = '', glow = true }: GlowCardProp
             padding: '1.5px',
             background: isHovered
               ? prefersReduced
-                ? `0 0 0 1.5px rgba(255,184,28,0.6)`
-                : `conic-gradient(from ${angle}deg at 50% 50%, #FFB81C 0deg, #FFD700 60deg, #FFB81C 120deg, transparent 180deg, transparent 360deg)`
+                ? `conic-gradient(#D4AF37, #FFD700, #FFB81C, #D4AF37)`
+                : `conic-gradient(from ${angle}deg at 50% 50%, #D4AF37 0deg, #FFD700 72deg, #FFB81C 144deg, #D4AF37 216deg, transparent 270deg, transparent 360deg)`
               : 'transparent',
             WebkitMask:
               'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
             WebkitMaskComposite: 'xor',
             maskComposite: 'exclude',
-            transition: isHovered ? 'none' : 'background 0.4s ease',
+            transition: isHovered ? 'none' : 'background 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         />
       )}
 
-      {/* Static outer glow */}
+      {/* Outer ambient glow */}
       {glow && isHovered && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 rounded-[inherit] transition-opacity duration-300"
           style={{
             boxShadow: prefersReduced
-              ? `0 0 20px 4px rgba(255,184,28,0.25)`
-              : `0 0 32px 6px rgba(255,184,28,0.18)`,
+              ? `0 0 20px 4px rgba(212,175,55,0.28)`
+              : `0 0 36px 6px rgba(212,175,55,0.16), 0 0 72px 12px rgba(212,175,55,0.06)`,
             opacity: isHovered ? 1 : 0,
           }}
         />

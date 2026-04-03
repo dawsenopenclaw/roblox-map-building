@@ -17,7 +17,7 @@ export const SUBSCRIPTION_TIERS = {
     tokensPerMonth: 2000,
     features: ['2,000 tokens/month', 'Voice-to-game', 'Image-to-map', 'Email support'],
     stripePriceIdMonthly: serverEnv.STRIPE_HOBBY_PRICE_ID || '',
-    stripePriceIdYearly: process.env.STRIPE_HOBBY_YEARLY_PRICE_ID || '',
+    stripePriceIdYearly: serverEnv.STRIPE_HOBBY_YEARLY_PRICE_ID || '',
   },
   CREATOR: {
     name: 'Creator',

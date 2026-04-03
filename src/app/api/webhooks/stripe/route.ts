@@ -173,13 +173,17 @@ export async function POST(req: NextRequest) {
 
         // 10% charity donation on all real payments
         if (isPaid && session.amount_total && session.amount_total > 0) {
-          await processDonation({
-            userId,
-            paymentAmountCents: session.amount_total,
-            sourcePurchaseId: session.id,
-          }).catch(() => {
-            // Non-blocking side effect
-          })
+          if (!process.env.STRIPE_CHARITY_ACCOUNT_ID) {
+            console.warn('[stripe-webhook] STRIPE_CHARITY_ACCOUNT_ID not set — skipping charity donation for session', session.id)
+          } else {
+            await processDonation({
+              userId,
+              paymentAmountCents: session.amount_total,
+              sourcePurchaseId: session.id,
+            }).catch(() => {
+              // Non-blocking side effect
+            })
+          }
         }
         break
       }
@@ -213,14 +217,26 @@ export async function POST(req: NextRequest) {
           await earnTokens(userId, allowance, 'SUBSCRIPTION_GRANT', `Monthly ${sub.tier} token grant`, { invoiceId: invoice.id })
         }
 
+        // Reactivate subscriptions that were PAST_DUE — payment has now cleared
+        if (sub.status === 'PAST_DUE') {
+          await db.subscription.update({
+            where: { id: sub.id },
+            data: { status: 'ACTIVE' },
+          })
+        }
+
         // Charity donation on recurring billing
-        await processDonation({
-          userId,
-          paymentAmountCents: invoice.amount_paid,
-          sourcePurchaseId: invoice.id,
-        }).catch(() => {
-          // Non-blocking side effect
-        })
+        if (!process.env.STRIPE_CHARITY_ACCOUNT_ID) {
+          console.warn('[stripe-webhook] STRIPE_CHARITY_ACCOUNT_ID not set — skipping charity donation for invoice', invoice.id)
+        } else {
+          await processDonation({
+            userId,
+            paymentAmountCents: invoice.amount_paid,
+            sourcePurchaseId: invoice.id,
+          }).catch(() => {
+            // Non-blocking side effect
+          })
+        }
         break
       }
 
@@ -513,6 +529,19 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account
+        await db.creatorAccount.updateMany({
+          where: { stripeAccountId: account.id },
+          data: {
+            chargesEnabled: account.charges_enabled,
+            payoutsEnabled: account.payouts_enabled,
+            detailsSubmitted: account.details_submitted,
+          },
+        })
+        break
+      }
+
       // Refund handling — reverse tokens and mark purchase for review
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge
@@ -576,9 +605,15 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'stripe', eventType: event.type },
       extra: { eventId: event.id },
     })
-    // Return 200 so Stripe does not retry — the error is already captured in Sentry.
-    // A 5xx causes Stripe to redeliver, which risks double-crediting tokens or
-    // double-processing donations if any DB writes already committed.
+    // Transient infrastructure errors (DB connection, timeout, network) should
+    // return 500 so Stripe retries delivery — the event was not processed.
+    // Permanent logic/validation errors return 200 to stop retry loops, since
+    // redelivery cannot fix a bad event or missing metadata.
+    const isTransient =
+      /connect|timeout|ECONNREFUSED|P1001/i.test(message)
+    if (isTransient) {
+      return NextResponse.json({ error: 'transient_error' }, { status: 500 })
+    }
     return NextResponse.json({ received: true })
   }
 

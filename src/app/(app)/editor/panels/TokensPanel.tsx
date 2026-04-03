@@ -3,13 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 
-const RECENT_USAGE = [
-  { cmd: 'Build castle with moat',   tokens: 42 },
-  { cmd: 'Add NPC patrol system',    tokens: 38 },
-  { cmd: 'Generate forest biome',    tokens: 51 },
-  { cmd: 'Create race track layout', tokens: 29 },
-  { cmd: 'Design dungeon entrance',  tokens: 35 },
-]
+const RECENT_USAGE: { cmd: string; tokens: number }[] = []
 
 export interface TokensPanelProps {
   tokensUsed: number
@@ -140,19 +134,25 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
       {/* Recent usage */}
       <div>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Recent Usage</p>
-        <div className="space-y-1">
-          {RECENT_USAGE.map(({ cmd, tokens }) => (
-            <div key={cmd} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/4 transition-colors">
-              <p className="text-[11px] text-gray-300 truncate flex-1 mr-2">{cmd}</p>
-              <span
-                className="text-[10px] font-medium flex-shrink-0"
-                style={{ color: `${accentColor}99` }}
-              >
-                {tokens}t
-              </span>
-            </div>
-          ))}
-        </div>
+        {RECENT_USAGE.length === 0 ? (
+          <p className="text-[11px] text-gray-500 text-center py-3">
+            Usage tracking coming soon
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {RECENT_USAGE.map(({ cmd, tokens }) => (
+              <div key={cmd} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/4 transition-colors">
+                <p className="text-[11px] text-gray-300 truncate flex-1 mr-2">{cmd}</p>
+                <span
+                  className="text-[10px] font-medium flex-shrink-0"
+                  style={{ color: `${accentColor}99` }}
+                >
+                  {tokens}t
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

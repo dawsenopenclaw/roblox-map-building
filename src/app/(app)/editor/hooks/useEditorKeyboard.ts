@@ -2,30 +2,53 @@
 
 import { useEffect, useCallback } from 'react'
 
-interface KeyboardActions {
-  focusChat: () => void
+export interface KeyboardActions {
+  openCommandPalette: () => void
   toggleViewport: () => void
   closeSidebar: () => void
-  sendMessage?: () => void
+  toggleSidebar: () => void
+  toggleShortcutsHelp: () => void
+  focusChatInput: () => void
+  newChat?: () => void
 }
+
+/** All registered shortcuts — used for the help overlay */
+export const SHORTCUTS = [
+  { keys: ['Ctrl', 'K'], label: 'Command palette', category: 'Navigation' },
+  { keys: ['Ctrl', '/'], label: 'Focus chat input', category: 'Navigation' },
+  { keys: ['Ctrl', '\\'], label: 'Toggle viewport expand', category: 'Viewport' },
+  { keys: ['Ctrl', 'B'], label: 'Toggle sidebar', category: 'Navigation' },
+  { keys: ['Ctrl', 'N'], label: 'New chat', category: 'Chat' },
+  { keys: ['Esc'], label: 'Close panel / blur input', category: 'Navigation' },
+  { keys: ['?'], label: 'Toggle shortcuts help', category: 'Navigation' },
+  { keys: ['Enter'], label: 'Send message', category: 'Chat' },
+  { keys: ['Shift', 'Enter'], label: 'New line in chat', category: 'Chat' },
+] as const
 
 /**
  * Global keyboard shortcuts for the editor.
- *
- * Ctrl/Cmd + /  → Focus chat input
- * Ctrl/Cmd + K  → Focus chat (command palette style)
- * Ctrl/Cmd + \  → Toggle viewport expand
- * Escape        → Close sidebar panel
  */
 export function useEditorKeyboard(actions: KeyboardActions) {
   const handler = useCallback(
     (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
+      const target = e.target as HTMLElement
+      const isInput =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement ||
+        target?.getAttribute('contenteditable') === 'true'
 
-      // Ctrl/Cmd + / or Ctrl/Cmd + K → focus chat
-      if (mod && (e.key === '/' || e.key === 'k')) {
+      // Ctrl/Cmd + K → command palette
+      if (mod && e.key === 'k') {
         e.preventDefault()
-        actions.focusChat()
+        actions.openCommandPalette()
+        return
+      }
+
+      // Ctrl/Cmd + / → focus chat
+      if (mod && e.key === '/') {
+        e.preventDefault()
+        actions.focusChatInput()
         return
       }
 
@@ -36,17 +59,31 @@ export function useEditorKeyboard(actions: KeyboardActions) {
         return
       }
 
-      // Escape → close sidebar (only if not in an input)
-      if (e.key === 'Escape') {
-        const active = document.activeElement
-        const isInput =
-          active instanceof HTMLTextAreaElement ||
-          active instanceof HTMLInputElement ||
-          active?.getAttribute('contenteditable') === 'true'
+      // Ctrl/Cmd + B → toggle sidebar
+      if (mod && e.key === 'b') {
+        e.preventDefault()
+        actions.toggleSidebar()
+        return
+      }
 
+      // Ctrl/Cmd + N → new chat
+      if (mod && e.key === 'n' && actions.newChat) {
+        e.preventDefault()
+        actions.newChat()
+        return
+      }
+
+      // ? → toggle shortcuts help (only when not in input)
+      if (e.key === '?' && !isInput) {
+        e.preventDefault()
+        actions.toggleShortcutsHelp()
+        return
+      }
+
+      // Escape → close things
+      if (e.key === 'Escape') {
         if (isInput) {
-          // Blur the input instead of closing sidebar
-          ;(active as HTMLElement).blur()
+          ;(target as HTMLElement).blur()
         } else {
           actions.closeSidebar()
         }

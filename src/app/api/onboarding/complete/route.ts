@@ -88,8 +88,10 @@ export async function POST(req: NextRequest) {
         await tx.subscription.create({
           data: { userId: user.id, stripeCustomerId: `pending_${user.id}`, tier: 'FREE', status: 'ACTIVE' },
         })
-        await tx.tokenBalance.create({
-          data: { userId: user.id, balance: 100, lifetimeEarned: 100 },
+        await tx.tokenBalance.upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, balance: 100, lifetimeEarned: 100 },
+          update: {}, // already exists — first writer wins, leave balance untouched
         })
       })
     }

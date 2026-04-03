@@ -30,16 +30,16 @@ export function AnimatedCard({
       initial={{ opacity: 0, y: 16 }}
       animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
       transition={{
-        duration: 0.35,
+        duration: 0.4,
         delay: index * 0.06,
-        ease: [0.25, 0.46, 0.45, 0.94],
+        ease: [0.16, 1, 0.3, 1],
       }}
       whileHover={{
-        y: -2,
+        y: -3,
         boxShadow: noGlow
-          ? '0 8px 24px rgba(0,0,0,0.3)'
-          : '0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,184,28,0.25)',
-        transition: { duration: 0.18, ease: 'easeOut' },
+          ? '0 12px 32px rgba(0,0,0,0.4)'
+          : '0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.28), 0 0 24px rgba(212,175,55,0.08)',
+        transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
       }}
       whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
       className={className}

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { createMetadata } from '@/lib/metadata'
 
@@ -49,115 +50,265 @@ const POSTS: Post[] = [
   },
 ]
 
-const CATEGORY_COLOR: Record<string, string> = {
-  Announcement: 'text-[#FFB81C] bg-[#FFB81C]/10',
-  'Deep Dive': 'text-purple-400 bg-purple-400/10',
-  Tutorial: 'text-blue-400 bg-blue-400/10',
+const CATEGORIES = ['All', 'Announcement', 'Deep Dive', 'Tutorial']
+
+const CATEGORY_META: Record<string, { bg: string; color: string; border: string }> = {
+  Announcement: { bg: 'rgba(255,184,28,0.08)', color: '#FFB81C', border: 'rgba(255,184,28,0.2)' },
+  'Deep Dive':  { bg: 'rgba(168,85,247,0.08)', color: '#c084fc', border: 'rgba(192,132,252,0.2)' },
+  Tutorial:     { bg: 'rgba(59,130,246,0.08)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' },
 }
+
+// Category pill icons (SVG)
+const CATEGORY_ICONS: Record<string, ReactNode> = {
+  Announcement: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 8.01c0-2.21-4.03-4-9-4S4 5.8 4 8.01c0 .95.58 1.84 1.58 2.56L5 14l3.24-1.62C9.35 12.77 10.65 13 12 13c4.97 0 9-1.79 9-4z"/>
+      <path d="M4 13c0 2.21 4.03 4 9 4 1.35 0 2.65-.23 3.76-.62L20 18l-.58-3.43C20.42 13.85 21 12.96 21 12"/>
+    </svg>
+  ),
+  'Deep Dive': (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  ),
+  Tutorial: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  ),
+}
+
+const [featured, ...rest] = POSTS
 
 export default function BlogIndexPage() {
   return (
     <div className="min-h-screen text-white" style={{ background: '#050810' }}>
-      {/* Hero */}
+
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section
-        className="relative border-b border-white/[0.06] px-6 pt-32 pb-16 text-center overflow-hidden"
-        style={{ background: '#0A0E27' }}
+        className="relative overflow-hidden border-b px-6 pb-16 pt-32 text-center"
+        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0A0E27' }}
       >
-        {/* Radial gold glow */}
         <div
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 60% 40% at 50% 80%, rgba(255,184,28,0.10) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255,184,28,0.10) 0%, transparent 70%)',
           }}
         />
-
         <div className="relative z-10">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#FFB81C]">
+          <p
+            className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'rgba(212,175,55,0.6)' }}
+          >
             Blog
           </p>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">
+          <h1
+            className="mb-4 font-bold tracking-tight"
+            style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
+          >
             Ideas, tutorials, updates
           </h1>
-          <p className="mx-auto max-w-md text-base text-white/45">
+          <p className="mx-auto max-w-md text-base" style={{ color: '#71717A' }}>
             Deep dives on AI game development, product announcements, and tutorials from the
             ForjeGames team.
           </p>
+
+          {/* Category filter pills */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            {CATEGORIES.map((cat) => {
+              const isAll = cat === 'All'
+              const meta = isAll ? null : CATEGORY_META[cat]
+              return (
+                <span
+                  key={cat}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all"
+                  style={
+                    isAll
+                      ? {
+                          background: 'rgba(212,175,55,0.1)',
+                          color: '#D4AF37',
+                          borderColor: 'rgba(212,175,55,0.3)',
+                        }
+                      : {
+                          background: meta?.bg ?? 'rgba(255,255,255,0.04)',
+                          color: meta?.color ?? '#71717A',
+                          borderColor: meta?.border ?? 'rgba(255,255,255,0.1)',
+                        }
+                  }
+                >
+                  {!isAll && CATEGORY_ICONS[cat]}
+                  {cat}
+                </span>
+              )
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Post cards */}
-      <section className="mx-auto max-w-4xl px-6 py-16">
-        <div className="flex flex-col gap-6">
-          {POSTS.map((post) => (
-            <Link
-              key={post.slug}
-              href={`/blog/${post.slug}`}
-              className="group flex flex-col gap-4 rounded-2xl p-7 transition-all duration-200 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)] hover:[border-color:rgba(255,184,28,0.25)] sm:flex-row"
-              style={{
-                background: '#0F1535',
-                border: '1px solid #1A2550',
-              }}
-            >
-              {/* Category dot */}
-              <div className="hidden h-2 w-2 shrink-0 translate-y-2.5 rounded-full bg-[#FFB81C] sm:block" />
-
-              <div className="flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2.5">
+      {/* ── Featured post ────────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-4xl px-6 pt-14">
+        {featured && (
+          <Link
+            href={`/blog/${featured.slug}`}
+            className="group block rounded-2xl p-8 transition-all duration-200 sm:p-10 card-hover"
+            style={{
+              background: 'rgba(255,255,255,0.025)',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }}
+          >
+            {/* Top row */}
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              {(() => {
+                const meta = CATEGORY_META[featured.category]
+                return (
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${CATEGORY_COLOR[post.category]}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ background: meta.bg, color: meta.color, borderColor: meta.border }}
                   >
+                    {CATEGORY_ICONS[featured.category]}
+                    {featured.category}
+                  </span>
+                )
+              })()}
+              <span className="rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ background: 'rgba(212,175,55,0.08)', color: '#D4AF37', borderColor: 'rgba(212,175,55,0.2)' }}>
+                Featured
+              </span>
+              <span className="text-xs" style={{ color: '#52525B' }}>{featured.date}</span>
+              <span className="text-xs" style={{ color: '#52525B' }}>{featured.readTime}</span>
+            </div>
+
+            <h2
+              className="mb-3 font-bold tracking-tight transition-colors group-hover:text-[#FFB81C]"
+              style={{ fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', lineHeight: 1.15, color: '#FAFAFA' }}
+            >
+              {featured.title}
+            </h2>
+            <p className="mb-6 max-w-2xl text-sm leading-relaxed" style={{ color: '#71717A' }}>
+              {featured.excerpt}
+            </p>
+
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+              style={{ color: 'rgba(255,184,28,0.6)' }}
+            >
+              Read article
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </span>
+          </Link>
+        )}
+      </section>
+
+      {/* ── Remaining posts grid ─────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-4xl px-6 py-10">
+        <div className="grid gap-5 sm:grid-cols-2">
+          {rest.map((post) => {
+            const meta = CATEGORY_META[post.category]
+            return (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="group flex flex-col rounded-2xl p-6 transition-all duration-200 hover:-translate-y-1 card-hover"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}
+              >
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                    style={{ background: meta.bg, color: meta.color, borderColor: meta.border }}
+                  >
+                    {CATEGORY_ICONS[post.category]}
                     {post.category}
                   </span>
-                  <span className="text-xs text-white/25">{post.date}</span>
-                  <span className="text-xs text-white/25">{post.readTime}</span>
+                  <span className="text-xs" style={{ color: '#52525B' }}>{post.readTime}</span>
                 </div>
 
-                <h2 className="mb-2 text-lg font-semibold leading-snug text-white transition-colors group-hover:text-[#FFB81C]">
+                <h2 className="mb-2 flex-1 text-base font-semibold leading-snug transition-colors group-hover:text-[#FFB81C]" style={{ color: '#FAFAFA' }}>
                   {post.title}
                 </h2>
-                <p className="text-sm leading-relaxed text-white/45">{post.excerpt}</p>
+                <p className="mb-4 text-sm leading-relaxed" style={{ color: '#71717A' }}>
+                  {post.excerpt}
+                </p>
 
-                <div className="mt-4 text-xs font-medium text-[#FFB81C]/50 transition-colors group-hover:text-[#FFB81C]">
-                  Read article →
+                <div className="mt-auto flex items-center justify-between">
+                  <span className="text-xs" style={{ color: '#52525B' }}>{post.date}</span>
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors group-hover:text-[#FFB81C]"
+                    style={{ color: 'rgba(255,184,28,0.5)' }}
+                  >
+                    Read
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </span>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            )
+          })}
         </div>
       </section>
 
-      {/* Newsletter CTA */}
+      {/* ── Newsletter ───────────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-4xl px-6 pb-24">
         <div
-          className="rounded-2xl p-8 sm:p-10"
-          style={{ background: '#0F1535', border: '1px solid #1A2550' }}
+          className="relative overflow-hidden rounded-2xl p-8 sm:p-10"
+          style={{
+            background: 'rgba(255,255,255,0.025)',
+            border: '1px solid rgba(255,255,255,0.07)',
+          }}
         >
-          <div className="mb-1 text-xs font-semibold uppercase tracking-widest text-[#FFB81C]">
-            Newsletter
-          </div>
-          <h2 className="mb-2 text-2xl font-bold text-white">Stay in the loop</h2>
-          <p className="mb-6 text-sm text-white/45">
-            Get notified when we publish new tutorials and product updates.
-          </p>
+          {/* Glow */}
+          <div
+            className="pointer-events-none absolute inset-0 rounded-2xl"
+            style={{
+              background: 'radial-gradient(ellipse 60% 80% at 100% 50%, rgba(212,175,55,0.05) 0%, transparent 60%)',
+            }}
+          />
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              type="email"
-              placeholder="you@example.com"
-              className="flex-1 rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-colors focus:ring-2 focus:ring-[#FFB81C]/40"
-              style={{
-                background: '#060B1E',
-                border: '1px solid #1A2550',
-              }}
-            />
-            <button
-              type="button"
-              className="shrink-0 rounded-xl px-6 py-3 text-sm font-semibold text-black transition-opacity hover:opacity-90"
-              style={{ background: '#FFB81C' }}
-            >
-              Subscribe
-            </button>
+          <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-sm">
+              <p
+                className="mb-1 text-[12px] font-semibold uppercase tracking-[0.12em]"
+                style={{ color: 'rgba(212,175,55,0.6)' }}
+              >
+                Newsletter
+              </p>
+              <h2 className="mb-1.5 text-xl font-bold" style={{ color: '#FAFAFA' }}>
+                Stay in the loop
+              </h2>
+              <p className="text-sm" style={{ color: '#71717A' }}>
+                New tutorials and product updates — delivered when they ship.
+              </p>
+            </div>
+
+            <div className="flex w-full max-w-sm flex-col gap-2.5 sm:flex-row">
+              <input
+                type="email"
+                placeholder="you@example.com"
+                className="flex-1 rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#FAFAFA',
+                }}
+              />
+              <button
+                type="button"
+                className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition-opacity hover:opacity-90"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  color: '#09090b',
+                }}
+              >
+                Subscribe
+              </button>
+            </div>
           </div>
         </div>
       </section>

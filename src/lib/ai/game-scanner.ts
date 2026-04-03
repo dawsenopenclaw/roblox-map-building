@@ -17,17 +17,17 @@ import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { db } from '@/lib/db'
 import { trackCost } from '@/lib/cost-tracker'
+import { callAI } from './provider'
 
-// ── Anthropic client (lazy) ──────────────────────────────────────────────────
+// ── Anthropic client (kept for optional custom-key path only) ─────────────────
+// Primary AI path now uses callAI() → Gemini (primary) + Groq (fallback).
 
 let _claude: Anthropic | null = null
 function getClaude(): Anthropic | null {
+  if (process.env.ANTHROPIC_DISABLED === 'true') return null
   if (_claude) return _claude
   const key = process.env.ANTHROPIC_API_KEY
-  if (!key) {
-    console.warn('[game-scanner] ANTHROPIC_API_KEY is not configured — game scanning disabled')
-    return null
-  }
+  if (!key) return null
   _claude = new Anthropic({ apiKey: key })
   return _claude
 }
@@ -139,12 +139,9 @@ interface ClassifiedGenome {
 }
 
 async function classifyGenome(info: RobloxUniverseInfo): Promise<ClassifiedGenome> {
-  const claude = getClaude()
-  if (!claude) {
-    throw new Error('[game-scanner] ANTHROPIC_API_KEY is not configured — genome classification unavailable')
-  }
+  const systemPrompt = 'You are a Roblox game analyst. Analyze games and return structured JSON classifications.'
 
-  const prompt = `You are a Roblox game analyst. Analyze this game and return a strict JSON response.
+  const userPrompt = `Analyze this Roblox game and return a strict JSON response.
 
 Game: ${info.name}
 Genre: ${info.genre}
@@ -187,19 +184,28 @@ Return ONLY valid JSON matching this exact schema (no markdown, no extra text):
   "recommendations": ["3 to 5 actionable tips to improve or learn from this game"]
 }`
 
-  const response = await claude.messages.create({
-    model:      'claude-haiku-4-5',
-    max_tokens: 1024,
-    messages:   [{ role: 'user', content: prompt }],
-  })
+  // Use Gemini (primary) → Groq (fallback). jsonMode ensures clean JSON output.
+  const raw = await callAI(
+    systemPrompt,
+    [{ role: 'user', content: userPrompt }],
+    { maxTokens: 1024, temperature: 0.3, jsonMode: true },
+  )
 
-  const raw = response.content.find((b) => b.type === 'text')?.text ?? ''
-  const parsed = JSON.parse(raw) as ClassifiedGenome
+  // Strip any accidental markdown fences
+  const jsonText = raw
+    .replace(/^```(?:json)?\n?/m, '')
+    .replace(/\n?```$/m, '')
+    .trim()
+
+  const parsed = JSON.parse(jsonText) as ClassifiedGenome
+
+  // Free models don't report token usage — estimate from text length
+  const estimatedTokens = Math.ceil((systemPrompt.length + userPrompt.length + raw.length) / 4)
 
   return {
     ...parsed,
-    inputTokens:  response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+    inputTokens:  Math.ceil(estimatedTokens * 0.7),
+    outputTokens: Math.ceil(estimatedTokens * 0.3),
   }
 }
 
@@ -234,12 +240,12 @@ export async function scanGame(
     // 2. Classify with Claude
     const genome = await classifyGenome(info)
 
-    // 3. Track cost (haiku pricing: $0.001 / 1K tokens)
+    // 3. Track cost (Gemini/Groq free tier — cost is effectively $0)
     const totalTokens = genome.inputTokens + genome.outputTokens
-    const costUsd     = (totalTokens / 1000) * 0.001
+    const costUsd     = 0
     await trackCost({
       userId,
-      operation:  'claude_haiku',
+      operation:  'gemini_classify',
       costUsd,
       tokensCost: totalTokens,
       metadata:   { scanId: scan.id, placeId },

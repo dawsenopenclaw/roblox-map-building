@@ -202,7 +202,11 @@ export default function TeamSettingsPage() {
   if (teams.length === 0) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <div className="text-4xl mb-4">🔑</div>
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-4">
+          <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+          </svg>
+        </div>
         <p className="text-gray-300 text-sm">You need to be an Owner or Admin to manage team settings.</p>
         <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mt-4 inline-block">
           ← Back to editor
@@ -231,11 +235,11 @@ export default function TeamSettingsPage() {
       {/* Team selector */}
       {teams.length > 1 && (
         <div>
-          <label className="block text-xs text-gray-300 mb-2 font-medium">Team</label>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Team</label>
           <select
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors w-full sm:w-auto"
+            className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors w-full sm:w-auto"
           >
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -310,7 +314,7 @@ export default function TeamSettingsPage() {
                           defaultValue={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
                           disabled={updatingId === member.id}
-                          className="bg-[#1c1c1c] border border-white/10 rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-blue-400/40 transition-colors disabled:opacity-50"
+                          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
@@ -345,12 +349,33 @@ export default function TeamSettingsPage() {
         </p>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { icon: '🔒', label: 'Claim a zone', desc: 'Via Roblox Studio plugin' },
-            { icon: '⏱', label: 'Auto-expire', desc: 'Locks clear after 30min' },
-            { icon: '🔓', label: 'Manual unlock', desc: 'Owner/Admin can unlock any zone' },
+            {
+              icon: (
+                <svg className="w-5 h-5 text-[#FFB81C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              ),
+              label: 'Claim a zone', desc: 'Via Roblox Studio plugin',
+            },
+            {
+              icon: (
+                <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              ),
+              label: 'Auto-expire', desc: 'Locks clear after 30min',
+            },
+            {
+              icon: (
+                <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              ),
+              label: 'Manual unlock', desc: 'Owner/Admin can unlock any zone',
+            },
           ].map((item) => (
-            <div key={item.label} className="bg-[#1c1c1c] rounded-xl p-3 text-center">
-              <span className="text-2xl block mb-1">{item.icon}</span>
+            <div key={item.label} className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 text-center">
+              <div className="flex justify-center mb-2">{item.icon}</div>
               <p className="text-white text-xs font-medium">{item.label}</p>
               <p className="text-gray-500 text-xs mt-0.5">{item.desc}</p>
             </div>

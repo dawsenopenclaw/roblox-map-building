@@ -12,9 +12,10 @@ export async function earnTokens(
   metadata?: Record<string, unknown>
 ) {
   return db.$transaction(async (tx) => {
-    const balance = await tx.tokenBalance.update({
+    const balance = await tx.tokenBalance.upsert({
       where: { userId },
-      data: {
+      create: { userId, balance: amount, lifetimeEarned: amount },
+      update: {
         balance: { increment: amount },
         lifetimeEarned: { increment: amount },
       },
@@ -39,6 +40,12 @@ export async function spendTokens(
   metadata?: Record<string, unknown>
 ) {
   return db.$transaction(async (tx) => {
+    // Block spending for subscriptions that are past due or canceled
+    const sub = await tx.subscription.findUnique({ where: { userId }, select: { status: true } })
+    if (sub?.status === 'PAST_DUE' || sub?.status === 'CANCELED') {
+      throw new Error('Subscription payment overdue')
+    }
+
     // Use updateMany with a balance filter to prevent race-condition overdrafts.
     // This collapses the read-check-write into a single atomic conditional update.
     const updated = await tx.tokenBalance.updateMany({

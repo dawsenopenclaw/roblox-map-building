@@ -1,5 +1,6 @@
-﻿import type { Metadata } from 'next'
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { BackToTop } from './_components/BackToTop'
 
 export const metadata: Metadata = {
   title: 'Legal — ForjeGames',
@@ -14,16 +15,20 @@ const legalLinks = [
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-gray-100">
+    <div className="min-h-screen bg-[#050810] text-[#FAFAFA]">
       {/* Top nav */}
-      <header className="border-b border-white/10 sticky top-0 z-40 bg-[#0A0A0A]/90 backdrop-blur">
+      <header className="border-b border-white/[0.07] sticky top-0 z-40 bg-[#050810]/95 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="text-[#FFB81C] font-bold text-lg tracking-tight">
             ForjeGames
           </Link>
-          <nav className="flex gap-6 text-sm text-gray-300">
+          <nav className="hidden sm:flex gap-6 text-sm text-[#71717A]">
             {legalLinks.map((l) => (
-              <Link key={l.href} href={l.href} className="hover:text-white transition-colors">
+              <Link
+                key={l.href}
+                href={l.href}
+                className="hover:text-[#FAFAFA] transition-colors"
+              >
                 {l.label}
               </Link>
             ))}
@@ -31,18 +36,18 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-12 flex gap-12">
-        {/* Sidebar */}
-        <aside className="hidden lg:block w-56 shrink-0">
-          <div className="sticky top-24 space-y-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+      <div className="max-w-7xl mx-auto px-6 py-16 flex gap-16">
+        {/* Sidebar — page-level TOC injected by each page; this is the nav sidebar */}
+        <aside className="hidden lg:block w-52 shrink-0">
+          <div className="sticky top-24 space-y-px">
+            <p className="text-[10px] font-semibold text-[#52525B] uppercase tracking-widest mb-4 px-3">
               Legal
             </p>
             {legalLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-blue-400 hover:bg-white/5 transition-colors"
+                className="block px-3 py-2 rounded-lg text-sm text-[#71717A] hover:text-[#FFB81C] hover:bg-white/[0.04] transition-colors"
               >
                 {l.label}
               </Link>
@@ -55,11 +60,13 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Footer strip */}
-      <footer className="border-t border-white/10 mt-16 py-8">
-        <div className="max-w-7xl mx-auto px-6 text-center text-sm text-gray-400">
+      <footer className="border-t border-white/[0.06] mt-8 py-8">
+        <div className="max-w-7xl mx-auto px-6 text-center text-sm text-[#52525B]">
           &copy; {new Date().getFullYear()} ForjeGames LLC — Dawsen Porter. All rights reserved.
         </div>
       </footer>
+
+      <BackToTop />
     </div>
   )
 }

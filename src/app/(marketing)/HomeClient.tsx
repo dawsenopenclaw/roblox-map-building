@@ -304,6 +304,8 @@ function EditorMockup() {
           className="flex-1 relative overflow-hidden"
           style={{ background: '#080C1E' }}
         >
+          {/* Scanline overlay — terminal feel */}
+          <div className="scanline-overlay" aria-hidden="true" />
           {/* Grid overlay */}
           <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.6 }} />
 
@@ -409,7 +411,7 @@ function EditorMockup() {
         <span className="text-sm font-mono font-bold" style={{ color: 'rgba(212,175,55,0.5)' }}>&gt;</span>
         <span className="flex-1 text-sm font-mono truncate" style={{ color: '#E4E4E7' }}>
           {typedText}
-          <span className="cursor-blink inline-block w-0.5 h-4 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
+          <span className="cursor-blink-gold inline-block w-0.5 h-4 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
         </span>
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="hidden sm:inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded" style={{
@@ -474,20 +476,38 @@ function BentoCard({ icon, title, description, size = 'normal', children, delay 
 
 /* ─── Pricing card ───────────────────────────────────────────────────────── */
 
-function PricingCard({ name, price, period, features, cta, recommended, description, href = '/editor' }: {
-  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string; href?: string
+function PricingCard({ name, price, period, features, cta, recommended, description, href = '/editor', royalAccent }: {
+  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string; href?: string; royalAccent?: boolean
 }) {
   return (
     <div
-      className={`reveal flex flex-col rounded-2xl p-8 pricing-card ${recommended ? 'pricing-card-recommended' : 'pricing-card-default'} relative overflow-hidden`}
+      className={`reveal flex flex-col rounded-2xl p-8 pricing-card ${recommended ? 'pricing-card-recommended pricing-card-recommended-border' : 'pricing-card-default'} relative overflow-hidden`}
       style={{
-        background: recommended ? 'linear-gradient(145deg, #0E1530 0%, #0B1028 100%)' : '#090D1C',
-        border: recommended ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
+        background: recommended
+          ? 'linear-gradient(145deg, #0E1530 0%, #0B1028 100%)'
+          : royalAccent
+          ? 'linear-gradient(145deg, #0D0B1E 0%, #090D1C 100%)'
+          : '#090D1C',
+        border: recommended
+          ? '1px solid rgba(212,175,55,0.3)'
+          : royalAccent
+          ? '1px solid rgba(124,58,237,0.25)'
+          : '1px solid rgba(255,255,255,0.07)',
         boxShadow: recommended
-          ? '0 0 60px rgba(212,175,55,0.1), 0 8px 32px rgba(0,0,0,0.5)'
+          ? '0 0 60px rgba(212,175,55,0.12), 0 20px 60px rgba(0,0,0,0.6), 0 4px 0 rgba(212,175,55,0.08)'
+          : royalAccent
+          ? '0 0 40px rgba(124,58,237,0.08), 0 4px 20px rgba(0,0,0,0.25)'
           : '0 4px 20px rgba(0,0,0,0.25)',
+        transform: recommended ? 'translateY(-6px)' : undefined,
       }}
     >
+      {/* Royal accent glow orb */}
+      {royalAccent && !recommended && (
+        <div
+          className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.06) 0%, transparent 70%)' }}
+        />
+      )}
       {/* Recommended glow orb */}
       {recommended && (
         <div
@@ -499,16 +519,14 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
       {/* Badge */}
       {recommended && (
         <div className="absolute top-5 right-5">
-          <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full" style={{
-            background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.25)', color: '#D4AF37',
-          }}>
-            Most popular
+          <span className="text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wide badge-shine">
+            Most Popular
           </span>
         </div>
       )}
 
       <div className="relative z-10">
-        <p className="text-sm font-semibold mb-1" style={{ color: recommended ? '#D4AF37' : '#71717A' }}>{name}</p>
+        <p className="text-sm font-semibold mb-1" style={{ color: recommended ? '#D4AF37' : royalAccent ? '#A78BFA' : '#71717A' }}>{name}</p>
         <p className="text-[13px] mb-6" style={{ color: '#52525B' }}>{description}</p>
 
         <div className="mb-8">
@@ -562,11 +580,10 @@ function HowItWorksStep({ n, title, description, icon, delay }: {
       <div className="relative mb-6">
         {/* Number ring */}
         <div
-          className="w-16 h-16 rounded-full flex items-center justify-center"
+          className="w-16 h-16 rounded-full flex items-center justify-center step-number-ring"
           style={{
             background: 'rgba(212,175,55,0.06)',
-            border: '1px solid rgba(212,175,55,0.2)',
-            boxShadow: '0 0 24px rgba(212,175,55,0.08)',
+            border: '1px solid rgba(212,175,55,0.25)',
           }}
         >
           <span className="text-xl font-bold" style={{ color: 'rgba(212,175,55,0.7)' }}>{n}</span>
@@ -603,7 +620,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="relative flex flex-col items-center justify-center text-center overflow-hidden"
-          style={{ minHeight: '100vh', paddingTop: '12vh', paddingBottom: '8vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+          style={{ paddingTop: '10vh', paddingBottom: '4vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
         >
           {/* Deep radial background */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -611,8 +628,8 @@ export default function HomeClient() {
               position: 'absolute', inset: 0,
               background: [
                 'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(212,175,55,0.05) 0%, transparent 70%)',
-                'radial-gradient(ellipse 60% 40% at 20% 80%, rgba(96,165,250,0.03) 0%, transparent 60%)',
-                'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(167,139,250,0.03) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 20% 80%, rgba(99,102,241,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.05) 0%, transparent 60%)',
               ].join(', '),
             }} />
             {/* Subtle grid */}
@@ -648,7 +665,7 @@ export default function HomeClient() {
             >
               Describe it.
               <br />
-              <span className="gradient-text">Watch it build.</span>
+              <span className="gradient-text text-shimmer">Watch it build.</span>
             </h1>
 
             {/* Subheadline */}
@@ -673,11 +690,11 @@ export default function HomeClient() {
                   letterSpacing: '0.01em',
                 }}
               >
-                Start building free
+                Open the Editor
                 <IconArrow size={15} />
               </Link>
               <Link
-                href="/showcase"
+                href="/pricing"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
@@ -685,8 +702,11 @@ export default function HomeClient() {
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                See what gets built
+                View pricing
               </Link>
+              <span className="hidden sm:block text-[11px] mt-2" style={{ color: '#3F3F46' }}>
+                No install. No setup. Just type what you want.
+              </span>
             </div>
 
             <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#71717A' }}>
@@ -694,19 +714,9 @@ export default function HomeClient() {
             </p>
           </div>
 
-          {/* Editor mockup — hero centrepiece */}
-          <div
-            className="reveal reveal-delay-5 mockup-float relative w-full max-w-4xl mx-auto mt-20 px-2"
-            style={{
-              filter: 'drop-shadow(0 32px 64px rgba(0,0,0,0.55)) drop-shadow(0 8px 24px rgba(212,175,55,0.05))',
-            }}
-          >
-            <EditorMockup />
-          </div>
-
           {/* Scroll indicator */}
           <div
-            className="reveal reveal-delay-6 absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 opacity-40"
+            className="reveal reveal-delay-5 mt-12 flex flex-col items-center gap-1.5 opacity-40"
             aria-hidden="true"
           >
             <span className="text-[11px] tracking-widest uppercase" style={{ color: '#52525B' }}>Scroll</span>
@@ -743,10 +753,10 @@ export default function HomeClient() {
               {[
                 { value: 50000, suffix: '+', label: 'Assets generated',     color: '#D4AF37'  },
                 { value: 1200,  suffix: '+', label: 'Games built',          color: '#60A5FA'  },
-                { value: 8400,  suffix: '+', label: 'Active creators',      color: '#A78BFA'  },
+                { value: 8400,  suffix: '+', label: 'Active creators',      color: '#7C3AED'  },
                 { value: 99,    suffix: '%', label: 'Uptime SLA',           color: '#10B981'  },
               ].map(({ value, suffix, label, color }, i) => (
-                <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`}>
+                <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
                   <p
                     className="text-3xl font-bold mb-1 tabular-nums"
                     style={{ color, letterSpacing: '-0.02em' }}
@@ -765,7 +775,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           id="features"
-          className="py-32 px-6 relative"
+          className="py-16 px-6 relative"
           style={{ background: '#050810' }}
         >
           {/* Section background */}
@@ -778,7 +788,7 @@ export default function HomeClient() {
 
           <div className="relative max-w-6xl mx-auto">
             {/* Section header */}
-            <div className="max-w-2xl mb-20">
+            <div className="max-w-2xl mb-12">
               <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
                 Platform
               </p>
@@ -842,7 +852,7 @@ export default function HomeClient() {
                           }}
                         >
                           {msg.text}
-                          {msg.role === 'ai' && <span className="cursor-blink inline-block w-0.5 h-3 ml-1 align-middle" style={{ background: '#D4AF37' }} />}
+                          {msg.role === 'ai' && <span className="cursor-blink-gold inline-block w-0.5 h-3 ml-1 align-middle" style={{ background: '#D4AF37' }} />}
                         </div>
                       </div>
                     ))}
@@ -890,13 +900,14 @@ export default function HomeClient() {
               <div
                 className="reveal reveal-delay-2 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(124,58,237,0.03)',
+                  border: '1px solid rgba(124,58,237,0.14)',
                   minHeight: 260,
+                  boxShadow: '0 0 32px rgba(124,58,237,0.06)',
                 }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-                  style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.12)', color: '#A78BFA' }}>
+                  style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', color: '#A78BFA' }}>
                   <IconSparkle size={22} />
                 </div>
                 <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Workspace Intelligence</h3>
@@ -906,7 +917,7 @@ export default function HomeClient() {
                 <div className="mt-5 flex flex-wrap gap-2">
                   {['Map-aware', 'Script-aware', 'No hallucinations'].map((tag) => (
                     <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full" style={{
-                      background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.12)', color: '#A78BFA',
+                      background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', color: '#A78BFA',
                     }}>{tag}</span>
                   ))}
                 </div>
@@ -1004,18 +1015,22 @@ export default function HomeClient() {
             HOW IT WORKS — horizontal timeline
         ══════════════════════════════════════════════════════════════════ */}
         <section
-          className="py-32 px-6 relative overflow-hidden"
+          className="py-16 px-6 relative overflow-hidden"
           style={{ background: 'linear-gradient(to bottom, #070B1A, #0A0F24)' }}
         >
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(212,175,55,0.04) 0%, transparent 60%)',
+              background: [
+                'radial-gradient(ellipse 100% 60% at 50% 100%, rgba(212,175,55,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 15% 50%, rgba(124,58,237,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 85% 50%, rgba(99,102,241,0.03) 0%, transparent 60%)',
+              ].join(', '),
             }} />
           </div>
 
           <div className="relative max-w-5xl mx-auto">
-            <div className="text-center mb-20">
+            <div className="text-center mb-12">
               <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
                 How it works
               </p>
@@ -1034,8 +1049,8 @@ export default function HomeClient() {
               {/* Connector line — desktop only */}
               <div
                 aria-hidden="true"
-                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)]"
-                style={{ height: 1, background: 'linear-gradient(90deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.5) 50%, rgba(212,175,55,0.25) 100%)' }}
+                className="hidden md:block absolute top-8 left-[calc(16.67%+2rem)] right-[calc(16.67%+2rem)] step-connector-animated"
+                style={{ height: 2, borderRadius: 1 }}
               />
               <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-8">
                 <HowItWorksStep
@@ -1105,7 +1120,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           id="pricing"
-          className="py-32 px-6 relative overflow-hidden"
+          className="py-16 px-6 relative overflow-hidden"
           style={{ background: 'linear-gradient(to bottom, #070B1A, #0A0F24)' }}
         >
           {/* Glow behind pricing */}
@@ -1184,6 +1199,7 @@ export default function HomeClient() {
                 ]}
                 cta="Go pro"
                 href="/sign-up?plan=studio"
+                royalAccent
               />
             </div>
 
@@ -1230,8 +1246,8 @@ export default function HomeClient() {
               position: 'absolute', inset: 0,
               background: [
                 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(212,175,55,0.07) 0%, transparent 60%)',
-                'radial-gradient(ellipse 60% 40% at 30% 60%, rgba(167,139,250,0.03) 0%, transparent 60%)',
-                'radial-gradient(ellipse 60% 40% at 70% 60%, rgba(96,165,250,0.03) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 30% 60%, rgba(124,58,237,0.06) 0%, transparent 60%)',
+                'radial-gradient(ellipse 60% 40% at 70% 60%, rgba(99,102,241,0.06) 0%, transparent 60%)',
               ].join(', '),
             }} />
             {/* Subtle grid */}
@@ -1280,11 +1296,11 @@ export default function HomeClient() {
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 href="/editor"
-                className="cta-primary inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
+                className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.5)',
+                  boxShadow: '0 0 48px rgba(212,175,55,0.4), 0 8px 32px rgba(0,0,0,0.5)',
                   letterSpacing: '0.01em',
                 }}
               >

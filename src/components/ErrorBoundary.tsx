@@ -105,55 +105,159 @@ function ErrorCard({
 
   return (
     <div className="min-h-[300px] flex items-center justify-center p-6">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (prefers-reduced-motion: no-preference) {
+          @keyframes eb-card-in {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes eb-btn-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,28,0); }
+            50%       { box-shadow: 0 0 16px 0 rgba(255,184,28,0.35); }
+          }
+          .eb-card { animation: eb-card-in 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+          .eb-btn-primary:hover { animation: eb-btn-glow 1.5s ease-in-out infinite; }
+        }
+        .eb-btn-primary:focus-visible,
+        .eb-btn-secondary:focus-visible {
+          outline: 2px solid #FFB81C;
+          outline-offset: 2px;
+        }
+      ` }} />
+
       <div className="max-w-md w-full text-center">
-        <div className="bg-[#141414] border border-white/10 rounded-2xl p-8">
-          {/* Icon */}
-          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+        <div
+          className="eb-card rounded-2xl p-8"
+          style={{
+            position: 'relative',
+            background: 'rgba(20,20,20,0.98)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 0 0 1px rgba(212,175,55,0.06), 0 8px 40px rgba(0,0,0,0.6), 0 0 60px rgba(212,175,55,0.04)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {/* Icon well */}
+          <div
+            className="w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center"
+            style={{
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.18)',
+              boxShadow: '0 0 24px rgba(239,68,68,0.08)',
+            }}
+          >
             <svg
-              className="w-8 h-8 text-red-400"
-              fill="none"
+              width="28"
+              height="28"
               viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
+              fill="none"
+              aria-hidden="true"
             >
+              {/* Triangular warning outline */}
               <path
+                d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                stroke="rgba(248,113,113,0.9)"
+                strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
               />
+              <line
+                x1="12" y1="9" x2="12" y2="13"
+                stroke="rgba(248,113,113,0.9)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <circle cx="12" cy="17" r="0.8" fill="rgba(248,113,113,0.9)" />
             </svg>
           </div>
 
-          <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
+          {/* Gold top accent line */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '20%',
+              right: '20%',
+              height: 1,
+              background: 'linear-gradient(to right, transparent, rgba(212,175,55,0.4), transparent)',
+              borderRadius: '0 0 4px 4px',
+            }}
+          />
 
-          <p className="text-gray-300 text-sm mb-1 leading-relaxed">{safeMessage}</p>
+          <h2
+            className="text-xl font-bold mb-2"
+            style={{ color: '#FFFFFF', letterSpacing: '-0.01em' }}
+          >
+            Something went wrong
+          </h2>
+
+          <p
+            className="text-sm leading-relaxed mb-2"
+            style={{ color: 'rgba(255,255,255,0.55)' }}
+          >
+            {safeMessage}
+          </p>
 
           {eventId && (
-            <p className="text-gray-500 text-xs font-mono mb-5">
-              Report ID: {eventId}
+            <p
+              className="text-xs font-mono mb-5 mt-1 px-3 py-1.5 rounded-lg inline-block"
+              style={{
+                color: 'rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              ID: {eventId}
             </p>
           )}
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-5">
             <button
               onClick={onReset}
-              className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
+              className="eb-btn-primary font-bold text-sm px-5 py-2.5 rounded-xl transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                color: '#050810',
+                border: '1px solid rgba(255,184,28,0.5)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #FFD060 0%, #FFB81C 100%)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)'
+              }}
             >
               Try again
             </button>
             <Link
               href="/dashboard"
-              className="border border-white/20 hover:border-white/40 text-white px-5 py-2.5 rounded-xl transition-colors text-sm text-center"
+              className="eb-btn-secondary text-sm text-center px-5 py-2.5 rounded-xl transition-all duration-200"
+              style={{
+                color: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.03)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.2)'
+                ;(e.currentTarget as HTMLAnchorElement).style.color = '#fff'
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(255,255,255,0.1)'
+                ;(e.currentTarget as HTMLAnchorElement).style.color = 'rgba(255,255,255,0.7)'
+              }}
             >
               Go to Dashboard
             </Link>
           </div>
 
-          <p className="text-gray-500 text-xs mt-5">
+          <p className="text-xs mt-5" style={{ color: 'rgba(255,255,255,0.25)' }}>
             Need help?{' '}
             <a
               href="mailto:support@forjegames.com"
-              className="text-[#FFB81C] hover:underline"
+              className="transition-colors"
+              style={{ color: '#FFB81C' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline' }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none' }}
             >
               support@forjegames.com
             </a>

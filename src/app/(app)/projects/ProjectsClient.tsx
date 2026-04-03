@@ -29,7 +29,6 @@ function formatDate(iso: string): string {
 // ─── Mini scene preview ─────────────────────────────────────────────────────────
 
 function MiniScenePreview({ objectCount }: { objectCount: number }) {
-  // Generate deterministic-ish positions for preview dots
   const count = Math.min(objectCount, 6)
   const dots = Array.from({ length: count }, (_, i) => ({
     x: 15 + (i % 3) * 28 + (i > 2 ? 14 : 0),
@@ -38,17 +37,14 @@ function MiniScenePreview({ objectCount }: { objectCount: number }) {
 
   return (
     <svg viewBox="0 0 110 80" className="w-full h-full" aria-hidden>
-      {/* Grid */}
       <line x1="0" y1="72" x2="110" y2="72" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
       <line x1="0" y1="48" x2="110" y2="48" strokeDasharray="3 4" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
-      {/* Base buildings */}
       <rect x="8" y="40" width="22" height="32" rx="1" fill="#1E3A5F" stroke="#3B6EA8" strokeWidth="0.8"/>
       <rect x="8" y="24" width="22" height="18" rx="0.5" fill="#2E5A8A" stroke="#4A7DC0" strokeWidth="0.5"/>
       <rect x="38" y="50" width="16" height="22" rx="1" fill="#3A2010" stroke="#7A5230" strokeWidth="0.8"/>
       <rect x="62" y="34" width="18" height="38" rx="1" fill="#1A3A28" stroke="#2E6644" strokeWidth="0.8"/>
       <circle cx="72" cy="28" r="5" fill="#166534" stroke="#22883C" strokeWidth="0.6"/>
       <rect x="86" y="44" width="18" height="28" rx="1" fill="#3A2860" stroke="#6B5AB6" strokeWidth="0.8"/>
-      {/* Dynamic dots for spawned blocks */}
       {dots.map((d, i) => (
         <circle
           key={i}
@@ -103,7 +99,6 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             <MiniScenePreview objectCount={project.objectCount} />
           </div>
 
-          {/* Object count badge */}
           {project.objectCount > 0 && (
             <div
               className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded"
@@ -117,7 +112,6 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             </div>
           )}
 
-          {/* Hover overlay */}
           <div
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
@@ -145,7 +139,6 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             </p>
           </div>
 
-          {/* Delete button */}
           <button
             onClick={handleDeleteClick}
             className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
@@ -169,7 +162,6 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
           </button>
         </div>
 
-        {/* Stats row */}
         <div className="flex items-center gap-3 mt-2">
           <span className="flex items-center gap-1 text-[10px] text-zinc-600">
             <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
@@ -244,12 +236,10 @@ export function ProjectsClient() {
   }, [])
 
   return (
-    <div className="min-h-screen" style={{ background: '#09090b' }}>
-      {/* Header */}
-      <div
-        className="sticky top-0 z-10 flex items-center justify-between px-6 h-14"
-        style={{ background: 'rgba(9,9,11,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(12px)' }}
-      >
+    <div className="max-w-5xl mx-auto px-4 py-8">
+
+      {/* Page header — inside AppShell container */}
+      <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Link
             href="/editor"
@@ -261,53 +251,50 @@ export function ProjectsClient() {
             Editor
           </Link>
           <span className="text-zinc-700">/</span>
-          <h1 className="text-sm font-semibold text-zinc-200">Projects</h1>
+          <h1 className="text-2xl font-bold text-white">Projects</h1>
+          {mounted && projects.length > 0 && (
+            <span className="text-xs text-zinc-600 font-normal mt-0.5">
+              {projects.length} project{projects.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {mounted && projects.length > 0 && (
-            <span className="text-xs text-zinc-600">{projects.length} project{projects.length !== 1 ? 's' : ''}</span>
-          )}
-          <Link
-            href="/editor"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
-            style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-              color: '#09090b',
-              boxShadow: '0 0 12px rgba(212,175,55,0.2)',
-            }}
-          >
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            New Project
-          </Link>
-        </div>
+        <Link
+          href="/editor"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+          style={{
+            background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            color: '#09090b',
+            boxShadow: '0 0 12px rgba(212,175,55,0.2)',
+          }}
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
+            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+          New Project
+        </Link>
       </div>
 
       {/* Content */}
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        {!mounted ? (
-          /* Skeleton */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="rounded-xl overflow-hidden animate-pulse"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', height: 200 }}
-              />
-            ))}
-          </div>
-        ) : projects.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
-            ))}
-          </div>
-        )}
-      </div>
+      {!mounted ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="rounded-xl overflow-hidden animate-pulse"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', height: 200 }}
+            />
+          ))}
+        </div>
+      ) : projects.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

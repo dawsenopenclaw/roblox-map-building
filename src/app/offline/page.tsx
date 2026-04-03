@@ -1,7 +1,7 @@
-﻿'use client'
+'use client'
 
-import { WifiOff, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 
 interface CachedData {
   projects?: number
@@ -33,7 +33,7 @@ export default function OfflinePage() {
       countReq.onsuccess = () => setQueuedCount(countReq.result)
     }
 
-    // Auto-retry when connection restores
+    // Auto-redirect when connection restores
     const handleOnline = () => {
       window.location.href = '/dashboard'
     }
@@ -49,74 +49,98 @@ export default function OfflinePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center px-6 text-white overflow-hidden">
-      {/* Ambient glow */}
+    <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center px-6 overflow-hidden">
+      {/* Radial glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <div className="w-[450px] h-[450px] rounded-full bg-[#F5A623]/6 blur-[100px]" />
+        <div className="w-[500px] h-[500px] rounded-full bg-[#7C3AED]/8 blur-[120px]" />
       </div>
 
       <div className="relative max-w-sm w-full text-center">
 
         {/* Icon */}
-        <div className="mb-8 mx-auto relative w-24 h-24">
-          <div className="absolute inset-0 rounded-full bg-[#F5A623]/8 animate-ping" style={{ animationDuration: '3s' }} />
-          <div className="relative w-24 h-24 rounded-full bg-[#F5A623]/10 border border-[#F5A623]/20 flex items-center justify-center">
-            <WifiOff className="w-10 h-10 text-[#F5A623]" strokeWidth={1.5} />
+        <div className="mx-auto mb-7 relative w-20 h-20">
+          <div className="absolute inset-0 rounded-full bg-[#7C3AED]/10 animate-ping" style={{ animationDuration: '3s' }} />
+          <div className="relative w-20 h-20 rounded-full bg-[#7C3AED]/10 border border-[#7C3AED]/20 flex items-center justify-center">
+            <svg
+              className="w-9 h-9 text-[#7C3AED]"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" />
+              <line x1="3" y1="3" x2="21" y2="21" strokeWidth={1.5} />
+            </svg>
           </div>
         </div>
 
-        {/* Text */}
-        <h1 className="text-3xl font-bold mb-3 tracking-tight">You&apos;re offline</h1>
-        <p className="text-white/50 text-sm mb-3 leading-relaxed">
-          No internet connection detected. We&apos;ll reconnect you automatically when your network is back.
-        </p>
-        <p className="text-white/30 text-xs mb-8">
-          Listening for connection…
-        </p>
+        <div className="bg-white/[0.025] border border-white/[0.07] rounded-2xl p-8 shadow-2xl backdrop-blur-sm">
 
-        {/* Queued builds badge */}
-        {queuedCount > 0 && (
-          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#F5A623]/10 border border-[#F5A623]/20 text-[#F5A623] text-sm font-medium">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">You&apos;re Offline</h1>
+          <p className="text-gray-400 text-sm leading-relaxed mb-2">
+            No internet connection detected. We&apos;ll redirect you automatically when your network is back.
+          </p>
+          <p className="text-gray-600 text-xs mb-7">Listening for connection...</p>
+
+          {/* Queued builds badge */}
+          {queuedCount > 0 && (
+            <div className="mb-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7C3AED]/10 border border-[#7C3AED]/20 text-[#7C3AED] text-sm font-medium">
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {queuedCount} build{queuedCount !== 1 ? 's' : ''} queued — will sync on reconnect
+            </div>
+          )}
+
+          {/* Cached data card */}
+          {cachedData && (
+            <div className="mb-7 w-full rounded-xl bg-white/[0.03] border border-white/[0.07] p-5 text-left">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-medium">Cached snapshot</p>
+              {cachedData.projects !== undefined && (
+                <div className="flex justify-between items-center text-sm mb-2.5">
+                  <span className="text-gray-500">Projects saved</span>
+                  <span className="font-semibold text-white">{cachedData.projects}</span>
+                </div>
+              )}
+              {cachedData.lastSync && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Last synced</span>
+                  <span className="font-semibold text-gray-300 tabular-nums">
+                    {new Date(cachedData.lastSync).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Retry button */}
+          <button
+            onClick={handleRetry}
+            disabled={retrying}
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#7C3AED]/25 hover:shadow-[#7C3AED]/40 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+            style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)' }}
+          >
+            <svg
+              className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
             </svg>
-            {queuedCount} build{queuedCount !== 1 ? 's' : ''} queued — will sync on reconnect
-          </div>
-        )}
+            {retrying ? 'Reconnecting...' : 'Try again'}
+          </button>
 
-        {/* Cached data card */}
-        {cachedData && (
-          <div className="mb-8 w-full rounded-2xl bg-white/5 border border-white/10 p-5">
-            <p className="text-xs text-white/40 uppercase tracking-wider mb-3 font-medium">
-              Cached snapshot
-            </p>
-            {cachedData.projects !== undefined && (
-              <div className="flex justify-between items-center text-sm mb-2.5">
-                <span className="text-white/50">Projects saved</span>
-                <span className="font-semibold text-white">{cachedData.projects}</span>
-              </div>
-            )}
-            {cachedData.lastSync && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-white/50">Last synced</span>
-                <span className="font-semibold text-white/80 tabular-nums">
-                  {new Date(cachedData.lastSync).toLocaleTimeString()}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
 
-        {/* Retry button */}
-        <button
-          onClick={handleRetry}
-          disabled={retrying}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#F5A623] hover:bg-[#E6951F] disabled:opacity-70 text-[#0a0a0a] font-bold text-sm transition-all shadow-lg shadow-[#F5A623]/20 hover:shadow-[#F5A623]/30 hover:-translate-y-0.5"
-        >
-          <RefreshCw className={`w-4 h-4 ${retrying ? 'animate-spin' : ''}`} />
-          {retrying ? 'Reconnecting…' : 'Try again'}
-        </button>
-
+        {/* Branding */}
+        <p className="mt-6 text-xs text-gray-500">
+          <Link href="/" className="hover:text-[#FFB81C] transition-colors font-medium">ForjeGames</Link>
+          {' '}— AI-powered Roblox game builder
+        </p>
       </div>
     </div>
   )

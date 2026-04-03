@@ -194,7 +194,7 @@ function ErrorShell({
               </a>
               {' · '}
               <a
-                href="https://status.ForjeGames.gg"
+                href="https://status.forjegames.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#FFB81C] hover:underline"

@@ -72,97 +72,176 @@ const RELEASES: Release[] = [
   },
 ]
 
-const TYPE_LABEL: Record<string, { label: string; color: string }> = {
-  feat: { label: 'New', color: 'text-emerald-400 bg-emerald-400/10' },
-  fix: { label: 'Fix', color: 'text-blue-400 bg-blue-400/10' },
-  perf: { label: 'Perf', color: 'text-purple-400 bg-purple-400/10' },
-  break: { label: 'Breaking', color: 'text-red-400 bg-red-400/10' },
+const TYPE_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  feat: { label: 'New', bg: 'rgba(16,185,129,0.08)', color: '#34d399', border: 'rgba(52,211,153,0.2)' },
+  fix:  { label: 'Fix', bg: 'rgba(59,130,246,0.08)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' },
+  perf: { label: 'Perf', bg: 'rgba(168,85,247,0.08)', color: '#c084fc', border: 'rgba(192,132,252,0.2)' },
+  break: { label: 'Breaking', bg: 'rgba(239,68,68,0.08)', color: '#f87171', border: 'rgba(248,113,113,0.2)' },
 }
 
-const LABEL_COLOR: Record<Release['label'], string> = {
-  Launch: 'text-[#D4AF37] bg-[#D4AF37]/10 border-[#D4AF37]/20',
-  Beta: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  Alpha: 'text-white/50 bg-white/5 border-white/10',
-  Patch: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
+const LABEL_META: Record<Release['label'], { bg: string; color: string; border: string }> = {
+  Launch: { bg: 'rgba(212,175,55,0.08)', color: '#D4AF37', border: 'rgba(212,175,55,0.25)' },
+  Beta:   { bg: 'rgba(59,130,246,0.08)', color: '#60a5fa', border: 'rgba(96,165,250,0.25)' },
+  Alpha:  { bg: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: 'rgba(255,255,255,0.1)' },
+  Patch:  { bg: 'rgba(168,85,247,0.08)', color: '#c084fc', border: 'rgba(192,132,252,0.25)' },
 }
 
 export default function ChangelogPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Hero */}
-      <section className="border-b border-white/5 px-6 py-20 text-center">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
-          Changelog
-        </p>
-        <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">
-          What&apos;s new
-        </h1>
-        <p className="mx-auto max-w-md text-base text-white/45">
-          Every feature, fix, and improvement — in chronological order.
-        </p>
+    <div className="min-h-screen text-white" style={{ background: '#050810' }}>
+
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden border-b px-6 pb-20 pt-32 text-center"
+        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0A0E27' }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 40% at 50% 100%, rgba(212,175,55,0.09) 0%, transparent 70%)',
+          }}
+        />
+        <div className="relative z-10">
+          <p
+            className="mb-4 text-[12px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'rgba(212,175,55,0.6)' }}
+          >
+            Changelog
+          </p>
+          <h1
+            className="mb-4 font-bold tracking-tight"
+            style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
+          >
+            What&apos;s new
+          </h1>
+          <p className="mx-auto max-w-md text-base" style={{ color: '#71717A' }}>
+            Every feature, fix, and improvement — in chronological order.
+          </p>
+        </div>
       </section>
 
-      {/* Timeline */}
-      <section className="mx-auto max-w-3xl px-6 py-16">
+      {/* ── Release Timeline ─────────────────────────────────────────────────── */}
+      <section className="mx-auto max-w-3xl px-6 py-20">
         <div className="relative">
           {/* Vertical line */}
-          <div className="absolute left-[5.5px] top-0 h-full w-px bg-white/5" />
+          <div
+            className="absolute left-[7px] top-2 h-[calc(100%-1rem)] w-px"
+            style={{ background: 'linear-gradient(to bottom, rgba(212,175,55,0.4) 0%, rgba(212,175,55,0.05) 100%)' }}
+          />
 
-          <div className="flex flex-col gap-14">
-            {RELEASES.map((release) => (
-              <div key={release.version} className="relative pl-8">
-                {/* Dot */}
-                <div className="absolute left-0 top-1 h-3 w-3 rounded-full border-2 border-[#D4AF37] bg-[#0a0a0a]" />
+          <div className="flex flex-col gap-16">
+            {RELEASES.map((release, ri) => {
+              const lm = LABEL_META[release.label]
+              return (
+                <div key={release.version} className="reveal relative pl-9">
+                  {/* Timeline dot */}
+                  <div
+                    className="absolute left-0 top-2 h-3.5 w-3.5 rounded-full border-2"
+                    style={{
+                      borderColor: ri === 0 ? '#D4AF37' : 'rgba(212,175,55,0.35)',
+                      background: ri === 0 ? '#D4AF37' : '#050810',
+                      boxShadow: ri === 0 ? '0 0 14px rgba(212,175,55,0.55)' : 'none',
+                    }}
+                  />
 
-                {/* Header */}
-                <div className="mb-4 flex flex-wrap items-center gap-3">
-                  <span className="text-xl font-bold text-white">{release.version}</span>
-                  <span
-                    className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${LABEL_COLOR[release.label]}`}
+                  {/* Release card */}
+                  <div
+                    className="rounded-2xl p-6 sm:p-7"
+                    style={{
+                      background: 'rgba(255,255,255,0.025)',
+                      border: ri === 0 ? '1px solid rgba(212,175,55,0.2)' : '1px solid rgba(255,255,255,0.07)',
+                    }}
                   >
-                    {release.label}
-                  </span>
-                  <span className="text-sm text-white/30">{release.date}</span>
-                </div>
+                    {/* Header row */}
+                    <div className="mb-5 flex flex-wrap items-center gap-3">
+                      <span className="text-xl font-bold" style={{ color: '#FAFAFA' }}>
+                        {release.version}
+                      </span>
+                      <span
+                        className="rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                        style={{ background: lm.bg, color: lm.color, borderColor: lm.border }}
+                      >
+                        {release.label}
+                      </span>
+                      <span className="text-sm" style={{ color: '#52525B' }}>
+                        {release.date}
+                      </span>
+                    </div>
 
-                <h2 className="mb-5 text-base font-semibold text-white/80">{release.headline}</h2>
+                    <h2 className="mb-6 text-base font-semibold" style={{ color: 'rgba(250,250,250,0.8)' }}>
+                      {release.headline}
+                    </h2>
 
-                {/* Items */}
-                <div className="flex flex-col gap-2.5">
-                  {release.items.map((item, i) => {
-                    const meta = TYPE_LABEL[item.type]
-                    return (
-                      <div key={i} className="flex items-start gap-3">
-                        <span
-                          className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${meta.color}`}
-                        >
-                          {meta.label}
-                        </span>
-                        <p className="text-sm leading-relaxed text-white/55">{item.text}</p>
-                      </div>
-                    )
-                  })}
+                    {/* Items */}
+                    <div className="flex flex-col gap-2.5">
+                      {release.items.map((item, i) => {
+                        const meta = TYPE_META[item.type]
+                        return (
+                          <div key={i} className="flex items-start gap-3">
+                            <span
+                              className="mt-0.5 shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold"
+                              style={{ background: meta.bg, color: meta.color, borderColor: meta.border }}
+                            >
+                              {meta.label}
+                            </span>
+                            <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+                              {item.text}
+                            </p>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* Subscribe strip */}
-      <section className="border-t border-white/5 px-6 py-12 text-center">
-        <p className="mb-2 text-sm font-medium text-white/60">Stay updated</p>
-        <p className="mx-auto max-w-sm text-sm text-white/35">
-          Follow{' '}
-          <a href="https://twitter.com/forjegames" className="text-[#D4AF37] hover:underline">
-            @forjegames
-          </a>{' '}
-          on X or join{' '}
-          <a href="https://discord.gg/forjegames" className="text-[#D4AF37] hover:underline">
-            Discord
-          </a>{' '}
-          to get release announcements as they drop.
-        </p>
+      {/* ── Subscribe strip ──────────────────────────────────────────────────── */}
+      <section
+        className="relative overflow-hidden border-t px-6 py-16 text-center"
+        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 50% 80% at 50% 50%, rgba(212,175,55,0.05) 0%, transparent 70%)',
+          }}
+        />
+        <div className="relative z-10 mx-auto max-w-sm">
+          <p
+            className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: 'rgba(212,175,55,0.6)' }}
+          >
+            Stay updated
+          </p>
+          <h2 className="mb-3 text-xl font-bold" style={{ color: '#FAFAFA' }}>
+            Get release announcements
+          </h2>
+          <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
+            Follow{' '}
+            <a
+              href="https://twitter.com/forjegames"
+              className="transition-colors hover:underline"
+              style={{ color: '#D4AF37' }}
+            >
+              @forjegames
+            </a>{' '}
+            on X or join{' '}
+            <a
+              href="https://discord.gg/forjegames"
+              className="transition-colors hover:underline"
+              style={{ color: '#D4AF37' }}
+            >
+              Discord
+            </a>{' '}
+            to get notified the moment we ship.
+          </p>
+        </div>
       </section>
     </div>
   )

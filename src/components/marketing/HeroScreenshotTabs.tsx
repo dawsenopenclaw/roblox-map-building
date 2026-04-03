@@ -104,44 +104,95 @@ const TABS = [
 
 export default function HeroScreenshotTabs() {
   const [activeTab, setActiveTab] = useState(0)
+  const [transitioning, setTransitioning] = useState(false)
   const tab = TABS[activeTab]
+
+  function switchTab(i: number) {
+    if (i === activeTab || transitioning) return
+    setTransitioning(true)
+    setTimeout(() => {
+      setActiveTab(i)
+      setTransitioning(false)
+    }, 180)
+  }
 
   return (
     <section className="px-6 pb-32">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes cursor-blink-hero {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
+        }
+        @keyframes hst-content-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes hst-shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position: 400px 0; }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .hst-content-enter { animation: hst-content-in 0.28s cubic-bezier(0.16,1,0.3,1) both; }
+          .hst-shimmer-bar {
+            background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 100%);
+            background-size: 400px 100%;
+            animation: hst-shimmer 1.6s ease-in-out infinite;
+          }
+        }
+        .hst-tab-btn {
+          transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .hst-tab-btn:focus-visible {
+          outline: 2px solid #FFB81C;
+          outline-offset: 2px;
+        }
+      ` }} />
+
       <div className="max-w-5xl mx-auto">
         {/* Tab row */}
         <div
           className="flex items-center gap-1 p-1 rounded-xl mb-8 mx-auto w-fit"
-          style={{ background: '#0F1535', border: '1px solid #1A2550' }}
+          style={{
+            background: 'rgba(15,21,53,0.8)',
+            border: '1px solid rgba(26,37,80,0.9)',
+            backdropFilter: 'blur(8px)',
+          }}
         >
-          {TABS.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(i)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              style={
-                activeTab === i
-                  ? {
-                      background: 'rgba(255,184,28,0.1)',
-                      color: '#FFB81C',
-                      border: '1px solid rgba(255,184,28,0.25)',
-                    }
-                  : {
-                      color: '#8B95B0',
-                      border: '1px solid transparent',
-                    }
-              }
-              aria-pressed={activeTab === i}
-            >
-              <span style={{ color: activeTab === i ? '#FFB81C' : '#8B95B0' }}>{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
+          {TABS.map((t, i) => {
+            const isActive = activeTab === i
+            return (
+              <button
+                key={t.id}
+                onClick={() => switchTab(i)}
+                className="hst-tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                style={
+                  isActive
+                    ? {
+                        background: 'rgba(255,184,28,0.12)',
+                        color: '#FFB81C',
+                        border: '1px solid rgba(255,184,28,0.3)',
+                        boxShadow: '0 0 12px rgba(255,184,28,0.12), inset 0 1px 0 rgba(255,255,255,0.06)',
+                      }
+                    : {
+                        color: '#8B95B0',
+                        border: '1px solid transparent',
+                      }
+                }
+                aria-pressed={isActive}
+              >
+                <span style={{ color: isActive ? '#FFB81C' : '#8B95B0', transition: 'color 0.18s' }}>
+                  {t.icon}
+                </span>
+                {t.label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Description */}
         <p
-          className="text-center text-base mb-8 transition-all duration-300"
+          key={`desc-${activeTab}`}
+          className="hst-content-enter text-center text-base mb-8"
           style={{ color: '#8B95B0' }}
         >
           {tab.description}
@@ -149,17 +200,18 @@ export default function HeroScreenshotTabs() {
 
         {/* Screenshot mockup */}
         <div
-          className="rounded-xl overflow-hidden transition-all duration-300"
+          className="rounded-2xl overflow-hidden"
           style={{
-            background: '#0F1535',
-            border: '1px solid #1A2550',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03)',
+            background: '#0C1030',
+            border: '1px solid rgba(26,37,80,0.9)',
+            boxShadow: `0 12px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03), 0 0 40px ${tab.color}18`,
+            transition: 'box-shadow 0.35s ease',
           }}
         >
           {/* Title bar */}
           <div
             className="flex items-center gap-2 px-4 py-3"
-            style={{ borderBottom: '1px solid #1A2550', background: '#0A0E27' }}
+            style={{ borderBottom: '1px solid rgba(26,37,80,0.8)', background: '#080C22' }}
           >
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FF5F56' }} />
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FFBD2E' }} />
@@ -179,43 +231,52 @@ export default function HeroScreenshotTabs() {
           </div>
 
           {/* Body */}
-          <div className="flex" style={{ minHeight: 240 }}>
+          <div
+            key={`body-${activeTab}`}
+            className={`flex hst-content-enter`}
+            style={{ minHeight: 240, opacity: transitioning ? 0 : undefined }}
+          >
             {/* Terminal / log area */}
             <div className="flex-1 p-5 font-mono text-[13px] leading-7">
-              {tab.preview.lines.map((line, i) => (
-                <div
-                  key={i}
-                  className="transition-all duration-300"
-                  style={{
-                    color: line.isPrompt ? '#FFFFFF' : line.color ?? '#8B95B0',
-                    opacity: 1,
-                    animationDelay: `${i * 60}ms`,
-                  }}
-                >
-                  {line.text}
-                  {i === tab.preview.lines.length - 1 && (
-                    <span
-                      className="inline-block w-0.5 h-3.5 ml-0.5 align-middle"
-                      style={{
-                        background: '#FFB81C',
-                        animation: 'cursor-blink-hero 1.1s step-start infinite',
-                      }}
+              {transitioning ? (
+                // Shimmer skeleton while transitioning
+                <div className="space-y-3 pt-1">
+                  {[80, 65, 72, 60, 70, 55, 68].map((w, i) => (
+                    <div
+                      key={i}
+                      className="hst-shimmer-bar rounded"
+                      style={{ height: 14, width: `${w}%` }}
                     />
-                  )}
+                  ))}
                 </div>
-              ))}
-              <style dangerouslySetInnerHTML={{ __html: `
-                @keyframes cursor-blink-hero {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0; }
-                }
-              ` }} />
+              ) : (
+                tab.preview.lines.map((line, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      color: line.isPrompt ? '#FFFFFF' : line.color ?? '#8B95B0',
+                      animationDelay: `${i * 40}ms`,
+                    }}
+                  >
+                    {line.text}
+                    {i === tab.preview.lines.length - 1 && (
+                      <span
+                        className="inline-block w-0.5 h-3.5 ml-0.5 align-middle"
+                        style={{
+                          background: '#FFB81C',
+                          animation: 'cursor-blink-hero 1.1s step-start infinite',
+                        }}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Right stats panel */}
             <div
               className="hidden sm:flex flex-col w-36 flex-shrink-0 p-4 gap-4"
-              style={{ borderLeft: '1px solid #1A2550' }}
+              style={{ borderLeft: '1px solid rgba(26,37,80,0.8)' }}
             >
               <p
                 className="text-[10px] font-medium uppercase tracking-widest"
@@ -232,10 +293,13 @@ export default function HeroScreenshotTabs() {
             </div>
           </div>
 
-          {/* Bottom bar — active tab indicator */}
+          {/* Bottom bar — gold gradient on active-tab color + gold blend */}
           <div
-            className="h-0.5 transition-all duration-300"
-            style={{ background: `linear-gradient(to right, transparent, ${tab.color}, transparent)` }}
+            className="h-px"
+            style={{
+              background: `linear-gradient(to right, transparent, ${tab.color}99, #FFB81C66, ${tab.color}99, transparent)`,
+              transition: 'background 0.35s ease',
+            }}
           />
         </div>
       </div>

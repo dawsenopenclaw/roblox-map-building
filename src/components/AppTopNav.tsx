@@ -8,6 +8,36 @@ import { NotificationBell } from '@/components/NotificationBell'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
+// ─── Keyframes ────────────────────────────────────────────────────────────────
+
+const NAV_KEYFRAMES = `
+  @keyframes fj-btn-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.20), 0 0 0px rgba(212,175,55,0); }
+    50%       { box-shadow: 0 0 18px rgba(212,175,55,0.40), 0 0 6px rgba(255,184,28,0.15); }
+  }
+  @keyframes fj-spark-orbit {
+    0%   { transform: rotate(0deg)   translateX(5px) scale(1);   opacity: 0.9; }
+    50%  { transform: rotate(180deg) translateX(5px) scale(1.2); opacity: 1; }
+    100% { transform: rotate(360deg) translateX(5px) scale(1);   opacity: 0.9; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fj-btn-pulse { animation: none !important; }
+    .fj-spark     { animation: none !important; }
+  }
+`
+
+function useNavKeyframesOnce() {
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const id = 'fj-topnav-keyframes'
+    if (document.getElementById(id)) return
+    const style = document.createElement('style')
+    style.id = id
+    style.textContent = NAV_KEYFRAMES
+    document.head.appendChild(style)
+  }, [])
+}
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 function IconMenu() {
@@ -24,11 +54,22 @@ function IconSearch() {
     </svg>
   )
 }
-function IconCoin() {
+
+// Gold spark icon for token balance
+function IconSpark() {
   return (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" strokeWidth={1.75} />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 7v1m0 8v1M9.5 9.5A2.5 2.5 0 0112 8a2.5 2.5 0 010 5 2.5 2.5 0 000 5 2.5 2.5 0 002.5-1.5" />
+    <svg
+      className="fj-spark w-3 h-3 flex-shrink-0"
+      viewBox="0 0 12 12"
+      fill="none"
+      aria-hidden="true"
+      style={{ animation: 'fj-spark-orbit 3s linear infinite' }}
+    >
+      <path
+        d="M6 1L7.2 4.8H11L7.9 7.1L9.1 11L6 8.7L2.9 11L4.1 7.1L1 4.8H4.8L6 1Z"
+        fill="#FFB81C"
+        fillOpacity="0.9"
+      />
     </svg>
   )
 }
@@ -141,10 +182,13 @@ interface AppTopNavProps {
 }
 
 export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
+  useNavKeyframesOnce()
+
   const { data } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
   const { user } = useUser()
   const { signOut } = useClerk()
   const [profileOpen, setProfileOpen] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
 
   const displayName = user?.firstName
     ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ''}`
@@ -177,10 +221,19 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       <div className="flex-1 max-w-md hidden sm:block">
         <button
           onClick={onCommandPalette}
-          className="w-full flex items-center gap-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg pl-3 pr-2 py-2 text-sm text-gray-400 hover:border-blue-400/30 hover:bg-white/[0.06] hover:text-gray-300 transition-all duration-150 text-left group"
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          className="w-full flex items-center gap-2.5 bg-white/[0.04] border rounded-lg pl-3 pr-2 py-2 text-sm text-gray-400 hover:bg-white/[0.06] hover:text-gray-300 transition-all duration-200 text-left group"
+          style={{
+            borderColor: searchFocused ? 'rgba(212,175,55,0.45)' : 'rgba(255,255,255,0.08)',
+            boxShadow: searchFocused ? '0 0 0 2px rgba(212,175,55,0.12), 0 0 12px rgba(212,175,55,0.08)' : 'none',
+          }}
           aria-label="Search (Ctrl+K)"
         >
-          <span className="text-gray-500 group-hover:text-gray-300 transition-colors flex-shrink-0">
+          <span
+            className="flex-shrink-0 transition-colors"
+            style={{ color: searchFocused ? '#D4AF37' : undefined }}
+          >
             <IconSearch />
           </span>
           <span className="flex-1 text-gray-500">Search anything…</span>
@@ -191,13 +244,14 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* Spacer on mobile */}
       <div className="flex-1 sm:hidden" />
 
-      {/* Open Editor */}
+      {/* Build CTA — subtle pulse glow to stay "alive" */}
       <Link
         href="/editor"
-        className="hidden sm:inline-flex items-center gap-1.5 nav-cta-gold active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5 hover-glow"
+        className="fj-btn-pulse hidden sm:inline-flex items-center gap-1.5 nav-cta-gold active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5"
         style={{
-          transition: 'transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease',
-          boxShadow: '0 0 10px rgba(212,175,55,0.2)',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+          animation: 'fj-btn-pulse 3s ease-in-out infinite',
+          transition: 'transform 150ms ease',
         }}
         aria-label="Open editor (Ctrl+N)"
       >
@@ -215,8 +269,9 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           aria-live="polite"
           aria-atomic="true"
         >
-          <span className="text-[#D4AF37] flex-shrink-0" aria-hidden="true">
-            <IconCoin />
+          {/* Animated gold spark icon instead of plain coin */}
+          <span className="flex-shrink-0 relative" aria-hidden="true">
+            <IconSpark />
           </span>
           <span className="text-[#D4AF37] text-sm font-bold tabular-nums" aria-hidden="true">
             {tokenBalance}

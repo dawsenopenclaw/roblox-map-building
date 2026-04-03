@@ -13,9 +13,17 @@ export const chatMessageSchema = z.object({
   message: z.string().min(1, 'message is required').max(4000, 'message exceeds 4000 characters'),
   conversationId: z.string().optional(),
   model: z.string().optional(),
+  stream: z.boolean().optional(),
   gameContext: z.any().optional(),
   studioContext: z.any().optional(),
+  lastError: z.string().optional(),
+  retryAttempt: z.number().optional(),
+  previousCode: z.string().optional(),
   history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string(),
+  })).optional(),
+  messages: z.array(z.object({
     role: z.enum(['user', 'assistant']),
     content: z.string(),
   })).optional(),

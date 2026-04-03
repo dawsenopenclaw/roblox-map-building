@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { timingSafeEqual, randomBytes } from 'crypto'
 import { db } from '@/lib/db'
 import { sendParentalConsentEmail } from '@/lib/email'
+import { hashToken } from '@/lib/tokens'
 
 function isCronAuthorized(req: NextRequest): boolean {
   const secret = req.headers.get('x-cron-secret')
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
           await db.user.update({
             where: { id: user.id },
             data: {
-              parentConsentToken: token,
+              parentConsentToken: hashToken(token),
               parentConsentTokenExp: tokenExp,
               // Reset consent so they must re-approve
               parentConsentAt: null,

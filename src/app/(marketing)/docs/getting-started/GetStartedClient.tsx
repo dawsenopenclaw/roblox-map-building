@@ -159,23 +159,23 @@ export default function GetStartedClient() {
   const [activeStep, setActiveStep] = useState(0)
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#050810] text-white">
       {/* Breadcrumb */}
-      <div className="border-b border-white/5 px-6 py-3 text-xs text-white/30">
-        <Link href="/docs" className="hover:text-[#D4AF37]">Docs</Link>
-        <span className="mx-2">/</span>
+      <div className="border-b border-white/5 bg-[#0A0E27]/60 px-6 py-3 text-xs text-white/30">
+        <Link href="/docs" className="transition-colors hover:text-[#D4AF37]">Docs</Link>
+        <span className="mx-2 text-white/15">/</span>
         <span className="text-white/60">Getting Started</span>
       </div>
 
       {/* Hero */}
       <section className="border-b border-white/5 px-6 py-16 text-center">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
+        <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>
           Getting Started
         </p>
-        <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">
+        <h1 className="mb-4 text-4xl font-bold tracking-tight text-[#FAFAFA] sm:text-5xl">
           Ship your first AI-built game
         </h1>
-        <p className="mx-auto max-w-md text-base text-white/45">
+        <p className="mx-auto max-w-md text-base text-[#71717A]">
           Six steps. Under 10 minutes. No prior game development experience required.
         </p>
 
@@ -207,13 +207,13 @@ export default function GetStartedClient() {
                 <button
                   key={s.id}
                   onClick={() => setActiveStep(i)}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition ${
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     i === activeStep
-                      ? 'bg-[#D4AF37]/10 text-[#D4AF37]'
-                      : 'text-white/35 hover:text-white/70'
+                      ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-l-2 border-[#D4AF37] rounded-l-none pl-[10px]'
+                      : 'text-[#52525B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/5'
                   }`}
                 >
-                  <span className="text-xs font-mono">{s.number}</span>
+                  <span className={`text-xs font-mono font-bold ${i === activeStep ? 'text-[#FFB81C]' : 'text-[#52525B]'}`}>{s.number}</span>
                   <span>{s.title}</span>
                 </button>
               ))}
@@ -228,17 +228,24 @@ export default function GetStartedClient() {
                 id={step.anchor}
                 className={`${i === activeStep ? 'block' : 'hidden'}`}
               >
-                <div className="mb-2 text-xs font-mono text-[#D4AF37]">Step {step.number}</div>
-                <h2 className="mb-4 text-2xl font-bold">{step.title}</h2>
-                <p className="mb-6 text-base leading-relaxed text-white/55">{step.description}</p>
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#FFB81C]/30 bg-[#FFB81C]/10 text-xs font-bold text-[#FFB81C]">
+                    {step.number}
+                  </span>
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>Step</span>
+                </div>
+                <h2 className="mb-4 text-2xl font-bold text-[#FAFAFA]">{step.title}</h2>
+                <p className="mb-6 text-base leading-relaxed text-[#71717A]">{step.description}</p>
 
                 {/* Visual art */}
                 {step.visual && (
-                  <div className="mb-6 rounded-xl border border-white/5 bg-[#141414] p-6">
-                    <div className="mb-3 text-xs text-white/25">{step.visual.label}</div>
-                    <div className="font-mono text-sm text-white/50 leading-relaxed">
+                  <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.025)' }}>
+                    <div className="border-b border-white/[0.07] px-4 py-2.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[#71717A]">{step.visual.label}</span>
+                    </div>
+                    <div className="p-6 font-mono text-sm leading-relaxed text-[#52525B]">
                       {step.visual.lines.map((line, li) => (
-                        <div key={li}>{line || '\u00A0'}</div>
+                        <div key={li} className="text-[#71717A]">{line || '\u00A0'}</div>
                       ))}
                     </div>
                   </div>
@@ -246,14 +253,14 @@ export default function GetStartedClient() {
 
                 {/* Code block */}
                 {step.code && (
-                  <div className="mb-6 overflow-hidden rounded-xl border border-white/5 bg-[#141414]">
-                    <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
-                      <span className="text-xs text-white/30">{step.code.label}</span>
-                      <span className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-white/30 font-mono">
+                  <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
+                    <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2.5">
+                      <span className="text-xs text-[#71717A]">{step.code.label}</span>
+                      <span className="rounded-md border border-white/[0.07] bg-white/[0.025] px-2 py-0.5 font-mono text-[10px] text-[#52525B]">
                         {step.code.lang}
                       </span>
                     </div>
-                    <pre className="overflow-x-auto p-4 text-sm leading-relaxed text-white/65 font-mono">
+                    <pre className="overflow-x-auto p-5 font-mono text-sm leading-relaxed text-[#FAFAFA]/65">
                       {step.code.body}
                     </pre>
                   </div>
@@ -261,9 +268,14 @@ export default function GetStartedClient() {
 
                 {/* Note */}
                 {step.note && (
-                  <div className="mb-6 flex gap-3 rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/5 p-4">
-                    <span className="text-[#D4AF37] shrink-0">ℹ</span>
-                    <p className="text-sm text-white/55">{step.note}</p>
+                  <div className="mb-6 flex gap-3 rounded-2xl border border-[#D4AF37]/15 bg-[#D4AF37]/5 p-4">
+                    <span className="mt-0.5 shrink-0 text-[#FFB81C]">
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+                        <path d="M8 7v5M8 5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                    <p className="text-sm text-[#71717A]">{step.note}</p>
                   </div>
                 )}
 
@@ -272,7 +284,7 @@ export default function GetStartedClient() {
                   {i > 0 && (
                     <button
                       onClick={() => setActiveStep(i - 1)}
-                      className="rounded-xl border border-white/10 bg-transparent px-5 py-2.5 text-sm text-white/50 transition hover:border-white/20 hover:text-white"
+                      className="rounded-xl border border-white/[0.07] bg-transparent px-5 py-2.5 text-sm text-[#71717A] transition-colors hover:border-white/20 hover:text-[#FAFAFA]"
                     >
                       ← Previous
                     </button>
@@ -280,14 +292,14 @@ export default function GetStartedClient() {
                   {i < STEPS.length - 1 ? (
                     <button
                       onClick={() => setActiveStep(i + 1)}
-                      className="rounded-xl bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-[#e5c547]"
+                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#FFB81C] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
                     >
                       Next →
                     </button>
                   ) : (
                     <Link
                       href="/editor"
-                      className="rounded-xl bg-[#D4AF37] px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-[#e5c547]"
+                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#FFB81C] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
                     >
                       Open the editor →
                     </Link>
@@ -313,14 +325,14 @@ export default function GetStartedClient() {
             }
             return (
               <div key={key} id={anchors[key]} className="scroll-mt-24">
-                <h2 className="mb-5 text-xl font-bold">{titles[key]}</h2>
+                <h2 className="mb-5 text-xl font-bold text-[#FAFAFA]">{titles[key]}</h2>
                 <div className="space-y-3">
                   {SECTIONS[key].map((item, idx) => (
-                    <div key={idx} className="flex gap-3">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#D4AF37]/10 text-xs font-bold text-[#D4AF37]">
+                    <div key={idx} className="flex gap-3 rounded-2xl border border-white/[0.07] p-4" style={{ background: 'rgba(255,255,255,0.025)' }}>
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#FFB81C]/30 bg-[#FFB81C]/10 text-[10px] font-bold text-[#FFB81C]">
                         {idx + 1}
                       </span>
-                      <p className="text-sm leading-relaxed text-white/55">{item}</p>
+                      <p className="text-sm leading-relaxed text-[#71717A]">{item}</p>
                     </div>
                   ))}
                 </div>
@@ -330,25 +342,25 @@ export default function GetStartedClient() {
         </div>
 
         {/* Next steps */}
-        <div className="mt-16 rounded-2xl border border-white/5 bg-[#141414] p-8 text-center">
-          <h2 className="mb-2 text-xl font-bold">Ready to go deeper?</h2>
-          <p className="mb-6 text-sm text-white/45">Explore more of the platform.</p>
+        <div className="mt-16 rounded-2xl border border-white/[0.07] p-8 text-center" style={{ background: 'rgba(255,255,255,0.025)' }}>
+          <h2 className="mb-2 text-xl font-bold text-[#FAFAFA]">Ready to go deeper?</h2>
+          <p className="mb-6 text-sm text-[#71717A]">Explore more of the platform.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               href="/docs/api"
-              className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-white/60 transition hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
+              className="rounded-xl border border-white/[0.07] px-5 py-2.5 text-sm text-[#71717A] transition-colors hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
             >
               API Reference →
             </Link>
             <Link
               href="/docs/studio"
-              className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-white/60 transition hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
+              className="rounded-xl border border-white/[0.07] px-5 py-2.5 text-sm text-[#71717A] transition-colors hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
             >
               Studio Plugin →
             </Link>
             <Link
               href="/blog"
-              className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-white/60 transition hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
+              className="rounded-xl border border-white/[0.07] px-5 py-2.5 text-sm text-[#71717A] transition-colors hover:border-[#D4AF37]/30 hover:text-[#D4AF37]"
             >
               Blog →
             </Link>

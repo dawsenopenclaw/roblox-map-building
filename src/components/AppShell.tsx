@@ -67,6 +67,15 @@ const AppChrome = memo(function AppChrome({
             onMenuOpen={onSidebarOpen}
             onCommandPalette={onPaletteOpen}
           />
+          {/* Subtle 1px gold gradient line separating nav from content */}
+          <div
+            aria-hidden="true"
+            style={{
+              height: '1px',
+              flexShrink: 0,
+              background: 'linear-gradient(90deg, transparent 0%, #FFB81C22 30%, #D4AF3730 60%, transparent 100%)',
+            }}
+          />
           <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
             <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
               {children}

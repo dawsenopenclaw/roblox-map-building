@@ -63,7 +63,7 @@ export default function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
-    <section className="py-32 px-6" style={{ background: '#0A0E27' }}>
+    <section className="py-16 px-6" style={{ background: '#0A0E27' }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-14">
@@ -131,13 +131,13 @@ export default function FaqSection() {
         <p className="text-center text-sm mt-10" style={{ color: '#8B95B0' }}>
           More questions?{' '}
           <a
-            href="/docs"
+            href="mailto:support@forjegames.com"
             className="transition-colors duration-150"
             style={{ color: '#FFB81C' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
           >
-            Read the docs
+            Contact support
           </a>{' '}
           or{' '}
           <a

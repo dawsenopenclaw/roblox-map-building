@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Copy, Check, ChevronLeft, RefreshCw, Trash2 } from 'lucide-react'
 import { ApiUsageChart, type UsageBucket } from '@/components/ApiUsageChart'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ''
@@ -91,10 +92,10 @@ function emptyUsageData(keyId: string): UsageData {
 
 function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
-      <p className="text-gray-300 text-xs uppercase tracking-wide mb-1">{label}</p>
+    <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-5">
+      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{label}</p>
       <p className="text-white text-2xl font-bold">{value}</p>
-      {sub && <p className="text-gray-400 text-xs mt-1">{sub}</p>}
+      {sub && <p className="text-gray-500 text-xs mt-1">{sub}</p>}
     </div>
   )
 }
@@ -113,26 +114,26 @@ function RateLimitBar({
     pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-[#FFB81C]'
 
   return (
-    <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+    <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-white font-semibold">Rate Limit Status</p>
-        <span className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-1 rounded-full uppercase">
+        <span className="text-xs bg-white/[0.05] border border-white/[0.08] text-gray-400 px-2 py-1 rounded-full uppercase tracking-wide">
           {tier}
         </span>
       </div>
       <div className="flex items-end gap-2 mb-3">
-        <span className="text-3xl font-bold text-white">{current}</span>
-        <span className="text-gray-300 text-sm mb-1">/ {limit} this hour</span>
+        <span className="text-3xl font-bold text-white tabular-nums">{current}</span>
+        <span className="text-gray-400 text-sm mb-1">/ {limit} this hour</span>
       </div>
-      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-white/[0.05] rounded-full h-2 overflow-hidden">
         <div
           className={`h-2 rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       <div className="flex justify-between mt-2">
-        <p className="text-gray-400 text-xs">{Math.round(pct)}% used</p>
-        <p className="text-gray-400 text-xs">{limit - current} remaining</p>
+        <p className="text-gray-500 text-xs">{Math.round(pct)}% used</p>
+        <p className="text-gray-500 text-xs">{limit - current} remaining</p>
       </div>
     </div>
   )
@@ -141,30 +142,30 @@ function RateLimitBar({
 function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
   if (endpoints.length === 0) {
     return (
-      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
-        <h3 className="text-white font-semibold mb-4">Top Endpoints</h3>
-        <p className="text-gray-400 text-sm text-center py-6">No endpoint data for this period</p>
+      <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
+        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Top Endpoints</h3>
+        <p className="text-gray-500 text-sm text-center py-6">No endpoint data for this period</p>
       </div>
     )
   }
   const maxCount = endpoints[0].count
 
   return (
-    <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
-      <h3 className="text-white font-semibold mb-4">Top Endpoints</h3>
+    <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
+      <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Top Endpoints</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-gray-300 border-b border-white/10">
-              <th className="text-left py-2 pr-4">Method</th>
-              <th className="text-left py-2 pr-4">Path</th>
-              <th className="text-right py-2 pr-4">Calls</th>
-              <th className="text-right py-2">Error Rate</th>
+            <tr className="text-gray-400 border-b border-white/[0.08]">
+              <th className="text-left py-2 pr-4 font-semibold">Method</th>
+              <th className="text-left py-2 pr-4 font-semibold">Path</th>
+              <th className="text-right py-2 pr-4 font-semibold">Calls</th>
+              <th className="text-right py-2 font-semibold">Error Rate</th>
             </tr>
           </thead>
           <tbody>
             {endpoints.map((ep, i) => (
-              <tr key={i} className="border-b border-white/5 group">
+              <tr key={i} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                 <td className="py-2.5 pr-4">
                   <span
                     className={`text-xs font-bold px-2 py-0.5 rounded font-mono ${
@@ -174,7 +175,7 @@ function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
                           ? 'bg-green-500/10 text-green-400'
                           : ep.method === 'DELETE'
                             ? 'bg-red-500/10 text-red-400'
-                            : 'bg-white/5 text-gray-300'
+                            : 'bg-white/[0.05] text-gray-300'
                     }`}
                   >
                     {ep.method}
@@ -182,7 +183,7 @@ function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
                 </td>
                 <td className="py-2.5 pr-4">
                   <code className="text-gray-300 text-xs">{ep.path}</code>
-                  <div className="w-full bg-white/5 rounded-full h-1 mt-1.5 overflow-hidden">
+                  <div className="w-full bg-white/[0.05] rounded-full h-1 mt-1.5 overflow-hidden">
                     <div
                       className="h-1 bg-[#FFB81C]/40 rounded-full"
                       style={{ width: `${(ep.count / maxCount) * 100}%` }}
@@ -231,16 +232,19 @@ function ConfirmDialog({
 }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+      <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6 w-full max-w-sm">
         <h2 className="text-white font-bold text-lg mb-2">{title}</h2>
-        <p className="text-gray-300 text-sm mb-6">{description}</p>
+        <p className="text-gray-400 text-sm mb-6">{description}</p>
         <div className="flex gap-3">
-          <button onClick={onConfirm} className={`flex-1 font-bold py-2.5 rounded-xl text-sm transition-colors ${confirmClass}`}>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 font-bold py-2.5 rounded-xl text-sm transition-colors ${confirmClass}`}
+          >
             {confirmLabel}
           </button>
           <button
             onClick={onCancel}
-            className="px-5 border border-white/10 hover:border-white/30 text-gray-300 hover:text-blue-400 rounded-xl text-sm transition-colors"
+            className="px-5 border border-white/[0.08] hover:border-[#FFB81C]/30 text-gray-400 hover:text-[#FFB81C] rounded-xl text-sm transition-colors"
           >
             Cancel
           </button>
@@ -359,13 +363,13 @@ export default function ApiKeyDetailPage() {
   if (loading && !data) {
     return (
       <div className="max-w-4xl mx-auto space-y-4">
-        <div className="h-8 bg-white/5 rounded-xl animate-pulse w-48 mb-8" />
+        <div className="h-8 bg-white/[0.05] rounded-xl animate-pulse w-48 mb-8" />
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-24 bg-[#141414] border border-white/10 rounded-2xl animate-pulse" />
+            <div key={i} className="h-24 bg-[#141414] border border-white/[0.08] rounded-2xl animate-pulse" />
           ))}
         </div>
-        <div className="h-64 bg-[#141414] border border-white/10 rounded-2xl animate-pulse" />
+        <div className="h-64 bg-[#141414] border border-white/[0.08] rounded-2xl animate-pulse" />
       </div>
     )
   }
@@ -373,12 +377,16 @@ export default function ApiKeyDetailPage() {
   if (fetchError) {
     return (
       <div className="max-w-4xl mx-auto">
-        <Link href="/settings/api-keys" className="text-gray-400 hover:text-blue-400 text-sm transition-colors mb-6 inline-block">
-          &larr; Back to API Keys
+        <Link
+          href="/settings/api-keys"
+          className="inline-flex items-center gap-1.5 text-gray-400 hover:text-[#FFB81C] text-sm transition-colors mb-6"
+        >
+          <ChevronLeft size={14} />
+          Back to API Keys
         </Link>
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
           <p className="text-red-400 font-semibold mb-2">Error loading key</p>
-          <p className="text-gray-300 text-sm">{fetchError}</p>
+          <p className="text-gray-400 text-sm">{fetchError}</p>
         </div>
       </div>
     )
@@ -390,31 +398,32 @@ export default function ApiKeyDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mb-2">
         <Link
           href="/settings/api-keys"
-          className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
+          className="inline-flex items-center gap-1 text-gray-500 hover:text-[#FFB81C] text-sm transition-colors"
         >
+          <ChevronLeft size={13} />
           API Keys
         </Link>
-        <span className="text-gray-500">/</span>
-        <span className="text-gray-300 text-sm">{key.name}</span>
+        <span className="text-gray-600">/</span>
+        <span className="text-gray-400 text-sm">{key.name}</span>
       </div>
 
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">{key.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">{key.name}</h1>
             {key.revokedAt && (
               <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">
                 Revoked
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 mt-1">
+          <div className="flex items-center gap-3 mt-1.5 flex-wrap">
             <code className="text-[#FFB81C] text-sm font-mono">{key.prefix}...</code>
-            <span className="text-xs bg-white/5 border border-white/10 text-gray-300 px-2 py-0.5 rounded-full uppercase">
+            <span className="text-xs bg-white/[0.05] border border-white/[0.08] text-gray-400 px-2 py-0.5 rounded-full uppercase tracking-wide">
               {key.tier}
             </span>
             {key.scopes.map((s) => (
@@ -427,26 +436,28 @@ export default function ApiKeyDetailPage() {
             ))}
           </div>
           {key.lastUsedAt && (
-            <p className="text-gray-400 text-xs mt-1">
+            <p className="text-gray-500 text-xs mt-1.5">
               Last used {new Date(key.lastUsedAt).toLocaleString()}
             </p>
           )}
         </div>
 
         {!key.revokedAt && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={() => { setShowRotateConfirm(true); setActionError(null) }}
               disabled={actionLoading}
-              className="text-sm border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 text-[#FFB81C] px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/[0.06] text-[#FFB81C] px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
-              Rotate Key
+              <RefreshCw size={13} />
+              Rotate
             </button>
             <button
               onClick={() => { setShowDeleteConfirm(true); setActionError(null) }}
               disabled={actionLoading}
-              className="text-sm border border-red-500/20 hover:border-red-500/50 text-red-400 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/[0.06] text-red-400 hover:text-red-300 px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
+              <Trash2 size={13} />
               Delete
             </button>
           </div>
@@ -464,19 +475,20 @@ export default function ApiKeyDetailPage() {
       {rotationResult && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 mb-6">
           <p className="text-green-400 font-semibold mb-1">Key Rotated Successfully</p>
-          <p className="text-gray-300 text-sm mb-3">{rotationResult.rotation.message}</p>
+          <p className="text-gray-400 text-sm mb-3">{rotationResult.rotation.message}</p>
           <div className="flex items-center gap-3 bg-black/30 rounded-xl px-4 py-3">
             <code className="text-green-300 text-sm font-mono flex-1 break-all">
               {rotationResult.key.rawKey}
             </code>
             <button
               onClick={() => copyKey(rotationResult.key.rawKey)}
-              className="text-xs text-gray-300 hover:text-blue-400 border border-white/10 hover:border-white/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#FFB81C] border border-white/[0.08] hover:border-[#FFB81C]/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+              {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
-          <p className="text-gray-400 text-xs mt-2">
+          <p className="text-gray-500 text-xs mt-2">
             Copy this key now — it will never be shown again. Redirecting to new key...
           </p>
         </div>

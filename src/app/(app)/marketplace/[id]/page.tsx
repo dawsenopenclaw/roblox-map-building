@@ -603,10 +603,40 @@ function TemplateDetail({
     'demo-10': 'bg-gradient-to-br from-slate-900/70 via-gray-900 to-zinc-900/60',
   }
 
-  const PREVIEW_ICONS: Record<string, string> = {
-    'demo-1': '🏰', 'demo-2': '🏙', 'demo-3': '⚙',
-    'demo-4': '🎨', 'demo-5': '⚔', 'demo-6': '🌿',
-    'demo-7': '🛡', 'demo-8': '🎒', 'demo-9': '🌴', 'demo-10': '⚗',
+  // SVG icon per category for placeholder preview
+  const categoryIconSvg = (cls: string) => {
+    const cat = template.category
+    if (cat === 'GAME_TEMPLATE') return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" />
+      </svg>
+    )
+    if (cat === 'MAP_TEMPLATE') return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+      </svg>
+    )
+    if (cat === 'UI_KIT') return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+      </svg>
+    )
+    if (cat === 'SCRIPT') return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+      </svg>
+    )
+    if (cat === 'ASSET') return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+    )
+    // SOUND + default
+    return (
+      <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" />
+      </svg>
+    )
   }
 
   // Sibling demos: same category, different id — for "More from creator" / related
@@ -654,9 +684,9 @@ function TemplateDetail({
           ) : (
             /* CSS gradient art preview placeholder */
             <div className={`aspect-video rounded-xl overflow-hidden flex flex-col items-center justify-center gap-3 ${PREVIEW_GRADIENTS[id] ?? 'bg-gradient-to-br from-[#1c1c1c] to-[#141414]'}`}>
-              <span className="text-7xl opacity-40 select-none" aria-hidden="true">
-                {PREVIEW_ICONS[id] ?? '🎮'}
-              </span>
+              <div className="opacity-25">
+                {categoryIconSvg('w-20 h-20 text-white')}
+              </div>
               <span className="text-xs text-white/20 uppercase tracking-widest font-semibold">
                 {categoryLabels[template.category] ?? template.category}
               </span>
@@ -960,23 +990,43 @@ const MINI_GRADIENTS: Record<string, string> = {
   'demo-9':  'from-amber-900/50 to-yellow-900/40',
   'demo-10': 'from-slate-900/50 to-zinc-900/40',
 }
-const MINI_ICONS: Record<string, string> = {
-  'demo-1': '🏰', 'demo-2': '🏙', 'demo-3': '⚙',
-  'demo-4': '🎨', 'demo-5': '⚔', 'demo-6': '🌿',
-  'demo-7': '🛡', 'demo-8': '🎒', 'demo-9': '🌴', 'demo-10': '⚗',
+// Category icon for mini card
+function MiniCategoryIcon({ category }: { category: string }) {
+  const cls = 'w-7 h-7 text-white'
+  if (category === 'GAME_TEMPLATE') return (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.39 48.39 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" />
+    </svg>
+  )
+  if (category === 'MAP_TEMPLATE') return (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
+    </svg>
+  )
+  if (category === 'SCRIPT') return (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+    </svg>
+  )
+  return (
+    <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+    </svg>
+  )
 }
 
 function MiniTemplateCard({ template }: { template: DemoTemplate }) {
   const isFree = template.priceCents === 0
   const grad = MINI_GRADIENTS[template.id] ?? 'from-gray-900/50 to-zinc-900/40'
-  const icon = MINI_ICONS[template.id] ?? '🎮'
   return (
     <Link
       href={`/marketplace/${template.id}`}
       className="group block bg-[#141414] border border-white/8 rounded-xl overflow-hidden hover:border-[#D4AF37]/25 hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] transition-all duration-200"
     >
       <div className={`aspect-video bg-gradient-to-br ${grad} flex items-center justify-center`}>
-        <span className="text-3xl opacity-50 group-hover:opacity-70 transition-opacity select-none" aria-hidden="true">{icon}</span>
+        <div className="opacity-40 group-hover:opacity-60 transition-opacity">
+          <MiniCategoryIcon category={template.category} />
+        </div>
       </div>
       <div className="p-3">
         <p className="text-xs font-semibold text-white/80 line-clamp-1 group-hover:text-white transition-colors">{template.title}</p>

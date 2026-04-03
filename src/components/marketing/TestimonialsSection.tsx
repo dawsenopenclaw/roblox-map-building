@@ -84,13 +84,21 @@ function StarRating({ count }: { count: number }) {
 function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[number] }) {
   return (
     <div
-      className="flex-shrink-0 w-72 rounded-xl p-5 flex flex-col gap-3"
+      className="flex-shrink-0 w-72 rounded-xl p-5 flex flex-col gap-3 relative"
       style={{
         background: '#0F1535',
         border: '1px solid #1A2550',
         boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
       }}
     >
+      {/* Gold quote mark */}
+      <div
+        aria-hidden="true"
+        className="absolute top-4 right-5 text-5xl font-serif leading-none select-none pointer-events-none"
+        style={{ color: 'rgba(212,175,55,0.12)', lineHeight: 1, fontFamily: 'Georgia, serif' }}
+      >
+        &ldquo;
+      </div>
       <div className="flex items-center gap-3">
         {/* Avatar placeholder */}
         <div
@@ -123,15 +131,22 @@ export default function TestimonialsSection() {
   useEffect(() => {
     const tracks = [track1Ref.current, track2Ref.current]
     const speeds = [0.4, 0.3]
+    // track2 starts mid-way so the rightward scroll looks natural from the start
     let positions = [0, 0]
+    let initialized = [false, false]
     let rafId: number
 
     const animate = () => {
       tracks.forEach((track, idx) => {
         if (!track) return
         const dir = idx === 0 ? -1 : 1
-        positions[idx] += speeds[idx] * dir
         const half = track.scrollWidth / 2
+        // Initialize track2 to -half on first frame so it doesn't jump
+        if (!initialized[idx]) {
+          initialized[idx] = true
+          if (dir === 1) positions[idx] = -half
+        }
+        positions[idx] += speeds[idx] * dir
         if (positions[idx] <= -half) positions[idx] = 0
         if (positions[idx] >= 0 && dir === 1) positions[idx] = -half
         track.style.transform = `translateX(${positions[idx]}px)`
@@ -147,8 +162,8 @@ export default function TestimonialsSection() {
   const secondHalf = TESTIMONIALS.slice(4)
 
   return (
-    <section className="py-32 overflow-hidden" style={{ background: '#0A0E27' }}>
-      <div className="max-w-6xl mx-auto px-6 mb-14 text-center">
+    <section className="py-16 overflow-hidden" style={{ background: '#0A0E27' }}>
+      <div className="max-w-6xl mx-auto px-6 mb-10 text-center">
         <p
           className="text-[12px] font-medium uppercase tracking-widest mb-3"
           style={{ color: '#FFB81C' }}
@@ -164,7 +179,7 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Row 1 — scrolls left */}
-      <div className="relative mb-4" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+      <div className="relative mb-3" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
         <div ref={track1Ref} className="flex gap-4 w-max">
           {[...firstHalf, ...firstHalf].map((t, i) => (
             <TestimonialCard key={`r1-${i}`} testimonial={t} />
@@ -174,7 +189,7 @@ export default function TestimonialsSection() {
 
       {/* Row 2 — scrolls right */}
       <div className="relative" style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
-        <div ref={track2Ref} className="flex gap-4 w-max" style={{ transform: 'translateX(-50%)' }}>
+        <div ref={track2Ref} className="flex gap-4 w-max">
           {[...secondHalf, ...secondHalf].map((t, i) => (
             <TestimonialCard key={`r2-${i}`} testimonial={t} />
           ))}

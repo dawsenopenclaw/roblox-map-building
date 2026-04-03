@@ -69,8 +69,8 @@ function StepCard({
 }) {
   return (
     <div className="flex gap-4">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center">
-        <span className="text-[#D4AF37] text-sm font-bold">{number}</span>
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/30 flex items-center justify-center">
+        <span className="text-[#FFB81C] text-sm font-bold">{number}</span>
       </div>
       <div className="flex-1 pt-1">
         <p className="text-sm font-semibold text-white mb-1">{title}</p>
@@ -107,7 +107,7 @@ function InstallSection() {
   const { copied: pathCopied, copy: copyPath } = useCopy(os === 'win' ? winPath : macPath)
 
   return (
-    <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+    <section className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
       <SectionHeader
         title="Install Plugin"
         description="Get the ForjeGames plugin running in Roblox Studio."
@@ -123,16 +123,16 @@ function InstallSection() {
             <a
               href={`/api/studio/installer?os=${os}`}
               download={os === 'win' ? 'install-forjegames.bat' : 'install-forjegames.sh'}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
-                bg-[#D4AF37] hover:bg-[#c4a030] text-black transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold
+                bg-[#FFB81C] hover:bg-[#E6A519] text-black transition-colors"
             >
               <Download size={14} />
               {os === 'win' ? 'Download Installer (.bat)' : 'Download Installer (.sh)'}
             </a>
             <button
               onClick={() => setOs(os === 'win' ? 'mac' : 'win')}
-              className="px-3 py-2.5 rounded-xl text-xs font-medium border border-[#2a2a2a]
-                text-gray-500 hover:text-gray-300 hover:border-gray-600 transition-colors"
+              className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/[0.08]
+                text-gray-500 hover:text-[#FFB81C] hover:border-[#FFB81C]/30 transition-colors"
             >
               {os === 'win' ? 'Mac?' : 'Windows?'}
             </button>
@@ -156,10 +156,10 @@ function InstallSection() {
       </div>
 
       {/* Alternative: manual install */}
-      <div className="mt-6 pt-5 border-t border-[#2a2a2a]">
+      <div className="mt-6 pt-5 border-t border-white/[0.08]">
         <button
           onClick={() => setShowManual((v) => !v)}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#FFB81C] transition-colors"
         >
           <ChevronRight
             size={14}
@@ -169,14 +169,14 @@ function InstallSection() {
         </button>
 
         {showManual && (
-          <div className="mt-3 p-4 rounded-xl bg-black/50 border border-[#2a2a2a] space-y-3">
+          <div className="mt-3 p-4 rounded-xl bg-black/50 border border-white/[0.08] space-y-3">
             <div>
               <p className="text-xs text-gray-500 mb-2">1. Download the plugin file:</p>
               <a
                 href="/api/studio/plugin"
                 download="ForjeGames.lua"
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold
-                  bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+                  bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-gray-300 transition-colors"
               >
                 <Download size={12} />
                 Download ForjeGames.lua
@@ -185,13 +185,13 @@ function InstallSection() {
             <div>
               <p className="text-xs text-gray-500 mb-2">2. Move it to your Plugins folder:</p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-[#2a2a2a] font-mono text-xs text-gray-300 select-all">
+                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/40 border border-white/[0.08] font-mono text-xs text-gray-300 select-all">
                   <Terminal size={12} className="text-gray-500 flex-shrink-0" />
                   {os === 'win' ? winPath : macPath}
                 </div>
                 <button
                   onClick={() => copyPath()}
-                  className="flex-shrink-0 px-2 py-2 rounded-lg text-xs bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors"
+                  className="flex-shrink-0 px-2 py-2 rounded-lg text-xs bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-gray-300 hover:text-[#FFB81C] transition-colors"
                 >
                   {pathCopied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                 </button>
@@ -287,7 +287,7 @@ function ConnectionCodeSection() {
   }
 
   return (
-    <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+    <section className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
       <SectionHeader
         title="Connection Code"
         description="Generate a code and enter it in the Roblox Studio plugin to link your session."
@@ -295,7 +295,7 @@ function ConnectionCodeSection() {
 
       {/* Connected state */}
       {status === 'connected' && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/8 border border-green-500/20 mb-5">
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/[0.08] border border-green-500/20 mb-5">
           <div className="w-3 h-3 rounded-full bg-green-400 shadow-[0_0_8px_#4ade80]" />
           <div>
             <p className="text-sm font-semibold text-green-300">Studio Connected</p>
@@ -311,7 +311,7 @@ function ConnectionCodeSection() {
       {code && status !== 'connected' && (
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
               Your code
             </p>
             {status === 'pending' && expiresAt && (
@@ -333,12 +333,12 @@ function ConnectionCodeSection() {
                 background:
                   status === 'expired'
                     ? 'rgba(239,68,68,0.05)'
-                    : 'rgba(212,175,55,0.06)',
+                    : 'rgba(255,184,28,0.06)',
                 borderColor:
                   status === 'expired'
                     ? 'rgba(239,68,68,0.2)'
-                    : 'rgba(212,175,55,0.25)',
-                color: status === 'expired' ? '#ef4444' : '#D4AF37',
+                    : 'rgba(255,184,28,0.25)',
+                color: status === 'expired' ? '#ef4444' : '#FFB81C',
                 opacity: status === 'expired' ? 0.6 : 1,
               }}
             >
@@ -352,7 +352,7 @@ function ConnectionCodeSection() {
                   transition-colors disabled:opacity-50"
                 style={{
                   background: copied ? 'rgba(74,222,128,0.08)' : 'rgba(255,255,255,0.03)',
-                  borderColor: copied ? 'rgba(74,222,128,0.25)' : '#2a2a2a',
+                  borderColor: copied ? 'rgba(74,222,128,0.25)' : 'rgba(255,255,255,0.08)',
                   color: copied ? '#4ade80' : '#9ca3af',
                 }}
               >
@@ -364,7 +364,7 @@ function ConnectionCodeSection() {
 
           {status === 'pending' && (
             <div className="flex items-center gap-2 mt-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-pulse" />
               <p className="text-xs text-gray-500">Waiting for Studio plugin to enter this code…</p>
             </div>
           )}
@@ -382,20 +382,20 @@ function ConnectionCodeSection() {
             status === 'connected'
               ? 'rgba(74,222,128,0.08)'
               : status === 'idle' || status === 'expired'
-              ? 'rgba(212,175,55,0.1)'
+              ? 'rgba(255,184,28,0.1)'
               : 'rgba(255,255,255,0.04)',
           border: `1px solid ${
             status === 'connected'
               ? 'rgba(74,222,128,0.2)'
               : status === 'idle' || status === 'expired'
-              ? 'rgba(212,175,55,0.3)'
-              : '#2a2a2a'
+              ? 'rgba(255,184,28,0.3)'
+              : 'rgba(255,255,255,0.08)'
           }`,
           color:
             status === 'connected'
               ? '#4ade80'
               : status === 'idle' || status === 'expired'
-              ? '#D4AF37'
+              ? '#FFB81C'
               : '#6b7280',
         }}
       >
@@ -472,7 +472,7 @@ function SessionsSection() {
 
   if (loading) {
     return (
-      <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <section className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
         <SectionHeader
           title="Connected Sessions"
           description="Active Roblox Studio instances linked to your account."
@@ -487,7 +487,7 @@ function SessionsSection() {
 
   if (sessions.length === 0) {
     return (
-      <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+      <section className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
         <SectionHeader
           title="Connected Sessions"
           description="Active Roblox Studio instances linked to your account."
@@ -504,7 +504,7 @@ function SessionsSection() {
   }
 
   return (
-    <section className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-6">
+    <section className="bg-[#141414] border border-white/[0.08] rounded-2xl p-6">
       <SectionHeader
         title="Connected Sessions"
         description="Active Roblox Studio instances linked to your account."
@@ -514,8 +514,8 @@ function SessionsSection() {
         {sessions.map((session) => (
           <div
             key={session.sessionId}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.025] border border-[#2a2a2a]
-              hover:border-white/10 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.025] border border-white/[0.08]
+              hover:border-[#FFB81C]/20 transition-colors"
           >
             {/* Status dot */}
             <div className="flex-shrink-0">
@@ -555,7 +555,7 @@ function SessionsSection() {
               onClick={() => handleDisconnect(session.sessionId)}
               disabled={disconnecting === session.sessionId}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                bg-white/[0.03] hover:bg-red-500/10 border border-white/8 hover:border-red-500/20
+                bg-white/[0.03] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/20
                 text-gray-500 hover:text-red-400 transition-all disabled:opacity-50"
             >
               <Unplug size={11} />
@@ -578,7 +578,7 @@ export default function StudioSettingsPage() {
         {/* Back nav */}
         <Link
           href="/settings"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-200
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#FFB81C]
             transition-colors mb-8"
         >
           <ArrowLeft size={15} />
@@ -588,13 +588,13 @@ export default function StudioSettingsPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20
+            <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20
               flex items-center justify-center">
-              <CircleDot size={18} className="text-[#D4AF37]" />
+              <CircleDot size={18} className="text-[#FFB81C]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Studio Connection</h1>
-              <p className="text-sm text-gray-500">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Studio Connection</h1>
+              <p className="text-sm text-gray-400">
                 Link Roblox Studio to the ForjeGames web editor.
               </p>
             </div>
@@ -613,7 +613,7 @@ export default function StudioSettingsPage() {
           <Wifi size={13} />
           <span>
             Need help?{' '}
-            <Link href="/docs/studio" className="text-[#D4AF37] hover:underline">
+            <Link href="/docs/studio" className="text-[#FFB81C] hover:underline">
               Read the Studio docs
             </Link>
           </span>

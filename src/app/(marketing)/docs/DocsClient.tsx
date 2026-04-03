@@ -215,7 +215,11 @@ function ParamTable({ params }: { params: Param[] }) {
 }
 
 function SectionLabel({ children }: { children: ReactNode }) {
-  return <h3 className="text-xs font-semibold text-white uppercase tracking-widest mb-3 mt-1">{children}</h3>
+  return (
+    <h3 className="mb-3 mt-1 text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>
+      {children}
+    </h3>
+  )
 }
 
 function SectionHeading({ id, children }: { id?: string; children: ReactNode }) {
@@ -227,7 +231,7 @@ function SectionHeading({ id, children }: { id?: string; children: ReactNode }) 
 }
 
 function Divider() {
-  return <hr className="border-[#1A2550] my-14" />
+  return <hr className="my-14 border-[#1A2550]" />
 }
 
 // ─── Endpoint section wrapper ─────────────────────────────────────────────────
@@ -840,10 +844,10 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
               </div>
 
               <div
-                className="rounded-xl border border-amber-500/20 p-4 text-sm text-amber-200/80 leading-relaxed"
-                style={{ background: 'rgba(245,158,11,0.05)' }}
+                className="rounded-xl border border-[#D4AF37]/20 p-4 text-sm leading-relaxed"
+                style={{ background: 'rgba(212,175,55,0.04)', color: '#FAFAFA99' }}
               >
-                <strong className="text-amber-400">Security:</strong> Never expose your API key in client-side code or
+                <strong className="text-[#FFB81C]">Security:</strong> Never expose your API key in client-side code or
                 public repositories. Use environment variables and server-side requests only.
               </div>
             </section>

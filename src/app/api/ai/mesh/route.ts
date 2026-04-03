@@ -733,8 +733,51 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Cost estimate (always returned even in demo)
   const costEstimateUsd = COST_MESH[quality] + (withTextures && falKey ? COST_TEXTURE : 0)
 
-  // Demo mode
+  // If no Meshy key, try free pipeline before falling back to demo
   if (!meshyKey) {
+    try {
+      const { generateFreeMesh, generateMeshImportLuau } = await import('@/lib/free-mesh-pipeline')
+      const freeResult = await generateFreeMesh(prompt)
+
+      if (freeResult.status === 'complete' && freeResult.meshUrl) {
+        return NextResponse.json({
+          meshUrl: freeResult.meshUrl,
+          fbxUrl: null,
+          thumbnailUrl: freeResult.thumbnailUrl,
+          videoUrl: null,
+          polygonCount: freeResult.polygonCount,
+          textures: null,
+          luauCode: generateMeshImportLuau(freeResult.meshUrl, prompt.slice(0, 50)),
+          costEstimateUsd: 0,
+          actualCostUsd: 0,
+          status: 'complete',
+          category,
+          model: freeResult.model,
+          message: 'Generated via free AI pipeline (HuggingFace Spaces)',
+        })
+      }
+
+      // Image was generated but 3D conversion failed — return partial result
+      if (freeResult.thumbnailUrl) {
+        return NextResponse.json({
+          meshUrl: null,
+          fbxUrl: null,
+          thumbnailUrl: freeResult.thumbnailUrl,
+          videoUrl: null,
+          polygonCount: null,
+          textures: null,
+          luauCode: null,
+          costEstimateUsd: 0,
+          actualCostUsd: 0,
+          status: 'pending',
+          category,
+          model: freeResult.model,
+          message: freeResult.error ?? '3D conversion in progress — concept image shown.',
+        })
+      }
+    } catch (err) {
+      console.warn('[mesh] Free pipeline failed:', err instanceof Error ? err.message : String(err))
+    }
     return demoResponse(prompt)
   }
 

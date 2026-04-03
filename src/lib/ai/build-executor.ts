@@ -11,6 +11,7 @@
 
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
+import { callAI } from './provider'
 import { redis } from '@/lib/redis'
 import { queueCommand } from '@/lib/studio-session'
 import { startMeshPipeline } from '@/lib/pipeline/mesh-pipeline'
@@ -30,16 +31,15 @@ import {
   petFollowSystem,
 } from './luau-templates'
 
-// ── Lazy Anthropic client ─────────────────────────────────────────────────────
+// ── Lazy Anthropic client (kept for optional custom-key path only) ────────────
+// Primary AI path now uses callAI() → Gemini (primary) + Groq (fallback).
 
 let _anthropic: Anthropic | null = null
 function getClient(): Anthropic | null {
+  if (process.env.ANTHROPIC_DISABLED === 'true') return null
   if (_anthropic) return _anthropic
   const key = serverEnv.ANTHROPIC_API_KEY
-  if (!key) {
-    console.warn('[build-executor] ANTHROPIC_API_KEY not configured — AI execution disabled')
-    return null
-  }
+  if (!key) return null
   _anthropic = new Anthropic({ apiKey: key })
   return _anthropic
 }
@@ -210,30 +210,14 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
     }
   }
 
-  // Fall through to Claude generation
-  const client = getClient()
-  if (!client) {
-    throw new Error('[build-executor] ANTHROPIC_API_KEY is not configured — AI code generation unavailable')
-  }
+  // Fall through to AI generation — Gemini primary, Groq fallback
   const systemPrompt = TASK_SYSTEM_PROMPTS[task.type]
 
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5',
-    max_tokens: 3000,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: task.prompt,
-      },
-    ],
-  })
-
-  const text = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
-    .join('')
-    .trim()
+  const text = await callAI(
+    systemPrompt,
+    [{ role: 'user', content: task.prompt }],
+    { maxTokens: 3000, temperature: 0.7 },
+  )
 
   // Strip any accidental markdown fences
   return text

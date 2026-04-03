@@ -16,11 +16,12 @@ function CheckIcon({ gold }: { gold?: boolean }) {
     <div
       className="w-7 h-7 rounded-full flex items-center justify-center"
       style={{
-        background: gold ? 'rgba(255,184,28,0.12)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${gold ? 'rgba(255,184,28,0.3)' : 'rgba(255,255,255,0.08)'}`,
+        background: gold ? 'rgba(255,184,28,0.15)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${gold ? 'rgba(255,184,28,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: gold ? '0 0 10px rgba(255,184,28,0.25)' : 'none',
       }}
     >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold ? '#FFB81C' : 'rgba(255,255,255,0.4)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold ? '#FFD166' : 'rgba(255,255,255,0.4)'} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="20 6 9 17 4 12" />
       </svg>
     </div>
@@ -46,7 +47,7 @@ function XIcon() {
 
 export default function ComparisonSection() {
   return (
-    <section className="py-32 px-6" style={{ background: '#0A0E27' }}>
+    <section className="py-16 px-6" style={{ background: '#0A0E27' }}>
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-14">
@@ -81,7 +82,14 @@ export default function ComparisonSection() {
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: '#FFB81C' }}>
+              <p
+                className="text-sm font-bold"
+                style={{
+                  color: '#FFD166',
+                  textShadow: '0 0 12px rgba(255,184,28,0.6), 0 0 24px rgba(212,175,55,0.3)',
+                  letterSpacing: '0.01em',
+                }}
+              >
                 ForjeGames
               </p>
             </div>

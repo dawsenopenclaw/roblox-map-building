@@ -32,7 +32,7 @@ export default function CharityBanner() {
         <p className="text-sm text-center" style={{ color: '#8B95B0' }}>
           10% of every payment supports education charities teaching kids to code.{' '}
           <Link
-            href="/about#charity"
+            href="/pricing"
             className="font-medium transition-opacity hover:opacity-80"
             style={{ color: '#FFB81C' }}
           >

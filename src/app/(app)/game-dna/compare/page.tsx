@@ -258,7 +258,7 @@ function CompareContent() {
             <select
               value={scanAId}
               onChange={(e) => setScanAId(e.target.value)}
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.map((s) => (
@@ -273,7 +273,7 @@ function CompareContent() {
             <select
               value={scanBId}
               onChange={(e) => setScanBId(e.target.value)}
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
             >
               <option value="">Select a game…</option>
               {scans.filter((s) => s.id !== scanAId).map((s) => (
@@ -432,7 +432,21 @@ function CompareContent() {
       {/* Empty state */}
       {!canCompare && !loading && (
         <div className="bg-[#141414] border border-dashed border-white/10 rounded-2xl p-12 text-center">
-          <div className="text-5xl mb-4">🧬 vs 🧬</div>
+          <div className="flex items-center justify-center gap-3 mb-5">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20">
+              <svg className="w-6 h-6 text-[#FFB81C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+            </div>
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+            </svg>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+            </div>
+          </div>
           <p className="text-gray-300 text-sm">
             Select two completed scans above to see a side-by-side comparison
           </p>
@@ -440,7 +454,7 @@ function CompareContent() {
             <p className="text-gray-500 text-xs mt-2">
               You need at least 2 completed scans.{' '}
               <Link href="/editor" className="text-[#FFB81C] hover:underline">
-                Scan more games →
+                Scan more games
               </Link>
             </p>
           )}

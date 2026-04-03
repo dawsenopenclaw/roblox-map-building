@@ -187,15 +187,15 @@ export default function TeamHistoryPage() {
       )}
 
       {/* Project ID input */}
-      <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
-        <label className="block text-xs text-gray-300 mb-2 font-medium">Project ID</label>
+      <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-5">
+        <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Project ID</label>
         <div className="flex gap-3">
           <input
             type="text"
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="Enter project ID to load versions"
-            className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/40 transition-colors"
+            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
           />
           <button
             onClick={fetchVersions}
@@ -309,7 +309,7 @@ export default function TeamHistoryPage() {
               {loadingDiff ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-8 bg-white/5 rounded animate-pulse" />
+                    <div key={i} className="h-8 bg-white/[0.04] rounded-lg animate-pulse" />
                   ))}
                 </div>
               ) : diff ? (
@@ -359,7 +359,11 @@ export default function TeamHistoryPage() {
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="text-3xl mb-3">📋</div>
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-3">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                    </svg>
+                  </div>
                   <p className="text-gray-400 text-sm">Select From and To versions to see differences</p>
                 </div>
               )}
@@ -371,7 +375,11 @@ export default function TeamHistoryPage() {
       {/* Empty state — only shown after a real load with no results */}
       {versions.length === 0 && !loading && projectId && !error && !isDemo && (
         <div className="bg-[#141414] border border-dashed border-white/10 rounded-2xl p-12 text-center">
-          <div className="text-4xl mb-3">📦</div>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-white/[0.04] border border-white/[0.06] mb-3">
+            <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+            </svg>
+          </div>
           <p className="text-gray-300 text-sm">No versions found for this project</p>
         </div>
       )}

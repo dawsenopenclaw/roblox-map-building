@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -213,17 +213,74 @@ const ERROR_CODES = [
 ]
 
 const METHOD_COLOR: Record<string, string> = {
-  GET: 'text-emerald-400 bg-emerald-400/10',
-  POST: 'text-blue-400 bg-blue-400/10',
-  PUT: 'text-yellow-400 bg-yellow-400/10',
-  DELETE: 'text-red-400 bg-red-400/10',
+  GET: 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20',
+  POST: 'text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/20',
+  PUT: 'text-amber-400 bg-amber-400/10 border border-amber-400/20',
+  DELETE: 'text-rose-400 bg-rose-400/10 border border-rose-400/20',
 }
 
 const TIER_COLOR: Record<string, string> = {
-  All: 'text-white/40 bg-white/5',
-  Free: 'text-emerald-400 bg-emerald-400/10',
-  Pro: 'text-blue-400 bg-blue-400/10',
-  Studio: 'text-purple-400 bg-purple-400/10',
+  All: 'text-[#71717A] bg-white/[0.025] border border-white/[0.07]',
+  Free: 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20',
+  Pro: 'text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/20',
+  Studio: 'text-purple-400 bg-purple-400/10 border border-purple-400/20',
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    }).catch(() => {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.cssText = 'position:fixed;opacity:0'
+      document.body.appendChild(ta)
+      ta.focus(); ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }, [text])
+  return (
+    <button
+      onClick={copy}
+      className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-[#71717A] transition-colors hover:bg-white/[0.05] hover:text-[#FAFAFA]"
+    >
+      {copied ? (
+        <>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <polyline points="2 8 6 12 14 4" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="text-emerald-400">Copied</span>
+        </>
+      ) : (
+        <>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
+  )
+}
+
+function CodePane({ code, lang }: { code: string; lang: string }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
+      <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[#52525B]">{lang}</span>
+        <CopyButton text={code} />
+      </div>
+      <pre className="overflow-x-auto p-4 font-mono text-sm leading-relaxed text-[#FAFAFA]/65">
+        <code>{code}</code>
+      </pre>
+    </div>
+  )
 }
 
 export default function ApiReferencePage() {
@@ -236,88 +293,92 @@ export default function ApiReferencePage() {
     setActiveTab((prev) => ({ ...prev, [path]: tab }))
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#050810] text-[#FAFAFA]">
       {/* Breadcrumb */}
-      <div className="border-b border-white/5 px-6 py-3 text-xs text-white/30">
-        <Link href="/docs" className="hover:text-[#D4AF37]">Docs</Link>
-        <span className="mx-2">/</span>
-        <span className="text-white/60">API Reference</span>
+      <div className="border-b border-white/[0.07] bg-[#0A0E27]/60 px-6 py-3 text-xs text-[#52525B]">
+        <Link href="/docs" className="transition-colors hover:text-[#D4AF37]">Docs</Link>
+        <span className="mx-2 text-white/15">/</span>
+        <span className="text-[#71717A]">API Reference</span>
       </div>
 
       {/* Hero */}
-      <section className="border-b border-white/5 px-6 py-16">
+      <section className="border-b border-white/[0.07] px-6 py-16">
         <div className="mx-auto max-w-4xl">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
+          <p className="mb-3 text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>
             API Reference
           </p>
-          <h1 className="mb-4 text-4xl font-bold tracking-tight">REST API</h1>
-          <p className="mb-6 max-w-xl text-base text-white/45">
-            Base URL: <code className="rounded bg-white/5 px-2 py-0.5 font-mono text-sm text-white/70">https://forjegames.com</code>
-            <br />
+          <h1 className="mb-4 text-4xl font-bold tracking-tight text-[#FAFAFA]">REST API</h1>
+          <p className="mb-6 max-w-xl text-base text-[#71717A]">
+            Base URL:{' '}
+            <code className="rounded-md border border-white/[0.07] bg-white/[0.025] px-2 py-0.5 font-mono text-sm text-[#FAFAFA]/70">
+              https://forjegames.com
+            </code>
+            <br className="mt-1 block" />
             All endpoints return JSON. All authenticated endpoints require a Bearer token.
           </p>
 
           {/* Auth block */}
-          <div className="rounded-xl border border-white/5 bg-[#141414] p-5">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/30">Authentication</div>
-            <p className="mb-3 text-sm text-white/50">
+          <div className="rounded-2xl border border-white/[0.07] p-5" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>
+              Authentication
+            </div>
+            <p className="mb-4 text-sm text-[#71717A]">
               Generate an API key in{' '}
-              <Link href="/settings/api-keys" className="text-[#D4AF37] hover:underline">
+              <Link href="/settings/api-keys" className="text-[#D4AF37] transition-colors hover:underline">
                 Settings → API Keys
               </Link>
               . Pass it as a Bearer token on every request.
             </p>
-            <pre className="overflow-x-auto rounded-lg bg-black/40 p-4 font-mono text-sm text-white/65">
-              {`Authorization: Bearer fg_YOUR_API_KEY`}
-            </pre>
+            <CodePane code="Authorization: Bearer fg_YOUR_API_KEY" lang="http" />
           </div>
         </div>
       </section>
 
       {/* Endpoints */}
-      <section className="mx-auto max-w-4xl px-6 py-16 space-y-16">
+      <section className="mx-auto max-w-4xl space-y-16 px-6 py-16">
         {Object.entries(ENDPOINTS).map(([group, endpoints]) => (
           <div key={group}>
-            <h2 className="mb-6 text-xl font-bold text-white">{group}</h2>
-            <div className="space-y-6">
+            <h2 className="mb-6 text-xl font-bold text-[#FAFAFA]">{group}</h2>
+            <div className="space-y-5">
               {endpoints.map((ep) => (
                 <div
                   key={ep.path}
-                  className="overflow-hidden rounded-2xl border border-white/5 bg-[#141414]"
+                  className="overflow-hidden rounded-2xl border border-white/[0.07]"
+                  style={{ background: 'rgba(255,255,255,0.025)' }}
                 >
                   {/* Header */}
-                  <div className="flex flex-wrap items-center gap-3 border-b border-white/5 px-5 py-4">
-                    <span className={`rounded px-2 py-0.5 text-xs font-bold ${METHOD_COLOR[ep.method]}`}>
+                  <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.07] px-5 py-4">
+                    <span className={`rounded px-2 py-0.5 font-mono text-xs font-bold ${METHOD_COLOR[ep.method]}`}>
                       {ep.method}
                     </span>
-                    <code className="flex-1 font-mono text-sm text-white/80">{ep.path}</code>
+                    <code className="flex-1 font-mono text-sm text-[#FAFAFA]/80">{ep.path}</code>
                     <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${TIER_COLOR[ep.tier]}`}>
                       {ep.tier}
                     </span>
                     {ep.auth && (
-                      <span className="rounded-full bg-[#D4AF37]/10 px-2.5 py-0.5 text-[10px] font-semibold text-[#D4AF37]">
+                      <span className="rounded-full border border-[#D4AF37]/25 bg-[#D4AF37]/10 px-2.5 py-0.5 text-[10px] font-semibold text-[#D4AF37]">
                         Auth
                       </span>
                     )}
                   </div>
 
                   {/* Summary */}
-                  <div className="border-b border-white/5 px-5 py-3">
-                    <p className="text-sm text-white/50">{ep.summary}</p>
+                  <div className="border-b border-white/[0.07] px-5 py-3">
+                    <p className="text-sm text-[#71717A]">{ep.summary}</p>
                   </div>
 
                   {/* Tabs */}
-                  <div className="border-b border-white/5 px-5">
+                  <div className="border-b border-white/[0.07] px-5">
                     <div className="flex gap-4">
                       {(['curl', ...(ep.requestBody ? ['request'] : []), 'response'] as const).map(
                         (tab) => (
                           <button
                             key={tab}
                             onClick={() => setTab(ep.path, tab as 'curl' | 'request' | 'response')}
-                            className={`border-b-2 py-3 text-xs font-semibold transition ${
+                            className={`border-b-2 py-3 text-xs font-semibold transition-colors ${
                               getTab(ep.path) === tab
                                 ? 'border-[#D4AF37] text-[#D4AF37]'
-                                : 'border-transparent text-white/30 hover:text-white/60'
+                                : 'border-transparent text-[#52525B] hover:text-[#71717A]'
                             }`}
                           >
                             {tab === 'curl' ? 'cURL' : tab === 'request' ? 'Request' : 'Response'}
@@ -329,13 +390,24 @@ export default function ApiReferencePage() {
 
                   {/* Code */}
                   <div className="px-5 py-4">
-                    <pre className="overflow-x-auto font-mono text-sm leading-relaxed text-white/60">
-                      {getTab(ep.path) === 'curl'
-                        ? ep.curl
-                        : getTab(ep.path) === 'request'
-                        ? ep.requestBody
-                        : ep.response}
-                    </pre>
+                    <div className="flex items-start justify-between gap-2">
+                      <pre className="flex-1 overflow-x-auto font-mono text-sm leading-relaxed text-[#FAFAFA]/60">
+                        {getTab(ep.path) === 'curl'
+                          ? ep.curl
+                          : getTab(ep.path) === 'request'
+                          ? ep.requestBody
+                          : ep.response}
+                      </pre>
+                      <CopyButton
+                        text={
+                          getTab(ep.path) === 'curl'
+                            ? ep.curl
+                            : getTab(ep.path) === 'request'
+                            ? (ep.requestBody ?? '')
+                            : ep.response
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -345,45 +417,50 @@ export default function ApiReferencePage() {
 
         {/* Rate Limits */}
         <div id="rate-limits">
-          <h2 className="mb-6 text-xl font-bold">Rate Limits</h2>
-          <div className="overflow-hidden rounded-2xl border border-white/5">
+          <h2 className="mb-6 text-xl font-bold text-[#FAFAFA]">Rate Limits</h2>
+          <div className="overflow-hidden rounded-2xl border border-white/[0.07]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5 bg-[#141414]">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/30">Plan</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/30">Tokens</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/30">Requests/min</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white/30">Concurrent</th>
+                <tr className="border-b border-white/[0.07]" style={{ background: 'rgba(255,255,255,0.025)' }}>
+                  {['Plan', 'Tokens', 'Requests/min', 'Concurrent'].map((h) => (
+                    <th key={h} className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.08em] text-[#52525B]">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {RATE_LIMITS.map((row, i) => (
-                  <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/2">
-                    <td className="px-5 py-3 text-white/70">{row.plan}</td>
-                    <td className="px-5 py-3 font-mono text-white/55">{row.tokens}</td>
-                    <td className="px-5 py-3 font-mono text-white/55">{row.requests}</td>
-                    <td className="px-5 py-3 font-mono text-white/55">{row.concurrent}</td>
+                  <tr key={i} className="border-b border-white/[0.07] last:border-0 transition-colors hover:bg-white/[0.02]">
+                    <td className="px-5 py-3 text-[#FAFAFA]/70">{row.plan}</td>
+                    <td className="px-5 py-3 font-mono text-[#71717A]">{row.tokens}</td>
+                    <td className="px-5 py-3 font-mono text-[#71717A]">{row.requests}</td>
+                    <td className="px-5 py-3 font-mono text-[#71717A]">{row.concurrent}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-3 text-xs text-white/30">
-            Rate limit headers are returned on every response: <code className="font-mono">X-RateLimit-Remaining</code>,{' '}
-            <code className="font-mono">X-RateLimit-Reset</code>, <code className="font-mono">Retry-After</code>.
+          <p className="mt-3 text-xs text-[#52525B]">
+            Rate limit headers are returned on every response:{' '}
+            <code className="rounded border border-white/[0.07] bg-white/[0.025] px-1.5 py-0.5 font-mono text-[#71717A]">X-RateLimit-Remaining</code>,{' '}
+            <code className="rounded border border-white/[0.07] bg-white/[0.025] px-1.5 py-0.5 font-mono text-[#71717A]">X-RateLimit-Reset</code>,{' '}
+            <code className="rounded border border-white/[0.07] bg-white/[0.025] px-1.5 py-0.5 font-mono text-[#71717A]">Retry-After</code>.
           </p>
         </div>
 
         {/* Errors */}
         <div id="errors">
-          <h2 className="mb-6 text-xl font-bold">Error Codes</h2>
-          <div className="space-y-3">
+          <h2 className="mb-6 text-xl font-bold text-[#FAFAFA]">Error Codes</h2>
+          <div className="space-y-2.5">
             {ERROR_CODES.map((e) => (
-              <div key={e.code} className="flex gap-4 rounded-xl border border-white/5 bg-[#141414] px-5 py-4">
-                <span className="shrink-0 font-mono text-sm font-bold text-[#D4AF37]">{e.code}</span>
+              <div
+                key={e.code}
+                className="flex gap-4 rounded-2xl border border-white/[0.07] px-5 py-4 transition-colors hover:border-white/[0.12]"
+                style={{ background: 'rgba(255,255,255,0.025)' }}
+              >
+                <span className="shrink-0 w-12 font-mono text-sm font-bold text-[#FFB81C]">{e.code}</span>
                 <div>
-                  <div className="mb-0.5 text-sm font-semibold text-white">{e.name}</div>
-                  <div className="text-sm text-white/45">{e.detail}</div>
+                  <div className="mb-0.5 text-sm font-semibold text-[#FAFAFA]">{e.name}</div>
+                  <div className="text-sm text-[#71717A]">{e.detail}</div>
                 </div>
               </div>
             ))}
@@ -392,21 +469,18 @@ export default function ApiReferencePage() {
 
         {/* SDKs */}
         <div id="sdks">
-          <h2 className="mb-4 text-xl font-bold">SDKs</h2>
-          <p className="mb-5 text-sm text-white/45">
-            Official SDKs are in development. In the meantime, the REST API works with any HTTP client.
-            Community SDKs for Python, Node.js, and Luau are maintained by the community on{' '}
-            <a href="https://github.com/forjegames" className="text-[#D4AF37] hover:underline">
+          <h2 className="mb-4 text-xl font-bold text-[#FAFAFA]">SDKs</h2>
+          <p className="mb-5 text-sm text-[#71717A]">
+            Official SDKs are in development. The REST API works with any HTTP client.
+            Community SDKs for Python, Node.js, and Luau are on{' '}
+            <a href="https://github.com/forjegames" className="text-[#D4AF37] transition-colors hover:underline">
               GitHub
             </a>
             .
           </p>
-          <div className="overflow-hidden rounded-xl border border-white/5 bg-[#141414]">
-            <div className="border-b border-white/5 px-5 py-3">
-              <span className="text-xs text-white/30">JavaScript / TypeScript</span>
-            </div>
-            <pre className="overflow-x-auto p-5 font-mono text-sm text-white/60">
-              {`const res = await fetch('https://forjegames.com/api/ai/generate', {
+          <CodePane
+            lang="typescript"
+            code={`const res = await fetch('https://forjegames.com/api/ai/generate', {
   method: 'POST',
   headers: {
     Authorization: 'Bearer fg_YOUR_API_KEY',
@@ -416,8 +490,7 @@ export default function ApiReferencePage() {
 })
 const data = await res.json()
 console.log(data.output)`}
-            </pre>
-          </div>
+          />
         </div>
       </section>
     </div>

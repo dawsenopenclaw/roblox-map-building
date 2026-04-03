@@ -55,7 +55,7 @@ export const MODELS: ModelOption[] = [
   { id: 'custom-google',    label: 'My Google Key',    provider: 'Custom',    color: '#D4AF37', badge: 'BYO' },
 ]
 
-const GUEST_MESSAGE_LIMIT = 3
+const GUEST_MESSAGE_LIMIT = 3 // must match server GUEST_LIMIT in api/ai/chat/route.ts
 
 const BUILD_KEYWORDS = ['build', 'generate 3d', 'create mesh', 'make a 3d', 'generate mesh', '3d model', 'mesh:']
 

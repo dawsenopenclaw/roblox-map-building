@@ -165,15 +165,24 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
 
 // ─── Account Stats Card ───────────────────────────────────────────────────────
 
-const ACCT_STATS = {
-  totalBuilds:  47,
-  tokensUsed:   15_240,
-  memberSince:  'March 2026',
-  tierLabel:    'Apprentice',
+const ACCT_STATS: {
+  totalBuilds: number | null
+  tokensUsed: number | null
+  memberSince: string | null
+  tierLabel: string | null
+  tierColor: string
+  referralCode: string | null
+  streakDays: number | null
+  totalXp: number | null
+} = {
+  totalBuilds:  null,
+  tokensUsed:   null,
+  memberSince:  null,
+  tierLabel:    null,
   tierColor:    '#60A5FA',
-  referralCode: 'FORJE-DAWSEN-7F2A',
-  streakDays:   7,
-  totalXp:      850,
+  referralCode: null,
+  streakDays:   null,
+  totalXp:      null,
 }
 
 function InlineCopyButton({ text }: { text: string }) {
@@ -203,10 +212,10 @@ function InlineCopyButton({ text }: { text: string }) {
 function AccountStatsCard() {
   const s = ACCT_STATS
   const statItems = [
-    { label: 'Total Builds', value: s.totalBuilds.toLocaleString(), icon: '🔨' },
-    { label: 'Tokens Used',  value: s.tokensUsed.toLocaleString(),  icon: '⚡' },
-    { label: 'Streak Days',  value: `${s.streakDays} days`,         icon: '🔥' },
-    { label: 'Member Since', value: s.memberSince,                  icon: '📅' },
+    { label: 'Total Builds', value: s.totalBuilds != null ? Number(s.totalBuilds).toLocaleString() : '—', icon: '🔨' },
+    { label: 'Tokens Used',  value: s.tokensUsed  != null ? Number(s.tokensUsed).toLocaleString()  : '—', icon: '⚡' },
+    { label: 'Streak Days',  value: s.streakDays  != null ? `${s.streakDays} days`                 : '—', icon: '🔥' },
+    { label: 'Member Since', value: s.memberSince ?? '—',                                                icon: '📅' },
   ]
   return (
     <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
@@ -224,18 +233,18 @@ function AccountStatsCard() {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Current Tier</p>
-          <p className="text-lg font-bold" style={{ color: s.tierColor }}>{s.tierLabel}</p>
+          <p className="text-lg font-bold" style={{ color: s.tierColor }}>{s.tierLabel ?? '—'}</p>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-bold text-white tabular-nums">{s.totalXp.toLocaleString()} XP</p>
-          <p className="text-[10px] text-gray-500 mt-0.5">1,150 to Builder</p>
+          <p className="text-sm font-bold text-white tabular-nums">{s.totalXp !== null ? `${s.totalXp.toLocaleString()} XP` : '—'}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">—</p>
         </div>
       </div>
       {/* XP progress */}
       <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-5">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.round((s.totalXp / 2000) * 100)}%`, background: s.tierColor }}
+          style={{ width: `${s.totalXp !== null ? Math.round((s.totalXp / 2000) * 100) : 0}%`, background: s.tierColor }}
         />
       </div>
       {/* Stats grid */}
@@ -261,8 +270,8 @@ function AccountStatsCard() {
           className="flex items-center justify-between gap-3 p-3 rounded-xl"
           style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <code className="text-sm font-mono text-[#FFB81C] tracking-wide truncate">{s.referralCode}</code>
-          <InlineCopyButton text={s.referralCode} />
+          <code className="text-sm font-mono text-[#FFB81C] tracking-wide truncate">{s.referralCode ?? '—'}</code>
+          {s.referralCode && <InlineCopyButton text={s.referralCode} />}
         </div>
         <p className="text-[11px] text-gray-600 mt-1.5">
           Share to earn 500 tokens per friend who signs up.

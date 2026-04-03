@@ -32,7 +32,7 @@ import { drainCommands, getSession, getSessionByToken, createSession } from '@/l
 // secret is generated — tokens issued in a previous process will be invalid
 // after a restart, which is the safe failure mode.
 const SECRET: string = (() => {
-  const s = process.env.STUDIO_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY
+  const s = process.env.STUDIO_AUTH_SECRET
   if (!s) {
     const fallback = crypto.randomBytes(32).toString('hex')
     console.warn('[studio/sync] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')

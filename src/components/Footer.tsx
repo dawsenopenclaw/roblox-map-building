@@ -2,34 +2,18 @@ import Link from 'next/link'
 
 // Server Component — no interactivity
 const PRODUCT_LINKS = [
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/editor', label: 'Editor' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/marketplace', label: 'Marketplace' },
-  { href: '/showcase', label: 'Showcase' },
-  { href: '/docs', label: 'Documentation' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/download', label: 'Download' },
-]
-
-const FEATURES_LINKS = [
-  { href: '/#features', label: 'AI Editor' },
-  { href: '/#features', label: 'Map Builder' },
-  { href: '/#features', label: 'Asset Library' },
-  { href: '/#features', label: 'Playtesting' },
 ]
 
 const LEGAL_LINKS = [
-  { href: '/terms', label: 'Terms of Service' },
-  { href: '/privacy', label: 'Privacy Policy' },
-  { href: '/dmca', label: 'DMCA' },
-  { href: '/acceptable-use', label: 'Acceptable Use' },
-  { href: '/privacy#ccpa', label: 'Do Not Sell My Info' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/privacy', label: 'Privacy' },
 ]
 
 const COMPANY_LINKS = [
   { href: 'mailto:support@forjegames.com', label: 'Support' },
   { href: 'https://discord.gg/forjegames', label: 'Discord' },
-  { href: 'https://github.com/forjegames', label: 'GitHub' },
   { href: 'https://twitter.com/forjegames', label: 'Twitter / X' },
 ]
 
@@ -118,7 +102,16 @@ function FooterColumn({
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#0A0E27] mt-auto">
+    <footer className="relative bg-[#0A0E27] mt-auto">
+      {/* Gold → purple → gold gradient line */}
+      <div
+        aria-hidden="true"
+        style={{
+          height: 1,
+          background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.4) 20%, rgba(124,58,237,0.6) 50%, rgba(212,175,55,0.4) 80%, transparent 100%)',
+        }}
+      />
+      <div className="border-t border-white/[0.04]" />
       <div className="max-w-7xl mx-auto px-6 py-14">
 
         {/* Brand row */}
@@ -138,10 +131,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* 4-column link grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        {/* 3-column link grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           <FooterColumn id="footer-product" title="Product" links={PRODUCT_LINKS} />
-          <FooterColumn id="footer-features" title="Features" links={FEATURES_LINKS} />
           <FooterColumn id="footer-legal" title="Legal" links={LEGAL_LINKS} />
           <FooterColumn id="footer-company" title="Company" links={COMPANY_LINKS} />
         </div>

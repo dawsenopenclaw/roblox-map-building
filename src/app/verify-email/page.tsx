@@ -8,18 +8,16 @@ const RESEND_COOLDOWN = 60 // seconds
 
 function MailIcon({ animated }: { animated: boolean }) {
   return (
-    <div className="relative mx-auto mb-6 w-24 h-24">
-      {/* Outer pulse rings */}
+    <div className="relative mx-auto mb-7 w-20 h-20">
       {animated && (
         <>
-          <span className="absolute inset-0 rounded-full bg-[#FFB81C]/10 animate-ping" style={{ animationDuration: '2s' }} />
-          <span className="absolute inset-2 rounded-full bg-[#FFB81C]/5 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+          <span className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping" style={{ animationDuration: '2s' }} />
+          <span className="absolute inset-2 rounded-full bg-[#10B981]/5 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
         </>
       )}
-      {/* Icon container */}
-      <div className="relative w-24 h-24 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center">
+      <div className="relative w-20 h-20 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
         <svg
-          className={`w-10 h-10 text-[#FFB81C] transition-transform duration-500 ${animated ? 'scale-110' : 'scale-100'}`}
+          className={`w-9 h-9 text-[#10B981] transition-transform duration-500 ${animated ? 'scale-110' : 'scale-100'}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -90,44 +88,45 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="max-w-md w-full text-center">
-        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-10 shadow-2xl">
+    <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
+      {/* Radial glow */}
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+        <div className="w-[500px] h-[500px] rounded-full bg-[#10B981]/8 blur-[120px]" />
+      </div>
 
-          {/* Animated mail icon */}
+      <div className="relative max-w-md w-full text-center">
+        <div className="bg-white/[0.025] border border-white/[0.07] rounded-2xl p-10 shadow-2xl backdrop-blur-sm">
+
           <MailIcon animated={animating} />
 
-          {/* Heading */}
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-            Check your email
-          </h1>
-          <p className="text-gray-300 text-sm leading-relaxed mb-2">
+          <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Check Your Email</h1>
+          <p className="text-gray-400 text-sm leading-relaxed mb-2">
             We sent a verification link to
           </p>
           {email ? (
-            <p className="text-[#FFB81C] font-semibold text-sm mb-8 break-all">{email}</p>
+            <p className="text-[#10B981] font-semibold text-sm mb-8 break-all">{email}</p>
           ) : (
             <p className="text-gray-300 font-semibold text-sm mb-8">your email address</p>
           )}
 
-          {/* Hint */}
-          <div className="bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-sm text-gray-300 text-left mb-8">
-            <p className="font-medium text-white mb-1 text-sm">Didn&apos;t get the email?</p>
-            <ul className="space-y-1 text-xs text-gray-400 list-disc list-inside">
+          {/* Hint card */}
+          <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl px-5 py-4 text-sm text-left mb-8">
+            <p className="font-medium text-white mb-2 text-sm">Didn&apos;t get the email?</p>
+            <ul className="space-y-1 text-xs text-gray-500 list-disc list-inside">
               <li>Check your spam or junk folder</li>
               <li>Make sure you entered the correct email</li>
               <li>Allow a few minutes for delivery</li>
             </ul>
           </div>
 
-          {/* Success / error banners */}
+          {/* Banners */}
           {sent && (
-            <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-sm rounded-xl px-4 py-3 mb-4">
+            <div className="bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] text-sm rounded-xl px-4 py-3 mb-4">
               Verification email resent successfully.
             </div>
           )}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-4">
+            <div className="bg-[#f87171]/10 border border-[#f87171]/20 text-[#f87171] text-sm rounded-xl px-4 py-3 mb-4">
               {error}
             </div>
           )}
@@ -136,7 +135,8 @@ function VerifyEmailContent() {
           <button
             onClick={handleResend}
             disabled={sending || cooldown > 0}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold text-sm transition-colors"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#10B981]/20 hover:shadow-[#10B981]/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+            style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
           >
             {sending ? (
               <>
@@ -144,7 +144,7 @@ function VerifyEmailContent() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
                 </svg>
-                Sending…
+                Sending...
               </>
             ) : cooldown > 0 ? (
               `Resend in ${cooldown}s`
@@ -154,7 +154,7 @@ function VerifyEmailContent() {
           </button>
 
           {/* Footer */}
-          <p className="text-xs text-gray-500 mt-6">
+          <p className="text-xs text-gray-600 mt-6">
             Wrong email?{' '}
             <Link href="/sign-in" className="text-[#FFB81C] hover:underline">
               Go back to sign in
@@ -162,6 +162,12 @@ function VerifyEmailContent() {
           </p>
 
         </div>
+
+        {/* Branding */}
+        <p className="mt-6 text-xs text-gray-500">
+          <Link href="/" className="hover:text-[#FFB81C] transition-colors font-medium">ForjeGames</Link>
+          {' '}— AI-powered Roblox game builder
+        </p>
       </div>
     </div>
   )
@@ -169,7 +175,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#050810]" />}>
       <VerifyEmailContent />
     </Suspense>
   )

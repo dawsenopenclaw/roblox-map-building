@@ -13,17 +13,17 @@ import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { serverEnv } from '@/lib/env'
+import { callAI } from './provider'
 
-// ── Lazy Anthropic client ─────────────────────────────────────────────────────
+// ── Lazy Anthropic client (kept for optional custom-key path only) ────────────
+// Primary AI path now uses callAI() → Gemini (primary) + Groq (fallback).
 
 let _anthropic: Anthropic | null = null
 function getClient(): Anthropic | null {
+  if (process.env.ANTHROPIC_DISABLED === 'true') return null
   if (_anthropic) return _anthropic
   const key = serverEnv.ANTHROPIC_API_KEY
-  if (!key) {
-    console.warn('[build-planner] ANTHROPIC_API_KEY is not configured — build planning disabled')
-    return null
-  }
+  if (!key) return null
   _anthropic = new Anthropic({ apiKey: key })
   return _anthropic
 }
@@ -236,31 +236,19 @@ function generatePlanId(): string {
  * @returns           Fully validated BuildPlan with wave-grouped tasks
  */
 export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> {
-  const client = getClient()
-  if (!client) {
-    throw new Error('[build-planner] ANTHROPIC_API_KEY is not configured — build planning unavailable')
-  }
-
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 6000,
-    system: PLANNER_SYSTEM_PROMPT,
-    messages: [
+  // Use Gemini (primary) → Groq (fallback). jsonMode asks Gemini for raw JSON.
+  const rawText = await callAI(
+    PLANNER_SYSTEM_PROMPT,
+    [
       {
         role: 'user',
         content: `Generate a complete build plan for this Roblox game idea:\n\n"${userPrompt.slice(0, 1000)}"`,
       },
     ],
-  })
+    { maxTokens: 6000, temperature: 0.7, jsonMode: true },
+  )
 
-  // Extract text content from Claude's response
-  const rawText = message.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('')
-    .trim()
-
-  // Strip any accidental markdown fences Claude might add
+  // Strip any accidental markdown fences free models might add
   const jsonText = rawText
     .replace(/^```(?:json)?\n?/m, '')
     .replace(/\n?```$/m, '')
@@ -270,7 +258,7 @@ export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> 
   try {
     parsed = JSON.parse(jsonText)
   } catch (err) {
-    throw new Error(`[build-planner] Claude returned invalid JSON: ${String(err)}\nRaw: ${jsonText.slice(0, 200)}`)
+    throw new Error(`[build-planner] AI returned invalid JSON: ${String(err)}\nRaw: ${jsonText.slice(0, 200)}`)
   }
 
   const validated = buildPlanOutputSchema.safeParse(parsed)

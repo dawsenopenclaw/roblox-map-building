@@ -1,3 +1,5 @@
+'use client'
+
 const FEATURES = [
   {
     id: 'voice',
@@ -73,22 +75,33 @@ interface MockupLine {
 function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: string; color: string }) {
   return (
     <div
-      className="rounded-xl overflow-hidden w-full"
+      className="rounded-2xl overflow-hidden w-full"
       style={{
-        background: '#0F1535',
-        border: '1px solid #1A2550',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+        background: 'rgba(12,16,48,0.9)',
+        border: '1px solid rgba(26,37,80,0.9)',
+        boxShadow: `0 12px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.025), 0 0 30px ${color}14`,
+        transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget
+        el.style.boxShadow = `0 16px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 50px ${color}28`
+        el.style.borderColor = `${color}40`
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget
+        el.style.boxShadow = `0 12px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.025), 0 0 30px ${color}14`
+        el.style.borderColor = 'rgba(26,37,80,0.9)'
       }}
     >
       {/* Title bar */}
       <div
         className="flex items-center gap-2 px-4 py-3"
-        style={{ borderBottom: '1px solid #1A2550', background: '#0A0E27' }}
+        style={{ borderBottom: '1px solid rgba(26,37,80,0.8)', background: 'rgba(8,12,34,0.95)' }}
       >
         <span className="w-2 h-2 rounded-full" style={{ background: '#FF5F56' }} />
         <span className="w-2 h-2 rounded-full" style={{ background: '#FFBD2E' }} />
         <span className="w-2 h-2 rounded-full" style={{ background: '#27C93F' }} />
-        <span className="ml-3 text-[11px] font-mono" style={{ color: 'rgba(255,184,28,0.4)' }}>
+        <span className="ml-3 text-[11px] font-mono" style={{ color: 'rgba(255,184,28,0.45)' }}>
           {label}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -109,10 +122,10 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
         ))}
       </div>
 
-      {/* Bottom accent line */}
+      {/* Bottom accent line — color blend with gold */}
       <div
-        className="h-0.5"
-        style={{ background: `linear-gradient(to right, transparent, ${color}60, transparent)` }}
+        className="h-px"
+        style={{ background: `linear-gradient(to right, transparent, ${color}80, #FFB81C50, ${color}80, transparent)` }}
       />
     </div>
   )
@@ -120,17 +133,55 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
 
 export default function FeatureSpotlight() {
   return (
-    <section className="py-32 px-6" style={{ background: '#0A0E27' }}>
-      <div className="max-w-6xl mx-auto">
+    <section
+      className="py-16 px-6"
+      style={{
+        background: '#080C22',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Radial glow — top center */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: '-10%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '70%',
+          height: '50%',
+          background: 'radial-gradient(ellipse at center, rgba(212,175,55,0.06) 0%, transparent 65%)',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Radial glow — bottom left */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          bottom: '10%',
+          left: '-10%',
+          width: '50%',
+          height: '40%',
+          background: 'radial-gradient(ellipse at center, rgba(96,165,250,0.04) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div className="max-w-6xl mx-auto" style={{ position: 'relative' }}>
         {/* Header */}
-        <div className="text-center mb-20">
+        <div className="text-center mb-12">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
             style={{ color: '#FFB81C' }}
           >
             How It Works
           </p>
-          <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
+          <h2
+            className="text-4xl font-bold tracking-tight mb-4"
+            style={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}
+          >
             Built for every layer of your game.
           </h2>
           <p className="text-lg max-w-md mx-auto" style={{ color: '#8B95B0' }}>
@@ -139,7 +190,7 @@ export default function FeatureSpotlight() {
         </div>
 
         {/* Feature rows */}
-        <div className="flex flex-col gap-24">
+        <div className="flex flex-col gap-14">
           {FEATURES.map((feature) => (
             <div
               key={feature.id}
@@ -149,37 +200,67 @@ export default function FeatureSpotlight() {
             >
               {/* Text side */}
               <div>
+                {/* Tag pill */}
                 <span
-                  className="inline-block text-[11px] font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-4"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"
                   style={{
-                    background: 'rgba(255,184,28,0.08)',
+                    background: 'rgba(255,184,28,0.07)',
                     color: '#FFB81C',
                     border: '1px solid rgba(255,184,28,0.2)',
+                    boxShadow: '0 0 12px rgba(255,184,28,0.08)',
                   }}
                 >
+                  {/* Gold dot */}
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: 5,
+                      height: 5,
+                      borderRadius: '50%',
+                      background: '#FFB81C',
+                      boxShadow: '0 0 6px rgba(255,184,28,0.6)',
+                    }}
+                  />
                   {feature.tag}
                 </span>
+
                 <h3
                   className="text-3xl font-bold tracking-tight mb-4"
-                  style={{ color: '#FFFFFF' }}
+                  style={{ color: '#FFFFFF', letterSpacing: '-0.015em' }}
                 >
                   {feature.headline}
                 </h3>
                 <p className="text-base leading-relaxed mb-6" style={{ color: '#8B95B0' }}>
                   {feature.body}
                 </p>
+
                 <ul className="space-y-3">
                   {feature.bullets.map((bullet, i) => (
                     <li key={i} className="flex items-start gap-3">
+                      {/* Icon well */}
                       <span
-                        className="mt-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)' }}
+                        className="mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: 'rgba(255,184,28,0.10)',
+                          border: '1px solid rgba(255,184,28,0.22)',
+                          boxShadow: '0 0 8px rgba(255,184,28,0.08)',
+                        }}
                       >
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#FFB81C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="9"
+                          height="9"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#FFB81C"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       </span>
-                      <span className="text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
+                      <span className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
                         {bullet}
                       </span>
                     </li>

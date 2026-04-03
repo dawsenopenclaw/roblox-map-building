@@ -47,7 +47,7 @@ const SHOWCASE_ITEMS = [
 
 export default function ShowcasePreview() {
   return (
-    <section className="py-32 px-6" style={{ background: '#0A0E27' }}>
+    <section className="py-16 px-6" style={{ background: '#0A0E27' }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-12">
@@ -66,7 +66,7 @@ export default function ShowcasePreview() {
             </p>
           </div>
           <Link
-            href="/showcase"
+            href="/editor"
             className="flex-shrink-0 flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200"
             style={{
               color: '#FFB81C',
@@ -74,7 +74,7 @@ export default function ShowcasePreview() {
               background: 'rgba(255,184,28,0.06)',
             }}
           >
-            View all
+            Start building
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -86,7 +86,7 @@ export default function ShowcasePreview() {
           {SHOWCASE_ITEMS.map((item) => (
             <Link
               key={item.label}
-              href="/showcase"
+              href="/editor"
               className="group rounded-xl overflow-hidden flex flex-col card-hover"
               style={{
                 background: '#0F1535',

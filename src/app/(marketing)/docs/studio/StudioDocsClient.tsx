@@ -249,37 +249,37 @@ function CodeBlock({
   const lines = code.split('\n')
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-white/8 bg-black/70 my-4">
+    <div className="relative my-4 overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/6 bg-white/[0.025]">
+      <div className="flex items-center justify-between border-b border-white/[0.07] bg-white/[0.025] px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-[#D4AF37]/70 uppercase tracking-widest font-semibold">{lang}</span>
+          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.6)' }}>{lang}</span>
           {lineNumbers && (
-            <span className="text-[10px] text-gray-600 ml-2">{lines.length} lines</span>
+            <span className="ml-2 text-[10px] text-[#52525B]">{lines.length} lines</span>
           )}
         </div>
         <button
           onClick={copy}
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-200 transition-colors px-2.5 py-1 rounded-md hover:bg-white/5"
+          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-[#71717A] transition-colors hover:bg-white/[0.05] hover:text-[#FAFAFA]"
         >
           {copied
-            ? <><Check size={12} className="text-green-400" /><span className="text-green-400">Copied</span></>
+            ? <><Check size={12} className="text-emerald-400" /><span className="text-emerald-400">Copied</span></>
             : <><Copy size={12} /><span>Copy</span></>
           }
         </button>
       </div>
 
       {/* Code body */}
-      <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+      <div className="max-h-[600px] overflow-x-auto overflow-y-auto">
         {lineNumbers ? (
-          <table className="w-full text-sm font-mono border-separate border-spacing-0">
+          <table className="w-full border-separate border-spacing-0 font-mono text-sm">
             <tbody>
               {lines.map((line, i) => (
-                <tr key={i} className="leading-6 hover:bg-white/[0.02] group">
-                  <td className="select-none text-right pr-4 pl-4 py-0 text-gray-700 text-xs w-10 group-hover:text-gray-500 border-r border-white/4">
+                <tr key={i} className="group leading-6 hover:bg-white/[0.02]">
+                  <td className="w-10 select-none border-r border-white/[0.05] py-0 pl-4 pr-4 text-right text-xs text-[#52525B] group-hover:text-[#71717A]">
                     {i + 1}
                   </td>
-                  <td className="pl-4 pr-4 py-0 text-gray-300 whitespace-pre">
+                  <td className="whitespace-pre py-0 pl-4 pr-4 text-[#FAFAFA]/65">
                     {line || ' '}
                   </td>
                 </tr>
@@ -287,7 +287,7 @@ function CodeBlock({
             </tbody>
           </table>
         ) : (
-          <pre className="p-4 text-sm font-mono text-gray-300 leading-relaxed">
+          <pre className="p-4 font-mono text-sm leading-relaxed text-[#FAFAFA]/65">
             <code>{code}</code>
           </pre>
         )}
@@ -298,6 +298,13 @@ function CodeBlock({
 
 // ─── Callout ──────────────────────────────────────────────────────────────────
 
+const InfoIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
+    <path d="M8 7v5M8 5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 function Callout({
   type,
   children,
@@ -307,27 +314,30 @@ function Callout({
 }) {
   const styles = {
     info: {
-      border: 'border-blue-500/25', bg: 'bg-blue-500/5',
-      icon: <Plug size={14} className="text-blue-400" />,
-      label: 'Note', labelColor: 'text-blue-400',
+      border: 'border-[#D4AF37]/20', bg: 'bg-[#D4AF37]/[0.04]',
+      icon: <InfoIcon />,
+      iconColor: 'text-[#FFB81C]',
+      label: 'Note', labelColor: 'text-[#FFB81C]',
     },
     warn: {
-      border: 'border-yellow-500/25', bg: 'bg-yellow-500/5',
-      icon: <AlertTriangle size={14} className="text-yellow-400" />,
-      label: 'Warning', labelColor: 'text-yellow-400',
+      border: 'border-amber-500/25', bg: 'bg-amber-500/[0.05]',
+      icon: <AlertTriangle size={14} />,
+      iconColor: 'text-amber-400',
+      label: 'Warning', labelColor: 'text-amber-400',
     },
     tip: {
-      border: 'border-green-500/25', bg: 'bg-green-500/5',
-      icon: <CheckCircle size={14} className="text-green-400" />,
-      label: 'Tip', labelColor: 'text-green-400',
+      border: 'border-emerald-500/25', bg: 'bg-emerald-500/[0.05]',
+      icon: <CheckCircle size={14} />,
+      iconColor: 'text-emerald-400',
+      label: 'Tip', labelColor: 'text-emerald-400',
     },
   }
   const s = styles[type]
   return (
-    <div className={`flex gap-3 p-4 rounded-xl border ${s.border} ${s.bg} my-4`}>
-      <span className="flex-shrink-0 mt-0.5">{s.icon}</span>
-      <div className="text-sm text-gray-300 leading-relaxed">
-        <span className={`font-bold mr-1 ${s.labelColor}`}>{s.label}:</span>
+    <div className={`my-4 flex gap-3 rounded-xl border p-4 ${s.border} ${s.bg}`}>
+      <span className={`mt-0.5 flex-shrink-0 ${s.iconColor}`}>{s.icon}</span>
+      <div className="text-sm leading-relaxed text-[#71717A]">
+        <span className={`mr-1 font-bold ${s.labelColor}`}>{s.label}:</span>
         {children}
       </div>
     </div>
@@ -347,7 +357,7 @@ function Section({
 }) {
   return (
     <section id={id} className="mb-16 scroll-mt-24">
-      <h2 className="text-xl font-bold text-white mb-5 pb-3 border-b border-white/8">{title}</h2>
+      <h2 className="mb-5 border-b border-white/[0.07] pb-3 text-xl font-bold text-[#FAFAFA]">{title}</h2>
       {children}
     </section>
   )
@@ -363,7 +373,7 @@ function HeroSection() {
         <span className="px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest rounded-full bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20">
           Studio Plugin
         </span>
-        <span className="text-[11px] text-gray-600">v1.0.0</span>
+        <span className="text-[11px] text-[#52525B]">v1.0.0</span>
       </div>
 
       {/* Headline */}
@@ -373,7 +383,7 @@ function HeroSection() {
       <p className="text-lg text-[#D4AF37]/80 font-medium mb-5">
         Build with AI, import instantly.
       </p>
-      <p className="text-gray-400 leading-relaxed max-w-xl mb-7">
+      <p className="mb-7 max-w-xl leading-relaxed text-[#71717A]">
         The ForjeGames Studio plugin links your Roblox Studio session directly to the web editor.
         Describe what you want to build — the AI generates it, and it appears in Studio within
         one second. No copy-paste, no manual import.
@@ -395,7 +405,7 @@ function HeroSection() {
             e.preventDefault()
             document.getElementById('install')?.scrollIntoView({ behavior: 'smooth' })
           }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/8 text-sm text-gray-300 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.025] px-5 py-2.5 text-sm text-[#FAFAFA]/70 transition-colors hover:border-white/20 hover:bg-white/[0.05] hover:text-[#FAFAFA]"
         >
           View Installation Guide
           <ChevronRight size={14} />
@@ -403,15 +413,15 @@ function HeroSection() {
       </div>
 
       {/* Quick stat strip */}
-      <div className="grid grid-cols-3 gap-3 mt-8">
+      <div className="mt-8 grid grid-cols-3 gap-3">
         {[
           { value: '~1s',  label: 'Command latency' },
           { value: 'Free', label: 'Plugin cost' },
           { value: '100%', label: 'Local — no uploads' },
         ].map((s) => (
-          <div key={s.label} className="p-4 rounded-xl bg-[#141414] border border-[#2a2a2a] text-center">
-            <p className="text-lg font-bold text-[#D4AF37]">{s.value}</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">{s.label}</p>
+          <div key={s.label} className="rounded-xl border border-white/[0.07] p-4 text-center" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <p className="text-lg font-bold text-[#FFB81C]">{s.value}</p>
+            <p className="mt-0.5 text-[11px] text-[#52525B]">{s.label}</p>
           </div>
         ))}
       </div>
@@ -433,14 +443,14 @@ function StepCard({
   visual?: React.ReactNode
 }) {
   return (
-    <div className="flex gap-5 p-5 rounded-2xl bg-[#141414] border border-[#2a2a2a] hover:border-[#D4AF37]/20 transition-colors">
+    <div className="flex gap-5 rounded-2xl border border-white/[0.07] p-5 transition-colors hover:border-[#D4AF37]/25" style={{ background: 'rgba(255,255,255,0.025)' }}>
       {/* Step number */}
-      <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/25 flex items-center justify-center text-[#D4AF37] font-bold text-sm">
+      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/25 bg-[#D4AF37]/10 text-sm font-bold text-[#D4AF37]">
         {num}
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="text-sm font-semibold text-white mb-1.5">{title}</h3>
-        <div className="text-sm text-gray-400 leading-relaxed">{children}</div>
+      <div className="min-w-0 flex-1">
+        <h3 className="mb-1.5 text-sm font-semibold text-[#FAFAFA]">{title}</h3>
+        <div className="text-sm leading-relaxed text-[#71717A]">{children}</div>
         {visual && <div className="mt-3">{visual}</div>}
       </div>
     </div>
@@ -454,46 +464,51 @@ function InstallSteps() {
         num={1}
         title='Open Roblox Studio → Plugins → "Manage Plugins"'
         visual={
-          <div className="flex items-center gap-1.5 text-xs font-mono text-gray-500 flex-wrap">
+          <div className="flex flex-wrap items-center gap-1.5 font-mono text-xs text-[#52525B]">
             {['Roblox Studio', 'Plugins tab', 'Manage Plugins'].map((s, i) => (
               <span key={s} className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/8 text-gray-400">{s}</span>
-                {i < 2 && <ChevronRight size={12} className="text-gray-600" />}
+                <span className="rounded-md border border-white/[0.07] bg-white/[0.04] px-2 py-0.5 text-[#71717A]">{s}</span>
+                {i < 2 && <ChevronRight size={12} className="text-[#52525B]" />}
               </span>
             ))}
           </div>
         }
       >
         Launch Roblox Studio, open any place, and click the{' '}
-        <strong className="text-gray-200">Plugins</strong> tab in the top menu bar.
+        <strong className="text-[#FAFAFA]/80">Plugins</strong> tab in the top menu bar.
         Then choose{' '}
-        <strong className="text-gray-200">Manage Plugins</strong> from the ribbon.
+        <strong className="text-[#FAFAFA]/80">Manage Plugins</strong> from the ribbon.
       </StepCard>
 
       <StepCard
         num={2}
         title='Search "ForjeGames" or paste the plugin URL'
         visual={
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/50 border border-[#2a2a2a] text-xs font-mono text-gray-400 w-full overflow-hidden">
-            <span className="text-gray-600">⌕</span>
-            <span className="text-gray-300">ForjeGames</span>
-            <span className="ml-auto text-gray-700 text-[10px] truncate">— or —</span>
-            <span className="text-[#D4AF37]/70 truncate">forjegames.com/api/studio/plugin</span>
+          <div className="flex w-full items-center gap-2 overflow-hidden rounded-lg border border-white/[0.07] bg-black/50 px-3 py-2 font-mono text-xs text-[#71717A]">
+            <span className="text-[#52525B]">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </span>
+            <span className="text-[#FAFAFA]/70">ForjeGames</span>
+            <span className="ml-auto truncate text-[10px] text-[#52525B]">— or —</span>
+            <span className="truncate text-[#D4AF37]/70">forjegames.com/api/studio/plugin</span>
           </div>
         }
       >
         In the Manage Plugins window, use the search bar or click{' '}
-        <strong className="text-gray-200">Install from URL</strong> and paste{' '}
-        <code className="text-[#D4AF37] text-xs bg-black/40 px-1 py-0.5 rounded">
+        <strong className="text-[#FAFAFA]/80">Install from URL</strong> and paste{' '}
+        <code className="rounded bg-black/40 px-1 py-0.5 text-xs text-[#D4AF37]">
           https://forjegames.com/api/studio/plugin
         </code>.
         Alternatively,{' '}
         <a href="/api/studio/plugin" download="ForjeGames.rbxm"
-          className="text-[#D4AF37] hover:underline inline-flex items-center gap-0.5">
+          className="inline-flex items-center gap-0.5 text-[#D4AF37] transition-colors hover:underline">
           <Download size={11} />download ForjeGames.rbxm
         </a>{' '}
         and place it in{' '}
-        <code className="text-xs bg-black/40 px-1 py-0.5 rounded text-gray-300">
+        <code className="rounded bg-black/40 px-1 py-0.5 text-xs text-[#FAFAFA]/60">
           %LOCALAPPDATA%\Roblox\Plugins\
         </code>.
       </StepCard>
@@ -502,28 +517,28 @@ function InstallSteps() {
         num={3}
         title="Click the ForjeGames toolbar button → Enter your API key"
         visual={
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-black/50 border border-[#2a2a2a]">
+          <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-black/50 p-3">
             <div className="w-28 h-8 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center gap-1.5 text-xs text-[#D4AF37] font-semibold">
               <Plug size={12} />
               ForjeGames
             </div>
-            <ChevronRight size={14} className="text-gray-600" />
-            <div className="flex-1 h-8 rounded-lg bg-black/60 border border-white/10 flex items-center px-3 gap-2 text-xs text-gray-500">
+            <ChevronRight size={14} className="text-[#52525B]" />
+            <div className="flex h-8 flex-1 items-center gap-2 rounded-lg border border-white/[0.07] bg-black/60 px-3 text-xs text-[#52525B]">
               <span className="font-mono tracking-widest text-[#D4AF37]/60">XXXXXX</span>
-              <span className="ml-auto text-gray-700">6-char code</span>
+              <span className="ml-auto text-[#52525B]/60">6-char code</span>
             </div>
           </div>
         }
       >
         After installation, the{' '}
-        <strong className="text-gray-200">ForjeGames</strong> button appears in the Plugins
+        <strong className="text-[#FAFAFA]/80">ForjeGames</strong> button appears in the Plugins
         toolbar. Click it, then enter the 6-character connection code from{' '}
-        <Link href="/settings/studio" className="text-[#D4AF37] hover:underline">
+        <Link href="/settings/studio" className="text-[#D4AF37] transition-colors hover:underline">
           Settings → Studio
         </Link>{' '}
-        on forjegames.com. Click <strong className="text-gray-200">Connect</strong> — the toolbar
+        on forjegames.com. Click <strong className="text-[#FAFAFA]/80">Connect</strong> — the toolbar
         label updates to{' '}
-        <code className="text-xs bg-black/40 px-1 py-0.5 rounded text-green-400">
+        <code className="rounded bg-black/40 px-1 py-0.5 text-xs text-emerald-400">
           ● Connected
         </code>.
       </StepCard>
@@ -568,18 +583,19 @@ const FEATURES = [
 
 function FeaturesList() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {FEATURES.map((f) => (
         <div
           key={f.title}
-          className="flex gap-4 p-4 rounded-xl bg-[#141414] border border-[#2a2a2a] hover:border-[#D4AF37]/20 transition-colors"
+          className="flex gap-4 rounded-2xl border border-white/[0.07] p-4 transition-colors hover:border-[#D4AF37]/20"
+          style={{ background: 'rgba(255,255,255,0.025)' }}
         >
-          <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#D4AF37]/8 border border-[#D4AF37]/15 flex items-center justify-center mt-0.5">
+          <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#D4AF37]/15 bg-[#D4AF37]/[0.08]">
             {f.icon}
           </div>
           <div>
-            <p className="text-sm font-semibold text-white mb-1">{f.title}</p>
-            <p className="text-xs text-gray-500 leading-relaxed">{f.desc}</p>
+            <p className="mb-1 text-sm font-semibold text-[#FAFAFA]">{f.title}</p>
+            <p className="text-xs leading-relaxed text-[#71717A]">{f.desc}</p>
           </div>
         </div>
       ))}
@@ -623,21 +639,22 @@ function TroubleshootAccordion() {
       {TROUBLESHOOT_ITEMS.map((item, i) => (
         <div
           key={i}
-          className="rounded-xl border border-[#2a2a2a] overflow-hidden bg-[#141414]"
+          className="overflow-hidden rounded-2xl border border-white/[0.07]"
+          style={{ background: 'rgba(255,255,255,0.025)' }}
         >
           <button
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left"
+            className="flex w-full items-center justify-between px-4 py-3.5 text-left"
             onClick={() => setOpen(open === i ? null : i)}
           >
-            <span className="text-sm font-medium text-gray-200">{item.q}</span>
+            <span className="text-sm font-medium text-[#FAFAFA]">{item.q}</span>
             <ChevronRight
               size={15}
-              className={`text-gray-500 flex-shrink-0 transition-transform duration-200 ${open === i ? 'rotate-90' : ''}`}
+              className={`flex-shrink-0 text-[#52525B] transition-transform duration-200 ${open === i ? 'rotate-90' : ''}`}
             />
           </button>
           {open === i && (
-            <div className="px-4 pb-4 pt-1 border-t border-[#2a2a2a]">
-              <p className="text-sm text-gray-400 leading-relaxed">{item.a}</p>
+            <div className="border-t border-white/[0.07] px-4 pb-4 pt-1">
+              <p className="text-sm leading-relaxed text-[#71717A]">{item.a}</p>
             </div>
           )}
         </div>
@@ -682,17 +699,18 @@ function FaqSection() {
       {FAQ_ITEMS.map((item, i) => (
         <div
           key={i}
-          className="rounded-xl border border-[#2a2a2a] overflow-hidden bg-[#141414]"
+          className="overflow-hidden rounded-2xl border border-white/[0.07]"
+          style={{ background: 'rgba(255,255,255,0.025)' }}
         >
           <button
-            className="w-full flex items-center justify-between px-4 py-3.5 text-left gap-4"
+            className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
             onClick={() => setOpen(open === i ? null : i)}
           >
-            <span className="text-sm font-medium text-white">{item.q}</span>
-            <div className={`flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+            <span className="text-sm font-medium text-[#FAFAFA]">{item.q}</span>
+            <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border transition-colors ${
               open === i
                 ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10 text-[#D4AF37]'
-                : 'border-white/10 text-gray-500'
+                : 'border-white/[0.07] text-[#52525B]'
             }`}>
               <ChevronRight
                 size={12}
@@ -701,8 +719,8 @@ function FaqSection() {
             </div>
           </button>
           {open === i && (
-            <div className="px-4 pb-4 pt-1 border-t border-[#2a2a2a]">
-              <p className="text-sm text-gray-400 leading-relaxed">{item.a}</p>
+            <div className="border-t border-white/[0.07] px-4 pb-4 pt-1">
+              <p className="text-sm leading-relaxed text-[#71717A]">{item.a}</p>
             </div>
           )}
         </div>
@@ -746,26 +764,26 @@ export default function StudioDocsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#050810] text-[#FAFAFA]">
 
       {/* Sticky top bar */}
-      <div className="border-b border-white/8 bg-[#0a0a0a]/95 backdrop-blur-sm sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-5 py-3 flex items-center gap-4">
-          <Link href="/docs" className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-200 transition-colors">
+      <div className="sticky top-0 z-20 border-b border-white/[0.07] backdrop-blur-xl" style={{ background: 'rgba(5,8,16,0.92)' }}>
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-5 py-3">
+          <Link href="/docs" className="flex items-center gap-2 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
             <ArrowLeft size={14} />
             Docs
           </Link>
-          <span className="text-gray-700">/</span>
-          <span className="text-sm text-gray-300 font-medium">Studio Plugin</span>
+          <span className="text-white/15">/</span>
+          <span className="text-sm font-medium text-[#FAFAFA]/80">Studio Plugin</span>
           <div className="ml-auto flex items-center gap-3">
-            <span className="hidden sm:flex items-center gap-1.5 text-xs text-green-500 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+            <span className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-400 sm:flex">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
               API Live
             </span>
             <a
               href="/api/studio/plugin"
               download="ForjeGames.rbxm"
-              className="flex items-center gap-1.5 text-xs text-[#D4AF37] hover:text-[#c9a832] transition-colors font-medium"
+              className="flex items-center gap-1.5 text-xs font-medium text-[#D4AF37] transition-colors hover:text-[#FFB81C]"
             >
               <Download size={12} />
               Download Plugin
@@ -777,8 +795,8 @@ export default function StudioDocsClient() {
       <div className="max-w-6xl mx-auto px-5 py-10 flex gap-10">
 
         {/* Sidebar nav */}
-        <aside className="hidden lg:block w-52 flex-shrink-0 sticky top-20 self-start">
-          <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold mb-3">
+        <aside className="sticky top-20 hidden w-52 flex-shrink-0 self-start lg:block">
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#52525B]">
             On this page
           </p>
           <nav className="space-y-0.5">
@@ -786,10 +804,10 @@ export default function StudioDocsClient() {
               <button
                 key={item.id}
                 onClick={() => scrollTo(item.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 ${
+                className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-all duration-150 ${
                   activeNav === item.id
-                    ? 'bg-[#D4AF37]/10 text-[#D4AF37] font-medium border-l-2 border-[#D4AF37] rounded-l-none pl-[10px]'
-                    : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
+                    ? 'rounded-l-none border-l-2 border-[#D4AF37] bg-[#D4AF37]/10 pl-[10px] font-medium text-[#D4AF37]'
+                    : 'text-[#52525B] hover:bg-white/[0.04] hover:text-[#D4AF37]'
                 }`}
               >
                 {item.label}
@@ -797,17 +815,17 @@ export default function StudioDocsClient() {
             ))}
           </nav>
 
-          <div className="mt-8 pt-5 border-t border-white/8 space-y-1">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold mb-3">
+          <div className="mt-8 space-y-1 border-t border-white/[0.07] pt-5">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-[#52525B]">
               Quick links
             </p>
-            <Link href="/settings/studio" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
+            <Link href="/settings/studio" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
               Studio Settings
             </Link>
-            <a href="/api/studio/plugin" download="ForjeGames.rbxm" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
+            <a href="/api/studio/plugin" download="ForjeGames.rbxm" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
               Download Plugin
             </a>
-            <Link href="/docs" className="block text-sm text-gray-500 hover:text-[#D4AF37] transition-colors py-1">
+            <Link href="/docs" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
               All Docs
             </Link>
           </div>
@@ -821,17 +839,17 @@ export default function StudioDocsClient() {
 
           {/* ── Installation ── */}
           <Section id="install" title="Installation">
-            <p className="text-sm text-gray-400 leading-relaxed mb-5">
+            <p className="mb-5 text-sm leading-relaxed text-[#71717A]">
               Three steps. No Roblox account permissions required — the plugin runs entirely
               client-side and only reaches out to forjegames.com.
             </p>
             <InstallSteps />
 
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-white mb-2">Quickstart — loadstring</h3>
-              <p className="text-sm text-gray-400 mb-2">
+              <h3 className="mb-2 text-sm font-semibold text-[#FAFAFA]">Quickstart — loadstring</h3>
+              <p className="mb-2 text-sm text-[#71717A]">
                 Skip the file download. Open{' '}
-                <strong className="text-gray-200">View → Command Bar</strong> in Studio and paste:
+                <strong className="text-[#FAFAFA]/80">View → Command Bar</strong> in Studio and paste:
               </p>
               <CodeBlock
                 code={`loadstring(game:HttpGet("https://forjegames.com/api/studio/plugin"))()`}
@@ -851,13 +869,13 @@ export default function StudioDocsClient() {
 
           {/* ── Plugin source ── */}
           <Section id="source" title="Plugin Source Code">
-            <p className="text-sm text-gray-400 leading-relaxed mb-4">
+            <p className="mb-4 text-sm leading-relaxed text-[#71717A]">
               The complete Luau source is served live from{' '}
               <code className="text-[#D4AF37] text-xs bg-black/40 px-1.5 py-0.5 rounded">
                 GET /api/studio/plugin
               </code>
               . The code below is identical to what you download — inspect it, fork it,
-              or load it with <code className="text-xs bg-black/40 px-1 py-0.5 rounded text-gray-300">loadstring</code>.
+              or load it with <code className="rounded bg-black/40 px-1 py-0.5 text-xs text-[#FAFAFA]/60">loadstring</code>.
             </p>
 
             <Callout type="tip">
@@ -889,11 +907,11 @@ export default function StudioDocsClient() {
             <TroubleshootAccordion />
             <Callout type="info">
               Still stuck?{' '}
-              <a href="mailto:support@forjegames.com" className="text-blue-400 hover:underline">
+              <a href="mailto:support@forjegames.com" className="text-[#D4AF37] transition-colors hover:underline">
                 Email support
               </a>{' '}
               or join the{' '}
-              <a href="https://discord.gg/forjegames" className="text-blue-400 hover:underline">
+              <a href="https://discord.gg/forjegames" className="text-[#D4AF37] transition-colors hover:underline">
                 Discord community
               </a>
               .

@@ -311,8 +311,8 @@ export function setupWorker(processors: WorkerProcessors): Worker<JobPayload, Jo
     }
   )
 
-  worker.on('completed', (job) => {
-    console.log(`[job-queue] Completed job ${job.id} (${job.name})`)
+  worker.on('completed', (_job) => {
+    // Completion is tracked via Redis progress state; no console output needed
   })
 
   worker.on('failed', (job, err) => {

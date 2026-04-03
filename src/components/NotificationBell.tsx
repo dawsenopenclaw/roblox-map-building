@@ -7,6 +7,28 @@ import type { Notification, NotificationType } from '@/app/api/notifications/rou
 // ─── Re-export types so consumers can import from this file ──────────────────
 export type { Notification, NotificationType }
 
+// ─── Keyframes ────────────────────────────────────────────────────────────────
+
+const BELL_KEYFRAMES = `
+  @keyframes fj-badge-pulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(212,175,55,0.7),
+                  0 0 0 0 rgba(212,175,55,0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 4px rgba(212,175,55,0.15),
+                  0 0 8px 2px rgba(212,175,55,0.25);
+    }
+  }
+  @keyframes notif-drop-in {
+    from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1);    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fj-badge-pulse { animation: none !important; }
+  }
+`
+
 // ─── Relative time helper ─────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
@@ -107,19 +129,10 @@ function NotificationPanel({ notifications, onMarkAllRead, onMarkRead, onDelete,
   return (
     <div
       className="absolute right-0 top-full mt-2 w-[360px] bg-[#111827] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
-      style={{
-        animation: 'notif-drop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
+      style={{ animation: 'notif-drop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1)' }}
       role="region"
       aria-label="Notifications"
     >
-      <style>{`
-        @keyframes notif-drop-in {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)   scale(1);    }
-        }
-      `}</style>
-
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
         <div className="flex items-center gap-2">
@@ -303,33 +316,39 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
   }, [])
 
   return (
-    <div className={`relative flex-shrink-0 ${className}`} ref={wrapRef}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
-        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
-        aria-expanded={open}
-        aria-haspopup="true"
-      >
-        <IconBell />
-        {unreadCount > 0 && (
-          <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#141414]"
-            style={{ background: '#D4AF37' }}
-            aria-label={`${unreadCount} unread`}
+    <>
+      <style>{BELL_KEYFRAMES}</style>
+      <div className={`relative flex-shrink-0 ${className}`} ref={wrapRef}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="relative p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+          aria-expanded={open}
+          aria-haspopup="true"
+        >
+          <IconBell />
+          {unreadCount > 0 && (
+            <span
+              className="fj-badge-pulse absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#141414]"
+              style={{
+                background: '#D4AF37',
+                animation: 'fj-badge-pulse 2.4s ease-in-out infinite',
+              }}
+              aria-label={`${unreadCount} unread`}
+            />
+          )}
+        </button>
+
+        {open && (
+          <NotificationPanel
+            notifications={notifications}
+            onMarkAllRead={handleMarkAllRead}
+            onMarkRead={handleMarkRead}
+            onDelete={handleDelete}
+            onClose={() => setOpen(false)}
           />
         )}
-      </button>
-
-      {open && (
-        <NotificationPanel
-          notifications={notifications}
-          onMarkAllRead={handleMarkAllRead}
-          onMarkRead={handleMarkRead}
-          onDelete={handleDelete}
-          onClose={() => setOpen(false)}
-        />
-      )}
-    </div>
+      </div>
+    </>
   )
 }
