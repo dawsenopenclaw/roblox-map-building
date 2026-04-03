@@ -418,7 +418,7 @@ function ViewportArea({
             <div style={{ paddingLeft: 38, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <a
                 href="/api/studio/plugin"
-                download="ForjeGames.rbxm"
+                download="ForjeGames.lua"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '10px 20px', borderRadius: 8,
@@ -429,14 +429,15 @@ function ViewportArea({
                 }}
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8m0 0L4 6m3 3l3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Download ForjeGames.rbxm
+                Download ForjeGames Plugin
               </a>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
                 <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Then install it:</strong>
                 <br />1. Open <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Roblox Studio</strong>
-                <br />2. Go to <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins</strong> tab → <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins Folder</strong>
-                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.rbxm</span> file into that folder
-                <br />4. Restart Studio — the ForjeGames toolbar button appears
+                <br />2. Go to <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins</strong> tab in the top ribbon → click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins Folder</strong>
+                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.lua</span> file into that folder
+                <br />4. Restart Studio — the ForjeGames panel opens automatically
+                <br />5. You&apos;ll see a code input box — that&apos;s where you enter the code from Step 3 below
               </div>
             </div>
           </div>
@@ -544,9 +545,10 @@ function ViewportArea({
             </summary>
             <div style={{ paddingTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7 }}>
               <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugin not showing up?</strong>
-              <br />• Make sure you put the .rbxm file in the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugins</strong> folder, not Models
-              <br />• Restart Studio completely after adding the file
-              <br />• Check the Plugins tab in the ribbon — look for &quot;ForjeGames&quot;
+              <br />• Make sure you put the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>.lua</strong> file in the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugins</strong> folder (not Models, not Workspace)
+              <br />• <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Fully close and reopen</strong> Studio after adding the file
+              <br />• The ForjeGames panel should open automatically — if not, check the Plugins tab for a &quot;ForjeGames&quot; button
+              <br />• The panel has a text box where you type the 6-character code
               <br /><br />
               <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Code not working?</strong>
               <br />• Make sure Studio has internet access (not behind a firewall blocking outbound)

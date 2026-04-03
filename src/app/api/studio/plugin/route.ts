@@ -211,7 +211,7 @@ mainBtn.ClickableWhenViewportHidden = true
 -- Dock widget
 local widgetInfo = DockWidgetPluginGuiInfo.new(
 	Enum.InitialDockState.Float,
-	false, false,
+	true, false,
 	340, 360,
 	300, 280
 )
