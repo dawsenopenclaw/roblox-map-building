@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
+import { useUser, UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -610,6 +610,15 @@ export default function WelcomePage() {
     studioChoice: null,
   })
 
+  // Skip if already onboarded (only show once)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('fg_onboarded') === 'true') {
+        router.replace('/editor')
+      }
+    } catch { /* ignore */ }
+  }, [router])
+
   const firstName =
     user?.firstName ||
     user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
@@ -702,6 +711,27 @@ export default function WelcomePage() {
       {showConfetti && <Confetti />}
 
       <div className="w-full max-w-lg">
+        {/* Profile avatar — manage account */}
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-zinc-500">
+            {firstName ? `Hey ${firstName}` : 'Welcome'} — let&apos;s set things up
+          </p>
+          <UserButton
+            afterSignOutUrl="/sign-in"
+            appearance={{
+              elements: {
+                avatarBox: '!w-8 !h-8 !ring-2 !ring-[#FFB81C]/30',
+                userButtonPopoverCard: '!bg-[#111113] !border !border-white/10',
+                userButtonPopoverActionButton: '!text-zinc-300 hover:!text-white hover:!bg-white/5',
+                userButtonPopoverActionButtonText: '!text-zinc-300',
+                userButtonPopoverFooter: 'hidden',
+                userPreviewMainIdentifier: '!text-white',
+                userPreviewSecondaryIdentifier: '!text-zinc-500',
+              },
+            }}
+          />
+        </div>
+
         {/* Step indicator pills */}
         <div className="flex items-center justify-between mb-3 px-0.5">
           <span className="text-xs text-gray-500 font-medium">

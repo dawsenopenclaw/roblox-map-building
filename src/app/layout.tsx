@@ -159,7 +159,7 @@ export default function RootLayout({
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           afterSignInUrl="/editor"
-          afterSignUpUrl="/editor"
+          afterSignUpUrl="/welcome"
           afterSignOutUrl="/sign-in"
           appearance={{
             variables: {
