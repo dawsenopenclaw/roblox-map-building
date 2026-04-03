@@ -158,8 +158,8 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          signInForceRedirectUrl="/editor"
-          signUpForceRedirectUrl="/editor"
+          afterSignInUrl="/editor"
+          afterSignUpUrl="/editor"
           afterSignOutUrl="/sign-in"
           appearance={{
             variables: {

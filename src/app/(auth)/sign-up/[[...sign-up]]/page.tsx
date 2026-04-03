@@ -1,8 +1,7 @@
 'use client'
 
-import { SignUp, useAuth } from '@clerk/nextjs'
+import { SignUp } from '@clerk/nextjs'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 
 const clerkAppearance = {
   variables: {
@@ -47,28 +46,6 @@ const clerkAppearance = {
 }
 
 export default function SignUpPage() {
-  const { isSignedIn, isLoaded } = useAuth()
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    if (!isLoaded) return
-    if (isSignedIn) {
-      // Already signed in — redirect, don't sign out
-      window.location.replace('/editor')
-    } else {
-      setReady(true)
-    }
-  }, [isLoaded, isSignedIn])
-
-  if (!ready) {
-    return (
-      <div className="w-full flex flex-col items-center py-12 gap-3">
-        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
-        <p className="text-sm text-zinc-500">Loading...</p>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full">
       <h1 className="text-xl font-bold text-white mb-1">Create your account</h1>
@@ -78,7 +55,7 @@ export default function SignUpPage() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        forceRedirectUrl="/editor"
+        afterSignUpUrl="/editor"
         appearance={clerkAppearance}
       />
 

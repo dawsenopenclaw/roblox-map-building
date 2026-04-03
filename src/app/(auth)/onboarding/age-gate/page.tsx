@@ -1,41 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth, useSession } from '@clerk/nextjs'
+import { useSession } from '@clerk/nextjs'
 
 export default function AgeGatePage() {
-  const router = useRouter()
-  const { isSignedIn, isLoaded } = useAuth()
   const { session } = useSession()
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [checking, setChecking] = useState(true)
   const [today, setToday] = useState('')
 
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0])
   }, [])
-
-  // Check if DOB is already set — skip if so
-  useEffect(() => {
-    if (!isLoaded) return
-
-    if (!isSignedIn) {
-      router.replace('/sign-up')
-      return
-    }
-
-    // Check Clerk session claims for existing DOB
-    const meta = (session?.user?.publicMetadata ?? {}) as Record<string, unknown>
-    if (meta.dateOfBirth) {
-      router.replace('/editor')
-      return
-    }
-
-    setChecking(false)
-  }, [isLoaded, isSignedIn, session, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -63,12 +40,11 @@ export default function AgeGatePage() {
       }
 
       if (data.demo) {
-        router.push('/editor')
+        window.location.href = '/editor'
         return
       }
 
       // Force Clerk to issue a new JWT with the updated dateOfBirth claim
-      // session.touch() only refreshes activity, getToken({ skipCache: true }) forces a new token
       if (session) {
         try {
           await session.getToken({ skipCache: true })
@@ -85,23 +61,12 @@ export default function AgeGatePage() {
 
       const redirect = data.redirect ?? (data.isUnder13 ? '/onboarding/parental-consent' : '/editor')
 
-      // Use window.location for a hard navigation so middleware re-evaluates with fresh claims
+      // Hard navigation so middleware re-evaluates with fresh claims
       window.location.href = redirect
     } catch {
       setError('Network error. Please try again.')
       setLoading(false)
     }
-  }
-
-  if (checking) {
-    return (
-      <div className="w-full flex items-center justify-center py-12">
-        <div
-          className="w-5 h-5 rounded-full border-2 animate-spin"
-          style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }}
-        />
-      </div>
-    )
   }
 
   return (

@@ -1,9 +1,7 @@
 'use client'
 
-import { SignIn, useAuth } from '@clerk/nextjs'
+import { SignIn } from '@clerk/nextjs'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
 
 const clerkAppearance = {
   variables: {
@@ -49,30 +47,6 @@ const clerkAppearance = {
 }
 
 export default function SignInPage() {
-  const searchParams = useSearchParams()
-  const { isSignedIn, isLoaded } = useAuth()
-  const [ready, setReady] = useState(false)
-  const redirectUrl = searchParams.get('redirect_url') || '/editor'
-
-  useEffect(() => {
-    if (!isLoaded) return
-    if (isSignedIn) {
-      // Already signed in — redirect, don't sign out
-      window.location.replace(redirectUrl)
-    } else {
-      setReady(true)
-    }
-  }, [isLoaded, isSignedIn, redirectUrl])
-
-  if (!ready) {
-    return (
-      <div className="w-full flex flex-col items-center py-12 gap-3">
-        <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
-        <p className="text-sm text-zinc-500">Loading...</p>
-      </div>
-    )
-  }
-
   return (
     <div className="w-full">
       <h1 className="text-xl font-bold text-white mb-1">Welcome back</h1>
@@ -82,7 +56,7 @@ export default function SignInPage() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        forceRedirectUrl={redirectUrl}
+        afterSignInUrl="/editor"
         appearance={clerkAppearance}
       />
 

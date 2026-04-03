@@ -276,23 +276,8 @@ export default clerkMiddleware(async (auth, request) => {
       return NextResponse.next({ request: { headers: requestHeaders } })
     }
 
-    // Age-gate guard: authenticated users who have not completed the age gate
-    // must be redirected to /onboarding/age-gate before accessing any protected route.
-    // Check both top-level claims and publicMetadata (where the age-gate API stores it).
-    const meta = ((claims as { publicMetadata?: Record<string, unknown> })?.publicMetadata ?? {}) as Record<string, unknown>
-    const dateOfBirth = (claims as { dateOfBirth?: string | null } | null)?.dateOfBirth
-      ?? (meta.dateOfBirth as string | null | undefined)
-      ?? null
-    if (userId && !dateOfBirth && !isPublicRoute(request) && !isAgeGateExempt(request)) {
-      const ageGateUrl = new URL('/onboarding/age-gate', request.url)
-      if (request.nextUrl.pathname !== '/onboarding/age-gate') {
-        return NextResponse.redirect(ageGateUrl)
-      }
-    }
-
-    // Don't redirect signed-in users away from auth pages — the client-side
-    // pages handle stale sessions by auto-signing out. Middleware redirecting
-    // here causes loops when the session cookie is from a different Clerk app.
+    // Don't redirect signed-in users away from auth pages — the Clerk
+    // components handle their own redirects via afterSignInUrl/afterSignUpUrl.
 
     // Protect non-public routes — isPublicRoute is the single source of truth.
     // All routes listed in the public matcher are accessible without auth.
