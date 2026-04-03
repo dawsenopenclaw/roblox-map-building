@@ -2,18 +2,40 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth, useSession } from '@clerk/nextjs'
 
 export default function AgeGatePage() {
   const router = useRouter()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { session } = useSession()
   const [dateOfBirth, setDateOfBirth] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checking, setChecking] = useState(true)
   const [today, setToday] = useState('')
 
   useEffect(() => {
     setToday(new Date().toISOString().split('T')[0])
   }, [])
+
+  // Check if DOB is already set — skip if so
+  useEffect(() => {
+    if (!isLoaded) return
+
+    if (!isSignedIn) {
+      router.replace('/sign-up')
+      return
+    }
+
+    // Check Clerk session claims for existing DOB
+    const meta = (session?.user?.publicMetadata ?? {}) as Record<string, unknown>
+    if (meta.dateOfBirth) {
+      router.replace('/editor')
+      return
+    }
+
+    setChecking(false)
+  }, [isLoaded, isSignedIn, session, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -36,66 +58,63 @@ export default function AgeGatePage() {
 
       if (!res.ok) {
         setError(data.error || 'Something went wrong. Please try again.')
+        setLoading(false)
         return
       }
 
-      // Demo mode — no Clerk session, skip straight to editor
       if (data.demo) {
-        router.push(data.redirectUrl ?? '/editor')
+        router.push('/editor')
         return
+      }
+
+      // Force Clerk to refresh the session token so middleware sees the new DOB
+      if (session) {
+        try {
+          await session.touch()
+        } catch {
+          // touch() may not be available — fallback to reload
+        }
       }
 
       if (data.isUnder13 === true) {
         import('posthog-js').then(({ default: posthog }) => {
           posthog.opt_out_capturing()
-        }).catch(() => {/* silent */})
+        }).catch(() => {})
       }
 
-      const redirect: string = data.redirect ?? (data.isUnder13 ? '/onboarding/parental-consent' : '/editor')
-      router.push(redirect)
+      const redirect = data.redirect ?? (data.isUnder13 ? '/onboarding/parental-consent' : '/editor')
+
+      // Use window.location for a hard navigation so middleware re-evaluates with fresh claims
+      window.location.href = redirect
     } catch {
       setError('Network error. Please try again.')
-    } finally {
       setLoading(false)
     }
   }
 
+  if (checking) {
+    return (
+      <div className="w-full flex items-center justify-center py-12">
+        <div
+          className="w-5 h-5 rounded-full border-2 animate-spin"
+          style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }}
+        />
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-sm"
-      >
-        {/* Icon */}
-        <div className="flex justify-center mb-5">
-          <div
-            className="flex items-center justify-center rounded-xl w-12 h-12"
-            style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)' }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <rect x="3" y="4" width="18" height="17" rx="2.5" stroke="#D4AF37" strokeWidth="1.5" />
-              <path d="M3 9h18" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M8 2v4M16 2v4" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="8" cy="14" r="1" fill="#D4AF37" />
-              <circle cx="12" cy="14" r="1" fill="#D4AF37" />
-              <circle cx="16" cy="14" r="1" fill="rgba(212,175,55,0.4)" />
-              <circle cx="8" cy="18" r="1" fill="rgba(212,175,55,0.4)" />
-              <circle cx="12" cy="18" r="1" fill="rgba(212,175,55,0.4)" />
-            </svg>
-          </div>
-        </div>
+    <div className="w-full">
+      <h1 className="text-xl font-bold text-white mb-1">One quick thing</h1>
+      <p className="text-sm text-zinc-500 mb-6">
+        We need your date of birth to keep everyone safe.
+      </p>
 
-        {/* Heading */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-white mb-1.5">One quick thing</h2>
-          <p className="text-sm" style={{ color: '#A1A1AA' }}>
-            We need your date of birth to keep everyone safe.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="dob" className="block text-xs font-medium text-zinc-400 mb-1.5">
+            Date of birth
+          </label>
           <input
             id="dob"
             type="date"
@@ -105,58 +124,36 @@ export default function AgeGatePage() {
             onChange={(e) => { setDateOfBirth(e.target.value); setError('') }}
             required
             autoComplete="bday"
-            aria-label="Date of birth"
-            className="w-full rounded-xl px-4 py-4 text-white text-base font-medium focus:outline-none transition-all [color-scheme:dark]"
+            className="w-full rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none transition-colors [color-scheme:dark]"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: `1px solid ${error ? 'rgba(239,68,68,0.5)' : dateOfBirth ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.1)'}`,
-              boxShadow: dateOfBirth ? '0 0 0 3px rgba(212,175,55,0.08)' : 'none',
+              background: '#1a1a1c',
+              border: `1px solid ${error ? 'rgba(239,68,68,0.5)' : dateOfBirth ? 'rgba(255,184,28,0.4)' : 'rgba(255,255,255,0.08)'}`,
+              height: 40,
             }}
           />
+        </div>
 
-          <AnimatePresence>
-            {error && (
-              <motion.p
-                role="alert"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.2 }}
-                className="text-sm"
-                style={{ color: '#EF4444' }}
-              >
-                {error}
-              </motion.p>
-            )}
-          </AnimatePresence>
+        {error && (
+          <p role="alert" className="text-sm text-red-400">{error}</p>
+        )}
 
-          <motion.button
-            type="submit"
-            disabled={loading || !dateOfBirth}
-            whileTap={{ scale: 0.98 }}
-            className="w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: loading || !dateOfBirth ? 'rgba(212,175,55,0.4)' : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-              color: '#09090b',
-              boxShadow: !loading && dateOfBirth ? '0 4px 24px rgba(212,175,55,0.25)' : 'none',
-            }}
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <motion.span
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-                  className="block w-4 h-4 rounded-full border-2"
-                  style={{ borderColor: '#09090b', borderTopColor: 'transparent' }}
-                />
-                Saving…
-              </span>
-            ) : (
-              'Continue →'
-            )}
-          </motion.button>
-        </form>
-      </motion.div>
+        <button
+          type="submit"
+          disabled={loading || !dateOfBirth}
+          className="w-full rounded-lg font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          style={{
+            background: '#FFB81C',
+            color: '#09090b',
+            height: 40,
+          }}
+        >
+          {loading ? 'Saving...' : 'Continue'}
+        </button>
+      </form>
+
+      <p className="mt-5 text-xs text-center text-zinc-600">
+        We collect this to comply with COPPA child safety laws.
+      </p>
     </div>
   )
 }
