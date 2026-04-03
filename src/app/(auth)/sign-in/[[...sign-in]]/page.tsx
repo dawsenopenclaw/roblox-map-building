@@ -1,6 +1,6 @@
 'use client'
 
-import { SignIn, useAuth, useClerk } from '@clerk/nextjs'
+import { SignIn, useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -51,33 +51,24 @@ const clerkAppearance = {
 export default function SignInPage() {
   const searchParams = useSearchParams()
   const { isSignedIn, isLoaded } = useAuth()
-  const { signOut } = useClerk()
   const [ready, setReady] = useState(false)
   const redirectUrl = searchParams.get('redirect_url') || '/editor'
 
-  // Auto-clear stale sessions. If someone lands on /sign-in while "signed in",
-  // the session is likely stale (from old Clerk app). Sign them out automatically
-  // so the form shows cleanly. If they're truly signed in, they wouldn't be here.
   useEffect(() => {
     if (!isLoaded) return
-
     if (isSignedIn) {
-      // Sign out silently, then show the form
-      signOut().then(() => {
-        setReady(true)
-      }).catch(() => {
-        setReady(true)
-      })
+      // Already signed in — redirect, don't sign out
+      window.location.replace(redirectUrl)
     } else {
       setReady(true)
     }
-  }, [isLoaded, isSignedIn, signOut])
+  }, [isLoaded, isSignedIn, redirectUrl])
 
   if (!ready) {
     return (
       <div className="w-full flex flex-col items-center py-12 gap-3">
         <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
-        <p className="text-sm text-zinc-500">Preparing...</p>
+        <p className="text-sm text-zinc-500">Loading...</p>
       </div>
     )
   }

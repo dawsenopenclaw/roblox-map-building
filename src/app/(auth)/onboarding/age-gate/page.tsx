@@ -67,12 +67,13 @@ export default function AgeGatePage() {
         return
       }
 
-      // Force Clerk to refresh the session token so middleware sees the new DOB
+      // Force Clerk to issue a new JWT with the updated dateOfBirth claim
+      // session.touch() only refreshes activity, getToken({ skipCache: true }) forces a new token
       if (session) {
         try {
-          await session.touch()
+          await session.getToken({ skipCache: true })
         } catch {
-          // touch() may not be available — fallback to reload
+          // fallback — hard reload will re-fetch claims
         }
       }
 

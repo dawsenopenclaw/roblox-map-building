@@ -1,6 +1,6 @@
 'use client'
 
-import { SignUp, useAuth, useClerk } from '@clerk/nextjs'
+import { SignUp, useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -48,29 +48,23 @@ const clerkAppearance = {
 
 export default function SignUpPage() {
   const { isSignedIn, isLoaded } = useAuth()
-  const { signOut } = useClerk()
   const [ready, setReady] = useState(false)
 
-  // Auto-clear stale sessions so the sign-up form always shows
   useEffect(() => {
     if (!isLoaded) return
-
     if (isSignedIn) {
-      signOut().then(() => {
-        setReady(true)
-      }).catch(() => {
-        setReady(true)
-      })
+      // Already signed in — redirect, don't sign out
+      window.location.replace('/editor')
     } else {
       setReady(true)
     }
-  }, [isLoaded, isSignedIn, signOut])
+  }, [isLoaded, isSignedIn])
 
   if (!ready) {
     return (
       <div className="w-full flex flex-col items-center py-12 gap-3">
         <div className="w-5 h-5 rounded-full border-2 animate-spin" style={{ borderColor: '#FFB81C', borderTopColor: 'transparent' }} />
-        <p className="text-sm text-zinc-500">Preparing...</p>
+        <p className="text-sm text-zinc-500">Loading...</p>
       </div>
     )
   }

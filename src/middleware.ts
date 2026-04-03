@@ -90,6 +90,10 @@ const isPublicRoute = createRouteMatcher([
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/api/admin(.*)'])
 
+// Routes exempt from the age-gate redirect — users land here right after sign-up
+// before the JWT has been refreshed with dateOfBirth claims
+const isAgeGateExempt = createRouteMatcher(['/editor(.*)', '/onboarding(.*)', '/welcome(.*)'])
+
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
 // Routes that bypass geo-blocking (the blocked page itself must be accessible,
@@ -279,7 +283,7 @@ export default clerkMiddleware(async (auth, request) => {
     const dateOfBirth = (claims as { dateOfBirth?: string | null } | null)?.dateOfBirth
       ?? (meta.dateOfBirth as string | null | undefined)
       ?? null
-    if (userId && !dateOfBirth && !isPublicRoute(request)) {
+    if (userId && !dateOfBirth && !isPublicRoute(request) && !isAgeGateExempt(request)) {
       const ageGateUrl = new URL('/onboarding/age-gate', request.url)
       if (request.nextUrl.pathname !== '/onboarding/age-gate') {
         return NextResponse.redirect(ageGateUrl)
