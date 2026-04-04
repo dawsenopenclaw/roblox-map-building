@@ -20,10 +20,10 @@ function UI.build(widget, state, COLORS, pluginRef)
     gold      = Color3.fromHex("D4AF37"),  -- --gold
     goldLight = Color3.fromHex("FFD166"),  -- --gold-light (hover)
     goldGlow  = Color3.fromHex("1a1608"),  -- gold-glow bg tint
-    text      = Color3.fromHex("FAFAFA"),  -- --foreground
+    text      = Color3.fromHex("FFFFFF"),  -- bright white for max readability
     textSoft  = Color3.fromHex("E4E4E7"),  -- --foreground-soft
-    textSec   = Color3.fromHex("A1A1AA"),  -- --muted
-    textDim   = Color3.fromHex("71717A"),  -- --muted-subtle
+    textSec   = Color3.fromHex("C8CCD8"),  -- brighter muted for readability
+    textDim   = Color3.fromHex("9CA3B8"),  -- brighter subtle text
     success   = Color3.fromHex("22c55e"),
     error     = Color3.fromHex("ef4444"),
     warning   = Color3.fromHex("f59e0b"),
@@ -273,7 +273,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   versionLabel.Name                  = "Version"
   versionLabel.Text                  = "v4.4.0"
   versionLabel.Font                  = Enum.Font.Gotham
-  versionLabel.TextSize              = 9
+  versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim
   versionLabel.BackgroundTransparency = 1
   versionLabel.Size                  = UDim2.new(0, 40, 0, 14)
@@ -310,7 +310,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   statusText.Name                  = "StatusText"
   statusText.Text                  = state.authenticated and "Online" or "Offline"
   statusText.Font                  = Enum.Font.Gotham
-  statusText.TextSize              = 10
+  statusText.TextSize              = 12
   statusText.TextColor3            = state.authenticated and C.success or C.textDim
   statusText.BackgroundTransparency = 1
   statusText.Size                  = UDim2.new(1, -24, 1, 0)
@@ -485,7 +485,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   authTitle.Name                  = "AuthTitle"
   authTitle.Text                  = state.authenticated and "Connected" or "Connect to ForjeGames"
   authTitle.Font                  = Enum.Font.GothamBold
-  authTitle.TextSize              = 13
+  authTitle.TextSize              = 16
   authTitle.TextColor3            = C.text
   authTitle.BackgroundTransparency = 1
   authTitle.Size                  = UDim2.new(1, -80, 0, 18)
@@ -497,7 +497,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   authStatus.Name                  = "AuthStatus"
   authStatus.Text                  = state.authenticated and "Session active" or "Enter your 6-character connection code"
   authStatus.Font                  = Enum.Font.Gotham
-  authStatus.TextSize              = 11
+  authStatus.TextSize              = 14
   authStatus.TextColor3            = C.textSec
   authStatus.BackgroundTransparency = 1
   authStatus.Size                  = UDim2.new(1, -28, 0, 14)
@@ -547,7 +547,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   instrLabel.Name                  = "InstrLabel"
   instrLabel.Text                  = "Get your code at forjegames.com/editor"
   instrLabel.Font                  = Enum.Font.Gotham
-  instrLabel.TextSize              = 10
+  instrLabel.TextSize              = 13
   instrLabel.TextColor3            = C.textDim
   instrLabel.BackgroundTransparency = 1
   instrLabel.Size                  = UDim2.new(1, -28, 0, 14)
@@ -566,7 +566,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   authBtn.BorderSizePixel       = 0
   authBtn.Text                  = state.authenticated and "Disconnect" or "Connect"
   authBtn.Font                  = Enum.Font.GothamBold
-  authBtn.TextSize              = 13
+  authBtn.TextSize              = 15
   authBtn.TextColor3            = state.authenticated and C.textSec or Color3.fromHex("050810")
   authBtn.AutoButtonColor       = false
   authBtn.ZIndex                = 11
@@ -604,7 +604,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   errorLabel.Name                  = "ErrorLabel"
   errorLabel.Text                  = ""
   errorLabel.Font                  = Enum.Font.Gotham
-  errorLabel.TextSize              = 10
+  errorLabel.TextSize              = 13
   errorLabel.TextColor3            = C.error
   errorLabel.BackgroundTransparency = 1
   errorLabel.Size                  = UDim2.new(1, -28, 0, 14)
@@ -634,7 +634,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   syncTitle.Name                  = "SyncTitle"
   syncTitle.Text                  = "Studio Sync"
   syncTitle.Font                  = Enum.Font.GothamBold
-  syncTitle.TextSize              = 12
+  syncTitle.TextSize              = 15
   syncTitle.TextColor3            = C.text
   syncTitle.BackgroundTransparency = 1
   syncTitle.Size                  = UDim2.new(1, -80, 0, 16)
@@ -646,7 +646,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   connStatusLabel.Name                  = "ConnStatus"
   connStatusLabel.Text                  = "Waiting for connection..."
   connStatusLabel.Font                  = Enum.Font.Gotham
-  connStatusLabel.TextSize              = 11
+  connStatusLabel.TextSize              = 13
   connStatusLabel.TextColor3            = C.textDim
   connStatusLabel.BackgroundTransparency = 1
   connStatusLabel.Size                  = UDim2.new(1, -28, 0, 14)
@@ -658,7 +658,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   lastSyncLabel.Name                  = "LastSync"
   lastSyncLabel.Text                  = ""
   lastSyncLabel.Font                  = Enum.Font.Gotham
-  lastSyncLabel.TextSize              = 10
+  lastSyncLabel.TextSize              = 13
   lastSyncLabel.TextColor3            = C.textDim
   lastSyncLabel.BackgroundTransparency = 1
   lastSyncLabel.Size                  = UDim2.new(1, -28, 0, 14)
@@ -670,7 +670,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   pingLabel.Name                  = "Ping"
   pingLabel.Text                  = ""
   pingLabel.Font                  = Enum.Font.Gotham
-  pingLabel.TextSize              = 10
+  pingLabel.TextSize              = 12
   pingLabel.TextColor3            = C.textDim
   pingLabel.BackgroundTransparency = 1
   pingLabel.Size                  = UDim2.new(0, 60, 0, 14)
@@ -698,7 +698,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   actionsTitle.Name                  = "ActionsTitle"
   actionsTitle.Text                  = "Quick Actions"
   actionsTitle.Font                  = Enum.Font.GothamBold
-  actionsTitle.TextSize              = 12
+  actionsTitle.TextSize              = 15
   actionsTitle.TextColor3            = C.text
   actionsTitle.BackgroundTransparency = 1
   actionsTitle.Size                  = UDim2.new(1, -40, 0, 16)
@@ -717,7 +717,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     btn.BorderSizePixel       = 0
     btn.Text                  = text
     btn.Font                  = Enum.Font.GothamSemibold
-    btn.TextSize              = 12
+    btn.TextSize              = 14
     btn.TextColor3            = isPrimary and C.gold or C.textSec
     btn.AutoButtonColor       = false
     btn.ZIndex                = 11
@@ -787,7 +787,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   recentTitle.Name                  = "RecentTitle"
   recentTitle.Text                  = "Recent Builds"
   recentTitle.Font                  = Enum.Font.GothamBold
-  recentTitle.TextSize              = 12
+  recentTitle.TextSize              = 15
   recentTitle.TextColor3            = C.text
   recentTitle.BackgroundTransparency = 1
   recentTitle.Size                  = UDim2.new(1, -40, 0, 16)
@@ -811,7 +811,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   emptyLabel.Name                  = "EmptyLabel"
   emptyLabel.Text                  = "No builds yet — connect to get started"
   emptyLabel.Font                  = Enum.Font.Gotham
-  emptyLabel.TextSize              = 11
+  emptyLabel.TextSize              = 14
   emptyLabel.TextColor3            = C.textDim
   emptyLabel.BackgroundTransparency = 1
   emptyLabel.Size                  = UDim2.new(1, 0, 0, 40)
@@ -864,7 +864,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   bannerTitle.Name                  = "BannerTitle"
   bannerTitle.Text                  = "Update Available"
   bannerTitle.Font                  = Enum.Font.GothamBold
-  bannerTitle.TextSize              = 12
+  bannerTitle.TextSize              = 15
   bannerTitle.TextColor3            = C.gold
   bannerTitle.BackgroundTransparency = 1
   bannerTitle.Size                  = UDim2.new(1, -44, 0, 18)
@@ -876,7 +876,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   bannerChangelog.Name                  = "BannerChangelog"
   bannerChangelog.Text                  = ""
   bannerChangelog.Font                  = Enum.Font.Gotham
-  bannerChangelog.TextSize              = 10
+  bannerChangelog.TextSize              = 13
   bannerChangelog.TextColor3            = C.textSec
   bannerChangelog.BackgroundTransparency = 1
   bannerChangelog.Size                  = UDim2.new(1, -24, 0, 28)
@@ -893,7 +893,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   downloadBtn.BorderSizePixel       = 0
   downloadBtn.Text                  = "Download Update"
   downloadBtn.Font                  = Enum.Font.GothamBold
-  downloadBtn.TextSize              = 12
+  downloadBtn.TextSize              = 14
   downloadBtn.TextColor3            = Color3.fromHex("0a0a0a")
   downloadBtn.AutoButtonColor       = false
   downloadBtn.Parent                = updateBanner
@@ -940,7 +940,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   overlayLabel.Name                  = "OverlayLabel"
   overlayLabel.Text                  = "Plugin update required\nPlease update to continue using ForjeGames.\nCheck the Studio Output for the download link."
   overlayLabel.Font                  = Enum.Font.GothamBold
-  overlayLabel.TextSize              = 12
+  overlayLabel.TextSize              = 14
   overlayLabel.TextColor3            = C.gold
   overlayLabel.BackgroundTransparency = 1
   overlayLabel.Size                  = UDim2.new(1, -32, 0, 80)
@@ -957,7 +957,7 @@ function UI.build(widget, state, COLORS, pluginRef)
   footer.Name                  = "Footer"
   footer.Text                  = "forjegames.com"
   footer.Font                  = Enum.Font.Gotham
-  footer.TextSize              = 9
+  footer.TextSize              = 12
   footer.TextColor3            = C.textDim
   footer.BackgroundTransparency = 1
   footer.Size                  = UDim2.new(1, 0, 0, 20)
@@ -1158,7 +1158,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Text                  = buildName
     nameLabel.Font                  = Enum.Font.Gotham
-    nameLabel.TextSize              = 11
+    nameLabel.TextSize              = 13
     nameLabel.TextColor3            = C.text
     nameLabel.BackgroundTransparency = 1
     nameLabel.Size                  = UDim2.new(0.6, -14, 1, 0)
@@ -1170,7 +1170,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     local typeLabel = Instance.new("TextLabel")
     typeLabel.Text                  = buildType
     typeLabel.Font                  = Enum.Font.Gotham
-    typeLabel.TextSize              = 10
+    typeLabel.TextSize              = 13
     typeLabel.TextColor3            = C.gold
     typeLabel.BackgroundTransparency = 1
     typeLabel.Size                  = UDim2.new(0.4, 0, 1, 0)

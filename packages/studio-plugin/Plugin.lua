@@ -224,7 +224,10 @@ local function startSync(token, sessionId)
       end
 
       if uiRefs and uiRefs.lastSyncLabel and lastSyncTime and lastSyncTime > 0 then
-        uiRefs.lastSyncLabel.Text = "Last sync: " .. os.date("%H:%M:%S", lastSyncTime)
+        local timeStr = tostring(os.date("%H:%M:%S", lastSyncTime) or "")
+        if timeStr ~= "" then
+          uiRefs.lastSyncLabel.Text = "Last sync: " .. timeStr
+        end
       end
     end,
 
