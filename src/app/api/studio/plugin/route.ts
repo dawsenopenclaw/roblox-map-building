@@ -2144,7 +2144,22 @@ plugin.Unloading:Connect(function()
 	widget:Destroy()
 end)
 
-print("[ForjeGames] Plugin v" .. PLUGIN_VER .. " loaded. Click the ForjeGames toolbar button to connect.")
+print("")
+print("╔══════════════════════════════════════════════════════════╗")
+print("║  ForjeGames Plugin v" .. PLUGIN_VER .. " loaded!                       ║")
+print("║                                                          ║")
+print("║  Look for the floating ForjeGames panel.                 ║")
+print("║  If you don't see it, click the Plugins tab in the       ║")
+print("║  ribbon, then click the ForjeGames button.               ║")
+print("║                                                          ║")
+print("║  Need a code? Go to forjegames.com/editor                ║")
+print("╚══════════════════════════════════════════════════════════╝")
+print("")
+
+-- Force the widget visible on every load
+task.defer(function()
+	widget.Enabled = true
+end)
 `
 
 const CORS = {
