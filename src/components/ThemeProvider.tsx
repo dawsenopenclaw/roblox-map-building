@@ -1,56 +1,69 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { THEMES, getThemeById, type Theme } from '@/lib/themes'
+import { useEffect, useCallback } from 'react'
+import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
+import { getThemeById, THEMES, type Theme } from '@/lib/themes'
 
-const STORAGE_KEY = 'forje-theme'
-
-interface ThemeContextValue {
-  theme: Theme
-  setTheme: (id: string) => void
-  themes: Theme[]
-}
-
-const ThemeContext = createContext<ThemeContextValue>({
-  theme: THEMES[0],
-  setTheme: () => {},
-  themes: THEMES,
-})
-
-export function useTheme() {
-  return useContext(ThemeContext)
-}
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement
-  for (const [key, value] of Object.entries(theme.vars)) {
-    root.style.setProperty(key, value)
-  }
-}
+const LIGHT_IDS = new Set(['light', 'paper'])
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(THEMES[0])
+  const { settings } = useEditorSettings()
 
-  // Load saved theme on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const t = getThemeById(saved)
-      setThemeState(t)
-      applyTheme(t)
+    const theme = getThemeById(settings.theme)
+    const root = document.documentElement
+
+    // Apply all theme CSS vars (text, border, orb vars are now defined per-theme)
+    for (const [key, val] of Object.entries(theme.vars)) {
+      root.style.setProperty(key, val)
     }
-  }, [])
 
-  const setTheme = useCallback((id: string) => {
-    const t = getThemeById(id)
-    setThemeState(t)
-    applyTheme(t)
-    localStorage.setItem(STORAGE_KEY, id)
-  }, [])
+    // Apply accent override if set
+    if (settings.accentColor) {
+      root.style.setProperty('--accent', settings.accentColor)
+      root.style.setProperty('--gold', settings.accentColor)
+    }
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, themes: THEMES }}>
-      {children}
-    </ThemeContext.Provider>
+    // color-scheme for browser native inputs
+    const isLight = LIGHT_IDS.has(settings.theme)
+    root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
+  }, [settings.theme, settings.accentColor])
+
+  return <>{children}</>
+}
+
+// ─── useTheme hook ────────────────────────────────────────────────────────────
+
+export function useTheme() {
+  const { settings, update } = useEditorSettings()
+
+  const theme = getThemeById(settings.theme)
+
+  const setTheme = useCallback(
+    (id: string) => {
+      update('theme', id)
+    },
+    [update],
   )
+
+  const setAccentColor = useCallback(
+    (color: string | undefined) => {
+      update('accentColor', color)
+    },
+    [update],
+  )
+
+  return {
+    theme,
+    themes: THEMES,
+    setTheme,
+    accentColor: settings.accentColor,
+    setAccentColor,
+  } satisfies {
+    theme: Theme
+    themes: Theme[]
+    setTheme: (id: string) => void
+    accentColor: string | undefined
+    setAccentColor: (color: string | undefined) => void
+  }
 }

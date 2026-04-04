@@ -64,6 +64,11 @@ body {
   --muted:               #A1A1AA;
   --muted-subtle:        #71717A;
 
+  /* Theme-aware text (overridden by ThemeProvider per-theme) */
+  --text-primary:        rgba(255,255,255,0.9);
+  --text-secondary:      rgba(255,255,255,0.6);
+  --text-muted:          rgba(255,255,255,0.35);
+
   /* Accent alias */
   --accent:              var(--gold);
 

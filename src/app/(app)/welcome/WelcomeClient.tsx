@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useUser, UserButton } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1073,20 +1073,7 @@ export default function WelcomePage() {
           <p className="text-sm text-zinc-500">
             {firstName ? `Hey ${firstName}` : 'Welcome'} — let&apos;s set things up
           </p>
-          <UserButton
-            afterSignOutUrl="/sign-in"
-            appearance={{
-              elements: {
-                avatarBox: '!w-8 !h-8 !ring-2 !ring-[#FFB81C]/30',
-                userButtonPopoverCard: '!bg-[#111113] !border !border-white/10',
-                userButtonPopoverActionButton: '!text-zinc-300 hover:!text-white hover:!bg-white/5',
-                userButtonPopoverActionButtonText: '!text-zinc-300',
-                userButtonPopoverFooter: 'hidden',
-                userPreviewMainIdentifier: '!text-white',
-                userPreviewSecondaryIdentifier: '!text-zinc-500',
-              },
-            }}
-          />
+          {/* Profile handled by global ProfileButton in root layout */}
         </div>
 
         {/* Step indicator pills */}

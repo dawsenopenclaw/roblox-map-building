@@ -13,7 +13,9 @@ import {
   ChevronRight,
   Menu,
   X,
+  Link2,
 } from 'lucide-react'
+// Profile handled by global ProfileButton in root layout
 
 interface AdminUser {
   id: string
@@ -23,10 +25,13 @@ interface AdminUser {
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/admin/dev-board', label: 'Dev Board', icon: BarChart3 },
+  { href: '/admin/metrics', label: 'Live Metrics', icon: BarChart3 },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/templates', label: 'Templates', icon: Layers },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/charity', label: 'Charity', icon: Heart },
+  { href: '/admin/links', label: 'All Links', icon: Link2 },
 ]
 
 export function AdminShell({
@@ -143,15 +148,17 @@ export function AdminShell({
             <Menu className="w-5 h-5" />
           </button>
           <span className="font-semibold text-white text-sm">Admin</span>
-          {sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(false)}
-              aria-label="Close navigation"
-              className="ml-auto p-1.5 rounded-lg text-[#B0B0B0] hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close navigation"
+                className="p-1.5 rounded-lg text-[#B0B0B0] hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 overflow-auto">{children}</main>

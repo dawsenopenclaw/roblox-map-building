@@ -74,14 +74,18 @@ export function StudioConnectionBanner({
   const [placeName, setPlaceName]     = useState<string | null>(null)
   const [codeCopied, setCodeCopied]   = useState(false)
 
-  const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null)
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null)
-  const codeRef      = useRef<string>('')
+  const pollRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const codeRef        = useRef<string>('')
+  const pollIntervalRef = useRef<number>(5000)   // starts at 5 s, backs off on failure
+  const pollFailsRef    = useRef<number>(0)
 
   // ── Stop all background timers ────────────────────────────────────────────
   const stopAll = useCallback(() => {
-    if (pollRef.current)  { clearInterval(pollRef.current);  pollRef.current  = null }
+    if (pollRef.current)  { clearTimeout(pollRef.current);   pollRef.current  = null }
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+    // Clear code so any in-flight schedulePoll callback does not reschedule
+    codeRef.current = ''
   }, [])
 
   // ── Generate a fresh code and start polling for claim ─────────────────────
@@ -110,24 +114,52 @@ export function StudioConnectionBanner({
         })
       }, 1000)
 
-      // Poll for claim every 3 s
-      pollRef.current = setInterval(async () => {
-        try {
-          const c = codeRef.current
-          if (!c) return
-          const sr = await fetch(`/api/studio/auth?action=status&code=${c}`)
-          if (!sr.ok) return
-          const sd = (await sr.json()) as AuthStatusResponse
-          if (sd.claimed && sd.sessionId) {
-            stopAll()
-            setPlaceName(sd.placeName)
-            setBannerState('connected')
-            onConnected?.(sd.sessionId, sd.placeName)
+      // Reset backoff state for the new code
+      pollIntervalRef.current = 5000
+      pollFailsRef.current    = 0
+
+      // Poll for claim — starts at 5 s, backs off to 30 s on consecutive failures.
+      // Using a self-scheduling setTimeout instead of setInterval so we can
+      // adjust the interval dynamically without tearing down the whole loop.
+      const schedulePoll = (): void => {
+        pollRef.current = setTimeout(async () => {
+          try {
+            const c = codeRef.current
+            if (!c) return
+            const sr = await fetch(`/api/studio/auth?action=status&code=${c}`)
+            if (!sr.ok) {
+              // Server error — back off
+              pollFailsRef.current++
+              pollIntervalRef.current = Math.min(
+                5000 * Math.pow(2, pollFailsRef.current),
+                30_000,
+              )
+            } else {
+              // Success — reset backoff
+              pollFailsRef.current    = 0
+              pollIntervalRef.current = 5000
+              const sd = (await sr.json()) as AuthStatusResponse
+              if (sd.claimed && sd.sessionId) {
+                stopAll()
+                setPlaceName(sd.placeName)
+                setBannerState('connected')
+                onConnected?.(sd.sessionId, sd.placeName)
+                return
+              }
+            }
+          } catch {
+            // Network failure — back off
+            pollFailsRef.current++
+            pollIntervalRef.current = Math.min(
+              5000 * Math.pow(2, pollFailsRef.current),
+              30_000,
+            )
           }
-        } catch {
-          // keep polling
-        }
-      }, 3000)
+          // Reschedule unless stopAll() was called
+          if (codeRef.current) schedulePoll()
+        }, pollIntervalRef.current) as unknown as ReturnType<typeof setInterval>
+      }
+      schedulePoll()
     } catch {
       setBannerState('error')
     }

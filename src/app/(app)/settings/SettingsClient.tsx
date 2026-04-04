@@ -30,6 +30,11 @@ import {
   CreditCard,
   Plug,
   Download,
+  BarChart,
+  Twitter,
+  MessageCircle,
+  AtSign,
+  Sparkles,
 } from 'lucide-react'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
@@ -285,11 +290,27 @@ function AccountStatsCard() {
 
 // ─── Profile Tab ──────────────────────────────────────────────────────────────
 
+const SOCIAL_STORAGE_KEY = 'fg_profile_social'
+
+function loadSocialFromStorage() {
+  if (typeof window === 'undefined') return { bio: '', twitter: '', discord: '', github: '' }
+  try {
+    const raw = localStorage.getItem(SOCIAL_STORAGE_KEY)
+    return raw ? JSON.parse(raw) as { bio: string; twitter: string; discord: string; github: string } : { bio: '', twitter: '', discord: '', github: '' }
+  } catch {
+    return { bio: '', twitter: '', discord: '', github: '' }
+  }
+}
+
 function ProfileTab() {
   const { toast, show } = useToast()
   const { user } = useUser()
   const [displayName, setDisplayName] = useState('Dawsen')
-  const [bio, setBio] = useState('Building Roblox games autonomously.')
+  const [username, setUsername] = useState('')
+  const [bio, setBio] = useState('')
+  const [twitter, setTwitter] = useState('')
+  const [discord, setDiscord] = useState('')
+  const [github, setGithub] = useState('')
   const [charity, setCharity] = useState('Code.org')
   const [saving, setSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -298,21 +319,48 @@ function ProfileTab() {
 
   const charities = ['Code.org', 'Girls Who Code', 'Khan Academy']
 
+  // Hydrate from API + localStorage on mount
+  useEffect(() => {
+    const social = loadSocialFromStorage()
+    setBio(social.bio)
+    setTwitter(social.twitter)
+    setDiscord(social.discord)
+    setGithub(social.github)
+
+    fetch('/api/settings/profile')
+      .then((r) => r.json())
+      .then((data: { profile?: { displayName?: string | null; username?: string | null } }) => {
+        if (data.profile?.displayName) setDisplayName(data.profile.displayName)
+        if (data.profile?.username) setUsername(data.profile.username)
+      })
+      .catch(() => {/* non-fatal */})
+  }, [])
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/user/update', {
-        method: 'PATCH',
+      const res = await fetch('/api/settings/profile', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName, bio, charity }),
+        body: JSON.stringify({
+          displayName,
+          username: username || undefined,
+          bio,
+          twitterHandle: twitter || null,
+          discordHandle: discord || null,
+          githubHandle: github || null,
+        }),
       })
       if (res.ok) {
-        show('Changes saved')
+        // Persist social/bio locally since schema columns may not exist yet
+        localStorage.setItem(SOCIAL_STORAGE_KEY, JSON.stringify({ bio, twitter, discord, github }))
+        show('Profile saved')
       } else {
-        show('Failed to save changes', 'error')
+        const err = await res.json() as { error?: string }
+        show(err?.error ?? 'Failed to save', 'error')
       }
     } catch {
-      show('Failed to save changes', 'error')
+      show('Failed to save', 'error')
     } finally {
       setSaving(false)
     }
@@ -346,18 +394,20 @@ function ProfileTab() {
         </div>
 
         <div className="space-y-4">
+          {/* Email (read-only) */}
           <div>
             <label htmlFor="profile-email" className="block text-sm text-gray-300 mb-1.5">Email</label>
             <input
               id="profile-email"
               type="email"
-              value={user?.primaryEmailAddress?.emailAddress || ''}
+              value={user?.primaryEmailAddress?.emailAddress ?? ''}
               disabled
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-400 text-sm cursor-not-allowed"
             />
             <p className="text-gray-500 text-xs mt-1.5">Managed by Clerk — change in account settings.</p>
           </div>
 
+          {/* Display Name */}
           <div>
             <label htmlFor="profile-display-name" className="block text-sm text-gray-300 mb-1.5">Display Name</label>
             <input
@@ -366,22 +416,90 @@ function ProfileTab() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors"
+              placeholder="Your display name"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
             />
           </div>
 
+          {/* Username */}
           <div>
-            <label htmlFor="profile-bio" className="block text-sm text-gray-300 mb-1.5">Bio</label>
+            <label htmlFor="profile-username" className="block text-sm text-gray-300 mb-1.5">Username</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none">@</span>
+              <input
+                id="profile-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                maxLength={30}
+                placeholder="your_username"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              />
+            </div>
+            <p className="text-gray-500 text-xs mt-1.5">Letters, numbers, underscores, hyphens only.</p>
+          </div>
+
+          {/* Bio */}
+          <div>
+            <label htmlFor="profile-bio" className="block text-sm text-gray-300 mb-1.5">
+              Bio
+              <span className="ml-2 text-gray-600 text-xs font-normal">{bio.length}/500</span>
+            </label>
             <textarea
               id="profile-bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              rows={2}
+              rows={3}
               maxLength={500}
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors resize-none"
+              placeholder="Tell the world what you build..."
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors resize-none"
             />
           </div>
 
+          {/* Social Links */}
+          <div>
+            <p className="block text-sm text-gray-300 mb-3">Social Links</p>
+            <div className="space-y-2.5">
+              <div className="relative">
+                <Twitter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-sky-400" />
+                <input
+                  type="text"
+                  value={twitter}
+                  onChange={(e) => setTwitter(e.target.value)}
+                  maxLength={50}
+                  placeholder="Twitter / X handle"
+                  aria-label="Twitter handle"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                />
+              </div>
+              <div className="relative">
+                <MessageCircle size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" />
+                <input
+                  type="text"
+                  value={discord}
+                  onChange={(e) => setDiscord(e.target.value)}
+                  maxLength={50}
+                  placeholder="Discord username"
+                  aria-label="Discord username"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                />
+              </div>
+              <div className="relative">
+                <Github size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={github}
+                  onChange={(e) => setGithub(e.target.value)}
+                  maxLength={50}
+                  placeholder="GitHub username"
+                  aria-label="GitHub username"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Charity */}
           <div>
             <label htmlFor="profile-charity" className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
             <div className="relative">
@@ -389,19 +507,15 @@ function ProfileTab() {
                 id="profile-charity"
                 value={charity}
                 onChange={(e) => setCharity(e.target.value)}
-                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors appearance-none"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors appearance-none"
               >
                 {charities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
               <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
-            <p className="text-gray-500 text-xs mt-1.5">
-              A portion of revenue is donated to this organisation.
-            </p>
+            <p className="text-gray-500 text-xs mt-1.5">A portion of revenue is donated to this organisation.</p>
           </div>
         </div>
 
@@ -929,107 +1043,171 @@ function NotificationsTab() {
 
 // ─── Appearance Tab ───────────────────────────────────────────────────────────
 
+type ThemeCategoryKey = 'minimal' | 'vibrant' | 'aesthetic' | 'luxury'
+
+const CATEGORY_META: { key: ThemeCategoryKey; label: string; description: string; icon: string }[] = [
+  { key: 'minimal',   label: 'Minimal',   description: 'Clean and understated',  icon: '◻' },
+  { key: 'vibrant',   label: 'Vibrant',   description: 'Bold and energetic',      icon: '⚡' },
+  { key: 'aesthetic', label: 'Aesthetic', description: 'Curated vibes',           icon: '✦' },
+  { key: 'luxury',    label: 'Luxury',    description: 'Premium and refined',     icon: '◆' },
+]
+
+function ThemePreviewCard({
+  t,
+  isActive,
+  onSelect,
+}: {
+  t: { id: string; name: string; description: string; preview: { bg: string; accent: string; surface: string } }
+  isActive: boolean
+  onSelect: () => void
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      title={t.description}
+      className={`group relative rounded-xl overflow-hidden transition-all duration-200 ${
+        isActive ? 'scale-[1.02]' : 'hover:scale-[1.01]'
+      }`}
+      style={{
+        outline: isActive ? `2px solid ${t.preview.accent}` : '1px solid rgba(255,255,255,0.07)',
+        boxShadow: isActive ? `0 0 18px ${t.preview.accent}30` : undefined,
+      }}
+    >
+      {/* Preview swatch */}
+      <div className="h-24 relative overflow-hidden" style={{ background: t.preview.bg }}>
+        {/* Simulated sidebar */}
+        <div className="absolute left-0 top-0 bottom-0 w-3 opacity-60" style={{ background: t.preview.surface }} />
+        {/* Simulated top bar */}
+        <div className="absolute top-0 left-3 right-0 h-4" style={{ background: t.preview.surface }} />
+        {/* Accent button in top bar */}
+        <div className="absolute top-1 right-2 h-2 w-5 rounded-sm" style={{ background: t.preview.accent }} />
+        {/* Content lines */}
+        <div className="absolute top-7 left-6 right-3 space-y-1.5">
+          <div className="h-1 rounded-full w-3/4 opacity-25" style={{ background: t.preview.accent }} />
+          <div className="h-1 rounded-full w-1/2 opacity-12" style={{ background: t.preview.surface }} />
+          <div className="h-1 rounded-full w-2/3 opacity-10" style={{ background: t.preview.surface }} />
+        </div>
+        {/* Surface card at bottom */}
+        <div className="absolute bottom-2 left-5 right-3 h-5 rounded-md" style={{ background: t.preview.surface, opacity: 0.85 }} />
+        <div className="absolute bottom-3.5 left-7 w-2 h-2 rounded-full" style={{ background: t.preview.accent }} />
+      </div>
+
+      {/* Label row */}
+      <div
+        className="px-3 py-2 flex items-center justify-between gap-2"
+        style={{ background: '#111113' }}
+      >
+        <p className={`text-xs font-semibold truncate transition-colors ${isActive ? 'text-white' : 'text-gray-400 group-hover:text-white'}`}>
+          {t.name}
+        </p>
+        {isActive && (
+          <span className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: t.preview.accent }}>
+            <Check size={9} className="text-black" />
+          </span>
+        )}
+      </div>
+    </button>
+  )
+}
+
 function AppearanceTab() {
   const { toast, show } = useToast()
   const { theme: currentTheme, setTheme, themes } = useThemeHook()
+  const [activeCategory, setActiveCategory] = useState<ThemeCategoryKey>('minimal')
 
-  const categories = [
-    { key: 'minimal' as const, label: 'Minimal', description: 'Clean and understated' },
-    { key: 'vibrant' as const, label: 'Vibrant', description: 'Bold and energetic' },
-    { key: 'aesthetic' as const, label: 'Aesthetic', description: 'Curated vibes' },
-  ]
+  // Default to the category of the current active theme
+  useEffect(() => {
+    const cat = currentTheme.category as ThemeCategoryKey
+    if (CATEGORY_META.some((c) => c.key === cat)) setActiveCategory(cat)
+  }, [currentTheme.category])
 
   const handleSelect = (id: string) => {
     setTheme(id)
-    const t = themes.find((t) => t.id === id)
-    show(`${t?.name || 'Theme'} applied`)
+    const t = themes.find((th) => th.id === id)
+    show(`${t?.name ?? 'Theme'} applied`)
   }
 
+  const catThemes = themes.filter((t) => t.category === activeCategory)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      {/* Current theme indicator */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-xl border border-white/10 overflow-hidden flex-shrink-0"
-            style={{ background: `linear-gradient(135deg, ${currentTheme.preview.bg} 0%, ${currentTheme.preview.surface} 50%, ${currentTheme.preview.accent} 100%)` }}
-          />
-          <div>
-            <p className="text-white font-semibold text-sm">{currentTheme.name}</p>
-            <p className="text-gray-400 text-xs">{currentTheme.description}</p>
+      {/* Active theme banner */}
+      <div
+        className="rounded-xl p-4 flex items-center gap-4 border transition-all duration-500"
+        style={{
+          background: `linear-gradient(120deg, ${currentTheme.preview.bg} 0%, ${currentTheme.preview.surface} 100%)`,
+          borderColor: `${currentTheme.preview.accent}30`,
+        }}
+      >
+        <div
+          className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden"
+          style={{ border: `1px solid ${currentTheme.preview.accent}40` }}
+        >
+          <div className="w-full h-full" style={{ background: currentTheme.preview.bg }}>
+            <div className="w-full h-1/2" style={{ background: currentTheme.preview.surface }} />
+            <div className="mx-auto mt-1 w-4 h-1 rounded-full" style={{ background: currentTheme.preview.accent }} />
           </div>
-          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-            Active
-          </span>
         </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="text-white font-bold text-sm">{currentTheme.name}</p>
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: `${currentTheme.preview.accent}18`,
+                color: currentTheme.preview.accent,
+                border: `1px solid ${currentTheme.preview.accent}35`,
+              }}
+            >
+              Active
+            </span>
+          </div>
+          <p className="text-gray-400 text-xs truncate">{currentTheme.description}</p>
+        </div>
+        <Sparkles size={16} style={{ color: currentTheme.preview.accent }} className="flex-shrink-0 opacity-60" />
       </div>
 
-      {/* Theme categories */}
-      {categories.map((cat) => {
-        const catThemes = themes.filter((t) => t.category === cat.key)
-        return (
-          <div key={cat.key}>
-            <div className="mb-3 px-1">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label}</h3>
-              <p className="text-[11px] text-gray-600">{cat.description}</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {catThemes.map((t) => {
-                const isActive = currentTheme.id === t.id
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => handleSelect(t.id)}
-                    className={`group relative rounded-xl border-2 transition-all overflow-hidden ${
-                      isActive
-                        ? 'border-white/40 shadow-lg'
-                        : 'border-white/[0.06] hover:border-white/20'
-                    }`}
-                  >
-                    {/* Preview swatch */}
-                    <div className="h-20 relative" style={{ background: t.preview.bg }}>
-                      {/* Surface bar */}
-                      <div
-                        className="absolute bottom-0 left-0 right-0 h-8 rounded-t-lg mx-2"
-                        style={{ background: t.preview.surface }}
-                      />
-                      {/* Accent dots */}
-                      <div className="absolute top-3 right-3 flex gap-1">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.preview.accent }} />
-                        <span className="w-2.5 h-2.5 rounded-full opacity-50" style={{ background: t.preview.accent }} />
-                      </div>
-                      {/* Accent line */}
-                      <div
-                        className="absolute bottom-2 left-4 w-8 h-1 rounded-full"
-                        style={{ background: t.preview.accent }}
-                      />
-                    </div>
+      {/* Category tab strip */}
+      <div className="flex gap-1.5 flex-wrap">
+        {CATEGORY_META.map((cat) => {
+          const isSelected = activeCategory === cat.key
+          const count = themes.filter((t) => t.category === cat.key).length
+          return (
+            <button
+              key={cat.key}
+              onClick={() => setActiveCategory(cat.key)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                isSelected
+                  ? 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/25'
+                  : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
+              }`}
+            >
+              <span className="text-[11px]">{cat.icon}</span>
+              {cat.label}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#FFB81C]/20 text-[#FFB81C]' : 'bg-white/[0.07] text-gray-500'}`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-                    {/* Label */}
-                    <div className="px-3 py-2.5 bg-[#111113]">
-                      <p className={`text-xs font-medium ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                        {t.name}
-                      </p>
-                    </div>
-
-                    {/* Active check */}
-                    {isActive && (
-                      <div className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: t.preview.accent }}>
-                        <Check size={10} className="text-black" />
-                      </div>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        )
-      })}
+      {/* Theme grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {catThemes.map((t) => (
+          <ThemePreviewCard
+            key={t.id}
+            t={t}
+            isActive={currentTheme.id === t.id}
+            onSelect={() => handleSelect(t.id)}
+          />
+        ))}
+      </div>
 
       <p className="text-[11px] text-gray-600 px-1">
-        Themes are saved locally and apply instantly. All themes use a dark base — only colors and vibes change.
+        Themes save locally and apply instantly across the entire app — includes light mode. Toggle quickly via the Sun/Moon button in the topbar.
       </p>
     </div>
   )
@@ -1228,22 +1406,37 @@ function StudioTab() {
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
   { key: 'profile', label: 'Profile', icon: <User size={15} /> },
   { key: 'billing', label: 'Billing', icon: <CreditCard size={15} /> },
+  { key: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
+  { key: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
   { key: 'studio', label: 'Studio', icon: <Plug size={15} /> },
+  { key: 'api-keys', label: 'API Keys', icon: <Key size={15} /> },
+  { key: 'connected', label: 'Connected', icon: <Link2 size={15} /> },
 ]
+
+const VALID_TABS = TABS.map((t) => t.key)
 
 export default function SettingsClient() {
   const searchParams = useSearchParams()
   const initialTab = (searchParams.get('tab') as Tab) || 'profile'
   const [tab, setTab] = useState<Tab>(
-    ['profile', 'billing', 'studio'].includes(initialTab) ? initialTab : 'profile'
+    VALID_TABS.includes(initialTab) ? initialTab : 'profile'
   )
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Account</h1>
-        <p className="text-gray-300 mt-1 text-sm">Manage your profile, billing, and Studio connection.</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Account</h1>
+          <p className="text-gray-300 mt-1 text-sm">Manage your profile, notifications, appearance, and integrations.</p>
+        </div>
+        <a
+          href="/admin"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-[#FFB81C] bg-white/5 hover:bg-[#FFB81C]/10 border border-white/[0.06] hover:border-[#FFB81C]/20 rounded-lg transition-colors"
+        >
+          <BarChart size={12} />
+          Admin
+        </a>
       </div>
 
       {/* Tabs */}
@@ -1267,7 +1460,11 @@ export default function SettingsClient() {
       {/* Content */}
       {tab === 'profile' && <ProfileTab />}
       {tab === 'billing' && <BillingTab />}
+      {tab === 'notifications' && <NotificationsTab />}
+      {tab === 'appearance' && <AppearanceTab />}
       {tab === 'studio' && <StudioTab />}
+      {tab === 'api-keys' && <ApiKeysTab />}
+      {tab === 'connected' && <ConnectedTab />}
     </div>
   )
 }

@@ -1,0 +1,148 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { useAuth, useUser, useClerk } from '@clerk/nextjs'
+import { usePathname } from 'next/navigation'
+
+const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding']
+const ADMIN_EMAILS = ['dawsenporter@gmail.com']
+
+export function ProfileButton() {
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const { signOut } = useClerk()
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  // Close on Escape
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [])
+
+  if (!isLoaded || !isSignedIn) return null
+  if (HIDDEN_PATHS.some((p) => pathname.startsWith(p))) return null
+
+  const name = user?.fullName || user?.firstName || user?.username || 'User'
+  const email = user?.primaryEmailAddress?.emailAddress || ''
+  const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase())
+  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+  const imageUrl = user?.imageUrl
+
+  const links = [
+    { href: '/settings', label: 'Profile & Settings', icon: 'M12 15a3 3 0 100-6 3 3 0 000 6z', adminOnly: false },
+    { href: '/settings?tab=appearance', label: 'Appearance', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z', adminOnly: false },
+    { href: '/settings?tab=notifications', label: 'Notifications', icon: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', adminOnly: false },
+    { href: '/billing', label: 'Billing', icon: 'M2 5h20v14H2z', adminOnly: false },
+    { href: '/admin', label: 'Admin Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z', adminOnly: true },
+    { href: '/admin/dev-board', label: 'Dev Board', icon: 'M3 3v18h18', adminOnly: true },
+  ].filter((link) => !link.adminOnly || isAdmin)
+
+  return (
+    <div className="fixed top-3 right-3 sm:top-4 sm:right-4 z-[9999]" ref={ref}>
+      {/* Avatar button */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="group relative"
+        aria-label="Profile menu"
+        aria-expanded={open}
+      >
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[var(--gold,#FFB81C)]/30 hover:ring-[var(--gold,#FFB81C)]/60 transition-all shadow-lg">
+          {imageUrl ? (
+            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center font-bold text-xs"
+              style={{ background: 'linear-gradient(135deg, var(--gold, #D4AF37) 0%, #B8962E 100%)', color: '#0a0a0a' }}
+            >
+              {initials}
+            </div>
+          )}
+        </div>
+        {/* Online dot */}
+        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-400 border-2 border-[var(--background,#050810)] rounded-full" />
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-[260px] sm:w-64 bg-[#111113] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+          style={{ animation: 'pb-drop-in 0.15s ease' }}
+        >
+          {/* Profile header */}
+          <div className="px-3 py-3 sm:px-4 sm:py-3.5 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0">
+                {imageUrl ? (
+                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+                ) : (
+                  <div
+                    className="w-full h-full flex items-center justify-center font-bold text-xs"
+                    style={{ background: 'linear-gradient(135deg, var(--gold, #D4AF37) 0%, #B8962E 100%)', color: '#0a0a0a' }}
+                  >
+                    {initials}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white truncate">{name}</p>
+                <p className="text-[11px] text-gray-500 truncate">{email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Links */}
+          <div className="py-1 max-h-[50vh] overflow-y-auto">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 sm:px-4 text-sm text-gray-300 hover:text-white hover:bg-white/[0.04] transition-colors"
+              >
+                <svg className="w-4 h-4 flex-shrink-0 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={link.icon} />
+                </svg>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+
+          {/* Sign out */}
+          <div className="border-t border-white/[0.06] py-1">
+            <button
+              onClick={() => { setOpen(false); signOut({ redirectUrl: '/' }) }}
+              className="flex items-center gap-2.5 px-3 py-2 sm:px-4 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/5 transition-colors w-full text-left"
+            >
+              <svg className="w-4 h-4 flex-shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pb-drop-in {
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1);    }
+        }
+      `}</style>
+    </div>
+  )
+}

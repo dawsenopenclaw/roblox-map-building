@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BackToTop } from './_components/BackToTop'
+// Profile handled by global ProfileButton in root layout
 
 export const metadata: Metadata = {
   title: 'Legal — ForjeGames',
@@ -22,17 +23,19 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
           <Link href="/" className="text-[#FFB81C] font-bold text-lg tracking-tight">
             ForjeGames
           </Link>
-          <nav className="hidden sm:flex gap-6 text-sm text-[#71717A]">
-            {legalLinks.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="hover:text-[#FAFAFA] transition-colors"
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
+          <div className="flex items-center gap-6">
+            <nav className="hidden sm:flex gap-6 text-sm text-[#71717A]">
+              {legalLinks.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="hover:text-[#FAFAFA] transition-colors"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
 

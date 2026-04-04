@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
+import { getThemeById } from '@/lib/themes'
 
 /**
  * Immersive deep-space background.
@@ -37,16 +39,16 @@ const STARS_L2 = Array.from({ length: 20 }, (_, i) => ({
 
 // Floating orbs — slowly drifting glass spheres that give the background life
 const FLOATING_ORBS = [
-  { id: 0, size: 280, left: '8%',  top: '15%',  color: 'rgba(255,184,28,0.55)',  blur: 70, opacity: 0.055, duration: 42, delay: 0,    dx: 18, dy: 12 },
-  { id: 1, size: 180, left: '78%', top: '8%',   color: 'rgba(6,182,212,0.7)',    blur: 55, opacity: 0.05,  duration: 55, delay: 8,    dx: -14, dy: 20 },
-  { id: 2, size: 230, left: '60%', top: '65%',  color: 'rgba(124,58,237,0.65)',  blur: 65, opacity: 0.05,  duration: 48, delay: 15,   dx: 10,  dy: -16 },
-  { id: 3, size: 140, left: '25%', top: '72%',  color: 'rgba(255,255,255,0.5)',  blur: 45, opacity: 0.04,  duration: 38, delay: 5,    dx: -20, dy: 8 },
-  { id: 4, size: 200, left: '88%', top: '42%',  color: 'rgba(212,175,55,0.6)',   blur: 60, opacity: 0.045, duration: 62, delay: 22,   dx: 12,  dy: 18 },
-  { id: 5, size: 120, left: '42%', top: '22%',  color: 'rgba(6,182,212,0.6)',    blur: 40, opacity: 0.04,  duration: 34, delay: 11,   dx: -10, dy: -14 },
-  { id: 6, size: 260, left: '5%',  top: '55%',  color: 'rgba(124,58,237,0.5)',   blur: 75, opacity: 0.038, duration: 58, delay: 30,   dx: 16,  dy: -10 },
-  { id: 7, size: 160, left: '52%', top: '85%',  color: 'rgba(255,184,28,0.55)',  blur: 50, opacity: 0.04,  duration: 45, delay: 18,   dx: -12, dy: 10 },
-  { id: 8, size: 100, left: '72%', top: '28%',  color: 'rgba(255,255,255,0.45)', blur: 35, opacity: 0.035, duration: 32, delay: 7,    dx: 8,   dy: 16 },
-  { id: 9, size: 190, left: '32%', top: '45%',  color: 'rgba(212,175,55,0.5)',   blur: 58, opacity: 0.042, duration: 52, delay: 25,   dx: -8,  dy: -12 },
+  { id: 0, size: 280, left: '8%',  top: '15%',  color: 'rgba(255,184,28,0.55)',  blur: 70, opacity: 0.055, duration: 42, delay: 0,    dx: 120,  dy: 80 },
+  { id: 1, size: 180, left: '78%', top: '8%',   color: 'rgba(6,182,212,0.7)',    blur: 55, opacity: 0.05,  duration: 55, delay: 8,    dx: -100, dy: 140 },
+  { id: 2, size: 230, left: '60%', top: '65%',  color: 'rgba(124,58,237,0.65)',  blur: 65, opacity: 0.05,  duration: 48, delay: 15,   dx: 80,   dy: -120 },
+  { id: 3, size: 140, left: '25%', top: '72%',  color: 'rgba(255,255,255,0.5)',  blur: 45, opacity: 0.04,  duration: 38, delay: 5,    dx: -160, dy: 60 },
+  { id: 4, size: 200, left: '88%', top: '42%',  color: 'rgba(212,175,55,0.6)',   blur: 60, opacity: 0.045, duration: 62, delay: 22,   dx: -90,  dy: 110 },
+  { id: 5, size: 120, left: '42%', top: '22%',  color: 'rgba(6,182,212,0.6)',    blur: 40, opacity: 0.04,  duration: 34, delay: 11,   dx: 70,   dy: -100 },
+  { id: 6, size: 260, left: '5%',  top: '55%',  color: 'rgba(124,58,237,0.5)',   blur: 75, opacity: 0.038, duration: 58, delay: 30,   dx: 150,  dy: -80 },
+  { id: 7, size: 160, left: '52%', top: '85%',  color: 'rgba(255,184,28,0.55)',  blur: 50, opacity: 0.04,  duration: 45, delay: 18,   dx: -130, dy: 90 },
+  { id: 8, size: 100, left: '72%', top: '28%',  color: 'rgba(255,255,255,0.45)', blur: 35, opacity: 0.035, duration: 32, delay: 7,    dx: 60,   dy: 170 },
+  { id: 9, size: 190, left: '32%', top: '45%',  color: 'rgba(212,175,55,0.5)',   blur: 58, opacity: 0.042, duration: 52, delay: 25,   dx: -110, dy: -90 },
 ]
 
 // 3 shooting stars — deterministic start positions, different intervals
@@ -85,6 +87,31 @@ const SHOOTING_STARS: Array<{
 ]
 
 export function SpaceBackground() {
+  const { settings } = useEditorSettings()
+  const theme = getThemeById(settings.theme)
+  const isLight = settings.theme === 'light'
+
+  // Orb opacity scaling for light theme
+  const orbOpacityMul = isLight ? 0.4 : 1
+
+  // Derive accent color from theme vars
+  const accentRaw = theme.preview.accent
+
+  // Build orbs with theme-aware colors
+  const themedOrbs = FLOATING_ORBS.map((orb) => {
+    let color = orb.color
+    // Replace gold orbs (ids 0, 4, 7, 9) with theme accent
+    if ([0, 4, 7, 9].includes(orb.id)) {
+      // Parse accent hex to rgba
+      const hex = accentRaw.replace('#', '')
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+      color = `rgba(${r},${g},${b},0.55)`
+    }
+    return { ...orb, color, opacity: orb.opacity * orbOpacityMul }
+  })
+
   return (
     <div
       aria-hidden="true"
@@ -94,7 +121,7 @@ export function SpaceBackground() {
         zIndex: 0,
         pointerEvents: 'none',
         overflow: 'hidden',
-        background: '#050810',
+        background: 'var(--background)',
       }}
     >
       {/* Nebula wash — breathes slowly via CSS animation */}
@@ -153,30 +180,33 @@ export function SpaceBackground() {
       ))}
 
       {/* Floating orbs — slowly drifting glass spheres */}
-      {FLOATING_ORBS.map((orb) => (
-        <div
-          key={`orb-${orb.id}`}
-          style={{
-            position: 'absolute',
-            left: orb.left,
-            top: orb.top,
-            width: orb.size,
-            height: orb.size,
-            borderRadius: '50%',
-            background: `radial-gradient(circle at 35% 35%, ${orb.color}, transparent 70%)`,
-            filter: `blur(${orb.blur}px)`,
-            opacity: orb.opacity,
-            willChange: 'transform',
-            pointerEvents: 'none',
-            '--orb-dx': `${orb.dx}px`,
-            '--orb-dy': `${orb.dy}px`,
-            animation: [
-              `orbDrift ${orb.duration}s ease-in-out ${orb.delay}s infinite alternate`,
-              `orbPulse ${orb.duration * 0.6}s ease-in-out ${orb.delay * 0.5}s infinite alternate`,
-            ].join(', '),
-          } as React.CSSProperties}
-        />
-      ))}
+      {themedOrbs.map((orb) => {
+        const breatheDuration = orb.duration * 0.7
+        return (
+          <div
+            key={`orb-${orb.id}`}
+            style={{
+              position: 'absolute',
+              left: orb.left,
+              top: orb.top,
+              width: orb.size,
+              height: orb.size,
+              borderRadius: '50%',
+              background: `radial-gradient(circle at 35% 35%, ${orb.color}, transparent 70%)`,
+              filter: `blur(${orb.blur}px)`,
+              willChange: 'transform, opacity',
+              pointerEvents: 'none',
+              '--orb-dx': `${orb.dx}px`,
+              '--orb-dy': `${orb.dy}px`,
+              '--orb-opacity': orb.opacity,
+              animation: [
+                `orbDrift ${orb.duration}s ease-in-out ${orb.delay}s infinite`,
+                `orbBreathe ${breatheDuration}s ease-in-out ${orb.delay}s infinite`,
+              ].join(', '),
+            } as React.CSSProperties}
+          />
+        )
+      })}
 
       {/* Shooting stars — each has its own total duration as its animation-duration */}
       {SHOOTING_STARS.map((s) => (
@@ -203,14 +233,14 @@ export function SpaceBackground() {
       ))}
 
       <style>{`
-        /* ── Floating orbs: slow drift + subtle pulse ───────────────── */
+        /* ── Floating orbs: drift (transform only) + separate breathe (opacity only) */
         @keyframes orbDrift {
-          0%   { transform: translate(0px, 0px); }
-          100% { transform: translate(var(--orb-dx, 12px), var(--orb-dy, 8px)); }
+          0%, 100% { transform: translate(0px, 0px); }
+          50%      { transform: translate(var(--orb-dx, 80px), var(--orb-dy, 60px)); }
         }
-        @keyframes orbPulse {
-          0%   { opacity: var(--orb-opacity, 0.04); }
-          100% { opacity: calc(var(--orb-opacity, 0.04) * 1.6); }
+        @keyframes orbBreathe {
+          0%, 100% { opacity: var(--orb-opacity, 0.04); }
+          50%      { opacity: calc(var(--orb-opacity, 0.04) * 2.5); }
         }
 
         /* ── Layer 1: pulse ─────────────────────────────────────────── */

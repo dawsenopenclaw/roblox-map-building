@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useAuth, UserButton } from '@clerk/nextjs'
+import { useAuth } from '@clerk/nextjs'
 
 const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
@@ -84,30 +84,13 @@ function MarketingNav() {
         {/* Desktop CTAs */}
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
           {isLoaded && isSignedIn ? (
-            <>
-              <Link
-                href="/editor"
-                className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 text-black"
-                style={{ background: '#FFB81C' }}
-              >
-                Open Editor
-              </Link>
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: '!w-8 !h-8',
-                    userButtonPopoverCard: '!bg-[#111113] !border !border-white/10',
-                    userButtonPopoverActionButton: '!text-zinc-300 hover:!text-white hover:!bg-white/5',
-                    userButtonPopoverActionButtonText: '!text-zinc-300',
-                    userButtonPopoverActionButtonIcon: '!text-zinc-500',
-                    userButtonPopoverFooter: 'hidden',
-                    userPreviewMainIdentifier: '!text-white',
-                    userPreviewSecondaryIdentifier: '!text-zinc-500',
-                  },
-                }}
-              />
-            </>
+            <Link
+              href="/editor"
+              className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 text-black"
+              style={{ background: '#FFB81C' }}
+            >
+              Open Editor
+            </Link>
           ) : isLoaded ? (
             <>
               <Link
@@ -128,23 +111,6 @@ function MarketingNav() {
 
         {/* Mobile hamburger */}
         <div className="md:hidden flex items-center gap-3">
-          {isLoaded && isSignedIn && (
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: '!w-8 !h-8',
-                  userButtonPopoverCard: '!bg-[#111113] !border !border-white/10',
-                  userButtonPopoverActionButton: '!text-zinc-300 hover:!text-white hover:!bg-white/5',
-                  userButtonPopoverActionButtonText: '!text-zinc-300',
-                  userButtonPopoverActionButtonIcon: '!text-zinc-500',
-                  userButtonPopoverFooter: 'hidden',
-                  userPreviewMainIdentifier: '!text-white',
-                  userPreviewSecondaryIdentifier: '!text-zinc-500',
-                },
-              }}
-            />
-          )}
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"

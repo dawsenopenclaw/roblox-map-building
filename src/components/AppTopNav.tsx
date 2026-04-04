@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useUser, useClerk } from '@clerk/nextjs'
 import { ShortcutHint } from '@/components/ShortcutHint'
 import { NotificationBell } from '@/components/NotificationBell'
+import { useTheme } from '@/components/ThemeProvider'
 
 const fetcher = (url: string) => fetch(url).then(r => r.json())
 
@@ -81,6 +82,21 @@ function IconPlus() {
     </svg>
   )
 }
+function IconSun() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" strokeWidth={1.75} />
+      <path strokeLinecap="round" strokeWidth={1.75} d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+    </svg>
+  )
+}
+function IconMoon() {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+    </svg>
+  )
+}
 function IconChevronDown() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -116,7 +132,8 @@ function IconSignOut() {
 function UserMenu({ displayName, email, onSignOut }: { displayName: string; email: string; onSignOut: () => void }) {
   return (
     <div
-      className="absolute right-0 top-full mt-2 w-52 bg-[#0A0F20] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-52 rounded-xl shadow-2xl z-50 overflow-hidden border"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border-subtle)' }}
       role="menu"
       aria-label="User menu"
     >
@@ -201,13 +218,18 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
     : (user?.username?.[0]?.toUpperCase() ?? 'FG')
 
   const profileRef = useRef<HTMLDivElement>(null)
+  const { theme, setTheme } = useTheme()
+  const isLight = theme.id === 'light' || theme.id === 'paper'
 
   useClickOutside(profileRef, () => setProfileOpen(false))
 
   const tokenBalance = data?.balance !== undefined ? data.balance.toLocaleString() : '—'
 
   return (
-    <header className="h-14 bg-[#060A14] border-b border-white/[0.07] flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0">
+    <header
+      className="h-14 border-b flex items-center px-4 gap-3 sticky top-0 z-30 flex-shrink-0"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border-subtle)' }}
+    >
       {/* Hamburger (mobile) */}
       <button
         onClick={onMenuOpen}
@@ -249,7 +271,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
         href="/editor"
         className="fj-btn-pulse hidden sm:inline-flex items-center gap-1.5 nav-cta-gold active:scale-95 text-[#0a0a0a] text-xs font-bold rounded-lg px-3 py-2 flex-shrink-0 hover:-translate-y-0.5"
         style={{
-          background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+          background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%)',
           animation: 'fj-btn-pulse 3s ease-in-out infinite',
           transition: 'transform 150ms ease',
         }}
@@ -273,7 +295,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           <span className="flex-shrink-0 relative" aria-hidden="true">
             <IconSpark />
           </span>
-          <span className="text-[#D4AF37] text-sm font-bold tabular-nums" aria-hidden="true">
+          <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }} aria-hidden="true">
             {tokenBalance}
           </span>
           <span className="text-gray-500 text-xs hidden md:block" aria-hidden="true">tokens</span>
@@ -293,6 +315,19 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* Notification bell */}
       <NotificationBell />
 
+      {/* Theme toggle — Sun = switch to light, Moon = switch to dark */}
+      <button
+        onClick={() => setTheme(isLight ? 'default' : 'light')}
+        className="p-2 rounded-lg transition-colors flex-shrink-0"
+        style={{ color: 'var(--text-muted)' }}
+        onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+        onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+        aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+        title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+      >
+        {isLight ? <IconMoon /> : <IconSun />}
+      </button>
+
       {/* User avatar + dropdown */}
       <div className="relative flex-shrink-0" ref={profileRef}>
         <button
@@ -306,7 +341,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs select-none flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
+              background: 'linear-gradient(135deg, var(--gold) 0%, var(--accent) 100%)',
               color: '#0a0a0a',
             }}
             aria-hidden="true"
