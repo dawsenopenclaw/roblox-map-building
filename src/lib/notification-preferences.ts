@@ -17,6 +17,10 @@ export const DEFAULT_PREFERENCES: Record<NotificationType, Record<NotificationCh
   ACHIEVEMENT_UNLOCKED: { EMAIL: false, SMS: false, PUSH: true,  IN_APP: true },
   SYSTEM:               { EMAIL: true,  SMS: false, PUSH: false, IN_APP: true },
   WEEKLY_DIGEST:        { EMAIL: true,  SMS: false, PUSH: false, IN_APP: false },
+  TEMPLATE_PURCHASED:   { EMAIL: true,  SMS: false, PUSH: true,  IN_APP: true },
+  PAYOUT_COMPLETED:     { EMAIL: true,  SMS: true,  PUSH: true,  IN_APP: true },
+  REVIEW_RECEIVED:      { EMAIL: true,  SMS: false, PUSH: true,  IN_APP: true },
+  PAYOUT_FAILED:        { EMAIL: true,  SMS: true,  PUSH: true,  IN_APP: true },
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
