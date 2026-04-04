@@ -12,6 +12,7 @@ import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
 import { SplashScreen } from '@/components/SplashScreen'
 import { GlassOrbEffect } from '@/components/GlassOrbEffect'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import { CookieBanner } from '@/components/CookieBanner'
 import { GlobalShortcuts } from '@/components/GlobalShortcuts'
 import { GlobalUserButton } from '@/components/GlobalUserButton'
@@ -193,13 +194,15 @@ export default function RootLayout({
               <SkipToContent />
               <OfflineIndicator />
               <GlobalShortcuts />
-              <ToastProvider>
-                <PostHogConsentWrapper>
-                  <main id="main-content">
-                    {children}
-                  </main>
-                </PostHogConsentWrapper>
-              </ToastProvider>
+              <ThemeProvider>
+                <ToastProvider>
+                  <PostHogConsentWrapper>
+                    <main id="main-content">
+                      {children}
+                    </main>
+                  </PostHogConsentWrapper>
+                </ToastProvider>
+              </ThemeProvider>
               <InstallPrompt />
               <CookieBanner />
             </Suspense>

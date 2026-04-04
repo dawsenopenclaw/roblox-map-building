@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import useSWR from 'swr'
 import { NotificationPreferences } from '@/components/NotificationPreferences'
+import { useTheme as useThemeHook } from '@/components/ThemeProvider'
 import {
   User,
   Key,
@@ -930,102 +931,106 @@ function NotificationsTab() {
 
 function AppearanceTab() {
   const { toast, show } = useToast()
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [accentColor, setAccentColor] = useState<'gold' | 'blue' | 'purple'>('gold')
-  const [compactMode, setCompactMode] = useState(false)
+  const { theme: currentTheme, setTheme, themes } = useThemeHook()
 
-  const selectTheme = (t: 'dark' | 'light') => {
-    setTheme(t)
-    show(`${t === 'dark' ? 'Dark' : 'Light'} theme applied`)
-  }
-
-  const ACCENTS: { key: 'gold' | 'blue' | 'purple'; label: string; color: string }[] = [
-    { key: 'gold', label: 'Gold', color: '#FFB81C' },
-    { key: 'blue', label: 'Blue', color: '#60a5fa' },
-    { key: 'purple', label: 'Purple', color: '#a78bfa' },
+  const categories = [
+    { key: 'minimal' as const, label: 'Minimal', description: 'Clean and understated' },
+    { key: 'vibrant' as const, label: 'Vibrant', description: 'Bold and energetic' },
+    { key: 'aesthetic' as const, label: 'Aesthetic', description: 'Curated vibes' },
   ]
 
+  const handleSelect = (id: string) => {
+    setTheme(id)
+    const t = themes.find((t) => t.id === id)
+    show(`${t?.name || 'Theme'} applied`)
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
-      {/* Theme */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
-        <h3 className="text-white font-semibold mb-5">Theme</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {(
-            [
-              ['dark', 'Dark', Moon],
-              ['light', 'Light', Sun],
-            ] as const
-          ).map(([key, label, Icon]) => (
-            <button
-              key={key}
-              onClick={() => selectTheme(key)}
-              className={`relative flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                theme === key
-                  ? 'border-[#FFB81C] bg-[#FFB81C]/5'
-                  : 'border-white/10 hover:border-white/20 bg-white/[0.02]'
-              }`}
-            >
-              <div
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  key === 'dark' ? 'bg-[#060b1f]' : 'bg-gray-100'
-                }`}
-              >
-                <Icon size={20} className={key === 'dark' ? 'text-[#FFB81C]' : 'text-gray-500'} />
-              </div>
-              <span
-                className={`text-sm font-medium ${theme === key ? 'text-[#FFB81C]' : 'text-gray-300'}`}
-              >
-                {label}
-              </span>
-              {theme === key && (
-                <div className="absolute top-2 right-2 w-4 h-4 bg-[#FFB81C] rounded-full flex items-center justify-center">
-                  <Check size={10} className="text-black" />
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Accent Color */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
-        <h3 className="text-white font-semibold mb-5">Accent Color</h3>
-        <div className="flex gap-3 flex-wrap">
-          {ACCENTS.map(({ key, label, color }) => (
-            <button
-              key={key}
-              onClick={() => setAccentColor(key)}
-              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium ${
-                accentColor === key
-                  ? 'border-white/30 bg-white/5 text-white'
-                  : 'border-white/10 hover:border-white/20 text-gray-300 hover:text-blue-400'
-              }`}
-            >
-              <span
-                className="w-3.5 h-3.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Compact Mode */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
-        <div className="flex items-center justify-between">
+      {/* Current theme indicator */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl border border-white/10 overflow-hidden flex-shrink-0"
+            style={{ background: `linear-gradient(135deg, ${currentTheme.preview.bg} 0%, ${currentTheme.preview.surface} 50%, ${currentTheme.preview.accent} 100%)` }}
+          />
           <div>
-            <p className="text-white font-medium text-sm">Compact Mode</p>
-            <p className="text-gray-400 text-xs mt-0.5">
-              Reduce padding and spacing across the dashboard
-            </p>
+            <p className="text-white font-semibold text-sm">{currentTheme.name}</p>
+            <p className="text-gray-400 text-xs">{currentTheme.description}</p>
           </div>
-          <Toggle checked={compactMode} onChange={() => setCompactMode((v) => !v)} />
+          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
+            Active
+          </span>
         </div>
       </div>
+
+      {/* Theme categories */}
+      {categories.map((cat) => {
+        const catThemes = themes.filter((t) => t.category === cat.key)
+        return (
+          <div key={cat.key}>
+            <div className="mb-3 px-1">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label}</h3>
+              <p className="text-[11px] text-gray-600">{cat.description}</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {catThemes.map((t) => {
+                const isActive = currentTheme.id === t.id
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => handleSelect(t.id)}
+                    className={`group relative rounded-xl border-2 transition-all overflow-hidden ${
+                      isActive
+                        ? 'border-white/40 shadow-lg'
+                        : 'border-white/[0.06] hover:border-white/20'
+                    }`}
+                  >
+                    {/* Preview swatch */}
+                    <div className="h-20 relative" style={{ background: t.preview.bg }}>
+                      {/* Surface bar */}
+                      <div
+                        className="absolute bottom-0 left-0 right-0 h-8 rounded-t-lg mx-2"
+                        style={{ background: t.preview.surface }}
+                      />
+                      {/* Accent dots */}
+                      <div className="absolute top-3 right-3 flex gap-1">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.preview.accent }} />
+                        <span className="w-2.5 h-2.5 rounded-full opacity-50" style={{ background: t.preview.accent }} />
+                      </div>
+                      {/* Accent line */}
+                      <div
+                        className="absolute bottom-2 left-4 w-8 h-1 rounded-full"
+                        style={{ background: t.preview.accent }}
+                      />
+                    </div>
+
+                    {/* Label */}
+                    <div className="px-3 py-2.5 bg-[#111113]">
+                      <p className={`text-xs font-medium ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                        {t.name}
+                      </p>
+                    </div>
+
+                    {/* Active check */}
+                    {isActive && (
+                      <div className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: t.preview.accent }}>
+                        <Check size={10} className="text-black" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+
+      <p className="text-[11px] text-gray-600 px-1">
+        Themes are saved locally and apply instantly. All themes use a dark base — only colors and vibes change.
+      </p>
     </div>
   )
 }

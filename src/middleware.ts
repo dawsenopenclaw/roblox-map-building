@@ -317,13 +317,22 @@ export default clerkMiddleware(async (auth, request) => {
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────
-    // Admin pages and admin API routes require role === 'ADMIN'.
+    // Admin pages and admin API routes require role === 'ADMIN' or ADMIN_EMAILS bypass.
     // The role is stored in Clerk public metadata and surfaced on session claims
     // under the `publicMetadata` key (not `metadata`).
     if (isAdminRoute(request) && userId) {
       const meta = ((claims as { publicMetadata?: Record<string, unknown> })?.publicMetadata ?? {}) as Record<string, unknown>
       const role = meta.role as string | undefined
-      if (role !== 'ADMIN') {
+      const sessionEmail = (meta.email as string) ?? (claims as { email?: string })?.email ?? ''
+
+      // Owner bypass: ADMIN_EMAILS env var (comma-separated, case-insensitive)
+      const adminEmails = (process.env.ADMIN_EMAILS ?? '')
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+      const isOwner = sessionEmail && adminEmails.includes(sessionEmail.toLowerCase())
+
+      if (role !== 'ADMIN' && !isOwner) {
         // For API routes return 403, for page routes redirect to dashboard
         if (request.nextUrl.pathname.startsWith('/api/')) {
           return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

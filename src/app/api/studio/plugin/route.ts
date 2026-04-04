@@ -2135,10 +2135,24 @@ export async function GET(req: NextRequest) {
 
   const format = req.nextUrl.searchParams.get('format')
 
-  // ?format=rbxmx — XML Roblox Model (alternative install method)
-  if (format === 'rbxmx') {
-    const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
-    const rbxmx = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+  // ?format=lua — raw Lua source (for manual install or debugging)
+  if (format === 'lua') {
+    return new NextResponse(finalLua, {
+      status: 200,
+      headers: {
+        ...CORS,
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
+  // Default: serve as .rbxmx — the standard Roblox Studio plugin format.
+  // .rbxmx files are the most reliable way to install plugins.
+  // They auto-load when placed in %LOCALAPPDATA%\Roblox\Plugins\
+  const escapedLua = finalLua.replace(/\]\]>/g, ']]]]><![CDATA[>')
+  const rbxmx = `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 	<External>null</External>
 	<External>nil</External>
 	<Item class="Script" referent="RBX0001">
@@ -2154,25 +2168,12 @@ export async function GET(req: NextRequest) {
 	</Item>
 </roblox>`
 
-    return new NextResponse(rbxmx, {
-      status: 200,
-      headers: {
-        ...CORS,
-        'Content-Type': 'application/xml',
-        'Content-Disposition': 'attachment; filename="ForjeGames.rbxmx"',
-        'Cache-Control': 'no-store',
-      },
-    })
-  }
-
-  // Default: serve as .lua — Roblox Studio loads .lua files from the Plugins
-  // folder natively as plugin Scripts with full `plugin` global access.
-  return new NextResponse(finalLua, {
+  return new NextResponse(rbxmx, {
     status: 200,
     headers: {
       ...CORS,
-      'Content-Type': 'text/plain; charset=utf-8',
-      'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="ForjeGames.rbxmx"',
       'Cache-Control': 'no-store',
     },
   })
