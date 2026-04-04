@@ -35,6 +35,20 @@ const STARS_L2 = Array.from({ length: 20 }, (_, i) => ({
   pulseDelay: (i * 0.7) % 6,
 }))
 
+// Floating orbs — slowly drifting glass spheres that give the background life
+const FLOATING_ORBS = [
+  { id: 0, size: 280, left: '8%',  top: '15%',  color: 'rgba(255,184,28,0.55)',  blur: 70, opacity: 0.055, duration: 42, delay: 0,    dx: 18, dy: 12 },
+  { id: 1, size: 180, left: '78%', top: '8%',   color: 'rgba(6,182,212,0.7)',    blur: 55, opacity: 0.05,  duration: 55, delay: 8,    dx: -14, dy: 20 },
+  { id: 2, size: 230, left: '60%', top: '65%',  color: 'rgba(124,58,237,0.65)',  blur: 65, opacity: 0.05,  duration: 48, delay: 15,   dx: 10,  dy: -16 },
+  { id: 3, size: 140, left: '25%', top: '72%',  color: 'rgba(255,255,255,0.5)',  blur: 45, opacity: 0.04,  duration: 38, delay: 5,    dx: -20, dy: 8 },
+  { id: 4, size: 200, left: '88%', top: '42%',  color: 'rgba(212,175,55,0.6)',   blur: 60, opacity: 0.045, duration: 62, delay: 22,   dx: 12,  dy: 18 },
+  { id: 5, size: 120, left: '42%', top: '22%',  color: 'rgba(6,182,212,0.6)',    blur: 40, opacity: 0.04,  duration: 34, delay: 11,   dx: -10, dy: -14 },
+  { id: 6, size: 260, left: '5%',  top: '55%',  color: 'rgba(124,58,237,0.5)',   blur: 75, opacity: 0.038, duration: 58, delay: 30,   dx: 16,  dy: -10 },
+  { id: 7, size: 160, left: '52%', top: '85%',  color: 'rgba(255,184,28,0.55)',  blur: 50, opacity: 0.04,  duration: 45, delay: 18,   dx: -12, dy: 10 },
+  { id: 8, size: 100, left: '72%', top: '28%',  color: 'rgba(255,255,255,0.45)', blur: 35, opacity: 0.035, duration: 32, delay: 7,    dx: 8,   dy: 16 },
+  { id: 9, size: 190, left: '32%', top: '45%',  color: 'rgba(212,175,55,0.5)',   blur: 58, opacity: 0.042, duration: 52, delay: 25,   dx: -8,  dy: -12 },
+]
+
 // 3 shooting stars — deterministic start positions, different intervals
 const SHOOTING_STARS: Array<{
   id: number
@@ -138,6 +152,32 @@ export function SpaceBackground() {
         />
       ))}
 
+      {/* Floating orbs — slowly drifting glass spheres */}
+      {FLOATING_ORBS.map((orb) => (
+        <div
+          key={`orb-${orb.id}`}
+          style={{
+            position: 'absolute',
+            left: orb.left,
+            top: orb.top,
+            width: orb.size,
+            height: orb.size,
+            borderRadius: '50%',
+            background: `radial-gradient(circle at 35% 35%, ${orb.color}, transparent 70%)`,
+            filter: `blur(${orb.blur}px)`,
+            opacity: orb.opacity,
+            willChange: 'transform',
+            pointerEvents: 'none',
+            '--orb-dx': `${orb.dx}px`,
+            '--orb-dy': `${orb.dy}px`,
+            animation: [
+              `orbDrift ${orb.duration}s ease-in-out ${orb.delay}s infinite alternate`,
+              `orbPulse ${orb.duration * 0.6}s ease-in-out ${orb.delay * 0.5}s infinite alternate`,
+            ].join(', '),
+          } as React.CSSProperties}
+        />
+      ))}
+
       {/* Shooting stars — each has its own total duration as its animation-duration */}
       {SHOOTING_STARS.map((s) => (
         <div
@@ -163,6 +203,16 @@ export function SpaceBackground() {
       ))}
 
       <style>{`
+        /* ── Floating orbs: slow drift + subtle pulse ───────────────── */
+        @keyframes orbDrift {
+          0%   { transform: translate(0px, 0px); }
+          100% { transform: translate(var(--orb-dx, 12px), var(--orb-dy, 8px)); }
+        }
+        @keyframes orbPulse {
+          0%   { opacity: var(--orb-opacity, 0.04); }
+          100% { opacity: calc(var(--orb-opacity, 0.04) * 1.6); }
+        }
+
         /* ── Layer 1: pulse ─────────────────────────────────────────── */
         @keyframes starPulse {
           0%   { opacity: var(--star-min, 0.06); }

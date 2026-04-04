@@ -87,24 +87,30 @@ const MAX_TIP_SESSIONS = 10
 
 function TypingDots() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '12px 0 4px' }}>
-      {[0, 1, 2].map((i) => (
+    <div style={{ display: 'flex', alignItems: 'center', padding: '12px 0 4px' }}>
+      <div
+        style={{
+          width: 48,
+          height: 2,
+          borderRadius: 2,
+          background: 'rgba(255,184,28,0.12)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
         <div
-          key={i}
           style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: '#FFB81C',
-            opacity: 0.7,
-            animation: `dotBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,184,28,0.7) 40%, rgba(212,175,55,0.9) 50%, rgba(255,184,28,0.7) 60%, transparent 100%)',
+            animation: 'shimmerBar 1.6s ease-in-out infinite',
           }}
         />
-      ))}
+      </div>
       <style>{`
-        @keyframes dotBounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-          40%            { transform: translateY(-6px); opacity: 1; }
+        @keyframes shimmerBar {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
         }
       `}</style>
     </div>
@@ -156,6 +162,38 @@ const PULSE_STYLE = `
     0%, 100% { border-color: rgba(56,189,248,0.15); }
     33%       { border-color: rgba(139,92,246,0.2); }
     66%       { border-color: rgba(212,175,55,0.22); }
+  }
+  /* ── Message reveal animations ─────────────────────────────────── */
+  @keyframes bubbleReveal {
+    0%   { opacity: 0; transform: translateY(8px) scale(0.97); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes userBubbleIn {
+    0%   { opacity: 0; transform: translateY(6px) scale(0.97); box-shadow: 0 0 20px rgba(255,184,28,0.15); }
+    60%  { opacity: 1; transform: translateY(0) scale(1.01); box-shadow: 0 0 20px rgba(255,184,28,0.15); }
+    100% { opacity: 1; transform: translateY(0) scale(1); box-shadow: none; }
+  }
+  @keyframes borderPulseOnce {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.6; }
+    100% { opacity: 0; }
+  }
+  @keyframes streamingShimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  /* ── Empty state orb ────────────────────────────────────────────── */
+  @keyframes orbFloat {
+    0%,  100% { transform: translateY(0px) scale(1); }
+    50%        { transform: translateY(-8px) scale(1.03); }
+  }
+  @keyframes orbGlowPulse {
+    0%,  100% { box-shadow: 0 0 40px rgba(255,184,28,0.18), 0 0 80px rgba(212,175,55,0.08); }
+    50%        { box-shadow: 0 0 60px rgba(255,184,28,0.28), 0 0 110px rgba(212,175,55,0.14); }
+  }
+  @keyframes cardBob {
+    0%,  100% { transform: translateY(0px); }
+    50%        { transform: translateY(-3px); }
   }
 `
 
@@ -440,7 +478,7 @@ function MessageBubble({
         style={{
           display: 'flex',
           justifyContent: 'flex-end',
-          animation: 'msgFadeUp 0.25s ease-out forwards',
+          animation: 'userBubbleIn 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards',
         }}
       >
         <div
@@ -449,7 +487,9 @@ function MessageBubble({
             padding: '14px 18px',
             borderRadius: '18px 18px 4px 18px',
             background: 'rgba(255,184,28,0.06)',
-            border: '1px solid rgba(255,184,28,0.10)',
+            border: '1px solid rgba(255,184,28,0.12)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
           }}
         >
           <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -495,12 +535,54 @@ function MessageBubble({
           maxWidth: '85%',
           padding: '14px 18px',
           borderRadius: '18px 18px 18px 4px',
-          background: 'rgba(255,255,255,0.025)',
-          border: '1px solid rgba(255,255,255,0.04)',
+          background: msg.streaming
+            ? 'rgba(255,255,255,0.03)'
+            : 'rgba(255,255,255,0.025)',
+          border: newFlash
+            ? '1px solid rgba(212,175,55,0.35)'
+            : msg.streaming
+              ? '1px solid rgba(255,255,255,0.06)'
+              : '1px solid rgba(255,255,255,0.04)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           position: 'relative',
           overflow: 'hidden',
+          animation: 'bubbleReveal 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          transition: 'border-color 0.4s ease-out, background 0.3s ease-out',
+          boxShadow: newFlash
+            ? '0 0 24px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,255,255,0.05)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.04)',
         }}
       >
+        {/* Streaming shimmer overlay — only visible while streaming */}
+        {msg.streaming && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(105deg, transparent 20%, rgba(255,184,28,0.03) 50%, transparent 80%)',
+              backgroundSize: '200% 100%',
+              animation: 'streamingShimmer 2s linear infinite',
+              pointerEvents: 'none',
+              borderRadius: 'inherit',
+            }}
+          />
+        )}
+        {/* Border flash overlay — fires once when streaming completes */}
+        {newFlash && (
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: -1,
+              borderRadius: 'inherit',
+              border: '1px solid rgba(212,175,55,0.4)',
+              animation: 'borderPulseOnce 1.2s ease-out forwards',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
@@ -713,6 +795,9 @@ function ShowcaseCard({
     return () => clearTimeout(t)
   }, [delay])
 
+  // Staggered bob delay so cards feel alive independently
+  const bobDelay = (delay / 40) * 0.35
+
   return (
     <button
       onClick={() => onSelect(example.prompt)}
@@ -741,6 +826,7 @@ function ShowcaseCard({
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
+        animation: cardVisible && !hovered ? `cardBob 4.5s ease-in-out ${bobDelay}s infinite` : undefined,
       }}
     >
       {/* "Try it" label — fades in on hover */}
@@ -827,31 +913,55 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         transform: visible ? 'translateY(0)' : 'translateY(12px)',
       }}
     >
-      {/* Compact header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Compact header with glowing orb */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Floating glow orb */}
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: 'linear-gradient(135deg, rgba(255,184,28,0.15) 0%, rgba(212,175,55,0.07) 100%)',
-            border: '1px solid rgba(255,184,28,0.18)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'relative',
+            width: 44,
+            height: 44,
             flexShrink: 0,
+            animation: 'orbFloat 4s ease-in-out infinite',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 22 22" fill="none">
-            <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#FFB81C" opacity={0.9}/>
-          </svg>
+          {/* Outer glow ring */}
+          <div
+            style={{
+              position: 'absolute',
+              inset: -6,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,184,28,0.12) 0%, transparent 70%)',
+              animation: 'orbGlowPulse 3s ease-in-out infinite',
+            }}
+          />
+          {/* Core orb */}
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle at 38% 35%, rgba(255,220,80,0.22) 0%, rgba(255,184,28,0.14) 40%, rgba(212,175,55,0.06) 70%, transparent 100%)',
+              border: '1px solid rgba(255,184,28,0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              boxShadow: '0 0 20px rgba(255,184,28,0.1), inset 0 1px 0 rgba(255,255,255,0.08)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#FFB81C" opacity={0.95}/>
+            </svg>
+          </div>
         </div>
         <div>
-          <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif' }}>
+          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' }}>
             What do you want to build?
           </h2>
-          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#52525b', fontFamily: 'Inter, sans-serif' }}>
-            Pick a starter or type anything
+          <p style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.28)', fontFamily: 'Inter, sans-serif' }}>
+            Pick a starter or describe anything
           </p>
         </div>
       </div>

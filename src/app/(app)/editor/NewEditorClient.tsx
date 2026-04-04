@@ -418,7 +418,7 @@ function ViewportArea({
             <div style={{ paddingLeft: 38, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <a
                 href="/api/studio/plugin"
-                download="ForjeGames.lua"
+                download="ForjeGames.rbxmx"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '10px 20px', borderRadius: 8,
@@ -435,7 +435,7 @@ function ViewportArea({
                 <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Then install it:</strong>
                 <br />1. Open <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Roblox Studio</strong>
                 <br />2. Go to <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins</strong> tab in the top ribbon → click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins Folder</strong>
-                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.lua</span> file into that folder
+                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.rbxmx</span> file into that folder
                 <br />4. Restart Studio — the ForjeGames panel opens automatically
                 <br />5. You&apos;ll see a code input box — that&apos;s where you enter the code from Step 3 below
               </div>
@@ -545,7 +545,7 @@ function ViewportArea({
             </summary>
             <div style={{ paddingTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7 }}>
               <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugin not showing up?</strong>
-              <br />• Make sure you put the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>.lua</strong> file in the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugins</strong> folder (not Models, not Workspace)
+              <br />• Make sure you put the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>.rbxmx</strong> file in the <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Plugins</strong> folder (not Models, not Workspace)
               <br />• <strong style={{ color: 'rgba(255,255,255,0.45)' }}>Fully close and reopen</strong> Studio after adding the file
               <br />• The ForjeGames panel should open automatically — if not, check the Plugins tab for a &quot;ForjeGames&quot; button
               <br />• The panel has a text box where you type the 6-character code
