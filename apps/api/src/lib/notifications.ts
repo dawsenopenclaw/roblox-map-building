@@ -42,24 +42,56 @@ export interface NotificationRecord {
 
 /**
  * Map notification type → delivery channels.
+ * Checks user preferences from DB, falls back to defaults.
  * "sse"   — in-app real-time push via Server-Sent Events
- * "email" — send an email (future: queue to email service)
+ * "email" — send an email via Resend
+ * "sms"   — send an SMS via Twilio
  */
-function resolveChannels(type: NotificationType, priority: NotificationPriority): string[] {
+async function resolveChannels(userId: string, type: NotificationType, priority: NotificationPriority): Promise<string[]> {
   const channels: string[] = ['sse'] // always deliver in-app
 
-  // Email for high-signal events
-  const emailTypes: NotificationType[] = [
-    'SALE',
-    'TEAM_INVITE',
-    'REFERRAL_EARNED',
-    'TOKEN_DEPLETED',
-    'BUILD_COMPLETE',
-    'ACHIEVEMENT_UNLOCKED',
-  ]
+  // Check user preferences from DB
+  try {
+    const prefs = await db.notificationPreference.findMany({
+      where: { userId, type },
+    })
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { phone: true, marketingEmailsOptOut: true },
+    })
 
-  if (emailTypes.includes(type) || priority === 'critical') {
-    channels.push('email')
+    // If user has preferences saved, use them
+    if (prefs.length > 0) {
+      const prefMap = new Map(prefs.map((p) => [p.channel, p.enabled]))
+      if (prefMap.get('EMAIL') !== false) channels.push('email')
+      if (prefMap.get('SMS') === true && user?.phone) channels.push('sms')
+      return channels
+    }
+
+    // Fall back to defaults — email for high-signal events
+    const emailTypes: NotificationType[] = [
+      'SALE', 'TEAM_INVITE', 'REFERRAL_EARNED', 'TOKEN_DEPLETED',
+      'BUILD_COMPLETE', 'ACHIEVEMENT_UNLOCKED',
+    ]
+    if (emailTypes.includes(type) || priority === 'critical') {
+      channels.push('email')
+    }
+
+    // SMS defaults — only for critical money/token events
+    const smsTypes: NotificationType[] = ['SALE', 'TOKEN_DEPLETED']
+    if ((smsTypes.includes(type) || priority === 'critical') && user?.phone) {
+      channels.push('sms')
+    }
+  } catch (err) {
+    console.error('[notifications] resolveChannels preference lookup failed:', err)
+    // Fallback: email for high-signal events
+    const emailTypes: NotificationType[] = [
+      'SALE', 'TEAM_INVITE', 'REFERRAL_EARNED', 'TOKEN_DEPLETED',
+      'BUILD_COMPLETE', 'ACHIEVEMENT_UNLOCKED',
+    ]
+    if (emailTypes.includes(type) || priority === 'critical') {
+      channels.push('email')
+    }
   }
 
   return channels
@@ -97,7 +129,7 @@ export async function sendNotification({
     },
   })
 
-  const channels = resolveChannels(type, priority)
+  const channels = await resolveChannels(userId, type, priority)
 
   // 2. SSE push via Redis pub/sub
   if (channels.includes('sse')) {
@@ -124,6 +156,13 @@ export async function sendNotification({
     })
   }
 
+  // 4. SMS channel — send via Twilio (best-effort, non-blocking)
+  if (channels.includes('sms')) {
+    queueSMSNotification({ userId, type, title, body, metadata }).catch((err) => {
+      console.error('[notifications] SMS queue failed:', err)
+    })
+  }
+
   return notification
 }
 
@@ -138,7 +177,8 @@ export async function sendBulkNotifications(
   if (userIds.length === 0) return
 
   const { type, title, body, actionUrl, metadata, priority = 'medium' } = options
-  const channels = resolveChannels(type, priority)
+  // For bulk, use default channels (preference-aware routing is per-user in the individual sender)
+  const channels = ['sse', 'email']
 
   // Batch DB inserts
   await db.notification.createMany({
@@ -371,5 +411,38 @@ async function queueEmailNotification(opts: {
     }
   } catch (err) {
     console.error('[notifications] queueEmailNotification failed:', err)
+  }
+}
+
+// ─── SMS queue ───────────────────────────────────────────────────────────────
+
+/**
+ * Queue an SMS notification by type.
+ * Maps notification types to short SMS messages.
+ * Best-effort — failures are logged but not thrown.
+ */
+async function queueSMSNotification(opts: {
+  userId: string
+  type: NotificationType
+  title: string
+  body: string
+  metadata?: Record<string, unknown>
+}): Promise<void> {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: opts.userId },
+      select: { phone: true },
+    })
+    if (!user?.phone) return
+
+    // Lazy-load SMS functions to avoid circular dependencies
+    const { sendSMS } = await import('./sms')
+
+    // Keep SMS short — 160 char limit for single segment
+    const message = `ForjeGames: ${opts.title} — ${opts.body}`.slice(0, 155)
+
+    await sendSMS({ to: user.phone, body: message })
+  } catch (err) {
+    console.error('[notifications] queueSMSNotification failed:', err)
   }
 }

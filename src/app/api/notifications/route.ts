@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { db } from '@/lib/db'
 import { notificationMarkReadSchema, notificationDeleteSchema, parseBody } from '@/lib/validations'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,12 +17,25 @@ export interface Notification {
   href?: string
 }
 
-// ─── Demo data ────────────────────────────────────────────────────────────────
+// ─── Map DB types to UI types ────────────────────────────────────────────────
+
+const DB_TYPE_TO_UI: Record<string, NotificationType> = {
+  BUILD_COMPLETE: 'build',
+  BUILD_FAILED: 'build',
+  TOKEN_LOW: 'system',
+  TOKEN_DEPLETED: 'system',
+  SALE: 'sale',
+  REFERRAL_EARNED: 'sale',
+  TEAM_INVITE: 'team',
+  ACHIEVEMENT_UNLOCKED: 'achievement',
+  SYSTEM: 'system',
+  WEEKLY_DIGEST: 'system',
+}
+
+// ─── Demo data (fallback for unauthenticated / demo mode) ────────────────────
 
 const now = Date.now()
 const mins = (n: number) => new Date(now - n * 60_000).toISOString()
-const hrs  = (n: number) => new Date(now - n * 3_600_000).toISOString()
-const days = (n: number) => new Date(now - n * 86_400_000).toISOString()
 
 const DEMO_NOTIFICATIONS: Notification[] = [
   {
@@ -53,7 +67,7 @@ const DEMO_NOTIFICATIONS: Notification[] = [
   },
 ]
 
-// In-memory read state for demo mode (resets on server restart — acceptable for demo)
+// In-memory state for demo mode
 const readSet = new Set<string>()
 const deletedSet = new Set<string>()
 
@@ -61,8 +75,8 @@ const deletedSet = new Set<string>()
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth()
-    const demoMode = process.env.DEMO_MODE === 'true' || !userId
+    const { userId: clerkId } = await auth()
+    const demoMode = process.env.DEMO_MODE === 'true' || !clerkId
 
     if (demoMode) {
       const notifications = DEMO_NOTIFICATIONS.filter((n) => !deletedSet.has(n.id)).map((n) => ({
@@ -72,13 +86,56 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ notifications, total: notifications.length, demo: true })
     }
 
-    // Production path — swap with real DB query when schema is ready
-    const notifications = DEMO_NOTIFICATIONS.filter((n) => !deletedSet.has(n.id)).map((n) => ({
-      ...n,
-      read: n.read || readSet.has(n.id),
+    // Real DB path
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true },
+    })
+    if (!user) {
+      return NextResponse.json({ notifications: [], total: 0 })
+    }
+
+    const url = new URL(req.url)
+    const limit = Math.min(Number(url.searchParams.get('limit')) || 20, 50)
+    const cursor = url.searchParams.get('cursor') || undefined
+    const unreadOnly = url.searchParams.get('unread') === 'true'
+
+    const dbNotifications = await db.notification.findMany({
+      where: {
+        userId: user.id,
+        ...(unreadOnly ? { read: false } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    })
+
+    const hasMore = dbNotifications.length > limit
+    const items = dbNotifications.slice(0, limit)
+
+    const notifications: Notification[] = items.map((n) => ({
+      id: n.id,
+      type: DB_TYPE_TO_UI[n.type] || 'system',
+      title: n.title,
+      description: n.body,
+      timestamp: n.createdAt.toISOString(),
+      read: n.read,
+      href: n.actionUrl || undefined,
     }))
-    return NextResponse.json({ notifications, total: notifications.length })
-  } catch {
+
+    const unreadCount = await db.notification.count({
+      where: { userId: user.id, read: false },
+    })
+
+    return NextResponse.json({
+      notifications,
+      total: notifications.length,
+      unreadCount,
+      hasMore,
+      nextCursor: hasMore ? items[items.length - 1].id : undefined,
+    })
+  } catch (err) {
+    console.error('[api/notifications] GET failed:', err)
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 })
   }
 }
@@ -87,8 +144,8 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = await auth()
-    const demoMode = process.env.DEMO_MODE === 'true' || !userId
+    const { userId: clerkId } = await auth()
+    const demoMode = process.env.DEMO_MODE === 'true' || !clerkId
 
     const parsed = await parseBody(req, notificationMarkReadSchema)
     if (!parsed.ok) {
@@ -105,14 +162,31 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    // Production path
-    if (markAll) {
-      DEMO_NOTIFICATIONS.forEach((n) => readSet.add(n.id))
-    } else if (ids) {
-      ids.forEach((id) => readSet.add(id))
+    // Real DB path
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true },
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
+    const now = new Date()
+    if (markAll) {
+      await db.notification.updateMany({
+        where: { userId: user.id, read: false },
+        data: { read: true, readAt: now },
+      })
+    } else if (ids && ids.length > 0) {
+      await db.notification.updateMany({
+        where: { id: { in: ids }, userId: user.id },
+        data: { read: true, readAt: now },
+      })
+    }
+
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (err) {
+    console.error('[api/notifications] PATCH failed:', err)
     return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 })
   }
 }
@@ -121,8 +195,8 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth()
-    const demoMode = process.env.DEMO_MODE === 'true' || !userId
+    const { userId: clerkId } = await auth()
+    const demoMode = process.env.DEMO_MODE === 'true' || !clerkId
 
     const parsed = await parseBody(req, notificationDeleteSchema)
     if (!parsed.ok) {
@@ -135,9 +209,22 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    deletedSet.add(id)
+    // Real DB path
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true },
+    })
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    await db.notification.deleteMany({
+      where: { id, userId: user.id },
+    })
+
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (err) {
+    console.error('[api/notifications] DELETE failed:', err)
     return NextResponse.json({ error: 'Failed to delete notification' }, { status: 500 })
   }
 }

@@ -61,10 +61,14 @@ model User {
   referralsMade    Referral[] @relation("ReferrerReferrals")
   referralReceived Referral[] @relation("ReferredReferrals")
 
+  // Phone (for SMS notifications)
+  phone           String?
+
   // Notifications & Earnings
-  notifications   Notification[]
-  creatorEarnings CreatorEarning[]
-  buyerEarnings   CreatorEarning[] @relation("BuyerEarnings")
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  creatorEarnings         CreatorEarning[]
+  buyerEarnings           CreatorEarning[] @relation("BuyerEarnings")
 
   // Generated Assets
   generatedAssets GeneratedAsset[]
@@ -928,6 +932,29 @@ enum NotificationType {
   ACHIEVEMENT_UNLOCKED
   SYSTEM
   WEEKLY_DIGEST
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+// ─── Notification Preferences ────────────────────────────────────────────────
+
+model NotificationPreference {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  channel   NotificationChannel
+  enabled   Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  @@unique([userId, type, channel])
+  @@index([userId])
 }
 
 // ─── Creator Earnings ────────────────────────────────────────────────────────

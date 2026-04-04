@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import useSWR from 'swr'
+import { NotificationPreferences } from '@/components/NotificationPreferences'
 import {
   User,
   Key,
@@ -912,116 +913,15 @@ function ApiKeysTab() {
 // ─── Notifications Tab ────────────────────────────────────────────────────────
 
 function NotificationsTab() {
-  const { toast, show } = useToast()
-  const [saving, setSaving] = useState(false)
-
-  const [prefs, setPrefs] = useState({
-    emailNotifications: true,
-    buildAlerts: true,
-    tokenWarnings: true,
-    marketingEmails: false,
-    teamActivity: true,
-    weeklyDigest: false,
-  })
-
-  const toggle = (key: keyof typeof prefs) =>
-    setPrefs((p) => ({ ...p, [key]: !p[key] }))
-
-  const save = async () => {
-    setSaving(true)
-    try {
-      await fetch('/api/user/notifications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prefs),
-      })
-    } catch {
-      // API not wired — optimistic
-    } finally {
-      setSaving(false)
-      show('Preferences saved')
-    }
-  }
-
-  const groups: {
-    section: string
-    rows: { key: keyof typeof prefs; label: string; description: string }[]
-  }[] = [
-    {
-      section: 'Account',
-      rows: [
-        {
-          key: 'emailNotifications',
-          label: 'Account Emails',
-          description: 'Security alerts, receipts, and account changes',
-        },
-        {
-          key: 'tokenWarnings',
-          label: 'Token Warnings',
-          description: 'Alert when token balance drops below 20%',
-        },
-      ],
-    },
-    {
-      section: 'Activity',
-      rows: [
-        {
-          key: 'buildAlerts',
-          label: 'Build Completion',
-          description: 'Notify when a map or voice build finishes',
-        },
-        {
-          key: 'teamActivity',
-          label: 'Team Activity',
-          description: 'Comments, reviews, and collaborator updates',
-        },
-      ],
-    },
-    {
-      section: 'Marketing',
-      rows: [
-        {
-          key: 'marketingEmails',
-          label: 'Product Announcements',
-          description: 'New features, tips, and releases',
-        },
-        {
-          key: 'weeklyDigest',
-          label: 'Weekly Digest',
-          description: 'Summary of your builds and platform stats',
-        },
-      ],
-    },
-  ]
-
   return (
     <div className="space-y-4">
-      {toast && <Toast message={toast.message} type={toast.type} />}
-
-      {groups.map((group) => (
-        <div key={group.section} className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-5">{group.section}</h3>
-          <div className="space-y-5">
-            {group.rows.map((row) => (
-              <div key={row.key} className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-white text-sm font-medium">{row.label}</p>
-                  <p className="text-gray-400 text-xs mt-0.5">{row.description}</p>
-                </div>
-                <Toggle checked={prefs[row.key]} onChange={() => toggle(row.key)} />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <button
-        onClick={() => void save()}
-        disabled={saving}
-        className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
-      >
-        {saving ? 'Saving...' : 'Save Preferences'}
-      </button>
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+        <h3 className="text-white font-semibold mb-1">Notification Preferences</h3>
+        <p className="text-gray-400 text-xs mb-5">
+          Choose how you want to be notified for each event type. Configure email, SMS, push, and in-app alerts.
+        </p>
+        <NotificationPreferences />
+      </div>
     </div>
   )
 }

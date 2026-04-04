@@ -85,6 +85,11 @@ const serverSchema = z.object({
   // ── Email ─────────────────────────────────────────────────────────────────
   RESEND_API_KEY: prodRequired('RESEND_API_KEY'),
 
+  // ── SMS — Twilio ────────────────────────────────────────────────────────
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+
   // ── Analytics / Monitoring ────────────────────────────────────────────────
   SENTRY_DSN: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),

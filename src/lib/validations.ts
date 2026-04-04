@@ -267,6 +267,21 @@ export const notificationDeleteSchema = z.object({
   id: z.string().min(1, 'id is required').max(64),
 })
 
+export const notificationPreferenceUpdateSchema = z.object({
+  type: z.enum([
+    'BUILD_COMPLETE', 'BUILD_FAILED', 'TOKEN_LOW', 'TOKEN_DEPLETED',
+    'SALE', 'REFERRAL_EARNED', 'TEAM_INVITE', 'ACHIEVEMENT_UNLOCKED',
+    'SYSTEM', 'WEEKLY_DIGEST',
+  ]),
+  channel: z.enum(['EMAIL', 'SMS', 'PUSH', 'IN_APP']),
+  enabled: z.boolean(),
+})
+
+export const notificationPreferencesBulkSchema = z.object({
+  preferences: z.array(notificationPreferenceUpdateSchema).min(1).max(100),
+  phone: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Phone must be E.164 format').nullish(),
+})
+
 // ── Marketplace Connect ───────────────────────────────────────────────────────
 
 // Allowed origins for Stripe Connect return/refresh URLs.
