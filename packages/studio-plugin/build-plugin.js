@@ -75,8 +75,9 @@ const AUTO_INSTALL = hasFlag('--install')
 
 // The Lua files that make up the plugin.
 // Plugin.lua is the root Script entry point; the rest are ModuleScripts.
-// All ModuleScripts are siblings of the Plugin Script inside the root Folder
-// so `script.Parent:FindFirstChild("Auth")` etc. resolve correctly.
+// ModuleScripts are children of the Script (not siblings in a Folder)
+// so `script:FindFirstChild("Auth")` etc. resolve correctly.
+// This ensures Studio auto-runs the Script when placed in the Plugins folder.
 const LUA_FILES = [
   { file: 'Plugin.lua',       className: 'Script',       name: 'Plugin'       },
   { file: 'Auth.lua',         className: 'ModuleScript', name: 'Auth'         },
@@ -124,51 +125,57 @@ function escapeXML(str) {
  * @param {string} [parentRef]- Parent referent (unused in flat-list XML but kept for clarity)
  * @returns {string}
  */
-function buildScriptItem(name, className, source, referentId) {
-  // Plugin Scripts in the Plugins folder must have Disabled=false.
-  // Studio recognises them as plugin entry points via their location,
-  // not via a special property — so we keep Disabled=false for all.
-  const disabled = 'false'
-
-  // RunContext property is available in newer rbxmx; older Studio ignores it.
-  const runContextProp = className === 'Script'
-    ? `\n        <token name="RunContext">Plugin</token>`
-    : ''
-
-  return `    <Item class="${escapeXML(className)}" referent="${escapeXML(referentId)}">
-      <Properties>
-        <string name="Name">${escapeXML(name)}</string>
-        <ProtectedString name="Source"><![CDATA[${escapeCDATA(source)}]]></ProtectedString>
-        <bool name="Disabled">${disabled}</bool>${runContextProp}
-      </Properties>
-    </Item>`
+function buildModuleItem(name, source, referentId, indent) {
+  return `${indent}<Item class="ModuleScript" referent="${escapeXML(referentId)}">
+${indent}  <Properties>
+${indent}    <string name="Name">${escapeXML(name)}</string>
+${indent}    <ProtectedString name="Source"><![CDATA[${escapeCDATA(source)}]]></ProtectedString>
+${indent}    <bool name="Disabled">false</bool>
+${indent}  </Properties>
+${indent}</Item>`
 }
 
 /**
  * Assemble the full rbxmx document.
- * All Scripts + ModuleScripts are children of the root Folder so that
- * `script.Parent` inside Plugin.lua resolves to the Folder, and
- * `script.Parent:FindFirstChild("Auth")` finds the Auth ModuleScript.
+ *
+ * Structure:
+ *   Script "ForjeGames"          (root — auto-runs as plugin entry point)
+ *     ModuleScript "Auth"        (child of Script)
+ *     ModuleScript "UI"          (child of Script)
+ *     ModuleScript "Sync"        (child of Script)
+ *     ModuleScript "AssetManager"
+ *     ModuleScript "History"
+ *
+ * Studio auto-runs Scripts that are direct children of the Plugins folder.
+ * By making the Script the root item (no Folder wrapper), drag-and-drop
+ * installation works on any PC without extra steps.
+ * ModuleScripts are children of the Script so `script:FindFirstChild("Auth")` works.
  *
  * @param {Array<{ name: string, className: string, source: string }>} scripts
  * @param {string} version
  * @returns {string}
  */
 function buildRbxmx(scripts, version) {
-  const items = scripts
+  const mainScript = scripts.find(s => s.className === 'Script')
+  const modules = scripts.filter(s => s.className === 'ModuleScript')
+
+  const moduleItems = modules
     .map((s, i) =>
-      buildScriptItem(s.name, s.className, s.source, `RBX${String(i + 1).padStart(4, '0')}`)
+      buildModuleItem(s.name, s.source, `RBX${String(i + 2).padStart(4, '0')}`, '    ')
     )
     .join('\n')
 
   return `<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v${version} -->
   <!-- Built by build-plugin.js on ${new Date().toISOString()} -->
-  <Item class="Folder" referent="ROOT0001">
+  <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
+      <ProtectedString name="Source"><![CDATA[${escapeCDATA(mainScript.source)}]]></ProtectedString>
+      <bool name="Disabled">false</bool>
+      <token name="RunContext">Plugin</token>
     </Properties>
-${items}
+${moduleItems}
   </Item>
 </roblox>`
 }

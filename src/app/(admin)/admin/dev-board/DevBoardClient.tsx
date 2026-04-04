@@ -60,7 +60,7 @@ function PulseDot({ color = '#22C55E' }: { color?: string }) {
 
 // ─── Stat Card ───────────────────────────────────────────────────────────────
 function StatCard({
-  label, value, prefix = '', suffix = '', sub, trend, icon: Icon, accentColor = '#FFB81C',
+  label, value, prefix = '', suffix = '', sub, trend, icon: Icon, accentColor = '#D4AF37',
 }: {
   label: string; value: number; prefix?: string; suffix?: string
   sub?: string; trend?: number; icon: LucideIcon; accentColor?: string
@@ -118,7 +118,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 const TIER_COLORS: Record<string, string> = {
   FREE: '#71717A',
   HOBBY: '#60A5FA',
-  CREATOR: '#FFB81C',
+  CREATOR: '#D4AF37',
   STUDIO: '#A855F7',
 }
 
@@ -134,7 +134,7 @@ function activityIcon(action: string) {
 function activityColor(action: string) {
   if (action.includes('CREATE') || action.includes('SIGN_UP')) return '#22C55E'
   if (action.includes('DELETE')) return '#EF4444'
-  if (action.includes('UPDATE') || action.includes('CHANGE')) return '#FFB81C'
+  if (action.includes('UPDATE') || action.includes('CHANGE')) return '#D4AF37'
   return '#60A5FA'
 }
 
@@ -167,7 +167,7 @@ export function DevBoardClient() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-zinc-500">Loading metrics...</p>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function DevBoardClient() {
           <p className="text-zinc-400 text-sm">Failed to load metrics</p>
           <button
             onClick={() => mutate()}
-            className="text-sm text-[#FFB81C] hover:text-[#E6A519] transition-colors"
+            className="text-sm text-[#D4AF37] hover:text-[#E6A519] transition-colors"
           >
             Try again
           </button>
@@ -234,7 +234,7 @@ export function DevBoardClient() {
           value={Math.round((d.revenueTodayCents ?? 0) / 100)}
           prefix="$"
           icon={TrendingUp}
-          accentColor="#FFB81C"
+          accentColor="#D4AF37"
         />
         <StatCard
           label="Revenue This Week"
@@ -258,7 +258,7 @@ export function DevBoardClient() {
           label="Total Users"
           value={d.totalUsers ?? 0}
           icon={Users}
-          accentColor="#FFB81C"
+          accentColor="#D4AF37"
         />
         <StatCard
           label="Signups Today"
@@ -290,7 +290,7 @@ export function DevBoardClient() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-[#FFB81C]" />
+              <BarChart3 className="w-4 h-4 text-[#D4AF37]" />
               Revenue — Last 30 Days
             </h3>
           </div>
@@ -299,8 +299,8 @@ export function DevBoardClient() {
               <AreaChart data={d.revenueChart ?? []}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FFB81C" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#FFB81C" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
@@ -322,7 +322,7 @@ export function DevBoardClient() {
                 <Area
                   type="monotone"
                   dataKey="revenueCents"
-                  stroke="#FFB81C"
+                  stroke="#D4AF37"
                   strokeWidth={2}
                   fill="url(#revGrad)"
                 />
@@ -390,12 +390,12 @@ export function DevBoardClient() {
           style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'rgba(255,255,255,0.06)' }}
         >
           <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-5">
-            <Zap className="w-4 h-4 text-[#FFB81C]" />
+            <Zap className="w-4 h-4 text-[#D4AF37]" />
             Token Economy
           </h3>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Total Balance', value: d.tokenBalance ?? 0, color: '#FFB81C' },
+              { label: 'Total Balance', value: d.tokenBalance ?? 0, color: '#D4AF37' },
               { label: 'Avg Balance', value: d.tokenAvgBalance ?? 0, color: '#60A5FA' },
               { label: 'Tokens Bought', value: d.tokensBoughtAmount ?? 0, color: '#22C55E' },
               { label: 'Tokens Spent', value: d.tokensSpentAmount ?? 0, color: '#EF4444' },
@@ -490,7 +490,7 @@ export function DevBoardClient() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-[#FFB81C]" />
+              <Layers className="w-4 h-4 text-[#D4AF37]" />
               Top Templates
             </h3>
             <span className="text-xs text-zinc-500">{d.totalTemplates ?? 0} total</span>
@@ -508,7 +508,7 @@ export function DevBoardClient() {
                     {t.purchases} purchases · {t.downloads} downloads · {t.averageRating?.toFixed(1) ?? '—'} rating
                   </p>
                 </div>
-                <span className="text-xs font-semibold text-[#FFB81C] tabular-nums">
+                <span className="text-xs font-semibold text-[#D4AF37] tabular-nums">
                   ${((t.priceCents ?? 0) / 100).toFixed(2)}
                 </span>
               </div>

@@ -3,12 +3,17 @@
   HTTP polling sync (2-5 second interval)
 
   GET  /api/studio/sync?lastSync=<timestamp>&sessionId=<id>  → pending changes
-  POST /api/studio/update                                     → push local changes
+  POST /api/studio/update                                     → push local changes + heartbeat
   POST /api/studio/connect                                    → announce connection
   POST /api/studio/screenshot                                 → push screenshot data
 
   Features:
   - Exponential backoff on failures (2s → 4s → 8s → max 30s)
+  - Auto-reconnect on reconnect:true response (max 10 attempts)
+  - Session expiry detection (401) with clear UI messaging
+  - Server-unreachable detection with soft retry status
+  - Update-available notification (once per Studio session)
+  - Dedicated heartbeat keepalive POST every 30s (prevents session timeout)
   - Graceful degradation: retries silently, never crashes plugin
   - Change queue: batches local changes before pushing
   - execute_luau command handler with loadstring + pcall
@@ -22,39 +27,43 @@ local Sync = {}
 -- ============================================================
 -- Config
 -- ============================================================
-local BASE_URL     = "https://forjegames.com"
-local LOCAL_URL    = "http://localhost:3000"
-local MIN_INTERVAL = 2    -- seconds
-local MAX_INTERVAL = 30   -- seconds (backoff ceiling)
+local BASE_URL           = "https://forjegames.com"
+local PLUGIN_VERSION     = "4.4.0"
+local MIN_INTERVAL       = 2    -- seconds
+local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
+local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
+local MAX_RECONNECT      = 10   -- give up after this many consecutive reconnect attempts
 
 -- ============================================================
 -- Internal state
 -- ============================================================
-local _running           = false
-local _heartbeatConn     = nil
-local _token             = nil
-local _sessionId         = nil
-local _onStatusChange    = nil
-local _lastSync          = 0
-local _backoffInterval   = MIN_INTERVAL
-local _timeSinceLastPoll = 0
-local _changeQueue       = {}
-local _pendingPush       = false
-local _baseUrl           = nil
+local _running             = false
+local _heartbeatConn       = nil
+local _token               = nil
+local _sessionId           = nil
+local _onStatusChange      = nil
+local _onStatusMessage     = nil   -- fn(message: string, level: "info"|"warn"|"error")
+local _lastSync            = 0
+local _backoffInterval     = MIN_INTERVAL
+local _timeSinceLastPoll   = 0
+local _timeSinceHeartbeat  = 0
+local _changeQueue         = {}
+local _pendingPush         = false
+local _baseUrl             = nil
+local _reconnectAttempts   = 0
+local _updateNotified      = false   -- only show update banner once per session
+local _reAuthCallback      = nil     -- set by Sync.start, called when re-auth is needed
 
 -- ============================================================
--- Resolve base URL (prefer local dev if reachable)
+-- Resolve base URL (production default, dev override via settings)
 -- ============================================================
 local function resolveBaseUrl()
   if _baseUrl then return _baseUrl end
 
-  local ok = pcall(function()
-    local res = HttpService:RequestAsync({
-      Url    = LOCAL_URL .. "/api/health",
-      Method = "GET",
-    })
-    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
-      _baseUrl = LOCAL_URL
+  pcall(function()
+    local devUrl = plugin and plugin:GetSetting("ForjeGames_DevUrl")
+    if devUrl and type(devUrl) == "string" and #devUrl > 0 then
+      _baseUrl = devUrl
     end
   end)
 
@@ -66,12 +75,37 @@ local function resolveBaseUrl()
 end
 
 -- ============================================================
+-- Status helpers
+-- ============================================================
+local function notifyStatus(connected, lastSyncTime)
+  if _onStatusChange then
+    _onStatusChange(connected, lastSyncTime)
+  end
+end
+
+local function notifyMessage(message, level)
+  level = level or "info"
+  if _onStatusMessage then
+    _onStatusMessage(message, level)
+  else
+    -- Fallback to Studio Output
+    if level == "error" then
+      warn("[ForjeGames] " .. message)
+    elseif level == "warn" then
+      warn("[ForjeGames] " .. message)
+    else
+      print("[ForjeGames] " .. message)
+    end
+  end
+end
+
+-- ============================================================
 -- HTTP helpers (all pcall-wrapped — never crash the plugin)
 -- ============================================================
 local function authHeaders()
   local headers = {
-    ["Content-Type"]    = "application/json",
-    ["X-Plugin-Version"] = "1.0.0",
+    ["Content-Type"]     = "application/json",
+    ["X-Plugin-Version"] = PLUGIN_VERSION,
   }
   if _token then
     headers["Authorization"] = "Bearer " .. _token
@@ -82,6 +116,8 @@ local function authHeaders()
   return headers
 end
 
+-- Returns result table on success, nil on network failure, string "http_disabled"
+-- if HttpService is blocked, string "unreachable" if server cannot be reached.
 local function httpGet(path)
   local url = resolveBaseUrl() .. path
   local ok, result = pcall(function()
@@ -91,7 +127,18 @@ local function httpGet(path)
       Headers = authHeaders(),
     })
   end)
-  return ok and result or nil
+
+  if not ok then
+    local errStr = tostring(result)
+    -- Roblox throws "Http requests are not enabled" when HTTP is off
+    if errStr:find("not enabled") or errStr:find("Http") then
+      return nil, "http_disabled"
+    end
+    -- DNS failure or connection refused
+    return nil, "unreachable"
+  end
+
+  return result, nil
 end
 
 local function httpPost(path, body)
@@ -102,7 +149,7 @@ local function httpPost(path, body)
   end)
   if not encOk then
     warn("[ForjeGames Sync] JSON encode error: " .. tostring(encErr))
-    return nil
+    return nil, nil
   end
 
   local ok, result = pcall(function()
@@ -113,16 +160,22 @@ local function httpPost(path, body)
       Body    = encoded,
     })
   end)
-  return ok and result or nil
+
+  if not ok then
+    local errStr = tostring(result)
+    if errStr:find("not enabled") or errStr:find("Http") then
+      return nil, "http_disabled"
+    end
+    return nil, "unreachable"
+  end
+
+  return result, nil
 end
 
 -- ============================================================
 -- execute_luau handler
--- loadstring is available in Studio plugin context.
--- If disabled by FFlag, falls back to structured command parse.
 -- ============================================================
 local function executeStructuredCommand(data)
-  -- Fallback: interpret a structured {action, ...} table instead of raw Luau.
   local action = data.action
   if action == "create_part" then
     local part = Instance.new("Part")
@@ -156,10 +209,8 @@ end
 local function handleExecuteLuau(data)
   if not data or not data.code then return end
 
-  -- Attempt loadstring (available in Studio plugin scripts)
   local loadOk = false
   pcall(function()
-    -- loadstring returns fn, err
     local fn, parseErr = loadstring(data.code)
     if fn then
       loadOk = true
@@ -169,7 +220,6 @@ local function handleExecuteLuau(data)
       end
     else
       warn("[ForjeGames] Parse error: " .. tostring(parseErr))
-      -- Fall through to structured command if loadstring gave us nil
       if data.structured then
         executeStructuredCommand(data.structured)
       end
@@ -177,24 +227,12 @@ local function handleExecuteLuau(data)
   end)
 
   if not loadOk and data.structured then
-    -- loadstring itself errored (security restricted) — use structured fallback
     executeStructuredCommand(data.structured)
   end
 end
 
 -- ============================================================
 -- insert_asset command handler
---
--- Triggered by POST /api/studio/push-asset from the web editor
--- after a mesh has been uploaded to Roblox via Open Cloud.
---
--- change.data shape:
---   robloxAssetId  string   — numeric Roblox asset ID for InsertService
---   assetId        string   — internal ForjeGames asset ID (stored as attribute)
---   name           string?  — display name for the inserted model
---   position       table?   — { x, y, z } world-space position (Y is up)
---
--- Reports success/failure back on the next heartbeat via Sync.queueChange.
 -- ============================================================
 local function handleInsertAsset(change)
   local data = change and change.data
@@ -209,11 +247,9 @@ local function handleInsertAsset(change)
     return
   end
 
-  -- Delegate to AssetManager so we get ChangeHistory waypoints + stamping
   local assetOk, assetErr = pcall(function()
     local AssetManager = require(script.Parent.AssetManager)
 
-    -- Build a position CFrame if coordinates were supplied
     local cframe = nil
     if data.position then
       local px = tonumber(data.position.x) or 0
@@ -232,7 +268,6 @@ local function handleInsertAsset(change)
     })
 
     if model then
-      -- Queue a success event so the web editor can confirm insertion
       Sync.queueChange("asset_inserted", {
         assetId       = data.assetId,
         robloxAssetId = tostring(robloxAssetId),
@@ -240,7 +275,6 @@ local function handleInsertAsset(change)
         success       = true,
       })
     else
-      -- LoadAsset returned nil — report failure
       Sync.queueChange("asset_insert_failed", {
         assetId       = data.assetId,
         robloxAssetId = tostring(robloxAssetId),
@@ -252,7 +286,6 @@ local function handleInsertAsset(change)
 
   if not assetOk then
     warn("[ForjeGames Sync] insert_asset failed: " .. tostring(assetErr))
-    -- Still report failure upstream so the web editor can surface the error
     Sync.queueChange("asset_insert_failed", {
       assetId       = tostring(data.assetId or ""),
       robloxAssetId = tostring(robloxAssetId),
@@ -318,11 +351,17 @@ local function sendConnect()
     token         = _token,
     placeId       = game.PlaceId,
     placeName     = game.Name ~= "" and game.Name or tostring(game.PlaceId),
-    pluginVersion = "1.0.0",
+    pluginVersion = PLUGIN_VERSION,
     sessionId     = _sessionId,
   }
 
-  local result = httpPost("/api/studio/connect", payload)
+  local result, netErr = httpPost("/api/studio/connect", payload)
+  if netErr == "http_disabled" then
+    notifyMessage("Enable HTTP Requests in Game Settings > Security", "error")
+    notifyStatus(false, _lastSync)
+    return
+  end
+
   if result and result.StatusCode == 200 then
     local ok, data = pcall(function()
       return HttpService:JSONDecode(result.Body)
@@ -330,6 +369,41 @@ local function sendConnect()
     if ok and data and data.sessionId then
       _sessionId = data.sessionId
     end
+  end
+end
+
+-- ============================================================
+-- Re-authenticate using stored token (called on reconnect: true)
+-- ============================================================
+local function attemptReAuth()
+  _reconnectAttempts = _reconnectAttempts + 1
+
+  if _reconnectAttempts > MAX_RECONNECT then
+    notifyMessage("Disconnected: max reconnect attempts reached. Re-enter your code.", "error")
+    notifyStatus(false, _lastSync)
+    if _onStatusMessage then
+      _onStatusMessage("Disconnected", "error")
+    end
+    _running = false
+    if _heartbeatConn then
+      _heartbeatConn:Disconnect()
+      _heartbeatConn = nil
+    end
+    return
+  end
+
+  notifyMessage("Reconnecting... (attempt " .. _reconnectAttempts .. "/" .. MAX_RECONNECT .. ")", "warn")
+  notifyStatus(false, _lastSync)
+
+  if _reAuthCallback then
+    -- Delegate re-auth to Plugin.lua which holds the reauthenticate function
+    task.spawn(_reAuthCallback)
+  else
+    -- No callback: try reconnecting with existing token via connect endpoint
+    task.spawn(function()
+      sendConnect()
+      _backoffInterval = MIN_INTERVAL
+    end)
   end
 end
 
@@ -347,41 +421,74 @@ local function pollSync()
     path = path .. "&token=" .. _token
   end
 
-  local result = httpGet(path)
+  local result, netErr = httpGet(path)
 
-  if not result then
+  -- Network-layer errors
+  if netErr == "http_disabled" then
+    notifyMessage("Error: HTTP not enabled — enable in Game Settings > Security", "error")
+    notifyStatus(false, _lastSync)
+    return
+  end
+
+  if netErr == "unreachable" or not result then
     _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
-    if _onStatusChange then _onStatusChange(false, _lastSync) end
+    notifyMessage("Server unreachable — retrying in " .. _backoffInterval .. "s", "warn")
+    notifyStatus(false, _lastSync)
     return
   end
 
   local status = result.StatusCode
 
   if status == 200 then
-    _backoffInterval = MIN_INTERVAL
+    _backoffInterval     = MIN_INTERVAL
+    _reconnectAttempts   = 0
+
     local ok, data = pcall(function()
       return HttpService:JSONDecode(result.Body)
     end)
+
     if ok and data then
       _lastSync = data.serverTime or os.time()
+
+      -- Apply pending studio commands
       if data.changes and #data.changes > 0 then
         applyChanges(data.changes)
       end
+
+      -- Auto-reconnect flag from server
+      if data.reconnect == true then
+        attemptReAuth()
+        return
+      end
+
+      -- Update available notification (once per session)
+      if data.updateAvailable == true and not _updateNotified then
+        _updateNotified = true
+        notifyMessage("Update available! Download from forjegames.com/download", "warn")
+      end
     end
-    if _onStatusChange then _onStatusChange(true, _lastSync) end
+
+    notifyStatus(true, _lastSync)
 
   elseif status == 401 then
-    warn("[ForjeGames Sync] Auth expired — please reconnect in the plugin")
+    -- Session expired — prompt user to re-enter code
     _backoffInterval = MAX_INTERVAL
-    if _onStatusChange then _onStatusChange(false, _lastSync) end
+    notifyMessage("Session expired. Enter a new code from forjegames.com/editor", "error")
+    notifyStatus(false, _lastSync)
+
+  elseif status == 403 then
+    -- HTTP service blocked at the game level
+    notifyMessage("Enable HTTP Requests in Game Settings > Security", "error")
+    notifyStatus(false, _lastSync)
 
   elseif status == 429 then
-    -- Rate limited: aggressive backoff
+    -- Rate limited
     _backoffInterval = math.min(_backoffInterval * 3, MAX_INTERVAL)
+    notifyStatus(false, _lastSync)
 
   else
     _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)
-    if _onStatusChange then _onStatusChange(false, _lastSync) end
+    notifyStatus(false, _lastSync)
   end
 end
 
@@ -408,14 +515,41 @@ local function pushChanges()
     sessionId = _sessionId,
   }
 
-  local result = httpPost("/api/studio/update", payload)
+  local result, netErr = httpPost("/api/studio/update", payload)
   if not (result and result.StatusCode == 200) then
     -- Re-queue on failure
     for _, c in ipairs(batch) do
       table.insert(_changeQueue, c)
     end
-    warn("[ForjeGames Sync] Failed to push changes, will retry")
+    if netErr ~= "http_disabled" then
+      warn("[ForjeGames Sync] Failed to push changes, will retry")
+    end
   end
+end
+
+-- ============================================================
+-- Heartbeat keepalive POST (every 30 seconds)
+-- Prevents the session from timing out during idle periods.
+-- ============================================================
+local function sendHeartbeat()
+  if not _token then return end
+
+  local payload = {
+    heartbeat  = true,
+    timestamp  = os.time(),
+    sessionId  = _sessionId,
+    placeId    = game.PlaceId,
+    pluginVersion = PLUGIN_VERSION,
+  }
+
+  -- Fire and forget — don't block on result, don't retry
+  task.spawn(function()
+    local result, netErr = httpPost("/api/studio/update", payload)
+    if netErr == "http_disabled" then
+      notifyMessage("Error: HTTP not enabled — enable in Game Settings > Security", "error")
+    end
+    -- Heartbeat failure is silent — pollSync handles status display
+  end)
 end
 
 -- ============================================================
@@ -424,8 +558,16 @@ end
 local function onHeartbeat(dt)
   if not _running then return end
 
-  _timeSinceLastPoll = _timeSinceLastPoll + dt
+  _timeSinceLastPoll  = _timeSinceLastPoll  + dt
+  _timeSinceHeartbeat = _timeSinceHeartbeat + dt
 
+  -- Dedicated keepalive heartbeat
+  if _timeSinceHeartbeat >= HEARTBEAT_INTERVAL then
+    _timeSinceHeartbeat = 0
+    sendHeartbeat()
+  end
+
+  -- Poll + push cycle
   if _timeSinceLastPoll >= _backoffInterval then
     _timeSinceLastPoll = 0
     pollSync()
@@ -464,28 +606,35 @@ end
 
 -- ============================================================
 -- Public: start sync loop
+--
+-- opts:
+--   token           string   — bearer token
+--   sessionId       string?  — session ID from auth
+--   onStatusChange  fn(connected: bool, lastSync: number)
+--   onStatusMessage fn(message: string, level: "info"|"warn"|"error")
+--   onReAuthNeeded  fn()     — called when the plugin must re-authenticate
 -- ============================================================
 function Sync.start(opts)
   if _running then return end
 
-  _token             = opts.token
-  _sessionId         = opts.sessionId or nil
-  _onStatusChange    = opts.onStatusChange
-  _backoffInterval   = MIN_INTERVAL
-  _timeSinceLastPoll = 0
-  _running           = true
+  _token              = opts.token
+  _sessionId          = opts.sessionId or nil
+  _onStatusChange     = opts.onStatusChange
+  _onStatusMessage    = opts.onStatusMessage
+  _reAuthCallback     = opts.onReAuthNeeded
+  _backoffInterval    = MIN_INTERVAL
+  _timeSinceLastPoll  = 0
+  _timeSinceHeartbeat = 0
+  _reconnectAttempts  = 0
+  _running            = true
 
-  -- Resolve base URL on startup (background — doesn't block)
   task.spawn(function()
     resolveBaseUrl()
-    -- Announce connection once base URL is known
     sendConnect()
   end)
 
-  -- Attach heartbeat
   _heartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
 
-  -- Initial poll after a short delay (give connect time to register)
   task.delay(1, pollSync)
 end
 
@@ -504,10 +653,19 @@ end
 -- Public: update auth token (after re-login)
 -- ============================================================
 function Sync.setToken(token)
-  _token           = token
-  _backoffInterval = MIN_INTERVAL
-  -- Re-announce connection with new token
+  _token             = token
+  _backoffInterval   = MIN_INTERVAL
+  _reconnectAttempts = 0
   task.spawn(sendConnect)
+end
+
+-- ============================================================
+-- Public: reset reconnect attempt counter
+-- (called by Plugin.lua after a successful re-auth)
+-- ============================================================
+function Sync.resetReconnect()
+  _reconnectAttempts = 0
+  _backoffInterval   = MIN_INTERVAL
 end
 
 -- ============================================================
@@ -515,12 +673,13 @@ end
 -- ============================================================
 function Sync.getStatus()
   return {
-    running         = _running,
-    connected       = _backoffInterval == MIN_INTERVAL,
-    lastSync        = _lastSync,
-    backoffInterval = _backoffInterval,
-    pendingChanges  = #_changeQueue,
-    sessionId       = _sessionId,
+    running            = _running,
+    connected          = _backoffInterval == MIN_INTERVAL,
+    lastSync           = _lastSync,
+    backoffInterval    = _backoffInterval,
+    pendingChanges     = #_changeQueue,
+    sessionId          = _sessionId,
+    reconnectAttempts  = _reconnectAttempts,
   }
 end
 

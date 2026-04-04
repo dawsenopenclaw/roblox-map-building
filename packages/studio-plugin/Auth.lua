@@ -16,20 +16,20 @@ local Auth = {}
 -- ============================================================
 -- Config
 -- ============================================================
-local BASE_URL   = "https://forjegames.com"
-local LOCAL_URL  = "http://localhost:3000"
+local BASE_URL          = "https://forjegames.com"
+local HTTP_TIMEOUT_SECS = 10   -- seconds before we treat a request as failed
+local CODE_LENGTH       = 6
 
--- Detect environment: prefer local dev server if reachable
+-- Base URL accessor — always use production URL for distributed plugin.
+-- Dev override: set ForjeGames_DevUrl via plugin:SetSetting() to point
+-- to a local server (e.g. "http://localhost:3000") without editing code.
 local _baseUrl = nil
 local function getBaseUrl()
   if _baseUrl then return _baseUrl end
-  local ok = pcall(function()
-    local res = HttpService:RequestAsync({
-      Url    = LOCAL_URL .. "/api/health",
-      Method = "GET",
-    })
-    if res and (res.StatusCode == 200 or res.StatusCode == 401) then
-      _baseUrl = LOCAL_URL
+  pcall(function()
+    local devUrl = plugin and plugin:GetSetting("ForjeGames_DevUrl")
+    if devUrl and type(devUrl) == "string" and #devUrl > 0 then
+      _baseUrl = devUrl
     end
   end)
   if not _baseUrl then _baseUrl = BASE_URL end
@@ -37,12 +37,84 @@ local function getBaseUrl()
 end
 
 -- ============================================================
+-- Internal: classify an HTTP pcall error string
+-- Returns "http_disabled" | "dns_failure" | "unreachable" | "timeout" | "unknown"
+-- ============================================================
+local function classifyNetworkError(errStr)
+  errStr = tostring(errStr):lower()
+  if errStr:find("not enabled") or errStr:find("http requests") then
+    return "http_disabled"
+  end
+  if errStr:find("dns") or errStr:find("resolve") or errStr:find("lookup") then
+    return "dns_failure"
+  end
+  if errStr:find("timeout") or errStr:find("timed out") then
+    return "timeout"
+  end
+  if errStr:find("refused") or errStr:find("unreachable") or errStr:find("connect") then
+    return "unreachable"
+  end
+  return "unknown"
+end
+
+-- ============================================================
+-- Internal: perform a POST with a manual timeout guard.
+-- Roblox's HttpService doesn't expose a timeout parameter, so we
+-- race the request against a task.delay that resolves a shared flag.
+-- In practice Studio's HTTP layer enforces ~30s — 10s is our UI guard.
+-- ============================================================
+local function requestWithTimeout(opts)
+  local result   = nil
+  local errStr   = nil
+  local done     = false
+
+  task.spawn(function()
+    local ok, res = pcall(function()
+      return HttpService:RequestAsync(opts)
+    end)
+    if not done then
+      done   = true
+      if ok then
+        result = res
+      else
+        errStr = tostring(res)
+      end
+    end
+  end)
+
+  -- Poll until done or timeout
+  local elapsed = 0
+  local POLL    = 0.1
+  while not done and elapsed < HTTP_TIMEOUT_SECS do
+    task.wait(POLL)
+    elapsed = elapsed + POLL
+  end
+
+  if not done then
+    done   = true  -- signal the spawned thread to discard its result
+    return nil, "timeout"
+  end
+
+  if errStr then
+    return nil, classifyNetworkError(errStr)
+  end
+
+  return result, nil
+end
+
+-- ============================================================
 -- Public: exchange a 6-character code for a session token
 -- callback(token, sessionId, err)
 -- ============================================================
 function Auth.exchangeCode(code, pluginRef, callback)
-  if not code or #code < 6 then
-    callback(nil, nil, "Please enter the 6-character code from forjegames.com/editor")
+  -- Client-side length validation with helpful character count
+  local trimmed = (code or ""):gsub("%s+", ""):upper()
+  if #trimmed < CODE_LENGTH then
+    local msg = "Code must be " .. CODE_LENGTH .. " characters"
+    if #trimmed > 0 then
+      msg = msg .. " (you entered " .. #trimmed .. ")"
+    end
+    callback(nil, nil, msg)
     return
   end
 
@@ -52,29 +124,44 @@ function Auth.exchangeCode(code, pluginRef, callback)
 
     local encoded
     local encOk = pcall(function()
-      encoded = HttpService:JSONEncode({ code = code:upper():gsub("%s+", "") })
+      encoded = HttpService:JSONEncode({ code = trimmed })
     end)
     if not encOk then
       callback(nil, nil, "Failed to encode request")
       return
     end
 
-    local ok, result = pcall(function()
-      return HttpService:RequestAsync({
-        Url    = url,
-        Method = "POST",
-        Headers = {
-          ["Content-Type"] = "application/json",
-        },
-        Body   = encoded,
-      })
-    end)
+    local result, netErr = requestWithTimeout({
+      Url    = url,
+      Method = "POST",
+      Headers = {
+        ["Content-Type"] = "application/json",
+      },
+      Body   = encoded,
+    })
 
-    if not ok or not result then
+    -- Network-layer errors
+    if netErr == "http_disabled" then
+      callback(nil, nil, "Enable HTTP Requests in Game Settings > Security")
+      return
+    end
+
+    if netErr == "dns_failure" then
+      callback(nil, nil, "DNS resolution failed — check your internet connection")
+      return
+    end
+
+    if netErr == "timeout" then
+      callback(nil, nil, "Request timed out — server took too long to respond")
+      return
+    end
+
+    if netErr == "unreachable" or not result then
       callback(nil, nil, "Could not reach ForjeGames. Check your internet and try again.")
       return
     end
 
+    -- HTTP-level errors
     local status = result.StatusCode
 
     if status == 200 then
@@ -82,9 +169,8 @@ function Auth.exchangeCode(code, pluginRef, callback)
         return HttpService:JSONDecode(result.Body)
       end)
       if decodeOk and data and data.token then
-        -- Persist token
-        pcall(function() pluginRef:SetSetting("fj_auth_token",   data.token)    end)
-        pcall(function() pluginRef:SetSetting("fj_session_id",   data.sessionId or "") end)
+        pcall(function() pluginRef:SetSetting("fj_auth_token",  data.token)           end)
+        pcall(function() pluginRef:SetSetting("fj_session_id",  data.sessionId or "") end)
         callback(data.token, data.sessionId, nil)
       else
         callback(nil, nil, "Invalid response from server")
@@ -92,6 +178,9 @@ function Auth.exchangeCode(code, pluginRef, callback)
 
     elseif status == 400 then
       callback(nil, nil, "Invalid or expired code. Get a fresh code from forjegames.com/editor")
+
+    elseif status == 403 then
+      callback(nil, nil, "Enable HTTP Requests in Game Settings > Security")
 
     elseif status == 429 then
       callback(nil, nil, "Too many attempts. Wait a moment and try again.")
@@ -104,13 +193,16 @@ end
 
 -- ============================================================
 -- Public: validate an existing stored token
--- Returns true/false (synchronous pcall — fine for startup)
+-- Returns true/false (runs synchronously via task.spawn caller — fine for startup)
 -- ============================================================
-function Auth.validateToken(token)
-  if not token or token == "" then return false end
+function Auth.validateToken(token, callback)
+  if not token or token == "" then
+    if callback then callback(false) end
+    return
+  end
 
-  local ok, result = pcall(function()
-    return HttpService:RequestAsync({
+  task.spawn(function()
+    local result, netErr = requestWithTimeout({
       Url    = getBaseUrl() .. "/api/studio/auth/validate",
       Method = "GET",
       Headers = {
@@ -118,10 +210,10 @@ function Auth.validateToken(token)
         ["Content-Type"]  = "application/json",
       },
     })
-  end)
 
-  if not ok or not result then return false end
-  return result.StatusCode == 200
+    local valid = (result ~= nil and result.StatusCode == 200)
+    if callback then callback(valid) end
+  end)
 end
 
 -- ============================================================
@@ -134,8 +226,7 @@ function Auth.signOut(pluginRef, onComplete)
 end
 
 -- ============================================================
--- Public: open dashboard URL (prints to Output for now;
--- future: plugin:OpenBrowserWindow when Roblox exposes it)
+-- Public: open dashboard URL (prints to Output for now)
 -- ============================================================
 function Auth.openDashboard()
   local url = BASE_URL .. "/dashboard"
