@@ -72,41 +72,6 @@ function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: str
   return <span ref={ref}>{count.toLocaleString()}{suffix}</span>
 }
 
-/* ─── Typing animation hook ──────────────────────────────────────────────── */
-
-function useTypingAnimation(phrases: string[], speed = 55, pauseMs = 1800) {
-  const [display, setDisplay] = useState('')
-  const [phraseIdx, setPhraseIdx] = useState(0)
-  const [charIdx, setCharIdx] = useState(0)
-  const [deleting, setDeleting] = useState(false)
-
-  useEffect(() => {
-    const current = phrases[phraseIdx]
-    if (!deleting && charIdx < current.length) {
-      const t = setTimeout(() => setCharIdx((c) => c + 1), speed)
-      return () => clearTimeout(t)
-    }
-    if (!deleting && charIdx === current.length) {
-      const t = setTimeout(() => setDeleting(true), pauseMs)
-      return () => clearTimeout(t)
-    }
-    if (deleting && charIdx > 0) {
-      const t = setTimeout(() => setCharIdx((c) => c - 1), speed / 2)
-      return () => clearTimeout(t)
-    }
-    if (deleting && charIdx === 0) {
-      setDeleting(false)
-      setPhraseIdx((p) => (p + 1) % phrases.length)
-    }
-  }, [charIdx, deleting, phraseIdx, phrases, speed, pauseMs])
-
-  useEffect(() => {
-    setDisplay(phrases[phraseIdx].slice(0, charIdx))
-  }, [charIdx, phraseIdx, phrases])
-
-  return display
-}
-
 /* ─── SVG Icons ──────────────────────────────────────────────────────────── */
 
 function IconMic({ size = 20 }: { size?: number }) {
@@ -115,16 +80,6 @@ function IconMic({ size = 20 }: { size?: number }) {
       <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="22" />
-    </svg>
-  )
-}
-
-function IconImage({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <circle cx="9" cy="9" r="2" />
-      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
     </svg>
   )
 }
@@ -155,16 +110,6 @@ function IconBrain({ size = 20 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-1.14Z" />
       <path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-1.14Z" />
-    </svg>
-  )
-}
-
-function IconPlug({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22V12" />
-      <path d="M7 12V9a5 5 0 0 1 10 0v3" />
-      <rect x="5" y="12" width="14" height="5" rx="2" />
     </svg>
   )
 }
@@ -207,270 +152,6 @@ function IconShield({ size = 20 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
-  )
-}
-
-/* ─── Enhanced Editor Mockup ─────────────────────────────────────────────── */
-
-function EditorMockup() {
-  const typedText = useTypingAnimation([
-    'build a medieval castle with stone walls, 4 towers, and a working drawbridge',
-    'generate a tropical island with palm trees, a beach, and hidden caves',
-    'create a futuristic city district with neon signs and flying vehicles',
-    'add a haunted mansion on the hilltop with fog and flickering lights',
-  ])
-
-  return (
-    <div
-      className="w-full max-w-4xl mx-auto rounded-2xl overflow-hidden"
-      style={{
-        background: '#0B0F24',
-        border: '1px solid rgba(212,175,55,0.16)',
-        boxShadow: [
-          '0 0 0 1px rgba(255,255,255,0.04)',
-          '0 8px 32px rgba(0,0,0,0.6)',
-          '0 32px 72px rgba(0,0,0,0.4)',
-          '0 0 80px rgba(212,175,55,0.07)',
-          'inset 0 1px 0 rgba(255,255,255,0.05)',
-        ].join(', '),
-      }}
-    >
-      {/* Title bar */}
-      <div
-        className="flex items-center gap-2 px-4 py-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: '#080C1C' }}
-      >
-        <span className="w-3 h-3 rounded-full" style={{ background: '#FF5F56' }} />
-        <span className="w-3 h-3 rounded-full" style={{ background: '#FFBD2E' }} />
-        <span className="w-3 h-3 rounded-full" style={{ background: '#27C93F' }} />
-        <div className="ml-4 flex items-center gap-2">
-          <span className="text-xs font-mono" style={{ color: 'rgba(212,175,55,0.5)' }}>
-            ForjeGames
-          </span>
-          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.12)' }}>/</span>
-          <span className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.25)' }}>my-game</span>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-[11px] px-2 py-0.5 rounded-md" style={{
-            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', color: '#10B981',
-          }}>
-            Studio live
-          </span>
-          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#10B981' }} />
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="flex" style={{ height: 288 }}>
-        {/* File tree */}
-        <div
-          className="hidden md:flex flex-col w-44 flex-shrink-0 pt-3"
-          style={{ borderRight: '1px solid rgba(255,255,255,0.04)', background: '#080C18' }}
-        >
-          <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
-            Explorer
-          </p>
-          {[
-            { depth: 0, label: 'Workspace',    color: '#52525B', icon: '▾' },
-            { depth: 1, label: 'Castle',       color: '#D4AF37', icon: '▾', active: true },
-            { depth: 2, label: 'Walls',        color: '#71717A', icon: '▸' },
-            { depth: 2, label: 'Towers (4)',   color: '#71717A', icon: '▸' },
-            { depth: 2, label: 'Gate',         color: '#10B981', icon: '▸', new: true },
-            { depth: 1, label: 'Terrain',      color: '#60A5FA', icon: '▸' },
-            { depth: 1, label: 'Lighting',     color: '#A78BFA', icon: '▸' },
-            { depth: 0, label: 'Scripts',      color: '#52525B', icon: '▾' },
-          ].map((row, i) => (
-            <div
-              key={i}
-              className="flex items-center text-[11px] py-[3px] gap-1"
-              style={{
-                paddingLeft: 8 + row.depth * 14,
-                color: row.color,
-                background: row.active ? 'rgba(212,175,55,0.06)' : 'transparent',
-                borderLeft: row.active ? '2px solid rgba(212,175,55,0.4)' : '2px solid transparent',
-              }}
-            >
-              <span style={{ fontSize: 8, opacity: 0.6 }}>{row.icon}</span>
-              <span>{row.label}</span>
-              {row.new && (
-                <span className="ml-auto mr-2 text-[9px] px-1 rounded" style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>new</span>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Viewport */}
-        <div
-          className="flex-1 relative overflow-hidden"
-          style={{ background: '#080C1E' }}
-        >
-          {/* Scanline overlay — terminal feel */}
-          <div className="scanline-overlay" aria-hidden="true" />
-          {/* Grid overlay */}
-          <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.6 }} />
-
-          {/* Depth gradient */}
-          <div className="absolute inset-0" style={{
-            background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(212,175,55,0.04) 0%, transparent 70%)',
-          }} />
-
-          {/* Castle scene */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative" style={{ width: 240, height: 160 }}>
-              {/* Left tower */}
-              <div className="absolute" style={{ left: 0, bottom: 40, width: 46, height: 96, background: 'linear-gradient(180deg, #252530, #1a1a22)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px 3px 0 0' }}>
-                {[0, 10, 20, 32].map((bx) => (
-                  <div key={bx} style={{ position: 'absolute', left: bx + 1, top: -8, width: 8, height: 8, background: '#252530', border: '1px solid rgba(255,255,255,0.07)' }} />
-                ))}
-                <div style={{ position: 'absolute', left: 11, top: 24, width: 22, height: 28, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.18)', borderRadius: '11px 11px 0 0' }} />
-              </div>
-
-              {/* Right tower */}
-              <div className="absolute" style={{ right: 0, bottom: 40, width: 46, height: 96, background: 'linear-gradient(180deg, #252530, #1a1a22)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '3px 3px 0 0' }}>
-                {[0, 10, 20, 32].map((bx) => (
-                  <div key={bx} style={{ position: 'absolute', left: bx + 1, top: -8, width: 8, height: 8, background: '#252530', border: '1px solid rgba(255,255,255,0.07)' }} />
-                ))}
-                <div style={{ position: 'absolute', left: 11, top: 24, width: 22, height: 28, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.18)', borderRadius: '11px 11px 0 0' }} />
-              </div>
-
-              {/* Main wall */}
-              <div className="absolute" style={{ left: 46, bottom: 40, width: 148, height: 64, background: 'linear-gradient(180deg, #1e1e28, #181820)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                {/* Battlements */}
-                {[0, 16, 32, 48, 64, 80, 96, 112, 128].map((bx) => (
-                  <div key={bx} style={{ position: 'absolute', left: bx + 2, top: -6, width: 10, height: 6, background: '#1e1e28', border: '1px solid rgba(255,255,255,0.06)' }} />
-                ))}
-                {/* Gate — gold glowing */}
-                <div className="absolute left-1/2 -translate-x-1/2 bottom-0" style={{ width: 28, height: 40 }}>
-                  <div style={{ width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '14px 14px 0 0', boxShadow: '0 0 12px rgba(212,175,55,0.15) inset' }}>
-                    {[7, 14, 21].map((bx) => (
-                      <div key={bx} style={{ position: 'absolute', left: bx - 5, top: 4, width: 1, height: 28, background: 'rgba(212,175,55,0.35)' }} />
-                    ))}
-                  </div>
-                  <div className="ai-badge absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap" style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.25)', color: '#D4AF37' }}>
-                    building...
-                  </div>
-                </div>
-              </div>
-
-              {/* Ground */}
-              <div className="absolute" style={{ left: -6, right: -6, bottom: 2, height: 40, background: 'linear-gradient(180deg, #1c2e1c, #162016)', borderRadius: '3px' }} />
-
-              {/* Ambient glow */}
-              <div className="absolute" style={{ left: -20, right: -20, bottom: 0, height: 60, background: 'radial-gradient(ellipse at 50% 100%, rgba(212,175,55,0.06) 0%, transparent 70%)' }} />
-            </div>
-          </div>
-
-          {/* Selection outline indicator */}
-          <div className="absolute" style={{ top: 16, left: 16, fontSize: 10, color: 'rgba(212,175,55,0.5)', fontFamily: 'monospace' }}>
-            Gate — selected
-          </div>
-        </div>
-
-        {/* Properties panel */}
-        <div
-          className="hidden lg:flex flex-col w-40 flex-shrink-0 pt-3"
-          style={{ borderLeft: '1px solid rgba(255,255,255,0.04)', background: '#080C18' }}
-        >
-          <p className="px-3 mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'rgba(212,175,55,0.3)' }}>
-            Properties
-          </p>
-          {[
-            { label: 'Parts',     value: '3,491' },
-            { label: 'Triangles', value: '18.7k' },
-            { label: 'Scripts',   value: '6',     highlight: true },
-          ].map((p) => (
-            <div key={p.label} className="px-3 mb-4">
-              <p className="text-[10px] mb-0.5" style={{ color: '#52525B' }}>{p.label}</p>
-              <p className="text-[13px] font-semibold tabular-nums" style={{ color: p.highlight ? '#10B981' : '#E4E4E7' }}>{p.value}</p>
-            </div>
-          ))}
-          <div className="mx-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="flex justify-between mb-1.5">
-              <p className="text-[10px]" style={{ color: '#52525B' }}>Tokens</p>
-              <p className="text-[10px]" style={{ color: 'rgba(212,175,55,0.5)' }}>620/1k</p>
-            </div>
-            <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
-              <div className="progress-bar-fill h-1.5 rounded-full" style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)', width: '62%', '--target-width': '62%' } as React.CSSProperties} />
-            </div>
-          </div>
-          <div className="mx-3 mt-4">
-            <p className="text-[10px] mb-1.5" style={{ color: '#52525B' }}>Model</p>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#A78BFA' }} />
-              <p className="text-[11px]" style={{ color: '#A1A1AA' }}>Claude 3.5</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Command bar */}
-      <div
-        className="flex items-center gap-3 px-4 py-3.5"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: '#070A18' }}
-      >
-        <span className="text-sm font-mono font-bold" style={{ color: 'rgba(212,175,55,0.5)' }}>&gt;</span>
-        <span className="flex-1 text-sm font-mono truncate" style={{ color: '#E4E4E7' }}>
-          {typedText}
-          <span className="cursor-blink-gold inline-block w-0.5 h-4 ml-0.5 align-middle" style={{ background: '#D4AF37' }} />
-        </span>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded" style={{
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#52525B',
-          }}>
-            ⌘K
-          </span>
-          <span className="text-[11px] px-2 py-0.5 rounded" style={{
-            background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.22)', color: '#D4AF37',
-          }}>
-            Enter
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ─── Bento feature card ─────────────────────────────────────────────────── */
-
-interface BentoCardProps {
-  icon: React.ReactNode
-  title: string
-  description: string
-  size?: 'normal' | 'wide' | 'tall'
-  children?: React.ReactNode
-  delay?: number
-}
-
-function BentoCard({ icon, title, description, size = 'normal', children, delay = 0 }: BentoCardProps) {
-  const delayClass = delay > 0 ? `reveal-delay-${delay}` : ''
-  return (
-    <div
-      className={`reveal ${delayClass} bento-card rounded-2xl p-6 flex flex-col gap-4`}
-      style={{
-        background: 'rgba(255,255,255,0.025)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        gridColumn: size === 'wide' ? 'span 2' : undefined,
-        gridRow: size === 'tall' ? 'span 2' : undefined,
-      }}
-    >
-      <div className="flex items-start justify-between">
-        <div
-          className="feature-icon w-11 h-11 rounded-xl flex items-center justify-center"
-          style={{
-            background: 'rgba(212,175,55,0.08)',
-            border: '1px solid rgba(212,175,55,0.12)',
-            color: '#D4AF37',
-          }}
-        >
-          {icon}
-        </div>
-      </div>
-      <div>
-        <h3 className="text-base font-semibold mb-1.5" style={{ color: '#FAFAFA' }}>{title}</h3>
-        <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>{description}</p>
-      </div>
-      {children}
-    </div>
   )
 }
 
@@ -694,7 +375,7 @@ export default function HomeClient() {
                 <IconArrow size={15} />
               </Link>
               <Link
-                href="/pricing"
+                href="/#showcase"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
@@ -702,7 +383,7 @@ export default function HomeClient() {
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                View pricing
+                See what gets built
               </Link>
               <span className="hidden sm:block text-[11px] mt-2" style={{ color: '#3F3F46' }}>
                 No install. No setup. Just type what you want.

@@ -18,12 +18,12 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 
-const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.1.0
+const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.3.0
 -- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxmx (Windows)
 --          or ~/Documents/Roblox/Plugins/ForjeGames.rbxmx (Mac)
 -- Then fully close and reopen Roblox Studio.
 
-local PLUGIN_VER        = "4.2.0"
+local PLUGIN_VER        = "4.3.0"
 local PROD_URL          = "INJECTED_BASE_URL"  -- replaced at serve time with NEXT_PUBLIC_APP_URL
 local SYNC_INTERVAL     = 1      -- seconds between command polls
 local HB_INTERVAL       = 30     -- seconds between keepalive heartbeats
@@ -38,8 +38,21 @@ local RunService           = game:GetService("RunService")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 local InsertService        = game:GetService("InsertService")
 local MarketplaceService   = game:GetService("MarketplaceService")
+local Selection            = game:GetService("Selection")
+local CollectionService    = game:GetService("CollectionService")
 
 pcall(function() HttpService.HttpEnabled = true end)
+
+-- Check if HTTP is actually enabled — print clear instructions if not
+if not HttpService.HttpEnabled then
+	warn("")
+	warn("=== ForjeGames Plugin: HTTP Requests are DISABLED ===")
+	warn("The plugin needs HTTP access to connect to forjegames.com.")
+	warn("To fix: Game Settings > Security > Allow HTTP Requests > ON")
+	warn("Then restart the plugin by closing and reopening Studio.")
+	warn("=========================================================")
+	warn("")
+end
 
 -- Place identity (resolved once at startup)
 local placeId   = tostring(game.PlaceId)
@@ -320,7 +333,7 @@ codeInput.TextSize           = 28
 codeInput.PlaceholderText    = "AB12CD"
 codeInput.PlaceholderColor3  = Color3.fromRGB(45, 45, 45)
 codeInput.Text               = ""
-codeInput.ClearTextOnFocus   = true
+codeInput.ClearTextOnFocus   = false
 codeInput.TextXAlignment     = Enum.TextXAlignment.Center
 
 -- Error label
@@ -890,7 +903,7 @@ local function executeCommand(cmd)
 			"if not _G._forje_state then _G._forje_state = {} end",
 			"local _forje_state = _G._forje_state",
 			"local sp = _G._forje_sp or Vector3.new(0, 0, 0)",
-		}, "\n") .. "\n"
+		}, "\\n") .. "\\n"
 
 		local fullCode = preamble .. code
 
@@ -2184,12 +2197,11 @@ export async function GET(req: NextRequest) {
 
   // Default: serve as .lua — Roblox Studio loads .lua files from the Plugins
   // folder natively as plugin Scripts with full `plugin` global access.
-  // This is the most reliable install method across all Studio versions.
   return new NextResponse(finalLua, {
     status: 200,
     headers: {
       ...CORS,
-      'Content-Type': 'application/octet-stream',
+      'Content-Type': 'text/plain; charset=utf-8',
       'Content-Disposition': 'attachment; filename="ForjeGames.lua"',
       'Cache-Control': 'no-store',
     },

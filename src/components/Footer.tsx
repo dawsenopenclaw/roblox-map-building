@@ -3,6 +3,7 @@ import Link from 'next/link'
 // Server Component — no interactivity
 const PRODUCT_LINKS = [
   { href: '/editor', label: 'Editor' },
+  { href: '/#showcase', label: 'Showcase' },
   { href: '/pricing', label: 'Pricing' },
 ]
 

@@ -6,6 +6,7 @@ import { useAuth, UserButton } from '@clerk/nextjs'
 
 const NAV_LINKS = [
   { href: '/#features', label: 'Features' },
+  { href: '/#showcase', label: 'Showcase' },
   { href: '/pricing', label: 'Pricing' },
 ]
 

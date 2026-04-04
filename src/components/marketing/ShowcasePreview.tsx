@@ -47,7 +47,7 @@ const SHOWCASE_ITEMS = [
 
 export default function ShowcasePreview() {
   return (
-    <section className="py-16 px-6" style={{ background: '#0A0E27' }}>
+    <section id="showcase" className="py-16 px-6 scroll-mt-20" style={{ background: '#0A0E27' }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-12">

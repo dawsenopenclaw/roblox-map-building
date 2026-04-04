@@ -106,31 +106,25 @@ async function handlePost(req: Request) {
     console.error('[contact/sales] Failed to send email:', e)
   }
 
-  // 2. Send SMS via carrier email-to-SMS gateway (free, no Twilio needed)
+  // 2. Push notification via ntfy.sh (free, instant, no signup)
   try {
-    const smsGateway = process.env.SMS_GATEWAY_EMAIL
-    if (smsGateway) {
-      const smsBody = `ForjeGames Lead:\n${safeName} (${safeEmail})\nTokens: ${safeTokenNeed || 'N/A'}\n${safeMessage.slice(0, 120)}${safeMessage.length > 120 ? '...' : ''}`
-      const res = await fetch('https://api.resend.com/emails', {
+    const ntfyTopic = process.env.NTFY_TOPIC
+    if (ntfyTopic) {
+      const res = await fetch(`https://ntfy.sh/${ntfyTopic}`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${resendKey}`,
-          'Content-Type': 'application/json',
+          Title: `New Lead: ${safeName}`,
+          Priority: 'high',
+          Tags: 'moneybag',
         },
-        body: JSON.stringify({
-          from: fromEmail,
-          to: smsGateway,
-          subject: 'ForjeGames',
-          text: smsBody,
-        }),
+        body: `Tokens: ${safeTokenNeed || 'N/A'}\nEmail: ${safeEmail}\n${safeMessage.slice(0, 200)}${safeMessage.length > 200 ? '...' : ''}`,
       })
       if (!res.ok) {
-        const err = await res.text()
-        console.error('[contact/sales] Resend SMS gateway failed:', res.status, err)
+        console.error('[contact/sales] ntfy push failed:', res.status)
       }
     }
   } catch (e) {
-    console.error('[contact/sales] Failed to send SMS:', e)
+    console.error('[contact/sales] Failed to send push notification:', e)
   }
 
   return NextResponse.json({ success: true })
