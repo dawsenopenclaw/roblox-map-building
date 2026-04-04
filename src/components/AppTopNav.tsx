@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useUser, useClerk } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
 import { ShortcutHint } from '@/components/ShortcutHint'
 import { NotificationBell } from '@/components/NotificationBell'
 import { useTheme } from '@/components/ThemeProvider'
@@ -203,8 +203,6 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
 
   const { data } = useSWR('/api/tokens/balance', fetcher, { refreshInterval: 30_000 })
   const { user } = useUser()
-  const { signOut } = useClerk()
-  const [profileOpen, setProfileOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
 
   const displayName = user?.firstName
@@ -217,11 +215,8 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
     ? `${user.firstName[0]}${user.lastName?.[0] ?? ''}`.toUpperCase()
     : (user?.username?.[0]?.toUpperCase() ?? 'FG')
 
-  const profileRef = useRef<HTMLDivElement>(null)
   const { theme, setTheme } = useTheme()
   const isLight = theme.id === 'light' || theme.id === 'paper'
-
-  useClickOutside(profileRef, () => setProfileOpen(false))
 
   const tokenBalance = data?.balance !== undefined ? data.balance.toLocaleString() : '—'
 
@@ -328,32 +323,9 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
         {isLight ? <IconMoon /> : <IconSun />}
       </button>
 
-      {/* User avatar + dropdown */}
-      <div className="relative flex-shrink-0" ref={profileRef}>
-        <button
-          onClick={() => setProfileOpen((v) => !v)}
-          className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-white/[0.05] transition-colors group"
-          aria-label="User menu"
-          aria-expanded={profileOpen}
-          aria-haspopup="menu"
-        >
-          {/* Avatar circle */}
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs select-none flex-shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, var(--gold) 0%, var(--accent) 100%)',
-              color: '#0a0a0a',
-            }}
-            aria-hidden="true"
-          >
-            {initials}
-          </div>
-          <span className="text-gray-500 group-hover:text-gray-300 transition-colors hidden sm:block">
-            <IconChevronDown />
-          </span>
-        </button>
-        {profileOpen && <UserMenu displayName={displayName} email={email} onSignOut={() => signOut({ redirectUrl: '/' })} />}
-      </div>
+      {/* Profile handled by global ProfileButton in root layout */}
+      {/* Spacer to keep right padding consistent */}
+      <div className="w-10 flex-shrink-0" />
     </header>
   )
 }
