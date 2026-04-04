@@ -1,5 +1,6 @@
 import MarketingNav from '@/components/MarketingNav'
 import Footer from '@/components/Footer'
+import NotificationBell from '@/components/marketing/NotificationBell'
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       </main>
 
       <Footer />
+
+      {/* Floating push notification bell — fixed bottom-right, always accessible */}
+      <NotificationBell />
     </div>
   )
 }

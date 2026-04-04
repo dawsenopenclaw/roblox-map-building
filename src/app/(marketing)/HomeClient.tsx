@@ -294,7 +294,7 @@ export default function HomeClient() {
       <div
         ref={pageRef}
         className="min-h-screen"
-        style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
+        style={{ background: '#0A0E27', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
       >
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -419,7 +419,7 @@ export default function HomeClient() {
           style={{
             borderTop: '1px solid rgba(255,255,255,0.04)',
             borderBottom: '1px solid rgba(255,255,255,0.04)',
-            background: 'linear-gradient(to bottom, #070B1A, #050810)',
+            background: 'linear-gradient(to bottom, #070B1A, #0A0E27)',
           }}
         >
           {/* Ambient glow */}
@@ -433,9 +433,9 @@ export default function HomeClient() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8 text-center">
               {[
-                { value: 50000, suffix: '+', label: 'Assets generated',     color: '#D4AF37'  },
-                { value: 1200,  suffix: '+', label: 'Games built',          color: '#60A5FA'  },
-                { value: 8400,  suffix: '+', label: 'Active creators',      color: '#7C3AED'  },
+                { value: 5,     suffix: '',  label: 'AI models',            color: '#D4AF37'  },
+                { value: 150,   suffix: '+', label: 'Asset library',        color: '#60A5FA'  },
+                { value: 50,    suffix: '+', label: 'Game templates',       color: '#7C3AED'  },
                 { value: 99,    suffix: '%', label: 'Uptime SLA',           color: '#10B981'  },
               ].map(({ value, suffix, label, color }, i) => (
                 <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
@@ -458,7 +458,7 @@ export default function HomeClient() {
         <section
           id="features"
           className="py-16 px-6 relative"
-          style={{ background: '#050810' }}
+          style={{ background: '#0A0E27' }}
         >
           {/* Section background */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -841,8 +841,8 @@ export default function HomeClient() {
                 period="/forever"
                 description="Perfect for trying ForjeGames"
                 features={[
-                  '1,000 tokens to start',
-                  'All AI models included',
+                  '1,000 tokens / month',
+                  'Basic terrain generation',
                   'Marketplace access',
                   'Live Studio sync',
                   'Community support',
@@ -851,16 +851,16 @@ export default function HomeClient() {
               />
               <PricingCard
                 name="Creator"
-                price="$15"
+                price="$25"
                 period="/month"
                 description="For serious Roblox creators"
                 features={[
-                  '50,000 tokens / month',
-                  'Priority AI processing',
+                  '7,000 tokens / month',
+                  'All Hobby features',
+                  'Game DNA scanner',
                   'Custom 3D mesh generation',
-                  'Studio plugin sync',
                   'Image-to-map feature',
-                  'Email support',
+                  'Priority support',
                 ]}
                 cta="Start creating"
                 href="/sign-up?plan=creator"
@@ -872,12 +872,11 @@ export default function HomeClient() {
                 period="/month"
                 description="For teams and game studios"
                 features={[
-                  '200,000 tokens / month',
+                  '20,000 tokens / month',
+                  'All Creator features',
                   'Team collaboration (5 seats)',
                   'Full API access + SDKs',
-                  'Game DNA analysis',
-                  'Dedicated account manager',
-                  'Priority support',
+                  'Dedicated support',
                 ]}
                 cta="Go pro"
                 href="/sign-up?plan=studio"
@@ -925,7 +924,7 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="relative py-48 px-6 overflow-hidden"
-          style={{ background: '#050810' }}
+          style={{ background: '#0A0E27' }}
         >
           {/* Multi-layer depth glow */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
@@ -975,7 +974,7 @@ export default function HomeClient() {
               className="reveal reveal-delay-2 text-xl mb-12"
               style={{ color: '#52525B', lineHeight: 1.7 }}
             >
-              Join 8,400+ creators building the next generation of Roblox experiences.
+              Join creators building the next generation of Roblox experiences.
               <br />
               Your first 1,000 tokens are on us.
             </p>
@@ -1007,7 +1006,7 @@ export default function HomeClient() {
             </div>
 
             <p className="reveal reveal-delay-4 mt-8 text-[13px]" style={{ color: '#71717A' }}>
-              No credit card required &middot; Cancel anytime &middot; Loved by 8,400+ creators
+              No credit card required &middot; Cancel anytime &middot; 1,000 free tokens to start
             </p>
           </div>
         </section>

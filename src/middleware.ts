@@ -50,6 +50,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/contact/(.*)',
   // Newsletter subscribe — must be public so landing page visitors can sign up
   '/api/subscribe',
+  // Push notification subscribe — must be public so visitors can opt in from the landing page
+  '/api/push/subscribe',
   // Legal
   '/privacy',
   '/terms',

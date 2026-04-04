@@ -1,4 +1,36 @@
 import { NextResponse } from 'next/server'
+import webpush from 'web-push'
+import { promises as fs } from 'fs'
+import path from 'path'
+
+const SUBS_FILE = path.join(process.cwd(), 'data', 'push-subscriptions.json')
+
+interface PushSubscriptionRecord {
+  endpoint: string
+  keys: { p256dh: string; auth: string }
+  createdAt: string
+}
+
+async function getPushSubscriptions(): Promise<PushSubscriptionRecord[]> {
+  try {
+    const raw = await fs.readFile(SUBS_FILE, 'utf-8')
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as PushSubscriptionRecord[]) : []
+  } catch {
+    return []
+  }
+}
+
+async function removePushSubscriptions(invalidEndpoints: string[]): Promise<void> {
+  if (invalidEndpoints.length === 0) return
+  try {
+    const subs = await getPushSubscriptions()
+    const cleaned = subs.filter((s) => !invalidEndpoints.includes(s.endpoint))
+    await fs.writeFile(SUBS_FILE, JSON.stringify(cleaned, null, 2), 'utf-8')
+  } catch {
+    // Non-fatal
+  }
+}
 
 const RATE_LIMIT_WINDOW = 10 * 60 * 1000 // 10 minutes
 const RATE_LIMIT_MAX = 3
@@ -125,6 +157,49 @@ async function handlePost(req: Request) {
     }
   } catch (e) {
     console.error('[contact/sales] Failed to send push notification:', e)
+  }
+
+  // 3. Web push notification to all subscribers
+  try {
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
+
+    if (vapidPublicKey && vapidPrivateKey) {
+      webpush.setVapidDetails('mailto:support@forjegames.com', vapidPublicKey, vapidPrivateKey)
+
+      const subs = await getPushSubscriptions()
+      const invalidEndpoints: string[] = []
+
+      const messagePreview = safeMessage.slice(0, 100) + (safeMessage.length > 100 ? '…' : '')
+      const payload = JSON.stringify({
+        title: `New Lead: ${safeName}`,
+        body: `Tokens: ${safeTokenNeed || 'N/A'} — ${messagePreview}`,
+        url: '/',
+      })
+
+      await Promise.allSettled(
+        subs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
+              payload
+            )
+          } catch (err) {
+            if (
+              err instanceof Error &&
+              'statusCode' in err &&
+              (err as { statusCode: number }).statusCode === 410
+            ) {
+              invalidEndpoints.push(sub.endpoint)
+            }
+          }
+        })
+      )
+
+      await removePushSubscriptions(invalidEndpoints)
+    }
+  } catch (e) {
+    console.error('[contact/sales] Failed to send web push notifications:', e)
   }
 
   return NextResponse.json({ success: true })
