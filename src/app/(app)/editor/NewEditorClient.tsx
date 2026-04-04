@@ -111,101 +111,92 @@ const kbdStyle: React.CSSProperties = {
   color: 'rgba(255,255,255,0.5)',
 }
 
-// ─── Profile Avatar ──────────────────────────────────────────────────────────
+// ─── Editor Profile Dropdown (inline, not fixed) ─────────────────────────────
 
-function ProfileAvatar() {
-  const { user } = useUser()
+function EditorProfileDropdown({ user }: { user: { imageUrl?: string; firstName?: string | null; lastName?: string | null; fullName?: string | null; emailAddresses?: { emailAddress: string }[] } }) {
   const [open, setOpen] = useState(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
 
-  if (!user) return null
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    function escHandler(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', handler)
+    document.addEventListener('keydown', escHandler)
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('keydown', escHandler) }
+  }, [open])
+
+  const name = user.fullName ?? user.firstName ?? 'User'
+  const email = user.emailAddresses?.[0]?.emailAddress ?? ''
+  const initial = (user.firstName?.[0] ?? '?').toUpperCase()
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={wrapRef} style={{ position: 'relative', flexShrink: 0 }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        title={user.firstName ?? 'Account'}
+        title={name}
         style={{
-          width: 36, height: 36, borderRadius: '50%', border: 'none',
+          width: 28, height: 28, borderRadius: '50%', border: 'none',
           padding: 0, cursor: 'pointer', overflow: 'hidden',
-          outline: open ? '2px solid rgba(212,175,55,0.6)' : '2px solid transparent',
-          outlineOffset: 2, transition: 'outline-color 0.15s',
-          flexShrink: 0,
+          outline: open ? '2px solid rgba(212,175,55,0.5)' : '2px solid transparent',
+          outlineOffset: 1, transition: 'outline-color 0.15s', flexShrink: 0,
+          background: 'rgba(255,255,255,0.06)',
         }}
       >
         {user.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={user.imageUrl}
-            alt={user.firstName ?? 'User'}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          />
+          <img src={user.imageUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{
-            width: '100%', height: '100%', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', background: 'rgba(212,175,55,0.2)',
-            fontSize: 14, fontWeight: 700, color: '#D4AF37',
-          }}>
-            {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? '?').toUpperCase()}
-          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
+            {initial}
+          </span>
         )}
       </button>
 
       {open && (
-        <>
-          {/* Backdrop */}
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
-            onClick={() => setOpen(false)}
-          />
-          {/* Dropdown — opens to the left of the rail */}
-          <div style={{
-            position: 'absolute', right: 'calc(100% + 12px)', top: 0,
-            zIndex: 50, minWidth: 200,
-            background: 'rgba(10,14,30,0.97)', backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            overflow: 'hidden',
-          }}>
-            {/* User info */}
-            <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
-                {user.firstName}{user.lastName ? ` ${user.lastName}` : ''}
-              </p>
-              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                {user.emailAddresses?.[0]?.emailAddress ?? ''}
-              </p>
-            </div>
-            {/* Actions */}
-            <div style={{ padding: '6px 0' }}>
-              <a
-                href="/user-profile"
-                onClick={() => setOpen(false)}
-                style={{
-                  display: 'block', padding: '8px 14px',
-                  fontSize: 12, color: 'rgba(255,255,255,0.7)', textDecoration: 'none',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                Manage Account
-              </a>
-              <a
-                href="/sign-out"
-                onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/sign-out' }}
-                style={{
-                  display: 'block', padding: '8px 14px',
-                  fontSize: 12, color: 'rgba(239,68,68,0.8)', textDecoration: 'none',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                Sign out
-              </a>
-            </div>
+        <div style={{
+          position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 9999,
+          width: 220, background: '#111113', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 12, boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+          overflow: 'hidden', maxHeight: 'calc(100vh - 60px)', overflowY: 'auto',
+        }}>
+          {/* Identity */}
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'white' }}>{name}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{email}</p>
           </div>
-        </>
+          {/* Links */}
+          {[
+            { href: '/settings', label: 'Profile & Settings' },
+            { href: '/settings?tab=appearance', label: 'Appearance' },
+            { href: '/billing', label: 'Billing' },
+          ].map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              onClick={() => setOpen(false)}
+              style={{ display: 'block', padding: '8px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)', textDecoration: 'none', transition: 'background 0.1s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'white' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
+            >
+              {link.label}
+            </a>
+          ))}
+          {/* Sign out */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <a
+              href="/sign-out"
+              onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/sign-out' }}
+              style={{ display: 'block', padding: '8px 14px', fontSize: 12, color: 'rgba(239,68,68,0.8)', textDecoration: 'none', transition: 'background 0.1s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            >
+              Sign out
+            </a>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1400,43 +1391,7 @@ function TopBar({
           </button>
         )}
 
-        {user && (
-          <Link href="/settings" style={{ textDecoration: 'none' }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                transition: 'border-color 0.15s',
-              }}
-            >
-              {user.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={user.imageUrl}
-                  alt={user.fullName ?? ''}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: 'rgba(255,255,255,0.5)',
-                  }}
-                >
-                  {(user.firstName?.[0] ?? '?').toUpperCase()}
-                </span>
-              )}
-            </div>
-          </Link>
-        )}
+        {user && <EditorProfileDropdown user={user} />}
       </div>
 
       <style>{`

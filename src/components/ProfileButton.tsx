@@ -6,7 +6,7 @@ import { useAuth, useUser, useClerk } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
 
-const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding']
+const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding', '/editor']
 const ADMIN_EMAILS = ['dawsenporter@gmail.com']
 
 export function ProfileButton() {
