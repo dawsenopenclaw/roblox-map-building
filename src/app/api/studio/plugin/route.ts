@@ -550,146 +550,101 @@ local function captureAndUploadScreenshot(isBefore)
 	if not authToken then return end
 	screenshotBusy = true
 	task.spawn(function()
-		local success = false
 		pcall(function()
-			-- Create a hidden ScreenGui to host the ViewportFrame
-			local sg = Instance.new("ScreenGui")
-			sg.Name      = "FJ_Screenshot"
-			sg.Enabled   = true
-			sg.ResetOnSpawn = false
-			-- Attach to PlayerGui if available, else CoreGui (plugin context)
-			local PlayerGui = nil
-			pcall(function()
-				local Players = game:GetService("Players")
-				local localPlayer = Players.LocalPlayer
-				if localPlayer then PlayerGui = localPlayer:FindFirstChildOfClass("PlayerGui") end
-			end)
-			sg.Parent = PlayerGui or game:GetService("CoreGui")
-
-			-- ViewportFrame — matches capture resolution
-			local vf = Instance.new("ViewportFrame", sg)
-			vf.Size                = UDim2.new(0, 800, 0, 600)
-			vf.Position            = UDim2.new(0, -9999, 0, -9999)  -- offscreen
-			vf.BackgroundTransparency = 1
-			vf.LightColor          = Color3.fromRGB(255, 255, 255)
-			vf.LightDirection      = Vector3.new(-1, -2, -1)
-			vf.Ambient             = Color3.fromRGB(127, 127, 127)
-
-			-- Mirror the current camera
+			-- In Edit mode, we cannot capture real screenshots programmatically.
+			-- Instead, send rich scene context that the frontend can use to show
+			-- a live status panel with camera info, part counts, and recent changes.
 			local cam = workspace.CurrentCamera
-			if cam then
-				local viewCam = Instance.new("Camera", vf)
-				viewCam.CFrame     = cam.CFrame
-				viewCam.FieldOfView = cam.FieldOfView
-				vf.CurrentCamera   = viewCam
-			end
+			local camPos = cam and cam.CFrame.Position or Vector3.new(0, 0, 0)
+			local camLook = cam and (cam.CFrame.Position + cam.CFrame.LookVector * 10) or Vector3.new(0, 0, 0)
 
-			-- Shallow-clone top-level workspace children into the ViewportFrame
-			-- We clone only visible BaseParts and Models to keep it fast
-			local cloned = {}
+			-- Count workspace objects
+			local partCount = 0
+			local modelCount = 0
+			local lightCount = 0
 			pcall(function()
-				for _, child in ipairs(workspace:GetChildren()) do
-					if child:IsA("Model") or child:IsA("BasePart") or child:IsA("Folder") then
-						local ok, clone = pcall(function() return child:Clone() end)
-						if ok and clone then
-							clone.Parent = vf
-							table.insert(cloned, clone)
-						end
+				for _, desc in ipairs(workspace:GetDescendants()) do
+					if desc:IsA("BasePart") then partCount = partCount + 1
+					elseif desc:IsA("Model") then modelCount = modelCount + 1
+					elseif desc:IsA("Light") then lightCount = lightCount + 1
 					end
-					-- Stop after 500 objects to stay under frame budget
-					if #cloned >= 500 then break end
 				end
 			end)
 
-			-- Wait one frame so the ViewportFrame renders
-			task.wait()
-
-			-- Use EditableImage to read pixels (requires API enabled on the server)
-			local editableImage = nil
-			local imageData = nil
-			local base64result = nil
+			-- Nearby objects for spatial awareness (closest 20)
+			local nearby = {}
 			pcall(function()
-				editableImage = Instance.new("EditableImage")
-				editableImage.Size = Vector2.new(800, 600)
-				editableImage:DrawImageProjected(vf, Rect.new(0, 0, 800, 600), 0, 0, 800, 600)
-				-- Read all pixels and encode as base64 PNG via HttpService
-				-- Since Roblox doesn't expose a native PNG encoder, we send raw
-				-- RGBA bytes and the server treats the body as a screenshot signal.
-				-- Instead, use the HttpService JSON trick: encode a minimal signal
-				-- and let the server know a screenshot happened.
-				-- REAL approach: Roblox 2024+ supports CaptureService for plugins.
-				local CaptureService = nil
-				pcall(function() CaptureService = game:GetService("CaptureService") end)
-				if CaptureService and CaptureService.CaptureScreenshot then
-					-- CaptureService available — use it for authentic screenshots
-					local captureId = nil
-					local captureReady = Instance.new("BindableEvent")
-					pcall(function()
-						CaptureService:CaptureScreenshot(function(id)
-							captureId = id
-							captureReady:Fire()
-						end)
-					end)
-					-- Wait up to 3s for capture to complete
-					local conn = nil
-					local timedOut = false
-					conn = captureReady.Event:Connect(function() end)
-					local waited = 0
-					while not captureId and waited < 3 do
-						task.wait(0.1)
-						waited = waited + 0.1
+				for _, child in ipairs(workspace:GetChildren()) do
+					if (child:IsA("BasePart") or child:IsA("Model")) and child.Name ~= "Baseplate" and child.Name ~= "Terrain" then
+						local pos = child:IsA("Model") and child.PrimaryPart and child.PrimaryPart.Position or child:IsA("BasePart") and child.Position or nil
+						if pos then
+							local dist = (pos - camPos).Magnitude
+							if dist < 250 then
+								table.insert(nearby, {
+									n = child.Name,
+									cls = child.ClassName,
+									p = string.format("%.0f,%.0f,%.0f", pos.X, pos.Y, pos.Z),
+									d = math.floor(dist),
+								})
+							end
+						end
 					end
-					pcall(function() conn:Disconnect() end)
-					pcall(function() captureReady:Destroy() end)
-					if captureId then
-						-- Encode the capture ID as JSON — server uses it as a signal
-						base64result = HttpService:JSONEncode({
-							captureId = captureId,
+					if #nearby >= 20 then break end
+				end
+				table.sort(nearby, function(a, b) return a.d < b.d end)
+			end)
+
+			-- Selected objects
+			local selected = {}
+			pcall(function()
+				for _, obj in ipairs(Selection:Get()) do
+					table.insert(selected, {
+						n = obj.Name,
+						cls = obj.ClassName,
+						path = obj:GetFullName(),
+					})
+					if #selected >= 10 then break end
+				end
+			end)
+
+			-- Ground Y at camera position
+			local groundY = 0
+			pcall(function()
+				local ray = workspace:Raycast(camPos + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+				if ray then groundY = math.floor(ray.Position.Y) end
+			end)
+
+			local payload = HttpService:JSONEncode({
+				sessionId = sessionId,
+				type = isBefore and "before" or "live",
+				viewport_active = true,
+				camera = {
+					posX = math.floor(camPos.X),
+					posY = math.floor(camPos.Y),
+					posZ = math.floor(camPos.Z),
+					lookX = math.floor(camLook.X),
+					lookY = math.floor(camLook.Y),
+					lookZ = math.floor(camLook.Z),
+				},
+				partCount = partCount,
+				modelCount = modelCount,
+				lightCount = lightCount,
+				groundY = groundY,
+				nearby = nearby,
+				selected = selected,
+				placeName = placeName,
+				placeId = placeId,
+			})
+
+			local ok2 = httpOnce(BASE_URL .. "/api/studio/screenshot", "POST", payload, {
+				["Authorization"] = "Bearer " .. (authToken or ""),
+				["Content-Type"] = "application/json",
+			})
+			-- Context sent successfully
 							width = 800, height = 600,
 							timestamp = os.time(),
 						})
 					end
-				end
-			end)
-
-			-- Fallback: if CaptureService unavailable, send a placeholder signal
-			if not base64result then
-				-- Send a minimal valid base64 that identifies this as a live signal.
-				-- The server records the attempt — the web client treats any push
-				-- as a signal to refresh its synthetic preview.
-				base64result = HttpService:JSONEncode({
-					signal = "viewport_active",
-					camera = {
-						posX = workspace.CurrentCamera and math.floor(workspace.CurrentCamera.CFrame.Position.X) or 0,
-						posY = workspace.CurrentCamera and math.floor(workspace.CurrentCamera.CFrame.Position.Y) or 0,
-						posZ = workspace.CurrentCamera and math.floor(workspace.CurrentCamera.CFrame.Position.Z) or 0,
-					},
-					width = 800, height = 600,
-					timestamp = os.time(),
-				})
-			end
-
-			-- Clean up clones
-			for _, obj in cloned do
-				pcall(function() obj:Destroy() end)
-			end
-			pcall(function() sg:Destroy() end)
-
-			-- Upload to server
-			if base64result and base64result ~= "" then
-				local body = {
-					sessionId = sessionId,
-					image     = base64result,
-					width     = 800,
-					height    = 600,
-				}
-				if isBefore then
-					body.isBefore = true
-				end
-				-- Fire-and-forget — don't block the main loop
-				local ok2, _ = httpRetry("POST", "/api/studio/screenshot", body, 1)
-				success = ok2
-			end
 		end)
 		screenshotBusy = false
 	end)

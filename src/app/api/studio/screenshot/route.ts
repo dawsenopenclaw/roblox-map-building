@@ -54,14 +54,46 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const parsedBody = await parseBody(req, studioScreenshotSchema)
-  if (!parsedBody.ok) {
-    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
+  let body: Record<string, unknown>
+  try {
+    body = (await req.json()) as Record<string, unknown>
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400, headers: CORS_HEADERS })
   }
-  const body = parsedBody.data
+
+  const sessionId = body.sessionId as string
+  if (!sessionId) {
+    return NextResponse.json({ error: 'sessionId is required' }, { status: 400, headers: CORS_HEADERS })
+  }
+
+  // ── NEW: Context-based update (plugin sends camera + scene data instead of image) ──
+  if (body.viewport_active === true || body.camera) {
+    // Store context on the session for the frontend to display
+    const { updateSessionState } = await import('@/lib/studio-session')
+    const updated = await updateSessionState(sessionId, {
+      camera: body.camera as Record<string, number> | undefined,
+      partCount: body.partCount as number | undefined,
+      modelCount: body.modelCount as number | undefined,
+      lightCount: body.lightCount as number | undefined,
+      groundY: body.groundY as number | undefined,
+      nearbyParts: body.nearby as unknown[] | undefined,
+      selection: body.selected as unknown[] | undefined,
+    })
+
+    return NextResponse.json(
+      { stored: true, type: body.type ?? 'context', serverTime: Date.now() },
+      { status: updated ? 200 : 404, headers: CORS_HEADERS },
+    )
+  }
+
+  // ── Legacy: Base64 image upload (for future real screenshot support) ──
+  const image = body.image as string | undefined
+  if (!image) {
+    return NextResponse.json({ error: 'image or viewport_active required' }, { status: 400, headers: CORS_HEADERS })
+  }
 
   // Strip data URI prefix if the plugin sends one
-  const base64 = body.image.replace(/^data:image\/\w+;base64,/, '')
+  const base64 = image.replace(/^data:image\/\w+;base64,/, '')
 
   // Basic sanity check — base64 chars only
   if (!/^[A-Za-z0-9+/=]+$/.test(base64)) {
@@ -71,11 +103,11 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const isBefore = (parsedBody.data as ScreenshotPostBody).isBefore === true
+  const isBefore = body.isBefore === true
 
   const ok = isBefore
-    ? await storeBeforeScreenshot(body.sessionId, base64)
-    : await storeScreenshot(body.sessionId, base64)
+    ? await storeBeforeScreenshot(sessionId, base64)
+    : await storeScreenshot(sessionId, base64)
 
   if (!ok) {
     return NextResponse.json(

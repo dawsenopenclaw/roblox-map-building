@@ -9,6 +9,7 @@ import ComparisonSection from '@/components/marketing/ComparisonSection'
 import TestimonialsSection from '@/components/marketing/TestimonialsSection'
 import FaqSection from '@/components/marketing/FaqSection'
 import CharityBanner from '@/components/marketing/CharityBanner'
+import SubscribeSection from '@/components/marketing/SubscribeSection'
 // Footer rendered by marketing layout
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
@@ -913,6 +914,11 @@ export default function HomeClient() {
             FAQ
         ══════════════════════════════════════════════════════════════════ */}
         <FaqSection />
+
+        {/* ══════════════════════════════════════════════════════════════════
+            NEWSLETTER SUBSCRIBE
+        ══════════════════════════════════════════════════════════════════ */}
+        <SubscribeSection />
 
         {/* ══════════════════════════════════════════════════════════════════
             BOTTOM CTA

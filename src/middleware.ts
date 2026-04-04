@@ -48,6 +48,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/waitlist',
   // Contact form — must be public so pricing page visitors can submit
   '/api/contact/(.*)',
+  // Newsletter subscribe — must be public so landing page visitors can sign up
+  '/api/subscribe',
   // Legal
   '/privacy',
   '/terms',
