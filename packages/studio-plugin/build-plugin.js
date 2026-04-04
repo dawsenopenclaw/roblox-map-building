@@ -22,19 +22,19 @@
  * Rojo note
  * ─────────
  * If you have Rojo installed, run:
- *   rojo build default.project.json --output dist/ForjeGames.rbxm
+ *   rojo build default.project.json --output dist/ForjeGames.rbxmx
  * This script is the no-Rojo fallback for CI/CD pipelines.
  *
  * Usage
  * ─────
  *   node packages/studio-plugin/build-plugin.js
- *   node packages/studio-plugin/build-plugin.js --out public/plugin/ForjeGames.rbxm
+ *   node packages/studio-plugin/build-plugin.js --out public/plugin/ForjeGames.rbxmx
  *   node packages/studio-plugin/build-plugin.js --version 1.2.0
  *
  * Installation
  * ────────────
- *   Windows: %LOCALAPPDATA%\Roblox\Plugins\ForjeGames.rbxm
- *   macOS:   ~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxm
+ *   Windows: %LOCALAPPDATA%\Roblox\Plugins\ForjeGames.rbxmx
+ *   macOS:   ~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx
  *   Then restart Roblox Studio.
  */
 
@@ -67,7 +67,7 @@ const PLUGIN_VERSION = getArg('--version', '1.0.0')
 const SCRIPT_DIR     = __dirname
 const PROJECT_ROOT   = path.join(SCRIPT_DIR, '..', '..')
 
-const DEFAULT_OUT = path.join(PROJECT_ROOT, 'public', 'plugin', 'ForjeGames.rbxm')
+const DEFAULT_OUT = path.join(PROJECT_ROOT, 'public', 'plugin', 'ForjeGames.rbxmx')
 const OUT_PATH    = getArg('--out', DEFAULT_OUT)
 
 // Whether to also copy to the local Roblox Plugins directory
@@ -239,7 +239,7 @@ function build() {
   // ── Optional: copy to local Roblox Plugins dir ────────────────────────────
   if (AUTO_INSTALL) {
     const pluginsDir = getLocalPluginsDir()
-    const dest = path.join(pluginsDir, 'ForjeGames.rbxm')
+    const dest = path.join(pluginsDir, 'ForjeGames.rbxmx')
 
     if (!fs.existsSync(pluginsDir)) {
       console.warn(`[build-plugin] Plugins directory not found: ${pluginsDir}`)
@@ -260,9 +260,9 @@ function build() {
   const platform = os.platform()
   if (platform === 'win32') {
     const appData = process.env.LOCALAPPDATA || '%LOCALAPPDATA%'
-    console.log(`[build-plugin]    Windows: ${path.join(appData, 'Roblox', 'Plugins', 'ForjeGames.rbxm')}`)
+    console.log(`[build-plugin]    Windows: ${path.join(appData, 'Roblox', 'Plugins', 'ForjeGames.rbxmx')}`)
   } else if (platform === 'darwin') {
-    console.log('[build-plugin]    macOS: ~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxm')
+    console.log('[build-plugin]    macOS: ~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx')
   }
 
   console.log('')

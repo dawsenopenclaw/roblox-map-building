@@ -7,7 +7,7 @@
  * ?os=win  → .bat file (Windows)
  * ?os=mac  → .sh file (Mac/Linux)
  *
- * Users run this once — it downloads ForjeGames.rbxm into the Plugins folder
+ * Users run this once — it downloads ForjeGames.rbxmx into the Plugins folder
  * so Studio loads it automatically on next launch.
  */
 
@@ -50,11 +50,11 @@ echo.
 
 :: Try PowerShell first (available on all modern Windows)
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${APP_URL}/plugin/ForjeGames.rbxm' -OutFile '%PLUGINS%\\ForjeGames.rbxm' -UseBasicParsing; Write-Host '  Download complete!' } catch { Write-Host '  Download failed:' $_.Exception.Message; exit 1 }" 2>nul
+    "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${APP_URL}/plugin/ForjeGames.rbxmx' -OutFile '%PLUGINS%\\ForjeGames.rbxmx' -UseBasicParsing; Write-Host '  Download complete!' } catch { Write-Host '  Download failed:' $_.Exception.Message; exit 1 }" 2>nul
 
 if errorlevel 1 (
     :: Fallback to curl (available on Windows 10+)
-    curl -sL -o "%PLUGINS%\\ForjeGames.rbxm" "${APP_URL}/plugin/ForjeGames.rbxm" 2>nul
+    curl -sL -o "%PLUGINS%\\ForjeGames.rbxmx" "${APP_URL}/plugin/ForjeGames.rbxmx" 2>nul
     if errorlevel 1 (
         echo  ERROR: Download failed. Check your internet connection.
         pause
@@ -68,7 +68,7 @@ echo  ========================================
 echo   SUCCESS! Plugin installed.
 echo  ========================================
 echo.
-echo   File: %PLUGINS%\\ForjeGames.rbxm
+echo   File: %PLUGINS%\\ForjeGames.rbxmx
 echo.
 echo   Next steps:
 echo     1. Close Roblox Studio completely
@@ -106,7 +106,7 @@ fi
 echo "  Downloading ForjeGames plugin..."
 echo ""
 
-curl -sL -o "$PLUGINS/ForjeGames.rbxm" "${APP_URL}/plugin/ForjeGames.rbxm" || {
+curl -sL -o "$PLUGINS/ForjeGames.rbxmx" "${APP_URL}/plugin/ForjeGames.rbxmx" || {
     echo "  ERROR: Download failed. Check your internet connection."
     exit 1
 }
@@ -117,7 +117,7 @@ echo "  ========================================"
 echo "   SUCCESS! Plugin installed."
 echo "  ========================================"
 echo ""
-echo "   File: $PLUGINS/ForjeGames.rbxm"
+echo "   File: $PLUGINS/ForjeGames.rbxmx"
 echo ""
 echo "   Next steps:"
 echo "     1. Close Roblox Studio completely"

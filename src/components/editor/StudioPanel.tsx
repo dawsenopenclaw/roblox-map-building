@@ -253,7 +253,7 @@ function DisconnectedView({
               Download the plugin
             </p>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-              Click the button below to get <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames.rbxm</span>
+              Click the button below to get <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames.rbxmx</span>
             </p>
           </div>
         </div>
@@ -355,7 +355,7 @@ function DisconnectedView({
       {/* Download button — prominent */}
       <a
         href="/api/studio/plugin"
-        download="ForjeGames.rbxm"
+        download="ForjeGames.rbxmx"
         style={{
           display: 'flex',
           alignItems: 'center',

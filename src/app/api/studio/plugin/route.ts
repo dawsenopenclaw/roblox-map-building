@@ -19,8 +19,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const PLUGIN_LUA = `-- ForjeGames Studio Plugin v4.1.0
--- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxm (Windows)
---          or ~/Documents/Roblox/Plugins/ForjeGames.rbxm (Mac)
+-- Install: Save to %LOCALAPPDATA%\\Roblox\\Plugins\\ForjeGames.rbxmx (Windows)
+--          or ~/Documents/Roblox/Plugins/ForjeGames.rbxmx (Mac)
 -- Then fully close and reopen Roblox Studio.
 
 local PLUGIN_VER        = "4.2.0"
@@ -1666,20 +1666,105 @@ local function doConnect(code)
 end
 
 -- ============================================================
+-- TextBox enhancements
+-- ============================================================
+
+-- Auto-connect when user presses Enter after typing code
+codeInput.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local code = string.upper(string.gsub(codeInput.Text, "%s+", ""))
+		if #code >= 6 then
+			setUI("connecting")
+			task.spawn(function()
+				local ok, errMsg = doConnect(code)
+				if not ok then
+					errLabel.Text              = errMsg or "Connection failed."
+					errLabel.TextColor3        = Color3.fromRGB(255, 80, 80)
+					connectBtn.Text            = "Connect"
+					connectBtn.Active          = true
+					statusDot.BackgroundColor3 = Color3.fromRGB(90, 90, 90)
+					statusLabel.Text           = "Disconnected"
+					statusLabel.TextColor3     = Color3.fromRGB(130, 130, 130)
+				end
+			end)
+		end
+	end
+end)
+
+-- Pulse the input border on load so users notice where to type
+task.spawn(function()
+	for i = 1, 6 do
+		inputStroke.Color = Color3.fromRGB(212, 175, 55)
+		task.wait(0.4)
+		inputStroke.Color = Color3.fromRGB(55, 55, 55)
+		task.wait(0.4)
+	end
+	inputStroke.Color = Color3.fromRGB(80, 80, 80)
+end)
+
+-- Auto-focus the code input when widget becomes visible
+widget:GetPropertyChangedSignal("Enabled"):Connect(function()
+	if widget.Enabled and not isConnected then
+		task.wait(0.3)
+		pcall(function() codeInput:CaptureFocus() end)
+	end
+end)
+
+-- Also auto-focus on first load
+task.spawn(function()
+	task.wait(1)
+	if not isConnected then
+		pcall(function() codeInput:CaptureFocus() end)
+	end
+end)
+
+-- ============================================================
 -- Button handlers
 -- ============================================================
 
 connectBtn.MouseButton1Click:Connect(function()
+	-- Try getting code from the TextBox first
 	local code = string.upper(string.gsub(codeInput.Text, "%s+", ""))
+
+	-- If TextBox is empty (focus bug in some Studio versions), prompt a dialog
 	if #code < 6 then
-		errLabel.Text = "Enter the 6-character code from the website."
-		return
+		-- Fallback: use a simple Studio selection prompt via Output + command
+		-- Show instructions and try to use the built-in text box
+		local success, dialogCode = pcall(function()
+			-- Attempt to focus the text box
+			codeInput:CaptureFocus()
+			codeInput.Text = ""
+			codeInput.PlaceholderText = "TYPE CODE HERE"
+			errLabel.Text = "Click the box above and type your 6-character code"
+			errLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+		end)
+
+		-- If text box still has less than 6 chars, wait for input
+		if #code < 6 then
+			errLabel.Text = "Type your 6-digit code in the box above, then click Connect again"
+			errLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+
+			-- Also print to Output as backup
+			print("")
+			print("=== ForjeGames Connection ===")
+			print("If the text box above isn't responding to keyboard input:")
+			print("  1. Click inside the text box area")
+			print("  2. If that doesn't work, run this in the Command Bar:")
+			print("     game:GetService('HttpService').HttpEnabled = true")
+			print("  3. Then paste your code into the text box and click Connect")
+			print("  4. Get your code at: https://forjegames.com/editor")
+			print("=============================")
+			print("")
+			return
+		end
 	end
+
 	setUI("connecting")
 	task.spawn(function()
 		local ok, errMsg = doConnect(code)
 		if not ok then
 			errLabel.Text              = errMsg or "Connection failed."
+			errLabel.TextColor3        = Color3.fromRGB(255, 80, 80)
 			connectBtn.Text            = "Connect"
 			connectBtn.Active          = true
 			statusDot.BackgroundColor3 = Color3.fromRGB(90, 90, 90)

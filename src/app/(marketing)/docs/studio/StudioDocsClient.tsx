@@ -393,7 +393,7 @@ function HeroSection() {
       <div className="flex flex-wrap gap-3">
         <a
           href="/api/studio/plugin"
-          download="ForjeGames.rbxm"
+          download="ForjeGames.rbxmx"
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#D4AF37] hover:bg-[#c9a832] text-black text-sm font-bold rounded-xl transition-colors"
         >
           <Download size={15} />
@@ -503,9 +503,9 @@ function InstallSteps() {
           https://forjegames.com/api/studio/plugin
         </code>.
         Alternatively,{' '}
-        <a href="/api/studio/plugin" download="ForjeGames.rbxm"
+        <a href="/api/studio/plugin" download="ForjeGames.rbxmx"
           className="inline-flex items-center gap-0.5 text-[#D4AF37] transition-colors hover:underline">
-          <Download size={11} />download ForjeGames.rbxm
+          <Download size={11} />download ForjeGames.rbxmx
         </a>{' '}
         and place it in{' '}
         <code className="rounded bg-black/40 px-1 py-0.5 text-xs text-[#FAFAFA]/60">
@@ -608,7 +608,7 @@ function FeaturesList() {
 const TROUBLESHOOT_ITEMS = [
   {
     q: 'The plugin does not appear in the toolbar',
-    a: 'Make sure ForjeGames.rbxm is placed directly in the Plugins folder (not a subfolder). Restart Roblox Studio completely and check the Plugins tab.',
+    a: 'Make sure ForjeGames.rbxmx is placed directly in the Plugins folder (not a subfolder). Restart Roblox Studio completely and check the Plugins tab.',
   },
   {
     q: '"HttpService is not enabled" error',
@@ -688,7 +688,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'How do I update the plugin?',
-    a: 'Re-download ForjeGames.rbxm from the link above and replace the file in your Plugins folder. The current version is shown in the toolbar label next to "ForjeGames".',
+    a: 'Re-download ForjeGames.rbxmx from the link above and replace the file in your Plugins folder. The current version is shown in the toolbar label next to "ForjeGames".',
   },
 ]
 
@@ -782,7 +782,7 @@ export default function StudioDocsClient() {
             </span>
             <a
               href="/api/studio/plugin"
-              download="ForjeGames.rbxm"
+              download="ForjeGames.rbxmx"
               className="flex items-center gap-1.5 text-xs font-medium text-[#D4AF37] transition-colors hover:text-[#FFB81C]"
             >
               <Download size={12} />
@@ -822,7 +822,7 @@ export default function StudioDocsClient() {
             <Link href="/settings/studio" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
               Studio Settings
             </Link>
-            <a href="/api/studio/plugin" download="ForjeGames.rbxm" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
+            <a href="/api/studio/plugin" download="ForjeGames.rbxmx" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
               Download Plugin
             </a>
             <Link href="/docs" className="block py-1 text-sm text-[#52525B] transition-colors hover:text-[#D4AF37]">
@@ -888,11 +888,11 @@ export default function StudioDocsClient() {
             <div className="flex flex-wrap gap-3 mt-4">
               <a
                 href="/api/studio/plugin"
-                download="ForjeGames.rbxm"
+                download="ForjeGames.rbxmx"
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/20 rounded-xl transition-colors font-medium"
               >
                 <Download size={14} />
-                Download ForjeGames.rbxm
+                Download ForjeGames.rbxmx
               </a>
             </div>
           </Section>

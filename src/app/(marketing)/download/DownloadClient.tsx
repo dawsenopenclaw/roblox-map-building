@@ -145,8 +145,8 @@ export default function DownloadClient() {
         </p>
 
         <a
-          href="/plugin/ForjeGames.rbxm"
-          download="ForjeGames.rbxm"
+          href="/plugin/ForjeGames.rbxmx"
+          download="ForjeGames.rbxmx"
           className="inline-flex items-center gap-2.5 rounded-xl px-8 py-4 text-base font-bold transition-colors"
           style={{ background: '#FFB81C', color: '#000' }}
           onMouseEnter={(e) => {
@@ -209,13 +209,13 @@ export default function DownloadClient() {
                   className="rounded px-1.5 py-0.5 text-xs"
                   style={{ background: 'rgba(255,184,28,0.1)', color: '#FFB81C' }}
                 >
-                  ForjeGames.rbxm
+                  ForjeGames.rbxmx
                 </code>{' '}
                 to your computer.
               </p>
               <a
-                href="/plugin/ForjeGames.rbxm"
-                download="ForjeGames.rbxm"
+                href="/plugin/ForjeGames.rbxmx"
+                download="ForjeGames.rbxmx"
                 className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
                 style={{
                   background: 'rgba(255,184,28,0.1)',
@@ -230,7 +230,7 @@ export default function DownloadClient() {
                 }}
               >
                 <Download size={14} />
-                ForjeGames.rbxm — 71 KB
+                ForjeGames.rbxmx — 71 KB
               </a>
             </div>
           </div>
