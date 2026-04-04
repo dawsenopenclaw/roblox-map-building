@@ -25,6 +25,8 @@ import { requireTier } from '@/lib/tier-guard'
 import { textureGenerateSchema, parseBody } from '@/lib/validations'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
+export const maxDuration = 60
+
 type Resolution = '512' | '1024' | '2048'
 
 // ── Fal types ─────────────────────────────────────────────────────────────────

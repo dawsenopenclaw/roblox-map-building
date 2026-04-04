@@ -20,6 +20,8 @@ import { requireTier } from '@/lib/tier-guard'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { z } from 'zod'
 
+export const maxDuration = 60
+
 // ---------------------------------------------------------------------------
 // Server-side magic byte detection (never trust client-supplied MIME type)
 // ---------------------------------------------------------------------------

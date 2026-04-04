@@ -29,6 +29,8 @@ import {
   type BlenderChain,
 } from '@/lib/agents/blender-chains'
 
+export const maxDuration = 60
+
 // ── Request schema ─────────────────────────────────────────────────────────────
 
 const blenderGenerateSchema = z.object({

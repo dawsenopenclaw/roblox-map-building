@@ -18,6 +18,8 @@ import { requireTier } from '@/lib/tier-guard'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { startMeshPipeline } from '@/lib/pipeline/mesh-pipeline'
 
+export const maxDuration = 60
+
 // ── Request schema ────────────────────────────────────────────────────────────
 
 const generate3dSchema = z.object({

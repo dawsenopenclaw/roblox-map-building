@@ -17,6 +17,8 @@ import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { z } from 'zod'
 
+export const maxDuration = 60
+
 const bodySchema = z.object({
   prompt: z.string().min(1, 'prompt is required').max(4000),
 })

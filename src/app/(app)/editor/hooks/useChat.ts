@@ -175,6 +175,19 @@ async function readStream(
 
       onChunk(raw)
     }
+  } catch {
+    // Stream was aborted (e.g. Vercel function timeout, network error).
+    // Flush whatever text we accumulated so the user sees partial content
+    // instead of a crash. metaResult stays {} which is safe.
+    if (leftover) {
+      const sentinelIdx = leftover.indexOf('\x00')
+      if (sentinelIdx !== -1) {
+        const textPart = leftover.slice(0, sentinelIdx)
+        if (textPart) onChunk(textPart)
+      } else {
+        onChunk(leftover)
+      }
+    }
   } finally {
     try { reader.cancel() } catch { /* ignore */ }
   }
@@ -376,14 +389,18 @@ export function useChat(options: UseChatOptions = {}) {
 
         // Token exhaustion
         if (chatRes.status === 402) {
-          const errData = await chatRes.json() as { error?: string }
-          if (errData.error === 'insufficient_tokens') {
-            setMessagesSync((prev) => [
-              ...prev.filter((m) => m.id !== statusMsgId),
-              { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
-            ])
-            setLoading(false)
-            return
+          try {
+            const errData = await chatRes.json() as { error?: string }
+            if (errData.error === 'insufficient_tokens') {
+              setMessagesSync((prev) => [
+                ...prev.filter((m) => m.id !== statusMsgId),
+                { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
+              ])
+              setLoading(false)
+              return
+            }
+          } catch {
+            // Response body wasn't valid JSON — fall through to generic error
           }
         }
 

@@ -38,6 +38,8 @@ import {
   type UploadAssetResult,
 } from '@/lib/roblox-asset-upload'
 
+export const maxDuration = 60
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type Quality = 'draft' | 'standard' | 'premium'
