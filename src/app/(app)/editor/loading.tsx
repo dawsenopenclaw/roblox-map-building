@@ -19,8 +19,8 @@ export default function EditorLoading() {
           {/* Run + Deploy buttons */}
           <div className="h-8 w-20 rounded-lg shimmer" />
           <div className="h-8 w-24 rounded-lg shimmer-gold" />
-          {/* Avatar */}
-          <div className="w-8 h-8 rounded-full shimmer flex-shrink-0" />
+          {/* Spacer for global profile button */}
+          <div className="w-10 flex-shrink-0" />
         </div>
 
         {/* Main two-panel body */}

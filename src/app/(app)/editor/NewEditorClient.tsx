@@ -15,6 +15,8 @@ import { OnboardingOverlay, useOnboardingOverlay } from './components/Onboarding
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
 import { ToastProvider, useToast } from '@/components/editor/EditorToasts'
 import { ShortcutsHelp } from '@/components/editor/ShortcutsHelp'
+import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
+import { THEMES } from '@/lib/themes'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +99,106 @@ const kbdStyle: React.CSSProperties = {
   color: 'rgba(255,255,255,0.5)',
 }
 
+// ─── Profile Avatar ──────────────────────────────────────────────────────────
+
+function ProfileAvatar() {
+  const { user } = useUser()
+  const [open, setOpen] = useState(false)
+
+  if (!user) return null
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        title={user.firstName ?? 'Account'}
+        style={{
+          width: 36, height: 36, borderRadius: '50%', border: 'none',
+          padding: 0, cursor: 'pointer', overflow: 'hidden',
+          outline: open ? '2px solid rgba(212,175,55,0.6)' : '2px solid transparent',
+          outlineOffset: 2, transition: 'outline-color 0.15s',
+          flexShrink: 0,
+        }}
+      >
+        {user.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.imageUrl}
+            alt={user.firstName ?? 'User'}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', background: 'rgba(212,175,55,0.2)',
+            fontSize: 14, fontWeight: 700, color: '#D4AF37',
+          }}>
+            {(user.firstName?.[0] ?? user.emailAddresses?.[0]?.emailAddress?.[0] ?? '?').toUpperCase()}
+          </div>
+        )}
+      </button>
+
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+            onClick={() => setOpen(false)}
+          />
+          {/* Dropdown — opens to the left of the rail */}
+          <div style={{
+            position: 'absolute', right: 'calc(100% + 12px)', top: 0,
+            zIndex: 50, minWidth: 200,
+            background: 'rgba(10,14,30,0.97)', backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.09)', borderRadius: 10,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            overflow: 'hidden',
+          }}>
+            {/* User info */}
+            <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
+                {user.firstName}{user.lastName ? ` ${user.lastName}` : ''}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
+                {user.emailAddresses?.[0]?.emailAddress ?? ''}
+              </p>
+            </div>
+            {/* Actions */}
+            <div style={{ padding: '6px 0' }}>
+              <a
+                href="/user-profile"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: 'block', padding: '8px 14px',
+                  fontSize: 12, color: 'rgba(255,255,255,0.7)', textDecoration: 'none',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                Manage Account
+              </a>
+              <a
+                href="/sign-out"
+                onClick={(e) => { e.preventDefault(); setOpen(false); window.location.href = '/sign-out' }}
+                style={{
+                  display: 'block', padding: '8px 14px',
+                  fontSize: 12, color: 'rgba(239,68,68,0.8)', textDecoration: 'none',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(239,68,68,0.06)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                Sign out
+              </a>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── Sidebar Button ──────────────────────────────────────────────────────────
 
 function SidebarButton({
@@ -137,8 +239,8 @@ function SidebarButton({
       {active && (
         <div style={{ position: 'absolute', left: -8, top: '50%', transform: 'translateY(-50%)',
           width: 3, height: 18, borderRadius: 2,
-          background: 'linear-gradient(180deg, #FFB81C 0%, #D4AF37 100%)',
-          boxShadow: '0 0 6px rgba(255,184,28,0.5)' }} />
+          background: 'linear-gradient(180deg, #D4AF37 0%, #D4AF37 100%)',
+          boxShadow: '0 0 6px rgba(212,175,55,0.5)' }} />
       )}
       <button onClick={onClick} onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)} title={label}
@@ -148,7 +250,7 @@ function SidebarButton({
             : hovered
               ? 'rgba(255,255,255,0.06)'
               : 'transparent',
-          color: active ? '#FFB81C' : hovered ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
+          color: active ? '#D4AF37' : hovered ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', transition: 'all 0.15s ease-out' }}>
         {icon}
@@ -213,13 +315,13 @@ function AgentStrip({
       {loading && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFB81C',
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4AF37',
               animation: 'agentPulse 1.5s ease-in-out infinite', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: 'rgba(255,184,28,0.8)',
+            <span style={{ fontSize: 11, color: 'rgba(212,175,55,0.8)',
               fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
               Forje is building...
             </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,184,28,0.4)',
+            <span style={{ fontSize: 10, color: 'rgba(212,175,55,0.4)',
               fontFamily: "'JetBrains Mono', monospace", marginLeft: 'auto' }}>
               {elapsed}s
             </span>
@@ -227,7 +329,7 @@ function AgentStrip({
           <div style={{ position: 'relative', height: 2, borderRadius: 1,
             background: 'rgba(212,175,55,0.12)', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '40%',
-              background: 'linear-gradient(90deg, transparent, #FFB81C, #D4AF37, transparent)',
+              background: 'linear-gradient(90deg, transparent, #D4AF37, #D4AF37, transparent)',
               animation: 'progressSlide 1.4s ease-in-out infinite' }} />
           </div>
         </div>
@@ -311,11 +413,11 @@ function MonitorIllustration() {
         <circle cx="48" cy="53" r="1.5" fill="#4ADE80"
           style={{ animation: 'monitorBlink 2.8s ease-in-out infinite' }}/>
         {/* Center dot + crosshair */}
-        <circle cx="48" cy="32" r="3" fill="#FFB81C" opacity={0.85}/>
-        <line x1="48" y1="22" x2="48" y2="28" stroke="#FFB81C" strokeWidth="1" opacity={0.4}/>
-        <line x1="48" y1="36" x2="48" y2="42" stroke="#FFB81C" strokeWidth="1" opacity={0.4}/>
-        <line x1="38" y1="32" x2="44" y2="32" stroke="#FFB81C" strokeWidth="1" opacity={0.4}/>
-        <line x1="52" y1="32" x2="58" y2="32" stroke="#FFB81C" strokeWidth="1" opacity={0.4}/>
+        <circle cx="48" cy="32" r="3" fill="#D4AF37" opacity={0.85}/>
+        <line x1="48" y1="22" x2="48" y2="28" stroke="#D4AF37" strokeWidth="1" opacity={0.4}/>
+        <line x1="48" y1="36" x2="48" y2="42" stroke="#D4AF37" strokeWidth="1" opacity={0.4}/>
+        <line x1="38" y1="32" x2="44" y2="32" stroke="#D4AF37" strokeWidth="1" opacity={0.4}/>
+        <line x1="52" y1="32" x2="58" y2="32" stroke="#D4AF37" strokeWidth="1" opacity={0.4}/>
       </svg>
     </div>
   )
@@ -408,50 +510,62 @@ function ViewportArea({
           </div>
 
           {/* ── STEP 1: Download Plugin ────────────────────────── */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>1</span>
+          <div style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: 12, padding: '20px 20px', border: '1px solid rgba(212,175,55,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(212,175,55,0.15)', border: '1.5px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#D4AF37' }}>1</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Download &amp; Install the Plugin</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>Download &amp; Install the Plugin</span>
             </div>
-            <div style={{ paddingLeft: 38, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ paddingLeft: 42, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <a
                 href="/api/studio/plugin"
                 download="ForjeGames.rbxmx"
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 20px', borderRadius: 8,
-                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
-                  color: '#030712', fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                  boxShadow: '0 0 20px rgba(212,175,55,0.2)', transition: 'all 0.15s',
-                  width: 'fit-content',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  padding: '14px 28px', borderRadius: 10,
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 50%, #C9A227 100%)',
+                  color: '#030712', fontSize: 14, fontWeight: 800, textDecoration: 'none',
+                  boxShadow: '0 4px 24px rgba(212,175,55,0.3), 0 0 0 1px rgba(212,175,55,0.2)',
+                  transition: 'all 0.2s', letterSpacing: '0.01em',
+                  width: '100%', maxWidth: 320,
                 }}
               >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8m0 0L4 6m3 3l3-3M2 11h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                Download ForjeGames Plugin
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10m0 0L4.5 7.5M8 11l3.5-3.5M2 13h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Download ForjeGames.rbxmx
               </a>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
-                <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Then install it:</strong>
-                <br />1. Open <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Roblox Studio</strong>
-                <br />2. Go to <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins</strong> tab in the top ribbon → click <strong style={{ color: 'rgba(255,255,255,0.5)' }}>Plugins Folder</strong>
-                <br />3. Drag the downloaded <span style={{ color: '#FFB81C', fontFamily: 'monospace' }}>ForjeGames.rbxmx</span> file into that folder
-                <br />4. Restart Studio — the ForjeGames panel opens automatically
-                <br />5. You&apos;ll see a code input box — that&apos;s where you enter the code from Step 3 below
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+                <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Install in 4 steps:</strong>
+                <br />
+                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>1.</span> Open <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Roblox Studio</strong>
+                <br />
+                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>2.</span> Click the <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins</strong> tab → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins Folder</strong>
+                <br />
+                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>3.</span> Drag <span style={{ color: '#D4AF37', fontFamily: 'monospace', fontWeight: 600 }}>ForjeGames.rbxmx</span> into that folder
+                <br />
+                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>4.</span> <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Restart Studio</strong> and open any place
               </div>
             </div>
           </div>
 
-          {/* ── STEP 2: Open Studio ────────────────────────── */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>2</span>
+          {/* ── STEP 2: Enable HTTP + Open Place ────────────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '18px 20px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1.5px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#D4AF37' }}>2</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Open Your Game in Roblox Studio</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>Open a Place &amp; Enable HTTP</span>
             </div>
-            <div style={{ paddingLeft: 38, fontSize: 12, color: 'rgba(255,255,255,0.35)', lineHeight: 1.6 }}>
-              Open the place you want to build in. The plugin works in any Baseplate or existing game.
+            <div style={{ paddingLeft: 42, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>1.</span> Open any place (Baseplate or your game)
+              <br />
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>2.</span> Go to <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Home</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Game Settings</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Security</strong>
+              <br />
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>3.</span> Turn on <strong style={{ color: '#D4AF37' }}>Allow HTTP Requests</strong>
+              <br />
+              <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.12)', fontSize: 11, color: 'rgba(212,175,55,0.7)' }}>
+                This is required for the plugin to communicate with ForjeGames. You only need to do this once per place.
+              </div>
             </div>
           </div>
 
@@ -459,7 +573,7 @@ function ViewportArea({
           <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: hasCode ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.3s' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: hasCode ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.3s' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFB81C' }}>3</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#D4AF37' }}>3</span>
               </div>
               <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Pair with a Connection Code</span>
             </div>
@@ -474,7 +588,7 @@ function ViewportArea({
                     onClick={onGenerateCode}
                     style={{
                       padding: '10px 22px', borderRadius: 8, border: 'none',
-                      background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                      background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                       color: '#030712', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       boxShadow: '0 0 20px rgba(212,175,55,0.2)', transition: 'all 0.15s',
                       width: 'fit-content',
@@ -487,7 +601,7 @@ function ViewportArea({
 
               {isGenerating && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 20, height: 20, border: '2px solid rgba(212,175,55,0.3)', borderTopColor: '#FFB81C', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <div style={{ width: 20, height: 20, border: '2px solid rgba(212,175,55,0.3)', borderTopColor: '#D4AF37', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                   <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>Generating code...</span>
                 </div>
               )}
@@ -504,8 +618,8 @@ function ViewportArea({
                         style={{
                           width: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
                           background: 'rgba(0,0,0,0.4)', border: '2px solid rgba(212,175,55,0.4)', borderRadius: 8,
-                          fontSize: 22, fontWeight: 700, color: '#FFB81C', fontFamily: "'JetBrains Mono', monospace",
-                          textShadow: '0 0 12px rgba(255,184,28,0.4)',
+                          fontSize: 22, fontWeight: 700, color: '#D4AF37', fontFamily: "'JetBrains Mono', monospace",
+                          textShadow: '0 0 12px rgba(212,175,55,0.4)',
                         }}
                       >
                         {char}
@@ -519,7 +633,7 @@ function ViewportArea({
                       }}
                       id="vp-copy-btn"
                       style={{
-                        fontSize: 11, fontWeight: 600, color: '#FFB81C', background: 'rgba(212,175,55,0.1)',
+                        fontSize: 11, fontWeight: 600, color: '#D4AF37', background: 'rgba(212,175,55,0.1)',
                         border: '1px solid rgba(212,175,55,0.25)', borderRadius: 8, padding: '6px 12px',
                         cursor: 'pointer', alignSelf: 'center', marginLeft: 4, transition: 'background 150ms',
                       }}
@@ -528,7 +642,7 @@ function ViewportArea({
                     </button>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFB81C', animation: 'monitorBlink 1.5s ease-in-out infinite' }} />
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D4AF37', animation: 'monitorBlink 1.5s ease-in-out infinite' }} />
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
                       Waiting for Studio to connect... ({Math.floor(connectTimer / 60)}:{String(connectTimer % 60).padStart(2, '0')})
                     </span>
@@ -1045,12 +1159,12 @@ function LayoutSwitcher({
               height: 28,
               borderRadius: 7,
               border: active
-                ? '1px solid rgba(255,184,28,0.3)'
+                ? '1px solid rgba(212,175,55,0.3)'
                 : '1px solid rgba(255,255,255,0.06)',
               background: active
-                ? 'rgba(255,184,28,0.12)'
+                ? 'rgba(212,175,55,0.12)'
                 : 'rgba(255,255,255,0.05)',
-              color: active ? '#FFB81C' : 'rgba(255,255,255,0.35)',
+              color: active ? '#D4AF37' : 'rgba(255,255,255,0.35)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1109,7 +1223,7 @@ function TopBar({
     >
       {/* Gradient glow bottom border */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
-        background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.04) 25%, rgba(255,184,28,0.06) 50%, rgba(212,175,55,0.04) 75%, transparent 100%)',
+        background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.04) 25%, rgba(212,175,55,0.06) 50%, rgba(212,175,55,0.04) 75%, transparent 100%)',
         pointerEvents: 'none', zIndex: 1 }} />
 
       {/* Left: Logo + breadcrumb */}
@@ -1128,7 +1242,7 @@ function TopBar({
             width: 24,
             height: 24,
             borderRadius: 7,
-            background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1146,7 +1260,7 @@ function TopBar({
             letterSpacing: '-0.02em',
           }}
         >
-          <span style={{ color: '#FFB81C' }}>Forje</span>
+          <span style={{ color: '#D4AF37' }}>Forje</span>
           <span style={{ color: 'white' }}>Games</span>
         </span>
         </Link>
@@ -1346,8 +1460,8 @@ function MobileTabBar({
           {activeTab === tab && (
             <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%',
               height: 2, borderRadius: '1px 1px 0 0',
-              background: 'linear-gradient(90deg, #D4AF37, #FFB81C, #D4AF37)',
-              boxShadow: '0 0 6px rgba(255,184,28,0.4)' }} />
+              background: 'linear-gradient(90deg, #D4AF37, #D4AF37, #D4AF37)',
+              boxShadow: '0 0 6px rgba(212,175,55,0.4)' }} />
           )}
           {tab === 'chat' ? (
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -1518,11 +1632,78 @@ function loadChatHeight(): number {
   return CHAT_DEFAULT_HEIGHT
 }
 
+// ─── Quick Theme Picker (sidebar settings panel) ─────────────────────────────
+
+function SettingsSidebarPanel() {
+  const { theme, setTheme } = useTheme()
+
+  return (
+    <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+      <p style={{ margin: '0 0 16px' }}>Editor preferences and API keys.</p>
+
+      {/* Quick Theme */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ margin: '0 0 10px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+          letterSpacing: '0.08em', color: 'rgba(255,255,255,0.3)' }}>Quick Theme</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              title={t.name}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                background: t.preview.accent,
+                border: theme.id === t.id
+                  ? `2px solid ${t.preview.accent}`
+                  : '2px solid rgba(255,255,255,0.08)',
+                outline: theme.id === t.id ? `2px solid rgba(255,255,255,0.4)` : 'none',
+                outlineOffset: 2,
+                cursor: 'pointer',
+                position: 'relative',
+                flexShrink: 0,
+                transition: 'transform 0.15s',
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.15)')}
+              onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)')}
+              aria-label={t.name}
+              aria-pressed={theme.id === t.id}
+            >
+              {theme.id === t.id && (
+                <svg
+                  width="12" height="12" viewBox="0 0 12 12" fill="none"
+                  style={{ position: 'absolute', inset: 0, margin: 'auto' }}
+                >
+                  <path d="M2.5 6l2.5 2.5 4.5-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+          {THEMES.find(t => t.id === theme.id)?.name ?? 'Custom'}
+        </p>
+      </div>
+
+      <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)', fontSize: 12 }}>
+        <Link href="/settings" style={{ color: 'var(--gold, #D4AF37)', textDecoration: 'none', fontWeight: 500 }}>
+          Open full settings
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export default function NewEditorClient() {
   return (
-    <ToastProvider>
-      <EditorInner />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <EditorInner />
+      </ToastProvider>
+    </ThemeProvider>
   )
 }
 
@@ -2093,15 +2274,7 @@ function EditorInner() {
                         </div>
                       )}
                       {sidebarPanel === 'settings' && (
-                        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
-                          <p style={{ margin: '0 0 12px' }}>Editor preferences and API keys.</p>
-                          <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.06)', fontSize: 12 }}>
-                            <Link href="/settings" style={{ color: '#FFB81C', textDecoration: 'none', fontWeight: 500 }}>
-                              Open full settings
-                            </Link>
-                          </div>
-                        </div>
+                        <SettingsSidebarPanel />
                       )}
                       {sidebarPanel === 'history' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

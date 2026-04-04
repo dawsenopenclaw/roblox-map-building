@@ -270,24 +270,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
           </div>
         </nav>
 
-        {/* User info — gold ring avatar */}
-        <div className="px-3 pb-4 pt-2 border-t border-white/[0.07] flex-shrink-0">
-          <div className="flex items-center gap-3 px-3 py-2.5">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 select-none"
-              style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
-                color: '#0a0a0a',
-                // Gold ring border via box-shadow so it stays crisp
-                boxShadow: '0 0 0 2px rgba(212,175,55,0.35), 0 0 8px rgba(212,175,55,0.15)',
-              }}
-              aria-hidden="true"
-            >
-              {initials}
-            </div>
-            <p className="text-xs font-semibold text-white truncate flex-1">{displayName}</p>
-          </div>
-        </div>
+        {/* Profile handled by global ProfileButton in root layout */}
       </aside>
     </>
   )
