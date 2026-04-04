@@ -6,15 +6,21 @@
  *   - Uptime monitors (Better Uptime, etc.)
  *   - Vercel / Fly.io health probe
  *
- * Response shape:
- *   { status, version, checks: { ... }, timestamp }
+ * TWO response modes:
+ *   Public (no auth):    { status: "ok"|"degraded"|"down", timestamp }
+ *   Admin (authenticated): full details with all service check statuses
+ *
+ * Admin auth: supply either
+ *   Authorization: Bearer <HEALTH_CHECK_SECRET>   (env var)
+ *   OR a valid Clerk session with ADMIN role / owner email
  *
  * Each check returns "ok" | "degraded" | "error" | "unconfigured".
  * The top-level `status` is "healthy" if all required checks pass,
  * "degraded" if optional checks fail, "unhealthy" if required checks fail.
  */
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import pkg from '../../../../package.json'
+import { requireAdmin } from '../admin/_adminGuard'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,13 +34,17 @@ interface HealthChecks {
   mcp_asset_alchemist: CheckStatus
   mcp_city_architect: CheckStatus
   mcp_terrain_forge: CheckStatus
-  studio_sessions: number
 }
 
 interface HealthResponse {
   status: 'healthy' | 'degraded' | 'unhealthy'
   version: string
   checks: HealthChecks
+  timestamp: string
+}
+
+interface PublicHealthResponse {
+  status: 'ok' | 'degraded' | 'down'
   timestamp: string
 }
 
@@ -136,19 +146,37 @@ async function checkFal(): Promise<CheckStatus> {
   }
 }
 
-function getStudioSessions(): number {
-  // Wire up to your session registry (Redis set / DB) when built.
-  return 0
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the request carries a valid HEALTH_CHECK_SECRET bearer token
+ * OR passes the admin session check.
+ */
+async function isAuthorized(req: NextRequest): Promise<boolean> {
+  // 1. Static secret — fast path, no DB/Clerk needed (for uptime monitors that
+  //    need full detail, CI pipelines, etc.)
+  const secret = process.env.HEALTH_CHECK_SECRET
+  if (secret) {
+    const authHeader = req.headers.get('Authorization') ?? ''
+    if (authHeader === `Bearer ${secret}`) return true
+  }
+
+  // 2. Clerk admin session
+  const { error } = await requireAdmin()
+  return error === null
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const timestamp = new Date().toISOString()
+
+  // ── Run all service checks concurrently regardless of auth mode so we can
+  //    derive the top-level status for both response shapes.
   const MCP_ASSET_URL   = process.env.MCP_ASSET_ALCHEMIST_URL ?? 'http://localhost:3002'
   const MCP_CITY_URL    = process.env.MCP_CITY_ARCHITECT_URL  ?? 'http://localhost:3003'
   const MCP_TERRAIN_URL = process.env.MCP_TERRAIN_FORGE_URL   ?? 'http://localhost:3004'
 
-  // Run all checks concurrently — none block each other
   const [database, redis, meshy, fal, mcp_asset_alchemist, mcp_city_architect, mcp_terrain_forge] =
     await Promise.all([
       checkDatabase(),
@@ -168,34 +196,47 @@ export async function GET() {
     mcp_asset_alchemist,
     mcp_city_architect,
     mcp_terrain_forge,
-    studio_sessions: getStudioSessions(),
   }
 
-  const requiredChecks: CheckStatus[] = [checks.database]
-  const hasRequiredFailure = requiredChecks.some((s) => s === 'error')
-  const hasAnyFailure = (Object.values(checks) as (CheckStatus | number)[])
-    .some((s) => s === 'error')
+  const hasRequiredFailure = checks.database === 'error'
+  const hasAnyFailure = Object.values(checks).some((s) => s === 'error')
 
-  const status: HealthResponse['status'] = hasRequiredFailure
+  const detailedStatus: HealthResponse['status'] = hasRequiredFailure
     ? 'unhealthy'
     : hasAnyFailure
       ? 'degraded'
       : 'healthy'
 
+  const httpStatus = detailedStatus === 'unhealthy' ? 503 : 200
+
+  // ── Auth check — determines which response shape to return ─────────────────
+  const authorized = await isAuthorized(req)
+
+  if (!authorized) {
+    // Public mode: minimal info — safe for uptime monitors
+    const publicStatus: PublicHealthResponse['status'] =
+      detailedStatus === 'healthy' ? 'ok' :
+      detailedStatus === 'degraded' ? 'degraded' : 'down'
+
+    const publicBody: PublicHealthResponse = { status: publicStatus, timestamp }
+
+    return NextResponse.json(publicBody, {
+      status: httpStatus,
+      headers: { 'Cache-Control': 'no-store' },
+    })
+  }
+
+  // Authenticated admin mode: full detail
   const body: HealthResponse = {
-    status,
+    status: detailedStatus,
     version: pkg.version,
     checks,
-    timestamp: new Date().toISOString(),
+    timestamp,
   }
 
   return NextResponse.json(body, {
-    status: status === 'unhealthy' ? 503 : 200,
-    headers: {
-      // Allow Studio plugin (any origin) and desktop Electron app
-      'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'no-store',
-    },
+    status: httpStatus,
+    headers: { 'Cache-Control': 'no-store' },
   })
 }
 
@@ -206,7 +247,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   })
 }

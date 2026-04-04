@@ -43,7 +43,7 @@ export default function DnaPanel() {
         <button
           onClick={handleScan}
           disabled={!url.trim() || scanning}
-          className="bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-40 disabled:cursor-not-allowed text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+          className="bg-[#D4AF37] hover:bg-[#E6A519] disabled:opacity-40 disabled:cursor-not-allowed text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
         >
           {scanning ? '...' : 'Scan'}
         </button>
@@ -59,7 +59,7 @@ export default function DnaPanel() {
               className={[
                 'w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-left transition-colors',
                 selectedExample?.name === ex.name
-                  ? 'bg-[#FFB81C]/10 border-[#FFB81C]/30'
+                  ? 'bg-[#D4AF37]/10 border-[#D4AF37]/30'
                   : 'bg-white/[0.03] border-white/8 hover:bg-white/6 hover:border-white/15',
               ].join(' ')}
             >
@@ -70,7 +70,7 @@ export default function DnaPanel() {
               <div className="text-right">
                 <p className={[
                   'text-sm font-bold',
-                  ex.score >= 90 ? 'text-emerald-400' : 'text-[#FFB81C]',
+                  ex.score >= 90 ? 'text-emerald-400' : 'text-[#D4AF37]',
                 ].join(' ')}>{ex.score}/100</p>
                 <p className="text-[10px] text-gray-500">Score</p>
               </div>
@@ -97,7 +97,7 @@ export default function DnaPanel() {
         </div>
       )}
 
-      <Link href="/game-dna" className="block text-center text-[11px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors">
+      <Link href="/game-dna" className="block text-center text-[11px] text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors">
         View full DNA reports &rarr;
       </Link>
     </div>

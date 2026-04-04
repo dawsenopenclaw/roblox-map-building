@@ -4,6 +4,7 @@ import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { SpaceBackground } from '@/components/editor/SpaceBackground'
+import { StudioPreviewPanel } from './panels/StudioPreviewPanel'
 import { ChatPanel } from '@/components/editor/ChatPanel'
 import { Viewport3D } from '@/components/editor/Viewport3D'
 import { CommandPalette } from '@/components/editor/CommandPalette'
@@ -65,6 +66,17 @@ function IconHelp() {
       <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M7 7a2 2 0 013.5 1.5c0 1-1.5 1.5-1.5 1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <circle cx="9" cy="12.5" r="0.6" fill="currentColor"/>
+    </svg>
+  )
+}
+
+function IconPreview() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="3" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M6 15h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      <path d="M9 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      <circle cx="9" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2"/>
     </svg>
   )
 }
@@ -1192,6 +1204,8 @@ function TopBar({
   onShowShortcuts,
   editorLayout,
   onLayoutChange,
+  latencyMs,
+  sseReconnectPhase,
 }: {
   isConnected: boolean
   placeName: string
@@ -1201,6 +1215,8 @@ function TopBar({
   onShowShortcuts?: () => void
   editorLayout: EditorLayout
   onLayoutChange: (l: EditorLayout) => void
+  latencyMs?: number | null
+  sseReconnectPhase?: import('./hooks/useStudioSSE').SSEReconnectPhase
 }) {
   const { user } = useUser()
   const [newChatHovered, setNewChatHovered] = useState(false)
@@ -1273,18 +1289,36 @@ function TopBar({
       {/* Center: Layout switcher + connection pill */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <LayoutSwitcher layout={editorLayout} onChange={onLayoutChange} />
-        {isConnected && placeName && (
-          <div style={{ padding: '3px 10px', borderRadius: 6, background: 'rgba(74,222,128,0.06)',
-            border: '1px solid rgba(74,222,128,0.15)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{ position: 'relative', width: 5, height: 5, flexShrink: 0 }}>
-              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#4ADE80',
-                animation: 'connectedPing 2s ease-in-out infinite' }} />
-              <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#4ADE80',
-                boxShadow: '0 0 4px rgba(74,222,128,0.5)' }} />
+        {isConnected && placeName && (() => {
+          const isReconnecting = sseReconnectPhase === 'reconnecting' || sseReconnectPhase === 'lost'
+          const isFailed = sseReconnectPhase === 'failed'
+          const isHighLatency = typeof latencyMs === 'number' && latencyMs > 100
+          const dotColor = isFailed || isReconnecting ? '#f59e0b' : isHighLatency ? '#facc15' : '#4ADE80'
+          const pillBg = isFailed || isReconnecting ? 'rgba(245,158,11,0.06)' : 'rgba(74,222,128,0.06)'
+          const pillBorder = isFailed || isReconnecting ? '1px solid rgba(245,158,11,0.2)' : '1px solid rgba(74,222,128,0.15)'
+          const textColor = isFailed || isReconnecting ? 'rgba(245,158,11,0.85)' : 'rgba(74,222,128,0.8)'
+          return (
+            <div style={{ padding: '3px 10px', borderRadius: 6, background: pillBg,
+              border: pillBorder, display: 'flex', alignItems: 'center', gap: 6 }}
+              title={latencyMs != null ? `${latencyMs}ms latency` : undefined}>
+              <div style={{ position: 'relative', width: 5, height: 5, flexShrink: 0 }}>
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: dotColor,
+                  animation: 'connectedPing 2s ease-in-out infinite' }} />
+                <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: dotColor,
+                  boxShadow: `0 0 4px ${dotColor}80` }} />
+              </div>
+              <span style={{ fontSize: 11, color: textColor, fontWeight: 500 }}>
+                {isReconnecting ? 'Reconnecting…' : isFailed ? 'Connection lost' : placeName}
+              </span>
+              {latencyMs != null && !isReconnecting && !isFailed && (
+                <span style={{ fontSize: 10, color: isHighLatency ? 'rgba(250,204,21,0.6)' : 'rgba(74,222,128,0.45)',
+                  fontFamily: "'JetBrains Mono', monospace" }}>
+                  {latencyMs}ms
+                </span>
+              )}
             </div>
-            <span style={{ fontSize: 11, color: 'rgba(74,222,128,0.8)', fontWeight: 500 }}>{placeName}</span>
-          </div>
-        )}
+          )
+        })()}
       </div>
 
       {/* Right: new chat + token pill + offline + avatar */}
@@ -1738,7 +1772,12 @@ function EditorInner() {
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay()
 
   // Studio connection
-  const studio = useStudioConnection()
+  const studio = useStudioConnection((phase) => {
+    if (phase === 'lost') toast('Connection lost. Reconnecting…', 'warning')
+    else if (phase === 'reconnecting') toast('Reconnecting to Studio…', 'warning')
+    else if (phase === 'connected') toast('Reconnected!', 'success')
+    else if (phase === 'failed') toast('Connection lost. Reload the page to reconnect.', 'error')
+  })
 
   // Toast on Studio connection changes
   const prevConnected = useRef(false)
@@ -1923,6 +1962,8 @@ function EditorInner() {
           onShowShortcuts={() => setShortcutsOpen(true)}
           editorLayout={editorLayout}
           onLayoutChange={setEditorLayout}
+          latencyMs={studio.latencyMs}
+          sseReconnectPhase={studio.sseReconnectPhase}
         />
 
         {/* Mobile tab bar */}
@@ -2255,6 +2296,7 @@ function EditorInner() {
                         {sidebarPanel === 'history' && 'Build History'}
                         {sidebarPanel === 'context' && 'AI Context'}
                         {sidebarPanel === 'help' && 'Help'}
+                        {sidebarPanel === 'preview' && 'Studio Preview'}
                       </span>
                       <button onClick={() => setSidebarPanel(null)}
                         style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }}>
@@ -2304,6 +2346,19 @@ function EditorInner() {
                           tokenCount={chat.totalTokens}
                         />
                       )}
+                      {sidebarPanel === 'preview' && (
+                        <StudioPreviewPanel
+                          screenshotUrl={studio.screenshotUrl}
+                          screenshotTimestamp={studio.screenshotTimestamp}
+                          beforeScreenshotUrl={studio.beforeScreenshotUrl}
+                          isConnected={studio.isConnected}
+                          sseReconnectPhase={studio.sseReconnectPhase}
+                          onRequestScreenshot={studio.requestScreenshot}
+                          onReconnect={studio.generateCode}
+                          sessionId={studio.sessionId}
+                          jwt={studio.jwt}
+                        />
+                      )}
                       {sidebarPanel === 'help' && (
                         <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13, lineHeight: 1.6 }}>
                           <p style={{ margin: '0 0 12px', fontWeight: 600, color: 'rgba(255,255,255,0.7)' }}>
@@ -2344,6 +2399,9 @@ function EditorInner() {
                   <SidebarButton icon={<IconContext />} label="AI Context" shortcut="⌘A"
                     active={sidebarPanel === 'context'} onClick={() => toggleSidebar('context')}
                     badge={studio.isConnected ? 'active' : undefined} />
+                  <SidebarButton icon={<IconPreview />} label="Studio Preview" shortcut="⌘P"
+                    active={sidebarPanel === 'preview'} onClick={() => toggleSidebar('preview')}
+                    badge={studio.screenshotUrl ? 'active' : undefined} />
                   <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 1, margin: '4px 0' }} />
                   <div style={{ flex: 1 }} />
                   <SidebarButton icon={<IconHelp />} label="Help" shortcut="⌘/"

@@ -111,7 +111,7 @@ function RateLimitBar({
 }) {
   const pct = limit > 0 ? Math.min(100, (current / limit) * 100) : 0
   const color =
-    pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-[#FFB81C]'
+    pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-yellow-500' : 'bg-[#D4AF37]'
 
   return (
     <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-5">
@@ -185,7 +185,7 @@ function TopEndpointsTable({ endpoints }: { endpoints: TopEndpoint[] }) {
                   <code className="text-gray-300 text-xs">{ep.path}</code>
                   <div className="w-full bg-white/[0.05] rounded-full h-1 mt-1.5 overflow-hidden">
                     <div
-                      className="h-1 bg-[#FFB81C]/40 rounded-full"
+                      className="h-1 bg-[#D4AF37]/40 rounded-full"
                       style={{ width: `${(ep.count / maxCount) * 100}%` }}
                     />
                   </div>
@@ -244,7 +244,7 @@ function ConfirmDialog({
           </button>
           <button
             onClick={onCancel}
-            className="px-5 border border-white/[0.08] hover:border-[#FFB81C]/30 text-gray-400 hover:text-[#FFB81C] rounded-xl text-sm transition-colors"
+            className="px-5 border border-white/[0.08] hover:border-[#D4AF37]/30 text-gray-400 hover:text-[#D4AF37] rounded-xl text-sm transition-colors"
           >
             Cancel
           </button>
@@ -379,7 +379,7 @@ export default function ApiKeyDetailPage() {
       <div className="max-w-4xl mx-auto">
         <Link
           href="/settings/api-keys"
-          className="inline-flex items-center gap-1.5 text-gray-400 hover:text-[#FFB81C] text-sm transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-gray-400 hover:text-[#D4AF37] text-sm transition-colors mb-6"
         >
           <ChevronLeft size={14} />
           Back to API Keys
@@ -402,7 +402,7 @@ export default function ApiKeyDetailPage() {
       <div className="flex items-center gap-2 mb-2">
         <Link
           href="/settings/api-keys"
-          className="inline-flex items-center gap-1 text-gray-500 hover:text-[#FFB81C] text-sm transition-colors"
+          className="inline-flex items-center gap-1 text-gray-500 hover:text-[#D4AF37] text-sm transition-colors"
         >
           <ChevronLeft size={13} />
           API Keys
@@ -422,14 +422,14 @@ export default function ApiKeyDetailPage() {
             )}
           </div>
           <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-            <code className="text-[#FFB81C] text-sm font-mono">{key.prefix}...</code>
+            <code className="text-[#D4AF37] text-sm font-mono">{key.prefix}...</code>
             <span className="text-xs bg-white/[0.05] border border-white/[0.08] text-gray-400 px-2 py-0.5 rounded-full uppercase tracking-wide">
               {key.tier}
             </span>
             {key.scopes.map((s) => (
               <span
                 key={s}
-                className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 px-2 py-0.5 rounded-full"
+                className="text-xs bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2 py-0.5 rounded-full"
               >
                 {s}
               </span>
@@ -447,7 +447,7 @@ export default function ApiKeyDetailPage() {
             <button
               onClick={() => { setShowRotateConfirm(true); setActionError(null) }}
               disabled={actionLoading}
-              className="inline-flex items-center gap-2 text-sm border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/[0.06] text-[#FFB81C] px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/[0.06] text-[#D4AF37] px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
             >
               <RefreshCw size={13} />
               Rotate
@@ -482,7 +482,7 @@ export default function ApiKeyDetailPage() {
             </code>
             <button
               onClick={() => copyKey(rotationResult.key.rawKey)}
-              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#FFB81C] border border-white/[0.08] hover:border-[#FFB81C]/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#D4AF37] border border-white/[0.08] hover:border-[#D4AF37]/30 px-2 py-1 rounded-lg transition-colors flex-shrink-0"
             >
               {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
               {copied ? 'Copied' : 'Copy'}
@@ -547,7 +547,7 @@ export default function ApiKeyDetailPage() {
           title="Rotate API Key"
           description="This will generate a new key. Your old key will remain valid for 24 hours to give you time to update your integrations."
           confirmLabel="Rotate Key"
-          confirmClass="bg-[#FFB81C] hover:bg-[#E6A519] text-black"
+          confirmClass="bg-[#D4AF37] hover:bg-[#E6A519] text-black"
           onConfirm={handleRotate}
           onCancel={() => setShowRotateConfirm(false)}
         />

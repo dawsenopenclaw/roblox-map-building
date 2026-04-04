@@ -42,7 +42,7 @@ export default function TermsPage() {
     <article className="max-w-3xl">
       {/* ── Header ── */}
       <div className="mb-12">
-        <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-3 py-1 text-xs text-[#FFB81C] font-medium mb-5">
+        <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-3 py-1 text-xs text-[#D4AF37] font-medium mb-5">
           Legal Document
         </div>
         <h1 className="text-3xl font-bold text-[#FAFAFA] mb-3">Terms of Service</h1>
@@ -65,7 +65,7 @@ export default function TermsPage() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="text-sm text-[#71717A] hover:text-[#FFB81C] transition-colors block py-1"
+                className="text-sm text-[#71717A] hover:text-[#D4AF37] transition-colors block py-1"
               >
                 {s.title}
               </a>
@@ -353,14 +353,14 @@ export default function TermsPage() {
             'Use the Service to develop competing products or services without our written consent',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
         </ul>
         <p className="text-[#71717A] leading-relaxed">
           Full Acceptable Use details are available at{' '}
-          <Link href="/acceptable-use" className="text-[#FFB81C] hover:underline">
+          <Link href="/acceptable-use" className="text-[#D4AF37] hover:underline">
             forjegames.com/acceptable-use
           </Link>
           .
@@ -384,7 +384,7 @@ export default function TermsPage() {
           Copyright Act (17 U.S.C. § 512). If you believe content on the Service infringes your
           copyright, submit a compliant takedown notice to our designated agent. We will respond
           within 48 hours. See our{' '}
-          <Link href="/dmca" className="text-[#FFB81C] hover:underline">
+          <Link href="/dmca" className="text-[#D4AF37] hover:underline">
             DMCA Policy
           </Link>{' '}
           for full instructions.
@@ -408,7 +408,7 @@ export default function TermsPage() {
         <SectionHeading number="11" title="Privacy &amp; Data" />
         <p className="text-[#71717A] leading-relaxed">
           Your use of the Service is subject to our{' '}
-          <Link href="/privacy" className="text-[#FFB81C] hover:underline">
+          <Link href="/privacy" className="text-[#D4AF37] hover:underline">
             Privacy Policy
           </Link>
           , which is incorporated into these Terms by reference. The Privacy Policy describes how we
@@ -422,8 +422,8 @@ export default function TermsPage() {
       {/* ── Section 12 ── */}
       <section id="charity" className="scroll-mt-24 mt-12">
         <SectionHeading number="12" title="Charity Donation Disclosure" />
-        <div className="bg-[#FFB81C]/[0.06] border border-[#FFB81C]/20 rounded-2xl p-5 mb-5">
-          <p className="text-sm font-semibold text-[#FFB81C] mb-2">Important Disclosure</p>
+        <div className="bg-[#D4AF37]/[0.06] border border-[#D4AF37]/20 rounded-2xl p-5 mb-5">
+          <p className="text-sm font-semibold text-[#D4AF37] mb-2">Important Disclosure</p>
           <p className="text-sm text-[#71717A] leading-relaxed">
             10% of ForjeGames revenue is donated to charitable causes selected by {OWNER}. These
             donations are made by {COMPANY} — they are{' '}
@@ -525,7 +525,7 @@ export default function TermsPage() {
             href="https://ec.europa.eu/consumers/odr"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#FFB81C] hover:underline"
+            className="text-[#D4AF37] hover:underline"
           >
             ec.europa.eu/consumers/odr
           </a>
@@ -601,7 +601,7 @@ export default function TermsPage() {
           </p>
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">Legal inquiries:</span>{' '}
-            <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
               {EMAIL}
             </a>
           </p>
@@ -617,7 +617,7 @@ export default function TermsPage() {
 function SectionHeading({ number, title }: { number: string; title: string }) {
   return (
     <h2 className="flex items-baseline gap-3 text-xl font-bold text-[#FAFAFA] mb-5 pb-3 border-b border-white/[0.06]">
-      <span className="text-[#FFB81C] font-bold text-base tabular-nums">{number}.</span>
+      <span className="text-[#D4AF37] font-bold text-base tabular-nums">{number}.</span>
       <span dangerouslySetInnerHTML={{ __html: title }} />
     </h2>
   )

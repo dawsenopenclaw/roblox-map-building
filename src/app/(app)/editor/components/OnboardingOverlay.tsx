@@ -320,7 +320,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
             style={{
               width: 40,
               height: 40,
-              background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(255,184,28,0.08) 100%)',
+              background: 'linear-gradient(135deg, rgba(212,175,55,0.15) 0%, rgba(212,175,55,0.08) 100%)',
               border: '1px solid rgba(212,175,55,0.2)',
             }}
           >
@@ -371,7 +371,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
                 padding: '7px 18px',
                 borderRadius: 10,
                 border: 'none',
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                 color: '#030712',
                 fontSize: 12,
                 fontFamily: 'Inter, sans-serif',
@@ -400,40 +400,40 @@ function StepIcon({ step }: { step: string }) {
     case 'welcome':
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M9 1.5L11 7H16.5L12 10.5l1.5 5L9 13l-4.5 2.5 1.5-5L1.5 7H7L9 1.5z" fill="#FFB81C" opacity={0.9}/>
+          <path d="M9 1.5L11 7H16.5L12 10.5l1.5 5L9 13l-4.5 2.5 1.5-5L1.5 7H7L9 1.5z" fill="#D4AF37" opacity={0.9}/>
         </svg>
       )
     case 'input':
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <rect x="2" y="5" width="14" height="8" rx="3" stroke="#FFB81C" strokeWidth="1.4"/>
-          <path d="M5 9h4M11 7v4" stroke="#FFB81C" strokeWidth="1.4" strokeLinecap="round"/>
+          <rect x="2" y="5" width="14" height="8" rx="3" stroke="#D4AF37" strokeWidth="1.4"/>
+          <path d="M5 9h4M11 7v4" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
       )
     case 'code':
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M6 6L2 9l4 3M12 6l4 3-4 3M10 5l-2 8" stroke="#FFB81C" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M6 6L2 9l4 3M12 6l4 3-4 3M10 5l-2 8" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     case 'connect':
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="4" cy="9" r="2.5" stroke="#FFB81C" strokeWidth="1.4"/>
-          <circle cx="14" cy="9" r="2.5" stroke="#FFB81C" strokeWidth="1.4"/>
-          <path d="M6.5 9h5" stroke="#FFB81C" strokeWidth="1.4" strokeLinecap="round"/>
+          <circle cx="4" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <circle cx="14" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <path d="M6.5 9h5" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
       )
     case 'try':
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M5 3l10 6-10 6V3z" fill="#FFB81C" opacity={0.9}/>
+          <path d="M5 3l10 6-10 6V3z" fill="#D4AF37" opacity={0.9}/>
         </svg>
       )
     default:
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <circle cx="9" cy="9" r="6" stroke="#FFB81C" strokeWidth="1.4"/>
+          <circle cx="9" cy="9" r="6" stroke="#D4AF37" strokeWidth="1.4"/>
         </svg>
       )
   }

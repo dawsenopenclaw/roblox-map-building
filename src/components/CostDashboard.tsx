@@ -34,7 +34,7 @@ export function CostDashboard() {
       {/* Today's running cost */}
       <div className="bg-[#141414] border border-white/10 rounded-xl p-6">
         <h2 className="text-white font-semibold mb-4">Today&apos;s API Spend</h2>
-        <p className="text-4xl font-bold text-[#FFB81C]">
+        <p className="text-4xl font-bold text-[#D4AF37]">
           {formatCurrency(today?.totalCostUsd || 0)}
         </p>
         {today?.byProvider && (

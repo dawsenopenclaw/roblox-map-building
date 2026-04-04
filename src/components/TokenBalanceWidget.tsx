@@ -22,7 +22,7 @@ export function TokenBalanceWidget() {
       aria-atomic="true"
     >
       <p className="text-gray-300 text-sm font-medium uppercase tracking-wide">Token Balance</p>
-      <p className="text-3xl font-bold text-[#FFB81C] mt-1" aria-hidden="true">
+      <p className="text-3xl font-bold text-[#D4AF37] mt-1" aria-hidden="true">
         {(data?.balance || 0).toLocaleString()}
       </p>
       <p className="text-gray-400 text-xs mt-1">

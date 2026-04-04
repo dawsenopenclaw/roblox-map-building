@@ -316,8 +316,8 @@ function Callout({
     info: {
       border: 'border-[#D4AF37]/20', bg: 'bg-[#D4AF37]/[0.04]',
       icon: <InfoIcon />,
-      iconColor: 'text-[#FFB81C]',
-      label: 'Note', labelColor: 'text-[#FFB81C]',
+      iconColor: 'text-[#D4AF37]',
+      label: 'Note', labelColor: 'text-[#D4AF37]',
     },
     warn: {
       border: 'border-amber-500/25', bg: 'bg-amber-500/[0.05]',
@@ -420,7 +420,7 @@ function HeroSection() {
           { value: '100%', label: 'Local — no uploads' },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-white/[0.07] p-4 text-center" style={{ background: 'rgba(255,255,255,0.025)' }}>
-            <p className="text-lg font-bold text-[#FFB81C]">{s.value}</p>
+            <p className="text-lg font-bold text-[#D4AF37]">{s.value}</p>
             <p className="mt-0.5 text-[11px] text-[#52525B]">{s.label}</p>
           </div>
         ))}
@@ -783,7 +783,7 @@ export default function StudioDocsClient() {
             <a
               href="/api/studio/plugin"
               download="ForjeGames.rbxmx"
-              className="flex items-center gap-1.5 text-xs font-medium text-[#D4AF37] transition-colors hover:text-[#FFB81C]"
+              className="flex items-center gap-1.5 text-xs font-medium text-[#D4AF37] transition-colors hover:text-[#D4AF37]"
             >
               <Download size={12} />
               Download Plugin

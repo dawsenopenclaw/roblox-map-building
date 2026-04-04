@@ -77,7 +77,7 @@ const METHOD_COLORS: Record<string, string> = {
 function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
     <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-5 flex items-start gap-4">
-      <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+      <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center flex-shrink-0">
         {icon}
       </div>
       <div>
@@ -113,7 +113,7 @@ export default function AdminOverviewPage() {
   if (loading || !stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function AdminOverviewPage() {
           <p className="text-[#B0B0B0] text-sm mt-1">Platform health at a glance</p>
         </div>
         {isDemo && (
-          <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+          <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full">
             Demo data — DB unavailable
           </span>
         )}
@@ -145,27 +145,27 @@ export default function AdminOverviewPage() {
         <StatCard
           title="Total Users"
           value={stats.totalUsers.toLocaleString()}
-          icon={<Users className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<Users className="w-5 h-5 text-[#D4AF37]" />}
         />
         <StatCard
           title="Revenue (MRR)"
           value={mrrDisplay}
-          icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<DollarSign className="w-5 h-5 text-[#D4AF37]" />}
         />
         <StatCard
           title="Total Builds"
           value={stats.totalBuilds.toLocaleString()}
-          icon={<Layers className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<Layers className="w-5 h-5 text-[#D4AF37]" />}
         />
         <StatCard
           title="Active Builds"
           value={stats.activeBuilds.toLocaleString()}
-          icon={<Hammer className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<Hammer className="w-5 h-5 text-[#D4AF37]" />}
         />
         <StatCard
           title="Pending Reviews"
           value={stats.pendingReviews.toLocaleString()}
-          icon={<ClipboardList className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<ClipboardList className="w-5 h-5 text-[#D4AF37]" />}
         />
       </div>
 
@@ -177,7 +177,7 @@ export default function AdminOverviewPage() {
           </h2>
           <p className="text-xs text-[#B0B0B0] mb-4">
             Total:{' '}
-            <span className="text-[#FFB81C] font-semibold">
+            <span className="text-[#D4AF37] font-semibold">
               ${(stats.revenueChart.reduce((s, d) => s + d.revenueCents, 0) / 100).toLocaleString()}
             </span>
           </p>
@@ -192,7 +192,7 @@ export default function AdminOverviewPage() {
                 >
                   <div
                     title={`${point.date}: $${(point.revenueCents / 100).toFixed(0)}`}
-                    className="w-full rounded-t bg-[#FFB81C]/25 hover:bg-[#FFB81C]/50 transition-colors cursor-pointer"
+                    className="w-full rounded-t bg-[#D4AF37]/25 hover:bg-[#D4AF37]/50 transition-colors cursor-pointer"
                     style={{ height: `${Math.max(height, 2)}%` }}
                   />
                 </div>
@@ -208,7 +208,7 @@ export default function AdminOverviewPage() {
         {/* Recent activity */}
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
           <h2 className="text-sm font-semibold text-[#B0B0B0] uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#FFB81C]" />
+            <Activity className="w-4 h-4 text-[#D4AF37]" />
             Recent Activity
           </h2>
           {stats.recentActivity.length === 0 ? (

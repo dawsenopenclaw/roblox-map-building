@@ -29,7 +29,7 @@ export default function AcceptableUsePage() {
     <article className="max-w-3xl">
       {/* ── Header ── */}
       <div className="mb-12">
-        <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-3 py-1 text-xs text-[#FFB81C] font-medium mb-5">
+        <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-3 py-1 text-xs text-[#D4AF37] font-medium mb-5">
           Usage Policy
         </div>
         <h1 className="text-3xl font-bold text-[#FAFAFA] mb-3">Acceptable Use Policy</h1>
@@ -52,7 +52,7 @@ export default function AcceptableUsePage() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="text-sm text-[#71717A] hover:text-[#FFB81C] transition-colors block py-1"
+                className="text-sm text-[#71717A] hover:text-[#D4AF37] transition-colors block py-1"
               >
                 {s.title}
               </a>
@@ -69,7 +69,7 @@ export default function AcceptableUsePage() {
       </p>
       <p className="text-[#71717A] leading-relaxed mb-10">
         This AUP supplements our{' '}
-        <Link href="/terms" className="text-[#FFB81C] hover:underline">
+        <Link href="/terms" className="text-[#D4AF37] hover:underline">
           Terms of Service
         </Link>
         . In case of conflict, the Terms of Service prevail.
@@ -91,7 +91,7 @@ export default function AcceptableUsePage() {
             'Constitutes or facilitates human trafficking, exploitation, or slavery',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -105,7 +105,7 @@ export default function AcceptableUsePage() {
             'Circumvents our COPPA age verification or parental consent systems',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -120,7 +120,7 @@ export default function AcceptableUsePage() {
             'Publishes unauthorized recordings or images of private individuals',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -138,7 +138,7 @@ export default function AcceptableUsePage() {
             'Spreads disinformation, misinformation, or coordinated inauthentic behavior',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -167,7 +167,7 @@ export default function AcceptableUsePage() {
             'Resell or white-label the Service without an explicit written agreement',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -192,7 +192,7 @@ export default function AcceptableUsePage() {
             "Generate content that violates Roblox Corporation's Community Standards — including weapons of mass destruction content, extremist content, or graphic violence",
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -211,7 +211,7 @@ export default function AcceptableUsePage() {
             href="https://en.help.roblox.com/hc/en-us/articles/203313410"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#FFB81C] hover:underline"
+            className="text-[#D4AF37] hover:underline"
           >
             Community Standards
           </a>{' '}
@@ -220,7 +220,7 @@ export default function AcceptableUsePage() {
             href="https://en.help.roblox.com/hc/en-us/articles/115004647846"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[#FFB81C] hover:underline"
+            className="text-[#D4AF37] hover:underline"
           >
             Terms of Use
           </a>
@@ -236,7 +236,7 @@ export default function AcceptableUsePage() {
         <SectionHeading number="5" title="Reporting Violations" />
         <p className="text-[#71717A] leading-relaxed mb-5">
           Report AUP violations to{' '}
-          <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+          <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
             {EMAIL}
           </a>
           . Include:
@@ -248,7 +248,7 @@ export default function AcceptableUsePage() {
             'Any supporting evidence',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -288,7 +288,7 @@ export default function AcceptableUsePage() {
             'Any other jurisdiction subject to comprehensive U.S. sanctions',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -317,7 +317,7 @@ export default function AcceptableUsePage() {
             'Pursuing civil remedies',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -333,7 +333,7 @@ export default function AcceptableUsePage() {
         <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-5 text-sm space-y-1">
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">Report abuse:</span>{' '}
-            <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
               {EMAIL}
             </a>
           </p>
@@ -349,7 +349,7 @@ export default function AcceptableUsePage() {
 function SectionHeading({ number, title }: { number: string; title: string }) {
   return (
     <h2 className="flex items-baseline gap-3 text-xl font-bold text-[#FAFAFA] mb-5 pb-3 border-b border-white/[0.06]">
-      <span className="text-[#FFB81C] font-bold text-base tabular-nums">{number}.</span>
+      <span className="text-[#D4AF37] font-bold text-base tabular-nums">{number}.</span>
       <span dangerouslySetInnerHTML={{ __html: title }} />
     </h2>
   )

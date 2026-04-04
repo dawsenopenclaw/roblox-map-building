@@ -139,14 +139,14 @@ export default function OnboardingPlanPage() {
               key={plan.key}
               className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-300 ${
                 plan.highlight
-                  ? 'shadow-[0_0_50px_rgba(255,184,28,0.12),0_8px_32px_rgba(255,184,28,0.08)] sm:-mt-4 sm:pb-10 sm:pt-10'
+                  ? 'shadow-[0_0_50px_rgba(212,175,55,0.12),0_8px_32px_rgba(212,175,55,0.08)] sm:-mt-4 sm:pb-10 sm:pt-10'
                   : 'hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]'
               }`}
               style={
                 plan.highlight
                   ? {
                       background: 'linear-gradient(160deg, #0E1530 0%, #0B1028 100%)',
-                      borderColor: 'rgba(255,184,28,0.3)',
+                      borderColor: 'rgba(212,175,55,0.3)',
                     }
                   : { background: '#0F1535', borderColor: '#1A2550' }
               }
@@ -156,7 +156,7 @@ export default function OnboardingPlanPage() {
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span
                     className="text-xs font-bold px-4 py-1.5 rounded-full text-black whitespace-nowrap"
-                    style={{ background: 'linear-gradient(135deg, #FFB81C, #FFD966)' }}
+                    style={{ background: 'linear-gradient(135deg, #D4AF37, #FFD966)' }}
                   >
                     {plan.badge}
                   </span>
@@ -167,14 +167,14 @@ export default function OnboardingPlanPage() {
               <div className="mb-5 mt-1">
                 <div
                   className={`inline-flex items-center justify-center w-10 h-10 rounded-xl mb-3 ${
-                    plan.highlight ? 'bg-[#FFB81C]/15 text-[#FFB81C]' : 'bg-white/5 text-[#8B95B0]'
+                    plan.highlight ? 'bg-[#D4AF37]/15 text-[#D4AF37]' : 'bg-white/5 text-[#8B95B0]'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
                 </div>
                 <p
                   className={`text-lg font-bold mb-1 ${
-                    plan.highlight ? 'text-[#FFB81C]' : 'text-white'
+                    plan.highlight ? 'text-[#D4AF37]' : 'text-white'
                   }`}
                 >
                   {plan.name}
@@ -209,7 +209,7 @@ export default function OnboardingPlanPage() {
                   }`}
                   style={
                     plan.highlight
-                      ? { background: 'linear-gradient(135deg, #FFB81C, #FFD966)' }
+                      ? { background: 'linear-gradient(135deg, #D4AF37, #FFD966)' }
                       : {}
                   }
                 >
@@ -228,7 +228,7 @@ export default function OnboardingPlanPage() {
               <div
                 className="h-px mb-5"
                 style={{
-                  background: plan.highlight ? 'rgba(255,184,28,0.2)' : '#1A2550',
+                  background: plan.highlight ? 'rgba(212,175,55,0.2)' : '#1A2550',
                 }}
               />
 
@@ -238,7 +238,7 @@ export default function OnboardingPlanPage() {
                   <li key={f} className="flex items-start gap-2.5">
                     <Check
                       className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                        plan.highlight ? 'text-[#FFB81C]' : 'text-[#8B95B0]'
+                        plan.highlight ? 'text-[#D4AF37]' : 'text-[#8B95B0]'
                       }`}
                     />
                     <span
@@ -259,7 +259,7 @@ export default function OnboardingPlanPage() {
       {/* Skip */}
       <p className="mt-8 text-sm text-[#8B95B0]">
         Not sure yet?{' '}
-        <Link href="/editor" className="text-white hover:text-[#FFB81C] transition-colors underline underline-offset-2">
+        <Link href="/editor" className="text-white hover:text-[#D4AF37] transition-colors underline underline-offset-2">
           Skip for now
         </Link>{' '}
         — you can upgrade from your dashboard anytime.

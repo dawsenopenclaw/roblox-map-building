@@ -133,7 +133,7 @@ function CubePreview({ active, thumbnailUrl }: { active: boolean; thumbnailUrl?:
   if (thumbnailUrl) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <img src={thumbnailUrl} alt="Generated asset preview" className="w-full h-full object-contain rounded" />
+        <img src={thumbnailUrl} alt="Generated asset preview" width={64} height={64} className="w-full h-full object-contain rounded" />
       </div>
     )
   }

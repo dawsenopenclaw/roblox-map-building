@@ -7,6 +7,7 @@ import { earnTokens, spendTokens } from '@/lib/tokens-server'
 import { processDonation } from '@/lib/charity'
 import { getTierTokenAllowance, getTokenPackBySlug, type SubscriptionTier, SUBSCRIPTION_TIERS } from '@/lib/subscription-tiers'
 import type Stripe from 'stripe'
+import { PLATFORM_FEE_PERCENT } from '@/lib/constants'
 
 import { notifyTemplateSoldClient, sendNotification } from '@/lib/notifications-client'
 import {
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
           const { templateId, buyerId } = session.metadata
           const amountCents = session.amount_total ?? 0
           // Recompute fee split server-side from the authoritative amount_total — never trust client metadata
-          const platformFeeCentsComputed = Math.round(amountCents * 0.30)
+          const platformFeeCentsComputed = Math.round(amountCents * PLATFORM_FEE_PERCENT)
           const creatorPayoutCentsComputed = amountCents - platformFeeCentsComputed
 
           // Fetch template to get creator + title
@@ -429,6 +430,101 @@ export async function POST(req: NextRequest) {
             }
           }
         }
+        break
+      }
+
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object as Stripe.Dispute
+        const won = dispute.status === 'won'
+
+        await db.auditLog.create({
+          data: {
+            action: won ? 'CHARGE_DISPUTE_WON' : 'CHARGE_DISPUTE_LOST',
+            resource: 'stripe',
+            resourceId: dispute.id,
+            metadata: { amount: dispute.amount, reason: dispute.reason, status: dispute.status },
+          },
+        })
+
+        Sentry.captureMessage(`[stripe] Dispute ${won ? 'won' : 'lost'}: ${dispute.id}`, {
+          level: won ? 'info' : 'error',
+          tags: { webhook: 'stripe', eventType: 'charge.dispute.closed' },
+          extra: { disputeId: dispute.id, amount: dispute.amount, reason: dispute.reason, status: dispute.status },
+        })
+
+        if (dispute.charge) {
+          const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge.id
+          const charge = await stripe.charges.retrieve(chargeId)
+          const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id
+          if (paymentIntentId) {
+            const purchase = await db.templatePurchase.findFirst({
+              where: { stripePaymentIntentId: paymentIntentId },
+              select: { templateId: true, buyerId: true, template: { select: { creatorId: true } } },
+            })
+
+            if (won) {
+              // Dispute won — unfreeze payouts so the creator can be paid out
+              await db.templatePurchase.updateMany({
+                where: { stripePaymentIntentId: paymentIntentId, payoutStatus: 'FROZEN' },
+                data: { payoutStatus: 'PENDING' },
+              })
+              if (purchase) {
+                await db.creatorEarning.updateMany({
+                  where: { templateId: purchase.templateId, buyerId: purchase.buyerId, status: 'FROZEN' },
+                  data: { status: 'PENDING' },
+                })
+                // Notify the creator that the dispute was resolved in their favour
+                if (purchase.template.creatorId) {
+                  sendNotification({
+                    userId: purchase.template.creatorId,
+                    type: 'SYSTEM',
+                    title: 'Dispute resolved in your favour',
+                    body: 'A payment dispute was closed and decided in your favour. Your payout has been unfrozen.',
+                    actionUrl: '/dashboard/earnings',
+                    priority: 'high',
+                  }).catch(() => {})
+                }
+              }
+            } else {
+              // Dispute lost — payouts stay frozen; mark purchase and earnings as lost
+              await db.templatePurchase.updateMany({
+                where: { stripePaymentIntentId: paymentIntentId, payoutStatus: 'FROZEN' },
+                data: { payoutStatus: 'REFUNDED' },
+              })
+              if (purchase) {
+                await db.creatorEarning.updateMany({
+                  where: { templateId: purchase.templateId, buyerId: purchase.buyerId, status: 'FROZEN' },
+                  data: { status: 'REFUNDED' },
+                })
+                // Notify the creator that the dispute was lost
+                if (purchase.template.creatorId) {
+                  sendNotification({
+                    userId: purchase.template.creatorId,
+                    type: 'SYSTEM',
+                    title: 'Dispute resolved against you',
+                    body: 'A payment dispute was closed and decided against you. The associated payout has been cancelled.',
+                    actionUrl: '/dashboard/earnings',
+                    priority: 'critical',
+                  }).catch(() => {})
+                }
+              }
+            }
+          }
+        }
+        break
+      }
+
+      case 'charge.dispute.updated': {
+        const dispute = event.data.object as Stripe.Dispute
+        // Keep the audit trail current as the dispute progresses through Stripe's review stages
+        await db.auditLog.create({
+          data: {
+            action: 'CHARGE_DISPUTE_UPDATED',
+            resource: 'stripe',
+            resourceId: dispute.id,
+            metadata: { amount: dispute.amount, reason: dispute.reason, status: dispute.status },
+          },
+        })
         break
       }
 

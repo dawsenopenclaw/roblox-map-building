@@ -7,7 +7,8 @@ import { useState, useEffect, useCallback } from 'react'
 type NotificationType =
   | 'BUILD_COMPLETE' | 'BUILD_FAILED' | 'TOKEN_LOW' | 'TOKEN_DEPLETED'
   | 'SALE' | 'REFERRAL_EARNED' | 'TEAM_INVITE' | 'ACHIEVEMENT_UNLOCKED'
-  | 'SYSTEM' | 'WEEKLY_DIGEST'
+  | 'SYSTEM' | 'WEEKLY_DIGEST' | 'TEMPLATE_PURCHASED' | 'PAYOUT_COMPLETED'
+  | 'REVIEW_RECEIVED' | 'PAYOUT_FAILED'
 
 type Channel = 'EMAIL' | 'SMS' | 'PUSH' | 'IN_APP'
 
@@ -33,6 +34,10 @@ const TYPE_LABELS: Record<NotificationType, { label: string; description: string
   ACHIEVEMENT_UNLOCKED: { label: 'Achievement unlocked', description: 'When you earn a new achievement',              category: 'Social' },
   SYSTEM:               { label: 'System updates',       description: 'Important platform announcements',             category: 'General' },
   WEEKLY_DIGEST:        { label: 'Weekly digest',        description: 'Your weekly stats and trending templates',     category: 'General' },
+  TEMPLATE_PURCHASED:   { label: 'Template purchased',   description: 'When someone buys your template',              category: 'Earnings' },
+  PAYOUT_COMPLETED:     { label: 'Payout completed',     description: 'When your earnings payout is processed',       category: 'Earnings' },
+  REVIEW_RECEIVED:      { label: 'Review received',      description: 'When someone reviews your template',           category: 'Social' },
+  PAYOUT_FAILED:        { label: 'Payout failed',        description: 'When a payout fails and needs attention',      category: 'Earnings' },
 }
 
 const CHANNEL_LABELS: Record<Channel, { label: string; icon: React.ReactNode }> = {

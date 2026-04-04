@@ -193,7 +193,7 @@ function ParamTable({ params }: { params: Param[] }) {
               style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(26,37,80,0.3)' }}
             >
               <td className="px-4 py-3">
-                <code className="text-[#FFB81C] font-mono text-xs">{p.name}</code>
+                <code className="text-[#D4AF37] font-mono text-xs">{p.name}</code>
               </td>
               <td className="px-4 py-3">
                 <code className="text-purple-400 font-mono text-xs">{p.type}</code>
@@ -376,7 +376,7 @@ export default function DocsClient() {
         .hl-key     { color: #7dd3fc; }
         .hl-number  { color: #fb923c; }
         .hl-boolean { color: #f472b6; }
-        .hl-flag    { color: #FFB81C; }
+        .hl-flag    { color: #D4AF37; }
         .hl-method  { color: #c084fc; }
         .hl-url     { color: #86efac; }
       `}</style>
@@ -394,7 +394,7 @@ export default function DocsClient() {
             {/* Mobile hamburger */}
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="lg:hidden ml-auto p-1.5 rounded-lg border border-[#1A2550] hover:border-[#FFB81C]/40 transition-colors"
+              className="lg:hidden ml-auto p-1.5 rounded-lg border border-[#1A2550] hover:border-[#D4AF37]/40 transition-colors"
               aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
               aria-expanded={sidebarOpen}
             >
@@ -452,12 +452,12 @@ export default function DocsClient() {
               {/* Step 1 */}
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">1</span>
+                  <span className="w-7 h-7 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xs font-bold flex-shrink-0">1</span>
                   <h3 className="text-white font-semibold text-sm">Sign up for free</h3>
                 </div>
                 <p className="text-sm leading-relaxed ml-10" style={{ color: '#8B95B0' }}>
                   Create an account at{' '}
-                  <Link href="/sign-up" className="text-[#FFB81C] hover:underline">forjegames.com/sign-up</Link>.
+                  <Link href="/sign-up" className="text-[#D4AF37] hover:underline">forjegames.com/sign-up</Link>.
                   No credit card required. You get 10 free AI calls per day on the Free plan immediately after sign-up.
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function DocsClient() {
               {/* Step 2 */}
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">2</span>
+                  <span className="w-7 h-7 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xs font-bold flex-shrink-0">2</span>
                   <h3 className="text-white font-semibold text-sm">Open the Editor</h3>
                 </div>
                 <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
@@ -480,7 +480,7 @@ export default function DocsClient() {
                     <span className="text-xs ml-2 font-mono" style={{ color: '#71717A' }}>forjegames.com/editor</span>
                   </div>
                   <div className="px-5 py-4 text-xs leading-relaxed" style={{ color: '#8B95B0' }}>
-                    <span className="text-[#FFB81C]">ForjeGames Editor</span> — AI Build Assistant ready
+                    <span className="text-[#D4AF37]">ForjeGames Editor</span> — AI Build Assistant ready
                   </div>
                 </div>
               </div>
@@ -488,7 +488,7 @@ export default function DocsClient() {
               {/* Step 3 */}
               <div className="mb-8">
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">3</span>
+                  <span className="w-7 h-7 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xs font-bold flex-shrink-0">3</span>
                   <h3 className="text-white font-semibold text-sm">Type or speak your first build command</h3>
                 </div>
                 <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
@@ -508,7 +508,7 @@ export default function DocsClient() {
                         className="rounded-lg border border-[#1A2550] px-4 py-2.5 text-xs font-mono"
                         style={{ background: '#0F1535', color: '#8B95B0' }}
                       >
-                        <span className="text-[#FFB81C] mr-2">&gt;</span>{prompt}
+                        <span className="text-[#D4AF37] mr-2">&gt;</span>{prompt}
                       </div>
                     ))}
                   </div>
@@ -518,7 +518,7 @@ export default function DocsClient() {
               {/* Step 4 */}
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 border border-[#FFB81C]/30 flex items-center justify-center text-[#FFB81C] text-xs font-bold flex-shrink-0">4</span>
+                  <span className="w-7 h-7 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] text-xs font-bold flex-shrink-0">4</span>
                   <h3 className="text-white font-semibold text-sm">Import to Roblox Studio</h3>
                 </div>
                 <p className="text-sm leading-relaxed ml-10 mb-3" style={{ color: '#8B95B0' }}>
@@ -727,13 +727,13 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                     key={plan.name}
                     className={`rounded-xl border p-5 flex flex-col ${
                       plan.highlight
-                        ? 'border-[#FFB81C]/40'
+                        ? 'border-[#D4AF37]/40'
                         : 'border-[#1A2550]'
                     }`}
-                    style={{ background: plan.highlight ? 'rgba(255,184,28,0.04)' : '#0F1535' }}
+                    style={{ background: plan.highlight ? 'rgba(212,175,55,0.04)' : '#0F1535' }}
                   >
                     {plan.highlight && (
-                      <span className="inline-flex self-start text-[10px] font-bold text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/25 px-2 py-0.5 rounded mb-3">
+                      <span className="inline-flex self-start text-[10px] font-bold text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/25 px-2 py-0.5 rounded mb-3">
                         MOST POPULAR
                       </span>
                     )}
@@ -756,8 +756,8 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                       href="/sign-up"
                       className={`mt-5 block text-center text-xs font-semibold py-2 rounded-lg transition-colors ${
                         plan.highlight
-                          ? 'bg-[#FFB81C] text-black hover:bg-[#e6a619]'
-                          : 'border border-[#1A2550] hover:border-[#FFB81C]/40 hover:text-white'
+                          ? 'bg-[#D4AF37] text-black hover:bg-[#e6a619]'
+                          : 'border border-[#1A2550] hover:border-[#D4AF37]/40 hover:text-white'
                       }`}
                       style={!plan.highlight ? { color: '#8B95B0' } : undefined}
                     >
@@ -773,7 +773,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
               >
                 <strong className="text-white">Enterprise?</strong> Custom contracts, SLA guarantees, on-premise
                 deployment, and volume discounts are available. Contact{' '}
-                <a href="mailto:enterprise@forjegames.com" className="text-[#FFB81C] hover:underline">
+                <a href="mailto:enterprise@forjegames.com" className="text-[#D4AF37] hover:underline">
                   enterprise@forjegames.com
                 </a>.
               </div>
@@ -802,7 +802,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                 <SectionLabel>1. Get an API key</SectionLabel>
                 <p className="text-sm mb-4" style={{ color: '#8B95B0' }}>
                   Sign in to your dashboard and navigate to{' '}
-                  <Link href="/settings/api-keys" className="text-[#FFB81C] hover:underline">
+                  <Link href="/settings/api-keys" className="text-[#D4AF37] hover:underline">
                     Settings &rarr; API Keys
                   </Link>{' '}
                   to create a key. The raw key is shown once — save it immediately.
@@ -828,11 +828,11 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
               <SectionHeading id="authentication">Authentication</SectionHeading>
               <p className="text-sm leading-relaxed mb-7" style={{ color: '#8B95B0' }}>
                 All API requests must be authenticated with a Bearer token in the{' '}
-                <code className="text-[#FFB81C] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>
+                <code className="text-[#D4AF37] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>
                   Authorization
                 </code>{' '}
                 header. API keys are prefixed with{' '}
-                <code className="text-[#FFB81C] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>fg_sk_</code>.
+                <code className="text-[#D4AF37] font-mono text-xs px-1.5 py-0.5 rounded" style={{ background: '#0F1535' }}>fg_sk_</code>.
               </p>
 
               <div className="mb-7">
@@ -847,7 +847,7 @@ ForjeGames.import("https://api.forjegames.com/imports/YOUR_BUILD_ID")`}
                 className="rounded-xl border border-[#D4AF37]/20 p-4 text-sm leading-relaxed"
                 style={{ background: 'rgba(212,175,55,0.04)', color: '#FAFAFA99' }}
               >
-                <strong className="text-[#FFB81C]">Security:</strong> Never expose your API key in client-side code or
+                <strong className="text-[#D4AF37]">Security:</strong> Never expose your API key in client-side code or
                 public repositories. Use environment variables and server-side requests only.
               </div>
             </section>
@@ -1225,7 +1225,7 @@ result = fg.ai.generate(
                       ].map((row, i) => (
                         <tr key={row.header} className={i < 3 ? 'border-b border-[#1A2550]' : ''}>
                           <td className="px-4 py-3 w-72">
-                            <code className="text-[#FFB81C] font-mono text-xs">{row.header}</code>
+                            <code className="text-[#D4AF37] font-mono text-xs">{row.header}</code>
                           </td>
                           <td className="px-4 py-3 text-sm" style={{ color: '#8B95B0' }}>{row.desc}</td>
                         </tr>
@@ -1337,7 +1337,7 @@ function SidebarContent({
                     onClick={() => onSelect(item.id)}
                     className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors leading-snug font-mono ${
                       isActive
-                        ? 'text-[#FFB81C] bg-[#FFB81C]/8'
+                        ? 'text-[#D4AF37] bg-[#D4AF37]/8'
                         : 'hover:text-white hover:bg-[#1A2550]/50'
                     }`}
                     style={!isActive ? { color: '#8B95B0' } : undefined}

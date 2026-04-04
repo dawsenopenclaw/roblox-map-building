@@ -116,9 +116,9 @@ const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: s
     bg: 'bg-[#D4AF37]/10',
   },
   achievement: {
-    border: 'border-[#FFB81C]/50',
+    border: 'border-[#D4AF37]/50',
     icon: '★',
-    bg: 'bg-[#FFB81C]/10',
+    bg: 'bg-[#D4AF37]/10',
   },
   building: {
     border: 'border-[#D4AF37]/50',
@@ -132,7 +132,7 @@ const ICON_COLOR: Record<ToastVariant, string> = {
   error:       'text-red-400',
   info:        'text-blue-400',
   warning:     'text-[#D4AF37]',
-  achievement: 'text-[#FFB81C]',
+  achievement: 'text-[#D4AF37]',
   building:    'text-[#D4AF37]',
 }
 
@@ -141,7 +141,7 @@ const PROGRESS_COLOR: Record<ToastVariant, string> = {
   error:       'bg-red-500',
   info:        'bg-blue-500',
   warning:     'bg-[#D4AF37]',
-  achievement: 'bg-[#FFB81C]',
+  achievement: 'bg-[#D4AF37]',
   building:    'bg-[#D4AF37]',
 }
 
@@ -149,7 +149,7 @@ const PROGRESS_COLOR: Record<ToastVariant, string> = {
 
 const CONFETTI_PARTICLES = Array.from({ length: 8 }, (_, i) => ({
   id: i,
-  color: i % 2 === 0 ? '#FFB81C' : '#ffffff',
+  color: i % 2 === 0 ? '#D4AF37' : '#ffffff',
   x: (i / 8) * 100 - 50,
   rotation: i * 45,
 }))

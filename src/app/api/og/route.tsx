@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server'
 export const runtime = 'edge'
 
 const BG = '#0a0a0a'
-const GOLD = '#FFB81C'
+const GOLD = '#D4AF37'
 const DARK_CARD = '#141414'
 const GRAY = '#9CA3AF'
 
@@ -12,7 +12,7 @@ const GRAY = '#9CA3AF'
 const TIER_COLORS: Record<string, string> = {
   BRONZE: '#CD7F32',
   SILVER: '#C0C0C0',
-  GOLD: '#FFB81C',
+  GOLD: '#D4AF37',
   PLATINUM: '#60A5FA',
   DIAMOND: '#A78BFA',
 }
@@ -183,7 +183,7 @@ export async function GET(req: NextRequest) {
               left: 0,
               right: 0,
               height: 6,
-              background: 'linear-gradient(90deg, #FFB81C, #A78BFA)',
+              background: 'linear-gradient(90deg, #D4AF37, #A78BFA)',
             }}
           />
 
@@ -415,7 +415,7 @@ export async function GET(req: NextRequest) {
             fontWeight: 900,
             color: '#000',
             marginBottom: 48,
-            boxShadow: '0 20px 60px rgba(255, 184, 28, 0.2)',
+            boxShadow: '0 20px 60px rgba(212, 175, 55, 0.2)',
           }}
         >
           R

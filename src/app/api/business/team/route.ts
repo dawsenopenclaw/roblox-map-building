@@ -177,21 +177,8 @@ export async function PATCH(req: NextRequest) {
     }
     const { memberId, role, tokensAllotment, status } = parsed.data
 
-    // Find member in demo data and apply patch
-    const member = DEMO_MEMBERS.find((m) => m.id === memberId)
-    if (!member) {
-      // In real DB this would throw a 404 if the row doesn't exist
-      return NextResponse.json({ error: 'Member not found' }, { status: 404 })
-    }
-
-    const updated: TeamMember = {
-      ...member,
-      role:            role ?? member.role,
-      tokensAllotment: tokensAllotment !== undefined ? tokensAllotment : member.tokensAllotment,
-      status:          status ?? member.status,
-    }
-
-    return NextResponse.json({ member: updated, demo: true })
+    // Real DB not yet wired — return 501 so callers know the mutation was not persisted
+    return NextResponse.json({ error: 'Not implemented — database not connected' }, { status: 501 })
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

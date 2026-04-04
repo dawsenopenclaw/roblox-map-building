@@ -31,6 +31,10 @@ export async function GET() {
         username: true,
         email: true,
         avatarUrl: true,
+        bio: true,
+        twitterHandle: true,
+        discordHandle: true,
+        githubHandle: true,
         createdAt: true,
       },
     })
@@ -76,10 +80,10 @@ export async function PUT(req: NextRequest) {
       data: {
         ...(displayName !== undefined && { displayName }),
         ...(username !== undefined && { username }),
-        // bio and social fields stored in JSON metadata until schema migration adds dedicated columns
-        // For now we store them in a metadata-style approach using existing nullable string fields
-        // Bio maps to a future `bio` column; social links map to future social link columns
-        // These will be no-ops until the schema is migrated — stored client-side in the meantime
+        ...(bio !== undefined && { bio }),
+        ...(twitterHandle !== undefined && { twitterHandle }),
+        ...(discordHandle !== undefined && { discordHandle }),
+        ...(githubHandle !== undefined && { githubHandle }),
       },
       select: {
         id: true,
@@ -87,18 +91,15 @@ export async function PUT(req: NextRequest) {
         username: true,
         email: true,
         avatarUrl: true,
+        bio: true,
+        twitterHandle: true,
+        discordHandle: true,
+        githubHandle: true,
         updatedAt: true,
       },
     })
 
-    return NextResponse.json({
-      profile: updated,
-      // Echo back fields not yet in schema so client can persist locally
-      bio: bio ?? null,
-      twitterHandle: twitterHandle ?? null,
-      discordHandle: discordHandle ?? null,
-      githubHandle: githubHandle ?? null,
-    })
+    return NextResponse.json({ profile: updated })
   } catch (err) {
     Sentry.captureException(err)
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })

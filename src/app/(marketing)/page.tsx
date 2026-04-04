@@ -59,11 +59,6 @@ const softwareApplicationJsonLd = {
     priceCurrency: 'USD',
     description: 'Free tier available. Paid plans from $9.99/month.',
   },
-  aggregateRating: {
-    '@type': 'AggregateRating',
-    ratingValue: '4.8',
-    reviewCount: '312',
-  },
   author: {
     '@type': 'Organization',
     name: 'ForjeGames LLC',

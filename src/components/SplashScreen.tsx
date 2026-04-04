@@ -70,7 +70,7 @@ const SPARK_DATA = Array.from({ length: 8 }, (_, i) => ({
   i,
   width: 2 + Math.random() * 2,
   height: 2 + Math.random() * 2,
-  color: i % 3 === 0 ? '#FFFFFF' : i % 3 === 1 ? '#FFB81C' : '#D4AF37',
+  color: i % 3 === 0 ? '#FFFFFF' : i % 3 === 1 ? '#D4AF37' : '#D4AF37',
   dx: (Math.random() - 0.5) * 20,
   duration: 0.4 + Math.random() * 0.6,
 }))
@@ -787,7 +787,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                   position: 'absolute',
                   inset: 0,
                   borderRadius: '9999px',
-                  background: 'linear-gradient(90deg, #5C0000 0%, #CC3300 20%, #FF6B2B 50%, #FFB81C 75%, #D4AF37 90%, #FFFFFF 100%)',
+                  background: 'linear-gradient(90deg, #5C0000 0%, #CC3300 20%, #FF6B2B 50%, #D4AF37 75%, #D4AF37 90%, #FFFFFF 100%)',
                   boxShadow: '0 0 8px 2px rgba(212,175,55,0.5), 0 0 16px 4px rgba(255,107,43,0.3)',
                   transform: 'scaleX(0)',
                   transformOrigin: 'left center',

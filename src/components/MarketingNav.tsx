@@ -58,10 +58,10 @@ function MarketingNav() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex-shrink-0 font-extrabold text-xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C] rounded"
+          className="flex-shrink-0 font-extrabold text-xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
           aria-label="ForjeGames home"
         >
-          <span style={{ color: '#FFB81C' }}>Forje</span>
+          <span style={{ color: '#D4AF37' }}>Forje</span>
           <span className="text-white">Games</span>
         </Link>
 
@@ -74,7 +74,7 @@ function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FFB81C]"
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
               {link.label}
             </Link>
@@ -87,7 +87,7 @@ function MarketingNav() {
             <Link
               href="/editor"
               className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 text-black"
-              style={{ background: '#FFB81C' }}
+              style={{ background: '#D4AF37' }}
             >
               Open Editor
             </Link>

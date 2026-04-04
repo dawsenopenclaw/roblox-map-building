@@ -54,12 +54,12 @@ const FEATURES = [
       'Audio: ambient + event-driven SFX auto-placed',
     ],
     mockupLabel: 'GAME SYSTEMS',
-    mockupColor: '#FFB81C',
+    mockupColor: '#D4AF37',
     mockupLines: [
       { text: '> build a full game economy system', highlight: true },
       { text: '→ CurrencyService: coins + gems + XP', color: '#8B95B0' },
       { text: '→ ShopGui: 3 tabs, 12 items, animations', color: '#8B95B0' },
-      { text: '→ Economy balance: 15 coins/kill (tuned)', color: '#FFB81C' },
+      { text: '→ Economy balance: 15 coins/kill (tuned)', color: '#D4AF37' },
       { text: '✓ 4 scripts, 1 UI module, playtested', color: '#10B981' },
     ],
     flip: false,
@@ -101,7 +101,7 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
         <span className="w-2 h-2 rounded-full" style={{ background: '#FF5F56' }} />
         <span className="w-2 h-2 rounded-full" style={{ background: '#FFBD2E' }} />
         <span className="w-2 h-2 rounded-full" style={{ background: '#27C93F' }} />
-        <span className="ml-3 text-[11px] font-mono" style={{ color: 'rgba(255,184,28,0.45)' }}>
+        <span className="ml-3 text-[11px] font-mono" style={{ color: 'rgba(212,175,55,0.45)' }}>
           {label}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
@@ -125,7 +125,7 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
       {/* Bottom accent line — color blend with gold */}
       <div
         className="h-px"
-        style={{ background: `linear-gradient(to right, transparent, ${color}80, #FFB81C50, ${color}80, transparent)` }}
+        style={{ background: `linear-gradient(to right, transparent, ${color}80, #D4AF3750, ${color}80, transparent)` }}
       />
     </div>
   )
@@ -174,7 +174,7 @@ export default function FeatureSpotlight() {
         <div className="text-center mb-12">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
           >
             How It Works
           </p>
@@ -204,10 +204,10 @@ export default function FeatureSpotlight() {
                 <span
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"
                   style={{
-                    background: 'rgba(255,184,28,0.07)',
-                    color: '#FFB81C',
-                    border: '1px solid rgba(255,184,28,0.2)',
-                    boxShadow: '0 0 12px rgba(255,184,28,0.08)',
+                    background: 'rgba(212,175,55,0.07)',
+                    color: '#D4AF37',
+                    border: '1px solid rgba(212,175,55,0.2)',
+                    boxShadow: '0 0 12px rgba(212,175,55,0.08)',
                   }}
                 >
                   {/* Gold dot */}
@@ -217,8 +217,8 @@ export default function FeatureSpotlight() {
                       width: 5,
                       height: 5,
                       borderRadius: '50%',
-                      background: '#FFB81C',
-                      boxShadow: '0 0 6px rgba(255,184,28,0.6)',
+                      background: '#D4AF37',
+                      boxShadow: '0 0 6px rgba(212,175,55,0.6)',
                     }}
                   />
                   {feature.tag}
@@ -241,9 +241,9 @@ export default function FeatureSpotlight() {
                       <span
                         className="mt-0.5 w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
                         style={{
-                          background: 'rgba(255,184,28,0.10)',
-                          border: '1px solid rgba(255,184,28,0.22)',
-                          boxShadow: '0 0 8px rgba(255,184,28,0.08)',
+                          background: 'rgba(212,175,55,0.10)',
+                          border: '1px solid rgba(212,175,55,0.22)',
+                          boxShadow: '0 0 8px rgba(212,175,55,0.08)',
                         }}
                       >
                         <svg
@@ -251,7 +251,7 @@ export default function FeatureSpotlight() {
                           height="9"
                           viewBox="0 0 24 24"
                           fill="none"
-                          stroke="#FFB81C"
+                          stroke="#D4AF37"
                           strokeWidth="3"
                           strokeLinecap="round"
                           strokeLinejoin="round"

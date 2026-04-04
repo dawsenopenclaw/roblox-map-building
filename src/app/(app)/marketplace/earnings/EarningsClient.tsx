@@ -149,14 +149,14 @@ export default function EarningsPage() {
 
       {/* ── Not connected: Set Up Payouts CTA ── */}
       {!data.connected && (
-        <div className="bg-[#141414] border border-[#FFB81C]/30 rounded-2xl p-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFB81C]/10 mb-4">
-            <Zap size={24} className="text-[#FFB81C]" />
+        <div className="bg-[#141414] border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#D4AF37]/10 mb-4">
+            <Zap size={24} className="text-[#D4AF37]" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Set Up Payouts</h2>
           <p className="text-gray-300 text-sm mb-2 max-w-md mx-auto">
             Connect your Stripe Express account to start receiving{' '}
-            <span className="text-[#FFB81C] font-semibold">70%</span> of every template sale.
+            <span className="text-[#D4AF37] font-semibold">70%</span> of every template sale.
           </p>
           <p className="text-gray-500 text-xs mb-8">
             Payouts triggered automatically when your balance reaches $20.
@@ -164,8 +164,8 @@ export default function EarningsPage() {
 
           {/* 70/30 visual */}
           <div className="flex items-center justify-center gap-6 mb-8">
-            <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-xl px-8 py-5">
-              <p className="text-[#FFB81C] text-4xl font-black">70%</p>
+            <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl px-8 py-5">
+              <p className="text-[#D4AF37] text-4xl font-black">70%</p>
               <p className="text-gray-300 text-xs mt-1">You earn</p>
             </div>
             <div className="text-gray-600 text-lg font-bold">+</div>
@@ -178,7 +178,7 @@ export default function EarningsPage() {
           <button
             onClick={handleConnectStripe}
             disabled={onboarding}
-            className="bg-[#FFB81C] hover:bg-[#E6A618] text-black font-semibold px-8 py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+            className="bg-[#D4AF37] hover:bg-[#E6A618] text-black font-semibold px-8 py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
           >
             {onboarding ? 'Redirecting...' : 'Connect with Stripe'}
           </button>
@@ -209,12 +209,12 @@ export default function EarningsPage() {
           {/* ── Stat cards ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Total Earned — gold */}
-            <div className="bg-[#141414] border border-[#FFB81C]/25 rounded-2xl p-6">
+            <div className="bg-[#141414] border border-[#D4AF37]/25 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign size={14} className="text-[#FFB81C]" />
+                <DollarSign size={14} className="text-[#D4AF37]" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Total Earned</p>
               </div>
-              <p className="text-[#FFB81C] text-4xl font-black tabular-nums leading-none">
+              <p className="text-[#D4AF37] text-4xl font-black tabular-nums leading-none">
                 {fmt(data.totalEarnedCents ?? 0)}
               </p>
               <p className="text-gray-500 text-xs mt-2">All time · your 70%</p>
@@ -261,14 +261,14 @@ export default function EarningsPage() {
           </div>
 
           {/* ── 70/30 Split Explanation ── */}
-          <div className="bg-[#FFB81C]/5 border border-[#FFB81C]/15 rounded-2xl p-5 flex items-start gap-4">
-            <div className="bg-[#FFB81C]/15 rounded-xl p-2.5 flex-shrink-0">
-              <DollarSign size={16} className="text-[#FFB81C]" />
+          <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/15 rounded-2xl p-5 flex items-start gap-4">
+            <div className="bg-[#D4AF37]/15 rounded-xl p-2.5 flex-shrink-0">
+              <DollarSign size={16} className="text-[#D4AF37]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[#FFB81C] font-semibold text-sm">70 / 30 Revenue Split</p>
+              <p className="text-[#D4AF37] font-semibold text-sm">70 / 30 Revenue Split</p>
               <p className="text-gray-300 text-xs mt-1 leading-relaxed">
-                You keep <span className="text-[#FFB81C] font-bold">70%</span> of every sale.
+                You keep <span className="text-[#D4AF37] font-bold">70%</span> of every sale.
                 The platform retains <span className="text-gray-200 font-medium">30%</span> to cover
                 payment processing, hosting, and marketplace operations. Payouts via{' '}
                 <span className="text-white font-medium">Stripe Express</span> — no hidden fees.
@@ -276,7 +276,7 @@ export default function EarningsPage() {
             </div>
             <div className="flex-shrink-0 flex gap-4 items-center">
               <div className="text-center">
-                <p className="text-[#FFB81C] text-2xl font-black leading-none">70%</p>
+                <p className="text-[#D4AF37] text-2xl font-black leading-none">70%</p>
                 <p className="text-gray-500 text-xs mt-1">You</p>
               </div>
               <div className="text-gray-700 font-bold">·</div>
@@ -322,7 +322,7 @@ export default function EarningsPage() {
                         <span className="text-gray-400 text-xs tabular-nums hidden sm:block">
                           {fmt(sale.amountCents)} total
                         </span>
-                        <span className="text-[#FFB81C] font-semibold text-sm tabular-nums">
+                        <span className="text-[#D4AF37] font-semibold text-sm tabular-nums">
                           +{fmt(sale.creatorPayoutCents)}
                         </span>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${style}`}>

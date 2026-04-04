@@ -7,10 +7,10 @@ const config: Config = {
     extend: {
       colors: {
         /* ── Core backgrounds ── */
-        background:        '#09090b',
-        surface:           '#111113',
-        'surface-2':       '#18181b',
-        'surface-elevated':'#1c1c1f',
+        background:        '#050810',
+        surface:           '#0A0F20',
+        'surface-2':       '#0E1428',
+        'surface-elevated':'#121832',
 
         /* ── Borders ── */
         border:            'rgba(255,255,255,0.06)',

@@ -16,14 +16,13 @@ export async function GET() {
   try {
     const { userId: clerkId } = await auth()
 
-    // In demo mode (no Clerk keys) clerkId will be null — skip straight to demo data
+    // Unauthenticated — return zero state, not fake transaction history
     if (!clerkId) {
-      const spent = DEMO_TRANSACTIONS.filter((t) => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
       return NextResponse.json({
-        balance: Math.max(0, 1000 - spent),
-        lifetimeEarned: 1000,
-        lifetimeSpent: spent,
-        transactions: DEMO_TRANSACTIONS.slice().reverse(),
+        balance: 0,
+        lifetimeEarned: 0,
+        lifetimeSpent: 0,
+        transactions: [],
         demo: true,
       })
     }
@@ -62,15 +61,12 @@ export async function GET() {
       // DB not connected — fall through to demo mode
     }
 
-    // Demo mode: 1,000 starting tokens minus what the demo transactions spent
-    const spent = DEMO_TRANSACTIONS.filter((t) => t.type === 'DEBIT').reduce((s, t) => s + t.amount, 0)
-    const demoBalance = Math.max(0, 1000 - spent)
-
+    // Authenticated but DB unavailable — return empty state, not fake history
     return NextResponse.json({
-      balance: demoBalance,
-      lifetimeEarned: 1000,
-      lifetimeSpent: spent,
-      transactions: DEMO_TRANSACTIONS.slice().reverse(),
+      balance: 0,
+      lifetimeEarned: 0,
+      lifetimeSpent: 0,
+      transactions: [],
       demo: true,
     })
   } catch (error) {

@@ -5,6 +5,10 @@
     {
       "path": "/api/internal/cost-snapshot",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/studio-cleanup",
+      "schedule": "0 3 * * *"
     }
   ]
 }

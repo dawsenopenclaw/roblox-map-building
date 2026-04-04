@@ -41,14 +41,14 @@ const TIER_COLORS: Record<SubscriptionTier, string> = {
   FREE: 'bg-[#1c1c1c] text-[#B0B0B0]',
   HOBBY: 'bg-blue-900/40 text-blue-300',
   CREATOR: 'bg-purple-900/40 text-purple-300',
-  STUDIO: 'bg-[#FFB81C]/10 text-[#FFB81C]',
+  STUDIO: 'bg-[#D4AF37]/10 text-[#D4AF37]',
 }
 
 const ROLE_COLORS: Record<UserRole, string> = {
   USER: 'bg-[#1c1c1c] text-[#B0B0B0]',
   CREATOR: 'bg-purple-900/40 text-purple-300',
   MODERATOR: 'bg-blue-900/40 text-blue-300',
-  ADMIN: 'bg-[#FFB81C]/10 text-[#FFB81C]',
+  ADMIN: 'bg-[#D4AF37]/10 text-[#D4AF37]',
 }
 
 const TIERS: SubscriptionTier[] = ['FREE', 'HOBBY', 'CREATOR', 'STUDIO']
@@ -154,13 +154,13 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex items-center gap-2">
           {isDemo && (
-            <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+            <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full">
               Demo data
             </span>
           )}
           <button
             onClick={fetchUsers}
-            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#D4AF37] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -180,13 +180,13 @@ export default function AdminUsersPage() {
               setSearch(e.target.value)
               setPage(1)
             }}
-            className="w-full pl-10 pr-4 py-3 bg-[#141414] border border-[#1c1c1c] rounded-xl text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-[#FFB81C] transition-colors"
+            className="w-full pl-10 pr-4 py-3 bg-[#141414] border border-[#1c1c1c] rounded-xl text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-[#D4AF37] transition-colors"
           />
         </div>
         <select
           value={roleFilter}
           onChange={(e) => { setRoleFilter(e.target.value as UserRole | 'ALL'); setPage(1) }}
-          className="px-4 py-3 bg-[#141414] border border-[#1c1c1c] rounded-xl text-white focus:outline-none focus:border-[#FFB81C] transition-colors text-sm"
+          className="px-4 py-3 bg-[#141414] border border-[#1c1c1c] rounded-xl text-white focus:outline-none focus:border-[#D4AF37] transition-colors text-sm"
         >
           <option value="ALL">All Roles</option>
           <option value="USER">User</option>
@@ -217,7 +217,7 @@ export default function AdminUsersPage() {
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center">
                     <div className="flex justify-center">
-                      <div className="w-6 h-6 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-6 h-6 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
                     </div>
                   </td>
                 </tr>
@@ -251,7 +251,7 @@ export default function AdminUsersPage() {
                           <button
                             onClick={() => setTierDropdownId(tierDropdownId === user.id ? null : user.id)}
                             disabled={isActing || isDemo}
-                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${TIER_COLORS[tier]} border border-transparent hover:border-[#FFB81C]/40 transition-colors disabled:cursor-not-allowed`}
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${TIER_COLORS[tier]} border border-transparent hover:border-[#D4AF37]/40 transition-colors disabled:cursor-not-allowed`}
                           >
                             {tier}
                             <ChevronDown className="w-3 h-3" />
@@ -352,14 +352,14 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
+                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#D4AF37] transition-colors"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#FFB81C] transition-colors"
+                className="px-3 py-1.5 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white disabled:opacity-40 hover:border-[#D4AF37] transition-colors"
               >
                 Next
               </button>

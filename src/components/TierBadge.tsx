@@ -25,9 +25,9 @@ const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: string; bord
   },
   MASTER: {
     label: 'Master',
-    color: '#FFB81C',
-    bg: '#FFB81C15',
-    border: '#FFB81C30',
+    color: '#D4AF37',
+    bg: '#D4AF3715',
+    border: '#D4AF3730',
     icon: '⚡',
   },
   LEGEND: {

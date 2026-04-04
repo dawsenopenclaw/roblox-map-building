@@ -32,7 +32,7 @@ export default function PrivacyPage() {
     <article className="max-w-3xl">
       {/* ── Header ── */}
       <div className="mb-12">
-        <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-3 py-1 text-xs text-[#FFB81C] font-medium mb-5">
+        <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-3 py-1 text-xs text-[#D4AF37] font-medium mb-5">
           Privacy Document
         </div>
         <h1 className="text-3xl font-bold text-[#FAFAFA] mb-3">Privacy Policy</h1>
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
         </p>
         <p className="text-[#71717A] text-sm mt-1">
           Questions?{' '}
-          <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+          <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
             {EMAIL}
           </a>
         </p>
@@ -61,7 +61,7 @@ export default function PrivacyPage() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="text-sm text-[#71717A] hover:text-[#FFB81C] transition-colors block py-1"
+                className="text-sm text-[#71717A] hover:text-[#D4AF37] transition-colors block py-1"
               >
                 {s.title}
               </a>
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
             ],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               <span>
                 <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
               </span>
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
             ],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               <span>
                 <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
               </span>
@@ -148,7 +148,7 @@ export default function PrivacyPage() {
             ],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               <span>
                 <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
               </span>
@@ -223,7 +223,7 @@ export default function PrivacyPage() {
             ['With your consent', 'Any other sharing requires your explicit consent.'],
           ].map(([label, desc]) => (
             <li key={label} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               <span>
                 <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
               </span>
@@ -288,7 +288,7 @@ export default function PrivacyPage() {
             'Stripe PCI DSS Level 1 compliance for payment data',
           ].map((item) => (
             <li key={item} className="flex gap-3">
-              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
               {item}
             </li>
           ))}
@@ -306,7 +306,7 @@ export default function PrivacyPage() {
       <section id="gdpr" className="scroll-mt-24 mt-12">
         <SectionHeading number="6" title="GDPR — EU / EEA / UK Rights" />
         <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-6">
-          <p className="text-[10px] font-semibold text-[#FFB81C] uppercase tracking-widest mb-4">
+          <p className="text-[10px] font-semibold text-[#D4AF37] uppercase tracking-widest mb-4">
             EU / EEA / UK Residents
           </p>
           <p className="text-sm text-[#71717A] leading-relaxed mb-5">
@@ -349,7 +349,7 @@ export default function PrivacyPage() {
               ],
             ].map(([label, desc]) => (
               <li key={label} className="flex gap-3">
-                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
                 <span>
                   <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
                 </span>
@@ -358,7 +358,7 @@ export default function PrivacyPage() {
           </ul>
           <p className="text-sm text-[#71717A] leading-relaxed mb-3">
             To exercise any right, contact us at{' '}
-            <a href={`mailto:${DPA_EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${DPA_EMAIL}`} className="text-[#D4AF37] hover:underline">
               {DPA_EMAIL}
             </a>
             . We will respond within 30 days. Identity verification may be required.
@@ -371,7 +371,7 @@ export default function PrivacyPage() {
           <p className="text-sm text-[#71717A] leading-relaxed">
             <strong className="text-[#FAFAFA] font-medium">Data Processing Agreement:</strong>{' '}
             Enterprise and B2B customers may request a DPA at{' '}
-            <a href={`mailto:${DPA_EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${DPA_EMAIL}`} className="text-[#D4AF37] hover:underline">
               {DPA_EMAIL}
             </a>
             .
@@ -385,7 +385,7 @@ export default function PrivacyPage() {
       <section id="ccpa" className="scroll-mt-24 mt-12">
         <SectionHeading number="7" title="CCPA — California Rights" />
         <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-6">
-          <p className="text-[10px] font-semibold text-[#FFB81C] uppercase tracking-widest mb-4">
+          <p className="text-[10px] font-semibold text-[#D4AF37] uppercase tracking-widest mb-4">
             California Residents — CCPA / CPRA
           </p>
           <p className="text-sm text-[#71717A] leading-relaxed mb-5">
@@ -420,7 +420,7 @@ export default function PrivacyPage() {
               ],
             ].map(([label, desc]) => (
               <li key={label} className="flex gap-3">
-                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
                 <span>
                   <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
                 </span>
@@ -429,7 +429,7 @@ export default function PrivacyPage() {
           </ul>
           <p className="text-sm text-[#71717A] leading-relaxed">
             To submit a CCPA request, contact us at{' '}
-            <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
               {EMAIL}
             </a>{' '}
             with subject &quot;CCPA Request.&quot; We will respond within 45 days (extendable by 45
@@ -444,7 +444,7 @@ export default function PrivacyPage() {
       <section id="coppa" className="scroll-mt-24 mt-12">
         <SectionHeading number="8" title="COPPA — Children Under 13" />
         <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-6">
-          <p className="text-[10px] font-semibold text-[#FFB81C] uppercase tracking-widest mb-4">
+          <p className="text-[10px] font-semibold text-[#D4AF37] uppercase tracking-widest mb-4">
             Children Under 13
           </p>
           <p className="text-sm text-[#71717A] leading-relaxed mb-5">
@@ -485,7 +485,7 @@ export default function PrivacyPage() {
               ],
             ].map(([label, desc]) => (
               <li key={label} className="flex gap-3">
-                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#FFB81C]/40 shrink-0" />
+                <span className="mt-1.5 w-1 h-1 rounded-full bg-[#D4AF37]/40 shrink-0" />
                 <span>
                   <strong className="text-[#FAFAFA] font-medium">{label}:</strong> {desc}
                 </span>
@@ -495,7 +495,7 @@ export default function PrivacyPage() {
           <p className="text-sm text-[#71717A] leading-relaxed">
             If you believe we have inadvertently collected personal information from a child under 13
             without consent, contact{' '}
-            <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
               {EMAIL}
             </a>{' '}
             immediately. We will delete the information promptly.
@@ -543,7 +543,7 @@ export default function PrivacyPage() {
         <p className="text-[#71717A] leading-relaxed">
           EU/UK users are shown a cookie consent banner on first visit. Cookie preferences can be
           managed via the consent banner or by contacting{' '}
-          <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+          <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
             {EMAIL}
           </a>
           .
@@ -571,13 +571,13 @@ export default function PrivacyPage() {
           </p>
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">Privacy inquiries:</span>{' '}
-            <a href={`mailto:${EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${EMAIL}`} className="text-[#D4AF37] hover:underline">
               {EMAIL}
             </a>
           </p>
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">DPA / GDPR inquiries:</span>{' '}
-            <a href={`mailto:${DPA_EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${DPA_EMAIL}`} className="text-[#D4AF37] hover:underline">
               {DPA_EMAIL}
             </a>
           </p>
@@ -593,7 +593,7 @@ export default function PrivacyPage() {
 function SectionHeading({ number, title }: { number: string; title: string }) {
   return (
     <h2 className="flex items-baseline gap-3 text-xl font-bold text-[#FAFAFA] mb-5 pb-3 border-b border-white/[0.06]">
-      <span className="text-[#FFB81C] font-bold text-base tabular-nums">{number}.</span>
+      <span className="text-[#D4AF37] font-bold text-base tabular-nums">{number}.</span>
       <span dangerouslySetInnerHTML={{ __html: title }} />
     </h2>
   )

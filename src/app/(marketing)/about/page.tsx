@@ -150,7 +150,7 @@ export default function AboutPage() {
             style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
           >
             Make game development{' '}
-            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               accessible to everyone
             </span>
           </h1>
@@ -175,7 +175,7 @@ export default function AboutPage() {
             >
               <span
                 className="mb-1 text-3xl font-bold tabular-nums"
-                style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
               >
                 {s.value}
               </span>
@@ -347,7 +347,7 @@ export default function AboutPage() {
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
                   style={{
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                    background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                     color: '#09090b',
                   }}
                 >
@@ -424,7 +424,7 @@ export default function AboutPage() {
             href="/sign-up"
             className="inline-flex items-center gap-2 rounded-xl px-7 py-3.5 text-sm font-bold transition-opacity hover:opacity-90"
             style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
               color: '#09090b',
             }}
           >

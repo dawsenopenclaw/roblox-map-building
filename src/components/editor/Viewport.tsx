@@ -141,15 +141,15 @@ export function Viewport({ forceDemo = false, onObjectClick: _onObjectClick, cla
           <div className="bg-white/4 border border-white/8 rounded-lg px-4 py-3 text-left text-xs space-y-1.5 w-full max-w-xs">
             <p className="text-gray-300 font-medium mb-2">How to connect:</p>
             <p className="text-gray-400">
-              <span className="text-[#FFB81C] font-mono mr-1.5">1.</span>
+              <span className="text-[#D4AF37] font-mono mr-1.5">1.</span>
               Open Roblox Studio
             </p>
             <p className="text-gray-400">
-              <span className="text-[#FFB81C] font-mono mr-1.5">2.</span>
+              <span className="text-[#D4AF37] font-mono mr-1.5">2.</span>
               Install the ForjeGames plugin
             </p>
             <p className="text-gray-400">
-              <span className="text-[#FFB81C] font-mono mr-1.5">3.</span>
+              <span className="text-[#D4AF37] font-mono mr-1.5">3.</span>
               Click "Connect" in the plugin toolbar
             </p>
           </div>

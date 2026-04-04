@@ -118,7 +118,7 @@ const container: React.CSSProperties = {
 const logoSection: React.CSSProperties = { padding: '28px 40px 20px', textAlign: 'center' }
 const logoText: React.CSSProperties = { fontSize: '28px', fontWeight: '700', margin: '0' }
 const logoWhite: React.CSSProperties = { color: '#ffffff' }
-const logoGold: React.CSSProperties = { color: '#FFB81C' }
+const logoGold: React.CSSProperties = { color: '#D4AF37' }
 const divider: React.CSSProperties = { borderColor: '#1e2347', margin: '0' }
 const heroSection: React.CSSProperties = { padding: '40px 40px 24px', textAlign: 'center' }
 const lockIcon: React.CSSProperties = { fontSize: '40px', margin: '0 0 12px' }
@@ -134,7 +134,7 @@ const subText: React.CSSProperties = {
   lineHeight: '1.6',
   margin: '0',
 }
-const amountStyle: React.CSSProperties = { color: '#FFB81C' }
+const amountStyle: React.CSSProperties = { color: '#D4AF37' }
 const infoCard: React.CSSProperties = {
   margin: '0 40px 24px',
   backgroundColor: '#0d1235',
@@ -143,7 +143,7 @@ const infoCard: React.CSSProperties = {
   padding: '20px 24px',
 }
 const infoLabel: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '11px',
   fontWeight: '700',
   letterSpacing: '2px',
@@ -157,7 +157,7 @@ const infoBody: React.CSSProperties = {
 }
 const ctaSection: React.CSSProperties = { padding: '8px 40px 32px', textAlign: 'center' }
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

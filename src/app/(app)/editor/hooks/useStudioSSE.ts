@@ -41,6 +41,8 @@ export interface StudioLiveState {
   nearbyParts: NearbyPart[]
   selection: SelectedObject[]
   screenshotUrl: string | null
+  /** Unix ms timestamp of when the latest screenshot arrived */
+  screenshotTimestamp: number | null
   lastHeartbeat: number
   commandResults: CommandResult[]
 }
@@ -55,7 +57,8 @@ interface ContextPayload {
 }
 
 interface ScreenshotPayload {
-  url: string
+  /** Base64 PNG without data-URI prefix — matches what stream/route.ts pushes as { image } */
+  image: string
 }
 
 interface CommandResultPayload {
@@ -73,8 +76,12 @@ interface HeartbeatPayload {
 const MAX_COMMAND_RESULTS = 20
 const MAX_RECONNECT_ATTEMPTS = 3
 const BACKOFF_BASE_MS = 1000
-const BACKOFF_MAX_MS = 10_000
+const BACKOFF_MAX_MS = 30_000   // was 10 s — raised to match UX spec
 const POLL_FALLBACK_INTERVAL_MS = 2000
+
+// ─── Reconnect phase exposed to consumers ─────────────────────────────────────
+
+export type SSEReconnectPhase = 'connected' | 'lost' | 'reconnecting' | 'failed'
 
 const INITIAL_STATE: StudioLiveState = {
   camera: null,
@@ -82,6 +89,7 @@ const INITIAL_STATE: StudioLiveState = {
   nearbyParts: [],
   selection: [],
   screenshotUrl: null,
+  screenshotTimestamp: null,
   lastHeartbeat: 0,
   commandResults: [],
 }
@@ -91,6 +99,10 @@ const INITIAL_STATE: StudioLiveState = {
 export function useStudioSSE(sessionId: string | null) {
   const [studioLive, setStudioLive] = useState<StudioLiveState>(INITIAL_STATE)
   const [isSSEConnected, setIsSSEConnected] = useState(false)
+  const [reconnectPhase, setReconnectPhase] = useState<SSEReconnectPhase>('connected')
+  const [reconnectAttempt, setReconnectAttempt] = useState(0)
+  /** Round-trip latency in ms measured from the polling fallback, or null when SSE is active */
+  const [latencyMs, setLatencyMs] = useState<number | null>(null)
 
   // Internal refs — survive re-renders without causing them
   const esRef = useRef<EventSource | null>(null)
@@ -118,7 +130,16 @@ export function useStudioSSE(sessionId: string | null) {
   }, [])
 
   const applyScreenshot = useCallback((payload: ScreenshotPayload) => {
-    setStudioLive((prev) => ({ ...prev, screenshotUrl: payload.url }))
+    if (!payload.image) return
+    // Normalise: accept bare base64 or an existing data-URI
+    const dataUri = payload.image.startsWith('data:')
+      ? payload.image
+      : `data:image/png;base64,${payload.image}`
+    setStudioLive((prev) => ({
+      ...prev,
+      screenshotUrl: dataUri,
+      screenshotTimestamp: Date.now(),
+    }))
   }, [])
 
   const applyCommandResult = useCallback((payload: CommandResultPayload) => {
@@ -156,9 +177,12 @@ export function useStudioSSE(sessionId: string | null) {
     isPollingFallbackRef.current = true
 
     const poll = async () => {
+      const t0 = Date.now()
       try {
         const res = await fetch(`/api/studio/status?sessionId=${sid}`)
         if (!res.ok) return
+        const rtt = Date.now() - t0
+        setLatencyMs(rtt)
         const data = await res.json() as {
           camera?: StudioLiveState['camera']
           partCount?: number
@@ -173,6 +197,7 @@ export function useStudioSSE(sessionId: string | null) {
           nearbyParts: data.nearbyParts ?? prev.nearbyParts,
           selection: data.selection ?? prev.selection,
           screenshotUrl: data.screenshotUrl ?? prev.screenshotUrl,
+          screenshotTimestamp: data.screenshotUrl ? Date.now() : prev.screenshotTimestamp,
           lastHeartbeat: Date.now(),
         }))
       } catch {
@@ -212,6 +237,9 @@ export function useStudioSSE(sessionId: string | null) {
     es.onopen = () => {
       attemptRef.current = 0
       setIsSSEConnected(true)
+      setReconnectPhase('connected')
+      setReconnectAttempt(0)
+      setLatencyMs(null)
       stopPollingFallback()
     }
 
@@ -270,20 +298,31 @@ export function useStudioSSE(sessionId: string | null) {
 
   const scheduleReconnectRef = useRef<(sid: string) => void>((sid: string) => {
     attemptRef.current += 1
+    const attempt = attemptRef.current
 
-    if (attemptRef.current > MAX_RECONNECT_ATTEMPTS) {
+    // Signal "lost" on first drop, "reconnecting" on subsequent attempts
+    if (attempt === 1) {
+      setReconnectPhase('lost')
+    } else {
+      setReconnectPhase('reconnecting')
+    }
+    setReconnectAttempt(attempt)
+
+    if (attempt > MAX_RECONNECT_ATTEMPTS) {
+      setReconnectPhase('failed')
       startPollingFallbackRef.current(sid)
       return
     }
 
     const delay = Math.min(
-      BACKOFF_BASE_MS * Math.pow(2, attemptRef.current - 1),
+      BACKOFF_BASE_MS * Math.pow(2, attempt - 1),
       BACKOFF_MAX_MS,
     )
 
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
     reconnectTimerRef.current = setTimeout(() => {
       if (sessionIdRef.current === sid) {
+        setReconnectPhase('reconnecting')
         connectRef.current(sid)
       }
     }, delay)
@@ -323,5 +362,15 @@ export function useStudioSSE(sessionId: string | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
-  return { studioLive, isSSEConnected }
+  return {
+    studioLive,
+    isSSEConnected,
+    reconnectPhase,
+    reconnectAttempt,
+    latencyMs,
+    /** Convenience alias — the latest base64 PNG from Studio (no data-URI prefix) */
+    latestScreenshot: studioLive.screenshotUrl,
+    /** Unix ms timestamp of when the latest screenshot arrived, or null if none yet */
+    screenshotTimestamp: studioLive.screenshotTimestamp,
+  }
 }

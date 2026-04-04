@@ -166,7 +166,7 @@ export default function ReferralsClient() {
       value: dataLoading ? '—' : String(stats?.invitesSent ?? 0),
       sub: 'Links shared',
       icon: <IconLink className="w-3.5 h-3.5" />,
-      color: '#FFB81C',
+      color: '#D4AF37',
     },
     {
       label: 'Signups',
@@ -191,7 +191,7 @@ export default function ReferralsClient() {
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">Referrals</h1>
         <p className="text-gray-400 mt-1 text-sm">
-          Referral program coming soon. Share your link to earn tokens when friends sign up.
+          Share your link to earn tokens when friends sign up.
         </p>
       </div>
 
@@ -215,8 +215,8 @@ export default function ReferralsClient() {
       </div>
 
       {/* How it works */}
-      <div className="bg-[#FFB81C]/5 border border-[#FFB81C]/20 rounded-xl p-5 mb-6">
-        <p className="text-[#FFB81C] font-semibold text-sm mb-4 flex items-center gap-2">
+      <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-5 mb-6">
+        <p className="text-[#D4AF37] font-semibold text-sm mb-4 flex items-center gap-2">
           <IconZap />
           How it works
         </p>
@@ -227,8 +227,8 @@ export default function ReferralsClient() {
             { step: '3', title: 'Both get 500 tokens', desc: 'You and your friend each receive 500 tokens instantly.' },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-[#FFB81C]/20 border border-[#FFB81C]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-[#FFB81C] text-xs font-bold">{step}</span>
+              <div className="w-6 h-6 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-[#D4AF37] text-xs font-bold">{step}</span>
               </div>
               <div>
                 <p className="text-white text-sm font-medium">{title}</p>
@@ -252,7 +252,7 @@ export default function ReferralsClient() {
             </div>
             <button
               onClick={() => void copyLink()}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#FFB81C]/40 text-gray-300 hover:text-[#FFB81C] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
             >
               {linkCopied
                 ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
@@ -266,12 +266,12 @@ export default function ReferralsClient() {
         <div className="mb-5">
           <label className="block text-xs text-gray-500 mb-1.5">Referral Code</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#FFB81C] text-sm font-bold tracking-widest">
+            <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#D4AF37] text-sm font-bold tracking-widest">
               {referralCode}
             </div>
             <button
               onClick={() => void copyCode()}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#FFB81C]/40 text-gray-300 hover:text-[#FFB81C] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
             >
               {codeCopied
                 ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
@@ -336,7 +336,7 @@ export default function ReferralsClient() {
                     <td className="py-3 text-gray-400 text-xs whitespace-nowrap">{row.joinedAt}</td>
                     <td className="py-3 text-right tabular-nums">
                       {row.tokensAwarded > 0 ? (
-                        <span className="text-[#FFB81C] font-semibold text-sm">+{row.tokensAwarded}</span>
+                        <span className="text-[#D4AF37] font-semibold text-sm">+{row.tokensAwarded}</span>
                       ) : (
                         <span className="text-gray-500 text-sm">—</span>
                       )}

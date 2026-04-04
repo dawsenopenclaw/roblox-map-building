@@ -257,7 +257,7 @@ function PlanApprovalDialog({
           onClick={onApprove}
           disabled={loading}
           className="flex-[2] py-2.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#000' }}
+          style={{ background: 'linear-gradient(135deg, #D4AF37, #D4AF37)', color: '#000' }}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
@@ -423,7 +423,7 @@ function ConfigDialog({
           onClick={onGenerate}
           disabled={loading}
           className="flex-[2] py-2.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-          style={{ background: 'linear-gradient(135deg, #D4AF37, #FFB81C)', color: '#000' }}
+          style={{ background: 'linear-gradient(135deg, #D4AF37, #D4AF37)', color: '#000' }}
         >
           {loading ? 'Generating plan…' : 'Generate Build Plan →'}
         </motion.button>

@@ -13,9 +13,9 @@ export default function GameDnaClient() {
 
       {/* Header */}
       <div className="space-y-2">
-        <p className="text-xs font-semibold text-[#FFB81C]/70 uppercase tracking-widest">AI Feature</p>
+        <p className="text-xs font-semibold text-[#D4AF37]/70 uppercase tracking-widest">AI Feature</p>
         <h1 className="text-2xl sm:text-3xl font-bold text-white">
-          Game <span className="text-[#FFB81C]">DNA</span> Scanner
+          Game <span className="text-[#D4AF37]">DNA</span> Scanner
         </h1>
         <p className="text-gray-400 text-sm leading-relaxed max-w-xl">
           Analyse any Roblox game to extract its DNA — progression loops,
@@ -28,13 +28,13 @@ export default function GameDnaClient() {
         {/* Glow backdrop */}
         <div
           className="absolute inset-0 rounded-2xl blur-xl opacity-20 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 80%, #FFB81C 0%, transparent 70%)' }}
+          style={{ background: 'radial-gradient(ellipse at 50% 80%, #D4AF37 0%, transparent 70%)' }}
         />
         <div className="relative bg-[#141414] border border-white/[0.08] rounded-2xl p-8 flex flex-col items-center gap-6">
           {/* Icon */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)' }}
           >
             <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -50,7 +50,7 @@ export default function GameDnaClient() {
 
           {/* Input + button */}
           <form
-            action="/api/game-dna/scan"
+            action="/api/game-scanner"
             method="POST"
             className="flex flex-col sm:flex-row gap-3 w-full max-w-xl"
           >
@@ -59,11 +59,11 @@ export default function GameDnaClient() {
               name="url"
               required
               placeholder="Roblox game URL or Place ID"
-              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
             />
             <button
               type="submit"
-              className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors whitespace-nowrap"
+              className="bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors whitespace-nowrap"
             >
               Scan Game
             </button>
@@ -71,7 +71,7 @@ export default function GameDnaClient() {
 
           <p className="text-xs text-gray-600">
             View past scans in{' '}
-            <Link href="/dashboard" className="text-[#FFB81C] hover:underline">
+            <Link href="/dashboard" className="text-[#D4AF37] hover:underline">
               your dashboard
             </Link>
             .
@@ -113,7 +113,7 @@ export default function GameDnaClient() {
             },
           ].map((item) => (
             <div key={item.title} className="bg-[#141414] border border-white/[0.08] rounded-xl p-5 space-y-3">
-              <div className="w-9 h-9 rounded-lg bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center text-[#FFB81C]">
+              <div className="w-9 h-9 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37]">
                 {item.icon}
               </div>
               <div>

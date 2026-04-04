@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   } catch { /* demo mode — Clerk not configured */ }
 
   if (!clerkId) {
-    return NextResponse.json({ demo: true, url: '/marketplace' })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {

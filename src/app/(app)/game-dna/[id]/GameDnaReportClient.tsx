@@ -289,8 +289,8 @@ function CssRadarChart({ data, gameName }: { data: RadarPoint[]; gameName: strin
         {/* Score polygon */}
         <polygon
           points={buildPolygon(scorePoints, radius)}
-          fill="rgba(255,184,28,0.15)"
-          stroke="#FFB81C"
+          fill="rgba(212,175,55,0.15)"
+          stroke="#D4AF37"
           strokeWidth="2"
         />
 
@@ -317,7 +317,7 @@ function CssRadarChart({ data, gameName }: { data: RadarPoint[]; gameName: strin
       {/* Legend */}
       <div className="flex items-center gap-5 mt-1">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-0.5 bg-[#FFB81C]" />
+          <div className="w-3 h-0.5 bg-[#D4AF37]" />
           <span className="text-xs text-gray-300">{gameName}</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -345,7 +345,7 @@ function CssProgressionChart({ pace }: { pace: number }) {
     <div className="space-y-4">
       <div className="flex items-center gap-5 mb-2">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-0.5 bg-[#FFB81C]" />
+          <div className="w-3 h-0.5 bg-[#D4AF37]" />
           <span className="text-xs text-gray-300">New Player Progress %</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -361,7 +361,7 @@ function CssProgressionChart({ pace }: { pace: number }) {
               <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${w.newPlayer}%`, backgroundColor: '#FFB81C' }}
+                  style={{ width: `${w.newPlayer}%`, backgroundColor: '#D4AF37' }}
                 />
               </div>
               <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -401,7 +401,7 @@ function ScoreBar({ label, value, color }: { label: string; value: number; color
 // ─── Monetization items ───────────────────────────────────────────────────────
 
 const MONETIZATION_ITEMS = [
-  { label: 'Cosmetics',     key: 'monetization_model', weight: 0.4, color: '#FFB81C' },
+  { label: 'Cosmetics',     key: 'monetization_model', weight: 0.4, color: '#D4AF37' },
   { label: 'Gamepasses',   key: 'progression_pace',   weight: 0.3, color: '#60A5FA' },
   { label: 'Premium',      key: 'retention_driver',   weight: 0.2, color: '#A78BFA' },
   { label: 'Dev Products', key: 'engagement_loop',    weight: 0.1, color: '#34D399' },
@@ -467,7 +467,7 @@ export default function GameDnaReportClient() {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
         <p className="text-red-400 text-sm mb-4">Scan not found</p>
-        <Link href="/game-dna" className="text-[#FFB81C] hover:underline text-sm">
+        <Link href="/game-dna" className="text-[#D4AF37] hover:underline text-sm">
           Back to scanner
         </Link>
       </div>
@@ -477,8 +477,8 @@ export default function GameDnaReportClient() {
   if (!scan.genome) {
     return (
       <div className="max-w-3xl mx-auto text-center py-20">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 mb-5">
-          <svg className={`w-8 h-8 text-[#FFB81C] ${scan.status === 'PROCESSING' ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 mb-5">
+          <svg className={`w-8 h-8 text-[#D4AF37] ${scan.status === 'PROCESSING' ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
           </svg>
         </div>
@@ -488,7 +488,7 @@ export default function GameDnaReportClient() {
         {scan.status === 'PROCESSING' && (
           <p className="text-gray-500 text-xs mb-4">Refresh in 30 seconds.</p>
         )}
-        <Link href="/game-dna" className="text-[#FFB81C] hover:underline text-sm mt-2 inline-block">
+        <Link href="/game-dna" className="text-[#D4AF37] hover:underline text-sm mt-2 inline-block">
           Back to scanner
         </Link>
       </div>
@@ -511,7 +511,7 @@ export default function GameDnaReportClient() {
   const monetizationScore = genome.scores.monetization_model ?? 50
   const progressionPace = genome.scores.progression_pace ?? 50
 
-  const scoreColor = totalScore >= 90 ? '#34D399' : totalScore >= 80 ? '#FFB81C' : '#60A5FA'
+  const scoreColor = totalScore >= 90 ? '#34D399' : totalScore >= 80 ? '#D4AF37' : '#60A5FA'
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -528,7 +528,7 @@ export default function GameDnaReportClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <Link href="/game-dna" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+          <Link href="/game-dna" className="text-[#D4AF37] hover:underline text-sm mb-2 inline-block">
             All scans
           </Link>
           <h1 className="text-2xl font-bold text-white">
@@ -547,7 +547,7 @@ export default function GameDnaReportClient() {
               href={scan.robloxUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-[#FFB81C] hover:underline text-sm"
+              className="text-[#D4AF37] hover:underline text-sm"
             >
               View on Roblox
             </a>
@@ -567,7 +567,7 @@ export default function GameDnaReportClient() {
           </Link>
           <button
             onClick={() => window.print()}
-            className="px-4 py-2 text-sm bg-[#FFB81C] text-black font-semibold rounded-xl hover:bg-[#E5A619] transition-colors"
+            className="px-4 py-2 text-sm bg-[#D4AF37] text-black font-semibold rounded-xl hover:bg-[#E5A619] transition-colors"
           >
             Export PDF
           </button>
@@ -579,7 +579,7 @@ export default function GameDnaReportClient() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Overall Score',   value: totalScore,                               color: scoreColor },
-            { label: 'Monetization',    value: monetizationScore,                        color: '#FFB81C' },
+            { label: 'Monetization',    value: monetizationScore,                        color: '#D4AF37' },
             { label: 'Retention',       value: genome.scores.retention_driver ?? 0,      color: '#60A5FA' },
             { label: 'Engagement Loop', value: genome.scores.engagement_loop ?? 0,       color: '#A78BFA' },
           ].map((item) => (
@@ -684,7 +684,7 @@ export default function GameDnaReportClient() {
         <div className="space-y-3">
           {(Array.isArray(genome.recommendations) ? genome.recommendations : []).map((rec, i) => (
             <div key={i} className="flex items-start gap-3 bg-[#1c1c1c] rounded-xl px-4 py-3">
-              <span className="text-[#FFB81C] text-sm font-bold flex-shrink-0 mt-0.5">
+              <span className="text-[#D4AF37] text-sm font-bold flex-shrink-0 mt-0.5">
                 {String(i + 1).padStart(2, '0')}
               </span>
               <p className="text-gray-300 text-sm leading-relaxed">{rec}</p>

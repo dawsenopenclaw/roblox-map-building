@@ -116,6 +116,17 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Push to any open SSE connections for this session so the web editor
+  // receives the screenshot in real-time without waiting for a poll cycle.
+  if (!isBefore) {
+    try {
+      const { pushToSession } = await import('@/lib/studio-sse-bus')
+      pushToSession(sessionId, 'screenshot', { image: base64 })
+    } catch {
+      // SSE bus unavailable — client will catch it on the next poll
+    }
+  }
+
   return NextResponse.json(
     { stored: true, type: isBefore ? 'before' : 'live', serverTime: Date.now() },
     { status: 200, headers: CORS_HEADERS },

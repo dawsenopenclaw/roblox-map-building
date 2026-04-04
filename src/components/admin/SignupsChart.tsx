@@ -20,7 +20,7 @@ export function SignupsChart({ data }: { data: DataPoint[] }) {
   return (
     <div>
       <p className="text-xs text-[#B0B0B0] mb-4">
-        Total: <span className="text-[#FFB81C] font-semibold">{totalSignups.toLocaleString()}</span>
+        Total: <span className="text-[#D4AF37] font-semibold">{totalSignups.toLocaleString()}</span>
       </p>
       <div className="flex items-end gap-1 h-40">
         {data.map((point, i) => {

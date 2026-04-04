@@ -28,6 +28,7 @@ import {
   type PendingCommand,
 } from '@/lib/studio-session'
 import { parseBody } from '@/lib/validations'
+import { studioExecuteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 // ── JWT verification (same logic as sync/route.ts) ────────────────────────────
 // IMPORTANT: STUDIO_AUTH_SECRET must be set in production. The fallback is only
@@ -76,6 +77,38 @@ function verifyJwt(token: string): JwtPayload | null {
     return payload
   } catch {
     return null
+  }
+}
+
+// ── Redis counter helpers ─────────────────────────────────────────────────────
+
+function getRedisForCounters() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('@/lib/redis') as { getRedis?: () => import('ioredis').Redis | null }
+    return mod.getRedis ? mod.getRedis() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Increment the total and hourly command execution counters in Redis.
+ * Called fire-and-forget after a command is successfully queued.
+ */
+async function incrementCommandCounters(): Promise<void> {
+  const r = getRedisForCounters()
+  if (!r) return
+  try {
+    const now = new Date()
+    const hourKey = `fj:studio:cmds:hour:${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}-${String(now.getUTCHours()).padStart(2, '0')}`
+    const pipe = r.pipeline()
+    pipe.incr('fj:studio:cmds:total')
+    pipe.incr(hourKey)
+    pipe.expire(hourKey, 7200) // 2-hour TTL — only need last ~1h for metrics
+    await pipe.exec()
+  } catch {
+    // Non-critical — swallow silently
   }
 }
 
@@ -178,6 +211,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // ── Rate limit per user (30 commands/60 s) ──────────────────────────────
+  const rl = await studioExecuteRateLimit(jwtPayload.sid)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'rate_limited', retryAfterMs: Math.ceil((rl.resetAt - Date.now())) },
+      { status: 429, headers: { ...CORS_HEADERS, ...rateLimitHeaders(rl) } },
+    )
+  }
+
   // JWT is valid — use the session ID it contains.
   // If the caller also passed an explicit sessionId it must match the JWT claim.
   const sessionId = jwtPayload.sid
@@ -223,6 +265,10 @@ export async function POST(req: NextRequest) {
         { status: result.error === 'queue_full' ? 429 : 503, headers: CORS_HEADERS },
       )
     }
+
+    // ── Increment command counters for monitoring ────────────────────────────
+    // Fire-and-forget — counter failures must never block command execution.
+    void incrementCommandCounters()
 
     // Re-read queue depth from the session after the push (session mutated in place)
     const queueDepth = getSessionSync(session.sessionId)?.commandQueue.length ?? 0

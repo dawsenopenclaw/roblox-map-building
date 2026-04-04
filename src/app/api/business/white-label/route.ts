@@ -58,7 +58,7 @@ const DEMO_BRANDING: WhiteLabelBranding = {
   logoUrl:       null,
   faviconUrl:    null,
   primaryColor:  '#D4AF37',
-  accentColor:   '#FFB81C',
+  accentColor:   '#D4AF37',
   companyName:   'Dawsen Porter LLC',
   tagline:       'Professional Roblox Game Development',
   customDomain:  null,

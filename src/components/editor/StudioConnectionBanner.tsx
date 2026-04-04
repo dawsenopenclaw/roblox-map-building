@@ -278,12 +278,12 @@ export function StudioConnectionBanner({
     >
       {/* Top row: label + countdown + dismiss */}
       <div className="flex items-center gap-2 w-full">
-        <svg className="w-4 h-4 text-[#FFB81C] flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <svg className="w-4 h-4 text-[#D4AF37] flex-shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <rect x="1" y="1" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.3"/>
           <path d="M5 6l3-3 3 3M8 3v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
           <path d="M3 12h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
-        <span className="text-xs text-[#FFB81C] font-semibold">
+        <span className="text-xs text-[#D4AF37] font-semibold">
           Enter this code in the Roblox Studio plugin
         </span>
         <div className="flex-1" />
@@ -318,9 +318,9 @@ export function StudioConnectionBanner({
               className="flex items-center justify-center w-10 h-12 rounded-lg text-xl font-black transition-all group-hover:scale-105"
               style={{
                 fontFamily: '"JetBrains Mono", monospace',
-                color: '#FFB81C',
-                background: 'rgba(255,184,28,0.08)',
-                border: '2px solid rgba(255,184,28,0.25)',
+                color: '#D4AF37',
+                background: 'rgba(212,175,55,0.08)',
+                border: '2px solid rgba(212,175,55,0.25)',
                 letterSpacing: '0.05em',
               }}
             >
@@ -330,9 +330,9 @@ export function StudioConnectionBanner({
         </div>
         <span className="text-xs font-bold px-3 py-1 rounded-full transition-colors"
           style={{
-            background: codeCopied ? 'rgba(34,197,94,0.15)' : 'rgba(255,184,28,0.1)',
+            background: codeCopied ? 'rgba(34,197,94,0.15)' : 'rgba(212,175,55,0.1)',
             color: codeCopied ? '#22C55E' : '#D4AF37',
-            border: `1px solid ${codeCopied ? 'rgba(34,197,94,0.3)' : 'rgba(255,184,28,0.2)'}`,
+            border: `1px solid ${codeCopied ? 'rgba(34,197,94,0.3)' : 'rgba(212,175,55,0.2)'}`,
           }}
         >
           {codeCopied ? 'COPIED!' : 'COPY'}
@@ -347,7 +347,7 @@ export function StudioConnectionBanner({
         <a
           href="/api/studio/plugin"
           download="ForjeGames.rbxmx"
-          className="text-[11px] text-[#FFB81C] font-semibold hover:underline underline-offset-2 transition-colors"
+          className="text-[11px] text-[#D4AF37] font-semibold hover:underline underline-offset-2 transition-colors"
         >
           Download ForjeGames Plugin
         </a>

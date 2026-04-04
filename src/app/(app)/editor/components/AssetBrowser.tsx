@@ -194,7 +194,7 @@ function AssetCard({
           {creator}
         </span>
         {price !== null && price > 0 && (
-          <span style={{ fontSize: 10, color: '#FFB81C', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
+          <span style={{ fontSize: 10, color: '#D4AF37', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>
             {price.toLocaleString()} R$
           </span>
         )}
@@ -216,8 +216,8 @@ function AssetCard({
           border: 'none',
           background: isInserting
             ? 'rgba(212,175,55,0.15)'
-            : 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(255,184,28,0.15) 100%)',
-          color: isInserting ? 'rgba(255,184,28,0.5)' : '#FFB81C',
+            : 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.15) 100%)',
+          color: isInserting ? 'rgba(212,175,55,0.5)' : '#D4AF37',
           fontSize: 11,
           fontWeight: 700,
           fontFamily: 'Inter, sans-serif',
@@ -252,7 +252,7 @@ function AISuggestBanner({
         padding: '10px 14px',
         borderRadius: 10,
         border: '1px solid rgba(212,175,55,0.25)',
-        background: 'linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(255,184,28,0.05) 100%)',
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.08) 0%, rgba(212,175,55,0.05) 100%)',
         cursor: isLoading ? 'not-allowed' : 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -268,7 +268,7 @@ function AISuggestBanner({
           width: 30,
           height: 30,
           borderRadius: 8,
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(255,184,28,0.15) 100%)',
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.15) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -281,19 +281,19 @@ function AISuggestBanner({
               width: 14,
               height: 14,
               borderRadius: '50%',
-              border: '2px solid rgba(255,184,28,0.3)',
-              borderTopColor: '#FFB81C',
+              border: '2px solid rgba(212,175,55,0.3)',
+              borderTopColor: '#D4AF37',
               animation: 'spin 0.8s linear infinite',
             }}
           />
         ) : (
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1.5L8.3 5.3H12.2L9 7.7l1.2 3.8L7 9l-3.2 2.5 1.2-3.8-3.2-2.4h3.9L7 1.5z" fill="#FFB81C" />
+            <path d="M7 1.5L8.3 5.3H12.2L9 7.7l1.2 3.8L7 9l-3.2 2.5 1.2-3.8-3.2-2.4h3.9L7 1.5z" fill="#D4AF37" />
           </svg>
         )}
       </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: '#FFB81C', fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>
           AI Suggest
         </div>
         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif', marginTop: 1 }}>
@@ -555,7 +555,7 @@ export function AssetBrowser({
                 width: 28,
                 height: 28,
                 borderRadius: 8,
-                background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(255,184,28,0.15) 100%)',
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.25) 0%, rgba(212,175,55,0.15) 100%)',
                 border: '1px solid rgba(212,175,55,0.2)',
                 display: 'flex',
                 alignItems: 'center',
@@ -563,7 +563,7 @@ export function AssetBrowser({
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7 1.2L8.7 5.5H13l-3.5 2.6 1.3 4.1L7 9.7l-3.8 2.5 1.3-4.1L1 5.5h4.3L7 1.2z" fill="#FFB81C" />
+                <path d="M7 1.2L8.7 5.5H13l-3.5 2.6 1.3 4.1L7 9.7l-3.8 2.5 1.3-4.1L1 5.5h4.3L7 1.2z" fill="#D4AF37" />
               </svg>
             </div>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'white', letterSpacing: '-0.01em' }}>
@@ -673,7 +673,7 @@ export function AssetBrowser({
                 border: '1px solid',
                 borderColor: activeTab === tab ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.06)',
                 background: activeTab === tab ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.02)',
-                color: activeTab === tab ? '#FFB81C' : 'rgba(255,255,255,0.4)',
+                color: activeTab === tab ? '#D4AF37' : 'rgba(255,255,255,0.4)',
                 fontSize: 11,
                 fontWeight: activeTab === tab ? 700 : 500,
                 fontFamily: 'Inter, sans-serif',
@@ -708,8 +708,8 @@ export function AssetBrowser({
                 width: 12,
                 height: 12,
                 borderRadius: '50%',
-                border: '1.5px solid rgba(255,184,28,0.25)',
-                borderTopColor: '#FFB81C',
+                border: '1.5px solid rgba(212,175,55,0.25)',
+                borderTopColor: '#D4AF37',
               }}
               className="fj-spin"
             />
@@ -856,7 +856,7 @@ export function AssetBrowserButton({
         border: '1px solid',
         borderColor: isOpen ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)',
         background: isOpen ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
-        color: isOpen ? '#FFB81C' : 'rgba(255,255,255,0.55)',
+        color: isOpen ? '#D4AF37' : 'rgba(255,255,255,0.55)',
         fontSize: 12,
         fontWeight: 600,
         fontFamily: 'Inter, sans-serif',
@@ -868,7 +868,7 @@ export function AssetBrowserButton({
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
         <path
           d="M6.5 1L8 5H12L9 7.5l1 3.5-3.5-2-3.5 2 1-3.5L1 5h4L6.5 1z"
-          stroke={isOpen ? '#FFB81C' : 'rgba(255,255,255,0.55)'}
+          stroke={isOpen ? '#D4AF37' : 'rgba(255,255,255,0.55)'}
           strokeWidth="1.2"
           fill="none"
         />

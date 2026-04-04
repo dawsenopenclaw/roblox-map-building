@@ -14,7 +14,7 @@ interface GlowCardProps {
 
 /**
  * Card with an animated conic-gradient gold border glow on hover.
- * Design system colors: #D4AF37 / #FFD700 / #FFB81C.
+ * Design system colors: #D4AF37 / #FFD700 / #D4AF37.
  * Respects prefers-reduced-motion — falls back to a static gold border glow.
  */
 export function GlowCard({ children, className = '', speed = 90, glow = true }: GlowCardProps) {
@@ -83,8 +83,8 @@ export function GlowCard({ children, className = '', speed = 90, glow = true }: 
             padding: '1.5px',
             background: isHovered
               ? prefersReduced
-                ? `conic-gradient(#D4AF37, #FFD700, #FFB81C, #D4AF37)`
-                : `conic-gradient(from ${angle}deg at 50% 50%, #D4AF37 0deg, #FFD700 72deg, #FFB81C 144deg, #D4AF37 216deg, transparent 270deg, transparent 360deg)`
+                ? `conic-gradient(#D4AF37, #FFD700, #D4AF37, #D4AF37)`
+                : `conic-gradient(from ${angle}deg at 50% 50%, #D4AF37 0deg, #FFD700 72deg, #D4AF37 144deg, #D4AF37 216deg, transparent 270deg, transparent 360deg)`
               : 'transparent',
             WebkitMask:
               'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',

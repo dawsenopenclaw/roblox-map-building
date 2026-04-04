@@ -69,7 +69,7 @@ export default function FaqSection() {
         <div className="text-center mb-14">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
           >
             FAQ
           </p>
@@ -91,8 +91,8 @@ export default function FaqSection() {
                 className="rounded-xl overflow-hidden transition-all duration-200"
                 style={{
                   background: '#0F1535',
-                  border: isOpen ? '1px solid rgba(255,184,28,0.25)' : '1px solid #1A2550',
-                  boxShadow: isOpen ? '0 0 20px rgba(255,184,28,0.04)' : 'none',
+                  border: isOpen ? '1px solid rgba(212,175,55,0.25)' : '1px solid #1A2550',
+                  boxShadow: isOpen ? '0 0 20px rgba(212,175,55,0.04)' : 'none',
                 }}
               >
                 <button
@@ -102,7 +102,7 @@ export default function FaqSection() {
                   aria-expanded={isOpen}
                 >
                   <span className="text-sm font-medium leading-relaxed">{faq.q}</span>
-                  <span style={{ color: isOpen ? '#FFB81C' : '#8B95B0' }}>
+                  <span style={{ color: isOpen ? '#D4AF37' : '#8B95B0' }}>
                     <ChevronIcon open={isOpen} />
                   </span>
                 </button>
@@ -133,7 +133,7 @@ export default function FaqSection() {
           <a
             href="mailto:support@forjegames.com"
             className="transition-colors duration-150"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
           >
@@ -143,7 +143,7 @@ export default function FaqSection() {
           <a
             href="/editor"
             className="transition-colors duration-150"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
           >

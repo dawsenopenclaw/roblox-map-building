@@ -234,7 +234,7 @@ export const whiteLabelBrandingSchema = z.object({
   logoUrl:      z.string().url().nullable().optional(),
   faviconUrl:   z.string().url().nullable().optional(),
   primaryColor: z.string().regex(HEX_COLOR, 'Must be a hex color e.g. #D4AF37').optional(),
-  accentColor:  z.string().regex(HEX_COLOR, 'Must be a hex color e.g. #FFB81C').optional(),
+  accentColor:  z.string().regex(HEX_COLOR, 'Must be a hex color e.g. #D4AF37').optional(),
   companyName:  z.string().min(2).max(80).optional(),
   tagline:      z.string().max(160).nullable().optional(),
   customDomain: z.string().min(4).max(253).nullable().optional(),

@@ -16,9 +16,9 @@ function CheckIcon({ gold }: { gold?: boolean }) {
     <div
       className="w-7 h-7 rounded-full flex items-center justify-center"
       style={{
-        background: gold ? 'rgba(255,184,28,0.15)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${gold ? 'rgba(255,184,28,0.4)' : 'rgba(255,255,255,0.08)'}`,
-        boxShadow: gold ? '0 0 10px rgba(255,184,28,0.25)' : 'none',
+        background: gold ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.04)',
+        border: `1px solid ${gold ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        boxShadow: gold ? '0 0 10px rgba(212,175,55,0.25)' : 'none',
       }}
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={gold ? '#FFD166' : 'rgba(255,255,255,0.4)'} strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round">
@@ -53,7 +53,7 @@ export default function ComparisonSection() {
         <div className="text-center mb-14">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
           >
             Beyond Scripting
           </p>
@@ -86,7 +86,7 @@ export default function ComparisonSection() {
                 className="text-sm font-bold"
                 style={{
                   color: '#FFD166',
-                  textShadow: '0 0 12px rgba(255,184,28,0.6), 0 0 24px rgba(212,175,55,0.3)',
+                  textShadow: '0 0 12px rgba(212,175,55,0.6), 0 0 24px rgba(212,175,55,0.3)',
                   letterSpacing: '0.01em',
                 }}
               >
@@ -120,7 +120,7 @@ export default function ComparisonSection() {
           {/* Bottom CTA row */}
           <div
             className="px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
-            style={{ background: 'rgba(255,184,28,0.04)', borderTop: '1px solid rgba(255,184,28,0.12)' }}
+            style={{ background: 'rgba(212,175,55,0.04)', borderTop: '1px solid rgba(212,175,55,0.12)' }}
           >
             <p className="text-sm" style={{ color: '#8B95B0' }}>
               One platform. Every game system.

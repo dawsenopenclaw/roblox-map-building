@@ -23,11 +23,11 @@ const SHOWCASE_ITEMS = [
   {
     label: 'Neon City',
     tag: 'Simulator',
-    color: '#FFB81C',
+    color: '#D4AF37',
     parts: '6,800+',
     scripts: '42',
     description: 'Cyberpunk city with neon-lit storefronts, traffic system, economy, and day/night cycle — built from a single voice prompt.',
-    accentColor: '#FFB81C',
+    accentColor: '#D4AF37',
     assetId: 81689045656157,
   },
   {
@@ -105,7 +105,7 @@ export default function ShowcasePreview() {
           <div>
             <p
               className="text-[12px] font-medium uppercase tracking-widest mb-3"
-              style={{ color: '#FFB81C' }}
+              style={{ color: '#D4AF37' }}
             >
               Showcase
             </p>
@@ -120,9 +120,9 @@ export default function ShowcasePreview() {
             href="/editor"
             className="flex-shrink-0 flex items-center gap-2 text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200"
             style={{
-              color: '#FFB81C',
-              border: '1px solid rgba(255,184,28,0.25)',
-              background: 'rgba(255,184,28,0.06)',
+              color: '#D4AF37',
+              border: '1px solid rgba(212,175,55,0.25)',
+              background: 'rgba(212,175,55,0.06)',
             }}
           >
             Build yours free
@@ -242,16 +242,16 @@ export default function ShowcasePreview() {
         <div
           className="mt-10 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4"
           style={{
-            background: 'rgba(255,184,28,0.04)',
-            border: '1px solid rgba(255,184,28,0.12)',
+            background: 'rgba(212,175,55,0.04)',
+            border: '1px solid rgba(212,175,55,0.12)',
           }}
         >
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)' }}
+              style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)' }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFB81C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="22" />
@@ -259,7 +259,7 @@ export default function ShowcasePreview() {
             </div>
             <p className="text-sm" style={{ color: '#8B95B0' }}>
               Each of these was built from a single prompt like:&nbsp;
-              <span className="font-mono" style={{ color: '#FFB81C' }}>
+              <span className="font-mono" style={{ color: '#D4AF37' }}>
                 &ldquo;build a medieval castle with a moat and drawbridge&rdquo;
               </span>
             </p>

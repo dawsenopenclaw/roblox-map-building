@@ -26,6 +26,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { drainCommands, getSession, getSessionByToken, createSession } from '@/lib/studio-session'
+import { studioSyncRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { getRedis } from '@/lib/redis'
+import { trackCommand } from '@/lib/studio-analytics'
 
 // ── JWT helpers (mirrors auth/route.ts) ───────────────────────────────────────
 // STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
@@ -79,19 +82,47 @@ function verifyJwt(token: string): JwtPayload | null {
   }
 }
 
-/** Minimum plugin version the server accepts without flagging an update. */
-const MINIMUM_PLUGIN_VERSION = '4.0.0'
+/** Fallback manifest when Redis has no stored version yet. */
+const DEFAULT_MANIFEST = {
+  version:     '4.5.0',
+  minVersion:  '4.0.0',
+  downloadUrl: '/api/studio/plugin',
+  changelog:   'Auto-update pipeline, version manifest endpoint, force-update support.',
+  forceUpdate: false,
+}
 
-function isOutdated(pluginVer: string): boolean {
+const MANIFEST_REDIS_KEY = 'fj:studio:plugin:version'
+let _manifestCache: { data: typeof DEFAULT_MANIFEST; expiresAt: number } | null = null
+
+async function getPluginManifest(): Promise<typeof DEFAULT_MANIFEST> {
+  if (_manifestCache && _manifestCache.expiresAt > Date.now()) return _manifestCache.data
   try {
-    const [pMaj, pMin, pPatch] = pluginVer.split('.').map(Number)
-    const [mMaj, mMin, mPatch] = MINIMUM_PLUGIN_VERSION.split('.').map(Number)
-    if (pMaj !== mMaj) return pMaj < mMaj
-    if (pMin !== mMin) return pMin < mMin
-    return pPatch < mPatch
-  } catch {
-    return false
-  }
+    const r = getRedis()
+    if (r) {
+      const raw = await r.get(MANIFEST_REDIS_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as typeof DEFAULT_MANIFEST
+        _manifestCache = { data: parsed, expiresAt: Date.now() + 300_000 }
+        return parsed
+      }
+    }
+  } catch { /* Redis unavailable — use defaults */ }
+  _manifestCache = { data: DEFAULT_MANIFEST, expiresAt: Date.now() + 300_000 }
+  return DEFAULT_MANIFEST
+}
+
+function semverLt(a: string, b: string): boolean {
+  try {
+    const [aMaj, aMin, aPat] = a.split('.').map(Number)
+    const [bMaj, bMin, bPat] = b.split('.').map(Number)
+    if (aMaj !== bMaj) return aMaj < bMaj
+    if (aMin !== bMin) return aMin < bMin
+    return aPat < bPat
+  } catch { return false }
+}
+
+function isOutdated(pluginVer: string, manifest: typeof DEFAULT_MANIFEST): boolean {
+  return semverLt(pluginVer, manifest.minVersion)
 }
 
 const CORS_HEADERS = {
@@ -158,9 +189,9 @@ async function handleSync(req: NextRequest) {
     }
   }
 
-  // ── Path 2: Legacy plain-token memory lookup (older plugin versions) ──────
+  // ── Path 2: Legacy plain-token lookup — L1 then Redis (older plugin versions)
   if (!session && token) {
-    const byToken = getSessionByToken(token)
+    const byToken = await getSessionByToken(token)
     if (byToken) {
       session = byToken
       sessionId = byToken.sessionId
@@ -179,6 +210,17 @@ async function handleSync(req: NextRequest) {
     )
   }
 
+  // ── HTTP-boundary rate limit (120 req/60 s per session) ──────────────────
+  // drainCommands enforces MIN_POLL_INTERVAL_MS internally; this is a coarse
+  // guard against reconnect storms and misbehaving plugin versions.
+  const rl = await studioSyncRateLimit(sessionId)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { serverTime: Date.now(), heartbeat: true, changes: [], rateLimited: true, retryAfterMs: 1000 },
+      { status: 429, headers: { ...CORS_HEADERS, ...rateLimitHeaders(rl) } },
+    )
+  }
+
   // ── Capture camera data from plugin ──────────────────────────────────────
   const camX = searchParams.get('camX')
   if (camX && session) {
@@ -192,8 +234,10 @@ async function handleSync(req: NextRequest) {
     }
   }
 
-  // ── Version check ─────────────────────────────────────────────────────────
-  const needsUpdate = isOutdated(pluginVer)
+  // ── Version check (Redis-backed manifest, 5-min cache) ───────────────────
+  const manifest    = await getPluginManifest()
+  const needsUpdate = isOutdated(pluginVer, manifest)
+  const forceUpdate = semverLt(pluginVer, manifest.minVersion)
 
   // ── Parse lastSync — default to 0 (return everything in queue) ────────────
   const lastSync = lastSyncRaw ? parseInt(lastSyncRaw, 10) : 0
@@ -208,17 +252,65 @@ async function handleSync(req: NextRequest) {
     )
   }
 
+  // Track each delivered command by type (fire-and-forget)
+  for (const cmd of commands) {
+    trackCommand(cmd.type)
+  }
+
+  const serverTime = Date.now()
   const body: Record<string, unknown> = {
-    serverTime: Date.now(),
+    serverTime,
     heartbeat:  true,
     sessionId,
     placeId:    session.placeId,
     changes:    commands,
   }
 
+  // Store plugin version on the session for analytics
+  if (session && pluginVer && pluginVer !== '0.0.0') {
+    session.pluginVersion = pluginVer
+  }
+
   if (needsUpdate) {
+    const absDownloadUrl = manifest.downloadUrl.startsWith('http')
+      ? manifest.downloadUrl
+      : `${req.nextUrl.origin}${manifest.downloadUrl}`
+
     body.updateAvailable = true
-    body.updateUrl       = '/api/studio/plugin'
+    body.latestVersion   = manifest.version
+    body.updateUrl       = absDownloadUrl
+    body.downloadUrl     = absDownloadUrl
+    body.changelog       = manifest.changelog
+    body.forceUpdate     = forceUpdate
+
+    if (forceUpdate) {
+      body.deprecationWarning =
+        `Plugin v${pluginVer} is no longer supported (min: ${manifest.minVersion}). ` +
+        `Please update to v${manifest.version} to continue using ForjeGames.`
+    }
+  }
+
+  // Return 304 Not Modified when there are no new commands and the client has
+  // an up-to-date ETag. This cuts response body bandwidth by ~90% on idle
+  // sessions, which is the dominant case at scale (thousands of plugins polling
+  // every 1-2 s with nothing queued).
+  if (commands.length === 0 && !needsUpdate) {
+    // ETag encodes the queue-empty state for this session at this poll interval.
+    // We use a coarse 2-second bucket so back-to-back polls that both see an
+    // empty queue share the same ETag and yield a 304 on the second call.
+    const etagBucket = Math.floor(serverTime / 2000)
+    const etag = `"empty-${sessionId}-${etagBucket}"`
+    const ifNoneMatch = req.headers.get('if-none-match')
+    if (ifNoneMatch === etag) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: { ...CORS_HEADERS, ETag: etag },
+      })
+    }
+    return NextResponse.json(body, {
+      status: 200,
+      headers: { ...CORS_HEADERS, ETag: etag },
+    })
   }
 
   return NextResponse.json(body, { status: 200, headers: CORS_HEADERS })

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   let session = sessionId ? await getSession(sessionId) : undefined
   if (!session && token) {
-    session = getSessionByToken(token)
+    session = await getSessionByToken(token)
   }
 
   if (!session) {

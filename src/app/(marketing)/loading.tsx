@@ -16,7 +16,7 @@ export default function MarketingLoading() {
           <div
             className="absolute w-24 h-24 rounded-full"
             style={{
-              background: 'radial-gradient(circle, rgba(255,184,28,0.18) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(212,175,55,0.18) 0%, transparent 70%)',
               animation: 'logo-glow-ring 2s ease-in-out infinite',
             }}
           />
@@ -26,15 +26,15 @@ export default function MarketingLoading() {
             className="relative w-16 h-16 rounded-2xl flex items-center justify-center"
             style={{
               background: 'linear-gradient(135deg, #1A1F45 0%, #141414 100%)',
-              border: '1.5px solid rgba(255,184,28,0.35)',
-              boxShadow: '0 0 0 0 rgba(255,184,28,0.4)',
+              border: '1.5px solid rgba(212,175,55,0.35)',
+              boxShadow: '0 0 0 0 rgba(212,175,55,0.4)',
               animation: 'logo-pulse 2s ease-in-out infinite',
             }}
           >
             {/* "F" lettermark */}
             <span
               className="text-2xl font-bold select-none"
-              style={{ color: '#FFB81C', letterSpacing: '-0.02em' }}
+              style={{ color: '#D4AF37', letterSpacing: '-0.02em' }}
             >
               F
             </span>
@@ -43,7 +43,7 @@ export default function MarketingLoading() {
 
         {/* Wordmark */}
         <div style={{ animation: 'logo-fade-in 0.4s ease 0.1s both' }}>
-          <span className="text-xl font-bold tracking-tight" style={{ color: '#FFB81C' }}>
+          <span className="text-xl font-bold tracking-tight" style={{ color: '#D4AF37' }}>
             Forje
           </span>
           <span className="text-xl font-bold tracking-tight text-white">Games</span>
@@ -56,7 +56,7 @@ export default function MarketingLoading() {
               key={i}
               className="w-1.5 h-1.5 rounded-full"
               style={{
-                background: '#FFB81C',
+                background: '#D4AF37',
                 opacity: 0.4,
                 animation: `dot-bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
               }}
@@ -66,8 +66,8 @@ export default function MarketingLoading() {
 
         <style>{`
           @keyframes logo-pulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,28,0.4),  0 0 16px rgba(255,184,28,0.1); }
-            50%       { box-shadow: 0 0 0 8px rgba(255,184,28,0),  0 0 32px rgba(255,184,28,0.2); }
+            0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.4),  0 0 16px rgba(212,175,55,0.1); }
+            50%       { box-shadow: 0 0 0 8px rgba(212,175,55,0),  0 0 32px rgba(212,175,55,0.2); }
           }
           @keyframes logo-glow-ring {
             0%, 100% { opacity: 0.6; transform: scale(1); }

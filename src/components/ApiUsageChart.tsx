@@ -57,7 +57,7 @@ export function ApiUsageChart({
               onClick={() => onRangeChange(r)}
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 range === r
-                  ? 'bg-[#FFB81C] text-black'
+                  ? 'bg-[#D4AF37] text-black'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
@@ -75,7 +75,7 @@ export function ApiUsageChart({
 
       <div className="flex gap-4 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-0.5 bg-[#FFB81C]" />
+          <div className="w-3 h-0.5 bg-[#D4AF37]" />
           <span className="text-gray-300 text-xs">Requests</span>
         </div>
         <div className="flex items-center gap-2">

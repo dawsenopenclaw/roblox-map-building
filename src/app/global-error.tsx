@@ -76,7 +76,7 @@ export default function GlobalError({
                 <button
                   onClick={handleReset}
                   disabled={retrying}
-                  className="inline-flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-6 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/30 hover:-translate-y-0.5"
+                  className="inline-flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-6 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 hover:-translate-y-0.5"
                 >
                   {retrying ? (
                     <>
@@ -109,7 +109,7 @@ export default function GlobalError({
                   Still stuck?{' '}
                   <a
                     href={`mailto:support@forjegames.com?subject=Global+error+report${error.digest ? `&body=Error+ID:+${error.digest}` : ''}`}
-                    className="text-[#FFB81C] hover:underline"
+                    className="text-[#D4AF37] hover:underline"
                   >
                     Report this issue
                   </a>
@@ -118,7 +118,7 @@ export default function GlobalError({
                     href="https://status.ForjeGames.gg"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#FFB81C] hover:underline"
+                    className="text-[#D4AF37] hover:underline"
                   >
                     Status page
                   </a>

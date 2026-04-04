@@ -32,7 +32,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl p-4 mb-6">
+    <form onSubmit={handleSubmit} className="bg-[#141414] border border-[#D4AF37]/20 rounded-xl p-4 mb-6">
       <h3 className="text-sm font-medium text-white mb-3">Leave a Review</h3>
 
       {/* Star picker */}
@@ -46,10 +46,11 @@ export function ReviewForm({ templateId }: { templateId: string }) {
               onClick={() => setRating(value)}
               onMouseEnter={() => setHoveredRating(value)}
               onMouseLeave={() => setHoveredRating(0)}
-              className="focus:outline-none"
+              aria-label={`Rate ${value} star${value > 1 ? 's' : ''}`}
+              className="focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 rounded"
             >
               <svg
-                className={`w-7 h-7 transition-colors ${value <= (hoveredRating || rating) ? 'text-[#FFB81C]' : 'text-gray-500'}`}
+                className={`w-7 h-7 transition-colors ${value <= (hoveredRating || rating) ? 'text-[#D4AF37]' : 'text-gray-500'}`}
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -79,7 +80,7 @@ export function ReviewForm({ templateId }: { templateId: string }) {
       <button
         type="submit"
         disabled={submitting}
-        className="bg-[#FFB81C] hover:bg-[#E6A618] text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-60"
+        className="bg-[#D4AF37] hover:bg-[#E6A618] text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors disabled:opacity-60"
       >
         {submitting ? 'Submitting...' : 'Submit Review'}
       </button>

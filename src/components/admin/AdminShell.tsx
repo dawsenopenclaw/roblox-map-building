@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Link2,
+  Radio,
 } from 'lucide-react'
 // Profile handled by global ProfileButton in root layout
 
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin/charity', label: 'Charity', icon: Heart },
   { href: '/admin/links', label: 'All Links', icon: Link2 },
+  { href: '/admin/studio', label: 'Studio', icon: Radio },
 ]
 
 export function AdminShell({
@@ -74,7 +76,7 @@ export function AdminShell({
       >
         {/* Logo */}
         <div className="h-16 flex items-center gap-2 px-5 border-b border-[#1c1c1c] flex-shrink-0">
-          <div className="w-7 h-7 bg-[#FFB81C] rounded-lg flex items-center justify-center">
+          <div className="w-7 h-7 bg-[#D4AF37] rounded-lg flex items-center justify-center">
             <Shield className="w-4 h-4 text-black" />
           </div>
           <span className="font-bold text-white">Admin</span>
@@ -83,8 +85,8 @@ export function AdminShell({
 
         {/* Demo banner */}
         {isDemo && (
-          <div className="mx-3 mt-3 px-3 py-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-lg">
-            <p className="text-xs text-[#FFB81C] font-medium">Demo Mode</p>
+          <div className="mx-3 mt-3 px-3 py-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-lg">
+            <p className="text-xs text-[#D4AF37] font-medium">Demo Mode</p>
             <p className="text-xs text-[#B0B0B0] mt-0.5">Showing sample data</p>
           </div>
         )}
@@ -101,16 +103,16 @@ export function AdminShell({
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group
                   ${active
-                    ? 'bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20'
+                    ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
                     : 'text-[#B0B0B0] hover:text-white hover:bg-[#1c1c1c] border border-transparent'
                   }
                 `}
               >
                 <item.icon
-                  className={`w-4 h-4 flex-shrink-0 ${active ? 'text-[#FFB81C]' : 'text-[#B0B0B0] group-hover:text-white'}`}
+                  className={`w-4 h-4 flex-shrink-0 ${active ? 'text-[#D4AF37]' : 'text-[#B0B0B0] group-hover:text-white'}`}
                 />
                 {item.label}
-                {active && <ChevronRight className="w-3.5 h-3.5 ml-auto text-[#FFB81C]" />}
+                {active && <ChevronRight className="w-3.5 h-3.5 ml-auto text-[#D4AF37]" />}
               </Link>
             )
           })}
@@ -119,12 +121,12 @@ export function AdminShell({
         {/* Footer */}
         <div className="p-4 border-t border-[#1c1c1c] flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full flex items-center justify-center text-xs font-bold text-[#FFB81C]">
+            <div className="w-7 h-7 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full flex items-center justify-center text-xs font-bold text-[#D4AF37]">
               {(user.email[0] ?? 'A').toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-white truncate">{user.email}</p>
-              <p className="text-xs text-[#FFB81C]">{user.role}</p>
+              <p className="text-xs text-[#D4AF37]">{user.role}</p>
             </div>
           </div>
           <Link

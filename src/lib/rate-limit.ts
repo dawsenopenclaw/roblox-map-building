@@ -13,6 +13,48 @@
 import { getRedis } from './redis'
 
 // ---------------------------------------------------------------------------
+// In-memory fallback rate limiter
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-instance in-memory fallback used when Redis is unavailable.
+ *
+ * Tradeoff: this is not global — each Lambda/Node instance tracks its own
+ * counters. The fallback limit is intentionally 2× the Redis limit to account
+ * for load being spread across multiple instances. It won't stop a perfectly
+ * distributed flood, but it prevents a single instance from being hammered
+ * (e.g. AI generation hammered during a Redis outage, burning real money).
+ */
+const memoryCounters = new Map<string, { count: number; resetAt: number }>()
+
+function checkMemoryLimit(
+  identifier: string,
+  limit: number,
+  windowSec: number,
+): RateLimitResult {
+  const now = Date.now()
+  const bucket = Math.floor(now / 1000 / windowSec)
+  const key = `${identifier}:${windowSec}:${bucket}`
+  const resetAt = (bucket + 1) * windowSec * 1000
+  // 2× limit since this is per-instance, not global
+  const fallbackLimit = limit * 2
+
+  const entry = memoryCounters.get(key)
+  if (!entry || entry.resetAt <= now) {
+    memoryCounters.set(key, { count: 1, resetAt })
+    return { allowed: true, limit: fallbackLimit, remaining: fallbackLimit - 1, resetAt }
+  }
+
+  entry.count += 1
+  return {
+    allowed: entry.count <= fallbackLimit,
+    limit: fallbackLimit,
+    remaining: Math.max(0, fallbackLimit - entry.count),
+    resetAt,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Core sliding-window implementation
 // ---------------------------------------------------------------------------
 
@@ -46,10 +88,10 @@ async function checkLimit(
   const redisInstance = getRedis()
   const resetAt = (Math.floor(Date.now() / 1000 / windowSec) + 1) * windowSec * 1000
 
-  // Fail open when Redis is unavailable — a Redis outage should not take down
-  // the application. Requests are allowed through; Sentry will surface the issue.
+  // Redis unavailable — fall back to per-instance in-memory limiter rather than
+  // failing open unconditionally. Sentry will surface the outage separately.
   if (!redisInstance) {
-    return { allowed: true, limit, remaining: limit, resetAt }
+    return checkMemoryLimit(identifier, limit, windowSec)
   }
 
   // Bucket by window so we get a coarse sliding window
@@ -65,9 +107,9 @@ async function checkLimit(
     const results = await pipeline.exec()
     count = (results?.[0]?.[1] as number) ?? 1
   } catch {
-    // Redis error mid-request — fail open rather than blocking all traffic
-    console.warn('[rate-limit] Redis pipeline error — failing open for', identifier)
-    return { allowed: true, limit, remaining: limit, resetAt }
+    // Redis error mid-request — fall back to in-memory limiter rather than failing open
+    console.warn('[rate-limit] Redis pipeline error — using memory fallback for', identifier)
+    return checkMemoryLimit(identifier, limit, windowSec)
   }
 
   return {
@@ -117,6 +159,48 @@ export async function parentalConsentRateLimit(ip: string): Promise<RateLimitRes
  */
 export async function generalRateLimit(userId: string): Promise<RateLimitResult> {
   return checkLimit(`general:${userId}`, 60, 60)
+}
+
+/**
+ * Marketplace read routes (browse/list) — 30 requests per minute per identifier.
+ * Identifier should be userId when authenticated, IP address otherwise.
+ *
+ * @param identifier - Clerk user ID or client IP address
+ */
+export async function marketplaceReadRateLimit(identifier: string): Promise<RateLimitResult> {
+  return checkLimit(`mkt_read:${identifier}`, 30, 60)
+}
+
+/**
+ * Marketplace write routes (purchase, review, submit) — 10 requests per minute per user.
+ * Lower limit because these routes mutate financial or user-generated data.
+ *
+ * @param userId - Clerk user ID
+ */
+export async function marketplaceWriteRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(`mkt_write:${userId}`, 10, 60)
+}
+
+/**
+ * Studio sync endpoint — 120 requests per 60 seconds per session.
+ * Allows burst up to 2 req/s while blocking runaway polls or reconnect storms.
+ * The sync route already enforces an 800ms MIN_POLL_INTERVAL_MS inside
+ * drainCommands; this layer is a coarse guard at the HTTP boundary.
+ *
+ * @param sessionId - Studio session ID
+ */
+export async function studioSyncRateLimit(sessionId: string): Promise<RateLimitResult> {
+  return checkLimit(`studio_sync:${sessionId}`, 120, 60)
+}
+
+/**
+ * Studio execute endpoint — 30 commands per 60 seconds per user.
+ * Prevents script-injection floods while still allowing 1 command every 2 s comfortably.
+ *
+ * @param userId - Clerk user ID or session ID when unauthenticated
+ */
+export async function studioExecuteRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkLimit(`studio_exec:${userId}`, 30, 60)
 }
 
 // ---------------------------------------------------------------------------

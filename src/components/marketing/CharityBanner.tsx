@@ -4,9 +4,9 @@ export default function CharityBanner() {
   return (
     <div
       style={{
-        background: 'linear-gradient(to right, rgba(255,184,28,0.03), transparent, rgba(255,184,28,0.03))',
-        borderTop: '1px solid rgba(255,184,28,0.08)',
-        borderBottom: '1px solid rgba(255,184,28,0.08)',
+        background: 'linear-gradient(to right, rgba(212,175,55,0.03), transparent, rgba(212,175,55,0.03))',
+        borderTop: '1px solid rgba(212,175,55,0.08)',
+        borderBottom: '1px solid rgba(212,175,55,0.08)',
       }}
     >
       <div
@@ -24,7 +24,7 @@ export default function CharityBanner() {
         >
           <path
             d="M10 17.5s-7.5-4.74-7.5-9.38A4.38 4.38 0 0 1 10 4.64a4.38 4.38 0 0 1 7.5 3.48C17.5 12.76 10 17.5 10 17.5Z"
-            fill="#FFB81C"
+            fill="#D4AF37"
             opacity="0.9"
           />
         </svg>
@@ -34,7 +34,7 @@ export default function CharityBanner() {
           <Link
             href="/pricing"
             className="font-medium transition-opacity hover:opacity-80"
-            style={{ color: '#FFB81C' }}
+            style={{ color: '#D4AF37' }}
           >
             Learn more
           </Link>

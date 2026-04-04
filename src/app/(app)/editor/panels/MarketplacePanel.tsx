@@ -144,8 +144,8 @@ function StarRating({ rating }: { rating: number }) {
   const empty = 5 - full - (frac > 0 ? 1 : 0)
   return (
     <span className="flex items-center gap-px">
-      {Array.from({ length: full  }).map((_, i) => <span key={`f${i}`} className="text-[#FFB81C] text-[9px]">&#9733;</span>)}
-      {frac > 0 && <span className="text-[#FFB81C]/50 text-[9px]">&#9733;</span>}
+      {Array.from({ length: full  }).map((_, i) => <span key={`f${i}`} className="text-[#D4AF37] text-[9px]">&#9733;</span>)}
+      {frac > 0 && <span className="text-[#D4AF37]/50 text-[9px]">&#9733;</span>}
       {Array.from({ length: empty }).map((_, i) => <span key={`e${i}`} className="text-gray-600 text-[9px]">&#9733;</span>)}
     </span>
   )
@@ -255,13 +255,13 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
       <div className="relative flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-white/5">
         {isWorking && (
           <div className="flex flex-col items-center gap-1.5">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#FFB81C]/30 border-t-[#FFB81C]"/>
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D4AF37]/30 border-t-[#D4AF37]"/>
             <span className="text-[9px] text-gray-500">{isPending ? 'Mesh generating…' : 'Generating…'}</span>
           </div>
         )}
         {!isWorking && !isError && previewImg && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewImg} alt={asset.prompt} className="h-full w-full object-contain"/>
+          <img src={previewImg} alt={asset.prompt} width={80} height={80} className="h-full w-full object-contain"/>
         )}
         {!isWorking && !isError && !previewImg && (
           <div className="flex flex-col items-center gap-1 text-gray-700">
@@ -273,7 +273,7 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
           </div>
         )}
         {isError && <span className="text-[10px] text-red-400">Failed</span>}
-        {isDemo && <span className="absolute right-1 top-1 rounded bg-[#FFB81C]/20 px-1 py-0.5 text-[8px] font-bold text-[#FFB81C]">DEMO</span>}
+        {isDemo && <span className="absolute right-1 top-1 rounded bg-[#D4AF37]/20 px-1 py-0.5 text-[8px] font-bold text-[#D4AF37]">DEMO</span>}
         {asset.status === 'complete' && asset.meshUrl && <span className="absolute left-1 top-1 rounded bg-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400">GLB READY</span>}
         {isPending && <span className="absolute left-1 top-1 rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">PENDING</span>}
       </div>
@@ -287,7 +287,7 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
           ].map(({ label, url }) => (
             <div key={label} className="flex-1 relative overflow-hidden rounded">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={label} className="w-full h-8 object-cover" />
+              <img src={url} alt={label} width={32} height={32} className="w-full h-8 object-cover" />
               <span className="absolute bottom-0 left-0 right-0 text-center text-[7px] text-white/70 bg-black/60 py-0.5">{label}</span>
             </div>
           ))}
@@ -333,9 +333,9 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
               onClick={handleImportToStudio}
               className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
               style={{
-                background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(255,184,28,0.1)',
-                border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(255,184,28,0.25)'}`,
-                color: copied ? '#4ADE80' : '#FFB81C',
+                background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(212,175,55,0.1)',
+                border: `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(212,175,55,0.25)'}`,
+                color: copied ? '#4ADE80' : '#D4AF37',
               }}
             >
               {copied ? (
@@ -455,7 +455,7 @@ function GenerateSubPanel() {
     <div className="space-y-3 p-4">
       <div className="flex gap-1">
         {(['mesh', 'texture'] as const).map((t) => (
-          <button key={t} onClick={() => setGenType(t)} className={['flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-colors', genType === t ? 'border border-[#FFB81C]/40 bg-[#FFB81C]/20 text-[#FFB81C]' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>
+          <button key={t} onClick={() => setGenType(t)} className={['flex-1 rounded-lg py-1.5 text-[10px] font-semibold transition-colors', genType === t ? 'border border-[#D4AF37]/40 bg-[#D4AF37]/20 text-[#D4AF37]' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>
             {t === 'mesh' ? '3D Model' : 'Texture'}
           </button>
         ))}
@@ -466,13 +466,13 @@ function GenerateSubPanel() {
         placeholder={genType === 'mesh' ? 'Describe what you want to generate...\ne.g. "medieval castle tower"' : 'Describe the texture...\ne.g. "mossy stone wall with cracks"'}
         rows={3}
         maxLength={2000}
-        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#D4AF37]/50 focus:outline-none"
       />
       <div>
         <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-600">Quality</p>
         <div className="flex gap-1">
           {(['draft', 'standard', 'premium'] as const).map((q) => (
-            <button key={q} onClick={() => setGenQuality(q)} className={['flex-1 rounded py-1 text-[10px] font-semibold capitalize transition-colors', genQuality === q ? 'bg-[#FFB81C] text-black' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>{q}</button>
+            <button key={q} onClick={() => setGenQuality(q)} className={['flex-1 rounded py-1 text-[10px] font-semibold capitalize transition-colors', genQuality === q ? 'bg-[#D4AF37] text-black' : 'border border-white/10 bg-white/5 text-gray-500 hover:text-gray-300'].join(' ')}>{q}</button>
           ))}
         </div>
       </div>
@@ -480,7 +480,7 @@ function GenerateSubPanel() {
       <button
         onClick={handleGenerate}
         disabled={!genPrompt.trim() || isGenerating}
-        className={['w-full rounded-lg py-2 text-xs font-bold transition-all', !genPrompt.trim() || isGenerating ? 'cursor-not-allowed bg-white/5 text-gray-600' : 'bg-[#FFB81C] text-black hover:bg-[#FFB81C]/90 active:scale-95'].join(' ')}
+        className={['w-full rounded-lg py-2 text-xs font-bold transition-all', !genPrompt.trim() || isGenerating ? 'cursor-not-allowed bg-white/5 text-gray-600' : 'bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90 active:scale-95'].join(' ')}
       >
         {isGenerating ? 'Generating...' : `Generate ${genType === 'mesh' ? '3D Model' : 'Texture'}`}
       </button>
@@ -567,7 +567,7 @@ function RobloxMarketplacePanel() {
             onClick={() => setActiveTab(tab)}
             className={[
               'flex-1 py-2.5 text-[11px] font-semibold transition-colors',
-              activeTab === tab ? 'border-b-2 border-[#FFB81C] text-[#FFB81C]' : 'text-gray-500 hover:text-gray-300',
+              activeTab === tab ? 'border-b-2 border-[#D4AF37] text-[#D4AF37]' : 'text-gray-500 hover:text-gray-300',
             ].join(' ')}
           >
             {tab === 'generate' ? '+ Generate' : 'Marketplace'}
@@ -590,10 +590,10 @@ function RobloxMarketplacePanel() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search marketplace..."
             maxLength={200}
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#D4AF37]/50 focus:outline-none"
           />
           {loading && (
-            <div className="absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border border-[#FFB81C] border-t-transparent" />
+            <div className="absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin rounded-full border border-[#D4AF37] border-t-transparent" />
           )}
         </div>
 
@@ -605,7 +605,7 @@ function RobloxMarketplacePanel() {
               className={[
                 'rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors',
                 activeCategory === cat
-                  ? 'bg-[#FFB81C] text-black'
+                  ? 'bg-[#D4AF37] text-black'
                   : 'border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-gray-200',
               ].join(' ')}
             >
@@ -619,7 +619,7 @@ function RobloxMarketplacePanel() {
         {error ? (
           <div className="py-6 text-center">
             <p className="mb-2 text-xs text-red-400/80">{error}</p>
-            <button onClick={() => setRetryKey((k) => k + 1)} className="text-[10px] text-[#FFB81C] hover:underline">
+            <button onClick={() => setRetryKey((k) => k + 1)} className="text-[10px] text-[#D4AF37] hover:underline">
               Retry
             </button>
           </div>
@@ -644,7 +644,7 @@ function RobloxMarketplacePanel() {
                   </p>
                   <p className="mt-0.5 truncate text-[9px] text-gray-600">{asset.creatorName}</p>
                   <div className="mt-1.5 flex items-center justify-between">
-                    <span className={['text-[10px] font-bold', free ? 'text-emerald-400' : 'text-[#FFB81C]'].join(' ')}>
+                    <span className={['text-[10px] font-bold', free ? 'text-emerald-400' : 'text-[#D4AF37]'].join(' ')}>
                       {label}
                     </span>
                     <button
@@ -707,14 +707,14 @@ function CommunityTab({ onInsertAsset }: { onInsertAsset?: (luau: string, name: 
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search 3D assets..."
             maxLength={200}
-            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+            className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-8 pr-3 text-xs text-gray-300 placeholder-gray-600 focus:border-[#D4AF37]/50 focus:outline-none"
           />
         </div>
         <div className="flex flex-wrap gap-1">
           {COMMUNITY_CATEGORIES.map((cat) => (
             <button key={cat} onClick={() => setActiveCat(cat)}
               className={['rounded-full px-2 py-0.5 text-[9px] font-semibold transition-colors',
-                activeCat === cat ? 'bg-[#FFB81C] text-black' : 'border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200',
+                activeCat === cat ? 'bg-[#D4AF37] text-black' : 'border border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200',
               ].join(' ')}>
               {cat}
             </button>
@@ -741,7 +741,7 @@ function CommunityTab({ onInsertAsset }: { onInsertAsset?: (luau: string, name: 
           <div className="py-10 text-center space-y-2">
             <p className="text-xs text-gray-600">No assets match</p>
             <button onClick={() => { setQuery(''); setActiveCat('All') }}
-              className="text-[10px] text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors">
+              className="text-[10px] text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors">
               Clear filters
             </button>
           </div>
@@ -774,7 +774,7 @@ function CommunityTab({ onInsertAsset }: { onInsertAsset?: (luau: string, name: 
                   <div className="grid grid-cols-2 gap-1 px-2 pb-2">
                     <button onClick={() => handleInsert(asset)} disabled={isIns}
                       className={['rounded py-1 text-[8px] font-bold transition-all',
-                        isIns ? 'cursor-default bg-emerald-500/20 text-emerald-400' : 'bg-[#FFB81C]/15 text-[#FFB81C] hover:bg-[#FFB81C]/25 active:scale-95',
+                        isIns ? 'cursor-default bg-emerald-500/20 text-emerald-400' : 'bg-[#D4AF37]/15 text-[#D4AF37] hover:bg-[#D4AF37]/25 active:scale-95',
                       ].join(' ')}>
                       {isIns ? 'Inserted' : 'Insert'}
                     </button>
@@ -793,7 +793,7 @@ function CommunityTab({ onInsertAsset }: { onInsertAsset?: (luau: string, name: 
       <div className="flex-shrink-0 border-t border-white/8 p-3">
         <button
           onClick={() => onInsertAsset?.('-- Open the Generate tab to create a custom 3D mesh with Meshy AI', 'Custom Asset')}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#FFB81C]/30 bg-[#FFB81C]/10 py-2 text-[10px] font-semibold text-[#FFB81C] transition-colors hover:bg-[#FFB81C]/20">
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#D4AF37]/30 bg-[#D4AF37]/10 py-2 text-[10px] font-semibold text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/20">
           <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
             <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
@@ -826,12 +826,12 @@ function GenerateTab() {
         onChange={(e) => setPrompt(e.target.value)}
         placeholder="e.g. A low-poly medieval castle with four towers..."
         rows={3}
-        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#FFB81C]/50 focus:outline-none"
+        className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-gray-300 placeholder-gray-600 focus:border-[#D4AF37]/50 focus:outline-none"
       />
       <button
         onClick={handleGenerate}
         disabled={!prompt.trim() || generating}
-        className="w-full rounded-lg bg-[#FFB81C] py-2 text-xs font-bold text-black transition-colors hover:bg-[#E6A519] disabled:cursor-not-allowed disabled:opacity-40"
+        className="w-full rounded-lg bg-[#D4AF37] py-2 text-xs font-bold text-black transition-colors hover:bg-[#E6A519] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {generating ? 'Generating...' : 'Generate Asset'}
       </button>
@@ -846,7 +846,7 @@ function GenerateTab() {
           <div className="p-2.5">
             <p className="text-[11px] font-semibold text-gray-200">{generated.name}</p>
             <p className="mt-0.5 text-[9px] text-gray-500">AI Generated &mdash; Ready to use</p>
-            <button className="mt-2 w-full rounded bg-[#FFB81C]/15 py-1 text-[9px] font-bold text-[#FFB81C] transition-colors hover:bg-[#FFB81C]/30">
+            <button className="mt-2 w-full rounded bg-[#D4AF37]/15 py-1 text-[9px] font-bold text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/30">
               Use in Game
             </button>
           </div>
@@ -884,7 +884,7 @@ export default function MarketplacePanel({ onInsertAsset }: MarketplacePanelProp
               className={[
                 'flex-1 rounded-md py-1.5 text-[10px] font-semibold transition-all',
                 activeTab === id
-                  ? 'bg-[#FFB81C] text-black shadow-sm'
+                  ? 'bg-[#D4AF37] text-black shadow-sm'
                   : 'text-gray-400 hover:text-gray-200',
               ].join(' ')}
             >

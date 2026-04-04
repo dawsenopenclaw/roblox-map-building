@@ -73,7 +73,7 @@ const AppChrome = memo(function AppChrome({
             style={{
               height: '1px',
               flexShrink: 0,
-              background: 'linear-gradient(90deg, transparent 0%, #FFB81C22 30%, #D4AF3730 60%, transparent 100%)',
+              background: 'linear-gradient(90deg, transparent 0%, #D4AF3722 30%, #D4AF3730 60%, transparent 100%)',
             }}
           />
           <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>

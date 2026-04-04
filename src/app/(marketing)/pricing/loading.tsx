@@ -24,7 +24,7 @@ export default function PricingLoading() {
             <div
               key={i}
               className={`relative flex flex-col bg-[#141414] border rounded-2xl p-6 ${
-                i === 2 ? 'border-[#FFB81C]/30' : 'border-white/10'
+                i === 2 ? 'border-[#D4AF37]/30' : 'border-white/10'
               }`}
             >
               {/* Plan name + description */}

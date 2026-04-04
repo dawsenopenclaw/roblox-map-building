@@ -71,8 +71,8 @@ export function ApiUsageChartInner({ data, rateLimit, range }: ApiUsageChartInne
       <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
         <defs>
           <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#FFB81C" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#FFB81C" stopOpacity={0} />
+            <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
           </linearGradient>
           <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
@@ -116,11 +116,11 @@ export function ApiUsageChartInner({ data, rateLimit, range }: ApiUsageChartInne
           type="monotone"
           dataKey="requests"
           name="Requests"
-          stroke="#FFB81C"
+          stroke="#D4AF37"
           strokeWidth={2}
           fill="url(#goldGradient)"
           dot={false}
-          activeDot={{ r: 4, fill: '#FFB81C', stroke: '#0a0a0a', strokeWidth: 2 }}
+          activeDot={{ r: 4, fill: '#D4AF37', stroke: '#0a0a0a', strokeWidth: 2 }}
         />
         <Area
           type="monotone"

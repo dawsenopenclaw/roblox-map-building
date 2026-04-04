@@ -141,13 +141,13 @@ export default function AdminTemplatesPage() {
         </div>
         <div className="flex items-center gap-2">
           {isDemo && (
-            <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+            <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full">
               Demo data
             </span>
           )}
           <button
             onClick={fetchQueue}
-            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#D4AF37] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -157,7 +157,7 @@ export default function AdminTemplatesPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : !data?.templates.length ? (
         <div className="flex flex-col items-center justify-center py-16 bg-[#141414] border border-[#1c1c1c] rounded-xl">
@@ -233,7 +233,7 @@ function TemplateRow({
             href={template.rbxmFileUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-[#FFB81C] hover:text-[#E6A519] mt-1.5"
+            className="inline-flex items-center gap-1 text-xs text-[#D4AF37] hover:text-[#E6A519] mt-1.5"
           >
             <ExternalLink className="w-3 h-3" />
             .rbxm
@@ -247,7 +247,7 @@ function TemplateRow({
         <p className="text-[#B0B0B0] text-xs">{template.creator.email}</p>
       </td>
       <td className="px-4 py-4">
-        <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] rounded-full">
+        <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] rounded-full">
           {template.category.replace(/_/g, ' ')}
         </span>
       </td>

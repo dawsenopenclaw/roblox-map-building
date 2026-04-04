@@ -14,7 +14,7 @@ const fetcher = (url: string) => fetch(url).then(r => r.json())
 const NAV_KEYFRAMES = `
   @keyframes fj-btn-pulse {
     0%, 100% { box-shadow: 0 0 10px rgba(212,175,55,0.20), 0 0 0px rgba(212,175,55,0); }
-    50%       { box-shadow: 0 0 18px rgba(212,175,55,0.40), 0 0 6px rgba(255,184,28,0.15); }
+    50%       { box-shadow: 0 0 18px rgba(212,175,55,0.40), 0 0 6px rgba(212,175,55,0.15); }
   }
   @keyframes fj-spark-orbit {
     0%   { transform: rotate(0deg)   translateX(5px) scale(1);   opacity: 0.9; }
@@ -68,7 +68,7 @@ function IconSpark() {
     >
       <path
         d="M6 1L7.2 4.8H11L7.9 7.1L9.1 11L6 8.7L2.9 11L4.1 7.1L1 4.8H4.8L6 1Z"
-        fill="#FFB81C"
+        fill="#D4AF37"
         fillOpacity="0.9"
       />
     </svg>
@@ -299,8 +299,8 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
         {/* Show upgrade pill when balance is low */}
         {data?.balance !== undefined && data.balance < 100 && (
           <Link
-            href="/api/billing/checkout?tier=pro"
-            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D4AF37] text-[#0a0a0a] hover:bg-[#FFB81C] transition-colors"
+            href="/billing"
+            className="text-xs font-bold px-3 py-1.5 rounded-lg bg-[#D4AF37] text-[#0a0a0a] hover:bg-[#D4AF37] transition-colors"
           >
             Upgrade
           </Link>

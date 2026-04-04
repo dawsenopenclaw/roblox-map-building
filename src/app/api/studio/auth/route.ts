@@ -26,6 +26,10 @@ import crypto from 'crypto'
 const CODE_TTL_MS   = 5 * 60 * 1000   // 5 minutes
 const CODE_TTL_SECS = 5 * 60           // Redis EX arg
 
+// Rate limit: max 10 code generations per IP per hour
+const RATE_LIMIT_MAX      = 10
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000  // 1 hour
+
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
 // ── Shared secret ────────────────────────────────────────────────────────────
@@ -71,6 +75,54 @@ interface ClaimedCode {
 const claimedCodes: Map<string, ClaimedCode> = (globalThis.__fjClaimedCodes ??= new Map())
 // @ts-expect-error
 globalThis.__fjClaimedCodes = claimedCodes
+
+// ── Rate limit store ──────────────────────────────────────────────────────────
+// Tracks code generation counts per IP within a rolling window.
+interface RateEntry { count: number; windowStart: number }
+// @ts-expect-error
+const rateLimitMap: Map<string, RateEntry> = (globalThis.__fjRateLimit ??= new Map())
+// @ts-expect-error
+globalThis.__fjRateLimit = rateLimitMap
+
+/** Returns true when the caller is within the rate limit, false when they are over it. */
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(ip)
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitMap.set(ip, { count: 1, windowStart: now })
+    return true
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false
+  entry.count++
+  return true
+}
+
+// ── Periodic cleanup of expired in-memory codes ───────────────────────────────
+// Runs at most once every 60 s per Lambda instance to purge stale entries and
+// prevent unbounded memory growth under heavy traffic.
+// @ts-expect-error
+const lastCleanup: { t: number } = (globalThis.__fjLastCleanup ??= { t: 0 })
+// @ts-expect-error
+globalThis.__fjLastCleanup = lastCleanup
+
+function maybeCleanup(): void {
+  const now = Date.now()
+  if (now - lastCleanup.t < 60_000) return
+  lastCleanup.t = now
+
+  // Purge expired pending codes
+  for (const [code, entry] of pendingCodes) {
+    if (now > entry.expiresAt) pendingCodes.delete(code)
+  }
+  // Purge claimed codes older than CODE_TTL_MS (already seen by both sides)
+  for (const [code, entry] of claimedCodes) {
+    if (now - entry.claimedAt > CODE_TTL_MS) claimedCodes.delete(code)
+  }
+  // Purge stale rate-limit buckets
+  for (const [ip, entry] of rateLimitMap) {
+    if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) rateLimitMap.delete(ip)
+  }
+}
 
 // ── Redis helpers ─────────────────────────────────────────────────────────────
 
@@ -215,6 +267,19 @@ export async function GET(req: NextRequest) {
 
   // ── generate ─────────────────────────────────────────────────────────────
   if (action === 'generate') {
+    maybeCleanup()
+
+    // Rate limit by IP — max 10 generations per hour
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? req.headers.get('x-real-ip')
+      ?? 'unknown'
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { error: 'rate_limited', message: 'Too many code requests. Try again in an hour.' },
+        { status: 429, headers: { ...CORS, 'Retry-After': '3600' } },
+      )
+    }
+
     const code      = generateCode()
     const expiresAt = Date.now() + CODE_TTL_MS
 

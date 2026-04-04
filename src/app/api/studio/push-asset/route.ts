@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   let session = body.sessionId ? await getSession(body.sessionId) : undefined
 
   if (!session && body.token) {
-    session = getSessionByToken(body.token)
+    session = await getSessionByToken(body.token)
   }
 
   if (!session) {

@@ -39,10 +39,10 @@ body {
   --border-focus:        rgba(212,175,55,0.3);
 
   /* Gold accent */
-  --gold:                #FFB81C;
+  --gold:                #D4AF37;
   --gold-light:          #FFD166;
-  --gold-glow:           rgba(255,184,28,0.15);
-  --gold-glow-sm:        rgba(255,184,28,0.15);
+  --gold-glow:           rgba(212,175,55,0.15);
+  --gold-glow-sm:        rgba(212,175,55,0.15);
 
   /* Royal purple-blue accent */
   --royal:               #7C3AED;
@@ -621,7 +621,7 @@ body {
 
 /* ── gradient text ── */
 .gradient-text {
-  background: linear-gradient(135deg, #FFD166 0%, #FFB81C 30%, #D4AF37 60%, #FFD166 100%);
+  background: linear-gradient(135deg, #FFD166 0%, #D4AF37 30%, #D4AF37 60%, #FFD166 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -692,7 +692,7 @@ body {
     rgba(255,215,80,0.6)  15%,
     rgba(212,175,55,0.0)  30%,
     rgba(212,175,55,0.0)  70%,
-    rgba(255,184,28,0.5)  85%,
+    rgba(212,175,55,0.5)  85%,
     rgba(212,175,55,0.0) 100%
   );
   animation: spin-conic 4s linear infinite;
@@ -790,9 +790,9 @@ body {
     110deg,
     #D4AF37   0%,
     #FFD166  20%,
-    #FFB81C  40%,
+    #D4AF37  40%,
     #FFFBE6  55%,
-    #FFB81C  70%,
+    #D4AF37  70%,
     #FFD166  82%,
     #D4AF37 100%
   );
@@ -1026,7 +1026,7 @@ body {
 }
 
 .text-shimmer {
-  background: linear-gradient(90deg, #D4AF37, #FFD700, #FFB81C, #D4AF37);
+  background: linear-gradient(90deg, #D4AF37, #FFD700, #D4AF37, #D4AF37);
   background-size: 300% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1066,7 +1066,7 @@ body {
   position: absolute;
   inset: -1.5px;
   border-radius: inherit;
-  background: conic-gradient(from var(--gradient-border-angle), #D4AF37, #FFB81C, #FFD700, #D4AF37);
+  background: conic-gradient(from var(--gradient-border-angle), #D4AF37, #D4AF37, #FFD700, #D4AF37);
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
@@ -1111,7 +1111,7 @@ body {
 .link-underline::after {
   height: 1px;
   bottom: -3px;
-  background: linear-gradient(90deg, #D4AF37, #FFB81C);
+  background: linear-gradient(90deg, #D4AF37, #D4AF37);
 }
 
 /* ─── Reduced motion overrides (premium additions) ───────────────────────────── */
@@ -1209,12 +1209,12 @@ label, select, .transition-all {
 
 /* Nav CTA gold button */
 .nav-cta-gold {
-  background: #FFB81C;
+  background: #D4AF37;
   color: #0A0E27;
 }
 .nav-cta-gold:hover {
   background: #E5A617;
-  box-shadow: 0 0 16px rgba(255,184,28,0.3), 0 0 32px rgba(124,58,237,0.12);
+  box-shadow: 0 0 16px rgba(212,175,55,0.3), 0 0 32px rgba(124,58,237,0.12);
 }
 
 body {
@@ -1522,11 +1522,11 @@ body {
   left:             0;
   height:           2px;
   width:            100%;
-  background:       linear-gradient(90deg, #D4AF37, #FFD97D, #FFB81C);
+  background:       linear-gradient(90deg, #D4AF37, #FFD97D, #D4AF37);
   z-index:          9999;
   animation:        top-bar-progress 2.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   transform-origin: left center;
-  box-shadow:       0 0 8px rgba(255, 184, 28, 0.65), 0 0 20px rgba(255, 184, 28, 0.3);
+  box-shadow:       0 0 8px rgba(212, 175, 55, 0.65), 0 0 20px rgba(212, 175, 55, 0.3);
   overflow:         hidden;
   pointer-events:   none;
 }
@@ -1596,11 +1596,11 @@ body {
 @keyframes molten-fill {
   from {
     transform: scaleX(0);
-    box-shadow: 4px 0 12px #ffffff, 0 0 20px rgba(255, 184, 28, 0.8);
+    box-shadow: 4px 0 12px #ffffff, 0 0 20px rgba(212, 175, 55, 0.8);
   }
   to {
     transform: scaleX(1);
-    box-shadow: 0 0 6px #FFD700, 0 0 16px rgba(255, 184, 28, 0.5);
+    box-shadow: 0 0 6px #FFD700, 0 0 16px rgba(212, 175, 55, 0.5);
   }
 }
 
@@ -1610,7 +1610,7 @@ body {
     90deg,
     #8B0000 0%,
     #FF4500 25%,
-    #FFB81C 55%,
+    #D4AF37 55%,
     #FFD700 80%,
     #FFFFFF 100%
   );

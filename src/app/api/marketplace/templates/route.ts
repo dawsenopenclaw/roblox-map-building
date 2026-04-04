@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { TemplateCategory, TemplateStatus } from '@prisma/client'
 import { templateSubmitSchema, parseBody } from '@/lib/validations'
+import { marketplaceReadRateLimit, marketplaceWriteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 const VALID_CATEGORIES = Object.values(TemplateCategory)
 
@@ -240,6 +241,18 @@ const DEMO_TEMPLATES = [
 
 // GET /api/marketplace/templates — browse with filters
 export async function GET(req: NextRequest) {
+  const identifier =
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    req.headers.get('x-real-ip') ||
+    'anonymous'
+  const rlGet = await marketplaceReadRateLimit(identifier)
+  if (!rlGet.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down' },
+      { status: 429, headers: rateLimitHeaders(rlGet) },
+    )
+  }
+
   const { searchParams } = req.nextUrl
   const category = searchParams.get('category') as TemplateCategory | null
   const sort = searchParams.get('sort') || 'trending'
@@ -365,6 +378,14 @@ export async function POST(req: NextRequest) {
     clerkId = session?.userId ?? null
   } catch { /* demo mode — Clerk not configured */ }
   if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rlPost = await marketplaceWriteRateLimit(clerkId)
+  if (!rlPost.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down' },
+      { status: 429, headers: rateLimitHeaders(rlPost) },
+    )
+  }
 
   let user: { id: string; email: string; role: string } | null = null
   try {

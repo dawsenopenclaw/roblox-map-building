@@ -69,8 +69,8 @@ function StepCard({
 }) {
   return (
     <div className="flex gap-4">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/30 flex items-center justify-center">
-        <span className="text-[#FFB81C] text-sm font-bold">{number}</span>
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center">
+        <span className="text-[#D4AF37] text-sm font-bold">{number}</span>
       </div>
       <div className="flex-1 pt-1">
         <p className="text-sm font-semibold text-white mb-1">{title}</p>
@@ -124,7 +124,7 @@ function InstallSection() {
               href={`/api/studio/installer?os=${os}`}
               download={os === 'win' ? 'install-forjegames.bat' : 'install-forjegames.sh'}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold
-                bg-[#FFB81C] hover:bg-[#E6A519] text-black transition-colors"
+                bg-[#D4AF37] hover:bg-[#E6A519] text-black transition-colors"
             >
               <Download size={14} />
               {os === 'win' ? 'Download Installer (.bat)' : 'Download Installer (.sh)'}
@@ -132,7 +132,7 @@ function InstallSection() {
             <button
               onClick={() => setOs(os === 'win' ? 'mac' : 'win')}
               className="px-3 py-2.5 rounded-xl text-xs font-medium border border-white/[0.08]
-                text-gray-500 hover:text-[#FFB81C] hover:border-[#FFB81C]/30 transition-colors"
+                text-gray-500 hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition-colors"
             >
               {os === 'win' ? 'Mac?' : 'Windows?'}
             </button>
@@ -159,7 +159,7 @@ function InstallSection() {
       <div className="mt-6 pt-5 border-t border-white/[0.08]">
         <button
           onClick={() => setShowManual((v) => !v)}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#FFB81C] transition-colors"
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#D4AF37] transition-colors"
         >
           <ChevronRight
             size={14}
@@ -191,7 +191,7 @@ function InstallSection() {
                 </div>
                 <button
                   onClick={() => copyPath()}
-                  className="flex-shrink-0 px-2 py-2 rounded-lg text-xs bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-gray-300 hover:text-[#FFB81C] transition-colors"
+                  className="flex-shrink-0 px-2 py-2 rounded-lg text-xs bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-gray-300 hover:text-[#D4AF37] transition-colors"
                 >
                   {pathCopied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
                 </button>
@@ -205,12 +205,43 @@ function InstallSection() {
   )
 }
 
+// ─── Error message mapping (settings page copy) ───────────────────────────────
+
+function mapSettingsError(raw: string): { message: string; hint?: string } {
+  if (/HttpService.*not enabled|HttpEnabled/i.test(raw)) {
+    return {
+      message: 'HTTP requests are disabled in Studio.',
+      hint: 'Open Game Settings → Security → enable "Allow HTTP Requests"',
+    }
+  }
+  if (/code_expired|code_invalid|invalid_code|expired/i.test(raw)) {
+    return {
+      message: 'Code expired.',
+      hint: 'Click "Generate New Code" above to get a fresh one',
+    }
+  }
+  if (/rate_limit|too many/i.test(raw)) {
+    return {
+      message: 'Too many attempts.',
+      hint: 'Wait 60 seconds, then try again',
+    }
+  }
+  if (/timeout|ETIMEDOUT|ECONNREFUSED|network|fetch failed/i.test(raw)) {
+    return {
+      message: "Can't reach ForjeGames servers.",
+      hint: 'Check your internet connection and try again',
+    }
+  }
+  return { message: raw }
+}
+
 // ─── Section 2: Connection Code ───────────────────────────────────────────────
 
 function ConnectionCodeSection() {
   const [code, setCode] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'pending' | 'connected' | 'expired'>('idle')
+  const [errorMsg, setErrorMsg] = useState<{ message: string; hint?: string } | null>(null)
   const [secondsLeft, setSecondsLeft] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -268,14 +299,20 @@ function ConnectionCodeSection() {
     clearPolling()
     setStatus('loading')
     setCode(null)
+    setErrorMsg(null)
     try {
       const res = await fetch('/api/studio/auth?action=generate')
-      if (!res.ok) throw new Error('fetch failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'fetch failed' })) as { error?: string }
+        throw new Error(data.error ?? `HTTP ${res.status}`)
+      }
       const data = (await res.json()) as { code: string; expiresInSeconds: number }
       setCode(data.code)
       setStatus('pending')
       startPolling(data.code, data.expiresInSeconds)
-    } catch {
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : 'fetch failed'
+      setErrorMsg(mapSettingsError(raw))
       setStatus('idle')
     }
   }
@@ -333,12 +370,12 @@ function ConnectionCodeSection() {
                 background:
                   status === 'expired'
                     ? 'rgba(239,68,68,0.05)'
-                    : 'rgba(255,184,28,0.06)',
+                    : 'rgba(212,175,55,0.06)',
                 borderColor:
                   status === 'expired'
                     ? 'rgba(239,68,68,0.2)'
-                    : 'rgba(255,184,28,0.25)',
-                color: status === 'expired' ? '#ef4444' : '#FFB81C',
+                    : 'rgba(212,175,55,0.25)',
+                color: status === 'expired' ? '#ef4444' : '#D4AF37',
                 opacity: status === 'expired' ? 0.6 : 1,
               }}
             >
@@ -364,9 +401,19 @@ function ConnectionCodeSection() {
 
           {status === 'pending' && (
             <div className="flex items-center gap-2 mt-3">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
               <p className="text-xs text-gray-500">Waiting for Studio plugin to enter this code…</p>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Actionable error banner */}
+      {errorMsg && (
+        <div className="mb-4 p-3 rounded-xl bg-red-500/[0.08] border border-red-500/20">
+          <p className="text-sm font-semibold text-red-400">{errorMsg.message}</p>
+          {errorMsg.hint && (
+            <p className="text-xs text-red-400/70 mt-0.5">{errorMsg.hint}</p>
           )}
         </div>
       )}
@@ -382,20 +429,20 @@ function ConnectionCodeSection() {
             status === 'connected'
               ? 'rgba(74,222,128,0.08)'
               : status === 'idle' || status === 'expired'
-              ? 'rgba(255,184,28,0.1)'
+              ? 'rgba(212,175,55,0.1)'
               : 'rgba(255,255,255,0.04)',
           border: `1px solid ${
             status === 'connected'
               ? 'rgba(74,222,128,0.2)'
               : status === 'idle' || status === 'expired'
-              ? 'rgba(255,184,28,0.3)'
+              ? 'rgba(212,175,55,0.3)'
               : 'rgba(255,255,255,0.08)'
           }`,
           color:
             status === 'connected'
               ? '#4ade80'
               : status === 'idle' || status === 'expired'
-              ? '#FFB81C'
+              ? '#D4AF37'
               : '#6b7280',
         }}
       >
@@ -429,10 +476,30 @@ function ConnectionCodeSection() {
   )
 }
 
+// ─── Connection quality badge ─────────────────────────────────────────────────
+
+function QualityDot({ connected, latencyMs }: { connected: boolean; latencyMs?: number | null }) {
+  if (!connected) {
+    return <div className="w-2.5 h-2.5 rounded-full bg-gray-600" title="Disconnected" />
+  }
+  const isHighLatency = typeof latencyMs === 'number' && latencyMs > 100
+  return (
+    <div className="relative w-2.5 h-2.5 flex-shrink-0" title={latencyMs != null ? `${latencyMs}ms` : 'Connected'}>
+      <div
+        className={`absolute inset-0 rounded-full animate-ping opacity-60 ${isHighLatency ? 'bg-yellow-400' : 'bg-green-400'}`}
+      />
+      <div
+        className={`relative w-2.5 h-2.5 rounded-full ${isHighLatency ? 'bg-yellow-400 shadow-[0_0_6px_#facc15]' : 'bg-green-400 shadow-[0_0_6px_#4ade80]'}`}
+      />
+    </div>
+  )
+}
+
 // ─── Section 3: Connected Sessions ────────────────────────────────────────────
 
 function SessionsSection() {
   const [sessions, setSessions] = useState<StudioSession[]>([])
+  const [latencyMap, setLatencyMap] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
 
@@ -441,11 +508,19 @@ function SessionsSection() {
     let cancelled = false
 
     async function fetchSessions() {
+      const t0 = Date.now()
       try {
         const res = await fetch('/api/studio/sessions')
+        const rtt = Date.now() - t0
         if (!res.ok || cancelled) return
         const data = (await res.json()) as { sessions: StudioSession[] }
-        if (!cancelled) setSessions(data.sessions)
+        if (!cancelled) {
+          setSessions(data.sessions)
+          // Apply the same measured RTT to all connected sessions as a proxy
+          const map: Record<string, number> = {}
+          data.sessions.forEach((s) => { if (s.connected) map[s.sessionId] = rtt })
+          setLatencyMap(map)
+        }
       } catch {
         // Network error — keep showing last known state
       } finally {
@@ -515,16 +590,13 @@ function SessionsSection() {
           <div
             key={session.sessionId}
             className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.025] border border-white/[0.08]
-              hover:border-[#FFB81C]/20 transition-colors"
+              hover:border-[#D4AF37]/20 transition-colors"
           >
-            {/* Status dot */}
-            <div className="flex-shrink-0">
-              {session.connected ? (
-                <div className="w-2.5 h-2.5 rounded-full bg-green-400 shadow-[0_0_6px_#4ade80]" />
-              ) : (
-                <div className="w-2.5 h-2.5 rounded-full bg-gray-600" />
-              )}
-            </div>
+            {/* Connection quality dot */}
+            <QualityDot
+              connected={session.connected}
+              latencyMs={latencyMap[session.sessionId]}
+            />
 
             {/* Info */}
             <div className="flex-1 min-w-0">
@@ -578,7 +650,7 @@ export default function StudioSettingsPage() {
         {/* Back nav */}
         <Link
           href="/settings"
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#FFB81C]
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#D4AF37]
             transition-colors mb-8"
         >
           <ArrowLeft size={15} />
@@ -588,9 +660,9 @@ export default function StudioSettingsPage() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20
+            <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20
               flex items-center justify-center">
-              <CircleDot size={18} className="text-[#FFB81C]" />
+              <CircleDot size={18} className="text-[#D4AF37]" />
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-white">Studio Connection</h1>
@@ -613,7 +685,7 @@ export default function StudioSettingsPage() {
           <Wifi size={13} />
           <span>
             Need help?{' '}
-            <Link href="/docs/studio" className="text-[#FFB81C] hover:underline">
+            <Link href="/docs/studio" className="text-[#D4AF37] hover:underline">
               Read the Studio docs
             </Link>
           </span>

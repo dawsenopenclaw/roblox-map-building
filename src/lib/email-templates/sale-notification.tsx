@@ -199,7 +199,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -310,7 +310,7 @@ const netLabel: React.CSSProperties = {
 }
 
 const netValue: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '28px',
   fontWeight: '700',
   margin: '0',
@@ -318,8 +318,8 @@ const netValue: React.CSSProperties = {
 
 const monthlySection: React.CSSProperties = {
   margin: '0 40px 24px',
-  backgroundColor: '#FFB81C0d',
-  border: '1px solid #FFB81C22',
+  backgroundColor: '#D4AF370d',
+  border: '1px solid #D4AF3722',
   borderRadius: '12px',
   padding: '20px 24px',
 }
@@ -335,7 +335,7 @@ const statDivider: React.CSSProperties = {
 }
 
 const statValue: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '24px',
   fontWeight: '700',
   margin: '0 0 4px',
@@ -353,7 +353,7 @@ const ctaSection: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

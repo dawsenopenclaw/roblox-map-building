@@ -11,11 +11,11 @@ function ProgressBar() {
     <div className="w-full mb-8">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs text-gray-400">Step {CURRENT_STEP} of {TOTAL_STEPS}</span>
-        <span className="text-xs text-[#FFB81C] font-semibold">{pct}%</span>
+        <span className="text-xs text-[#D4AF37] font-semibold">{pct}%</span>
       </div>
       <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
         <div
-          className="h-full bg-[#FFB81C] rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-[#D4AF37] rounded-full transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -96,7 +96,7 @@ export default function ParentalConsentPage() {
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
+            <h1 className="text-2xl font-bold text-[#D4AF37]">ForjeGames</h1>
           </div>
           <div className="bg-[#141414] border border-white/10 rounded-xl p-8 shadow-xl">
             <ProgressBar />
@@ -117,7 +117,7 @@ export default function ParentalConsentPage() {
               <button
                 onClick={handleResend}
                 disabled={loading || cooldown > 0}
-                className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? 'Sending…'
@@ -144,7 +144,7 @@ export default function ParentalConsentPage() {
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
+          <h1 className="text-2xl font-bold text-[#D4AF37]">ForjeGames</h1>
         </div>
 
         {/* Card */}
@@ -169,7 +169,7 @@ export default function ParentalConsentPage() {
                 onChange={(e) => { setParentEmail(e.target.value); setError('') }}
                 placeholder="parent@example.com"
                 required
-                className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#FFB81C] transition-colors placeholder-gray-600"
+                className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-gray-600"
               />
             </div>
 
@@ -187,7 +187,7 @@ export default function ParentalConsentPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Sending…' : 'Send Consent Email'}
             </button>

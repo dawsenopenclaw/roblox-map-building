@@ -21,7 +21,7 @@
  */
 
 import { setupWorker, addJob } from '@/lib/job-queue'
-import type { MeshGenerationPayload, MeshGenerationResult, RobloxUploadPayload } from '@/lib/job-queue'
+import type { MeshGenerationPayload, MeshGenerationPayloadWithAsset, MeshGenerationResult, RobloxUploadPayload } from '@/lib/job-queue'
 import type { Job } from 'bullmq'
 import type { JobResult } from '@/lib/job-queue'
 import { createMeshyTask, pollMeshyTask, downloadMeshyAsset } from '@/lib/ai/meshy'
@@ -30,14 +30,6 @@ import { updateAssetStatus } from '@/lib/pipeline/mesh-pipeline'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import os from 'os'
-
-// ── Extended payload type ─────────────────────────────────────────────────────
-// startMeshPipeline packs assetId into the job payload as an extra field
-
-interface MeshGenerationPayloadWithAsset extends MeshGenerationPayload {
-  /** Injected by startMeshPipeline — the GeneratedAsset.id to update */
-  _assetId?: string
-}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -39,8 +39,8 @@ function CodeTile({ char }: { char: string }) {
         fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
         fontSize: 28,
         fontWeight: 700,
-        color: '#FFB81C',
-        textShadow: '0 0 20px rgba(255,184,28,0.6)',
+        color: '#D4AF37',
+        textShadow: '0 0 20px rgba(212,175,55,0.6)',
         letterSpacing: 0,
         userSelect: 'none',
         flexShrink: 0,
@@ -96,8 +96,8 @@ function DisconnectedView({
             width: 56,
             height: 56,
             borderRadius: 16,
-            background: 'rgba(255,184,28,0.1)',
-            border: '1px solid rgba(255,184,28,0.2)',
+            background: 'rgba(212,175,55,0.1)',
+            border: '1px solid rgba(212,175,55,0.2)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -105,12 +105,12 @@ function DisconnectedView({
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="3" width="20" height="15" rx="2" stroke="#FFB81C" strokeWidth="1.5"/>
-            <path d="M2 7h20" stroke="#FFB81C" strokeWidth="1.5"/>
-            <path d="M7 3v4" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M17 3v4" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
-            <path d="M8 19l4 2 4-2" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 18v3" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
+            <rect x="2" y="3" width="20" height="15" rx="2" stroke="#D4AF37" strokeWidth="1.5"/>
+            <path d="M2 7h20" stroke="#D4AF37" strokeWidth="1.5"/>
+            <path d="M7 3v4" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M17 3v4" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M8 19l4 2 4-2" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 18v3" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </div>
         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white', fontFamily: 'Inter, sans-serif' }}>
@@ -145,9 +145,9 @@ function DisconnectedView({
                 gap: 6,
                 padding: '8px 16px',
                 borderRadius: 10,
-                border: `1px solid ${codeCopied ? 'rgba(74,222,128,0.4)' : 'rgba(255,184,28,0.3)'}`,
-                background: codeCopied ? 'rgba(74,222,128,0.12)' : 'rgba(255,184,28,0.1)',
-                color: codeCopied ? '#4ADE80' : '#FFB81C',
+                border: `1px solid ${codeCopied ? 'rgba(74,222,128,0.4)' : 'rgba(212,175,55,0.3)'}`,
+                background: codeCopied ? 'rgba(74,222,128,0.12)' : 'rgba(212,175,55,0.1)',
+                color: codeCopied ? '#4ADE80' : '#D4AF37',
                 fontSize: 13,
                 fontWeight: 600,
                 fontFamily: 'Inter, sans-serif',
@@ -180,7 +180,7 @@ function DisconnectedView({
               padding: '10px 24px',
               borderRadius: 12,
               border: 'none',
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
               color: '#030712',
               fontSize: 14,
               fontWeight: 700,
@@ -205,9 +205,9 @@ function DisconnectedView({
             borderRadius: 14,
             border: 'none',
             background: isGenerating
-              ? 'rgba(255,184,28,0.15)'
-              : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
-            color: isGenerating ? '#FFB81C' : '#030712',
+              ? 'rgba(212,175,55,0.15)'
+              : 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+            color: isGenerating ? '#D4AF37' : '#030712',
             fontSize: 15,
             fontWeight: 700,
             fontFamily: 'Inter, sans-serif',
@@ -236,16 +236,16 @@ function DisconnectedView({
           padding: '20px',
         }}
       >
-        <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: 'rgba(255,184,28,0.9)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>
+        <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 700, color: 'rgba(212,175,55,0.9)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Inter, sans-serif' }}>
           Quick Setup (2 minutes)
         </p>
 
         {/* Step 1 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2v8M5 7l3 3 3-3" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M3 11v1.5a1 1 0 001 1h8a1 1 0 001-1V11" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M8 2v8M5 7l3 3 3-3" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 11v1.5a1 1 0 001 1h8a1 1 0 001-1V11" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </div>
           <div>
@@ -253,16 +253,16 @@ function DisconnectedView({
               Download the plugin
             </p>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-              Click the button below to get <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames.rbxmx</span>
+              Click the button below to get <span style={{ color: 'rgba(212,175,55,0.8)', fontWeight: 600 }}>ForjeGames.rbxmx</span>
             </p>
           </div>
         </div>
 
         {/* Step 2 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M2 4.5A1.5 1.5 0 013.5 3h3.293a1 1 0 01.707.293L8.5 4.293a1 1 0 00.707.293H12.5A1.5 1.5 0 0114 6.086V11.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 11.5V4.5z" stroke="#FFB81C" strokeWidth="1.3"/>
+              <path d="M2 4.5A1.5 1.5 0 013.5 3h3.293a1 1 0 01.707.293L8.5 4.293a1 1 0 00.707.293H12.5A1.5 1.5 0 0114 6.086V11.5a1.5 1.5 0 01-1.5 1.5h-9A1.5 1.5 0 012 11.5V4.5z" stroke="#D4AF37" strokeWidth="1.3"/>
             </svg>
           </div>
           <div>
@@ -307,7 +307,7 @@ function DisconnectedView({
                   ? '%LOCALAPPDATA%\\Roblox\\Plugins'
                   : '~/Documents/Roblox/Plugins'}
               </span>
-              <span style={{ fontSize: 9, color: 'rgba(255,184,28,0.6)', marginLeft: 'auto', flexShrink: 0 }}>click to copy</span>
+              <span style={{ fontSize: 9, color: 'rgba(212,175,55,0.6)', marginLeft: 'auto', flexShrink: 0 }}>click to copy</span>
             </button>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>
               Drop the .rbxm file into that folder
@@ -317,10 +317,10 @@ function DisconnectedView({
 
         {/* Step 3 */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="#FFB81C" strokeWidth="1.3"/>
-              <path d="M6 8l2 2 4-4" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M4 2h8a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="#D4AF37" strokeWidth="1.3"/>
+              <path d="M6 8l2 2 4-4" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div>
@@ -328,17 +328,17 @@ function DisconnectedView({
               Restart Studio & open the plugin
             </p>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-              Fully close and reopen Roblox Studio. Look for <span style={{ color: 'rgba(255,184,28,0.8)', fontWeight: 600 }}>ForjeGames</span> in the Plugins tab at the top.
+              Fully close and reopen Roblox Studio. Look for <span style={{ color: 'rgba(212,175,55,0.8)', fontWeight: 600 }}>ForjeGames</span> in the Plugins tab at the top.
             </p>
           </div>
         </div>
 
         {/* Step 4 */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(255,184,28,0.12)', border: '1px solid rgba(255,184,28,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4.5 8h7M8 4.5v7" stroke="#FFB81C" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="8" cy="8" r="6" stroke="#FFB81C" strokeWidth="1.3"/>
+              <path d="M4.5 8h7M8 4.5v7" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
+              <circle cx="8" cy="8" r="6" stroke="#D4AF37" strokeWidth="1.3"/>
             </svg>
           </div>
           <div>
@@ -365,8 +365,8 @@ function DisconnectedView({
           padding: '14px 24px',
           borderRadius: 14,
           border: 'none',
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(255,184,28,0.15) 100%)',
-          color: '#FFB81C',
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(212,175,55,0.15) 100%)',
+          color: '#D4AF37',
           fontSize: 14,
           fontWeight: 700,
           fontFamily: 'Inter, sans-serif',
@@ -557,7 +557,7 @@ function ConnectedView({
             padding: '10px 14px',
           }}
         >
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#FFB81C', fontFamily: 'Inter, sans-serif' }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#D4AF37', fontFamily: 'Inter, sans-serif' }}>
             {commandsSent}
           </div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif', marginTop: 2 }}>

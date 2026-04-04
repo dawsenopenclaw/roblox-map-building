@@ -12,7 +12,7 @@ export default function TokensLoading() {
         </div>
 
         {/* Balance hero card */}
-        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-8 mb-6 text-center">
+        <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-8 mb-6 text-center">
           <div className="h-4 w-28 rounded-md shimmer mx-auto mb-3" />
           <div className="h-14 w-40 rounded-2xl shimmer-gold mx-auto mb-2" />
           <div className="h-4 w-36 rounded-md shimmer mx-auto mb-6" />
@@ -28,7 +28,7 @@ export default function TokensLoading() {
             <div
               key={i}
               className={`bg-[#141414] border rounded-2xl p-6 text-center ${
-                i === 1 ? 'border-[#FFB81C]/30' : 'border-white/10'
+                i === 1 ? 'border-[#D4AF37]/30' : 'border-white/10'
               }`}
             >
               <div className="h-4 w-16 rounded-md shimmer mx-auto mb-1" />

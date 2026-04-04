@@ -51,7 +51,7 @@ const DEMO_DATA: CharityStats = {
   ],
 }
 
-const BAR_COLORS = ['#FFB81C', '#E6A519', '#c88d15', '#a87210', '#7a5310']
+const BAR_COLORS = ['#D4AF37', '#E6A519', '#c88d15', '#a87210', '#7a5310']
 
 export default function AdminCharityPage() {
   const [data, setData] = useState<CharityStats>(DEMO_DATA)
@@ -110,7 +110,7 @@ export default function AdminCharityPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -131,13 +131,13 @@ export default function AdminCharityPage() {
         </div>
         <div className="flex items-center gap-2">
           {isDemo && (
-            <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+            <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full">
               Demo data
             </span>
           )}
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#FFB81C] transition-colors"
+            className="flex items-center gap-2 px-3 py-2 bg-[#141414] border border-[#1c1c1c] rounded-lg text-sm text-[#B0B0B0] hover:text-white hover:border-[#D4AF37] transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -145,7 +145,7 @@ export default function AdminCharityPage() {
           <button
             onClick={() => setShowAdd(!showAdd)}
             disabled={isDemo}
-            className="flex items-center gap-2 px-3 py-2 bg-[#FFB81C] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 bg-[#D4AF37] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
             Add Charity
@@ -157,8 +157,8 @@ export default function AdminCharityPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-[#FFB81C]" />
+            <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center">
+              <Heart className="w-5 h-5 text-[#D4AF37]" />
             </div>
             <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">Total Donated — All Time</p>
           </div>
@@ -168,22 +168,22 @@ export default function AdminCharityPage() {
         </div>
         <div className="bg-[#141414] border border-[#1c1c1c] rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-[#FFB81C]" />
+            <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center">
+              <Heart className="w-5 h-5 text-[#D4AF37]" />
             </div>
             <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">Donated — This Month</p>
           </div>
           <p className="text-3xl font-bold text-white">${donatedThisMonthDisplay}</p>
         </div>
         {/* 10% calculation card */}
-        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-xl p-6">
+        <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
-              <Heart className="w-5 h-5 text-[#FFB81C]" />
+            <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center">
+              <Heart className="w-5 h-5 text-[#D4AF37]" />
             </div>
             <p className="text-xs text-[#B0B0B0] uppercase tracking-wider">10% of MRR Target</p>
           </div>
-          <p className="text-3xl font-bold text-[#FFB81C]">${tenPctPaceDisplay}</p>
+          <p className="text-3xl font-bold text-[#D4AF37]">${tenPctPaceDisplay}</p>
           <p className="text-xs text-[#B0B0B0] mt-1">
             10% of ${(mrrCents / 100).toLocaleString()} MRR
           </p>
@@ -195,7 +195,7 @@ export default function AdminCharityPage() {
             </div>
             <div className="h-1.5 bg-[#1c1c1c] rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#FFB81C] transition-all duration-500"
+                className="h-full rounded-full bg-[#D4AF37] transition-all duration-500"
                 style={{ width: `${pctOfTarget}%` }}
               />
             </div>
@@ -205,7 +205,7 @@ export default function AdminCharityPage() {
 
       {/* Add charity form */}
       {showAdd && (
-        <div className="bg-[#141414] border border-[#FFB81C]/30 rounded-xl p-6 space-y-4">
+        <div className="bg-[#141414] border border-[#D4AF37]/30 rounded-xl p-6 space-y-4">
           <h2 className="text-sm font-semibold text-white">Add Charity to Rotation</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
@@ -221,7 +221,7 @@ export default function AdminCharityPage() {
                   placeholder={placeholder}
                   value={newCharity[key as keyof typeof newCharity]}
                   onChange={(e) => setNewCharity((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-[#FFB81C]"
+                  className="w-full px-3 py-2 bg-[#1c1c1c] border border-[#1c1c1c] rounded-lg text-sm text-white placeholder:text-[#B0B0B0] focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
             ))}
@@ -230,7 +230,7 @@ export default function AdminCharityPage() {
             <button
               onClick={handleAddCharity}
               disabled={saving || !newCharity.name || !newCharity.slug}
-              className="px-4 py-2 bg-[#FFB81C] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-[#D4AF37] text-black rounded-lg text-sm font-semibold hover:bg-[#E6A519] transition-colors disabled:opacity-50"
             >
               {saving ? 'Adding...' : 'Add Charity'}
             </button>
@@ -291,7 +291,7 @@ export default function AdminCharityPage() {
                   <th className="pb-2 text-left font-medium">Month</th>
                   <th className="pb-2 text-right font-medium">Donations</th>
                   <th className="pb-2 text-right font-medium">Amount</th>
-                  <th className="pb-2 text-right font-medium text-[#FFB81C]/70">10% Pledge</th>
+                  <th className="pb-2 text-right font-medium text-[#D4AF37]/70">10% Pledge</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1c1c1c]">
@@ -312,10 +312,10 @@ export default function AdminCharityPage() {
                       <tr key={row.month}>
                         <td className="py-2.5 text-[#B0B0B0]">{row.month}</td>
                         <td className="py-2.5 text-right text-white">{row.count}</td>
-                        <td className="py-2.5 text-right text-[#FFB81C] font-medium">
+                        <td className="py-2.5 text-right text-[#D4AF37] font-medium">
                           ${(row.totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </td>
-                        <td className={`py-2.5 text-right text-xs font-medium ${fulfilled ? 'text-green-400' : 'text-[#FFB81C]/60'}`}>
+                        <td className={`py-2.5 text-right text-xs font-medium ${fulfilled ? 'text-green-400' : 'text-[#D4AF37]/60'}`}>
                           {pledgeCents != null
                             ? `$${(pledgeCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                             : '—'}
@@ -354,7 +354,7 @@ export default function AdminCharityPage() {
                       href={charity.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#FFB81C] text-xs hover:text-[#E6A519] transition-colors mt-1 block truncate"
+                      className="text-[#D4AF37] text-xs hover:text-[#E6A519] transition-colors mt-1 block truncate"
                     >
                       {charity.url.replace('https://', '')}
                     </a>

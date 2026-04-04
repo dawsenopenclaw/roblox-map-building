@@ -124,7 +124,7 @@ const container: React.CSSProperties = {
 const logoSection: React.CSSProperties = { padding: '28px 40px 20px', textAlign: 'center' }
 const logoText: React.CSSProperties = { fontSize: '28px', fontWeight: '700', margin: '0' }
 const logoWhite: React.CSSProperties = { color: '#ffffff' }
-const logoGold: React.CSSProperties = { color: '#FFB81C' }
+const logoGold: React.CSSProperties = { color: '#D4AF37' }
 const divider: React.CSSProperties = { borderColor: '#1e2347', margin: '0' }
 
 const heroSection: React.CSSProperties = { padding: '40px 40px 24px', textAlign: 'center' }
@@ -172,7 +172,7 @@ const infoNote: React.CSSProperties = {
 
 const ctaSection: React.CSSProperties = { padding: '8px 40px 32px', textAlign: 'center' }
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

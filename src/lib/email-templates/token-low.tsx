@@ -29,7 +29,7 @@ export const TokenLowEmail = ({
   topUpUrl = `${baseUrl}/dashboard/tokens`,
 }: TokenLowEmailProps) => {
   const isVeryLow = tokenCount <= 5
-  const accentColor = isVeryLow ? '#ef4444' : '#FFB81C'
+  const accentColor = isVeryLow ? '#ef4444' : '#D4AF37'
 
   return (
     <Html>
@@ -60,7 +60,7 @@ export const TokenLowEmail = ({
             style={{
               ...alertBanner,
               backgroundColor: isVeryLow ? '#2d0a0a' : '#2d1f0a',
-              borderBottom: `1px solid ${isVeryLow ? '#ef444444' : '#FFB81C44'}`,
+              borderBottom: `1px solid ${isVeryLow ? '#ef444444' : '#D4AF3744'}`,
             }}
           >
             <Text
@@ -200,7 +200,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -249,7 +249,7 @@ const tokenDisplay: React.CSSProperties = {
 }
 
 const tokenNumber: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '72px',
   fontWeight: '700',
   lineHeight: '1',
@@ -292,7 +292,7 @@ const ctaSection: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
@@ -311,9 +311,9 @@ const ctaOr: React.CSSProperties = {
 
 const secondaryButton: React.CSSProperties = {
   backgroundColor: 'transparent',
-  border: '1px solid #FFB81C',
+  border: '1px solid #D4AF37',
   borderRadius: '8px',
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontFamily: 'Inter, Arial, sans-serif',
   fontSize: '14px',
   fontWeight: '500',
@@ -325,13 +325,13 @@ const secondaryButton: React.CSSProperties = {
 const plansSection: React.CSSProperties = {
   margin: '0 40px 32px',
   backgroundColor: '#0d1235',
-  border: '1px solid #FFB81C22',
+  border: '1px solid #D4AF3722',
   borderRadius: '12px',
   overflow: 'hidden',
 }
 
 const plansHeading: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '12px',
   fontWeight: '600',
   letterSpacing: '1px',

@@ -14,6 +14,7 @@
 import 'server-only'
 import { db } from '@/lib/db'
 import { addJob } from '@/lib/job-queue'
+import type { MeshGenerationPayloadWithAsset } from '@/lib/job-queue'
 
 // ── Pipeline status constants ─────────────────────────────────────────────────
 // Matches the `status` string field on GeneratedAsset in schema.prisma
@@ -280,9 +281,8 @@ export async function startMeshPipeline(
       polyTarget,
       userId,
       robloxScale,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       _assetId: asset.id,
-    } as any, // safe: BullMQ passes unknown fields through; worker reads _assetId
+    } as MeshGenerationPayloadWithAsset,
   )
 
   console.log(

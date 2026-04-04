@@ -5,7 +5,7 @@ import { TierBadge, TierProgressBar, type Tier } from '@/components/TierBadge'
 
 // ─── Types & Demo Data ────────────────────────────────────────────────────────
 
-const GOLD = '#FFB81C'
+const GOLD = '#D4AF37'
 
 type AchievementCategory = 'Builder' | 'Creator' | 'Social' | 'Streak'
 

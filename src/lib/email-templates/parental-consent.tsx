@@ -224,7 +224,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -267,7 +267,7 @@ const intro: React.CSSProperties = {
 }
 
 const childNameStyle: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const subtext: React.CSSProperties = {
@@ -286,7 +286,7 @@ const infoSection: React.CSSProperties = {
 }
 
 const infoHeading: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '13px',
   fontWeight: '600',
   letterSpacing: '0.5px',
@@ -354,7 +354,7 @@ const buttonGroup: React.CSSProperties = {
 }
 
 const approveButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
@@ -403,7 +403,7 @@ const noteItem: React.CSSProperties = {
 }
 
 const emailLink: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   textDecoration: 'none',
 }
 

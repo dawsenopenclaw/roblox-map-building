@@ -438,7 +438,6 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     // Validate and auto-fix common AI mistakes before sending
     const { fixedCode, fixes } = validateAndFixLuau(code)
     if (fixes.length > 0) {
-      console.log(`[chat] Auto-fixed ${fixes.length} Luau issues:`, fixes.join(', '))
     }
     const result = await queueCommand(sessionId, {
       type: 'execute_luau',

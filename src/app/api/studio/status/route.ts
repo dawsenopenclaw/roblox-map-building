@@ -71,9 +71,9 @@ export async function GET(req: NextRequest) {
   let sessionId = searchParams.get('sessionId')
   let session = sessionId ? await getSession(sessionId) : undefined
 
-  // ── Fallback 1: look up by token in memory ────────────────────────────────
+  // ── Fallback 1: look up by token (L1 then Redis) ─────────────────────────
   if (!session && token) {
-    session = getSessionByToken(token)
+    session = await getSessionByToken(token)
     if (session) sessionId = session.sessionId
   }
 

@@ -91,7 +91,7 @@ echo "   ForjeGames - Roblox Studio Plugin"
 echo "  ======================================"
 echo ""
 
-PLUGINS="$HOME/Documents/Roblox/Plugins"
+PLUGINS="$HOME/Library/Application Support/Roblox/Plugins"
 
 # Create Plugins folder if it doesn't exist
 if [ ! -d "$PLUGINS" ]; then
@@ -118,6 +118,7 @@ echo "   SUCCESS! Plugin installed."
 echo "  ========================================"
 echo ""
 echo "   File: $PLUGINS/ForjeGames.rbxmx"
+echo "   (~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx)"
 echo ""
 echo "   Next steps:"
 echo "     1. Close Roblox Studio completely"

@@ -63,7 +63,7 @@ export default function ImageToMapLoading() {
             </div>
 
             {/* Cost estimate */}
-            <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-5 flex items-center justify-between">
+            <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-5 flex items-center justify-between">
               <div>
                 <div className="h-4 w-24 rounded-md shimmer mb-1" />
                 <div className="h-7 w-28 rounded-xl shimmer-gold" />

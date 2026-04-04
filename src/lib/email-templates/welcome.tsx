@@ -183,7 +183,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -213,8 +213,8 @@ const subheading: React.CSSProperties = {
 
 const tokenBadge: React.CSSProperties = {
   margin: '0 40px 32px',
-  backgroundColor: '#FFB81C18',
-  border: '1px solid #FFB81C44',
+  backgroundColor: '#D4AF3718',
+  border: '1px solid #D4AF3744',
   borderRadius: '12px',
   padding: '16px 24px',
   textAlign: 'center',
@@ -227,7 +227,7 @@ const tokenBadgeText: React.CSSProperties = {
 }
 
 const tokenGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const actionsSection: React.CSSProperties = {
@@ -249,7 +249,7 @@ const actionCard: React.CSSProperties = {
 }
 
 const actionNumber: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '13px',
   fontWeight: '700',
   letterSpacing: '1px',
@@ -271,7 +271,7 @@ const actionDesc: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
@@ -284,9 +284,9 @@ const primaryButton: React.CSSProperties = {
 
 const secondaryButton: React.CSSProperties = {
   backgroundColor: 'transparent',
-  border: '1px solid #FFB81C',
+  border: '1px solid #D4AF37',
   borderRadius: '8px',
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontFamily: 'Inter, Arial, sans-serif',
   fontSize: '14px',
   fontWeight: '600',

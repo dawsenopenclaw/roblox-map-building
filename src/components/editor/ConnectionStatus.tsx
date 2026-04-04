@@ -144,7 +144,7 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
           {status.queueDepth > 0 && (
             <div className="flex justify-between">
               <span>Pending commands</span>
-              <span className="text-[#FFB81C] font-mono">{status.queueDepth}</span>
+              <span className="text-[#D4AF37] font-mono">{status.queueDepth}</span>
             </div>
           )}
         </div>
@@ -161,13 +161,13 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
             'Click "Connect" in the ForjeGames toolbar',
           ].map((step, i) => (
             <div key={step} className="flex items-start gap-2 text-xs text-gray-400">
-              <span className="text-[#FFB81C] font-mono flex-shrink-0">{i + 1}.</span>
+              <span className="text-[#D4AF37] font-mono flex-shrink-0">{i + 1}.</span>
               <span>{step}</span>
             </div>
           ))}
           <a
             href="/docs/studio"
-            className="inline-flex items-center gap-1 text-xs text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors mt-1"
+            className="inline-flex items-center gap-1 text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors mt-1"
           >
             Plugin download &amp; docs
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

@@ -20,7 +20,7 @@ export function RevenueChart({ data }: { data: DataPoint[] }) {
   return (
     <div>
       <p className="text-xs text-[#B0B0B0] mb-4">
-        Total: <span className="text-[#FFB81C] font-semibold">${(totalRevenue / 100).toLocaleString()}</span>
+        Total: <span className="text-[#D4AF37] font-semibold">${(totalRevenue / 100).toLocaleString()}</span>
       </p>
       <div className="flex items-end gap-1 h-40">
         {data.map((point, i) => {
@@ -33,7 +33,7 @@ export function RevenueChart({ data }: { data: DataPoint[] }) {
             >
               <div
                 title={`${point.date}\n$${(point.revenueCents / 100).toFixed(2)}`}
-                className="w-full rounded-t bg-[#FFB81C]/25 hover:bg-[#FFB81C]/50 transition-colors cursor-pointer"
+                className="w-full rounded-t bg-[#D4AF37]/25 hover:bg-[#D4AF37]/50 transition-colors cursor-pointer"
                 style={{ height: `${Math.max(height, 2)}%` }}
               />
             </div>

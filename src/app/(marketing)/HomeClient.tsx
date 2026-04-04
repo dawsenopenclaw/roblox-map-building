@@ -236,7 +236,7 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
           href={href}
           className={`block text-center py-3 rounded-xl text-sm font-semibold ${recommended ? 'pricing-cta-recommended' : 'pricing-cta-default'}`}
           style={recommended ? {
-            background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
             color: '#09090b',
             boxShadow: '0 0 24px rgba(212,175,55,0.3)',
           } : {
@@ -366,7 +366,7 @@ export default function HomeClient() {
                 href="/editor"
                 className="cta-primary inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                   color: '#09090b',
                   boxShadow: '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
@@ -984,7 +984,7 @@ export default function HomeClient() {
                 href="/editor"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                   color: '#09090b',
                   boxShadow: '0 0 48px rgba(212,175,55,0.4), 0 8px 32px rgba(0,0,0,0.5)',
                   letterSpacing: '0.01em',

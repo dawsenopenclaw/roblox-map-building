@@ -87,7 +87,7 @@ function MetricCard({
             </div>
           )}
         </div>
-        <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center">
+        <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center">
           {icon}
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function AdminAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-2 border-[#FFB81C] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -168,7 +168,7 @@ export default function AdminAnalyticsPage() {
           <p className="text-[#B0B0B0] text-sm mt-1">Revenue, growth, and retention metrics</p>
         </div>
         {isDemo && (
-          <span className="text-xs px-2 py-1 bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 rounded-full">
+          <span className="text-xs px-2 py-1 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded-full">
             Demo data — DB unavailable
           </span>
         )}
@@ -179,28 +179,28 @@ export default function AdminAnalyticsPage() {
         <MetricCard
           title="MRR"
           value={`$${(data.mrrCents / 100).toLocaleString()}`}
-          icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<DollarSign className="w-5 h-5 text-[#D4AF37]" />}
           trendUp={true}
         />
         <MetricCard
           title="Churn Rate"
           value={`${data.churnRate.toFixed(2)}%`}
           subtitle="Monthly"
-          icon={<TrendingDown className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<TrendingDown className="w-5 h-5 text-[#D4AF37]" />}
           trendUp={false}
         />
         <MetricCard
           title="LTV"
           value={`$${data.ltv.toFixed(0)}`}
           subtitle="Avg lifetime value"
-          icon={<Users className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<Users className="w-5 h-5 text-[#D4AF37]" />}
           trendUp={true}
         />
         <MetricCard
           title="ARPU"
           value={`$${data.arpu.toFixed(2)}`}
           subtitle="Per active user"
-          icon={<DollarSign className="w-5 h-5 text-[#FFB81C]" />}
+          icon={<DollarSign className="w-5 h-5 text-[#D4AF37]" />}
         />
       </div>
 
@@ -226,7 +226,7 @@ export default function AdminAnalyticsPage() {
                       style={{ height: '100%' }}
                     >
                       <div
-                        className="w-full rounded-t bg-[#FFB81C]/25 hover:bg-[#FFB81C]/50 transition-colors cursor-pointer"
+                        className="w-full rounded-t bg-[#D4AF37]/25 hover:bg-[#D4AF37]/50 transition-colors cursor-pointer"
                         style={{ height: `${Math.max(height, 4)}%` }}
                         title={`${point.month}: $${(point.mrrCents / 100).toLocaleString()}`}
                       />
@@ -251,7 +251,7 @@ export default function AdminAnalyticsPage() {
             Conversion Funnel
           </h2>
           <div className="space-y-4">
-            <ProgressBar label="Visits" count={data.funnel.visits} total={data.funnel.visits} color="#FFB81C" />
+            <ProgressBar label="Visits" count={data.funnel.visits} total={data.funnel.visits} color="#D4AF37" />
             <ProgressBar label="Sign Ups" count={data.funnel.signups} total={data.funnel.visits} color="#E6A519" />
             <ProgressBar label="Activated" count={data.funnel.activated} total={data.funnel.visits} color="#c88d15" />
             <ProgressBar label="Paying" count={data.funnel.paying} total={data.funnel.visits} color="#a87210" />
@@ -288,7 +288,7 @@ export default function AdminAnalyticsPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-semibold text-[#FFB81C]">
+                  <span className="text-sm font-semibold text-[#D4AF37]">
                     ${(template.revenueCents / 100).toLocaleString()}
                   </span>
                 </div>
@@ -329,7 +329,7 @@ export default function AdminAnalyticsPage() {
                           key={i}
                           className="py-2.5 text-right text-sm font-medium"
                           style={{
-                            color: pct === 0 ? '#808080' : `rgba(255,184,28,${0.4 + (pct / 100) * 0.6})`,
+                            color: pct === 0 ? '#808080' : `rgba(212,175,55,${0.4 + (pct / 100) * 0.6})`,
                           }}
                         >
                           {pct === 0 ? '—' : `${pct.toFixed(0)}%`}

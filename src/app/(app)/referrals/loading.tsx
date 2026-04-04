@@ -22,7 +22,7 @@ export default function ReferralsLoading() {
         </div>
 
         {/* Referral link card */}
-        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-6 mb-6">
           <div className="h-5 w-32 rounded-lg shimmer-gold mb-4" />
           <div className="flex gap-3">
             <div className="flex-1 h-11 rounded-xl shimmer" />

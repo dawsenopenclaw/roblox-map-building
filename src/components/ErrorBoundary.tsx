@@ -112,15 +112,15 @@ function ErrorCard({
             to   { opacity: 1; transform: translateY(0) scale(1); }
           }
           @keyframes eb-btn-glow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,28,0); }
-            50%       { box-shadow: 0 0 16px 0 rgba(255,184,28,0.35); }
+            0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+            50%       { box-shadow: 0 0 16px 0 rgba(212,175,55,0.35); }
           }
           .eb-card { animation: eb-card-in 0.35s cubic-bezier(0.16,1,0.3,1) both; }
           .eb-btn-primary:hover { animation: eb-btn-glow 1.5s ease-in-out infinite; }
         }
         .eb-btn-primary:focus-visible,
         .eb-btn-secondary:focus-visible {
-          outline: 2px solid #FFB81C;
+          outline: 2px solid #D4AF37;
           outline-offset: 2px;
         }
       ` }} />
@@ -216,15 +216,15 @@ function ErrorCard({
               onClick={onReset}
               className="eb-btn-primary font-bold text-sm px-5 py-2.5 rounded-xl transition-all duration-200"
               style={{
-                background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                 color: '#050810',
-                border: '1px solid rgba(255,184,28,0.5)',
+                border: '1px solid rgba(212,175,55,0.5)',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #FFD060 0%, #FFB81C 100%)'
+                e.currentTarget.style.background = 'linear-gradient(135deg, #FFD060 0%, #D4AF37 100%)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)'
+                e.currentTarget.style.background = 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)'
               }}
             >
               Try again
@@ -255,7 +255,7 @@ function ErrorCard({
             <a
               href="mailto:support@forjegames.com"
               className="transition-colors"
-              style={{ color: '#FFB81C' }}
+              style={{ color: '#D4AF37' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'underline' }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.textDecoration = 'none' }}
             >

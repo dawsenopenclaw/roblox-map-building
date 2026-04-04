@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSession, getSession, getSessionByToken } from '@/lib/studio-session'
 import { studioConnectSchema, parseBody } from '@/lib/validations'
+import { trackConnect } from '@/lib/studio-analytics'
 
 interface ConnectBody {
   /** Auth token — must match STUDIO_PLUGIN_SECRET env var */
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     // Verify the JWT sessionId maps to an existing session
     const jwtSessionId = extractSessionIdFromJwt(body.token)
     if (jwtSessionId) {
-      existingSession = await getSession(jwtSessionId) ?? getSessionByToken(body.token) ?? undefined
+      existingSession = await getSession(jwtSessionId) ?? await getSessionByToken(body.token) ?? undefined
     }
     if (!existingSession) {
       return NextResponse.json(
@@ -83,8 +84,8 @@ export async function POST(req: NextRequest) {
       )
     }
   } else if (body.token !== secret) {
-    // Not the static secret — try memory lookup first (fast path)
-    existingSession = getSessionByToken(body.token)
+    // Not the static secret — try memory lookup first (fast path), then Redis
+    existingSession = await getSessionByToken(body.token)
 
     if (!existingSession) {
       // Memory miss — try to reconstruct from JWT (cross-Lambda / cold-start safe)
@@ -124,19 +125,23 @@ export async function POST(req: NextRequest) {
     jwtPinnedId = extractSessionIdFromJwt(body.token) ?? undefined
   }
 
+  const pluginVersion = body.pluginVersion ?? '0.0.0'
   const session = existingSession ?? createSession({
     sessionId: jwtPinnedId,
     placeId: String(body.placeId),
     placeName: body.placeName ?? 'Unknown Place',
-    pluginVersion: body.pluginVersion ?? '0.0.0',
+    pluginVersion,
     authToken: body.token,
   })
   if (existingSession) {
     // Refresh heartbeat so the reconnect is reflected immediately
     existingSession.lastHeartbeat  = Date.now()
     existingSession.connected      = true
-    existingSession.pluginVersion  = body.pluginVersion ?? existingSession.pluginVersion
+    existingSession.pluginVersion  = pluginVersion
   }
+
+  // Track connection analytics (fire-and-forget)
+  trackConnect(pluginVersion)
 
   return NextResponse.json(
     {

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { reviewSchema, reviewResponseSchema, parseBody } from '@/lib/validations'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
+import { marketplaceWriteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 // POST /api/marketplace/templates/[id]/reviews — verified purchase only
 export async function POST(
@@ -19,6 +20,14 @@ export async function POST(
 
   if (!clerkId) {
     return NextResponse.json({ demo: true, message: 'Reviews are not available in demo mode' }, { status: 200 })
+  }
+
+  const rl = await marketplaceWriteRateLimit(clerkId)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down' },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    )
   }
 
   if (templateId.startsWith('demo-')) {
@@ -181,6 +190,14 @@ export async function PATCH(
 
   if (!clerkId) {
     return NextResponse.json({ demo: true, message: 'Creator responses are not available in demo mode' }, { status: 200 })
+  }
+
+  const rlPatch = await marketplaceWriteRateLimit(clerkId)
+  if (!rlPatch.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down' },
+      { status: 429, headers: rateLimitHeaders(rlPatch) },
+    )
   }
 
   if (templateId.startsWith('demo-')) {

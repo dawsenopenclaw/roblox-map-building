@@ -90,12 +90,12 @@ export async function GET() {
       // DB not connected — fall through to demo mode
     }
 
-    // Demo mode
+    // Authenticated but DB unavailable — return empty state, not fake referrals
     return NextResponse.json({
-      invitesSent:  DEMO_REFERRALS.length,
-      signups:      DEMO_SIGNED_UP,
-      tokensEarned: DEMO_TOKENS,
-      referrals:    DEMO_REFERRALS,
+      invitesSent:  0,
+      signups:      0,
+      tokensEarned: 0,
+      referrals:    [],
       demo:         true,
     })
   } catch (error) {

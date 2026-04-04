@@ -34,7 +34,7 @@ export default function AppError({
       <div className="max-w-md w-full text-center">
         <div
           className={`bg-[#141414] rounded-2xl p-8 border ${
-            isAiTimeout ? 'border-[#FFB81C]/20' : 'border-white/10'
+            isAiTimeout ? 'border-[#D4AF37]/20' : 'border-white/10'
           }`}
         >
           {/* Icon */}
@@ -73,7 +73,7 @@ export default function AppError({
             <button
               onClick={handleReset}
               disabled={retrying}
-              className="inline-flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-5 py-2.5 rounded-xl transition-colors text-sm"
             >
               {retrying ? (
                 <>
@@ -100,7 +100,7 @@ export default function AppError({
               Still stuck?{' '}
               <a
                 href={`mailto:support@forjegames.com?subject=Bug+report+[app]${error.digest ? `&body=Error+ID:+${error.digest}` : ''}`}
-                className="text-[#FFB81C] hover:underline"
+                className="text-[#D4AF37] hover:underline"
               >
                 Report this issue
               </a>

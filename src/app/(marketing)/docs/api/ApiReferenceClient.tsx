@@ -214,7 +214,7 @@ const ERROR_CODES = [
 
 const METHOD_COLOR: Record<string, string> = {
   GET: 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20',
-  POST: 'text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/20',
+  POST: 'text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/20',
   PUT: 'text-amber-400 bg-amber-400/10 border border-amber-400/20',
   DELETE: 'text-rose-400 bg-rose-400/10 border border-rose-400/20',
 }
@@ -222,7 +222,7 @@ const METHOD_COLOR: Record<string, string> = {
 const TIER_COLOR: Record<string, string> = {
   All: 'text-[#71717A] bg-white/[0.025] border border-white/[0.07]',
   Free: 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20',
-  Pro: 'text-[#FFB81C] bg-[#FFB81C]/10 border border-[#FFB81C]/20',
+  Pro: 'text-[#D4AF37] bg-[#D4AF37]/10 border border-[#D4AF37]/20',
   Studio: 'text-purple-400 bg-purple-400/10 border border-purple-400/20',
 }
 
@@ -457,7 +457,7 @@ export default function ApiReferencePage() {
                 className="flex gap-4 rounded-2xl border border-white/[0.07] px-5 py-4 transition-colors hover:border-white/[0.12]"
                 style={{ background: 'rgba(255,255,255,0.025)' }}
               >
-                <span className="shrink-0 w-12 font-mono text-sm font-bold text-[#FFB81C]">{e.code}</span>
+                <span className="shrink-0 w-12 font-mono text-sm font-bold text-[#D4AF37]">{e.code}</span>
                 <div>
                   <div className="mb-0.5 text-sm font-semibold text-[#FAFAFA]">{e.name}</div>
                   <div className="text-sm text-[#71717A]">{e.detail}</div>

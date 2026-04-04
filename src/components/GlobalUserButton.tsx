@@ -18,7 +18,7 @@ export function GlobalUserButton() {
         afterSignOutUrl="/sign-in"
         appearance={{
           elements: {
-            avatarBox: '!w-9 !h-9 !ring-2 !ring-[#FFB81C]/30 hover:!ring-[#FFB81C]/60 !transition-all',
+            avatarBox: '!w-9 !h-9 !ring-2 !ring-[#D4AF37]/30 hover:!ring-[#D4AF37]/60 !transition-all',
             userButtonPopoverCard: '!bg-[#111113] !border !border-white/10 !shadow-2xl',
             userButtonPopoverActionButton: '!text-zinc-300 hover:!text-white hover:!bg-white/5',
             userButtonPopoverActionButtonText: '!text-zinc-300',

@@ -24,7 +24,7 @@ const TABS = [
         { text: '→ Generating terrain (320×320 studs)...', color: '#8B95B0' },
         { text: '→ Placing CastleWall_Stone_v2 × 48', color: '#8B95B0' },
         { text: '→ Filling moat terrain (Water material)', color: '#8B95B0' },
-        { text: '→ Scripting drawbridge mechanism', color: '#FFB81C' },
+        { text: '→ Scripting drawbridge mechanism', color: '#D4AF37' },
         { text: '→ Lighting: torches + atmospheric fog', color: '#8B95B0' },
         { text: '✓ Done — 4 scripts, 847 parts, 22s', color: '#10B981' },
       ],
@@ -77,19 +77,19 @@ const TABS = [
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
-    color: '#FFB81C',
+    color: '#D4AF37',
     description: 'Chat naturally. ForjeGames understands context and builds iteratively with you.',
     preview: {
       label: 'CHAT AGENT',
       statusLabel: 'Claude 3.5 Sonnet',
-      statusColor: '#FFB81C',
+      statusColor: '#D4AF37',
       lines: [
         { text: 'You: add neon signs to the shops', isPrompt: true },
         { text: 'ForjeGames: Added 12 neon SurfaceGui signs', color: '#8B95B0' },
         { text: 'You: make the lighting more atmospheric', isPrompt: true },
         { text: 'ForjeGames: Updated Atmosphere + added PointLights', color: '#8B95B0' },
         { text: 'You: balance the economy — coins per kill?', isPrompt: true },
-        { text: 'ForjeGames: Analyzing session data... suggested: 15 coins', color: '#FFB81C' },
+        { text: 'ForjeGames: Analyzing session data... suggested: 15 coins', color: '#D4AF37' },
         { text: '✓ Economy script updated + playtested', color: '#10B981' },
       ],
       rightPanel: [
@@ -143,7 +143,7 @@ export default function HeroScreenshotTabs() {
           transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
         .hst-tab-btn:focus-visible {
-          outline: 2px solid #FFB81C;
+          outline: 2px solid #D4AF37;
           outline-offset: 2px;
         }
       ` }} />
@@ -168,10 +168,10 @@ export default function HeroScreenshotTabs() {
                 style={
                   isActive
                     ? {
-                        background: 'rgba(255,184,28,0.12)',
-                        color: '#FFB81C',
-                        border: '1px solid rgba(255,184,28,0.3)',
-                        boxShadow: '0 0 12px rgba(255,184,28,0.12), inset 0 1px 0 rgba(255,255,255,0.06)',
+                        background: 'rgba(212,175,55,0.12)',
+                        color: '#D4AF37',
+                        border: '1px solid rgba(212,175,55,0.3)',
+                        boxShadow: '0 0 12px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,255,255,0.06)',
                       }
                     : {
                         color: '#8B95B0',
@@ -180,7 +180,7 @@ export default function HeroScreenshotTabs() {
                 }
                 aria-pressed={isActive}
               >
-                <span style={{ color: isActive ? '#FFB81C' : '#8B95B0', transition: 'color 0.18s' }}>
+                <span style={{ color: isActive ? '#D4AF37' : '#8B95B0', transition: 'color 0.18s' }}>
                   {t.icon}
                 </span>
                 {t.label}
@@ -216,7 +216,7 @@ export default function HeroScreenshotTabs() {
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FF5F56' }} />
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#FFBD2E' }} />
             <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#27C93F' }} />
-            <span className="ml-4 text-xs font-mono" style={{ color: 'rgba(255,184,28,0.45)' }}>
+            <span className="ml-4 text-xs font-mono" style={{ color: 'rgba(212,175,55,0.45)' }}>
               ForjeGames — {tab.preview.label}
             </span>
             <div className="ml-auto flex items-center gap-1.5">
@@ -263,7 +263,7 @@ export default function HeroScreenshotTabs() {
                       <span
                         className="inline-block w-0.5 h-3.5 ml-0.5 align-middle"
                         style={{
-                          background: '#FFB81C',
+                          background: '#D4AF37',
                           animation: 'cursor-blink-hero 1.1s step-start infinite',
                         }}
                       />
@@ -280,7 +280,7 @@ export default function HeroScreenshotTabs() {
             >
               <p
                 className="text-[10px] font-medium uppercase tracking-widest"
-                style={{ color: 'rgba(255,184,28,0.4)' }}
+                style={{ color: 'rgba(212,175,55,0.4)' }}
               >
                 Stats
               </p>
@@ -297,7 +297,7 @@ export default function HeroScreenshotTabs() {
           <div
             className="h-px"
             style={{
-              background: `linear-gradient(to right, transparent, ${tab.color}99, #FFB81C66, ${tab.color}99, transparent)`,
+              background: `linear-gradient(to right, transparent, ${tab.color}99, #D4AF3766, ${tab.color}99, transparent)`,
               transition: 'background 0.35s ease',
             }}
           />

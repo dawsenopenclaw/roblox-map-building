@@ -65,10 +65,10 @@ function getTierConfig(tier: string): TierConfig {
     case 'HOBBY':
       return {
         icon: <Star size={18} />,
-        gradient: 'from-[#FFB81C]/20 via-[#FFB81C]/8 to-transparent',
-        glowColor: 'shadow-[0_0_24px_rgba(255,184,28,0.18)]',
-        badgeBg: 'bg-[#FFB81C]/15',
-        badgeBorder: 'border-[#FFB81C]/40',
+        gradient: 'from-[#D4AF37]/20 via-[#D4AF37]/8 to-transparent',
+        glowColor: 'shadow-[0_0_24px_rgba(212,175,55,0.18)]',
+        badgeBg: 'bg-[#D4AF37]/15',
+        badgeBorder: 'border-[#D4AF37]/40',
       }
     case 'CREATOR':
       return {
@@ -185,8 +185,8 @@ export default function BillingClient() {
       used: billing.tokensUsed,
       limit: billing.tokenLimit,
       icon: <Bot size={14} />,
-      color: '#FFB81C',
-      gradient: 'linear-gradient(90deg, #FFB81C 0%, #E6A519 100%)',
+      color: '#D4AF37',
+      gradient: 'linear-gradient(90deg, #D4AF37 0%, #E6A519 100%)',
     },
     {
       label: 'Marketplace Searches',
@@ -226,11 +226,11 @@ export default function BillingClient() {
       {/* ── Gradient Header ── */}
       <div className="relative mb-10 pb-8">
         {/* Ambient glow behind header */}
-        <div className="absolute -top-6 -left-4 w-64 h-32 bg-[#FFB81C]/[0.06] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-6 -left-4 w-64 h-32 bg-[#D4AF37]/[0.06] rounded-full blur-3xl pointer-events-none" />
         <div className="relative">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p className="text-xs font-semibold text-[#FFB81C]/70 uppercase tracking-[0.15em] mb-2">
+              <p className="text-xs font-semibold text-[#D4AF37]/70 uppercase tracking-[0.15em] mb-2">
                 Account Billing
               </p>
               <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
@@ -248,7 +248,7 @@ export default function BillingClient() {
             </div>
             {!isLoading && (
               <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border ${tierConfig.badgeBg} ${tierConfig.badgeBorder}`}>
-                <span className="text-[#FFB81C]">{tierConfig.icon}</span>
+                <span className="text-[#D4AF37]">{tierConfig.icon}</span>
                 <span className="text-sm font-bold text-white">{billing.tier}</span>
               </div>
             )}
@@ -278,10 +278,10 @@ export default function BillingClient() {
                   <>
                     <div className="flex items-center gap-3 mb-3">
                       <span className="text-3xl font-bold text-white">{billing.plan}</span>
-                      <span className={`inline-flex items-center gap-1.5 ${tierConfig.badgeBg} border ${tierConfig.badgeBorder} text-[#FFB81C] text-xs font-bold px-3 py-1.5 rounded-full`}
-                        style={{ textShadow: '0 0 8px rgba(255,184,28,0.5)' }}
+                      <span className={`inline-flex items-center gap-1.5 ${tierConfig.badgeBg} border ${tierConfig.badgeBorder} text-[#D4AF37] text-xs font-bold px-3 py-1.5 rounded-full`}
+                        style={{ textShadow: '0 0 8px rgba(212,175,55,0.5)' }}
                       >
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] inline-block animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] inline-block animate-pulse" />
                         {billing.status === 'ACTIVE' || billing.status === 'TRIALING' ? 'Active' : billing.status}
                       </span>
                     </div>
@@ -305,14 +305,14 @@ export default function BillingClient() {
               <div className="flex flex-col gap-2.5 flex-shrink-0">
                 <Link
                   href="/pricing"
-                  className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-lg shadow-[#FFB81C]/20"
+                  className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-lg shadow-[#D4AF37]/20"
                 >
                   <TrendingUp size={14} />
                   {billing.tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
                 </Link>
                 <button
                   onClick={openBillingPortal}
-                  className="text-xs text-gray-500 hover:text-[#FFB81C] text-center transition-colors"
+                  className="text-xs text-gray-500 hover:text-[#D4AF37] text-center transition-colors"
                 >
                   Manage billing →
                 </button>
@@ -326,7 +326,7 @@ export default function BillingClient() {
         {/* ── Token Balance ── */}
         <div className="relative overflow-hidden bg-[#0F1320] border border-white/[0.08] rounded-2xl p-7">
           {/* Subtle gold ambient */}
-          <div className="absolute top-0 right-0 w-48 h-48 bg-[#FFB81C]/[0.04] rounded-full blur-3xl pointer-events-none translate-x-16 -translate-y-16" />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4AF37]/[0.04] rounded-full blur-3xl pointer-events-none translate-x-16 -translate-y-16" />
           <div className="relative">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-[0.12em] mb-6">Token Balance</p>
 
@@ -343,8 +343,8 @@ export default function BillingClient() {
                   <span
                     className="text-6xl font-bold tabular-nums leading-none"
                     style={{
-                      color: '#FFB81C',
-                      textShadow: '0 0 40px rgba(255,184,28,0.35), 0 0 80px rgba(255,184,28,0.12)',
+                      color: '#D4AF37',
+                      textShadow: '0 0 40px rgba(212,175,55,0.35), 0 0 80px rgba(212,175,55,0.12)',
                     }}
                   >
                     {tokensRemaining.toLocaleString()}
@@ -363,10 +363,10 @@ export default function BillingClient() {
                       width: `${tokenPct}%`,
                       background: tokenPct >= 80
                         ? 'linear-gradient(90deg, #fbbf24 0%, #f87171 60%, #ef4444 100%)'
-                        : 'linear-gradient(90deg, #FFB81C 0%, #f59e0b 50%, #FFB81C 100%)',
+                        : 'linear-gradient(90deg, #D4AF37 0%, #f59e0b 50%, #D4AF37 100%)',
                       boxShadow: tokenPct >= 80
                         ? '0 0 8px rgba(239,68,68,0.6)'
-                        : '0 0 8px rgba(255,184,28,0.5)',
+                        : '0 0 8px rgba(212,175,55,0.5)',
                     }}
                   />
                 </div>
@@ -380,7 +380,7 @@ export default function BillingClient() {
             <div className="flex items-center gap-3 flex-wrap">
               <Link
                 href="/tokens"
-                className="inline-flex items-center gap-2 text-sm font-semibold border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/5 text-[#FFB81C] px-4 py-2.5 rounded-xl transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-semibold border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 text-[#D4AF37] px-4 py-2.5 rounded-xl transition-colors"
               >
                 <Zap size={14} />
                 Buy More Tokens
@@ -436,7 +436,7 @@ export default function BillingClient() {
             <div className="flex items-center gap-4">
               <button
                 onClick={openBillingPortal}
-                className="text-xs text-[#FFB81C] hover:text-[#E6A519] flex items-center gap-1.5 transition-colors"
+                className="text-xs text-[#D4AF37] hover:text-[#E6A519] flex items-center gap-1.5 transition-colors"
               >
                 View all in Stripe →
               </button>
@@ -469,7 +469,7 @@ export default function BillingClient() {
               <p className="text-gray-500 text-sm">No payment history yet.</p>
               <button
                 onClick={openBillingPortal}
-                className="text-xs text-[#FFB81C]/70 hover:text-[#FFB81C] transition-colors mt-1.5"
+                className="text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors mt-1.5"
               >
                 View in Stripe →
               </button>

@@ -12,7 +12,7 @@ export default function BillingLoading() {
         </div>
 
         {/* Current plan card */}
-        <div className="bg-[#141414] border border-[#FFB81C]/20 rounded-2xl p-6 mb-6">
+        <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-6 mb-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <div className="h-4 w-24 rounded-md shimmer mb-2" />

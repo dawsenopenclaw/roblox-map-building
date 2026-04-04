@@ -83,11 +83,11 @@ export function ShortcutsHelp({ isOpen, onClose }: ShortcutsHelpProps) {
               }}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="5" width="12" height="8" rx="1.5" stroke="#FFB81C" strokeWidth="1.3"/>
-                <rect x="3" y="7" width="2" height="1.5" rx="0.3" fill="#FFB81C" opacity={0.5}/>
-                <rect x="6" y="7" width="2" height="1.5" rx="0.3" fill="#FFB81C" opacity={0.5}/>
-                <rect x="9" y="7" width="2" height="1.5" rx="0.3" fill="#FFB81C" opacity={0.5}/>
-                <rect x="4" y="10" width="6" height="1.5" rx="0.3" fill="#FFB81C" opacity={0.5}/>
+                <rect x="1" y="5" width="12" height="8" rx="1.5" stroke="#D4AF37" strokeWidth="1.3"/>
+                <rect x="3" y="7" width="2" height="1.5" rx="0.3" fill="#D4AF37" opacity={0.5}/>
+                <rect x="6" y="7" width="2" height="1.5" rx="0.3" fill="#D4AF37" opacity={0.5}/>
+                <rect x="9" y="7" width="2" height="1.5" rx="0.3" fill="#D4AF37" opacity={0.5}/>
+                <rect x="4" y="10" width="6" height="1.5" rx="0.3" fill="#D4AF37" opacity={0.5}/>
               </svg>
             </div>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Keyboard Shortcuts</span>

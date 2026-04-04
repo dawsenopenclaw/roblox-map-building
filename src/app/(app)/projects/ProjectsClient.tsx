@@ -119,7 +119,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             <span
               className="text-sm font-semibold px-4 py-2 rounded-lg"
               style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                 color: '#09090b',
               }}
             >
@@ -205,7 +205,7 @@ function EmptyState() {
         href="/editor"
         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
         style={{
-          background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
           color: '#09090b',
           boxShadow: '0 0 20px rgba(212,175,55,0.25)',
         }}
@@ -263,7 +263,7 @@ export function ProjectsClient() {
           href="/editor"
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
           style={{
-            background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
             color: '#09090b',
             boxShadow: '0 0 12px rgba(212,175,55,0.2)',
           }}

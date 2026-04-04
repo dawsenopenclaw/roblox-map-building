@@ -10,13 +10,13 @@ export default function ConsentDeniedPage() {
           </p>
           <p className="text-gray-400 text-xs mt-6">
             If you have any questions, contact us at{' '}
-            <a href="mailto:support@forjegames.com" className="text-[#FFB81C]">
+            <a href="mailto:support@forjegames.com" className="text-[#D4AF37]">
               support@forjegames.com
             </a>
           </p>
           <a
             href="/"
-            className="inline-block mt-6 text-sm text-[#FFB81C] hover:underline"
+            className="inline-block mt-6 text-sm text-[#D4AF37] hover:underline"
           >
             Return to ForjeGames
           </a>

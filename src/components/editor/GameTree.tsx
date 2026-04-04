@@ -223,7 +223,7 @@ function TreeNode({
         }}
         className={`w-full flex items-center gap-1.5 py-1 rounded text-xs transition-colors text-left ${
           isSelected
-            ? 'bg-[#FFB81C]/15 text-white'
+            ? 'bg-[#D4AF37]/15 text-white'
             : 'text-gray-300 hover:text-gray-200 hover:bg-white/5'
         }`}
         style={{ paddingLeft: `${8 + depth * 12}px`, paddingRight: '8px' }}

@@ -24,6 +24,7 @@
 import 'server-only'
 import { type NextRequest } from 'next/server'
 import { getSession, SESSION_TTL_MS } from '@/lib/studio-session'
+import { addSubscriber, removeSubscriber } from '@/lib/studio-sse-bus'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,35 +47,8 @@ interface SseController {
 }
 
 // ---------------------------------------------------------------------------
-// Subscriber registry — survives Next.js hot-reload via globalThis
-// ---------------------------------------------------------------------------
-
-type SubscriberMap = Map<string, Set<SseController>>
-
-// @ts-expect-error — attach to globalThis for hot-reload persistence
-const subscribers: SubscriberMap = (globalThis.__fjSseSubscribers ??= new Map())
-// @ts-expect-error
-globalThis.__fjSseSubscribers = subscribers
-
-// ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-function getOrCreateSet(sessionId: string): Set<SseController> {
-  let set = subscribers.get(sessionId)
-  if (!set) {
-    set = new Set()
-    subscribers.set(sessionId, set)
-  }
-  return set
-}
-
-function removeController(sessionId: string, ctrl: SseController): void {
-  const set = subscribers.get(sessionId)
-  if (!set) return
-  set.delete(ctrl)
-  if (set.size === 0) subscribers.delete(sessionId)
-}
 
 /**
  * Encode a single SSE frame.
@@ -93,48 +67,6 @@ function encodeFrame(event: SseEventName, data: unknown, id?: string): string {
 /** SSE comment — keeps the connection alive through proxies / load balancers. */
 function keepaliveComment(): string {
   return `: ping ${Date.now()}\n\n`
-}
-
-// ---------------------------------------------------------------------------
-// Public API — called by other route handlers to push data to SSE clients
-// ---------------------------------------------------------------------------
-
-/**
- * Push an event to every SSE connection subscribed to `sessionId`.
- *
- * @returns The number of active subscribers that received the event.
- *
- * Usage from other route handlers:
- * ```ts
- * import { pushToSession } from '@/app/api/studio/stream/route'
- * pushToSession(sessionId, 'context', { camera, nearbyParts, partCount })
- * pushToSession(sessionId, 'screenshot', { image: base64 })
- * pushToSession(sessionId, 'command_result', { commandId, success, error })
- * ```
- */
-function pushToSession(
-  sessionId: string,
-  event: SseEventName,
-  data: Record<string, unknown>,
-): number {
-  const set = subscribers.get(sessionId)
-  if (!set || set.size === 0) return 0
-
-  const frame = encodeFrame(event, data, `${Date.now()}`)
-  let delivered = 0
-
-  for (const ctrl of set) {
-    try {
-      ctrl.enqueue(frame)
-      delivered++
-    } catch {
-      // Controller's stream was closed on client disconnect — clean it up.
-      set.delete(ctrl)
-    }
-  }
-
-  if (set.size === 0) subscribers.delete(sessionId)
-  return delivered
 }
 
 // ---------------------------------------------------------------------------
@@ -200,8 +132,8 @@ export async function GET(req: NextRequest): Promise<Response> {
         connectedAt: Date.now(),
       }
 
-      // Register this subscriber.
-      getOrCreateSet(resolvedSessionId).add(ctrl)
+      // Register this subscriber (also sets up Redis cross-instance subscription).
+      addSubscriber(resolvedSessionId, ctrl)
 
       // ── Initial state burst ──────────────────────────────────────────────
       // Push the current session state immediately so the client doesn't wait
@@ -270,7 +202,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       sessionWatchTimer = null
     }
     if (ctrl !== null) {
-      removeController(resolvedSessionId, ctrl)
+      removeSubscriber(resolvedSessionId, ctrl)
       try {
         ctrl.close()
       } catch {

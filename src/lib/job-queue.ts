@@ -108,6 +108,12 @@ export type TextureGenerationPayload = z.infer<typeof textureGenerationPayloadSc
 export type BlenderOptimizePayload  = z.infer<typeof blenderOptimizePayloadSchema>
 export type RobloxUploadPayload     = z.infer<typeof robloxUploadPayloadSchema>
 
+/** MeshGenerationPayload extended with the _assetId field injected by startMeshPipeline */
+export interface MeshGenerationPayloadWithAsset extends MeshGenerationPayload {
+  /** Injected by startMeshPipeline — the GeneratedAsset.id to update */
+  _assetId?: string
+}
+
 export type JobPayload =
   | MeshGenerationPayload
   | TextureGenerationPayload

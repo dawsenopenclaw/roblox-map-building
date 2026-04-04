@@ -43,6 +43,7 @@ local _token               = nil
 local _sessionId           = nil
 local _onStatusChange      = nil
 local _onStatusMessage     = nil   -- fn(message: string, level: "info"|"warn"|"error")
+local _onUpdateAvailable   = nil   -- fn(info: {latestVersion, downloadUrl, changelog, forceUpdate})
 local _lastSync            = 0
 local _backoffInterval     = MIN_INTERVAL
 local _timeSinceLastPoll   = 0
@@ -464,7 +465,22 @@ local function pollSync()
       -- Update available notification (once per session)
       if data.updateAvailable == true and not _updateNotified then
         _updateNotified = true
-        notifyMessage("Update available! Download from forjegames.com/download", "warn")
+        -- Fire the rich update callback if registered (used by Plugin.lua to show banner)
+        if _onUpdateAvailable then
+          _onUpdateAvailable({
+            latestVersion = data.latestVersion or "latest",
+            downloadUrl   = data.downloadUrl or data.updateUrl or (resolveBaseUrl() .. "/api/studio/plugin"),
+            changelog     = data.changelog or "",
+            forceUpdate   = data.forceUpdate == true,
+          })
+        else
+          -- Fallback: plain Output message
+          notifyMessage(
+            "Plugin update available (v" .. (data.latestVersion or "latest") .. ")! " ..
+            "Download: " .. (data.downloadUrl or data.updateUrl or "forjegames.com/download"),
+            "warn"
+          )
+        end
       end
     end
 
@@ -621,6 +637,7 @@ function Sync.start(opts)
   _sessionId          = opts.sessionId or nil
   _onStatusChange     = opts.onStatusChange
   _onStatusMessage    = opts.onStatusMessage
+  _onUpdateAvailable  = opts.onUpdateAvailable
   _reAuthCallback     = opts.onReAuthNeeded
   _backoffInterval    = MIN_INTERVAL
   _timeSinceLastPoll  = 0

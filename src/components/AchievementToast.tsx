@@ -67,12 +67,12 @@ function AchievementToastProviderInner() {
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className="bg-[#141414] border border-[#FFB81C]/40 rounded-xl px-5 py-4 flex items-center gap-3 shadow-lg shadow-black/40 animate-in slide-in-from-bottom-4"
+          className="bg-[#141414] border border-[#D4AF37]/40 rounded-xl px-5 py-4 flex items-center gap-3 shadow-lg shadow-black/40 animate-in slide-in-from-bottom-4"
           style={{ minWidth: 280 }}
         >
           <div className="text-3xl flex-shrink-0" aria-hidden="true">{toast.icon}</div>
           <div>
-            <p className="text-xs text-[#FFB81C] font-semibold uppercase tracking-wide">Achievement Unlocked!</p>
+            <p className="text-xs text-[#D4AF37] font-semibold uppercase tracking-wide">Achievement Unlocked!</p>
             <p className="text-white font-semibold text-sm mt-0.5">{toast.name}</p>
             {toast.xpReward > 0 && (
               <p className="text-xs text-gray-300 mt-0.5">+{toast.xpReward} XP earned</p>

@@ -137,8 +137,8 @@ export default function SubmitTemplatePage() {
   if (success) {
     return (
       <div className="max-w-2xl mx-auto pt-20 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 mb-6">
-          <svg className="w-8 h-8 text-[#FFB81C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 mb-6">
+          <svg className="w-8 h-8 text-[#D4AF37]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
@@ -168,7 +168,7 @@ export default function SubmitTemplatePage() {
             onChange={e => set('title', e.target.value)}
             placeholder="e.g. Medieval Castle Game Template"
             maxLength={100}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
         </div>
 
@@ -184,7 +184,7 @@ export default function SubmitTemplatePage() {
             placeholder="Describe what's included, how to use it, and what makes it special..."
             rows={5}
             maxLength={2000}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors resize-y"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors resize-y"
           />
         </div>
 
@@ -197,7 +197,7 @@ export default function SubmitTemplatePage() {
             <select
               value={form.category}
               onChange={e => set('category', e.target.value)}
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
             >
               {CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -218,7 +218,7 @@ export default function SubmitTemplatePage() {
                 value={form.priceCents === 0 ? '' : form.priceCents}
                 onChange={e => set('priceCents', Math.min(999.99, parseFloat(e.target.value) || 0))}
                 placeholder="0.00 (free)"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-7 pr-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-7 pr-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
               />
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function SubmitTemplatePage() {
             value={form.rbxmFileUrl}
             onChange={e => set('rbxmFileUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
           <p className="text-xs text-gray-500 mt-1.5">Upload your .rbxm file to a CDN and paste the URL here</p>
         </div>
@@ -254,7 +254,7 @@ export default function SubmitTemplatePage() {
             value={form.thumbnailUrl}
             onChange={e => set('thumbnailUrl', e.target.value)}
             placeholder="https://..."
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
         </div>
 
@@ -270,7 +270,7 @@ export default function SubmitTemplatePage() {
               onChange={e => setScreenshotInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
               placeholder="https://..."
-              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
             />
             <button
               type="button"
@@ -315,7 +315,7 @@ export default function SubmitTemplatePage() {
             value={form.tags}
             onChange={e => set('tags', e.target.value)}
             placeholder="medieval, rpg, adventure (comma-separated)"
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
         </div>
 
@@ -329,14 +329,14 @@ export default function SubmitTemplatePage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex-1 border border-[#FFB81C]/30 text-[#FFB81C] py-3 rounded-xl text-sm font-bold hover:bg-[#FFB81C]/5 transition-colors"
+            className="flex-1 border border-[#D4AF37]/30 text-[#D4AF37] py-3 rounded-xl text-sm font-bold hover:bg-[#D4AF37]/5 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+            className="flex-1 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
           >
             {submitting ? 'Submitting...' : 'Submit for Review'}
           </button>

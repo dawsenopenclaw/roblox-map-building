@@ -55,7 +55,7 @@ export function DnaOverlayRadarChart({
       <RadarChart data={data} margin={{ top: 10, right: 40, bottom: 10, left: 40 }}>
         <PolarGrid stroke="#ffffff15" />
         <PolarAngleAxis dataKey="subject" tick={{ fill: '#9CA3AF', fontSize: 11 }} />
-        <Radar name={labelA} dataKey="a" stroke="#FFB81C" fill="#FFB81C" fillOpacity={0.2} strokeWidth={2} />
+        <Radar name={labelA} dataKey="a" stroke="#D4AF37" fill="#D4AF37" fillOpacity={0.2} strokeWidth={2} />
         <Radar name={labelB} dataKey="b" stroke="#60A5FA" fill="#60A5FA" fillOpacity={0.15} strokeWidth={2} />
         <Legend wrapperStyle={{ fontSize: 12, color: '#9CA3AF' }} />
       </RadarChart>

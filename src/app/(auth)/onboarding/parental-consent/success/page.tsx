@@ -10,7 +10,7 @@
           </p>
           <p className="text-gray-400 text-xs mt-6">
             You can revoke consent at any time by emailing{' '}
-            <a href="mailto:support@forjegames.com" className="text-[#FFB81C]">
+            <a href="mailto:support@forjegames.com" className="text-[#D4AF37]">
               support@forjegames.com
             </a>
           </p>

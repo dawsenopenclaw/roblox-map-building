@@ -25,11 +25,11 @@ function ProgressBar({ currentStep }: { currentStep: number }) {
     <div className="w-full mb-8">
       <div className="flex justify-between items-center mb-2">
         <span className="text-xs text-gray-400">Step {currentStep} of {TOTAL_STEPS}</span>
-        <span className="text-xs text-[#FFB81C] font-semibold">{pct}%</span>
+        <span className="text-xs text-[#D4AF37] font-semibold">{pct}%</span>
       </div>
       <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
         <div
-          className="h-full bg-[#FFB81C] rounded-full transition-all duration-500 ease-out"
+          className="h-full bg-[#D4AF37] rounded-full transition-all duration-500 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -72,13 +72,13 @@ function ProfileStep({
             onChange={(e) => { setDisplayName(e.target.value); setError('') }}
             placeholder="e.g. AwesomeBuilder99"
             required
-            className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#FFB81C] transition-colors placeholder-gray-600"
+            className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-gray-600"
           />
           {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
         </div>
         <button
           type="submit"
-          className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors"
+          className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors"
         >
           Continue
         </button>
@@ -109,7 +109,7 @@ function TemplateStep({
             aria-pressed={selected === t.id}
             className={`p-4 rounded-lg border text-left transition-all ${
               selected === t.id
-                ? 'border-[#FFB81C] bg-[#FFB81C]/10'
+                ? 'border-[#D4AF37] bg-[#D4AF37]/10'
                 : 'border-white/10 bg-[#141414] hover:border-white/30'
             }`}
           >
@@ -125,7 +125,7 @@ function TemplateStep({
           onNext(t.id, t.prompt)
         }}
         disabled={!selected}
-        className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-2"
+        className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-40 disabled:cursor-not-allowed mb-2"
       >
         Continue
       </button>
@@ -172,7 +172,7 @@ function FirstBuildStep({
             <button
               key={s}
               onClick={() => setPrompt(s)}
-              className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs hover:border-[#FFB81C] hover:text-[#FFB81C] transition-colors"
+              className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 text-xs hover:border-[#D4AF37] hover:text-[#D4AF37] transition-colors"
             >
               {s}
             </button>
@@ -183,13 +183,13 @@ function FirstBuildStep({
           onChange={(e) => setPrompt(e.target.value)}
           rows={3}
           placeholder="Describe what you want to build…"
-          className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#FFB81C] transition-colors placeholder-gray-600 resize-none"
+          className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-gray-600 resize-none"
         />
       </div>
       <button
         onClick={() => onFinish(prompt.trim())}
         disabled={loading || !prompt.trim()}
-        className="w-full bg-[#FFB81C] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {loading ? 'Starting…' : 'Start Building →'}
       </button>
@@ -259,7 +259,7 @@ export default function OnboardingWizardPage() {
       <div className="max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#FFB81C]">ForjeGames</h1>
+          <h1 className="text-2xl font-bold text-[#D4AF37]">ForjeGames</h1>
         </div>
 
         {/* Card */}

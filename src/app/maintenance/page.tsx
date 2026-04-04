@@ -152,7 +152,7 @@ export default function MaintenancePage() {
 
         {/* Branding */}
         <p className="mt-6 text-xs text-gray-500">
-          <Link href="/" className="hover:text-[#FFB81C] transition-colors font-medium">ForjeGames</Link>
+          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">ForjeGames</Link>
           {' '}— AI-powered Roblox game builder
         </p>
       </div>

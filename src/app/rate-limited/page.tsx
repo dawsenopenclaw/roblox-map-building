@@ -52,7 +52,7 @@ function RateLimitedContent() {
     <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
       {/* Radial glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <div className="w-[500px] h-[500px] rounded-full bg-[#FFB81C]/8 blur-[120px]" />
+        <div className="w-[500px] h-[500px] rounded-full bg-[#D4AF37]/8 blur-[120px]" />
       </div>
 
       <div className="relative max-w-md w-full text-center">
@@ -60,10 +60,10 @@ function RateLimitedContent() {
 
           {/* Icon */}
           <div className="mx-auto mb-7 relative w-20 h-20">
-            <div className="absolute inset-0 rounded-full bg-[#FFB81C]/10 animate-ping" style={{ animationDuration: '2s' }} />
-            <div className="relative w-20 h-20 rounded-full bg-[#FFB81C]/10 border border-[#FFB81C]/25 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-[#D4AF37]/10 animate-ping" style={{ animationDuration: '2s' }} />
+            <div className="relative w-20 h-20 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/25 flex items-center justify-center">
               <svg
-                className={`w-9 h-9 text-[#FFB81C] transition-transform duration-300 ${pulsing ? 'scale-125' : 'scale-100'}`}
+                className={`w-9 h-9 text-[#D4AF37] transition-transform duration-300 ${pulsing ? 'scale-125' : 'scale-100'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -83,11 +83,11 @@ function RateLimitedContent() {
           </p>
 
           {/* Reset time badge */}
-          <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-lg px-4 py-2 mb-6 mt-2">
-            <svg className="w-4 h-4 text-[#FFB81C] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-lg px-4 py-2 mb-6 mt-2">
+            <svg className="w-4 h-4 text-[#D4AF37] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             </svg>
-            <span className="text-sm text-[#FFB81C] font-medium">
+            <span className="text-sm text-[#D4AF37] font-medium">
               Resets in{' '}
               <span className="font-bold tabular-nums">{secondsLeft}s</span>
               {' '}— at {resetTime}
@@ -100,7 +100,7 @@ function RateLimitedContent() {
               className="h-full rounded-full transition-all duration-1000 ease-linear"
               style={{
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #D4AF37 0%, #FFB81C 100%)',
+                background: 'linear-gradient(90deg, #D4AF37 0%, #D4AF37 100%)',
               }}
             />
           </div>
@@ -112,7 +112,7 @@ function RateLimitedContent() {
             <ul className="space-y-2 mb-6 text-left max-w-xs mx-auto">
               {PLAN_PERKS.map((perk) => (
                 <li key={perk} className="flex items-center gap-2.5 text-sm text-gray-400">
-                  <svg className="w-4 h-4 text-[#FFB81C] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <svg className="w-4 h-4 text-[#D4AF37] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                   </svg>
                   {perk}
@@ -122,8 +122,8 @@ function RateLimitedContent() {
 
             <Link
               href="/pricing"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/30 hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)' }}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)' }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
@@ -136,7 +136,7 @@ function RateLimitedContent() {
 
         {/* Branding */}
         <p className="mt-6 text-xs text-gray-500">
-          <Link href="/" className="hover:text-[#FFB81C] transition-colors font-medium">ForjeGames</Link>
+          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">ForjeGames</Link>
           {' '}— AI-powered Roblox game builder
         </p>
       </div>

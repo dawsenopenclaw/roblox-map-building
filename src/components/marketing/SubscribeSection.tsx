@@ -169,7 +169,7 @@ export default function SubscribeSection() {
               disabled={state === 'loading'}
               className="flex-shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
               style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                 color: '#09090b',
                 boxShadow:
                   state === 'loading'

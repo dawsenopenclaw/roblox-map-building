@@ -216,7 +216,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -250,13 +250,13 @@ const subheading: React.CSSProperties = {
 }
 
 const daysStyle: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const bonusCard: React.CSSProperties = {
   margin: '24px 40px 32px',
-  backgroundColor: '#FFB81C0d',
-  border: '2px solid #FFB81C',
+  backgroundColor: '#D4AF370d',
+  border: '2px solid #D4AF37',
   borderRadius: '16px',
   padding: '28px 24px',
   textAlign: 'center',
@@ -268,7 +268,7 @@ const bonusGiftIcon: React.CSSProperties = {
 }
 
 const bonusHeading: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '13px',
   fontWeight: '600',
   letterSpacing: '1px',
@@ -297,7 +297,7 @@ const bonusExpiry: React.CSSProperties = {
 }
 
 const claimButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
@@ -313,7 +313,7 @@ const whatsNewSection: React.CSSProperties = {
 }
 
 const whatsNewLabel: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '11px',
   fontWeight: '700',
   letterSpacing: '2px',
@@ -379,7 +379,7 @@ const ctaSection: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',
@@ -398,9 +398,9 @@ const ctaOr: React.CSSProperties = {
 
 const secondaryButton: React.CSSProperties = {
   backgroundColor: 'transparent',
-  border: '1px solid #FFB81C',
+  border: '1px solid #D4AF37',
   borderRadius: '8px',
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontFamily: 'Inter, Arial, sans-serif',
   fontSize: '14px',
   fontWeight: '500',

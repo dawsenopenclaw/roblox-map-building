@@ -819,7 +819,139 @@ function UI.build(widget, state, COLORS, pluginRef)
   emptyLabel.Parent                = recentList
 
   -- ============================================================
-  -- 5. FOOTER
+  -- 5. UPDATE BANNER (hidden by default, shown when update available)
+  -- ============================================================
+  local updateBanner = Instance.new("Frame")
+  updateBanner.Name             = "UpdateBanner"
+  updateBanner.Size             = UDim2.new(1, 0, 0, 0)  -- collapsed by default
+  updateBanner.BackgroundColor3 = Color3.fromHex("1a1200")
+  updateBanner.BorderSizePixel  = 0
+  updateBanner.ClipsDescendants = true
+  updateBanner.LayoutOrder      = 10
+  updateBanner.Visible          = false
+  updateBanner.Parent           = scroll
+
+  local bannerStroke = Instance.new("UIStroke")
+  bannerStroke.Color       = C.gold
+  bannerStroke.Thickness   = 1
+  bannerStroke.Transparency = 0.5
+  bannerStroke.Parent      = updateBanner
+
+  local bannerCorner = Instance.new("UICorner")
+  bannerCorner.CornerRadius = UDim.new(0, 8)
+  bannerCorner.Parent       = updateBanner
+
+  -- Gold accent bar at top of banner
+  local bannerAccent = Instance.new("Frame")
+  bannerAccent.Name             = "BannerAccent"
+  bannerAccent.Size             = UDim2.new(1, 0, 0, 2)
+  bannerAccent.BackgroundColor3 = C.gold
+  bannerAccent.BorderSizePixel  = 0
+  bannerAccent.Parent           = updateBanner
+
+  local bannerIcon = Instance.new("TextLabel")
+  bannerIcon.Name                  = "BannerIcon"
+  bannerIcon.Text                  = "\226\172\134" -- ⬆ (up arrow)
+  bannerIcon.Font                  = Enum.Font.SourceSans
+  bannerIcon.TextSize              = 16
+  bannerIcon.TextColor3            = C.gold
+  bannerIcon.BackgroundTransparency = 1
+  bannerIcon.Size                  = UDim2.new(0, 20, 0, 20)
+  bannerIcon.Position              = UDim2.new(0, 12, 0, 10)
+  bannerIcon.Parent                = updateBanner
+
+  local bannerTitle = Instance.new("TextLabel")
+  bannerTitle.Name                  = "BannerTitle"
+  bannerTitle.Text                  = "Update Available"
+  bannerTitle.Font                  = Enum.Font.GothamBold
+  bannerTitle.TextSize              = 12
+  bannerTitle.TextColor3            = C.gold
+  bannerTitle.BackgroundTransparency = 1
+  bannerTitle.Size                  = UDim2.new(1, -44, 0, 18)
+  bannerTitle.Position              = UDim2.new(0, 36, 0, 8)
+  bannerTitle.TextXAlignment        = Enum.TextXAlignment.Left
+  bannerTitle.Parent                = updateBanner
+
+  local bannerChangelog = Instance.new("TextLabel")
+  bannerChangelog.Name                  = "BannerChangelog"
+  bannerChangelog.Text                  = ""
+  bannerChangelog.Font                  = Enum.Font.Gotham
+  bannerChangelog.TextSize              = 10
+  bannerChangelog.TextColor3            = C.textSec
+  bannerChangelog.BackgroundTransparency = 1
+  bannerChangelog.Size                  = UDim2.new(1, -24, 0, 28)
+  bannerChangelog.Position              = UDim2.new(0, 12, 0, 28)
+  bannerChangelog.TextXAlignment        = Enum.TextXAlignment.Left
+  bannerChangelog.TextWrapped           = true
+  bannerChangelog.Parent                = updateBanner
+
+  local downloadBtn = Instance.new("TextButton")
+  downloadBtn.Name                  = "DownloadBtn"
+  downloadBtn.Size                  = UDim2.new(1, -24, 0, 32)
+  downloadBtn.Position              = UDim2.new(0, 12, 0, 60)
+  downloadBtn.BackgroundColor3      = C.gold
+  downloadBtn.BorderSizePixel       = 0
+  downloadBtn.Text                  = "Download Update"
+  downloadBtn.Font                  = Enum.Font.GothamBold
+  downloadBtn.TextSize              = 12
+  downloadBtn.TextColor3            = Color3.fromHex("0a0a0a")
+  downloadBtn.AutoButtonColor       = false
+  downloadBtn.Parent                = updateBanner
+
+  local dlBtnCorner = Instance.new("UICorner")
+  dlBtnCorner.CornerRadius = UDim.new(0, 8)
+  dlBtnCorner.Parent       = downloadBtn
+
+  -- Hover effect
+  downloadBtn.MouseEnter:Connect(function()
+    downloadBtn.BackgroundColor3 = C.goldLight
+  end)
+  downloadBtn.MouseLeave:Connect(function()
+    downloadBtn.BackgroundColor3 = C.gold
+  end)
+
+  -- _downloadUrl is set when showUpdateBanner is called
+  local _downloadUrl = "https://forjegames.com/download"
+  downloadBtn.MouseButton1Click:Connect(function()
+    -- Roblox plugins cannot open URLs directly; print to Output so devs can click it
+    print("[ForjeGames] Download the latest plugin at: " .. _downloadUrl)
+    -- Also attempt GuiService:OpenBrowserWindow if available (some Studio versions support it)
+    local ok = pcall(function()
+      local GuiService = game:GetService("GuiService")
+      GuiService:OpenBrowserWindow(_downloadUrl)
+    end)
+    if not ok then
+      warn("[ForjeGames] Copy this URL to update: " .. _downloadUrl)
+    end
+  end)
+
+  -- Force-update overlay: covers action buttons with a blocking message
+  local forceUpdateOverlay = Instance.new("Frame")
+  forceUpdateOverlay.Name             = "ForceUpdateOverlay"
+  forceUpdateOverlay.Size             = UDim2.new(1, 0, 1, 0)
+  forceUpdateOverlay.BackgroundColor3 = Color3.fromHex("050810")
+  forceUpdateOverlay.BackgroundTransparency = 0.1
+  forceUpdateOverlay.BorderSizePixel  = 0
+  forceUpdateOverlay.ZIndex           = 20
+  forceUpdateOverlay.Visible          = false
+  forceUpdateOverlay.Parent           = root
+
+  local overlayLabel = Instance.new("TextLabel")
+  overlayLabel.Name                  = "OverlayLabel"
+  overlayLabel.Text                  = "Plugin update required\nPlease update to continue using ForjeGames.\nCheck the Studio Output for the download link."
+  overlayLabel.Font                  = Enum.Font.GothamBold
+  overlayLabel.TextSize              = 12
+  overlayLabel.TextColor3            = C.gold
+  overlayLabel.BackgroundTransparency = 1
+  overlayLabel.Size                  = UDim2.new(1, -32, 0, 80)
+  overlayLabel.Position              = UDim2.new(0, 16, 0.4, -40)
+  overlayLabel.TextXAlignment        = Enum.TextXAlignment.Center
+  overlayLabel.TextWrapped           = true
+  overlayLabel.ZIndex                = 21
+  overlayLabel.Parent                = forceUpdateOverlay
+
+  -- ============================================================
+  -- 6. FOOTER
   -- ============================================================
   local footer = Instance.new("TextLabel")
   footer.Name                  = "Footer"
@@ -859,6 +991,58 @@ function UI.build(widget, state, COLORS, pluginRef)
     emptyLabel      = emptyLabel,
     COLORS          = C,
   }
+
+  -- ── Show update banner ──
+  -- info: { latestVersion: string, downloadUrl: string, changelog: string, forceUpdate: bool }
+  function refs.showUpdateBanner(info)
+    _downloadUrl = info.downloadUrl or _downloadUrl
+
+    local versionStr = info.latestVersion and ("v" .. info.latestVersion) or "latest"
+    bannerTitle.Text = "Update Available (" .. versionStr .. ")"
+
+    if info.changelog and #info.changelog > 0 then
+      bannerChangelog.Text    = info.changelog
+      bannerChangelog.Visible = true
+      downloadBtn.Position    = UDim2.new(0, 12, 0, 62)
+      updateBanner.Size       = UDim2.new(1, 0, 0, 104)
+    else
+      bannerChangelog.Visible = false
+      downloadBtn.Position    = UDim2.new(0, 12, 0, 34)
+      updateBanner.Size       = UDim2.new(1, 0, 0, 76)
+    end
+
+    if info.forceUpdate then
+      bannerTitle.Text      = "Update Required (" .. versionStr .. ")"
+      bannerTitle.TextColor3 = C.error
+      bannerIcon.TextColor3  = C.error
+      bannerStroke.Color     = C.error
+      updateBanner.BackgroundColor3 = Color3.fromHex("1a0000")
+    end
+
+    updateBanner.Visible = true
+
+    -- Animate in: expand from 0 height
+    TweenService:Create(updateBanner, TweenInfo.new(
+      0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
+    ), { Size = updateBanner.Size }):Play()
+  end
+
+  -- ── Force-update lock: disables plugin functionality ──
+  function refs.setForceUpdateLock(locked)
+    forceUpdateOverlay.Visible = locked
+    -- Dim action buttons so intent is clear
+    for _, btn in ipairs(actionButtons) do
+      if locked then
+        btn.Active              = false
+        btn.BackgroundTransparency = 0.7
+        btn.TextTransparency    = 0.5
+      else
+        btn.Active              = true
+        btn.BackgroundTransparency = 0.3
+        btn.TextTransparency    = 0
+      end
+    end
+  end
 
   -- ── Update: authenticated ──
   function refs.setAuthenticated(email)

@@ -169,7 +169,7 @@ function OverallProgressBar({ pct }: { pct: number }) {
       <motion.div
         className="absolute inset-y-0 left-0 rounded-full"
         style={{
-          background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+          background: 'linear-gradient(90deg, #D4AF37, #D4AF37)',
           boxShadow: '0 0 8px rgba(212,175,55,0.5)',
         }}
         initial={{ width: '0%' }}
@@ -240,7 +240,7 @@ function TaskRow({ task, index }: { task: BuildTask; index: number }) {
           <div className="mt-1.5 h-0.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <motion.div
               className="h-full rounded-full"
-              style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)' }}
+              style={{ background: 'linear-gradient(90deg, #D4AF37, #D4AF37)' }}
               animate={{ width: `${task.progress}%` }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             />
@@ -272,7 +272,7 @@ function CompleteCard({ summary, onDismiss }: { summary?: string; onDismiss: () 
         transition={{ delay: 0.1, type: 'spring', stiffness: 400, damping: 18 }}
         className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
         style={{
-          background: 'linear-gradient(135deg, rgba(212,175,55,0.2), rgba(255,184,28,0.1))',
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.1))',
           border: '1px solid rgba(212,175,55,0.3)',
           boxShadow: '0 0 24px rgba(212,175,55,0.25)',
         }}

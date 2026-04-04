@@ -1,19 +1,61 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 
-const RECENT_USAGE: { cmd: string; tokens: number }[] = []
+interface Transaction {
+  id: string
+  type: 'CREDIT' | 'DEBIT'
+  amount: number
+  description: string
+  createdAt: string
+}
+
+interface TokenBalanceData {
+  balance: number
+  lifetimeEarned: number
+  lifetimeSpent: number
+  transactions: Transaction[]
+  demo: boolean
+}
 
 export interface TokensPanelProps {
   tokensUsed: number
 }
 
 export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
-  const TOKEN_LIMIT = 1000
-  const balance = 1000
+  const [data, setData] = useState<TokenBalanceData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchBalance() {
+      try {
+        const res = await fetch('/api/tokens/balance')
+        if (res.ok) {
+          const json = await res.json()
+          setData(json)
+        }
+      } catch {
+        // network failure — leave data null, UI shows fallback
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBalance()
+  }, [])
+
+  // Derive values — fall back to safe defaults while loading or on error
+  const balance = data?.balance ?? 1000
+  const TOKEN_LIMIT = data?.lifetimeEarned ?? 1000
   const remaining = Math.max(0, balance - tokensUsed)
   const usedPct = Math.min(100, (tokensUsed / TOKEN_LIMIT) * 100)
+
+  const recentUsage = data
+    ? data.transactions
+        .filter((t) => t.type === 'DEBIT')
+        .slice(0, 5)
+        .map((t) => ({ cmd: t.description, tokens: t.amount }))
+    : []
 
   // Threshold states
   const isCritical = remaining <= 50   // red
@@ -60,7 +102,7 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
           className="text-3xl font-bold transition-colors duration-300"
           style={{ color: accentColor }}
         >
-          {remaining.toLocaleString()}
+          {loading ? '…' : remaining.toLocaleString()}
         </p>
         <p className="text-xs text-gray-400 mt-1">tokens remaining</p>
 
@@ -110,7 +152,7 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
           style={{
             background: isCritical
               ? 'linear-gradient(90deg, #ef4444, #dc2626)'
-              : 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+              : 'linear-gradient(90deg, #D4AF37, #D4AF37)',
             color: isCritical ? '#fff' : '#09090b',
             boxShadow: isCritical
               ? '0 0 18px rgba(239,68,68,0.3)'
@@ -125,7 +167,7 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
       ) : (
         <Link
           href="/pricing"
-          className="flex items-center justify-center gap-2 w-full bg-[#FFB81C] hover:bg-[#E6A519] text-black text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
+          className="flex items-center justify-center gap-2 w-full bg-[#D4AF37] hover:bg-[#E6A519] text-black text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors"
         >
           Buy More
         </Link>
@@ -134,13 +176,13 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
       {/* Recent usage */}
       <div>
         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Recent Usage</p>
-        {RECENT_USAGE.length === 0 ? (
-          <p className="text-[11px] text-gray-500 text-center py-3">
-            Usage tracking coming soon
-          </p>
+        {loading ? (
+          <p className="text-[11px] text-gray-500 text-center py-3">Loading…</p>
+        ) : recentUsage.length === 0 ? (
+          <p className="text-[11px] text-gray-500 text-center py-3">No usage yet</p>
         ) : (
           <div className="space-y-1">
-            {RECENT_USAGE.map(({ cmd, tokens }) => (
+            {recentUsage.map(({ cmd, tokens }) => (
               <div key={cmd} className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/4 transition-colors">
                 <p className="text-[11px] text-gray-300 truncate flex-1 mr-2">{cmd}</p>
                 <span

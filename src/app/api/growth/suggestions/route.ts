@@ -245,9 +245,16 @@ export async function GET() {
       return NextResponse.json(buildDemoSuggestions())
     }
 
-    // Future: query DB for real engagement patterns + call AI for personalized suggestions
-    // For now, always return demo suggestions (realistic and immediately useful)
-    return NextResponse.json(buildDemoSuggestions())
+    // Authenticated user with DB access — return empty suggestions until real data pipeline is built
+    return NextResponse.json({
+      build: [],
+      targeting: [],
+      pricing: [],
+      engagement: [],
+      powerUserAlerts: [],
+      generatedAt: new Date().toISOString(),
+      demo: false,
+    } satisfies GrowthSuggestionsResponse)
   } catch {
     return NextResponse.json(buildDemoSuggestions())
   }

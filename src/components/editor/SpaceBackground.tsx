@@ -39,14 +39,14 @@ const STARS_L2 = Array.from({ length: 20 }, (_, i) => ({
 
 // Floating orbs — slowly drifting glass spheres that give the background life
 const FLOATING_ORBS = [
-  { id: 0, size: 280, left: '8%',  top: '15%',  color: 'rgba(255,184,28,0.55)',  blur: 70, opacity: 0.055, duration: 42, delay: 0,    dx: 120,  dy: 80 },
+  { id: 0, size: 280, left: '8%',  top: '15%',  color: 'rgba(212,175,55,0.55)',  blur: 70, opacity: 0.055, duration: 42, delay: 0,    dx: 120,  dy: 80 },
   { id: 1, size: 180, left: '78%', top: '8%',   color: 'rgba(6,182,212,0.7)',    blur: 55, opacity: 0.05,  duration: 55, delay: 8,    dx: -100, dy: 140 },
   { id: 2, size: 230, left: '60%', top: '65%',  color: 'rgba(124,58,237,0.65)',  blur: 65, opacity: 0.05,  duration: 48, delay: 15,   dx: 80,   dy: -120 },
   { id: 3, size: 140, left: '25%', top: '72%',  color: 'rgba(255,255,255,0.5)',  blur: 45, opacity: 0.04,  duration: 38, delay: 5,    dx: -160, dy: 60 },
   { id: 4, size: 200, left: '88%', top: '42%',  color: 'rgba(212,175,55,0.6)',   blur: 60, opacity: 0.045, duration: 62, delay: 22,   dx: -90,  dy: 110 },
   { id: 5, size: 120, left: '42%', top: '22%',  color: 'rgba(6,182,212,0.6)',    blur: 40, opacity: 0.04,  duration: 34, delay: 11,   dx: 70,   dy: -100 },
   { id: 6, size: 260, left: '5%',  top: '55%',  color: 'rgba(124,58,237,0.5)',   blur: 75, opacity: 0.038, duration: 58, delay: 30,   dx: 150,  dy: -80 },
-  { id: 7, size: 160, left: '52%', top: '85%',  color: 'rgba(255,184,28,0.55)',  blur: 50, opacity: 0.04,  duration: 45, delay: 18,   dx: -130, dy: 90 },
+  { id: 7, size: 160, left: '52%', top: '85%',  color: 'rgba(212,175,55,0.55)',  blur: 50, opacity: 0.04,  duration: 45, delay: 18,   dx: -130, dy: 90 },
   { id: 8, size: 100, left: '72%', top: '28%',  color: 'rgba(255,255,255,0.45)', blur: 35, opacity: 0.035, duration: 32, delay: 7,    dx: 60,   dy: 170 },
   { id: 9, size: 190, left: '32%', top: '45%',  color: 'rgba(212,175,55,0.5)',   blur: 58, opacity: 0.042, duration: 52, delay: 25,   dx: -110, dy: -90 },
 ]

@@ -28,7 +28,7 @@ async function resolveSession(req: NextRequest) {
     return getSession(sessionId)
   }
   if (token) {
-    return getSessionByToken(token)
+    return getSessionByToken(token)  // async — resolveSession is already async
   }
   return undefined
 }

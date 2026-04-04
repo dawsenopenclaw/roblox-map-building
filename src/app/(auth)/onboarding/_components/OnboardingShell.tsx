@@ -19,14 +19,14 @@ export function OnboardingShell({ currentStep, totalSteps, children }: Onboardin
           <span className="text-xs" style={{ color: '#A1A1AA' }}>
             Step {currentStep} of {totalSteps}
           </span>
-          <span className="text-xs font-semibold" style={{ color: '#FFB81C' }}>
+          <span className="text-xs font-semibold" style={{ color: '#D4AF37' }}>
             {pct}%
           </span>
         </div>
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
           <motion.div
             className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #D4AF37, #FFB81C)' }}
+            style={{ background: 'linear-gradient(90deg, #D4AF37, #D4AF37)' }}
             initial={{ width: 0 }}
             animate={{ width: `${pct}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}

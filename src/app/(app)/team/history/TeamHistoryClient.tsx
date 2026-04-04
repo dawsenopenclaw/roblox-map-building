@@ -172,7 +172,7 @@ export default function TeamHistoryPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+        <Link href="/editor" className="text-[#D4AF37] hover:underline text-sm mb-2 inline-block">
           ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Version History</h1>
@@ -195,12 +195,12 @@ export default function TeamHistoryPage() {
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="Enter project ID to load versions"
-            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors"
+            className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
           />
           <button
             onClick={fetchVersions}
             disabled={!projectId.trim() || loading}
-            className="bg-[#FFB81C] hover:bg-[#E5A619] disabled:bg-[#FFB81C]/30 disabled:cursor-not-allowed text-black font-semibold px-5 py-3 rounded-xl text-sm transition-colors"
+            className="bg-[#D4AF37] hover:bg-[#E5A619] disabled:bg-[#D4AF37]/30 disabled:cursor-not-allowed text-black font-semibold px-5 py-3 rounded-xl text-sm transition-colors"
           >
             {loading ? 'Loading…' : 'Load'}
           </button>
@@ -236,7 +236,7 @@ export default function TeamHistoryPage() {
                 <div key={v.id} className="flex gap-4 px-5 py-4 relative hover:bg-white/2 transition-colors">
                   {/* Timeline line */}
                   <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${idx === 0 ? 'bg-[#FFB81C]' : 'bg-white/20'}`} />
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${idx === 0 ? 'bg-[#D4AF37]' : 'bg-white/20'}`} />
                     {idx < versions.length - 1 && (
                       <div className="w-px flex-1 bg-white/10 mt-1 mb-0 min-h-6" />
                     )}
@@ -245,7 +245,7 @@ export default function TeamHistoryPage() {
                   <div className="flex-1 min-w-0 pb-4">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-[#FFB81C] bg-[#FFB81C]/10 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono text-[#D4AF37] bg-[#D4AF37]/10 px-2 py-0.5 rounded">
                           v{v.version}
                         </span>
                         <p className="text-white text-sm truncate">
@@ -260,7 +260,7 @@ export default function TeamHistoryPage() {
                         onClick={() => setSelectedFrom(v.id)}
                         className={`text-xs px-2 py-1 rounded-lg transition-colors ${
                           selectedFrom === v.id
-                            ? 'bg-[#FFB81C]/20 text-[#FFB81C] border border-[#FFB81C]/30'
+                            ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30'
                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >

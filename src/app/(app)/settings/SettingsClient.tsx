@@ -93,7 +93,7 @@ function Toggle({
       disabled={disabled}
       aria-pressed={checked}
       className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-        checked ? 'bg-[#FFB81C]' : 'bg-white/15'
+        checked ? 'bg-[#D4AF37]' : 'bg-white/15'
       } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span
@@ -139,13 +139,13 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
       <div className="relative group">
         <label
           htmlFor="avatar-upload"
-          className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFB81C]/30 to-[#FFB81C]/10 border border-[#FFB81C]/20 cursor-pointer"
+          className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#D4AF37]/30 to-[#D4AF37]/10 border border-[#D4AF37]/20 cursor-pointer"
           aria-label="Upload avatar image"
         >
           {preview ? (
             <Image src={preview} alt="Avatar preview" width={64} height={64} unoptimized className="w-full h-full object-cover" />
           ) : (
-            <span className="text-[#FFB81C] font-bold text-lg" aria-hidden="true">{initials}</span>
+            <span className="text-[#D4AF37] font-bold text-lg" aria-hidden="true">{initials}</span>
           )}
         </label>
         <label
@@ -161,7 +161,7 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
         <p className="text-white text-sm font-semibold">{name}</p>
         <label
           htmlFor="avatar-upload"
-          className="text-xs text-[#FFB81C] hover:text-[#E6A519] transition-colors mt-0.5 cursor-pointer"
+          className="text-xs text-[#D4AF37] hover:text-[#E6A519] transition-colors mt-0.5 cursor-pointer"
         >
           Change avatar
         </label>
@@ -206,9 +206,9 @@ function InlineCopyButton({ text }: { text: string }) {
       onClick={doCopy}
       className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border flex-shrink-0"
       style={{
-        color: copied ? '#10B981' : '#FFB81C',
-        borderColor: copied ? '#10B98130' : '#FFB81C30',
-        background: copied ? '#10B98108' : '#FFB81C08',
+        color: copied ? '#10B981' : '#D4AF37',
+        borderColor: copied ? '#10B98130' : '#D4AF3730',
+        background: copied ? '#10B98108' : '#D4AF3708',
       }}
     >
       {copied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
@@ -277,7 +277,7 @@ function AccountStatsCard() {
           className="flex items-center justify-between gap-3 p-3 rounded-xl"
           style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <code className="text-sm font-mono text-[#FFB81C] tracking-wide truncate">{s.referralCode ?? '—'}</code>
+          <code className="text-sm font-mono text-[#D4AF37] tracking-wide truncate">{s.referralCode ?? '—'}</code>
           {s.referralCode && <InlineCopyButton text={s.referralCode} />}
         </div>
         <p className="text-[11px] text-gray-600 mt-1.5">
@@ -417,7 +417,7 @@ function ProfileTab() {
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
               placeholder="Your display name"
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
             />
           </div>
 
@@ -433,7 +433,7 @@ function ProfileTab() {
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                 maxLength={30}
                 placeholder="your_username"
-                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
               />
             </div>
             <p className="text-gray-500 text-xs mt-1.5">Letters, numbers, underscores, hyphens only.</p>
@@ -452,7 +452,7 @@ function ProfileTab() {
               rows={3}
               maxLength={500}
               placeholder="Tell the world what you build..."
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors resize-none"
+              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors resize-none"
             />
           </div>
 
@@ -469,7 +469,7 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Twitter / X handle"
                   aria-label="Twitter handle"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
                 />
               </div>
               <div className="relative">
@@ -481,7 +481,7 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Discord username"
                   aria-label="Discord username"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
                 />
               </div>
               <div className="relative">
@@ -493,7 +493,7 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="GitHub username"
                   aria-label="GitHub username"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors"
+                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
                 />
               </div>
             </div>
@@ -507,7 +507,7 @@ function ProfileTab() {
                 id="profile-charity"
                 value={charity}
                 onChange={(e) => setCharity(e.target.value)}
-                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/40 transition-colors appearance-none"
+                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors appearance-none"
               >
                 {charities.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -522,7 +522,7 @@ function ProfileTab() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="mt-6 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
+          className="mt-6 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
@@ -615,8 +615,8 @@ function BillingTab() {
             <div className="flex items-center gap-2.5 mb-2">
               <span className="text-2xl font-bold text-white">{plan}</span>
               {/* Gold active badge */}
-              <span className="inline-flex items-center gap-1.5 bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/30 text-xs font-bold px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FFB81C] inline-block" />
+              <span className="inline-flex items-center gap-1.5 bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30 text-xs font-bold px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] inline-block" />
                 Active
               </span>
             </div>
@@ -628,7 +628,7 @@ function BillingTab() {
           <div className="flex flex-col gap-2 flex-shrink-0">
             <Link
               href="/#pricing"
-              className="inline-flex items-center gap-1.5 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              className="inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
             >
               <TrendingUp size={14} />
               Change Plan
@@ -647,7 +647,7 @@ function BillingTab() {
       <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
         <div className="flex items-end gap-3 mb-1">
-          <span className="text-5xl font-bold text-[#FFB81C] tabular-nums leading-none">
+          <span className="text-5xl font-bold text-[#D4AF37] tabular-nums leading-none">
             {tokenBalance.toLocaleString()}
           </span>
           <span className="text-gray-300 text-sm mb-1">remaining</span>
@@ -662,7 +662,7 @@ function BillingTab() {
               background:
                 tokenPct >= 80
                   ? 'linear-gradient(90deg, #f87171, #ef4444)'
-                  : 'linear-gradient(90deg, #FFB81C, #E6A519)',
+                  : 'linear-gradient(90deg, #D4AF37, #E6A519)',
             }}
           />
         </div>
@@ -673,7 +673,7 @@ function BillingTab() {
 
         <Link
           href="/billing#tokens"
-          className="inline-flex items-center gap-2 text-sm font-semibold border border-[#FFB81C]/30 hover:border-[#FFB81C]/60 hover:bg-[#FFB81C]/5 text-[#FFB81C] px-4 py-2.5 rounded-xl transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-semibold border border-[#D4AF37]/30 hover:border-[#D4AF37]/60 hover:bg-[#D4AF37]/5 text-[#D4AF37] px-4 py-2.5 rounded-xl transition-colors"
         >
           <Zap size={14} />
           Buy More Tokens
@@ -685,7 +685,7 @@ function BillingTab() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
-            { label: 'AI Generations', used: 142, limit: 200, color: '#FFB81C' },
+            { label: 'AI Generations', used: 142, limit: 200, color: '#D4AF37' },
             { label: 'Marketplace Searches', used: 58, limit: 500, color: '#60a5fa' },
             { label: 'API Calls', used: 3_420, limit: 10_000, color: '#a78bfa' },
           ].map((stat) => {
@@ -865,7 +865,7 @@ function ApiKeysTab() {
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 text-sm bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-xl transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-xl transition-colors"
           >
             <Plus size={14} />
             New Key
@@ -874,15 +874,15 @@ function ApiKeysTab() {
 
         {/* Just-created key banner — one-time display */}
         {justCreated && (
-          <div className="mb-5 p-4 bg-[#FFB81C]/10 border border-[#FFB81C]/40 rounded-xl">
-            <p className="text-[#FFB81C] text-xs font-bold uppercase tracking-wider mb-2">
+          <div className="mb-5 p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/40 rounded-xl">
+            <p className="text-[#D4AF37] text-xs font-bold uppercase tracking-wider mb-2">
               Copy your new API key now — it won&apos;t be shown again
             </p>
             <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
               <code className="flex-1 text-white text-xs font-mono break-all select-all">{justCreated}</code>
               <button
                 onClick={() => copyKey(justCreated)}
-                className="text-[#FFB81C] hover:text-[#E6A519] flex-shrink-0"
+                className="text-[#D4AF37] hover:text-[#E6A519] flex-shrink-0"
               >
                 <Copy size={14} />
               </button>
@@ -920,7 +920,7 @@ function ApiKeysTab() {
                     onClick={() => setNewKeyScope(scope)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${
                       newKeyScope === scope
-                        ? 'bg-[#FFB81C]/15 border-[#FFB81C]/40 text-[#FFB81C]'
+                        ? 'bg-[#D4AF37]/15 border-[#D4AF37]/40 text-[#D4AF37]'
                         : 'border-white/10 text-gray-400 hover:border-white/20'
                     }`}
                   >
@@ -938,7 +938,7 @@ function ApiKeysTab() {
               <button
                 onClick={() => void handleCreate()}
                 disabled={!newKeyName.trim() || creating}
-                className="text-sm bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                className="text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
               >
                 {creating ? 'Generating...' : 'Generate Key'}
               </button>
@@ -969,7 +969,7 @@ function ApiKeysTab() {
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Key size={13} className="text-[#FFB81C] flex-shrink-0" />
+                      <Key size={13} className="text-[#D4AF37] flex-shrink-0" />
                       <p className="text-white text-sm font-medium">{key.name}</p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -984,7 +984,7 @@ function ApiKeysTab() {
                       </button>
                       <button
                         onClick={() => copyKey(key.prefix)}
-                        className="text-gray-500 hover:text-[#FFB81C] transition-colors"
+                        className="text-gray-500 hover:text-[#D4AF37] transition-colors"
                       >
                         <Copy size={12} />
                       </button>
@@ -1180,13 +1180,13 @@ function AppearanceTab() {
               onClick={() => setActiveCategory(cat.key)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
                 isSelected
-                  ? 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/25'
+                  ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
                   : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
               }`}
             >
               <span className="text-[11px]">{cat.icon}</span>
               {cat.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#FFB81C]/20 text-[#FFB81C]' : 'bg-white/[0.07] text-gray-500'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/[0.07] text-gray-500'}`}>
                 {count}
               </span>
             </button>
@@ -1312,7 +1312,7 @@ function ConnectedTab() {
               ) : (
                 <button
                   onClick={() => handleConnect(item.key)}
-                  className="inline-flex items-center gap-1.5 text-xs bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-3 py-2 rounded-xl transition-colors flex-shrink-0"
+                  className="inline-flex items-center gap-1.5 text-xs bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-3 py-2 rounded-xl transition-colors flex-shrink-0"
                 >
                   <Link2 size={12} />
                   Connect
@@ -1350,7 +1350,7 @@ function StudioTab() {
         {!isConnected && (
           <Link
             href="/connect"
-            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Plug size={14} />
             Connect Studio
@@ -1380,19 +1380,19 @@ function StudioTab() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Setup Guide</p>
         <ol className="space-y-3 text-sm text-gray-300">
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">1</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] text-xs font-bold flex items-center justify-center">1</span>
             <span>Download and install the plugin above</span>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">2</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] text-xs font-bold flex items-center justify-center">2</span>
             <span>Open Roblox Studio and enable the ForjeGames plugin</span>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">3</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] text-xs font-bold flex items-center justify-center">3</span>
             <span>Click &quot;Connect&quot; in the plugin &mdash; enter the code shown in the editor</span>
           </li>
           <li className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] text-xs font-bold flex items-center justify-center">4</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] text-xs font-bold flex items-center justify-center">4</span>
             <span>Start building! AI-generated code runs directly in Studio</span>
           </li>
         </ol>
@@ -1432,7 +1432,7 @@ export default function SettingsClient() {
         </div>
         <a
           href="/admin"
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-[#FFB81C] bg-white/5 hover:bg-[#FFB81C]/10 border border-white/[0.06] hover:border-[#FFB81C]/20 rounded-lg transition-colors"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-[#D4AF37] bg-white/5 hover:bg-[#D4AF37]/10 border border-white/[0.06] hover:border-[#D4AF37]/20 rounded-lg transition-colors"
         >
           <BarChart size={12} />
           Admin
@@ -1447,7 +1447,7 @@ export default function SettingsClient() {
             onClick={() => setTab(t.key)}
             className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 border ${
               tab === t.key
-                ? 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/20'
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20'
                 : 'text-gray-300 hover:text-blue-400 hover:bg-white/5 border-transparent'
             }`}
           >

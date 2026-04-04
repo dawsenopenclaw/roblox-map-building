@@ -178,7 +178,7 @@ export default function EarningsClient() {
           </p>
           <Link
             href="/marketplace"
-            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A618] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A618] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
           >
             <ShoppingBag size={13} />
             Go to Marketplace
@@ -188,14 +188,14 @@ export default function EarningsClient() {
 
       {/* ── Stripe Connect CTA / full dashboard — only when data is available ── */}
       {data && !data.connected && (
-        <div className="bg-[#141414] border border-[#FFB81C]/30 rounded-2xl p-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFB81C]/10 mb-4">
-            <Zap size={24} className="text-[#FFB81C]" />
+        <div className="bg-[#141414] border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#D4AF37]/10 mb-4">
+            <Zap size={24} className="text-[#D4AF37]" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Set Up Payouts</h2>
           <p className="text-gray-300 text-sm mb-2 max-w-md mx-auto">
             Connect your Stripe Express account to start receiving{' '}
-            <span className="text-[#FFB81C] font-semibold">70%</span> of every template sale.
+            <span className="text-[#D4AF37] font-semibold">70%</span> of every template sale.
           </p>
           <p className="text-gray-500 text-xs mb-8">
             Payouts triggered automatically when your balance reaches $20.
@@ -203,8 +203,8 @@ export default function EarningsClient() {
 
           {/* 70/30 split visual */}
           <div className="flex items-center justify-center gap-6 mb-8">
-            <div className="bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-xl px-8 py-5">
-              <p className="text-[#FFB81C] text-4xl font-black">70%</p>
+            <div className="bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl px-8 py-5">
+              <p className="text-[#D4AF37] text-4xl font-black">70%</p>
               <p className="text-gray-300 text-xs mt-1">You earn</p>
             </div>
             <div className="text-gray-600 text-lg font-bold">+</div>
@@ -217,7 +217,7 @@ export default function EarningsClient() {
           <button
             onClick={handleConnectStripe}
             disabled={onboarding}
-            className="bg-[#FFB81C] hover:bg-[#E6A618] text-black font-bold px-8 py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+            className="bg-[#D4AF37] hover:bg-[#E6A618] text-black font-bold px-8 py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
           >
             {onboarding ? 'Redirecting...' : 'Connect with Stripe'}
           </button>
@@ -248,12 +248,12 @@ export default function EarningsClient() {
           {/* ── Stat cards ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Total Earned — gold highlight */}
-            <div className="bg-[#141414] border border-[#FFB81C]/25 rounded-2xl p-5 col-span-2 sm:col-span-1">
+            <div className="bg-[#141414] border border-[#D4AF37]/25 rounded-2xl p-5 col-span-2 sm:col-span-1">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign size={14} className="text-[#FFB81C]" />
+                <DollarSign size={14} className="text-[#D4AF37]" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Total Earned</p>
               </div>
-              <p className="text-[#FFB81C] text-3xl font-black tabular-nums leading-none">
+              <p className="text-[#D4AF37] text-3xl font-black tabular-nums leading-none">
                 {fmt(data.totalEarnedCents ?? 0)}
               </p>
               <p className="text-gray-500 text-xs mt-2">All time · your 70%</p>
@@ -356,15 +356,15 @@ export default function EarningsClient() {
           })()}
 
           {/* ── 70/30 Split Explanation ── */}
-          <div className="bg-[#FFB81C]/5 border border-[#FFB81C]/15 rounded-2xl p-5 flex items-start gap-4">
-            <div className="bg-[#FFB81C]/15 rounded-xl p-2.5 flex-shrink-0">
-              <DollarSign size={16} className="text-[#FFB81C]" />
+          <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/15 rounded-2xl p-5 flex items-start gap-4">
+            <div className="bg-[#D4AF37]/15 rounded-xl p-2.5 flex-shrink-0">
+              <DollarSign size={16} className="text-[#D4AF37]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[#FFB81C] font-semibold text-sm">70 / 30 Revenue Split</p>
+              <p className="text-[#D4AF37] font-semibold text-sm">70 / 30 Revenue Split</p>
               <p className="text-gray-300 text-xs mt-1 leading-relaxed">
                 You keep{' '}
-                <span className="text-[#FFB81C] font-bold">70%</span> of every sale. The platform
+                <span className="text-[#D4AF37] font-bold">70%</span> of every sale. The platform
                 retains <span className="text-gray-200 font-medium">30%</span> to cover payment
                 processing, hosting, and marketplace operations. Payouts via{' '}
                 <span className="text-white font-medium">Stripe Express</span> — no hidden fees.
@@ -372,7 +372,7 @@ export default function EarningsClient() {
             </div>
             <div className="flex-shrink-0 flex gap-4 items-center">
               <div className="text-center">
-                <p className="text-[#FFB81C] text-2xl font-black leading-none">70%</p>
+                <p className="text-[#D4AF37] text-2xl font-black leading-none">70%</p>
                 <p className="text-gray-500 text-xs mt-1">You</p>
               </div>
               <div className="text-gray-700 font-bold">·</div>
@@ -399,7 +399,7 @@ export default function EarningsClient() {
                 </p>
                 <Link
                   href="/marketplace/submit"
-                  className="inline-flex items-center gap-2 mt-4 bg-[#FFB81C] hover:bg-[#E6A618] text-black font-bold px-5 py-2 rounded-xl text-sm transition-colors"
+                  className="inline-flex items-center gap-2 mt-4 bg-[#D4AF37] hover:bg-[#E6A618] text-black font-bold px-5 py-2 rounded-xl text-sm transition-colors"
                 >
                   <ShoppingBag size={13} />
                   Submit Template
@@ -445,7 +445,7 @@ export default function EarningsClient() {
                           <td className="py-3.5 text-gray-300 text-right tabular-nums">
                             {fmt(sale.amountCents)}
                           </td>
-                          <td className="py-3.5 text-[#FFB81C] text-right tabular-nums font-semibold">
+                          <td className="py-3.5 text-[#D4AF37] text-right tabular-nums font-semibold">
                             +{fmt(sale.creatorPayoutCents)}
                           </td>
                           <td className="py-3.5 text-right">
@@ -473,7 +473,7 @@ export default function EarningsClient() {
                 Balances over $20 are transferred twice monthly via Stripe.{' '}
                 <Link
                   href="/billing"
-                  className="text-[#FFB81C] hover:text-[#E6A519] transition-colors"
+                  className="text-[#D4AF37] hover:text-[#E6A519] transition-colors"
                 >
                   Manage payout settings
                 </Link>
@@ -491,7 +491,7 @@ export default function EarningsClient() {
             </div>
             <Link
               href="/marketplace/submit"
-              className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
+              className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors flex-shrink-0"
             >
               <ShoppingBag size={13} />
               Submit Template

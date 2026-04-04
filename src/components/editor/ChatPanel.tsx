@@ -93,7 +93,7 @@ function TypingDots() {
           width: 48,
           height: 2,
           borderRadius: 2,
-          background: 'rgba(255,184,28,0.12)',
+          background: 'rgba(212,175,55,0.12)',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -102,7 +102,7 @@ function TypingDots() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,184,28,0.7) 40%, rgba(212,175,55,0.9) 50%, rgba(255,184,28,0.7) 60%, transparent 100%)',
+            background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.7) 40%, rgba(212,175,55,0.9) 50%, rgba(212,175,55,0.7) 60%, transparent 100%)',
             animation: 'shimmerBar 1.6s ease-in-out infinite',
           }}
         />
@@ -138,8 +138,8 @@ const PULSE_STYLE = `
     50%       { opacity: 1; }
   }
   @keyframes avatarGlow {
-    0%, 100% { box-shadow: 0 0 8px rgba(255,184,28,0.45), 0 0 16px rgba(255,107,53,0.25); }
-    50%       { box-shadow: 0 0 14px rgba(255,184,28,0.7), 0 0 28px rgba(255,107,53,0.4), 0 0 40px rgba(212,175,55,0.2); }
+    0%, 100% { box-shadow: 0 0 8px rgba(212,175,55,0.45), 0 0 16px rgba(255,107,53,0.25); }
+    50%       { box-shadow: 0 0 14px rgba(212,175,55,0.7), 0 0 28px rgba(255,107,53,0.4), 0 0 40px rgba(212,175,55,0.2); }
   }
   @keyframes msgFadeUp {
     0%   { opacity: 0; transform: translateY(10px); }
@@ -169,8 +169,8 @@ const PULSE_STYLE = `
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
   @keyframes userBubbleIn {
-    0%   { opacity: 0; transform: translateY(6px) scale(0.97); box-shadow: 0 0 20px rgba(255,184,28,0.15); }
-    60%  { opacity: 1; transform: translateY(0) scale(1.01); box-shadow: 0 0 20px rgba(255,184,28,0.15); }
+    0%   { opacity: 0; transform: translateY(6px) scale(0.97); box-shadow: 0 0 20px rgba(212,175,55,0.15); }
+    60%  { opacity: 1; transform: translateY(0) scale(1.01); box-shadow: 0 0 20px rgba(212,175,55,0.15); }
     100% { opacity: 1; transform: translateY(0) scale(1); box-shadow: none; }
   }
   @keyframes borderPulseOnce {
@@ -188,8 +188,8 @@ const PULSE_STYLE = `
     50%        { transform: translateY(-8px) scale(1.03); }
   }
   @keyframes orbGlowPulse {
-    0%,  100% { box-shadow: 0 0 40px rgba(255,184,28,0.18), 0 0 80px rgba(212,175,55,0.08); }
-    50%        { box-shadow: 0 0 60px rgba(255,184,28,0.28), 0 0 110px rgba(212,175,55,0.14); }
+    0%,  100% { box-shadow: 0 0 40px rgba(212,175,55,0.18), 0 0 80px rgba(212,175,55,0.08); }
+    50%        { box-shadow: 0 0 60px rgba(212,175,55,0.28), 0 0 110px rgba(212,175,55,0.14); }
   }
   @keyframes cardBob {
     0%,  100% { transform: translateY(0px); }
@@ -344,7 +344,7 @@ function MessageBubble({
             borderRadius: '50%',
             background: isSuccess
               ? 'linear-gradient(135deg, rgba(74,222,128,0.15) 0%, rgba(34,197,94,0.1) 100%)'
-              : 'linear-gradient(135deg, #FFB81C 0%, #FF6B35 100%)',
+              : 'linear-gradient(135deg, #D4AF37 0%, #FF6B35 100%)',
             border: isSuccess ? '1px solid rgba(74,222,128,0.3)' : 'none',
             display: 'flex',
             alignItems: 'center',
@@ -486,8 +486,8 @@ function MessageBubble({
             maxWidth: '80%',
             padding: '14px 18px',
             borderRadius: '18px 18px 4px 18px',
-            background: 'rgba(255,184,28,0.06)',
-            border: '1px solid rgba(255,184,28,0.12)',
+            background: 'rgba(212,175,55,0.06)',
+            border: '1px solid rgba(212,175,55,0.12)',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
           }}
@@ -518,7 +518,7 @@ function MessageBubble({
           width: 28,
           height: 28,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #FFB81C 0%, #FF6B35 100%)',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #FF6B35 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -561,7 +561,7 @@ function MessageBubble({
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(105deg, transparent 20%, rgba(255,184,28,0.03) 50%, transparent 80%)',
+              background: 'linear-gradient(105deg, transparent 20%, rgba(212,175,55,0.03) 50%, transparent 80%)',
               backgroundSize: '200% 100%',
               animation: 'streamingShimmer 2s linear infinite',
               pointerEvents: 'none',
@@ -931,7 +931,7 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
               position: 'absolute',
               inset: -6,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,184,28,0.12) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%)',
               animation: 'orbGlowPulse 3s ease-in-out infinite',
             }}
           />
@@ -941,18 +941,18 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
               width: 44,
               height: 44,
               borderRadius: '50%',
-              background: 'radial-gradient(circle at 38% 35%, rgba(255,220,80,0.22) 0%, rgba(255,184,28,0.14) 40%, rgba(212,175,55,0.06) 70%, transparent 100%)',
-              border: '1px solid rgba(255,184,28,0.22)',
+              background: 'radial-gradient(circle at 38% 35%, rgba(255,220,80,0.22) 0%, rgba(212,175,55,0.14) 40%, rgba(212,175,55,0.06) 70%, transparent 100%)',
+              border: '1px solid rgba(212,175,55,0.22)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               backdropFilter: 'blur(8px)',
               WebkitBackdropFilter: 'blur(8px)',
-              boxShadow: '0 0 20px rgba(255,184,28,0.1), inset 0 1px 0 rgba(255,255,255,0.08)',
+              boxShadow: '0 0 20px rgba(212,175,55,0.1), inset 0 1px 0 rgba(255,255,255,0.08)',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-              <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#FFB81C" opacity={0.95}/>
+              <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#D4AF37" opacity={0.95}/>
             </svg>
           </div>
         </div>
@@ -1079,8 +1079,20 @@ export function TipOfTheDay() {
 
 // ─── Speech recognition hook ──────────────────────────────────────────────────
 
+type SRCtor = new () => {
+  lang: string
+  interimResults: boolean
+  maxAlternatives: number
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
+  start(): void
+  stop(): void
+}
+
 function useSpeech(onResult: (text: string) => void) {
-  const recRef = useRef<unknown>(null)
+  const recRef = useRef<InstanceType<SRCtor> | null>(null)
   const [listening, setListening] = useState(false)
   const [supported] = useState(() =>
     typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window),
@@ -1089,21 +1101,9 @@ function useSpeech(onResult: (text: string) => void) {
   const toggle = useCallback(() => {
     if (!supported) return
     if (listening) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ;(recRef.current as any)?.stop()
+      recRef.current?.stop()
       setListening(false)
       return
-    }
-    type SRCtor = new () => {
-      lang: string
-      interimResults: boolean
-      maxAlternatives: number
-      onstart: (() => void) | null
-      onend: (() => void) | null
-      onerror: (() => void) | null
-      onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null
-      start(): void
-      stop(): void
     }
     const win = window as typeof window & {
       webkitSpeechRecognition?: SRCtor
@@ -1169,7 +1169,7 @@ function ModelSelector({
               padding: '1px 5px',
               borderRadius: 4,
               background: 'rgba(212,175,55,0.15)',
-              color: '#FFB81C',
+              color: '#D4AF37',
               fontSize: 9,
               fontWeight: 700,
               letterSpacing: '0.05em',
@@ -1227,7 +1227,7 @@ function ModelSelector({
                 <div style={{ width: 7, height: 7, borderRadius: '50%', background: model.color, flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{model.label}</span>
                 {model.badge && (
-                  <span style={{ padding: '1px 5px', borderRadius: 4, background: 'rgba(212,175,55,0.15)', color: '#FFB81C', fontSize: 9, fontWeight: 700 }}>
+                  <span style={{ padding: '1px 5px', borderRadius: 4, background: 'rgba(212,175,55,0.15)', color: '#D4AF37', fontSize: 9, fontWeight: 700 }}>
                     {model.badge}
                   </span>
                 )}
@@ -1545,7 +1545,7 @@ export function ChatPanel({
               background:
                 !input.trim() || loading
                   ? 'rgba(255,255,255,0.05)'
-                  : 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  : 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
               color: !input.trim() || loading ? 'rgba(255,255,255,0.2)' : '#030712',
               display: 'flex',
               alignItems: 'center',

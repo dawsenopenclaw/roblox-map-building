@@ -123,14 +123,14 @@ export default function LinksPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search links..."
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-[#FFB81C]/30 focus:outline-none"
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-[#D4AF37]/30 focus:outline-none"
           />
         </div>
         <button
           onClick={() => setShowFavoritesOnly((v) => !v)}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
             showFavoritesOnly
-              ? 'bg-[#FFB81C]/10 text-[#FFB81C] border-[#FFB81C]/20'
+              ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20'
               : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
           }`}
         >
@@ -141,8 +141,8 @@ export default function LinksPage() {
 
       {/* Favorites quick bar */}
       {favoriteLinks.length > 0 && !showFavoritesOnly && (
-        <div className="bg-[#0A0F1A] border border-[#FFB81C]/10 rounded-xl p-4">
-          <h3 className="text-xs font-semibold text-[#FFB81C] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <div className="bg-[#0A0F1A] border border-[#D4AF37]/10 rounded-xl p-4">
+          <h3 className="text-xs font-semibold text-[#D4AF37] uppercase tracking-wider mb-3 flex items-center gap-1.5">
             <Star size={12} fill="currentColor" />
             Quick Access
           </h3>
@@ -151,7 +151,7 @@ export default function LinksPage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFB81C]/5 hover:bg-[#FFB81C]/10 border border-[#FFB81C]/15 hover:border-[#FFB81C]/30 rounded-lg text-xs text-white transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D4AF37]/5 hover:bg-[#D4AF37]/10 border border-[#D4AF37]/15 hover:border-[#D4AF37]/30 rounded-lg text-xs text-white transition-colors"
               >
                 {link.icon}
                 {link.label}
@@ -180,7 +180,7 @@ export default function LinksPage() {
                     <button
                       onClick={() => toggleFavorite(link.href)}
                       className={`flex-shrink-0 transition-colors ${
-                        isFav ? 'text-[#FFB81C]' : 'text-gray-700 hover:text-[#FFB81C]/60'
+                        isFav ? 'text-[#D4AF37]' : 'text-gray-700 hover:text-[#D4AF37]/60'
                       }`}
                       aria-label={isFav ? 'Unfavorite' : 'Favorite'}
                     >

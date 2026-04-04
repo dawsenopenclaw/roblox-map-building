@@ -57,7 +57,7 @@ export default function DmcaPage() {
     <article className="max-w-3xl">
       {/* ── Header ── */}
       <div className="mb-12">
-        <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-3 py-1 text-xs text-[#FFB81C] font-medium mb-5">
+        <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-3 py-1 text-xs text-[#D4AF37] font-medium mb-5">
           DMCA Policy
         </div>
         <h1 className="text-3xl font-bold text-[#FAFAFA] mb-3">DMCA Copyright Policy</h1>
@@ -68,9 +68,9 @@ export default function DmcaPage() {
       </div>
 
       {/* ── 48h SLA Banner ── */}
-      <div className="bg-[#FFB81C]/[0.06] border border-[#FFB81C]/20 rounded-2xl p-5 mb-10 flex items-start gap-4">
-        <div className="w-10 h-10 rounded-full bg-[#FFB81C]/15 flex items-center justify-center shrink-0">
-          <span className="text-[#FFB81C] text-xs font-bold tabular-nums">48h</span>
+      <div className="bg-[#D4AF37]/[0.06] border border-[#D4AF37]/20 rounded-2xl p-5 mb-10 flex items-start gap-4">
+        <div className="w-10 h-10 rounded-full bg-[#D4AF37]/15 flex items-center justify-center shrink-0">
+          <span className="text-[#D4AF37] text-xs font-bold tabular-nums">48h</span>
         </div>
         <div>
           <p className="text-sm font-semibold text-[#FAFAFA] mb-1">48-Hour Response SLA</p>
@@ -94,7 +94,7 @@ export default function DmcaPage() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className="text-sm text-[#71717A] hover:text-[#FFB81C] transition-colors block py-1"
+                className="text-sm text-[#71717A] hover:text-[#D4AF37] transition-colors block py-1"
               >
                 {s.title}
               </a>
@@ -124,7 +124,7 @@ export default function DmcaPage() {
           </p>
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">Email:</span>{' '}
-            <a href={`mailto:${AGENT_EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${AGENT_EMAIL}`} className="text-[#D4AF37] hover:underline">
               {AGENT_EMAIL}
             </a>
           </p>
@@ -143,7 +143,7 @@ export default function DmcaPage() {
         <p className="text-[#71717A] leading-relaxed mb-6">
           To submit a valid DMCA takedown notice, send a written notification to our designated agent
           at{' '}
-          <a href={`mailto:${AGENT_EMAIL}`} className="text-[#FFB81C] hover:underline">
+          <a href={`mailto:${AGENT_EMAIL}`} className="text-[#D4AF37] hover:underline">
             {AGENT_EMAIL}
           </a>{' '}
           that includes <strong className="text-[#FAFAFA] font-semibold">all of the following</strong>{' '}
@@ -181,7 +181,7 @@ export default function DmcaPage() {
               key={i}
               className="bg-[#141414] border border-white/[0.07] rounded-xl p-4 flex gap-4"
             >
-              <span className="w-7 h-7 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] font-bold text-xs flex items-center justify-center shrink-0 tabular-nums">
+              <span className="w-7 h-7 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] font-bold text-xs flex items-center justify-center shrink-0 tabular-nums">
                 {i + 1}
               </span>
               <div>
@@ -214,7 +214,7 @@ export default function DmcaPage() {
               key={step}
               className="flex gap-4 bg-[#141414] border border-white/[0.07] rounded-xl p-4"
             >
-              <div className="w-8 h-8 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] font-bold text-sm flex items-center justify-center shrink-0 tabular-nums">
+              <div className="w-8 h-8 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] font-bold text-sm flex items-center justify-center shrink-0 tabular-nums">
                 {step}
               </div>
               <div>
@@ -234,7 +234,7 @@ export default function DmcaPage() {
         <p className="text-[#71717A] leading-relaxed mb-5">
           If you believe your content was removed due to mistake or misidentification, you may submit
           a counter-notification under 17 U.S.C. § 512(g)(3). Send your counter-notification to{' '}
-          <a href={`mailto:${AGENT_EMAIL}`} className="text-[#FFB81C] hover:underline">
+          <a href={`mailto:${AGENT_EMAIL}`} className="text-[#D4AF37] hover:underline">
             {AGENT_EMAIL}
           </a>{' '}
           including:
@@ -248,7 +248,7 @@ export default function DmcaPage() {
             'Your physical or electronic signature',
           ].map((item, i) => (
             <li key={i} className="flex gap-3 text-[#71717A]">
-              <span className="mt-0.5 w-5 h-5 rounded-full bg-[#FFB81C]/15 text-[#FFB81C] font-bold text-xs flex items-center justify-center shrink-0 tabular-nums">
+              <span className="mt-0.5 w-5 h-5 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] font-bold text-xs flex items-center justify-center shrink-0 tabular-nums">
                 {i + 1}
               </span>
               <span className="leading-relaxed">{item}</span>
@@ -297,7 +297,7 @@ export default function DmcaPage() {
         <div className="bg-[#141414] border border-white/[0.07] rounded-2xl p-5 text-sm space-y-1">
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">DMCA Agent:</span>{' '}
-            <a href={`mailto:${AGENT_EMAIL}`} className="text-[#FFB81C] hover:underline">
+            <a href={`mailto:${AGENT_EMAIL}`} className="text-[#D4AF37] hover:underline">
               {AGENT_EMAIL}
             </a>
           </p>
@@ -313,7 +313,7 @@ export default function DmcaPage() {
 function SectionHeading({ title }: { title: string }) {
   return (
     <h2 className="flex items-baseline gap-3 text-xl font-bold text-[#FAFAFA] mb-5 pb-3 border-b border-white/[0.06]">
-      <span className="text-[#FFB81C] font-bold text-base">&mdash;</span>
+      <span className="text-[#D4AF37] font-bold text-base">&mdash;</span>
       {title}
     </h2>
   )

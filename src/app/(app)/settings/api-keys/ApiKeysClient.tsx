@@ -35,7 +35,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#FFB81C] border border-white/[0.08] hover:border-[#FFB81C]/30 px-2 py-1 rounded-lg transition-colors"
+      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-[#D4AF37] border border-white/[0.08] hover:border-[#D4AF37]/30 px-2 py-1 rounded-lg transition-colors"
     >
       {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
       {copied ? 'Copied' : 'Copy'}
@@ -147,7 +147,7 @@ export default function ApiKeysPage() {
         </div>
         <button
           onClick={() => { setShowCreate(true); setCreateError(null) }}
-          className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+          className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
         >
           <Plus size={15} />
           New Key
@@ -172,7 +172,7 @@ export default function ApiKeysPage() {
             </div>
             <button
               onClick={() => setNewKeyData(null)}
-              className="text-gray-500 hover:text-[#FFB81C] transition-colors p-1"
+              className="text-gray-500 hover:text-[#D4AF37] transition-colors p-1"
               aria-label="Dismiss"
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -197,7 +197,7 @@ export default function ApiKeysPage() {
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && createKey()}
                 placeholder="e.g. Production, My Script"
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 placeholder:text-gray-600 transition-colors"
+                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/50 placeholder:text-gray-600 transition-colors"
                 autoFocus
               />
             </div>
@@ -210,8 +210,8 @@ export default function ApiKeysPage() {
                     <div
                       className={`w-5 h-5 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
                         form.scopes.includes(opt.value)
-                          ? 'bg-[#FFB81C] border-[#FFB81C]'
-                          : 'border-white/20 group-hover:border-[#FFB81C]/40'
+                          ? 'bg-[#D4AF37] border-[#D4AF37]'
+                          : 'border-white/20 group-hover:border-[#D4AF37]/40'
                       }`}
                       onClick={() => toggleScope(opt.value)}
                     >
@@ -236,13 +236,13 @@ export default function ApiKeysPage() {
               <button
                 onClick={createKey}
                 disabled={creating || !form.name.trim() || form.scopes.length === 0}
-                className="flex-1 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
+                className="flex-1 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
               >
                 {creating ? 'Creating...' : 'Create Key'}
               </button>
               <button
                 onClick={() => { setShowCreate(false); setCreateError(null) }}
-                className="px-5 border border-white/[0.08] hover:border-[#FFB81C]/30 text-gray-400 hover:text-[#FFB81C] rounded-xl text-sm transition-colors"
+                className="px-5 border border-white/[0.08] hover:border-[#D4AF37]/30 text-gray-400 hover:text-[#D4AF37] rounded-xl text-sm transition-colors"
               >
                 Cancel
               </button>
@@ -274,8 +274,8 @@ export default function ApiKeysPage() {
         </div>
       ) : keys.length === 0 ? (
         <div className="bg-[#141414] border border-white/[0.08] rounded-2xl p-12 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center mx-auto mb-4">
-            <KeyRound size={24} className="text-[#FFB81C]" />
+          <div className="w-14 h-14 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center mx-auto mb-4">
+            <KeyRound size={24} className="text-[#D4AF37]" />
           </div>
           <h3 className="text-white font-semibold mb-2">No API keys yet</h3>
           <p className="text-gray-400 text-sm mb-6">
@@ -283,7 +283,7 @@ export default function ApiKeysPage() {
           </p>
           <button
             onClick={() => { setShowCreate(true); setCreateError(null) }}
-            className="inline-flex items-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Plus size={15} />
             Create API Key
@@ -301,7 +301,7 @@ export default function ApiKeysPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <Link
                       href={`/settings/api-keys/${key.id}`}
-                      className="text-white font-semibold hover:text-[#FFB81C] transition-colors"
+                      className="text-white font-semibold hover:text-[#D4AF37] transition-colors"
                     >
                       {key.name}
                     </Link>
@@ -310,14 +310,14 @@ export default function ApiKeysPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mb-3">
-                    <code className="text-[#FFB81C] text-sm font-mono">{key.prefix}...</code>
+                    <code className="text-[#D4AF37] text-sm font-mono">{key.prefix}...</code>
                     <CopyButton text={key.prefix} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {key.scopes.map((s) => (
                       <span
                         key={s}
-                        className="text-xs bg-[#FFB81C]/10 text-[#FFB81C] border border-[#FFB81C]/20 px-2 py-0.5 rounded-full"
+                        className="text-xs bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 px-2 py-0.5 rounded-full"
                       >
                         {s}
                       </span>

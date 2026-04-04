@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth, useUser, useClerk } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
+import { useTheme } from '@/components/ThemeProvider'
 
 const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding']
 const ADMIN_EMAILS = ['dawsenporter@gmail.com']
@@ -15,6 +16,7 @@ export function ProfileButton() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { theme, themes, setTheme } = useTheme()
 
   // Close on outside click
   useEffect(() => {
@@ -61,9 +63,9 @@ export function ProfileButton() {
         aria-label="Profile menu"
         aria-expanded={open}
       >
-        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[var(--gold,#FFB81C)]/30 hover:ring-[var(--gold,#FFB81C)]/60 transition-all shadow-lg">
+        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden ring-2 ring-[var(--gold,#D4AF37)]/30 hover:ring-[var(--gold,#D4AF37)]/60 transition-all shadow-lg">
           {imageUrl ? (
-            <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+            <img src={imageUrl} alt={name} width={40} height={40} className="w-full h-full object-cover" />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center font-bold text-xs"
@@ -88,7 +90,7 @@ export function ProfileButton() {
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0">
                 {imageUrl ? (
-                  <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+                  <img src={imageUrl} alt={name} width={40} height={40} className="w-full h-full object-cover" />
                 ) : (
                   <div
                     className="w-full h-full flex items-center justify-center font-bold text-xs"
@@ -120,6 +122,36 @@ export function ProfileButton() {
                 {link.label}
               </Link>
             ))}
+          </div>
+
+          {/* Quick Theme */}
+          <div className="border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">Quick Theme</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {themes.slice(0, 8).map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  title={t.name}
+                  className="w-5 h-5 rounded-full flex-shrink-0 transition-transform hover:scale-110 focus:outline-none"
+                  style={{
+                    background: t.preview.accent,
+                    boxShadow: theme.id === t.id
+                      ? `0 0 0 2px #111113, 0 0 0 3.5px #ffffff`
+                      : '0 0 0 1px rgba(255,255,255,0.12)',
+                  }}
+                  aria-label={`Switch to ${t.name} theme`}
+                  aria-pressed={theme.id === t.id}
+                />
+              ))}
+            </div>
+            <Link
+              href="/settings?tab=appearance"
+              onClick={() => setOpen(false)}
+              className="mt-2 inline-block text-[11px] text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              All themes →
+            </Link>
           </div>
 
           {/* Sign out */}

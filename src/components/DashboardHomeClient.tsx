@@ -30,7 +30,7 @@ interface DashboardStats {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const GOLD = '#FFB81C'
+const GOLD = '#D4AF37'
 
 const STARTER_PROMPTS = [
   'Build a tycoon shop with neon signs',
@@ -458,7 +458,7 @@ function QuickActions() {
           <Link
             key={a.href + a.title}
             href={a.href}
-            className="group rounded-2xl border border-white/[0.08] p-4 flex flex-col gap-2 transition-all duration-200 hover:border-[#FFB81C]/30 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+            className="group rounded-2xl border border-white/[0.08] p-4 flex flex-col gap-2 transition-all duration-200 hover:border-[#D4AF37]/30 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
             style={{ background: '#111111' }}
           >
             {/* Radial hover glow */}
@@ -483,12 +483,12 @@ function QuickActions() {
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-white group-hover:text-[#FFB81C] transition-colors">
+              <p className="text-sm font-semibold text-white group-hover:text-[#D4AF37] transition-colors">
                 {a.title}
               </p>
               <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{a.description}</p>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-gray-600 group-hover:text-[#FFB81C] transition-colors mt-auto">
+            <div className="flex items-center gap-1 text-[11px] text-gray-600 group-hover:text-[#D4AF37] transition-colors mt-auto">
               Open
               <svg className="w-3 h-3 translate-x-0 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -730,8 +730,8 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               }}
               onMouseEnter={(e) => {
                 const el = e.currentTarget
-                el.style.background = 'rgba(255,184,28,0.08)'
-                el.style.borderColor = 'rgba(255,184,28,0.25)'
+                el.style.background = 'rgba(212,175,55,0.08)'
+                el.style.borderColor = 'rgba(212,175,55,0.25)'
                 el.style.color = GOLD
                 el.style.boxShadow = `0 0 14px ${GOLD}28`
               }}

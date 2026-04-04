@@ -559,7 +559,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
           key={i}
           style={{
             background: 'transparent',
-            color: '#FFB81C',
+            color: '#D4AF37',
             fontWeight: 600,
           }}
         >

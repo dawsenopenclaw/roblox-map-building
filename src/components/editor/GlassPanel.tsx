@@ -69,7 +69,7 @@ export function GlassPanel({
   className = '',
   padding = 'md',
   glow = false,
-  glowColor = '#FFB81C',
+  glowColor = '#D4AF37',
   variant = 'default',
   style,
   onClick,

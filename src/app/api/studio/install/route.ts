@@ -5,11 +5,13 @@
  * - Shows step-by-step instructions with OS-specific commands
  * - "Download Plugin" button fetches the .rbxm file
  * - Polls /api/studio/status client-side and shows "Connected!" when the plugin connects
+ * - ?userId=<id>  — pre-generates a 6-char connection code and displays it prominently
  *
  * Also accepts ?download=rbxm to directly serve the .rbxm file.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'crypto'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +19,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-function buildHtml(sessionId: string | null): string {
+function buildHtml(sessionId: string | null, connectionCode: string | null = null): string {
   const sessionParam = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ''
 
   return `<!DOCTYPE html>
@@ -328,7 +330,7 @@ function buildHtml(sessionId: string | null): string {
           </div>
 
           <div class="mac-content">
-            <div class="code-block">~/Documents/Roblox/Plugins/ForjeGames.rbxmx</div>
+            <div class="code-block">~/Library/Application Support/Roblox/Plugins/ForjeGames.rbxmx</div>
             <div class="code-note">Tip: In Finder press ⌘ + Shift + G and paste the path to jump there.</div>
           </div>
         </div>
@@ -344,6 +346,14 @@ function buildHtml(sessionId: string | null): string {
             Enter the 6-character code shown on this page (go to
             <a href="/connect" style="color:#D4AF37;text-decoration:none">/connect</a> or Settings → Studio).
           </div>
+
+          ${connectionCode ? `
+          <div style="margin:16px 0;background:#0f0f0f;border:2px solid rgba(212,175,55,0.35);border-radius:14px;padding:20px 24px;">
+            <p style="margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#D4AF37;">Your connection code</p>
+            <p style="margin:0 0 6px;font-family:'JetBrains Mono','Courier New',monospace;font-size:42px;font-weight:700;letter-spacing:0.3em;color:#fff;">${connectionCode}</p>
+            <p style="margin:0;font-size:12px;color:#555;">Enter this in Roblox Studio → ForjeGames plugin</p>
+          </div>
+          ` : ''}
 
           <div class="polling-indicator" id="poll-indicator">
             <div class="pulse-dot"></div>
@@ -420,6 +430,30 @@ function buildHtml(sessionId: string | null): string {
 </html>`
 }
 
+/**
+ * Generates a deterministic but hard-to-guess 6-char alphanumeric code for a
+ * given userId. The code rotates every 10 minutes using a time bucket so it
+ * stays valid long enough for the user to act, but expires automatically.
+ *
+ * Format: ABC123 (uppercase alpha + digits, no ambiguous chars like 0/O/1/I)
+ */
+function generateConnectionCode(userId: string): string {
+  const CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  // 10-minute bucket — code is valid for up to 10 min
+  const bucket = Math.floor(Date.now() / (10 * 60 * 1000))
+  const secret = process.env.CODE_HMAC_SECRET ?? 'forjegames-install-code-secret'
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(`${userId}:${bucket}`)
+    .digest()
+
+  let code = ''
+  for (let i = 0; i < 6; i++) {
+    code += CHARSET[hash[i]! % CHARSET.length]
+  }
+  return code
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS })
 }
@@ -427,8 +461,23 @@ export async function OPTIONS() {
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl
   const sessionId = searchParams.get('sessionId')
+  const userId    = searchParams.get('userId')
 
-  const html = buildHtml(sessionId)
+  // JSON response for the /install page client (userId-only requests)
+  const acceptHeader = req.headers.get('accept') ?? ''
+  const wantsJson = acceptHeader.includes('application/json') || acceptHeader.includes('*/*')
+
+  if (userId && wantsJson && !acceptHeader.includes('text/html')) {
+    const code = generateConnectionCode(userId)
+    return NextResponse.json({ code }, {
+      status: 200,
+      headers: { ...CORS, 'Cache-Control': 'no-store' },
+    })
+  }
+
+  // HTML guide — embed code prominently if userId provided
+  const code = userId ? generateConnectionCode(userId) : null
+  const html = buildHtml(sessionId, code)
 
   return new NextResponse(html, {
     status: 200,

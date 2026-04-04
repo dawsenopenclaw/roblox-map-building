@@ -5,6 +5,34 @@ const { spawn } = require('child_process')
 let mainWindow
 let backendProcess
 
+// ---------------------------------------------------------------------------
+// Custom URI scheme: forjegames://
+// Must be called before app.whenReady() on Windows/Linux.
+// On macOS it is handled via open-url event instead.
+// ---------------------------------------------------------------------------
+if (process.platform !== 'darwin') {
+  app.setAsDefaultProtocolClient('forjegames')
+}
+
+function handleDeepLink(url) {
+  if (!url || !url.startsWith('forjegames://')) return
+
+  // forjegames://install-plugin[?userId=xxx]
+  if (url.startsWith('forjegames://install-plugin')) {
+    const pluginInstaller = require('./plugin-installer')
+    const result = pluginInstaller.install()
+
+    if (mainWindow) {
+      // Bring app window to front
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+
+      // Send install result to the renderer so it can show status UI
+      mainWindow.webContents.send('plugin-install-result', result)
+    }
+  }
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -33,11 +61,34 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // macOS: register URI scheme handler here (must be before createWindow on mac)
+  if (process.platform === 'darwin') {
+    app.setAsDefaultProtocolClient('forjegames')
+  }
+
   createWindow()
 
   // Register all IPC handlers — defined in ipc-handlers.js
   const ipcHandlers = require('./ipc-handlers')
   ipcHandlers.register(ipcMain, app, mainWindow, dialog, safeStorage)
+
+  // macOS: URI scheme arrives via open-url event
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    handleDeepLink(url)
+  })
+
+  // Windows/Linux: URI scheme arrives as a second-instance argv
+  app.on('second-instance', (_event, argv) => {
+    const deepLinkUrl = argv.find((arg) => arg.startsWith('forjegames://'))
+    if (deepLinkUrl) handleDeepLink(deepLinkUrl)
+
+    // Focus the existing window instead of opening a new one
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
 })
 
 app.on('window-all-closed', () => {

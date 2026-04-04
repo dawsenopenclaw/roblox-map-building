@@ -6,9 +6,9 @@ import { useAuth, useClerk } from '@clerk/nextjs'
 function LogoMark() {
   return (
     <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden>
-      <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" stroke="#FFB81C" strokeWidth="1.5" fill="rgba(255,184,28,0.06)" />
-      <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#FFB81C" opacity="0.5" />
-      <circle cx="16" cy="16" r="3" fill="#FFB81C" />
+      <polygon points="16,2 30,10 30,22 16,30 2,22 2,10" stroke="#D4AF37" strokeWidth="1.5" fill="rgba(212,175,55,0.06)" />
+      <polygon points="16,8 24,13 24,19 16,24 8,19 8,13" fill="#D4AF37" opacity="0.5" />
+      <circle cx="16" cy="16" r="3" fill="#D4AF37" />
     </svg>
   )
 }
@@ -22,7 +22,7 @@ function SignOutButton() {
   return (
     <button
       onClick={() => signOut({ redirectUrl: '/sign-in' })}
-      className="relative z-10 mt-4 text-xs text-zinc-500 hover:text-[#FFB81C] transition-colors"
+      className="relative z-10 mt-4 text-xs text-zinc-500 hover:text-[#D4AF37] transition-colors"
     >
       Signed in with wrong account? Sign out
     </button>
@@ -35,7 +35,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div
         className="pointer-events-none fixed inset-0"
         aria-hidden
-        style={{ background: 'radial-gradient(ellipse 500px 400px at 50% 40%, rgba(255,184,28,0.03) 0%, transparent 70%)' }}
+        style={{ background: 'radial-gradient(ellipse 500px 400px at 50% 40%, rgba(212,175,55,0.03) 0%, transparent 70%)' }}
       />
 
       <div className="relative z-10 mb-8">
@@ -43,7 +43,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <LogoMark />
           <span className="text-lg font-bold tracking-tight">
             <span className="text-white">Forje</span>
-            <span style={{ color: '#FFB81C' }}>Games</span>
+            <span style={{ color: '#D4AF37' }}>Games</span>
           </span>
         </Link>
       </div>

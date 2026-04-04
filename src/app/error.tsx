@@ -151,7 +151,7 @@ function ErrorShell({
             {primaryHref ? (
               <Link
                 href={primaryHref}
-                className="bg-[#FFB81C] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl transition-all text-sm text-center shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/30 hover:-translate-y-0.5"
+                className="bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl transition-all text-sm text-center shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 hover:-translate-y-0.5"
               >
                 {primaryLabel}
               </Link>
@@ -159,7 +159,7 @@ function ErrorShell({
               <button
                 onClick={handleReset}
                 disabled={retrying}
-                className="inline-flex items-center justify-center gap-2 bg-[#FFB81C] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-6 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#FFB81C]/20 hover:shadow-[#FFB81C]/30 hover:-translate-y-0.5"
+                className="inline-flex items-center justify-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] disabled:opacity-70 text-black font-bold px-6 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 hover:-translate-y-0.5"
               >
                 {retrying ? (
                   <>
@@ -188,7 +188,7 @@ function ErrorShell({
               Still stuck?{' '}
               <a
                 href={`mailto:support@forjegames.com?subject=Bug+report+[${reportType}]${digest ? `&body=Error+ID:+${digest}` : ''}`}
-                className="text-[#FFB81C] hover:underline"
+                className="text-[#D4AF37] hover:underline"
               >
                 Report this issue
               </a>
@@ -197,7 +197,7 @@ function ErrorShell({
                 href="https://status.forjegames.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#FFB81C] hover:underline"
+                className="text-[#D4AF37] hover:underline"
               >
                 Check status page
               </a>

@@ -53,7 +53,7 @@ const POSTS: Post[] = [
 const CATEGORIES = ['All', 'Announcement', 'Deep Dive', 'Tutorial']
 
 const CATEGORY_META: Record<string, { bg: string; color: string; border: string }> = {
-  Announcement: { bg: 'rgba(255,184,28,0.08)', color: '#FFB81C', border: 'rgba(255,184,28,0.2)' },
+  Announcement: { bg: 'rgba(212,175,55,0.08)', color: '#D4AF37', border: 'rgba(212,175,55,0.2)' },
   'Deep Dive':  { bg: 'rgba(168,85,247,0.08)', color: '#c084fc', border: 'rgba(192,132,252,0.2)' },
   Tutorial:     { bg: 'rgba(59,130,246,0.08)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' },
 }
@@ -95,7 +95,7 @@ export default function BlogIndexPage() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              'radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255,184,28,0.10) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 40% at 50% 100%, rgba(212,175,55,0.10) 0%, transparent 70%)',
           }}
         />
         <div className="relative z-10">
@@ -181,7 +181,7 @@ export default function BlogIndexPage() {
             </div>
 
             <h2
-              className="mb-3 font-bold tracking-tight transition-colors group-hover:text-[#FFB81C]"
+              className="mb-3 font-bold tracking-tight transition-colors group-hover:text-[#D4AF37]"
               style={{ fontSize: 'clamp(1.25rem, 3vw, 1.75rem)', lineHeight: 1.15, color: '#FAFAFA' }}
             >
               {featured.title}
@@ -192,7 +192,7 @@ export default function BlogIndexPage() {
 
             <span
               className="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
-              style={{ color: 'rgba(255,184,28,0.6)' }}
+              style={{ color: 'rgba(212,175,55,0.6)' }}
             >
               Read article
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -229,7 +229,7 @@ export default function BlogIndexPage() {
                   <span className="text-xs" style={{ color: '#52525B' }}>{post.readTime}</span>
                 </div>
 
-                <h2 className="mb-2 flex-1 text-base font-semibold leading-snug transition-colors group-hover:text-[#FFB81C]" style={{ color: '#FAFAFA' }}>
+                <h2 className="mb-2 flex-1 text-base font-semibold leading-snug transition-colors group-hover:text-[#D4AF37]" style={{ color: '#FAFAFA' }}>
                   {post.title}
                 </h2>
                 <p className="mb-4 text-sm leading-relaxed" style={{ color: '#71717A' }}>
@@ -239,8 +239,8 @@ export default function BlogIndexPage() {
                 <div className="mt-auto flex items-center justify-between">
                   <span className="text-xs" style={{ color: '#52525B' }}>{post.date}</span>
                   <span
-                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors group-hover:text-[#FFB81C]"
-                    style={{ color: 'rgba(255,184,28,0.5)' }}
+                    className="inline-flex items-center gap-1 text-xs font-semibold transition-colors group-hover:text-[#D4AF37]"
+                    style={{ color: 'rgba(212,175,55,0.5)' }}
                   >
                     Read
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -302,7 +302,7 @@ export default function BlogIndexPage() {
                 type="button"
                 className="shrink-0 rounded-xl px-5 py-3 text-sm font-bold transition-opacity hover:opacity-90"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
                   color: '#09090b',
                 }}
               >

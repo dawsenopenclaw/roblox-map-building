@@ -230,7 +230,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -271,7 +271,7 @@ const heading: React.CSSProperties = {
 }
 
 const bigDonation: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '56px',
   fontWeight: '700',
   lineHeight: '1',
@@ -305,7 +305,7 @@ const statBoxMiddle: React.CSSProperties = {
 }
 
 const statValue: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '20px',
   fontWeight: '700',
   margin: '0 0 4px',
@@ -324,7 +324,7 @@ const causeSection: React.CSSProperties = {
 }
 
 const causeSectionLabel: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '11px',
   fontWeight: '700',
   letterSpacing: '2px',
@@ -404,7 +404,7 @@ const impactLabel: React.CSSProperties = {
 }
 
 const impactValue: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '14px',
   fontWeight: '600',
   margin: '0',
@@ -430,7 +430,7 @@ const howText: React.CSSProperties = {
 }
 
 const goldText: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const ctaSection: React.CSSProperties = {
@@ -445,7 +445,7 @@ const ctaText: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 export type CodeStyle    = 'beginner' | 'advanced'
 export type BuildScale   = 'small' | 'medium' | 'large' | 'massive'
-export type EditorTheme  = 'dark' | 'darker' | 'midnight'
+export type EditorTheme  = string   // theme ID from themes.ts (e.g. 'default', 'light', 'midnight')
 export type FontSize     = 'small' | 'medium' | 'large'
 export type Language     = 'en'
 
@@ -18,6 +18,7 @@ export interface EditorSettings {
   language: Language
   // Editor
   theme: EditorTheme
+  accentColor?: string    // optional user override for accent color
   fontSize: FontSize
   showLineNumbers: boolean
   soundEffects: boolean
@@ -33,7 +34,7 @@ const DEFAULTS: EditorSettings = {
   buildScale: 'medium',
   autoExecute: false,
   language: 'en',
-  theme: 'dark',
+  theme: 'default',   // Forge Gold
   fontSize: 'medium',
   showLineNumbers: true,
   soundEffects: true,
@@ -90,12 +91,4 @@ export const FONT_SIZE_MAP: Record<FontSize, number> = {
   small: 12,
   medium: 14,
   large: 16,
-}
-
-// ─── Theme bg map ─────────────────────────────────────────────────────────────
-
-export const THEME_BG_MAP: Record<EditorTheme, string> = {
-  dark:     '#09090b',
-  darker:   '#050507',
-  midnight: '#02040a',
 }

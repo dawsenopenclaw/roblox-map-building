@@ -317,11 +317,28 @@ export default clerkMiddleware(async (auth, request) => {
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────
-    // Admin access is enforced in the admin layout (server component) which can
-    // query the DB for role and check ADMIN_EMAILS. Middleware only ensures the
-    // user is authenticated (handled above). The layout redirect is more reliable
-    // because it has access to the DB user record and email bypass list.
-    // API admin routes are protected by their own _adminGuard helper.
+    // Belt-and-suspenders: middleware enforces admin access for /admin/* page
+    // routes so a bug in the layout server component can never expose admin UI.
+    // API admin routes (/api/admin/*) are already protected by _adminGuard.
+    //
+    // Middleware cannot query the DB, so it uses two signals available on the
+    // Clerk session:
+    //   a) ADMIN_EMAILS env var — owner bypass, same list used by the layout.
+    //   b) claims.role === 'ADMIN' — set via Clerk JWT template if configured.
+    // If neither signal is present, we redirect to /dashboard and let the layout
+    // remain the authoritative DB-role check for users not in ADMIN_EMAILS.
+    if (userId && request.nextUrl.pathname.startsWith('/admin')) {
+      const sessionEmail = (claims?.email as string | undefined) ?? null
+      const sessionRole = (claims?.role as string | undefined) ?? null
+      const isAdminByEmail = isAdminEmail(sessionEmail)
+      const isAdminByRole = sessionRole === 'ADMIN'
+
+      if (!isAdminByEmail && !isAdminByRole) {
+        // Redirect non-admin users to dashboard rather than sign-in — they are
+        // authenticated, just not authorised.
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      }
+    }
 
     // Age-gate removed from middleware — handled in the welcome wizard onboarding
     // flow instead. Keeping it in middleware caused infinite redirect loops when

@@ -252,7 +252,7 @@ const logoSpan: React.CSSProperties = {
 }
 
 const logoGold: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
 }
 
 const divider: React.CSSProperties = {
@@ -266,7 +266,7 @@ const weekHeader: React.CSSProperties = {
 }
 
 const weekLabel: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '12px',
   fontWeight: '700',
   letterSpacing: '2px',
@@ -302,7 +302,7 @@ const statCard: React.CSSProperties = {
 }
 
 const statValue: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '26px',
   fontWeight: '700',
   margin: '0 0 4px',
@@ -331,7 +331,7 @@ const streakIcon: React.CSSProperties = {
 }
 
 const streakActive: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '18px',
   fontWeight: '700',
   margin: '0 0 8px',
@@ -426,7 +426,7 @@ const ghostButton: React.CSSProperties = {
 
 const highlightCard: React.CSSProperties = {
   backgroundColor: '#0d1235',
-  border: '1px solid #FFB81C22',
+  border: '1px solid #D4AF3722',
   borderRadius: '12px',
   padding: '20px 24px',
   textAlign: 'center',
@@ -457,7 +457,7 @@ const ctaText: React.CSSProperties = {
 }
 
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

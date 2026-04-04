@@ -32,7 +32,7 @@ const ROLE_OPTIONS = ['ADMIN', 'EDITOR', 'VIEWER'] as const
 type ChangeableRole = (typeof ROLE_OPTIONS)[number]
 
 const ROLE_COLORS = {
-  OWNER:  'text-[#FFB81C]',
+  OWNER:  'text-[#D4AF37]',
   ADMIN:  'text-blue-400',
   EDITOR: 'text-purple-400',
   VIEWER: 'text-gray-300',
@@ -208,7 +208,7 @@ export default function TeamSettingsPage() {
           </svg>
         </div>
         <p className="text-gray-300 text-sm">You need to be an Owner or Admin to manage team settings.</p>
-        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mt-4 inline-block">
+        <Link href="/editor" className="text-[#D4AF37] hover:underline text-sm mt-4 inline-block">
           ← Back to editor
         </Link>
       </div>
@@ -218,7 +218,7 @@ export default function TeamSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Link href="/editor" className="text-[#FFB81C] hover:underline text-sm mb-2 inline-block">
+        <Link href="/editor" className="text-[#D4AF37] hover:underline text-sm mb-2 inline-block">
           ← Back to editor
         </Link>
         <h1 className="text-2xl font-bold text-white">Team Settings</h1>
@@ -239,7 +239,7 @@ export default function TeamSettingsPage() {
           <select
             value={selectedTeamId}
             onChange={(e) => setSelectedTeamId(e.target.value)}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#FFB81C]/50 transition-colors w-full sm:w-auto"
+            className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/50 transition-colors w-full sm:w-auto"
           >
             {teams.map((t) => (
               <option key={t.id} value={t.id}>{t.name}</option>
@@ -272,7 +272,7 @@ export default function TeamSettingsPage() {
           {/* Role legend */}
           <div className="px-5 py-4 border-b border-white/5 grid grid-cols-4 gap-3">
             {[
-              { role: 'OWNER', desc: 'Full control', color: 'text-[#FFB81C]' },
+              { role: 'OWNER', desc: 'Full control', color: 'text-[#D4AF37]' },
               { role: 'ADMIN', desc: 'Manage members', color: 'text-blue-400' },
               { role: 'EDITOR', desc: 'Edit & build', color: 'text-purple-400' },
               { role: 'VIEWER', desc: 'View only', color: 'text-gray-300' },
@@ -314,7 +314,7 @@ export default function TeamSettingsPage() {
                           defaultValue={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
                           disabled={updatingId === member.id}
-                          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#FFB81C]/50 transition-colors disabled:opacity-50"
+                          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#D4AF37]/50 transition-colors disabled:opacity-50"
                         >
                           {ROLE_OPTIONS.map((r) => (
                             <option key={r} value={r}>{r}</option>
@@ -351,7 +351,7 @@ export default function TeamSettingsPage() {
           {[
             {
               icon: (
-                <svg className="w-5 h-5 text-[#FFB81C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-5 h-5 text-[#D4AF37]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
               ),

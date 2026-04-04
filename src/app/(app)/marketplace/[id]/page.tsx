@@ -453,7 +453,7 @@ function StarDisplay({ rating }: { rating: number }) {
       {Array.from({ length: 5 }).map((_, i) => (
         <svg
           key={i}
-          className={`w-4 h-4 ${i < Math.round(rating) ? 'text-[#FFB81C]' : 'text-gray-500'}`}
+          className={`w-4 h-4 ${i < Math.round(rating) ? 'text-[#D4AF37]' : 'text-gray-500'}`}
           fill="currentColor"
           viewBox="0 0 20 20"
         >
@@ -651,7 +651,7 @@ function TemplateDetail({
   return (
     <div className="max-w-6xl mx-auto">
       {isDemo && (
-        <div className="mb-4 bg-[#FFB81C]/10 border border-[#FFB81C]/30 rounded-xl px-4 py-3 text-sm text-[#FFB81C]">
+        <div className="mb-4 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-xl px-4 py-3 text-sm text-[#D4AF37]">
           Preview mode — database not yet connected. This is example content.
         </div>
       )}

@@ -78,7 +78,7 @@ function DockItemComponent({
       style={{ scale: prefersReduced ? 1 : springScale }}
       className={`relative flex items-center justify-center w-10 h-10 rounded-xl transition-colors duration-150 ${
         item.active
-          ? 'bg-[#FFB81C]/15 text-[#FFB81C] border border-[#FFB81C]/25'
+          ? 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25'
           : 'text-gray-300 hover:text-white hover:bg-white/8'
       }`}
       title={item.label}
@@ -88,7 +88,7 @@ function DockItemComponent({
       {item.active && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -bottom-0.5 w-1.5 h-1.5 rounded-full bg-[#FFB81C]"
+          className="absolute -right-0.5 -bottom-0.5 w-1.5 h-1.5 rounded-full bg-[#D4AF37]"
         />
       )}
     </motion.div>

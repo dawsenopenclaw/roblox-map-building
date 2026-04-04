@@ -250,7 +250,7 @@ function FaqItem({
     <div
       className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
         isOpen
-          ? 'border-[rgba(255,184,28,0.25)] bg-[#0D1225]'
+          ? 'border-[rgba(212,175,55,0.25)] bg-[#0D1225]'
           : 'border-[#141C35] bg-[#0A0F1E] hover:border-[#1E2A4A]'
       }`}
     >
@@ -271,7 +271,7 @@ function FaqItem({
         <ChevronDown
           aria-hidden="true"
           className={`w-4 h-4 flex-shrink-0 transition-all duration-300 ${
-            isOpen ? 'rotate-180 text-[#FFB81C]' : 'text-[#4A5580]'
+            isOpen ? 'rotate-180 text-[#D4AF37]' : 'text-[#4A5580]'
           }`}
         />
       </button>
@@ -311,7 +311,7 @@ function CompareCell({
     return value ? (
       <Check
         className={`w-5 h-5 mx-auto ${
-          isCreator ? 'text-[#FFB81C]' : isCustom ? 'text-[#A78BFA]' : 'text-emerald-400'
+          isCreator ? 'text-[#D4AF37]' : isCustom ? 'text-[#A78BFA]' : 'text-emerald-400'
         }`}
       />
     ) : (
@@ -575,7 +575,7 @@ export default function PricingClient() {
             width: '900px',
             height: '600px',
             background:
-              'radial-gradient(ellipse at center, rgba(255,184,28,0.045) 0%, transparent 70%)',
+              'radial-gradient(ellipse at center, rgba(212,175,55,0.045) 0%, transparent 70%)',
             filter: 'blur(40px)',
           }}
         />
@@ -616,9 +616,9 @@ export default function PricingClient() {
         {/* Header                                                              */}
         {/* ------------------------------------------------------------------ */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-[#FFB81C]/10 border border-[#FFB81C]/20 rounded-full px-4 py-1.5 mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-[#FFB81C]" />
-            <span className="text-xs font-bold tracking-widest uppercase text-[#FFB81C]">
+          <div className="inline-flex items-center gap-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full px-4 py-1.5 mb-6">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <span className="text-xs font-bold tracking-widest uppercase text-[#D4AF37]">
               Pricing
             </span>
           </div>
@@ -636,7 +636,7 @@ export default function PricingClient() {
             </span>
             <span
               style={{
-                background: 'linear-gradient(135deg, #FFB81C 0%, #FFD966 60%, #FFB81C 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 60%, #D4AF37 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -672,7 +672,7 @@ export default function PricingClient() {
               }`}
               style={
                 !annual
-                  ? { background: 'linear-gradient(135deg, #FFB81C 0%, #FFD966 100%)' }
+                  ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
                   : {}
               }
             >
@@ -685,7 +685,7 @@ export default function PricingClient() {
               }`}
               style={
                 annual
-                  ? { background: 'linear-gradient(135deg, #FFB81C 0%, #FFD966 100%)' }
+                  ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
                   : {}
               }
             >
@@ -726,7 +726,7 @@ export default function PricingClient() {
                       position: 'absolute',
                       inset: '-30px',
                       background:
-                        'radial-gradient(ellipse at 50% 40%, rgba(255,184,28,0.18) 0%, transparent 65%)',
+                        'radial-gradient(ellipse at 50% 40%, rgba(212,175,55,0.18) 0%, transparent 65%)',
                       filter: 'blur(20px)',
                       pointerEvents: 'none',
                       zIndex: 0,
@@ -755,7 +755,7 @@ export default function PricingClient() {
                 <div
                   className={`relative flex flex-col rounded-2xl border transition-all duration-300 ${
                     tier.highlight
-                      ? 'border-[rgba(255,184,28,0.4)] shadow-[0_0_60px_rgba(255,184,28,0.15),0_20px_60px_rgba(0,0,0,0.6)] pt-10 pb-10 px-6 group-hover:-translate-y-2 group-hover:shadow-[0_0_80px_rgba(255,184,28,0.22),0_30px_80px_rgba(0,0,0,0.7)]'
+                      ? 'border-[rgba(212,175,55,0.4)] shadow-[0_0_60px_rgba(212,175,55,0.15),0_20px_60px_rgba(0,0,0,0.6)] pt-10 pb-10 px-6 group-hover:-translate-y-2 group-hover:shadow-[0_0_80px_rgba(212,175,55,0.22),0_30px_80px_rgba(0,0,0,0.7)]'
                       : isCustom
                       ? 'bg-[#0A0A18] border-[rgba(124,58,237,0.3)] p-6 group-hover:-translate-y-1.5 group-hover:border-[rgba(124,58,237,0.5)] group-hover:shadow-[0_12px_40px_rgba(124,58,237,0.15)]'
                       : 'bg-[#0A0F1E] border-[#141C35] p-6 group-hover:-translate-y-1.5 group-hover:border-[#1E2A4A] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
@@ -774,9 +774,9 @@ export default function PricingClient() {
                   {tier.badge && (
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2">
                       <span
-                        className="inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full text-[#0A0810] whitespace-nowrap shadow-[0_4px_20px_rgba(255,184,28,0.6)]"
+                        className="inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full text-[#0A0810] whitespace-nowrap shadow-[0_4px_20px_rgba(212,175,55,0.6)]"
                         style={{
-                          background: 'linear-gradient(135deg, #FFB81C 0%, #FFD966 100%)',
+                          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
                         }}
                       >
                         <Crown className="w-3.5 h-3.5" />
@@ -790,7 +790,7 @@ export default function PricingClient() {
                     <div
                       className={`inline-flex items-center justify-center w-11 h-11 rounded-xl mb-4 ${
                         tier.highlight
-                          ? 'bg-[#FFB81C]/15 text-[#FFB81C] shadow-[0_0_20px_rgba(255,184,28,0.2)]'
+                          ? 'bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.2)]'
                           : isCustom
                           ? 'bg-[#7C3AED]/15 text-[#A78BFA] shadow-[0_0_20px_rgba(124,58,237,0.2)]'
                           : 'bg-white/[0.06] text-[#6B7699]'
@@ -801,7 +801,7 @@ export default function PricingClient() {
                     <p
                       className={`text-2xl font-bold mb-1 ${
                         tier.highlight
-                          ? 'text-[#FFB81C]'
+                          ? 'text-[#D4AF37]'
                           : isCustom
                           ? 'text-[#A78BFA]'
                           : 'text-white'
@@ -852,7 +852,7 @@ export default function PricingClient() {
                         ) : (
                           <p className="text-xs text-[#6B7699] mt-1.5">
                             or{' '}
-                            <span className="text-[#FFB81C] font-semibold">
+                            <span className="text-[#D4AF37] font-semibold">
                               {formatPrice(tier.priceYearly as number)}/mo
                             </span>{' '}
                             billed annually
@@ -879,12 +879,12 @@ export default function PricingClient() {
                       href={tier.ctaHref}
                       className={`block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 ${
                         tier.highlight
-                          ? 'text-[#0A0810] hover:opacity-90 hover:scale-[1.02] shadow-[0_6px_32px_rgba(255,184,28,0.5)] active:scale-[0.99]'
+                          ? 'text-[#0A0810] hover:opacity-90 hover:scale-[1.02] shadow-[0_6px_32px_rgba(212,175,55,0.5)] active:scale-[0.99]'
                           : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04] hover:text-white active:scale-[0.99]'
                       }`}
                       style={
                         tier.highlight
-                          ? { background: 'linear-gradient(135deg, #FFB81C 0%, #FFD966 100%)' }
+                          ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
                           : {}
                       }
                     >
@@ -905,7 +905,7 @@ export default function PricingClient() {
                   <div
                     className={`h-px mb-5 ${
                       tier.highlight
-                        ? 'bg-gradient-to-r from-transparent via-[#FFB81C]/30 to-transparent'
+                        ? 'bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent'
                         : isCustom
                         ? 'bg-gradient-to-r from-transparent via-[#7C3AED]/25 to-transparent'
                         : 'bg-[#141C35]'
@@ -919,7 +919,7 @@ export default function PricingClient() {
                         <div
                           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
                             tier.highlight
-                              ? 'bg-[#FFB81C]/15'
+                              ? 'bg-[#D4AF37]/15'
                               : isCustom
                               ? 'bg-[#7C3AED]/15'
                               : 'bg-white/[0.06]'
@@ -928,7 +928,7 @@ export default function PricingClient() {
                           <Check
                             className={`w-3 h-3 ${
                               tier.highlight
-                                ? 'text-[#FFB81C]'
+                                ? 'text-[#D4AF37]'
                                 : isCustom
                                 ? 'text-[#A78BFA]'
                                 : 'text-[#6B7699]'
@@ -997,7 +997,7 @@ export default function PricingClient() {
                         key={tier.key}
                         className={`text-center py-5 px-4 text-[15px] font-bold ${
                           tier.highlight
-                            ? 'text-[#FFB81C] bg-[#FFB81C]/[0.06]'
+                            ? 'text-[#D4AF37] bg-[#D4AF37]/[0.06]'
                             : isCustom
                             ? 'text-[#A78BFA] bg-[#7C3AED]/[0.06]'
                             : 'text-white bg-[#0A0F1E]'
@@ -1039,7 +1039,7 @@ export default function PricingClient() {
                     </td>
                     <td
                       className={`py-4 px-4 text-center ${
-                        i % 2 === 0 ? 'bg-[#FFB81C]/[0.04]' : 'bg-[#FFB81C]/[0.025]'
+                        i % 2 === 0 ? 'bg-[#D4AF37]/[0.04]' : 'bg-[#D4AF37]/[0.025]'
                       }`}
                     >
                       <CompareCell value={row.creator} isCreator />
@@ -1067,7 +1067,7 @@ export default function PricingClient() {
                         key={tier.key}
                         className={`py-6 px-4 text-center ${
                           tier.highlight
-                            ? 'bg-[#FFB81C]/[0.06]'
+                            ? 'bg-[#D4AF37]/[0.06]'
                             : isCustom
                             ? 'bg-[#7C3AED]/[0.06]'
                             : 'bg-[#0A0F1E]'
@@ -1089,14 +1089,14 @@ export default function PricingClient() {
                             href={tier.ctaHref}
                             className={`inline-block text-sm font-bold py-3 px-6 rounded-xl transition-all duration-200 ${
                               tier.highlight
-                                ? 'text-[#0A0810] hover:opacity-90 shadow-[0_4px_18px_rgba(255,184,28,0.4)]'
+                                ? 'text-[#0A0810] hover:opacity-90 shadow-[0_4px_18px_rgba(212,175,55,0.4)]'
                                 : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
                             }`}
                             style={
                               tier.highlight
                                 ? {
                                     background:
-                                      'linear-gradient(135deg, #FFB81C 0%, #FFD966 100%)',
+                                      'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
                                   }
                                 : {}
                             }
@@ -1130,7 +1130,7 @@ export default function PricingClient() {
               Still unsure?{' '}
               <Link
                 href="#contact-sales"
-                className="text-[#FFB81C] hover:text-[#FFD966] transition-colors underline underline-offset-2"
+                className="text-[#D4AF37] hover:text-[#FFD966] transition-colors underline underline-offset-2"
               >
                 Chat with us
               </Link>
@@ -1156,7 +1156,7 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         <div className="flex justify-center">
           <div
-            className="relative overflow-hidden inline-flex items-start sm:items-center gap-5 rounded-2xl border border-[#FFB81C]/15 px-7 py-5 max-w-lg w-full"
+            className="relative overflow-hidden inline-flex items-start sm:items-center gap-5 rounded-2xl border border-[#D4AF37]/15 px-7 py-5 max-w-lg w-full"
             style={{
               background: 'linear-gradient(135deg, #0D1120 0%, #0A0E1A 100%)',
             }}
@@ -1171,13 +1171,13 @@ export default function PricingClient() {
                 width: '120px',
                 height: '120px',
                 background:
-                  'radial-gradient(circle, rgba(255,184,28,0.08) 0%, transparent 70%)',
+                  'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)',
                 pointerEvents: 'none',
               }}
             />
 
-            <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#FFB81C]/10 border border-[#FFB81C]/20 flex items-center justify-center">
-              <Heart className="w-5 h-5 text-[#FFB81C]" />
+            <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center">
+              <Heart className="w-5 h-5 text-[#D4AF37]" />
             </div>
 
             <div>

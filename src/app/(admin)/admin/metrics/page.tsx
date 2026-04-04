@@ -132,7 +132,7 @@ function timeAgo(iso: string) {
 const TIER_COLORS: Record<string, string> = {
   HOBBY: '#60A5FA',
   CREATOR: '#A78BFA',
-  STUDIO: '#FFB81C',
+  STUDIO: '#D4AF37',
   FREE: '#71717A',
 }
 
@@ -157,8 +157,8 @@ function StatCard({ title, value, subtitle, icon, trend, trendLabel }: {
   return (
     <div className="bg-[#0A0F1A] border border-white/[0.06] rounded-xl p-5 hover:border-white/10 transition-colors">
       <div className="flex items-start justify-between mb-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--gold-glow, rgba(255,184,28,0.15))' }}>
-          <span className="text-[var(--gold,#FFB81C)]">{icon}</span>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--gold-glow, rgba(212,175,55,0.15))' }}>
+          <span className="text-[var(--gold,#D4AF37)]">{icon}</span>
         </div>
         {trend !== undefined && (
           <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
@@ -177,7 +177,7 @@ function StatCard({ title, value, subtitle, icon, trend, trendLabel }: {
   )
 }
 
-function MiniBarChart({ data, color = 'var(--gold, #FFB81C)', height = 60 }: {
+function MiniBarChart({ data, color = 'var(--gold, #D4AF37)', height = 60 }: {
   data: number[]
   color?: string
   height?: number
@@ -435,7 +435,7 @@ export default function MetricsPage() {
             {data.topCreators.map((c, i) => (
               <div key={c.userId} className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                  i === 0 ? 'bg-[#FFB81C]/20 text-[#FFB81C]' : 'bg-white/5 text-gray-400'
+                  i === 0 ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/5 text-gray-400'
                 }`}>
                   {i + 1}
                 </div>
@@ -463,7 +463,7 @@ export default function MetricsPage() {
                   <p className="text-[10px] text-gray-600">{timeAgo(u.createdAt)}</p>
                 </div>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                  u.role === 'ADMIN' ? 'bg-[#FFB81C]/10 text-[#FFB81C]' :
+                  u.role === 'ADMIN' ? 'bg-[#D4AF37]/10 text-[#D4AF37]' :
                   u.role === 'CREATOR' ? 'bg-purple-500/10 text-purple-400' :
                   'bg-white/5 text-gray-500'
                 }`}>

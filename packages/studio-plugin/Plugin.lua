@@ -295,6 +295,29 @@ local function startSync(token, sessionId)
       end
     end,
 
+    -- Update available callback (fired once per session)
+    onUpdateAvailable = function(info)
+      -- info: { latestVersion, downloadUrl, changelog, forceUpdate }
+      if uiRefs and uiRefs.showUpdateBanner then
+        uiRefs.showUpdateBanner(info)
+      end
+
+      -- If forceUpdate, disable action buttons so the plugin is unusable until updated
+      if info.forceUpdate then
+        applyStatusDisplay("disconnected")
+        if uiRefs and uiRefs.setForceUpdateLock then
+          uiRefs.setForceUpdateLock(true)
+        end
+      end
+
+      -- Always print to Output so devs can grab the URL even if UI is hidden
+      print("[ForjeGames] Plugin update available: v" .. tostring(info.latestVersion))
+      print("[ForjeGames] Download: " .. tostring(info.downloadUrl))
+      if info.changelog and #info.changelog > 0 then
+        print("[ForjeGames] What's new: " .. info.changelog)
+      end
+    end,
+
     -- Re-auth callback: called by Sync.lua when server sends reconnect:true
     onReAuthNeeded = function()
       applyStatusDisplay("reconnecting")

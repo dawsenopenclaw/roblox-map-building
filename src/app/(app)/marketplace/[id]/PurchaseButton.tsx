@@ -50,7 +50,7 @@ export function PurchaseButton({ templateId, priceCents, title, isFree }: Purcha
       <button
         onClick={handlePurchase}
         disabled={loading}
-        className="w-full bg-[#FFB81C] hover:bg-[#E6A618] text-black font-semibold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+        className="w-full bg-[#D4AF37] hover:bg-[#E6A618] text-black font-semibold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
       >
         {loading ? 'Processing...' : isFree ? 'Get for Free' : `Buy for $${(priceCents / 100).toFixed(2)}`}
       </button>

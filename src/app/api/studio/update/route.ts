@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   // Resolve sessionId: prefer explicit sessionId, then look up by token
   let sessionId = rawBody.sessionId
   if (!sessionId && rawBody.sessionToken) {
-    const sessionByToken = getSessionByToken(rawBody.sessionToken)
+    const sessionByToken = await getSessionByToken(rawBody.sessionToken)
     if (sessionByToken) {
       sessionId = sessionByToken.sessionId
     } else if (rawBody.sessionToken.length >= 32) {

@@ -1,8 +1,27 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useStudioSSE, type SSEReconnectPhase } from './useStudioSSE'
 
 export type ConnectFlowState = 'idle' | 'generating' | 'code' | 'connected'
+
+// ─── Actionable error message mapping ─────────────────────────────────────────
+
+function mapConnectionError(raw: string): string {
+  if (/HttpService.*not enabled|HttpEnabled/i.test(raw)) {
+    return 'Open Game Settings → Security → Enable "Allow HTTP Requests"'
+  }
+  if (/code_expired|code_invalid|invalid_code|expired/i.test(raw)) {
+    return 'Code expired. Click "Generate New Code" to get a fresh one'
+  }
+  if (/rate_limit|too many/i.test(raw)) {
+    return 'Too many attempts. Wait 60 seconds, then try again'
+  }
+  if (/timeout|ETIMEDOUT|ECONNREFUSED|network/i.test(raw)) {
+    return "Can't reach ForjeGames servers. Check your internet connection"
+  }
+  return raw
+}
 
 export interface StudioActivity {
   id: string
@@ -29,6 +48,10 @@ export interface StudioConnectionState {
   placeName: string
   placeId: number | null
   screenshotUrl: string | null
+  /** Unix ms timestamp of when the latest screenshot arrived */
+  screenshotTimestamp: number | null
+  /** Base64 PNG captured before the last build command — for before/after comparison */
+  beforeScreenshotUrl: string | null
   connectFlow: ConnectFlowState
   connectCode: string
   connectTimer: number
@@ -36,13 +59,19 @@ export interface StudioConnectionState {
   commandsSent: number
   studioContext: StudioContext
   connectionError: string | null
+  /** SSE reconnect phase — drives the reconnect banner in the editor */
+  sseReconnectPhase: SSEReconnectPhase
+  /** How many reconnect attempts have been made since last clean connect */
+  sseReconnectAttempt: number
+  /** Round-trip latency in ms (null when using live SSE, measured during poll fallback) */
+  latencyMs: number | null
 }
 
 function uid() {
   return Math.random().toString(36).slice(2, 9)
 }
 
-export function useStudioConnection() {
+export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase) => void) {
   const [state, setState] = useState<StudioConnectionState>({
     isConnected: false,
     sessionId: null,
@@ -50,6 +79,8 @@ export function useStudioConnection() {
     placeName: '',
     placeId: null,
     screenshotUrl: null,
+    screenshotTimestamp: null,
+    beforeScreenshotUrl: null,
     connectFlow: 'idle',
     connectCode: '',
     connectTimer: 300,
@@ -57,7 +88,45 @@ export function useStudioConnection() {
     commandsSent: 0,
     studioContext: { camera: null, partCount: 0, nearbyParts: [] },
     connectionError: null,
+    sseReconnectPhase: 'connected',
+    sseReconnectAttempt: 0,
+    latencyMs: null,
   })
+
+  // ── SSE for the active session ─────────────────────────────────────────────
+  const { studioLive, reconnectPhase, reconnectAttempt, latencyMs } = useStudioSSE(state.sessionId)
+
+  // Mirror SSE screenshot + timestamp into the main state — this is the live path.
+  // Polling (pollScreenshot every 8 s) is the fallback; SSE is real-time.
+  useEffect(() => {
+    if (!studioLive.screenshotUrl) return
+    setState((prev) => {
+      if (prev.screenshotUrl === studioLive.screenshotUrl) return prev
+      return {
+        ...prev,
+        screenshotUrl: studioLive.screenshotUrl,
+        screenshotTimestamp: studioLive.screenshotTimestamp,
+      }
+    })
+  }, [studioLive.screenshotUrl, studioLive.screenshotTimestamp])
+
+  // Stable ref so the effect below doesn't re-run when caller passes a new arrow fn each render
+  const onReconnectToastRef = useRef(onReconnectToast)
+  useEffect(() => { onReconnectToastRef.current = onReconnectToast }, [onReconnectToast])
+
+  // Mirror SSE reconnect state into the main state object and fire toasts
+  const prevPhaseRef = useRef<SSEReconnectPhase>('connected')
+  useEffect(() => {
+    if (reconnectPhase === prevPhaseRef.current) return
+    prevPhaseRef.current = reconnectPhase
+    setState((prev) => ({ ...prev, sseReconnectPhase: reconnectPhase, sseReconnectAttempt: reconnectAttempt }))
+    onReconnectToastRef.current?.(reconnectPhase)
+  }, [reconnectPhase, reconnectAttempt])
+
+  // Mirror latency
+  useEffect(() => {
+    setState((prev) => ({ ...prev, latencyMs }))
+  }, [latencyMs])
 
   const codeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const claimPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -128,7 +197,7 @@ export function useStudioConnection() {
         }
       })
     } catch {
-      setState((prev) => ({ ...prev, connectionError: 'Network error — check your connection' }))
+      setState((prev) => ({ ...prev, connectionError: mapConnectionError('network') }))
     }
   }, [])
 
@@ -136,10 +205,22 @@ export function useStudioConnection() {
     try {
       const res = await fetch(`/api/studio/screenshot?sessionId=${sessionId}`)
       if (!res.ok) return
-      const data = await res.json() as { screenshotUrl?: string }
-      if (data.screenshotUrl) {
-        setState((prev) => ({ ...prev, screenshotUrl: data.screenshotUrl! }))
+      const data = await res.json() as {
+        image?: string | null
+        beforeImage?: string | null
+        capturedAt?: number
       }
+      setState((prev) => {
+        const next = { ...prev }
+        if (data.image) {
+          next.screenshotUrl = `data:image/png;base64,${data.image}`
+          next.screenshotTimestamp = data.capturedAt ?? Date.now()
+        }
+        if (data.beforeImage) {
+          next.beforeScreenshotUrl = `data:image/png;base64,${data.beforeImage}`
+        }
+        return next
+      })
     } catch {
       // Screenshot poll failures are non-critical — don't surface to UI
     }
@@ -217,12 +298,14 @@ export function useStudioConnection() {
             statusPollRef.current = setInterval(() => pollStatus(realSessionId), 2000)
             screenshotPollRef.current = setInterval(() => pollScreenshot(realSessionId), 8000)
           }
-        } catch {
-          setState((prev) => ({ ...prev, connectionError: 'Network error — check your connection' }))
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'network'
+          setState((prev) => ({ ...prev, connectionError: mapConnectionError(msg) }))
         }
       }, 2000)
-    } catch {
-      setState((prev) => ({ ...prev, connectFlow: 'idle', connectionError: 'Failed to generate connection code' }))
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate connection code'
+      setState((prev) => ({ ...prev, connectFlow: 'idle', connectionError: mapConnectionError(msg) }))
     }
   }, [addActivity, pollStatus, pollScreenshot])
 
@@ -280,6 +363,8 @@ export function useStudioConnection() {
       placeName: '',
       placeId: null,
       screenshotUrl: null,
+      screenshotTimestamp: null,
+      beforeScreenshotUrl: null,
       connectFlow: 'idle',
       connectCode: '',
       connectTimer: 300,
@@ -287,6 +372,9 @@ export function useStudioConnection() {
       commandsSent: 0,
       studioContext: { camera: null, partCount: 0, nearbyParts: [] },
       connectionError: null,
+      sseReconnectPhase: 'connected',
+      sseReconnectAttempt: 0,
+      latencyMs: null,
     })
   }, [stopAllPolling])
 

@@ -5,9 +5,10 @@ import { useEditorSettings } from '../hooks/useEditorSettings'
 import type {
   CodeStyle,
   BuildScale,
-  EditorTheme,
   FontSize,
 } from '../hooks/useEditorSettings'
+import { THEMES } from '@/lib/themes'
+import type { Theme } from '@/lib/themes'
 
 // ─── Prop types ───────────────────────────────────────────────────────────────
 
@@ -61,9 +62,9 @@ function ToggleSwitch({
       className="relative flex-shrink-0 w-9 h-5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50 disabled:opacity-40 disabled:cursor-not-allowed"
       style={{
         background: checked
-          ? 'linear-gradient(90deg, #D4AF37, #FFB81C)'
+          ? 'linear-gradient(90deg, #D4AF37, #D4AF37)'
           : 'rgba(255,255,255,0.1)',
-        boxShadow: checked ? '0 0 8px rgba(255,184,28,0.35)' : 'none',
+        boxShadow: checked ? '0 0 8px rgba(212,175,55,0.35)' : 'none',
       }}
     >
       <span
@@ -126,9 +127,9 @@ function SegmentRow<T extends string>({
             style={
               value === opt.value
                 ? {
-                    background: 'linear-gradient(90deg, rgba(212,175,55,0.2), rgba(255,184,28,0.2))',
-                    border: '1px solid rgba(255,184,28,0.4)',
-                    color: '#FFB81C',
+                    background: 'linear-gradient(90deg, rgba(212,175,55,0.2), rgba(212,175,55,0.2))',
+                    border: '1px solid rgba(212,175,55,0.4)',
+                    color: '#D4AF37',
                   }
                 : {
                     background: 'rgba(255,255,255,0.04)',
@@ -141,6 +142,92 @@ function SegmentRow<T extends string>({
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+// ─── Theme Grid ───────────────────────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<Theme['category'], string> = {
+  minimal:   'Minimal',
+  vibrant:   'Vibrant',
+  aesthetic: 'Aesthetic',
+  luxury:    'Luxury',
+}
+
+const CATEGORIES: Theme['category'][] = ['minimal', 'vibrant', 'aesthetic', 'luxury']
+
+function ThemeGrid({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (id: string) => void
+}) {
+  return (
+    <div className="px-3 py-2.5 space-y-3">
+      <p className="text-xs text-gray-200 font-medium leading-tight">Theme</p>
+      {CATEGORIES.map((cat) => {
+        const group = THEMES.filter((t) => t.category === cat)
+        return (
+          <div key={cat} className="space-y-1.5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">
+              {CATEGORY_LABELS[cat]}
+            </p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {group.map((theme) => {
+                const active = value === theme.id
+                return (
+                  <button
+                    key={theme.id}
+                    onClick={() => onChange(theme.id)}
+                    className="relative text-left rounded-lg p-2 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500/50"
+                    style={{
+                      background: active
+                        ? 'rgba(212,175,55,0.08)'
+                        : 'rgba(255,255,255,0.03)',
+                      border: active
+                        ? '1px solid rgba(212,175,55,0.45)'
+                        : '1px solid rgba(255,255,255,0.07)',
+                    }}
+                  >
+                    {/* Color preview dots */}
+                    <div className="flex gap-1 mb-1.5">
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ background: theme.preview.bg, border: '1px solid rgba(255,255,255,0.12)' }}
+                      />
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ background: theme.preview.accent }}
+                      />
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ background: theme.preview.surface, border: '1px solid rgba(255,255,255,0.08)' }}
+                      />
+                    </div>
+                    <p className="text-[11px] font-semibold leading-tight"
+                      style={{ color: active ? '#D4AF37' : 'rgba(255,255,255,0.75)' }}>
+                      {theme.name}
+                    </p>
+                    {/* Active checkmark */}
+                    {active && (
+                      <span
+                        className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                        style={{ background: 'rgba(212,175,55,0.2)' }}
+                      >
+                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                          <path d="M1.5 4l1.8 2 3.2-3.5" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -167,7 +254,7 @@ function ActionBtn({
 
   const styles: Record<string, React.CSSProperties> = {
     ghost:  { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' },
-    gold:   { background: 'rgba(255,184,28,0.08)',  border: '1px solid rgba(255,184,28,0.22)',  color: '#FFB81C' },
+    gold:   { background: 'rgba(212,175,55,0.08)',  border: '1px solid rgba(212,175,55,0.22)',  color: '#D4AF37' },
     danger: { background: 'rgba(239,68,68,0.08)',   border: '1px solid rgba(239,68,68,0.22)',   color: '#F87171' },
   }
 
@@ -274,14 +361,8 @@ export default function SettingsPanel({
       {/* ── Editor Settings ──────────────────────────────────── */}
       <SectionLabel>Editor Settings</SectionLabel>
 
-      <SegmentRow<EditorTheme>
-        label="Theme"
+      <ThemeGrid
         value={settings.theme}
-        options={[
-          { value: 'dark',     label: 'Dark'     },
-          { value: 'darker',   label: 'Darker'   },
-          { value: 'midnight', label: 'Midnight' },
-        ]}
         onChange={(v) => update('theme', v)}
       />
 
@@ -336,7 +417,7 @@ export default function SettingsPanel({
             {studioStatus.connected ? 'Connected' : 'Not Connected'}
           </span>
           {studioStatus.connected && studioStatus.placeName && (
-            <span className="text-[10px] text-[#FFB81C] truncate flex-1">
+            <span className="text-[10px] text-[#D4AF37] truncate flex-1">
               {studioStatus.placeName}
             </span>
           )}
@@ -388,7 +469,7 @@ export default function SettingsPanel({
       <div className="mx-3 my-1 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3 space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-[10px] text-gray-500 font-medium">Tokens used (session)</p>
-          <span className="text-xs font-bold" style={{ color: '#FFB81C' }}>
+          <span className="text-xs font-bold" style={{ color: '#D4AF37' }}>
             {totalTokens.toLocaleString()}
           </span>
         </div>
@@ -411,7 +492,7 @@ export default function SettingsPanel({
               className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${Math.min(100, (totalTokens / tokenTotal) * 100)}%`,
-                background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+                background: 'linear-gradient(90deg, #D4AF37, #D4AF37)',
               }}
             />
           </div>

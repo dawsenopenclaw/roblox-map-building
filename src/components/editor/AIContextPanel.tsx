@@ -78,7 +78,7 @@ function bearingFromLook(lookX: number, lookZ: number): number {
 
 function classNameColor(className: string): string {
   if (className.includes('Part') || className.includes('Mesh')) return '#D4AF37'
-  if (className.includes('Light')) return '#FFB81C'
+  if (className.includes('Light')) return '#D4AF37'
   if (className.includes('Model') || className.includes('Folder')) return '#7FBAFF'
   if (className.includes('Script')) return '#A78BFA'
   return '#9CA3AF'
@@ -679,7 +679,7 @@ function BuildSummarySection({
           <>
             <span style={{ color: '#D4AF37', fontWeight: 600 }}>{partCount}</span> parts placed
             {lightCount > 0 && (
-              <>, <span style={{ color: '#FFB81C', fontWeight: 600 }}>{lightCount}</span> lights</>
+              <>, <span style={{ color: '#D4AF37', fontWeight: 600 }}>{lightCount}</span> lights</>
             )}
             {' '}this session
           </>

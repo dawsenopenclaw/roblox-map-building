@@ -22,7 +22,7 @@ export function StatCard({ title, value, icon, subtitle, trend }: StatCardProps)
             </p>
           )}
         </div>
-        <div className="w-10 h-10 bg-[#FFB81C]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+        <div className="w-10 h-10 bg-[#D4AF37]/10 rounded-lg flex items-center justify-center flex-shrink-0">
           {icon}
         </div>
       </div>

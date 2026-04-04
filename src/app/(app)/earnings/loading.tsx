@@ -52,7 +52,7 @@ export default function EarningsLoading() {
               <polyline
                 points="0,200 60,160 120,180 180,100 240,120 300,60 360,80 400,40"
                 fill="none"
-                stroke="#FFB81C"
+                stroke="#D4AF37"
                 strokeWidth="2"
               />
             </svg>

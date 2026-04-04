@@ -213,7 +213,7 @@ export default function GetStartedClient() {
                       : 'text-[#52525B] hover:text-[#D4AF37] hover:bg-[#D4AF37]/5'
                   }`}
                 >
-                  <span className={`text-xs font-mono font-bold ${i === activeStep ? 'text-[#FFB81C]' : 'text-[#52525B]'}`}>{s.number}</span>
+                  <span className={`text-xs font-mono font-bold ${i === activeStep ? 'text-[#D4AF37]' : 'text-[#52525B]'}`}>{s.number}</span>
                   <span>{s.title}</span>
                 </button>
               ))}
@@ -229,7 +229,7 @@ export default function GetStartedClient() {
                 className={`${i === activeStep ? 'block' : 'hidden'}`}
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#FFB81C]/30 bg-[#FFB81C]/10 text-xs font-bold text-[#FFB81C]">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 text-xs font-bold text-[#D4AF37]">
                     {step.number}
                   </span>
                   <span className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'rgba(212,175,55,0.6)' }}>Step</span>
@@ -269,7 +269,7 @@ export default function GetStartedClient() {
                 {/* Note */}
                 {step.note && (
                   <div className="mb-6 flex gap-3 rounded-2xl border border-[#D4AF37]/15 bg-[#D4AF37]/5 p-4">
-                    <span className="mt-0.5 shrink-0 text-[#FFB81C]">
+                    <span className="mt-0.5 shrink-0 text-[#D4AF37]">
                       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
                         <path d="M8 7v5M8 5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -292,14 +292,14 @@ export default function GetStartedClient() {
                   {i < STEPS.length - 1 ? (
                     <button
                       onClick={() => setActiveStep(i + 1)}
-                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#FFB81C] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
+                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
                     >
                       Next →
                     </button>
                   ) : (
                     <Link
                       href="/editor"
-                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#FFB81C] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
+                      className="rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] px-6 py-2.5 text-sm font-bold text-[#09090b] transition-opacity hover:opacity-90"
                     >
                       Open the editor →
                     </Link>
@@ -329,7 +329,7 @@ export default function GetStartedClient() {
                 <div className="space-y-3">
                   {SECTIONS[key].map((item, idx) => (
                     <div key={idx} className="flex gap-3 rounded-2xl border border-white/[0.07] p-4" style={{ background: 'rgba(255,255,255,0.025)' }}>
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#FFB81C]/30 bg-[#FFB81C]/10 text-[10px] font-bold text-[#FFB81C]">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 text-[10px] font-bold text-[#D4AF37]">
                         {idx + 1}
                       </span>
                       <p className="text-sm leading-relaxed text-[#71717A]">{item}</p>

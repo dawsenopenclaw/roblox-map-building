@@ -155,7 +155,7 @@ export default function TokenGateCard() {
           width: '100%',
           padding: '10px',
           borderRadius: '10px',
-          background: 'linear-gradient(90deg, #D4AF37, #FFB81C)',
+          background: 'linear-gradient(90deg, #D4AF37, #D4AF37)',
           color: '#09090b',
           fontWeight: 700,
           fontSize: '13px',

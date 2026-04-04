@@ -19,10 +19,10 @@ const STATUS_CONFIG: Record<HealthStatus, { icon: React.ReactNode; label: string
     text: 'text-green-400',
   },
   degraded: {
-    icon: <AlertCircle className="w-4 h-4 text-[#FFB81C]" />,
+    icon: <AlertCircle className="w-4 h-4 text-[#D4AF37]" />,
     label: 'Degraded',
-    bg: 'bg-[#FFB81C]/10',
-    text: 'text-[#FFB81C]',
+    bg: 'bg-[#D4AF37]/10',
+    text: 'text-[#D4AF37]',
   },
   down: {
     icon: <XCircle className="w-4 h-4 text-red-400" />,

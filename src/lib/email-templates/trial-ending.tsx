@@ -31,7 +31,7 @@ export const TrialEndingEmail = ({
   const endDateLabel = trialEndDate
     ? trialEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : null
-  const urgencyColor = daysLeft <= 1 ? '#ff6b6b' : daysLeft <= 3 ? '#FFB81C' : '#4ade80'
+  const urgencyColor = daysLeft <= 1 ? '#ff6b6b' : daysLeft <= 3 ? '#D4AF37' : '#4ade80'
 
   return (
     <Html>
@@ -125,7 +125,7 @@ const container: React.CSSProperties = {
 const logoSection: React.CSSProperties = { padding: '28px 40px 20px', textAlign: 'center' }
 const logoText: React.CSSProperties = { fontSize: '28px', fontWeight: '700', margin: '0' }
 const logoWhite: React.CSSProperties = { color: '#ffffff' }
-const logoGold: React.CSSProperties = { color: '#FFB81C' }
+const logoGold: React.CSSProperties = { color: '#D4AF37' }
 const divider: React.CSSProperties = { borderColor: '#1e2347', margin: '0' }
 const heroSection: React.CSSProperties = { padding: '40px 40px 24px', textAlign: 'center' }
 const clockIcon: React.CSSProperties = { fontSize: '40px', margin: '0 0 12px' }
@@ -143,13 +143,13 @@ const subText: React.CSSProperties = {
 }
 const featureList: React.CSSProperties = {
   margin: '0 40px 24px',
-  backgroundColor: '#FFB81C0d',
-  border: '1px solid #FFB81C30',
+  backgroundColor: '#D4AF370d',
+  border: '1px solid #D4AF3730',
   borderRadius: '12px',
   padding: '20px 24px',
 }
 const featureLabel: React.CSSProperties = {
-  color: '#FFB81C',
+  color: '#D4AF37',
   fontSize: '11px',
   fontWeight: '700',
   letterSpacing: '2px',
@@ -163,7 +163,7 @@ const featureItem: React.CSSProperties = {
 }
 const ctaSection: React.CSSProperties = { padding: '8px 40px 32px', textAlign: 'center' }
 const primaryButton: React.CSSProperties = {
-  backgroundColor: '#FFB81C',
+  backgroundColor: '#D4AF37',
   borderRadius: '8px',
   color: '#000000',
   fontFamily: 'Inter, Arial, sans-serif',

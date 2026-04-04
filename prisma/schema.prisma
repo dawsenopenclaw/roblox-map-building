@@ -61,6 +61,12 @@ model User {
   referralsMade    Referral[] @relation("ReferrerReferrals")
   referralReceived Referral[] @relation("ReferredReferrals")
 
+  // Profile
+  bio             String?
+  twitterHandle   String?
+  discordHandle   String?
+  githubHandle    String?
+
   // Phone (for SMS notifications)
   phone           String?
 
@@ -82,6 +88,13 @@ model User {
   sentInvites     TeamInvite[]     @relation("SentInvites")
   teamActivities  TeamActivity[]   @relation("TeamActivities")
   projectVersions ProjectVersion[] @relation("ProjectVersions")
+
+  // Builds & Projects
+  builds   Build[]
+  projects Project[]
+
+  // Token Grant Jobs
+  tokenGrantJobs TokenGrantJob[]
 
   @@index([deletedAt])
   @@index([parentConsentTokenExp])
@@ -642,6 +655,7 @@ model Team {
   invites    TeamInvite[]
   versions   ProjectVersion[]
   activities TeamActivity[]
+  projects   Project[]
 
   @@index([ownerId])
   @@index([deletedAt])
@@ -932,6 +946,10 @@ enum NotificationType {
   ACHIEVEMENT_UNLOCKED
   SYSTEM
   WEEKLY_DIGEST
+  TEMPLATE_PURCHASED
+  PAYOUT_COMPLETED
+  REVIEW_RECEIVED
+  PAYOUT_FAILED
 }
 
 enum NotificationChannel {
@@ -999,6 +1017,7 @@ enum EarningStatus {
 model TokenGrantJob {
   id          String               @id @default(cuid())
   userId      String
+  user        User                 @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
   amount      Int
   type        TokenTransactionType
   description String
@@ -1074,12 +1093,13 @@ model GeneratedAsset {
 }
 
 // ─── Builds ──────────────────────────────────────────────────────────────────
-// ORPHAN WARNING: No db.build.* calls exist anywhere in the codebase.
-// This model is schema-only. Either wire it up or remove it in the next migration.
 
 model Build {
   id         String   @id @default(cuid())
   userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   buildType  String   @default("general")
   prompt     String   @db.Text
   tokensUsed Int      @default(0)
@@ -1087,22 +1107,27 @@ model Build {
   updatedAt  DateTime @updatedAt
 
   @@index([userId])
+  @@index([projectId])
   @@index([userId, createdAt])
   @@index([createdAt])
 }
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
-// ORPHAN WARNING: No db.project.* calls exist anywhere in the codebase.
-// This model is schema-only. Either wire it up or remove it in the next migration.
 
 model Project {
   id        String   @id @default(cuid())
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId    String?
+  team      Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
   name      String
   archived  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  builds Build[]
+
   @@index([userId])
+  @@index([teamId])
   @@index([userId, archived])
 }

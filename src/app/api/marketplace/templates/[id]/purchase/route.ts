@@ -3,8 +3,8 @@ import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
 import { stripe } from '@/lib/stripe'
 import Stripe from 'stripe'
-
-const PLATFORM_FEE_PERCENT = 0.30 // 30% platform fee, 70% to creator
+import { marketplaceWriteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { PLATFORM_FEE_PERCENT } from '@/lib/constants'
 
 // POST /api/marketplace/templates/[id]/purchase
 export async function POST(
@@ -21,6 +21,14 @@ export async function POST(
 
   if (!clerkId) {
     return NextResponse.json({ demo: true, message: 'Purchases are not available in demo mode' }, { status: 200 })
+  }
+
+  const rl = await marketplaceWriteRateLimit(clerkId)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests — please slow down' },
+      { status: 429, headers: rateLimitHeaders(rl) },
+    )
   }
 
   // Block purchases on demo templates (no DB)

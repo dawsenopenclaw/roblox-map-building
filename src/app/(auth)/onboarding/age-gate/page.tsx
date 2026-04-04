@@ -93,7 +93,7 @@ export default function AgeGatePage() {
             className="w-full rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none transition-colors [color-scheme:dark]"
             style={{
               background: '#1a1a1c',
-              border: `1px solid ${error ? 'rgba(239,68,68,0.5)' : dateOfBirth ? 'rgba(255,184,28,0.4)' : 'rgba(255,255,255,0.08)'}`,
+              border: `1px solid ${error ? 'rgba(239,68,68,0.5)' : dateOfBirth ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
               height: 40,
             }}
           />
@@ -108,7 +108,7 @@ export default function AgeGatePage() {
           disabled={loading || !dateOfBirth}
           className="w-full rounded-lg font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           style={{
-            background: '#FFB81C',
+            background: '#D4AF37',
             color: '#09090b',
             height: 40,
           }}

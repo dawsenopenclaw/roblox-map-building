@@ -210,7 +210,7 @@ export default function ApiKeysModal({ onClose }: ApiKeysModalProps) {
               flex: 1,
               background: saved
                 ? 'rgba(74,222,128,0.15)'
-                : 'linear-gradient(135deg, #D4AF37, #FFB81C)',
+                : 'linear-gradient(135deg, #D4AF37, #D4AF37)',
               color: saved ? '#4ADE80' : '#09090b',
               border: saved ? '1px solid rgba(74,222,128,0.3)' : 'none',
               borderRadius: 10,
