@@ -330,14 +330,21 @@ export default clerkMiddleware(async (auth, request) => {
     // If neither signal is present, we redirect to /dashboard and let the layout
     // remain the authoritative DB-role check for users not in ADMIN_EMAILS.
     if (userId && request.nextUrl.pathname.startsWith('/admin')) {
-      const sessionEmail = (claims?.email as string | undefined) ?? null
-      const sessionRole = (claims?.role as string | undefined) ?? null
+      const sessionEmail = (claims?.email as string | undefined)
+        ?? (claims?.primary_email_address as string | undefined)
+        ?? (claims?.primaryEmail as string | undefined)
+        ?? null
+      const sessionRole = (claims?.role as string | undefined)
+        ?? ((claims?.metadata as Record<string, unknown> | undefined)?.role as string | undefined)
+        ?? ((claims?.public_metadata as Record<string, unknown> | undefined)?.role as string | undefined)
+        ?? null
       const isAdminByEmail = isAdminEmail(sessionEmail)
       const isAdminByRole = sessionRole === 'ADMIN'
 
-      if (!isAdminByEmail && !isAdminByRole) {
-        // Redirect non-admin users to dashboard rather than sign-in — they are
-        // authenticated, just not authorised.
+      // If middleware can't determine admin status from JWT claims (no email
+      // in claims), let the request through — the server-side admin layout
+      // does a full DB check and will redirect non-admins from there.
+      if (sessionEmail && !isAdminByEmail && !isAdminByRole) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     }
