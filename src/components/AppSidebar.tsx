@@ -47,6 +47,13 @@ function IconMarketplace() {
     </svg>
   )
 }
+function IconGift() {
+  return (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+    </svg>
+  )
+}
 function IconTokens() {
   return (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -91,6 +98,7 @@ const NAV_MAIN = [
 const NAV_ACCOUNT = [
   { href: '/tokens',   label: 'Tokens',   Icon: IconTokens },
   { href: '/billing',  label: 'Billing',  Icon: IconBilling },
+  { href: '/gifts',    label: 'Gifts',    Icon: IconGift },
   { href: '/settings', label: 'Settings', Icon: IconGear },
 ]
 

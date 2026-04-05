@@ -87,6 +87,7 @@ export function ProfileButton() {
     { href: '/settings?tab=appearance', label: 'Appearance', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-1 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9z', adminOnly: false },
     { href: '/settings?tab=notifications', label: 'Notifications', icon: 'M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9', adminOnly: false },
     { href: '/billing', label: 'Billing', icon: 'M2 5h20v14H2z', adminOnly: false },
+    { href: '/gifts', label: 'Gifts', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7', adminOnly: false },
     { href: '/admin', label: 'Admin Dashboard', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2z', adminOnly: true },
     { href: '/admin/dev-board', label: 'Dev Board', icon: 'M3 3v18h18', adminOnly: true },
   ].filter((link) => !link.adminOnly || isAdmin)

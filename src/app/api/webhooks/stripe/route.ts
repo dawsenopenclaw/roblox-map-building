@@ -172,6 +172,15 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Gift purchase — record stripeSessionId so the gift is payment-confirmed
+        // Status stays 'pending' until the recipient redeems the code.
+        if (isPaid && session.metadata?.type === 'gift' && session.metadata.giftId) {
+          await db.gift.updateMany({
+            where: { id: session.metadata.giftId, stripeSessionId: null },
+            data: { stripeSessionId: session.id },
+          })
+        }
+
         // 10% charity donation on all real payments
         if (isPaid && session.amount_total && session.amount_total > 0) {
           if (!process.env.STRIPE_CHARITY_ACCOUNT_ID) {

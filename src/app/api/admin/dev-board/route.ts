@@ -25,6 +25,10 @@ export async function GET() {
     const thirtyDaysAgo = new Date(now)
     thirtyDaysAgo.setDate(now.getDate() - 30)
 
+    const startOfThisWeek = new Date(now)
+    startOfThisWeek.setDate(now.getDate() - 7)
+    startOfThisWeek.setHours(0, 0, 0, 0)
+
     const [
       // User counts
       totalUsers,
@@ -60,6 +64,13 @@ export async function GET() {
 
       // Projects (using ApiUsageRecord as proxy for "activity")
       totalProjects,
+
+      // Cost tracking
+      costToday,
+      costThisWeek,
+      costTotal30d,
+      costByProvider,
+      costSnapshots,
     ] = await Promise.all([
       // Total users
       db.user.count({ where: { deletedAt: null } }),
@@ -153,6 +164,41 @@ export async function GET() {
 
       // Total "projects" — use GeneratedAsset count as proxy
       db.generatedAsset.count(),
+
+      // Cost today
+      db.apiUsageRecord.aggregate({
+        where: { createdAt: { gte: startOfToday } },
+        _sum: { costUsdMicro: true },
+      }),
+
+      // Cost this week (last 7 days)
+      db.apiUsageRecord.aggregate({
+        where: { createdAt: { gte: startOfThisWeek } },
+        _sum: { costUsdMicro: true },
+      }),
+
+      // Cost last 30 days
+      db.apiUsageRecord.aggregate({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        _sum: { costUsdMicro: true },
+      }),
+
+      // Cost by provider (30d)
+      db.apiUsageRecord.groupBy({
+        by: ['provider'],
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        _count: { id: true },
+        _sum: { costUsdMicro: true },
+        orderBy: { _sum: { costUsdMicro: 'desc' } },
+        take: 10,
+      }),
+
+      // Daily cost snapshots for chart (30d)
+      db.dailyCostSnapshot.findMany({
+        where: { date: { gte: thirtyDaysAgo } },
+        orderBy: { date: 'asc' },
+        select: { date: true, totalCostUsdMicro: true },
+      }),
     ])
 
     // Compute MRR
@@ -253,6 +299,28 @@ export async function GET() {
         userEmail: a.user?.email ?? null,
         userName: a.user?.displayName ?? null,
       })),
+
+      // Cost breakdown
+      costBreakdown: {
+        costTodayCents: Math.round((costToday._sum.costUsdMicro ?? 0) / 10_000),
+        costThisWeekCents: Math.round((costThisWeek._sum.costUsdMicro ?? 0) / 10_000),
+        costTotal30dCents: Math.round((costTotal30d._sum.costUsdMicro ?? 0) / 10_000),
+        costByProvider: costByProvider.map((row) => ({
+          provider: row.provider,
+          calls: row._count.id,
+          costCents: Math.round((row._sum.costUsdMicro ?? 0) / 10_000),
+        })),
+        costChart: Array.from({ length: 30 }, (_, i) => {
+          const d = new Date(thirtyDaysAgo)
+          d.setDate(d.getDate() + i)
+          const dateStr = d.toISOString().slice(0, 10)
+          const match = costSnapshots.find((s) => s.date.toISOString().slice(0, 10) === dateStr)
+          return {
+            date: dateStr,
+            costCents: match ? Math.round(match.totalCostUsdMicro / 10_000) : 0,
+          }
+        }),
+      },
 
       fetchedAt: now.toISOString(),
     })

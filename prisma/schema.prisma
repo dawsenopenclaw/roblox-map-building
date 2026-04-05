@@ -70,6 +70,9 @@ model User {
   // Phone (for SMS notifications)
   phone           String?
 
+  // UI Preferences — theme, font, accent (cross-device sync)
+  preferences     Json?
+
   // Notifications & Earnings
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
@@ -95,6 +98,10 @@ model User {
 
   // Token Grant Jobs
   tokenGrantJobs TokenGrantJob[]
+
+  // Gifts
+  giftsSent     Gift[] @relation("GiftsSent")
+  giftsReceived Gift[] @relation("GiftsReceived")
 
   @@index([deletedAt])
   @@index([parentConsentTokenExp])
@@ -1130,4 +1137,31 @@ model Project {
   @@index([userId])
   @@index([teamId])
   @@index([userId, archived])
+}
+
+// ─── Gifts ────────────────────────────────────────────────────────────────────
+
+model Gift {
+  id              String    @id @default(cuid())
+  senderId        String
+  sender          User      @relation("GiftsSent", fields: [senderId], references: [id])
+  recipientEmail  String
+  giftType        String    // 'subscription' or 'tokens'
+  tier            String?   // for subscription gifts
+  tokenAmount     Int?      // for token gifts
+  message         String?
+  status          String    @default("pending") // pending, redeemed, expired
+  stripeSessionId String?   @unique
+  redeemCode      String    @unique
+  redeemedById    String?
+  redeemedBy      User?     @relation("GiftsReceived", fields: [redeemedById], references: [id])
+  redeemedAt      DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+
+  @@index([senderId])
+  @@index([recipientEmail])
+  @@index([redeemCode])
+  @@index([status])
+  @@index([expiresAt])
 }

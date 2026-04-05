@@ -10,7 +10,7 @@ import {
 import {
   DollarSign, Users, TrendingUp, Zap, Activity, BarChart3,
   ArrowUpRight, ArrowDownRight, Layers, Clock, Cpu, RefreshCw,
-  Coins, ChevronDown, ChevronUp,
+  Coins, ChevronDown, ChevronUp, Receipt,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -706,6 +706,166 @@ export function DevBoardClient() {
           )}
         </Panel>
       </div>
+
+      {/* ─── Service Costs ────────────────────────────────────────────────── */}
+      {d.costBreakdown && (() => {
+        const cb = d.costBreakdown as {
+          costTodayCents: number
+          costThisWeekCents: number
+          costTotal30dCents: number
+          costByProvider: Array<{ provider: string; calls: number; costCents: number }>
+          costChart: Array<{ date: string; costCents: number }>
+        }
+        const fmtUsd = (cents: number) =>
+          (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+
+        return (
+          <div className="space-y-4">
+            {/* Stat cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <StatCard
+                label="Cost Today"
+                value={Math.round(cb.costTodayCents / 100)}
+                prefix="$"
+                icon={Receipt}
+                accentColor="#EF4444"
+                sub="AI service spend"
+              />
+              <StatCard
+                label="Cost This Week"
+                value={Math.round(cb.costThisWeekCents / 100)}
+                prefix="$"
+                icon={Receipt}
+                accentColor="#F97316"
+              />
+              <StatCard
+                label="Cost 30d"
+                value={Math.round(cb.costTotal30dCents / 100)}
+                prefix="$"
+                icon={Receipt}
+                accentColor="#D4AF37"
+              />
+            </div>
+
+            {/* Charts row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Cost by provider horizontal bar */}
+              <Panel>
+                <h3 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+                  <Receipt className="w-4 h-4 text-[#D4AF37]" />
+                  Service Costs (30d)
+                </h3>
+                {cb.costByProvider.length > 0 ? (
+                  <div className="h-44">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={cb.costByProvider} layout="vertical">
+                        <defs>
+                          <linearGradient id="costBarGrad" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#D4AF37" stopOpacity={0.9} />
+                            <stop offset="100%" stopColor="#EF4444" stopOpacity={0.7} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                        <XAxis
+                          type="number"
+                          tick={{ fill: '#52525B', fontSize: 10 }}
+                          tickFormatter={(v: number) => `$${(v / 100).toFixed(2)}`}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          dataKey="provider"
+                          type="category"
+                          tick={{ fill: '#A1A1AA', fontSize: 11 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={80}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            background: '#111113',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}
+                          itemStyle={{ color: '#fff' }}
+                          /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                          formatter={((v: any) => [`${fmtUsd(v)}`, 'Cost']) as any}
+                        />
+                        <Bar dataKey="costCents" fill="url(#costBarGrad)" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-600 text-center py-8">No cost data yet</p>
+                )}
+              </Panel>
+
+              {/* Daily cost trend area chart */}
+              <Panel>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-[#EF4444]" />
+                    Daily Cost Trend
+                  </h3>
+                  <span className="text-xs text-zinc-600 tabular-nums">
+                    {fmtUsd(cb.costTotal30dCents)} total
+                  </span>
+                </div>
+                <div className="h-44">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={cb.costChart} margin={{ left: 0, right: 4 }}>
+                      <defs>
+                        <linearGradient id="costAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%"   stopColor="#EF4444" stopOpacity={0.4} />
+                          <stop offset="60%"  stopColor="#D4AF37" stopOpacity={0.1} />
+                          <stop offset="100%" stopColor="#EF4444" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: '#52525B', fontSize: 10 }}
+                        tickFormatter={(v: string) => v.slice(5)}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fill: '#52525B', fontSize: 10 }}
+                        tickFormatter={(v: number) => `$${(v / 100).toFixed(2)}`}
+                        axisLine={false}
+                        tickLine={false}
+                        width={52}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#111113',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '10px',
+                          fontSize: '12px',
+                        }}
+                        itemStyle={{ color: '#fff' }}
+                        labelStyle={{ color: '#71717A', marginBottom: 4 }}
+                        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                          formatter={((v: any) => [`${fmtUsd(v)}`, 'Cost']) as any}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="costCents"
+                        stroke="#EF4444"
+                        strokeWidth={2.5}
+                        fill="url(#costAreaGrad)"
+                        dot={false}
+                        activeDot={{ r: 4, fill: '#EF4444', stroke: '#111', strokeWidth: 2 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </Panel>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ─── Bottom Row: Templates + Activity ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
