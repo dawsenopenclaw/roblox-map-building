@@ -1787,7 +1787,7 @@ function EditorInner() {
   // Layout state — persisted to localStorage
   const [editorLayout, setEditorLayout] = useState<EditorLayout>(() => {
     if (typeof window === 'undefined') return 'default'
-    return (localStorage.getItem('fg_editor_layout') as EditorLayout) || 'default'
+    return (localStorage.getItem('fg_editor_layout') as EditorLayout) || 'minimal'
   })
 
   useEffect(() => {
@@ -2022,44 +2022,25 @@ function EditorInner() {
 
         {/* Main workspace: layout-conditional */}
         {editorLayout === 'minimal' ? (
-          /* ── Minimal: full-screen chat only ──────────────────────────────── */
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 6, position: 'relative' }}>
-            <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
-            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <ChatPanel
-                messages={chat.messages}
-                input={chat.input}
-                setInput={chat.setInput}
-                loading={chat.loading}
-                onSend={chat.sendMessage}
-                selectedModel={chat.selectedModel}
-                setSelectedModel={chat.setSelectedModel}
-                totalTokens={chat.totalTokens}
-                textareaRef={chat.textareaRef}
-                suggestions={chat.suggestions}
-                onRetry={handleRetry}
-                onBuildDifferently={handleBuildDifferently}
-                onDismiss={handleDismissError}
-                onEditAndResend={chat.editAndResend}
-                compact={false}
-              />
-            </div>
-            {/* Floating "Show Preview" toggle */}
-            {showMinimalPreview && previewParts.length > 0 && (
-              <div style={{ position: 'absolute', top: 16, right: 16, width: 320, height: 220, borderRadius: 12,
-                overflow: 'hidden', border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', zIndex: 10 }}>
-                <Viewport3D parts={previewParts} showGrid />
-              </div>
-            )}
-            <button
-              onClick={() => setShowMinimalPreview((v) => !v)}
-              aria-label={showMinimalPreview ? 'Hide preview' : 'Show preview'}
-              style={{ position: 'absolute', bottom: 16, right: 16, padding: '6px 14px', borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(8,12,28,0.85)',
-                color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                backdropFilter: 'blur(12px)', zIndex: 11 }}>
-              {showMinimalPreview ? 'Hide Preview' : 'Show Preview'}
-            </button>
+          /* ── Minimal: clean full-screen chat ─────────────────────────────── */
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '0 6px 6px' }}>
+            <ChatPanel
+              messages={chat.messages}
+              input={chat.input}
+              setInput={chat.setInput}
+              loading={chat.loading}
+              onSend={chat.sendMessage}
+              selectedModel={chat.selectedModel}
+              setSelectedModel={chat.setSelectedModel}
+              totalTokens={chat.totalTokens}
+              textareaRef={chat.textareaRef}
+              suggestions={chat.suggestions}
+              onRetry={handleRetry}
+              onBuildDifferently={handleBuildDifferently}
+              onDismiss={handleDismissError}
+              onEditAndResend={chat.editAndResend}
+              compact={false}
+            />
           </div>
         ) : editorLayout === 'cinematic' ? (
           /* ── Cinematic: fullscreen viewport + floating chat ───────────────── */

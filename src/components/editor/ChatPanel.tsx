@@ -1133,97 +1133,58 @@ function ShowcaseCard({
 // ─── Empty state / showcase ────────────────────────────────────────────────────
 
 function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void }) {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 80)
-    return () => clearTimeout(t)
-  }, [])
-
   return (
     <div
       style={{
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: 12,
-        padding: '12px 4px 8px',
-        transition: 'opacity 0.35s ease-out, transform 0.35s ease-out',
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0)' : 'translateY(12px)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        padding: '40px 20px',
       }}
     >
-      {/* Compact header with glowing orb */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Floating glow orb */}
-        <div
-          style={{
-            position: 'relative',
-            width: 44,
-            height: 44,
-            flexShrink: 0,
-            animation: 'orbFloat 4s ease-in-out infinite',
-          }}
-        >
-          {/* Outer glow ring */}
-          <div
-            style={{
-              position: 'absolute',
-              inset: -6,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 70%)',
-              animation: 'orbGlowPulse 3s ease-in-out infinite',
-            }}
-          />
-          {/* Core orb */}
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 38% 35%, rgba(255,220,80,0.22) 0%, rgba(212,175,55,0.14) 40%, rgba(212,175,55,0.06) 70%, transparent 100%)',
-              border: '1px solid rgba(212,175,55,0.22)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              boxShadow: '0 0 20px rgba(212,175,55,0.1), inset 0 1px 0 rgba(255,255,255,0.08)',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-              <path d="M11 2L13 7.5H19L14 11l2 6.5L11 14l-4.5 3.5 2-6.5L3 7.5h6L11 2z" fill="#D4AF37" opacity={0.95}/>
-            </svg>
-          </div>
-        </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fafafa', fontFamily: 'Inter, sans-serif', letterSpacing: '-0.01em' }}>
-            What do you want to build?
-          </h2>
-          <p style={{ margin: '3px 0 0', fontSize: 11, color: 'rgba(255,255,255,0.28)', fontFamily: 'Inter, sans-serif' }}>
-            Pick a starter or describe anything
-          </p>
-        </div>
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fafafa', letterSpacing: '-0.02em' }}>
+          What do you want to build?
+        </h2>
+        <p style={{ margin: '8px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
+          Describe anything — terrain, buildings, cities, props
+        </p>
       </div>
 
-      {/* Horizontal scrollable showcase */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          overflowX: 'auto',
-          paddingBottom: 4,
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'rgba(255,255,255,0.06) transparent',
-        }}
-      >
-        {SHOWCASE_EXAMPLES.map((ex, i) => (
-          <ShowcaseCard
-            key={ex.label}
-            example={ex}
-            delay={i * 40}
-            onSelect={onQuickAction}
-          />
+      {/* 3 simple suggestion chips */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 500 }}>
+        {[
+          'Build me a medieval castle',
+          'Create a mountain terrain',
+          'Make a cozy cafe interior',
+        ].map((prompt) => (
+          <button
+            key={prompt}
+            onClick={() => onQuickAction(prompt)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 20,
+              border: '1px solid rgba(212,175,55,0.2)',
+              background: 'rgba(212,175,55,0.06)',
+              color: 'rgba(212,175,55,0.8)',
+              fontSize: 13,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(212,175,55,0.12)'
+              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
+              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
+            }}
+          >
+            {prompt}
+          </button>
         ))}
       </div>
     </div>
@@ -1738,7 +1699,7 @@ export function ChatPanel({
       style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       {/* MCP Toolbar — always visible at the top */}
-      {!compact && <McpToolbar />}
+      {/* McpToolbar hidden — keep UI clean */}
 
       {/* Messages area — hidden in compact mode */}
       <div
@@ -1837,8 +1798,8 @@ export function ChatPanel({
           position: 'relative',
         }}
       >
-        {/* MCP quick-action buttons */}
-        {!compact && (
+        {/* MCP quick-action buttons — hidden for clean UI */}
+        {false && !compact && (
           <McpQuickActions
             onAction={(prompt) => {
               setInput(prompt)
