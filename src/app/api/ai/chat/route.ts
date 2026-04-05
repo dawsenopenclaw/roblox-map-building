@@ -4704,10 +4704,8 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                 const historyForFallback = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
                 const fallback = await freeModelTwoPass(message, intent, historyForFallback, cameraContext, sessionId)
                 if (fallback) {
-                  // Write fallback text as stream chunks
-                  let fallbackText = fallback.conversationText
-                  if (fallback.luauCode) fallbackText += '\n\n```lua\n' + fallback.luauCode + '\n```'
-                  await writer.write(enc.encode(fallbackText))
+                  // Write only conversation text — code already sent to Studio
+                  await writer.write(enc.encode(fallback.conversationText))
                   const { suggestions: fallbackSuggestions } = extractSuggestions(fallback.conversationText)
                   const metaChunk = '\x00' + JSON.stringify({
                     __meta: true,
@@ -4891,12 +4889,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         return undefined
       })()
       if (wantsStream) {
-        // Compose display text: conversation + hidden code block for extraction
-        let streamText = twoPassResult.conversationText
-        if (twoPassResult.luauCode) {
-          streamText += '\n\n```lua\n' + twoPassResult.luauCode + '\n```'
-        }
-        return toStreamResponse(streamText, {
+        // Stream only conversation text — code is already sent to Studio via sendCodeToStudio.
+        // Including code blocks in the stream causes the frontend code-stripping regex to
+        // sometimes strip the entire response, leaving the chat bubble empty.
+        return toStreamResponse(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
