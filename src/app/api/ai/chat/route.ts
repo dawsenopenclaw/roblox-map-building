@@ -831,8 +831,8 @@ DETAIL EXAMPLES (what 30+ parts looks like):
     // Race both models for code gen — first valid result wins
     console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
     const codeRace = await raceNonNull(
-      callGemini(codePrompt, buildInstruction, [], 4096),
-      callGroq(codePrompt, buildInstruction, [], 4096),
+      callGemini(codePrompt, buildInstruction, [], 8192),
+      callGroq(codePrompt, buildInstruction, [], 8192),
     )
 
     if (codeRace) {
@@ -5891,7 +5891,7 @@ Group in a Model, set PrimaryPart to the base/largest part.
 
 Output ONLY the code inside \`\`\`lua fences. No explanation.`,
       [],
-      4096,
+      8192,
     )
     if (lastChanceCode) {
       let luau = extractLuauCode(lastChanceCode)
