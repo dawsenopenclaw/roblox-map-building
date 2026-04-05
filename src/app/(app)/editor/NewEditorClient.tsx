@@ -2647,8 +2647,8 @@ function EditorInner() {
     },
   })
 
-  // Build history from chat messages
-  const buildHistory = chat.messages
+  // Chat-derived build list (used by BuildHistoryItem in sidebar — legacy, kept for reference)
+  const chatBuildList = chat.messages
     .filter((m) => m.role === 'user')
     .map((m) => ({
       id: m.id,
@@ -3081,6 +3081,7 @@ function EditorInner() {
                         {sidebarPanel === 'generate' && 'Generate Asset'}
                         {sidebarPanel === 'settings' && 'Settings'}
                         {sidebarPanel === 'history' && 'Chat History'}
+                        {sidebarPanel === 'builds' && 'Build History'}
                         {sidebarPanel === 'context' && 'AI Context'}
                         {sidebarPanel === 'help' && 'Help'}
                         {sidebarPanel === 'preview' && 'Studio Preview'}
@@ -3129,6 +3130,16 @@ function EditorInner() {
                           onDeleteSession={chat.deleteSession}
                           onClearAll={() => { chat.clearAllSessions(); setSidebarPanel(null) }}
                           onNewChat={() => { chat.newChat(); setSidebarPanel(null) }}
+                        />
+                      )}
+                      {sidebarPanel === 'builds' && (
+                        <BuildHistorySidebarPanel
+                          entries={buildHistory.entries}
+                          onRerun={(entry) => {
+                            chat.sendMessage(entry.prompt)
+                            setSidebarPanel(null)
+                          }}
+                          onClear={buildHistory.clearAll}
                         />
                       )}
                       {sidebarPanel === 'context' && (
@@ -3224,6 +3235,9 @@ function EditorInner() {
                     active={sidebarPanel === 'generate'} onClick={() => toggleSidebar('generate')} />
                   <SidebarButton icon={<IconHistory />} label="Chat History" shortcut="⌘H"
                     active={sidebarPanel === 'history'} onClick={() => toggleSidebar('history')} />
+                  <SidebarButton icon={<IconBuildHistory />} label="Build History"
+                    active={sidebarPanel === 'builds'} onClick={() => toggleSidebar('builds')}
+                    badge={buildHistory.entries.length > 0 ? 'active' : undefined} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
                     active={sidebarPanel === 'settings'} onClick={() => toggleSidebar('settings')} />
                   <SidebarButton icon={<IconContext />} label="AI Context" shortcut="⌘A"
@@ -3256,6 +3270,9 @@ function EditorInner() {
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('generate') }} />
                   <SidebarButton icon={<IconHistory />} label="Chat History" shortcut="⌘H"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('history') }} />
+                  <SidebarButton icon={<IconBuildHistory />} label="Build History"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('builds') }}
+                    badge={buildHistory.entries.length > 0 ? 'active' : undefined} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('settings') }} />
                   <SidebarButton icon={<IconContext />} label="AI Context" shortcut="⌘A"

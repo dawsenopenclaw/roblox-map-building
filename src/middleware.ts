@@ -36,6 +36,8 @@ const isPublicRoute = createRouteMatcher([
   '/pricing',
   // Editor — guest mode with limited functionality (auth adds save/sync features)
   '/editor(.*)',
+  // Game templates marketplace — public so visitors can browse before signing up
+  '/templates(.*)',
   '/docs(.*)',
   '/download(.*)',
   '/showcase(.*)',
