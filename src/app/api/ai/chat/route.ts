@@ -537,8 +537,10 @@ const CODE_GENERATION_PROMPT = `You are a Roblox Luau code generator. Output ONL
 
 TEMPLATE (adapt for each build):
 \`\`\`lua
+--!strict
 local CH=game:GetService("ChangeHistoryService")
 local CS=game:GetService("CollectionService")
+local RS=game:GetService("RunService")
 local rid=CH:TryBeginRecording("ForjeAI")
 local cam=workspace.CurrentCamera
 local sp=cam.CFrame.Position+cam.CFrame.LookVector*30
@@ -547,46 +549,96 @@ local groundY=groundRay and groundRay.Position.Y or sp.Y
 sp=Vector3.new(sp.X,groundY,sp.Z)
 _forje_state=_forje_state or {}
 
-local map=workspace:FindFirstChild("Map") or Instance.new("Model")
-map.Name="Map" map.Parent=workspace
-local function getFolder(n)
-  local f=map:FindFirstChild(n) or Instance.new("Folder")
-  f.Name=n f.Parent=map return f
+-- CONFIG (frozen — no mutation after init)
+local CONFIG = table.freeze({
+  TAG = "ForjeAI",
+  DEFAULT_FOLDER = "Buildings",
+  SHADOW_MIN_SIZE = 2,
+})
+
+local map: Model = workspace:FindFirstChild("Map") :: Model or Instance.new("Model")
+map.Name="Map"
+map.Parent=workspace
+
+-- HELPERS
+local function getFolder(n: string): Folder
+  local f = map:FindFirstChild(n) :: Folder or Instance.new("Folder")
+  f.Name=n
+  f.Parent=map
+  return f
 end
-local function vc(base,v)
+
+local function vc(base: Color3, v: number?): Color3
   local h,s,val=Color3.toHSV(base)
   return Color3.fromHSV(h,s,math.clamp(val+(math.random()-0.5)*(v or 0.1),0,1))
 end
-local function P(name,cf,size,mat,col,parent)
+
+local function P(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3, parent: Instance?): Part
   local p=Instance.new("Part")
-  p.Name=name p.CFrame=cf p.Size=size p.Material=mat p.Color=col
-  p.Anchored=true p.CastShadow=(size.X>2 and size.Y>2)
+  p.Name=name
+  p.CFrame=cf
+  p.Size=size
+  p.Material=mat
+  p.Color=col
+  p.Anchored=true
+  p.CastShadow=(size.X>CONFIG.SHADOW_MIN_SIZE and size.Y>CONFIG.SHADOW_MIN_SIZE)
   p.CollisionFidelity=Enum.CollisionFidelity.Box
-  p.Parent=parent or getFolder("Buildings")
+  p.Parent=parent or getFolder(CONFIG.DEFAULT_FOLDER)
   return p
 end
 
+-- MAIN LOGIC
 local ok,err=pcall(function()
   -- BUILD HERE (use P(), getFolder(), vc(), CFrame.new(sp+Vector3.new(x,y,z)))
 end)
 
-CS:AddTag(map,"ForjeAI")
+-- CLEANUP
+CS:AddTag(map,CONFIG.TAG)
 game:GetService("Selection"):Set({map})
 _forje_state.lastBuild=map
-if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
+if rid then
+  CH:FinishRecording(rid, ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel)
+end
 if not ok then warn("[ForjeAI] "..tostring(err)) end
 \`\`\`
 
-RULES:
+TYPE ANNOTATION RULES:
+- Always start with --!strict at the top of every script
+- Annotate ALL function parameters: function foo(name: string, count: number): boolean
+- Annotate local variables when type is ambiguous: local x: number = 0
+- Use type aliases for complex shapes: type WeightedItem = {item: string, weight: number}
+- NEVER use untyped tables when the shape is known
+
+VARIABLE RULES:
+- ALWAYS use local — never globals except _forje_state (which is intentionally global for cross-run state)
+- Declare variables close to their use site
+- Use table.freeze() on all config tables: local CONFIG = table.freeze({...})
+
+CODE STRUCTURE (always in this order):
+  1. --!strict + services (game:GetService)
+  2. CONFIG table (table.freeze)
+  3. Helper functions
+  4. Main logic (inside pcall)
+  5. Cleanup (tags, selection, ChangeHistory commit)
+
+FORMATTING:
+- One statement per line — never chain: p.Name=n p.Parent=x on the same line
+- Indent with 2 spaces consistently
+- Space around operators: a + b, not a+b (exception: compact helpers are ok inside template functions)
+- Blank line between logical sections
+
+BUILD RULES:
 - NEVER use game.Players, LocalPlayer, Character, wait() — Edit Mode only
 - NEVER use BrickColor — use Color3.fromRGB()
-- Set Parent LAST always
+- NEVER use game.Workspace — use the workspace global directly
+- Set Parent LAST always — never Instance.new("Part", parent)
 - Use realistic scale: DOOR=7.5 tall, CEILING=11, STREET=27 wide, CHARACTER=6
 - Materials: Brick/Concrete/Granite for buildings, Metal/DiamondPlate for metal, Glass(0.3-0.6 transparency), WoodPlanks for wood, Neon ONLY for lights/signs
 - Add PointLight to light sources (Brightness=4, Range=40, Color=255,200,130)
 - Name every part descriptively
 - Vary colors slightly with vc() for natural look
 - Position relative to sp (camera front)
+- Use for i,v in t do (not pairs/ipairs — modern Luau generalized iteration)
 
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230
 
@@ -5122,7 +5174,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const { getRedis } = await import('@/lib/redis')
         const redis = getRedis()
         if (redis) {
-          const GUEST_LIMIT = 3 // 3 messages/day for guests — must sign up for more
+          const GUEST_LIMIT = 20 // ~100 tokens worth of messages/day (~5 tokens per message avg)
           const DAY_SEC = 86400
           const dayBucket = Math.floor(Date.now() / 1000 / DAY_SEC)
           const key = `rl:guest:ip:${clientIp}:${DAY_SEC}:${dayBucket}`
@@ -5136,12 +5188,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           if (count > GUEST_LIMIT) {
             return NextResponse.json(
               {
-                error: 'Guest message limit reached. Sign up for free to continue.',
+                error: 'You\'ve used your 100 free tokens. Sign up for free to keep building!',
                 signUpRequired: true,
               },
               {
                 status: 429,
-                headers: rateLimitHeaders({ allowed: false, limit: 3, remaining: 0, resetAt }),
+                headers: rateLimitHeaders({ allowed: false, limit: 20, remaining: 0, resetAt }),
               },
             )
           }

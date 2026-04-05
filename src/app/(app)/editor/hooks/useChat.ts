@@ -64,7 +64,7 @@ export const MODELS: ModelOption[] = [
   { id: 'custom-google',    label: 'Gemini Pro',        provider: 'Your Key',  color: '#4285F4', badge: 'PRO' },
 ]
 
-const GUEST_MESSAGE_LIMIT = 3 // must match server GUEST_LIMIT in api/ai/chat/route.ts
+const GUEST_TOKEN_LIMIT = 100 // guests get 100 free tokens before signup required
 
 const BUILD_KEYWORDS = ['build', 'generate 3d', 'create mesh', 'make a 3d', 'generate mesh', '3d model', 'mesh:']
 
@@ -307,16 +307,18 @@ export function useChat(options: UseChatOptions = {}) {
 
       setMessagesSync((prev) => [...prev, userMsg, statusMsg])
 
-      // Guest limit
-      if (!user && guestMessageCount >= GUEST_MESSAGE_LIMIT) {
-        setMessagesSync((prev) => [
-          ...prev.filter((m) => m.id !== statusMsgId),
-          { id: uid(), role: 'signup', content: '', timestamp: new Date() },
-        ])
-        setLoading(false)
-        return
+      // Guest token limit — 100 free tokens before signup required
+      if (!user) {
+        const usedTokens = Number(typeof window !== 'undefined' ? localStorage.getItem('fg_guest_tokens') ?? '0' : '0')
+        if (usedTokens >= GUEST_TOKEN_LIMIT) {
+          setMessagesSync((prev) => [
+            ...prev.filter((m) => m.id !== statusMsgId),
+            { id: uid(), role: 'signup', content: '', timestamp: new Date() },
+          ])
+          setLoading(false)
+          return
+        }
       }
-      if (!user) setGuestMessageCount((c) => c + 1)
 
       try {
         // Build headers (custom API key support)
@@ -461,6 +463,12 @@ export function useChat(options: UseChatOptions = {}) {
 
           const tokensUsed = meta.tokensUsed ?? estimateTokens(trimmed)
           setTotalTokens((prev) => prev + tokensUsed)
+
+          // Track guest token usage in localStorage
+          if (!user && typeof window !== 'undefined') {
+            const prev = Number(localStorage.getItem('fg_guest_tokens') ?? '0')
+            localStorage.setItem('fg_guest_tokens', String(prev + tokensUsed))
+          }
 
           // Handle API error in meta (e.g. rate limit, AI failure)
           if ((meta as Record<string, unknown>).error) {
@@ -647,6 +655,12 @@ export function useChat(options: UseChatOptions = {}) {
           const tokensUsed = data.tokensUsed ?? estimateTokens(trimmed)
 
           setTotalTokens((prev) => prev + tokensUsed)
+
+          // Track guest token usage in localStorage
+          if (!user && typeof window !== 'undefined') {
+            const prev = Number(localStorage.getItem('fg_guest_tokens') ?? '0')
+            localStorage.setItem('fg_guest_tokens', String(prev + tokensUsed))
+          }
 
           if (data.suggestions && data.suggestions.length > 0) {
             setSuggestions(data.suggestions)
