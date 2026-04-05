@@ -44,7 +44,7 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 interface CuratedAsset {
   id: number
   name: string
-  category: 'nature' | 'prop' | 'building' | 'vehicle' | 'furniture' | 'character' | 'light' | 'sign' | 'fence' | 'scifi' | 'fantasy' | 'horror' | 'food' | 'weapon' | 'medieval' | 'industrial' | 'sport'
+  category: 'nature' | 'prop' | 'building' | 'vehicle' | 'furniture' | 'character' | 'light' | 'sign' | 'fence' | 'scifi' | 'fantasy' | 'horror' | 'food' | 'weapon' | 'medieval' | 'industrial' | 'sport' | 'sports'
   tags: string[]
   /** Suggested uniform scale applied after insert (1 = no change) */
   scale: number
@@ -3389,6 +3389,81 @@ COMMON PATTERNS ACROSS TOP GAMES:
   4. Daily reward hook for retention
   5. Premium currency that feels optional but desirable
   6. Robux purchases for cosmetics/speed, never pay-to-win gameplay
+
+=== TRENDING ROBLOX GAME STYLES 2025-2026 — WHAT KIDS ACTUALLY PLAY ===
+
+TOWER DEFENSE (Toilet TD, All Star TD — 5B+ combined visits):
+  Core loop: place towers on grid → enemies walk path → towers auto-shoot → earn currency → buy better towers → harder waves
+  Why it works: strategic depth + collection mechanic (unlock new tower characters) + social (co-op with friends)
+  Key features: wave counter, tower upgrade levels, boss waves every 5 rounds, star rating per map, tower fusion/merging
+  Monetization: premium towers (Robux), double rewards pass, exclusive tower packs
+
+ANIME FIGHTING (Strongest Battlegrounds, Anime Adventures — 10B+ visits):
+  Core loop: unlock abilities/stands → practice combos → fight players → climb ranked ladder
+  Why it works: skill expression + anime IP recognition + competitive PvP + satisfying combat feel
+  Key features: M1 combo chains, special abilities (Q/E/R/F), blocking, dodging, knockback, ragdoll on KO
+  Monetization: character/skin unlocks, battle pass, ability reroll
+
+FIND THE [X] (Find the Markers, Find the Memes — 3B+ visits):
+  Core loop: explore map → find hidden items → collect → track progress → completionist drive
+  Why it works: low pressure, explore at own pace, show off rare finds, badges for completion %
+  Key features: 50-100 items hidden creatively, progress grid GUI, morphs/badges on find, hints system
+  Monetization: hint packs, exclusive morph packs, double find radius
+
+CLICKING/IDLE SIMULATOR (Pet Sim X, Clicking Legends — 15B+ combined):
+  Core loop: click → earn → upgrade → rebirth → multiply → bigger numbers → new zones → repeat
+  Why it works: instant gratification, number go up dopamine, pet collection, showing off wealth
+  Key features: MASSIVE numbers (use abbreviations), rebirths, auto-farm upgrades, egg hatching, trading
+  Monetization: premium eggs, auto-hatch pass, 2x coins, exclusive pets, premium zones
+
+HORROR/STORY (Doors, The Mimic, Apeirophobia — 8B+ combined):
+  Core loop: enter room → solve/survive → progress → encounter monster → hide/run → reach exit
+  Why it works: adrenaline, jump scares, shared fear with friends, mystery/lore, achievement of beating it
+  Key features: monster AI chase, hiding spots, flashlight, stamina, key puzzles, jump scare moments, death screen
+  Monetization: revive tokens, flashlight skins, extra lives, skip room
+
+MERGE/FUSION (Merge Miners, Merge Tycoon):
+  Core loop: tap to spawn items → drag to merge same-tier items → higher tier = more value → sell/use → expand
+  Why it works: satisfying merge animation, collection, simple touch controls, idle progress
+  Key features: merge grid, tier system (1-20), auto-merge upgrade, prestige, lucky merge (skip tiers)
+
+OBBY/PARKOUR (Tower of Hell, Only Up — 5B+ combined):
+  Core loop: jump → platform → harder platform → checkpoint → harder → summit → celebrate
+  Why it works: skill challenge, competitive (race friends), visible progress (height = progress)
+  Key features: kill bricks, moving platforms, spinners, wall jumps, tightropes, timer, leaderboard
+  Monetization: checkpoint saves, skip stage, trail effects, death counter display
+
+BATTLE ROYALE (BedWars, Arsenal — 10B+ combined):
+  Core loop: drop into map → loot weapons → fight → shrink zone → last alive wins
+  Why it works: high stakes, skill-based, different every match, squad play
+  Key features: weapon tiers (grey→green→blue→purple→gold), building, storm/zone, respawn modes
+  Monetization: skins, battle pass, emotes, weapon wraps
+
+TYCOON (various — evergreen genre):
+  Core loop: dropper → conveyor → sell → upgrade → expand → rebirth → prestige
+  Why it works: satisfying progression, building ownership, visual growth, simple to understand
+  Key features: upgrade buttons around plot, rebirth portal, auto-collect, special machines, PvP tycoon wars
+  Monetization: 2x cash, auto-collect pass, premium machines, bigger plot
+
+SOCIAL/ROLEPLAY (Brookhaven, Berry Avenue — 30B+ combined):
+  Core loop: pick role → get house/vehicle → interact with others → live virtual life
+  Why it works: self-expression, social interaction, imagination-driven, no lose condition
+  Key features: house customization, vehicle variety, job system, outfit changes, emotes, pets
+  Monetization: premium houses, exclusive vehicles, VIP gamepass
+
+WHEN A USER ASKS FOR A TRENDING GAME: Use these patterns. Don't invent mechanics — copy what WORKS. The most successful Roblox games all share: instant hook (first 30s), visible progression (first 2 min), social moment (first 5 min), daily retention hook, and clear monetization path.
+
+=== ENGAGEMENT HOOKS — KEEP PLAYERS COMING BACK ===
+1. FIRST 10 SECONDS: Free reward + character customization + exciting visual
+2. FIRST 30 SECONDS: Tutorial that GIVES something (weapon, pet, currency)
+3. FIRST 2 MINUTES: Level up or earn enough to buy first upgrade
+4. FIRST 5 MINUTES: Social interaction (trading, showing off, competing)
+5. SESSION END: Tease what's coming ("3 more kills to unlock Dragon Sword!")
+6. DAILY HOOK: Login reward calendar, daily quests, streak bonuses
+7. WEEKLY HOOK: Limited-time events, rotating shop, weekly challenges
+8. FOMO: Limited edition items, countdown timers, "X players own this"
+9. SOCIAL PROOF: Leaderboards, "X players online", friend activity feed
+10. INVESTMENT: The more they play, the more they have to lose by leaving
 
 === SMART INTERPRETATION — UNDERSTAND WHAT THEY REALLY WANT ===
 
