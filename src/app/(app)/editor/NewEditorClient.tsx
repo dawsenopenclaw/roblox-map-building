@@ -2041,6 +2041,7 @@ function EditorInner() {
 
   return (
     <div
+      className="page-fade-in"
       style={{
         position: 'relative',
         width: '100vw',
