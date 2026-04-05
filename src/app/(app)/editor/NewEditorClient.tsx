@@ -512,73 +512,94 @@ function ViewportArea({
             </p>
           </div>
 
-          {/* ── STEP 1: Download Plugin ────────────────────────── */}
-          <div style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: 12, padding: '20px 20px', border: '1px solid rgba(212,175,55,0.15)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(212,175,55,0.15)', border: '1.5px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#D4AF37' }}>1</span>
+          {/* ── Progress Steps (matches /download page) ────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, marginBottom: 4 }}>
+            {['Download', 'Install', 'Restart Studio', 'Connect'].map((label, i) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700,
+                    background: i === 0 ? '#D4AF37' : '#1A2550',
+                    color: i === 0 ? '#000' : '#8B95B0',
+                  }}>{i + 1}</div>
+                  <span style={{ fontSize: 10, fontWeight: 500, color: i === 0 ? '#D4AF37' : '#8B95B0' }}>{label}</span>
+                </div>
+                {i < 3 && <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.08)', margin: '0 4px', marginBottom: 16 }} />}
               </div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>Download &amp; Install the Plugin</span>
+            ))}
+          </div>
+
+          {/* ── STEP 1: Download Plugin ────────────────────────── */}
+          <div style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(255,255,255,0.02) 100%)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(212,175,55,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.15)', border: '1.5px solid rgba(212,175,55,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#D4AF37' }}>1</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Download the Plugin</span>
             </div>
-            <div style={{ paddingLeft: 42, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ paddingLeft: 38, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <a
-                href="/api/studio/plugin"
+                href="/plugin/ForjeGames.rbxmx"
                 download="ForjeGames.rbxmx"
                 style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                  padding: '14px 28px', borderRadius: 10,
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 50%, #C9A227 100%)',
-                  color: '#030712', fontSize: 14, fontWeight: 800, textDecoration: 'none',
-                  boxShadow: '0 4px 24px rgba(212,175,55,0.3), 0 0 0 1px rgba(212,175,55,0.2)',
-                  transition: 'all 0.2s', letterSpacing: '0.01em',
-                  width: '100%', maxWidth: 320,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '10px 22px', borderRadius: 10,
+                  background: '#D4AF37',
+                  color: '#030712', fontSize: 13, fontWeight: 800, textDecoration: 'none',
+                  boxShadow: '0 4px 20px rgba(212,175,55,0.25)',
+                  transition: 'all 0.2s', width: 'fit-content',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10m0 0L4.5 7.5M8 11l3.5-3.5M2 13h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M8 1v10m0 0L4.5 7.5M8 11l3.5-3.5M2 13h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 Download ForjeGames.rbxmx
               </a>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
-                <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Install in 4 steps:</strong>
-                <br />
-                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>1.</span> Open <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Roblox Studio</strong>
-                <br />
-                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>2.</span> Click the <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins</strong> tab → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins Folder</strong>
-                <br />
-                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>3.</span> Drag <span style={{ color: '#D4AF37', fontFamily: 'monospace', fontWeight: 600 }}>ForjeGames.rbxmx</span> into that folder
-                <br />
-                <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>4.</span> <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Restart Studio</strong> and open any place
-              </div>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>96 KB &bull; .rbxmx &bull; Works with Studio 2024+</span>
             </div>
           </div>
 
-          {/* ── STEP 2: Enable HTTP + Open Place ────────────────────────── */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '18px 20px', border: '1px solid rgba(255,255,255,0.06)' }}>
+          {/* ── STEP 2: Install (copy to Plugins folder) ──────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1.5px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#D4AF37' }}>2</span>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1.5px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#D4AF37' }}>2</span>
               </div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: 'white' }}>Open a Place &amp; Enable HTTP</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Copy to Plugins Folder</span>
             </div>
-            <div style={{ paddingLeft: 42, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
-              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>1.</span> Open any place (Baseplate or your game)
-              <br />
-              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>2.</span> Go to <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Home</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Game Settings</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Security</strong>
-              <br />
-              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>3.</span> Turn on <strong style={{ color: '#D4AF37' }}>Allow HTTP Requests</strong>
-              <br />
-              <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 6, background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.12)', fontSize: 11, color: 'rgba(212,175,55,0.7)' }}>
-                This is required for the plugin to communicate with ForjeGames. You only need to do this once per place.
-              </div>
+            <div style={{ paddingLeft: 38, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+              In Studio: <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins</strong> tab → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Plugins Folder</strong> → drag <span style={{ color: '#D4AF37', fontFamily: 'monospace', fontWeight: 600 }}>ForjeGames.rbxmx</span> in
+              <br /><br />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                Or copy manually to:<br />
+                <span style={{ fontFamily: 'monospace', color: 'rgba(212,175,55,0.6)' }}>%LOCALAPPDATA%\Roblox\Plugins\</span>
+              </span>
             </div>
           </div>
 
-          {/* ── STEP 3: Connect with Code ────────────────────────── */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '16px 18px', border: hasCode ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.3s' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: hasCode ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.3s' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#D4AF37' }}>3</span>
+          {/* ── STEP 3: Restart Studio + Enable HTTP ──────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(212,175,55,0.12)', border: '1.5px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#D4AF37' }}>3</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Pair with a Connection Code</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Restart Studio &amp; Enable HTTP</span>
+            </div>
+            <div style={{ paddingLeft: 38, fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7 }}>
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>1.</span> <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Fully close</strong> and reopen Roblox Studio
+              <br />
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>2.</span> Open any place (Baseplate works)
+              <br />
+              <span style={{ display: 'inline-block', width: 18, color: '#D4AF37', fontWeight: 600 }}>3.</span> <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Home</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Game Settings</strong> → <strong style={{ color: 'rgba(255,255,255,0.6)' }}>Security</strong> → Enable <strong style={{ color: '#D4AF37' }}>Allow HTTP Requests</strong>
+            </div>
+          </div>
+
+          {/* ── STEP 4: Connect with Code ────────────────────────── */}
+          <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: '16px 18px', border: hasCode ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.06)', transition: 'border-color 0.3s' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: hasCode ? 'rgba(212,175,55,0.2)' : 'rgba(212,175,55,0.12)', border: '1.5px solid rgba(212,175,55,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.3s' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#D4AF37' }}>4</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>Connect with Code</span>
             </div>
 
             <div style={{ paddingLeft: 38 }}>
