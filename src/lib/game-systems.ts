@@ -2244,6 +2244,1219 @@ print("[TradingServer] Ready")
 `,
 }
 
+// ─── 11. Data Save System ─────────────────────────────────────────────────────
+
+const DATA_SAVE_SERVER: GameSystemFile = {
+  filename: 'DataSaveServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- DataSaveServer (ServerScript → ServerScriptService)
+-- ProfileService-style DataStore with retry, session-lock protection, auto-save,
+-- and a clean public API so other server scripts can read/write player data.
+
+local Players          = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService       = game:GetService("RunService")
+
+local DS = DataStoreService:GetDataStore("PlayerDataV1")
+
+-- ── Default profile template ──────────────────────────────────────────────────
+-- Add every field your game needs here. Missing fields are auto-added on load.
+type PlayerData = {
+	coins:      number,
+	gems:       number,
+	level:      number,
+	xp:         number,
+	playtime:   number,   -- seconds
+	joinDate:   number,   -- os.time()
+	settings:   { musicOn: boolean, sfxOn: boolean },
+}
+
+local DEFAULT_DATA: PlayerData = {
+	coins    = 100,
+	gems     = 0,
+	level    = 1,
+	xp       = 0,
+	playtime = 0,
+	joinDate = 0,
+	settings = { musicOn = true, sfxOn = true },
+}
+
+-- ── Session lock constants ────────────────────────────────────────────────────
+local LOCK_KEY_PREFIX  = "lock_"
+local LOCK_TIMEOUT     = 30    -- seconds before a stale lock expires
+local RETRY_ATTEMPTS   = 3
+local RETRY_DELAY      = 2     -- seconds between retries
+local AUTO_SAVE_RATE   = 60    -- seconds between background saves
+
+-- ── In-memory store ───────────────────────────────────────────────────────────
+local profiles: {[string]: PlayerData} = {}
+local sessionStart: {[string]: number} = {}
+
+-- ── RemoteEvents ─────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "DataRemotes"; Remotes.Parent = ReplicatedStorage
+local DataLoaded  = Instance.new("RemoteEvent");    DataLoaded.Name  = "DataLoaded";  DataLoaded.Parent  = Remotes
+local GetData     = Instance.new("RemoteFunction"); GetData.Name     = "GetData";     GetData.Parent     = Remotes
+local UpdateSetting = Instance.new("RemoteEvent"); UpdateSetting.Name = "UpdateSetting"; UpdateSetting.Parent = Remotes
+
+-- ── Deep-merge: apply defaults for any missing keys ──────────────────────────
+local function applyDefaults(data: {[string]: unknown}, defaults: {[string]: unknown}): {[string]: unknown}
+	for key, defaultVal in defaults do
+		if data[key] == nil then
+			data[key] = defaultVal
+		elseif type(defaultVal) == "table" and type(data[key]) == "table" then
+			applyDefaults(data[key] :: {[string]: unknown}, defaultVal :: {[string]: unknown})
+		end
+	end
+	return data
+end
+
+-- ── Retry wrapper ─────────────────────────────────────────────────────────────
+local function retryDataStore<T>(fn: () -> T): (boolean, T | string)
+	for attempt = 1, RETRY_ATTEMPTS do
+		local ok, result = pcall(fn)
+		if ok then return true, result :: T end
+		warn("[DataSave] Attempt", attempt, "failed:", result)
+		if attempt < RETRY_ATTEMPTS then task.wait(RETRY_DELAY) end
+	end
+	return false, "Max retries exceeded"
+end
+
+-- ── Session lock helpers ──────────────────────────────────────────────────────
+local function acquireLock(userId: string): boolean
+	local lockKey = LOCK_KEY_PREFIX .. userId
+	local ok, existing = retryDataStore(function()
+		return DS:GetAsync(lockKey)
+	end)
+	if ok and type(existing) == "number" and (os.time() - existing) < LOCK_TIMEOUT then
+		return false  -- another server has this profile locked
+	end
+	local setOk = retryDataStore(function()
+		DS:SetAsync(lockKey, os.time())
+	end)
+	return setOk
+end
+
+local function releaseLock(userId: string)
+	local lockKey = LOCK_KEY_PREFIX .. userId
+	pcall(DS.RemoveAsync, DS, lockKey)
+end
+
+-- ── Load player data ──────────────────────────────────────────────────────────
+local function loadData(player: Player): PlayerData
+	local userId = tostring(player.UserId)
+	local ok, raw = retryDataStore(function()
+		return DS:GetAsync("data_" .. userId)
+	end)
+	local data: {[string]: unknown}
+	if ok and type(raw) == "table" then
+		data = raw :: {[string]: unknown}
+	else
+		data = {}
+		if not ok then warn("[DataSave] Load failed for", player.Name, "— using defaults") end
+	end
+	-- Patch any missing fields from DEFAULT_DATA
+	applyDefaults(data, DEFAULT_DATA :: {[string]: unknown})
+	if data.joinDate == 0 then data.joinDate = os.time() end
+	return data :: PlayerData
+end
+
+-- ── Save player data ──────────────────────────────────────────────────────────
+local function saveData(player: Player, releasing: boolean?)
+	local userId = tostring(player.UserId)
+	local profile = profiles[userId]
+	if not profile then return end
+
+	-- Track playtime
+	if sessionStart[userId] then
+		profile.playtime = (profile.playtime or 0) + math.floor(os.clock() - sessionStart[userId])
+		sessionStart[userId] = os.clock()
+	end
+
+	local ok, err = retryDataStore(function()
+		DS:SetAsync("data_" .. userId, profile)
+	end)
+	if not ok then warn("[DataSave] Save failed for", player.Name, ":", err) end
+	if releasing then releaseLock(userId) end
+end
+
+-- ── Player lifecycle ─────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	local userId = tostring(player.UserId)
+	-- Acquire session lock (non-blocking — kick if another server holds it)
+	local locked = acquireLock(userId)
+	if not locked then
+		player:Kick("Your data is being loaded on another server. Please rejoin in 30 seconds.")
+		return
+	end
+	local data = loadData(player)
+	profiles[userId] = data
+	sessionStart[userId] = os.clock()
+	-- Notify client
+	DataLoaded:FireClient(player, data)
+	print("[DataSave] Loaded profile for", player.Name)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	saveData(player, true)  -- save + release lock
+	profiles[tostring(player.UserId)] = nil
+	sessionStart[tostring(player.UserId)] = nil
+end)
+
+game:BindToClose(function()
+	-- In live servers BindToClose has ~30s — save everyone
+	local threads = {}
+	for _, player in Players:GetPlayers() do
+		table.insert(threads, task.spawn(function()
+			saveData(player, true)
+		end))
+	end
+	-- Wait for all saves
+	for _, t in threads do task.wait() end
+end)
+
+-- ── Auto-save loop ────────────────────────────────────────────────────────────
+task.spawn(function()
+	while true do
+		task.wait(AUTO_SAVE_RATE)
+		for _, player in Players:GetPlayers() do
+			saveData(player, false)
+		end
+	end
+end)
+
+-- ── Remote handlers ───────────────────────────────────────────────────────────
+GetData.OnServerInvoke = function(player: Player): PlayerData?
+	return profiles[tostring(player.UserId)]
+end
+
+UpdateSetting.OnServerEvent:Connect(function(player: Player, key: unknown, value: unknown)
+	local profile = profiles[tostring(player.UserId)]
+	if not profile then return end
+	-- Only allow toggling known boolean settings
+	if key == "musicOn" or key == "sfxOn" then
+		if type(value) == "boolean" then
+			profile.settings[key :: string] = value
+		end
+	end
+end)
+
+-- ── Public API (require this script from other server scripts) ───────────────
+-- Usage:  local DS = require(game.ServerScriptService.DataSaveServer)
+--         DS.get(player)           -- returns PlayerData or nil
+--         DS.set(player, "coins", 500)
+--         DS.increment(player, "xp", 50)
+
+local API = {}
+
+function API.get(player: Player): PlayerData?
+	return profiles[tostring(player.UserId)]
+end
+
+function API.set(player: Player, key: string, value: unknown)
+	local profile = profiles[tostring(player.UserId)]
+	if profile then
+		(profile :: {[string]: unknown})[key] = value
+	end
+end
+
+function API.increment(player: Player, key: string, amount: number)
+	local profile = profiles[tostring(player.UserId)]
+	if profile then
+		local current = (profile :: {[string]: unknown})[key]
+		if type(current) == "number" then
+			(profile :: {[string]: unknown})[key] = current + amount
+		end
+	end
+end
+
+print("[DataSaveServer] Ready — auto-save every " .. AUTO_SAVE_RATE .. "s, session-lock enabled")
+
+return API
+`,
+}
+
+// ─── 12. Tycoon System ────────────────────────────────────────────────────────
+
+const TYCOON_SERVER: GameSystemFile = {
+  filename: 'TycoonServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- TycoonServer (ServerScript → ServerScriptService)
+-- Classic dropper → conveyor → collector tycoon loop.
+-- Droppers produce cash blobs, conveyor carries them to the collector,
+-- collector deposits into the player's balance. Upgrades cost coins.
+-- Each player gets their own tycoon pad claimed by proximity.
+
+local Players          = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService       = game:GetService("RunService")
+local DataStoreService = game:GetService("DataStoreService")
+
+local TycoonDS = DataStoreService:GetDataStore("TycoonV1")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+local DROPPER_INTERVAL  = 3      -- seconds between drops
+local BLOB_VALUE        = 5      -- coins per blob collected
+local COLLECTOR_RADIUS  = 8      -- studs — blobs in this radius get collected
+local MAX_BLOBS_PER_PAD = 50     -- anti-lag cap
+
+-- ── Upgrade definitions ───────────────────────────────────────────────────────
+type UpgradeDef = { id: string, name: string, cost: number, effect: string, value: number }
+local UPGRADES: {UpgradeDef} = {
+	{ id = "dropper2",  name = "Dropper II",   cost = 500,   effect = "dropperInterval", value = 2   },
+	{ id = "dropper3",  name = "Dropper III",  cost = 2000,  effect = "dropperInterval", value = 1   },
+	{ id = "value2",    name = "Gold Blobs",   cost = 1000,  effect = "blobValue",       value = 15  },
+	{ id = "value3",    name = "Diamond Blobs",cost = 5000,  effect = "blobValue",       value = 50  },
+	{ id = "collector2",name = "Wide Collector",cost = 3000, effect = "collectorRadius", value = 15  },
+	{ id = "rebirth",   name = "Rebirth",      cost = 25000, effect = "rebirth",         value = 1   },
+}
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "TycoonRemotes"; Remotes.Parent = ReplicatedStorage
+local PadClaimed    = Instance.new("RemoteEvent");    PadClaimed.Name    = "PadClaimed";    PadClaimed.Parent    = Remotes
+local BlobCollected = Instance.new("RemoteEvent");    BlobCollected.Name = "BlobCollected"; BlobCollected.Parent = Remotes
+local PurchaseUpgrade = Instance.new("RemoteFunction"); PurchaseUpgrade.Name = "PurchaseUpgrade"; PurchaseUpgrade.Parent = Remotes
+local GetTycoonData = Instance.new("RemoteFunction"); GetTycoonData.Name = "GetTycoonData"; GetTycoonData.Parent = Remotes
+local UpgradeBought = Instance.new("RemoteEvent");    UpgradeBought.Name = "UpgradeBought"; UpgradeBought.Parent = Remotes
+
+-- ── Tycoon pad data ───────────────────────────────────────────────────────────
+type TycoonData = {
+	ownerId:         string,
+	coins:           number,
+	rebirths:        number,
+	unlockedUpgrades:{[string]: boolean},
+	dropperInterval: number,
+	blobValue:       number,
+	collectorRadius: number,
+}
+
+local pads: {[string]: TycoonData} = {}  -- padName → TycoonData
+local playerPad: {[string]: string} = {} -- userId → padName
+
+-- ── DataStore helpers ─────────────────────────────────────────────────────────
+local function loadTycoon(userId: string): TycoonData
+	local ok, data = pcall(TycoonDS.GetAsync, TycoonDS, "tycoon_" .. userId)
+	if ok and type(data) == "table" then
+		return data :: TycoonData
+	end
+	return {
+		ownerId         = userId,
+		coins           = 0,
+		rebirths        = 0,
+		unlockedUpgrades = {},
+		dropperInterval = DROPPER_INTERVAL,
+		blobValue       = BLOB_VALUE,
+		collectorRadius = COLLECTOR_RADIUS,
+	}
+end
+
+local function saveTycoon(padName: string)
+	local pad = pads[padName]
+	if not pad then return end
+	local ok, err = pcall(TycoonDS.SetAsync, TycoonDS, "tycoon_" .. pad.ownerId, pad)
+	if not ok then warn("[Tycoon] Save failed:", err) end
+end
+
+-- ── Build the tycoon world structure ─────────────────────────────────────────
+-- This creates a simple pad in Workspace. In a real game, you'd have a Folder
+-- of pre-built pad Models in Workspace that this script populates.
+local function buildPad(padName: string, origin: Vector3): Folder
+	local padFolder = Instance.new("Folder")
+	padFolder.Name = padName
+	padFolder.Parent = workspace
+
+	-- Claim button (bright yellow brick)
+	local claimBtn = Instance.new("Part")
+	claimBtn.Name = "ClaimButton"
+	claimBtn.Size = Vector3.new(8, 1, 8)
+	claimBtn.Position = origin + Vector3.new(0, 0.5, 0)
+	claimBtn.BrickColor = BrickColor.new("Bright yellow")
+	claimBtn.Material = Enum.Material.SmoothPlastic
+	claimBtn.Anchored = true
+	claimBtn.Parent = padFolder
+
+	local claimGui = Instance.new("BillboardGui")
+	claimGui.Size = UDim2.fromOffset(200, 50)
+	claimGui.StudsOffset = Vector3.new(0, 3, 0)
+	claimGui.Parent = claimBtn
+	local claimLabel = Instance.new("TextLabel")
+	claimLabel.Size = UDim2.fromScale(1, 1)
+	claimLabel.BackgroundTransparency = 1
+	claimLabel.Text = "CLAIM PAD"
+	claimLabel.TextColor3 = Color3.fromRGB(255,255,255)
+	claimLabel.TextScaled = true
+	claimLabel.Font = Enum.Font.GothamBold
+	claimLabel.Parent = claimGui
+
+	-- Dropper platform
+	local dropper = Instance.new("Part")
+	dropper.Name = "Dropper"
+	dropper.Size = Vector3.new(4, 4, 4)
+	dropper.Position = origin + Vector3.new(0, 6, -12)
+	dropper.BrickColor = BrickColor.new("Bright blue")
+	dropper.Material = Enum.Material.SmoothPlastic
+	dropper.Anchored = true
+	dropper.Parent = padFolder
+
+	local dropLabel = Instance.new("BillboardGui")
+	dropLabel.Size = UDim2.fromOffset(150, 40)
+	dropLabel.StudsOffset = Vector3.new(0, 4, 0)
+	dropLabel.Parent = dropper
+	local dLabel = Instance.new("TextLabel")
+	dLabel.Size = UDim2.fromScale(1,1)
+	dLabel.BackgroundTransparency = 1
+	dLabel.Text = "DROPPER"
+	dLabel.TextColor3 = Color3.new(1,1,1)
+	dLabel.TextScaled = true
+	dLabel.Font = Enum.Font.GothamBold
+	dLabel.Parent = dropLabel
+
+	-- Conveyor belt (a static flat part — real conveyors use AssemblyLinearVelocity)
+	local conveyor = Instance.new("Part")
+	conveyor.Name = "Conveyor"
+	conveyor.Size = Vector3.new(4, 0.5, 20)
+	conveyor.Position = origin + Vector3.new(0, 3, -2)
+	conveyor.BrickColor = BrickColor.new("Dark stone grey")
+	conveyor.Material = Enum.Material.SmoothPlastic
+	conveyor.Anchored = true
+	conveyor.Parent = padFolder
+
+	-- Set conveyor velocity so parts on it slide toward collector
+	conveyor.AssemblyLinearVelocity = Vector3.new(0, 0, 8)
+
+	-- Collector bin
+	local collector = Instance.new("Part")
+	collector.Name = "Collector"
+	collector.Size = Vector3.new(8, 4, 2)
+	collector.Position = origin + Vector3.new(0, 2, 8)
+	collector.BrickColor = BrickColor.new("Bright green")
+	collector.Material = Enum.Material.SmoothPlastic
+	collector.Anchored = true
+	collector.CanCollide = false
+	collector.Transparency = 0.6
+	collector.Parent = padFolder
+
+	return padFolder
+end
+
+-- ── Claim pad logic ───────────────────────────────────────────────────────────
+local function claimPad(player: Player, padName: string)
+	local pad = pads[padName]
+	if not pad then return end
+	if pad.ownerId ~= "" then return end  -- already claimed
+	local userId = tostring(player.UserId)
+	pad.ownerId = userId
+	playerPad[userId] = padName
+
+	-- Update claim button label
+	local padFolder = workspace:FindFirstChild(padName)
+	if padFolder then
+		local btn = padFolder:FindFirstChild("ClaimButton")
+		if btn then
+			local bbg = btn:FindFirstChildOfClass("BillboardGui")
+			if bbg then
+				local lbl = bbg:FindFirstChildOfClass("TextLabel")
+				if lbl then lbl.Text = player.Name .. "'s Tycoon" end
+			end
+		end
+	end
+	PadClaimed:FireClient(player, padName)
+end
+
+-- ── Dropper loop ──────────────────────────────────────────────────────────────
+-- Spawns coin blobs above the dropper on each pad that has an owner.
+local blobCounts: {[string]: number} = {}
+
+task.spawn(function()
+	while true do
+		for padName, pad in pads do
+			if pad.ownerId ~= "" then
+				local count = blobCounts[padName] or 0
+				if count < MAX_BLOBS_PER_PAD then
+					local padFolder = workspace:FindFirstChild(padName)
+					local dropper = padFolder and padFolder:FindFirstChild("Dropper") :: BasePart?
+					if dropper then
+						local blob = Instance.new("Part")
+						blob.Name = "CoinBlob"
+						blob.Size = Vector3.new(1.5, 1.5, 1.5)
+						blob.Shape = Enum.PartType.Ball
+						blob.BrickColor = BrickColor.new("Bright yellow")
+						blob.Material = Enum.Material.SmoothPlastic
+						blob.Position = dropper.Position + Vector3.new(0, 3, 0)
+						blob.Parent = workspace
+
+						-- Tag with pad name for collection
+						local tag = Instance.new("StringValue")
+						tag.Name = "PadOwner"
+						tag.Value = padName
+						tag.Parent = blob
+
+						blobCounts[padName] = count + 1
+					end
+				end
+			end
+			task.wait(pad.dropperInterval / math.max(1, #pads))
+		end
+		task.wait(0.1)
+	end
+end)
+
+-- ── Collector loop ────────────────────────────────────────────────────────────
+-- Every 0.5s, check blobs near each collector and award coins.
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for padName, pad in pads do
+			if pad.ownerId == "" then continue end
+			local padFolder = workspace:FindFirstChild(padName)
+			local collector = padFolder and padFolder:FindFirstChild("Collector") :: BasePart?
+			if not collector then continue end
+
+			local owner = Players:GetPlayerByUserId(tonumber(pad.ownerId) or 0)
+			if not owner then continue end
+
+			for _, obj in workspace:GetChildren() do
+				if obj.Name == "CoinBlob" and obj:IsA("Part") then
+					local tag = obj:FindFirstChild("PadOwner") :: StringValue?
+					if tag and tag.Value == padName then
+						local dist = (obj.Position - collector.Position).Magnitude
+						if dist <= pad.collectorRadius then
+							obj:Destroy()
+							blobCounts[padName] = math.max(0, (blobCounts[padName] or 1) - 1)
+							-- Award coins via leaderstats
+							local ls = owner:FindFirstChild("leaderstats")
+							local coins = ls and ls:FindFirstChild("Coins") :: IntValue?
+							if coins then
+								coins.Value += pad.blobValue
+								pad.coins += pad.blobValue
+							end
+							BlobCollected:FireClient(owner, pad.blobValue, pad.coins)
+						end
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- ── Upgrade purchase ──────────────────────────────────────────────────────────
+PurchaseUpgrade.OnServerInvoke = function(player: Player, upgradeId: unknown): (boolean, string)
+	if type(upgradeId) ~= "string" then return false, "Invalid upgrade" end
+	local userId = tostring(player.UserId)
+	local padName = playerPad[userId]
+	if not padName then return false, "You don't own a tycoon pad" end
+	local pad = pads[padName]
+	if not pad then return false, "Pad not found" end
+	if pad.unlockedUpgrades[upgradeId :: string] then return false, "Already purchased" end
+
+	local upgradeDef: UpgradeDef? = nil
+	for _, u in UPGRADES do
+		if u.id == upgradeId then upgradeDef = u break end
+	end
+	if not upgradeDef then return false, "Upgrade not found" end
+
+	local ls = player:FindFirstChild("leaderstats")
+	local coins = ls and ls:FindFirstChild("Coins") :: IntValue?
+	if not coins or coins.Value < upgradeDef.cost then
+		return false, "Not enough coins (need " .. upgradeDef.cost .. ")"
+	end
+
+	coins.Value -= upgradeDef.cost
+	pad.unlockedUpgrades[upgradeId :: string] = true
+
+	if upgradeDef.effect == "dropperInterval" then
+		pad.dropperInterval = upgradeDef.value
+	elseif upgradeDef.effect == "blobValue" then
+		pad.blobValue = upgradeDef.value
+	elseif upgradeDef.effect == "collectorRadius" then
+		pad.collectorRadius = upgradeDef.value
+	elseif upgradeDef.effect == "rebirth" then
+		pad.rebirths += 1
+		pad.coins = 0
+		pad.unlockedUpgrades = {}
+		pad.dropperInterval = DROPPER_INTERVAL
+		pad.blobValue = BLOB_VALUE * (1 + pad.rebirths * 0.5)  -- 50% bonus per rebirth
+		pad.collectorRadius = COLLECTOR_RADIUS
+		if coins then coins.Value = 0 end
+	end
+
+	saveTycoon(padName)
+	UpgradeBought:FireClient(player, upgradeId, pad)
+	return true, "Upgrade unlocked: " .. upgradeDef.name
+end
+
+GetTycoonData.OnServerInvoke = function(player: Player): TycoonData?
+	local padName = playerPad[tostring(player.UserId)]
+	return padName and pads[padName] or nil
+end
+
+-- ── Initialize pads on server start ──────────────────────────────────────────
+-- Creates 4 pads in a row. Adjust origins to match your map layout.
+local PAD_ORIGINS = {
+	Vector3.new(0,   0, 0),
+	Vector3.new(60,  0, 0),
+	Vector3.new(120, 0, 0),
+	Vector3.new(180, 0, 0),
+}
+
+for i, origin in PAD_ORIGINS do
+	local padName = "TycoonPad" .. i
+	pads[padName] = loadTycoon("unclaimed_" .. i)
+	pads[padName].ownerId = ""  -- reset to unclaimed
+	buildPad(padName, origin)
+end
+
+-- ── Claim button touch detection ──────────────────────────────────────────────
+for padName, _ in pads do
+	local padFolder = workspace:FindFirstChild(padName)
+	local btn = padFolder and padFolder:FindFirstChild("ClaimButton") :: BasePart?
+	if btn then
+		btn.Touched:Connect(function(hit)
+			local char = hit.Parent
+			local player = Players:GetPlayerFromCharacter(char)
+			if player and playerPad[tostring(player.UserId)] == nil then
+				claimPad(player, padName)
+			end
+		end)
+	end
+end
+
+-- ── Save all on player leave ──────────────────────────────────────────────────
+Players.PlayerRemoving:Connect(function(player: Player)
+	local padName = playerPad[tostring(player.UserId)]
+	if padName then
+		saveTycoon(padName)
+		pads[padName].ownerId = ""  -- free the pad
+		playerPad[tostring(player.UserId)] = nil
+	end
+end)
+
+game:BindToClose(function()
+	for padName, _ in pads do saveTycoon(padName) end
+end)
+
+print("[TycoonServer] Ready — " .. #PAD_ORIGINS .. " pads initialized")
+`,
+}
+
+const TYCOON_CLIENT: GameSystemFile = {
+  filename: 'TycoonClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- TycoonClient (LocalScript → StarterPlayerScripts)
+-- Shows the tycoon HUD: current coins, rebirths, and an upgrade shop.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes       = ReplicatedStorage:WaitForChild("TycoonRemotes")
+local PadClaimed    = Remotes:WaitForChild("PadClaimed")    :: RemoteEvent
+local BlobCollected = Remotes:WaitForChild("BlobCollected") :: RemoteEvent
+local UpgradeBought = Remotes:WaitForChild("UpgradeBought") :: RemoteEvent
+local PurchaseUpgrade = Remotes:WaitForChild("PurchaseUpgrade") :: RemoteFunction
+local GetTycoonData = Remotes:WaitForChild("GetTycoonData")   :: RemoteFunction
+
+-- ── Build HUD ─────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "TycoonGui"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+
+-- Top info bar
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(0, 340, 0, 60)
+topBar.Position = UDim2.new(0.5, -170, 0, 10)
+topBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+topBar.BackgroundTransparency = 0.3
+topBar.BorderSizePixel = 0
+topBar.Parent = screen
+Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 10)
+
+local coinsLabel = Instance.new("TextLabel")
+coinsLabel.Size = UDim2.new(0.5, 0, 1, 0)
+coinsLabel.BackgroundTransparency = 1
+coinsLabel.Text = "Coins: 0"
+coinsLabel.TextColor3 = Color3.fromRGB(212, 175, 55)  -- gold
+coinsLabel.TextScaled = true
+coinsLabel.Font = Enum.Font.GothamBold
+coinsLabel.Parent = topBar
+
+local rebirthLabel = Instance.new("TextLabel")
+rebirthLabel.Size = UDim2.new(0.5, 0, 1, 0)
+rebirthLabel.Position = UDim2.new(0.5, 0, 0, 0)
+rebirthLabel.BackgroundTransparency = 1
+rebirthLabel.Text = "Rebirths: 0"
+rebirthLabel.TextColor3 = Color3.fromRGB(160, 100, 255)
+rebirthLabel.TextScaled = true
+rebirthLabel.Font = Enum.Font.GothamBold
+rebirthLabel.Parent = topBar
+
+-- Upgrade shop button
+local shopBtn = Instance.new("TextButton")
+shopBtn.Size = UDim2.new(0, 160, 0, 44)
+shopBtn.Position = UDim2.new(1, -170, 0, 10)
+shopBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+shopBtn.Text = "UPGRADES"
+shopBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
+shopBtn.TextScaled = true
+shopBtn.Font = Enum.Font.GothamBold
+shopBtn.BorderSizePixel = 0
+shopBtn.Parent = screen
+Instance.new("UICorner", shopBtn).CornerRadius = UDim.new(0, 8)
+
+-- Upgrade panel (initially hidden)
+local upgradePanel = Instance.new("Frame")
+upgradePanel.Size = UDim2.new(0, 320, 0, 400)
+upgradePanel.Position = UDim2.new(1, -330, 0, 64)
+upgradePanel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+upgradePanel.BackgroundTransparency = 0.1
+upgradePanel.BorderSizePixel = 0
+upgradePanel.Visible = false
+upgradePanel.Parent = screen
+Instance.new("UICorner", upgradePanel).CornerRadius = UDim.new(0, 12)
+
+local uTitle = Instance.new("TextLabel")
+uTitle.Size = UDim2.new(1, 0, 0, 40)
+uTitle.BackgroundTransparency = 1
+uTitle.Text = "UPGRADE SHOP"
+uTitle.TextColor3 = Color3.fromRGB(212, 175, 55)
+uTitle.TextScaled = true
+uTitle.Font = Enum.Font.GothamBold
+uTitle.Parent = upgradePanel
+
+local uList = Instance.new("ScrollingFrame")
+uList.Size = UDim2.new(1, -10, 1, -50)
+uList.Position = UDim2.new(0, 5, 0, 45)
+uList.BackgroundTransparency = 1
+uList.BorderSizePixel = 0
+uList.ScrollBarThickness = 4
+uList.CanvasSize = UDim2.new(0, 0, 0, 0)
+uList.Parent = upgradePanel
+Instance.new("UIListLayout", uList).Padding = UDim.new(0, 6)
+
+-- Upgrades data (mirrors server-side for display purposes)
+type UpgradeDisplay = { id: string, name: string, cost: number, desc: string }
+local UPGRADE_DISPLAY: {UpgradeDisplay} = {
+	{ id = "dropper2",   name = "Dropper II",     cost = 500,   desc = "Drop every 2s"       },
+	{ id = "dropper3",   name = "Dropper III",    cost = 2000,  desc = "Drop every 1s"       },
+	{ id = "value2",     name = "Gold Blobs",     cost = 1000,  desc = "Blobs worth 15 coins" },
+	{ id = "value3",     name = "Diamond Blobs",  cost = 5000,  desc = "Blobs worth 50 coins" },
+	{ id = "collector2", name = "Wide Collector", cost = 3000,  desc = "Larger collect radius" },
+	{ id = "rebirth",    name = "REBIRTH",        cost = 25000, desc = "Reset for +50% bonus" },
+}
+
+local unlockedUpgrades: {[string]: boolean} = {}
+
+local function buildUpgradeButtons()
+	uList:ClearAllChildren()
+	Instance.new("UIListLayout", uList).Padding = UDim.new(0, 6)
+	for _, upg in UPGRADE_DISPLAY do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, -8, 0, 58)
+		row.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		row.BorderSizePixel = 0
+		row.Parent = uList
+		Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(0.65, 0, 0.5, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Text = upg.name
+		nameLabel.TextColor3 = Color3.new(1,1,1)
+		nameLabel.TextScaled = true
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.Position = UDim2.new(0, 8, 0, 0)
+		nameLabel.Parent = row
+
+		local descLabel = Instance.new("TextLabel")
+		descLabel.Size = UDim2.new(0.65, 0, 0.5, 0)
+		descLabel.Position = UDim2.new(0, 8, 0.5, 0)
+		descLabel.BackgroundTransparency = 1
+		descLabel.Text = upg.desc
+		descLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+		descLabel.TextScaled = true
+		descLabel.Font = Enum.Font.Gotham
+		descLabel.TextXAlignment = Enum.TextXAlignment.Left
+		descLabel.Parent = row
+
+		local buyBtn = Instance.new("TextButton")
+		buyBtn.Size = UDim2.new(0.3, -8, 0.7, 0)
+		buyBtn.Position = UDim2.new(0.7, 0, 0.15, 0)
+		buyBtn.BackgroundColor3 = unlockedUpgrades[upg.id] and Color3.fromRGB(80,80,80) or Color3.fromRGB(212,175,55)
+		buyBtn.Text = unlockedUpgrades[upg.id] and "OWNED" or ("$" .. tostring(upg.cost))
+		buyBtn.TextColor3 = Color3.fromRGB(20,20,20)
+		buyBtn.TextScaled = true
+		buyBtn.Font = Enum.Font.GothamBold
+		buyBtn.AutoButtonColor = not unlockedUpgrades[upg.id]
+		buyBtn.BorderSizePixel = 0
+		buyBtn.Parent = row
+		Instance.new("UICorner", buyBtn).CornerRadius = UDim.new(0, 6)
+
+		if not unlockedUpgrades[upg.id] then
+			buyBtn.MouseButton1Click:Connect(function()
+				buyBtn.Text = "..."
+				local ok, msg = PurchaseUpgrade:InvokeServer(upg.id)
+				if ok then
+					unlockedUpgrades[upg.id] = true
+					buildUpgradeButtons()
+				else
+					buyBtn.Text = "FAIL"
+					task.wait(1.5)
+					buildUpgradeButtons()
+				end
+			end)
+		end
+	end
+	-- Resize canvas
+	local layout = uList:FindFirstChildOfClass("UIListLayout")
+	if layout then
+		uList.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+	end
+end
+
+buildUpgradeButtons()
+
+-- ── Toggle shop ───────────────────────────────────────────────────────────────
+shopBtn.MouseButton1Click:Connect(function()
+	upgradePanel.Visible = not upgradePanel.Visible
+	if upgradePanel.Visible then buildUpgradeButtons() end
+end)
+
+-- ── Update HUD on blob collected ─────────────────────────────────────────────
+BlobCollected.OnClientEvent:Connect(function(blobValue: number, totalCoins: number)
+	coinsLabel.Text = "Coins: " .. tostring(totalCoins)
+	-- Pulse animation
+	TweenService:Create(coinsLabel, TweenInfo.new(0.15), { TextColor3 = Color3.fromRGB(255,220,50) }):Play()
+	task.delay(0.15, function()
+		TweenService:Create(coinsLabel, TweenInfo.new(0.3), { TextColor3 = Color3.fromRGB(212,175,55) }):Play()
+	end)
+end)
+
+UpgradeBought.OnClientEvent:Connect(function(upgradeId: string, padData: {unlockedUpgrades: {[string]: boolean}, rebirths: number})
+	unlockedUpgrades = padData.unlockedUpgrades
+	rebirthLabel.Text = "Rebirths: " .. tostring(padData.rebirths)
+	buildUpgradeButtons()
+end)
+
+PadClaimed.OnClientEvent:Connect(function(_padName: string)
+	-- Load initial state
+	local data = GetTycoonData:InvokeServer()
+	if data then
+		coinsLabel.Text = "Coins: " .. tostring(data.coins)
+		rebirthLabel.Text = "Rebirths: " .. tostring(data.rebirths)
+		unlockedUpgrades = data.unlockedUpgrades
+		buildUpgradeButtons()
+	end
+end)
+
+print("[TycoonClient] HUD ready")
+`,
+}
+
+// ─── 13. Obby System ──────────────────────────────────────────────────────────
+
+const OBBY_SERVER: GameSystemFile = {
+  filename: 'ObbyServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- ObbyServer (ServerScript → ServerScriptService)
+-- Checkpoint persistence, kill bricks, moving platforms, timer, leaderboard.
+
+local Players          = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService       = game:GetService("RunService")
+
+local ObbyDS = DataStoreService:GetDataStore("ObbyProgressV1")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+local CHECKPOINT_FOLDER  = "ObbyCheckpoints"    -- Folder in Workspace containing checkpoint Parts
+local KILL_BRICK_TAG     = "KillBrick"          -- CollectionService tag on kill bricks
+local MOVING_PLATFORM_TAG = "MovingPlatform"    -- tag on moving platforms
+local TOTAL_STAGES       = 30                    -- adjust to match your obby
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "ObbyRemotes"; Remotes.Parent = ReplicatedStorage
+local CheckpointReached = Instance.new("RemoteEvent"); CheckpointReached.Name = "CheckpointReached"; CheckpointReached.Parent = Remotes
+local ObbyCompleted     = Instance.new("RemoteEvent"); ObbyCompleted.Name     = "ObbyCompleted";     ObbyCompleted.Parent     = Remotes
+local GetProgress       = Instance.new("RemoteFunction"); GetProgress.Name    = "GetProgress";       GetProgress.Parent       = Remotes
+
+-- ── Player checkpoint state ───────────────────────────────────────────────────
+local checkpoints: {[string]: number} = {}  -- userId → stage number (1-indexed)
+local startTimes:  {[string]: number} = {}  -- userId → os.clock() when they spawned
+
+-- ── DataStore helpers ─────────────────────────────────────────────────────────
+local function loadCheckpoint(player: Player): number
+	local ok, val = pcall(ObbyDS.GetAsync, ObbyDS, "obby_" .. tostring(player.UserId))
+	if ok and type(val) == "number" then return math.clamp(val, 1, TOTAL_STAGES) end
+	return 1
+end
+
+local function saveCheckpoint(player: Player)
+	local stage = checkpoints[tostring(player.UserId)] or 1
+	local ok, err = pcall(ObbyDS.SetAsync, ObbyDS, "obby_" .. tostring(player.UserId), stage)
+	if not ok then warn("[Obby] Save failed:", err) end
+end
+
+-- ── Spawn at checkpoint ───────────────────────────────────────────────────────
+local function getCheckpointCFrame(stage: number): CFrame?
+	local folder = workspace:FindFirstChild(CHECKPOINT_FOLDER)
+	if not folder then return nil end
+	-- Checkpoints must be named "Stage1", "Stage2", …
+	local part = folder:FindFirstChild("Stage" .. tostring(stage)) :: BasePart?
+	if part then
+		return part.CFrame + Vector3.new(0, 5, 0)
+	end
+	return nil
+end
+
+local function spawnAtCheckpoint(player: Player)
+	local stage = checkpoints[tostring(player.UserId)] or 1
+	local cf = getCheckpointCFrame(stage)
+	if not cf then return end
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then root.CFrame = cf end
+end
+
+-- ── Player lifecycle ─────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	local stage = loadCheckpoint(player)
+	checkpoints[tostring(player.UserId)] = stage
+	-- Leaderstats for stage display
+	local ls = player:FindFirstChild("leaderstats") or Instance.new("Folder")
+	ls.Name = "leaderstats"; ls.Parent = player
+	local stageVal = Instance.new("IntValue")
+	stageVal.Name = "Stage"; stageVal.Value = stage; stageVal.Parent = ls
+
+	player.CharacterAdded:Connect(function(_char: Model)
+		startTimes[tostring(player.UserId)] = os.clock()
+		task.delay(1, function() spawnAtCheckpoint(player) end)
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	saveCheckpoint(player)
+	checkpoints[tostring(player.UserId)] = nil
+	startTimes[tostring(player.UserId)]  = nil
+end)
+
+game:BindToClose(function()
+	for _, p in Players:GetPlayers() do saveCheckpoint(p) end
+end)
+
+-- ── Checkpoint touched ────────────────────────────────────────────────────────
+-- Checkpoints in Workspace/ObbyCheckpoints must be named "Stage1" etc.
+local function setupCheckpoints()
+	local folder = workspace:FindFirstChild(CHECKPOINT_FOLDER)
+	if not folder then
+		warn("[Obby] Checkpoint folder '" .. CHECKPOINT_FOLDER .. "' not found in Workspace!")
+		return
+	end
+	for _, part in folder:GetChildren() do
+		if not part:IsA("BasePart") then continue end
+		local stageNum = tonumber(part.Name:match("Stage(%d+)"))
+		if not stageNum then continue end
+		part.Touched:Connect(function(hit)
+			local char = hit.Parent
+			local player = Players:GetPlayerFromCharacter(char)
+			if not player then return end
+			local uid = tostring(player.UserId)
+			local current = checkpoints[uid] or 1
+			if stageNum <= current then return end  -- only advance
+			checkpoints[uid] = stageNum
+			-- Update leaderstats
+			local ls = player:FindFirstChild("leaderstats")
+			local sv = ls and ls:FindFirstChild("Stage") :: IntValue?
+			if sv then sv.Value = stageNum end
+			CheckpointReached:FireClient(player, stageNum, TOTAL_STAGES)
+			saveCheckpoint(player)
+			-- Check if obby complete
+			if stageNum >= TOTAL_STAGES then
+				local elapsed = os.clock() - (startTimes[uid] or os.clock())
+				ObbyCompleted:FireClient(player, elapsed)
+				-- Reset to stage 1 for replay
+				checkpoints[uid] = 1
+				if sv then sv.Value = 1 end
+				print("[Obby]", player.Name, "completed in", math.floor(elapsed), "seconds")
+			end
+		end)
+	end
+end
+
+-- ── Kill bricks ───────────────────────────────────────────────────────────────
+-- Tag kill bricks with CollectionService tag "KillBrick" in Studio.
+local CollectionService = game:GetService("CollectionService")
+
+local function setupKillBricks()
+	local function hookKillBrick(brick: Instance)
+		if not brick:IsA("BasePart") then return end
+		(brick :: BasePart).Touched:Connect(function(hit)
+			local char = hit.Parent
+			local player = Players:GetPlayerFromCharacter(char)
+			if not player then return end
+			local hum = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+			if hum and hum.Health > 0 then
+				hum.Health = 0
+			end
+		end)
+	end
+	for _, brick in CollectionService:GetTagged(KILL_BRICK_TAG) do
+		hookKillBrick(brick)
+	end
+	CollectionService:GetInstanceAddedSignal(KILL_BRICK_TAG):Connect(hookKillBrick)
+end
+
+-- ── Moving platforms ──────────────────────────────────────────────────────────
+-- Tag moving platforms with "MovingPlatform". Optionally add Attributes:
+--   MoveAxis (Vector3), MoveDistance (number), MoveSpeed (number)
+local function setupMovingPlatforms()
+	local function animatePlatform(part: BasePart)
+		local axis     = part:GetAttribute("MoveAxis")
+		local distance = part:GetAttribute("MoveDistance")
+		local speed    = part:GetAttribute("MoveSpeed")
+		-- Apply defaults if attributes missing
+		local moveAxis:     Vector3 = (typeof(axis) == "Vector3")      and (axis :: Vector3)     or Vector3.new(1,0,0)
+		local moveDist:     number  = (type(distance) == "number")     and (distance :: number)  or 10
+		local moveSpeed:    number  = (type(speed) == "number")        and (speed :: number)     or 4
+
+		local origin = part.Position
+		local t = 0
+		RunService.Heartbeat:Connect(function(dt: number)
+			t += dt * moveSpeed
+			local offset = moveAxis * (math.sin(t) * moveDist)
+			part.CFrame = CFrame.new(origin + offset) * (part.CFrame - part.CFrame.Position)
+		end)
+	end
+
+	for _, platform in CollectionService:GetTagged(MOVING_PLATFORM_TAG) do
+		if platform:IsA("BasePart") then
+			animatePlatform(platform :: BasePart)
+		end
+	end
+	CollectionService:GetInstanceAddedSignal(MOVING_PLATFORM_TAG):Connect(function(platform: Instance)
+		if platform:IsA("BasePart") then
+			animatePlatform(platform :: BasePart)
+		end
+	end)
+end
+
+-- ── Boot ──────────────────────────────────────────────────────────────────────
+GetProgress.OnServerInvoke = function(player: Player): (number, number)
+	return checkpoints[tostring(player.UserId)] or 1, TOTAL_STAGES
+end
+
+setupCheckpoints()
+setupKillBricks()
+setupMovingPlatforms()
+
+print("[ObbyServer] Ready — " .. TOTAL_STAGES .. " stages, kill bricks and moving platforms active")
+`,
+}
+
+const OBBY_CLIENT: GameSystemFile = {
+  filename: 'ObbyClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- ObbyClient (LocalScript → StarterPlayerScripts)
+-- Checkpoint notification, completion screen, stage timer.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes           = ReplicatedStorage:WaitForChild("ObbyRemotes")
+local CheckpointReached = Remotes:WaitForChild("CheckpointReached") :: RemoteEvent
+local ObbyCompleted     = Remotes:WaitForChild("ObbyCompleted")     :: RemoteEvent
+local GetProgress       = Remotes:WaitForChild("GetProgress")       :: RemoteFunction
+
+-- ── Build HUD ─────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "ObbyGui"
+screen.ResetOnSpawn = false
+screen.Parent = playerGui
+
+-- Stage progress bar (top center)
+local progressBg = Instance.new("Frame")
+progressBg.Size = UDim2.new(0, 320, 0, 28)
+progressBg.Position = UDim2.new(0.5, -160, 0, 8)
+progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+progressBg.BorderSizePixel = 0
+progressBg.Parent = screen
+Instance.new("UICorner", progressBg).CornerRadius = UDim.new(0, 14)
+
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+progressBar.BorderSizePixel = 0
+progressBar.Parent = progressBg
+Instance.new("UICorner", progressBar).CornerRadius = UDim.new(0, 14)
+
+local stageLabel = Instance.new("TextLabel")
+stageLabel.Size = UDim2.new(1, 0, 1, 0)
+stageLabel.BackgroundTransparency = 1
+stageLabel.Text = "Stage 1 / 30"
+stageLabel.TextColor3 = Color3.new(1,1,1)
+stageLabel.TextScaled = true
+stageLabel.Font = Enum.Font.GothamBold
+stageLabel.ZIndex = 2
+stageLabel.Parent = progressBg
+
+-- Timer label
+local timerLabel = Instance.new("TextLabel")
+timerLabel.Size = UDim2.new(0, 120, 0, 32)
+timerLabel.Position = UDim2.new(0.5, -60, 0, 42)
+timerLabel.BackgroundTransparency = 1
+timerLabel.Text = "0:00"
+timerLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+timerLabel.TextScaled = true
+timerLabel.Font = Enum.Font.GothamBold
+timerLabel.Parent = screen
+
+-- Checkpoint notification (slides in from right)
+local checkpointNotif = Instance.new("Frame")
+checkpointNotif.Size = UDim2.new(0, 260, 0, 60)
+checkpointNotif.Position = UDim2.new(1, 10, 0.5, -30)  -- off-screen right
+checkpointNotif.BackgroundColor3 = Color3.fromRGB(30, 180, 80)
+checkpointNotif.BorderSizePixel = 0
+checkpointNotif.Parent = screen
+Instance.new("UICorner", checkpointNotif).CornerRadius = UDim.new(0, 12)
+
+local notifLabel = Instance.new("TextLabel")
+notifLabel.Size = UDim2.new(1, -10, 1, 0)
+notifLabel.Position = UDim2.new(0, 8, 0, 0)
+notifLabel.BackgroundTransparency = 1
+notifLabel.Text = "Checkpoint!"
+notifLabel.TextColor3 = Color3.new(1,1,1)
+notifLabel.TextScaled = true
+notifLabel.Font = Enum.Font.GothamBold
+notifLabel.Parent = checkpointNotif
+
+-- Completion overlay
+local completionFrame = Instance.new("Frame")
+completionFrame.Size = UDim2.new(1, 0, 1, 0)
+completionFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+completionFrame.BackgroundTransparency = 0.4
+completionFrame.Visible = false
+completionFrame.ZIndex = 10
+completionFrame.Parent = screen
+
+local completionLabel = Instance.new("TextLabel")
+completionLabel.Size = UDim2.new(0, 500, 0, 80)
+completionLabel.Position = UDim2.new(0.5, -250, 0.3, 0)
+completionLabel.BackgroundTransparency = 1
+completionLabel.Text = "OBBY COMPLETE!"
+completionLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+completionLabel.TextScaled = true
+completionLabel.Font = Enum.Font.GothamBold
+completionLabel.ZIndex = 11
+completionLabel.Parent = completionFrame
+
+local timeLabel = Instance.new("TextLabel")
+timeLabel.Size = UDim2.new(0, 500, 0, 50)
+timeLabel.Position = UDim2.new(0.5, -250, 0.45, 0)
+timeLabel.BackgroundTransparency = 1
+timeLabel.Text = "Time: 0:00"
+timeLabel.TextColor3 = Color3.new(1,1,1)
+timeLabel.TextScaled = true
+timeLabel.Font = Enum.Font.Gotham
+timeLabel.ZIndex = 11
+timeLabel.Parent = completionFrame
+
+local replayBtn = Instance.new("TextButton")
+replayBtn.Size = UDim2.new(0, 200, 0, 50)
+replayBtn.Position = UDim2.new(0.5, -100, 0.55, 0)
+replayBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+replayBtn.Text = "PLAY AGAIN"
+replayBtn.TextColor3 = Color3.fromRGB(20, 20, 20)
+replayBtn.TextScaled = true
+replayBtn.Font = Enum.Font.GothamBold
+replayBtn.ZIndex = 11
+replayBtn.BorderSizePixel = 0
+replayBtn.Parent = completionFrame
+Instance.new("UICorner", replayBtn).CornerRadius = UDim.new(0, 10)
+replayBtn.MouseButton1Click:Connect(function()
+	completionFrame.Visible = false
+end)
+
+-- ── Load initial progress ─────────────────────────────────────────────────────
+local totalStages = 30
+local function updateProgress(stage: number, total: number)
+	totalStages = total
+	stageLabel.Text = "Stage " .. tostring(stage) .. " / " .. tostring(total)
+	local pct = stage / total
+	TweenService:Create(progressBar, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+		Size = UDim2.new(pct, 0, 1, 0)
+	}):Play()
+end
+
+task.spawn(function()
+	local stage, total = GetProgress:InvokeServer()
+	updateProgress(stage, total)
+end)
+
+-- ── Timer ─────────────────────────────────────────────────────────────────────
+local startTime = os.clock()
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		local elapsed = math.floor(os.clock() - startTime)
+		local mins = math.floor(elapsed / 60)
+		local secs = elapsed % 60
+		timerLabel.Text = string.format("%d:%02d", mins, secs)
+	end
+end)
+
+-- ── Checkpoint notification animation ────────────────────────────────────────
+local notifTween: Tween? = nil
+CheckpointReached.OnClientEvent:Connect(function(stage: number, total: number)
+	updateProgress(stage, total)
+	notifLabel.Text = "Stage " .. tostring(stage) .. " Reached!"
+	-- Slide in from right
+	if notifTween then notifTween:Cancel() end
+	checkpointNotif.Position = UDim2.new(1, 10, 0.5, -30)
+	notifTween = TweenService:Create(checkpointNotif, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+		Position = UDim2.new(1, -270, 0.5, -30)
+	})
+	notifTween:Play()
+	task.delay(2, function()
+		notifTween = TweenService:Create(checkpointNotif, TweenInfo.new(0.3), {
+			Position = UDim2.new(1, 10, 0.5, -30)
+		})
+		notifTween:Play()
+	end)
+end)
+
+-- ── Completion screen ─────────────────────────────────────────────────────────
+ObbyCompleted.OnClientEvent:Connect(function(elapsed: number)
+	local mins = math.floor(elapsed / 60)
+	local secs = math.floor(elapsed) % 60
+	timeLabel.Text = string.format("Time: %d:%02d", mins, secs)
+	completionFrame.Visible = true
+	-- Reset timer
+	startTime = os.clock()
+end)
+
+print("[ObbyClient] HUD ready")
+`,
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const GAME_SYSTEMS: Record<string, GameSystem> = {
@@ -2297,6 +3510,21 @@ export const GAME_SYSTEMS: Record<string, GameSystem> = {
     description: '7-day streak calendar with escalating rewards and animated UI',
     files: [DAILY_REWARDS_SERVER, DAILY_REWARDS_CLIENT],
   },
+  datasave: {
+    id: 'datasave',
+    description: 'ProfileService-style DataStore with session-lock, retry, auto-save, and public API',
+    files: [DATA_SAVE_SERVER],
+  },
+  tycoon: {
+    id: 'tycoon',
+    description: 'Dropper → conveyor → collector tycoon with upgrades, rebirth, and 4-pad layout',
+    files: [TYCOON_SERVER, TYCOON_CLIENT],
+  },
+  obby: {
+    id: 'obby',
+    description: 'Checkpoint obby with kill bricks, moving platforms, stage timer, and completion screen',
+    files: [OBBY_SERVER, OBBY_CLIENT],
+  },
 }
 
 // ─── Intent detection helper ─────────────────────────────────────────────────
@@ -2304,23 +3532,23 @@ export const GAME_SYSTEMS: Record<string, GameSystem> = {
 
 const SYSTEM_PATTERNS: Array<{ patterns: RegExp[]; systemId: string }> = [
   {
-    patterns: [/\b(currency|coins?|cash|money|earn coins|spend coins|coin system)\b/i],
+    patterns: [/\b(currency|coins?|cash|money|earn coins|spend coins|coin system|dual currency|gems? system)\b/i],
     systemId: 'currency',
   },
   {
-    patterns: [/\b(shop|store|buy items?|item shop|purchase system|sell items?)\b/i],
+    patterns: [/\b(shop|store|vendor|npc shop|item shop|buy items?|purchase system|sell items?|marketplace)\b/i],
     systemId: 'shop',
   },
   {
-    patterns: [/\b(pet system|pets?|egg hatch|hatch(?:ing)?|pet follow|equip pet|pet rarity)\b/i],
+    patterns: [/\b(pet system|pets?|egg hatch|hatch(?:ing)?|pet follow|equip pet|pet rarity|pet inventory)\b/i],
     systemId: 'pets',
   },
   {
-    patterns: [/\b(inventory|backpack|item stacking|drag.?drop|item slot)\b/i],
+    patterns: [/\b(inventory|backpack|item stacking|drag.?drop|item slot|equip.?unequip)\b/i],
     systemId: 'inventory',
   },
   {
-    patterns: [/\b(leaderboard|top players|rankings?|global board|high ?scores?)\b/i],
+    patterns: [/\b(leaderboard|top players|rankings?|global board|high ?scores?|ordered ?data ?store)\b/i],
     systemId: 'leaderboard',
   },
   {
@@ -2328,20 +3556,32 @@ const SYSTEM_PATTERNS: Array<{ patterns: RegExp[]; systemId: string }> = [
     systemId: 'leveling',
   },
   {
-    patterns: [/\b(quest system|quests?|missions?|objectives?|quest giver|quest rewards?|quest progress)\b/i],
+    patterns: [/\b(quest system|quests?|missions?|objectives?|quest giver|quest rewards?|quest progress|quest log)\b/i],
     systemId: 'quests',
   },
   {
-    patterns: [/\b(combat system|health system|damage system|respawn system|hitbox|pvp system|weapons? system)\b/i],
+    patterns: [/\b(combat system|health system|damage system|respawn system|hitbox|pvp|pvp system|weapons? system|fighting system|melee system|health bars?)\b/i],
     systemId: 'combat',
   },
   {
-    patterns: [/\b(trading? system|player trade|trade window|trade confirmation|item trading?)\b/i],
+    patterns: [/\b(trading? system|player trade|trade window|trade confirmation|item trading?|p2p trade)\b/i],
     systemId: 'trading',
   },
   {
-    patterns: [/\b(daily rewards?|login streak|login rewards?|daily bonus|calendar rewards?)\b/i],
+    patterns: [/\b(daily rewards?|login streak|login rewards?|daily bonus|calendar rewards?|streak system)\b/i],
     systemId: 'dailyrewards',
+  },
+  {
+    patterns: [/\b(data ?save|data ?store|save system|profile ?service|player data|persist(?:ence)?|auto.?save|session lock)\b/i],
+    systemId: 'datasave',
+  },
+  {
+    patterns: [/\b(tycoon|dropper|conveyor|collector|blob|rebirth system|tycoon system|money tycoon|idle tycoon)\b/i],
+    systemId: 'tycoon',
+  },
+  {
+    patterns: [/\b(obby|obstacle course|checkpoints?|kill bricks?|moving platforms?|parkour|obby system|stages?)\b/i],
+    systemId: 'obby',
   },
 ]
 

@@ -45,9 +45,9 @@ export interface ChatMessage {
 }
 
 export const MODELS: ModelOption[] = [
-  { id: 'claude-4',         label: 'Claude 4',         provider: 'Anthropic', color: '#CC785C', badge: 'BEST' },
+  { id: 'gemini-2',         label: 'Gemini 2.0',       provider: 'Google',    color: '#4285F4', badge: 'BEST' },
+  { id: 'claude-4',         label: 'Claude 4',         provider: 'Anthropic', color: '#CC785C', badge: 'BYO' },
   { id: 'claude-3-5',       label: 'Claude 3.5',       provider: 'Anthropic', color: '#CC785C' },
-  { id: 'gemini-2',         label: 'Gemini 2.0',       provider: 'Google',    color: '#4285F4' },
   { id: 'gpt-4o',           label: 'GPT-4o',           provider: 'OpenAI',    color: '#10A37F' },
   { id: 'grok-3',           label: 'Grok 3',           provider: 'xAI',       color: '#8B5CF6' },
   { id: 'custom-anthropic', label: 'My Anthropic Key', provider: 'Custom',    color: '#D4AF37', badge: 'BYO' },
@@ -226,7 +226,7 @@ export function useChat(options: UseChatOptions = {}) {
   const [streaming, setStreaming] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [lastMcpResult, setLastMcpResult] = useState<McpAgentResult | null>(null)
-  const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
+  const [selectedModel, setSelectedModel] = useState<ModelId>('gemini-2')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)

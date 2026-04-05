@@ -321,35 +321,17 @@ export default clerkMiddleware(async (auth, request) => {
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────
-    // Belt-and-suspenders: middleware enforces admin access for /admin/* page
-    // routes so a bug in the layout server component can never expose admin UI.
-    // API admin routes (/api/admin/*) are already protected by _adminGuard.
+    // Middleware cannot query the DB and Clerk JWT templates do not reliably
+    // include email or role claims, so we do NOT block admin routes here.
+    // The server-side admin layout (src/app/(admin)/admin/layout.tsx) is the
+    // authoritative gate — it does a full DB lookup + ADMIN_EMAILS owner bypass.
+    // All we do here is ensure the user is authenticated (handled above by the
+    // isPublicRoute check). If the user is signed in, let the request reach
+    // the layout which will redirect non-admins away.
     //
-    // Middleware cannot query the DB, so it uses two signals available on the
-    // Clerk session:
-    //   a) ADMIN_EMAILS env var — owner bypass, same list used by the layout.
-    //   b) claims.role === 'ADMIN' — set via Clerk JWT template if configured.
-    // If neither signal is present, we redirect to /dashboard and let the layout
-    // remain the authoritative DB-role check for users not in ADMIN_EMAILS.
-    if (userId && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/api/admin'))) {
-      const sessionEmail = (claims?.email as string | undefined)
-        ?? (claims?.primary_email_address as string | undefined)
-        ?? (claims?.primaryEmail as string | undefined)
-        ?? null
-      const sessionRole = (claims?.role as string | undefined)
-        ?? ((claims?.metadata as Record<string, unknown> | undefined)?.role as string | undefined)
-        ?? ((claims?.public_metadata as Record<string, unknown> | undefined)?.role as string | undefined)
-        ?? null
-      const isAdminByEmail = isAdminEmail(sessionEmail)
-      const isAdminByRole = sessionRole === 'ADMIN'
-
-      // If middleware can't determine admin status from JWT claims (no email
-      // in claims), let the request through — the server-side admin layout
-      // does a full DB check and will redirect non-admins from there.
-      if (sessionEmail && !isAdminByEmail && !isAdminByRole) {
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-      }
-    }
+    // NOTE: We intentionally pass through even when JWT claims suggest the user
+    // is not admin, because the Clerk JWT template may not include email/role
+    // claims, causing false negatives that would lock the site owner out.
 
     // Age-gate removed from middleware — handled in the welcome wizard onboarding
     // flow instead. Keeping it in middleware caused infinite redirect loops when
@@ -363,11 +345,9 @@ export default clerkMiddleware(async (auth, request) => {
     return res
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────
-    // Admin routes return 503 on transient failure — never silently pass through
-    // to protected admin UI when auth state is unknown.
-    if (isAdminRoute(request)) {
-      return new NextResponse('Service Unavailable', { status: 503 })
-    }
+    // Pass all routes through on transient failure — the server-side layout
+    // handles auth for admin routes and will redirect unauthenticated/non-admin
+    // users. A 503 here would permanently lock the owner out on any Clerk hiccup.
     // For all other routes, pass through so users are not locked out by a
     // transient Clerk or runtime failure.
     // Note: requestHeaders may not be initialised if the error was thrown before

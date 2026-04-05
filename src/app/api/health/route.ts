@@ -128,7 +128,7 @@ async function checkRedis(): Promise<CheckStatus> {
 async function checkMeshy(): Promise<CheckStatus> {
   if (!process.env.MESHY_API_KEY) return 'unconfigured'
   try {
-    const res = await fetchWithTimeout('https://api.meshy.ai/v2/text-to-3d?page_size=1')
+    const res = await fetchWithTimeout('https://api.meshy.ai/v3/text-to-3d?page_size=1')
     // 200 or 401 both confirm the API is up
     return res.status < 500 ? 'ok' : 'degraded'
   } catch {

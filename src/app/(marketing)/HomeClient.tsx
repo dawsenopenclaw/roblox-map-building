@@ -913,7 +913,7 @@ export default function HomeClient() {
                 features={[
                   '1,000 tokens / month',
                   'Basic terrain generation',
-                  'Marketplace access',
+                  'Basic templates',
                   'Live Studio sync',
                   'Community support',
                 ]}
@@ -921,15 +921,15 @@ export default function HomeClient() {
               />
               <PricingCard
                 name="Creator"
-                price="$25"
+                price="$24.99"
                 period="/month"
                 description="For serious Roblox creators"
                 features={[
                   '7,000 tokens / month',
-                  'All Hobby features',
+                  'Voice-to-game + image-to-map',
                   'Game DNA scanner',
-                  'Custom 3D mesh generation',
-                  'Image-to-map feature',
+                  'Marketplace access + selling',
+                  'Team collaboration (3 members)',
                   'Priority support',
                 ]}
                 cta="Start creating"
@@ -938,14 +938,15 @@ export default function HomeClient() {
               />
               <PricingCard
                 name="Studio"
-                price="$50"
+                price="$49.99"
                 period="/month"
-                description="For teams and game studios"
+                description="For agencies &amp; studios"
                 features={[
                   '20,000 tokens / month',
                   'All Creator features',
-                  'Team collaboration (5 seats)',
+                  'Team collaboration (50 members)',
                   'Full API access + SDKs',
+                  'White-label exports',
                   'Dedicated support',
                 ]}
                 cta="Go pro"

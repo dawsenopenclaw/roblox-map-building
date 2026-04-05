@@ -303,7 +303,7 @@ async function createMeshyTask(
     enable_pbr: quality !== 'draft',
   }
 
-  const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
+  const res = await fetch(`${MESHY_BASE}/v3/text-to-3d`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
@@ -341,7 +341,7 @@ async function createMeshyRefineTask(
     texture_richness: quality === 'draft' ? 'medium' : quality === 'standard' ? 'high' : 'ultra',
   }
 
-  const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
+  const res = await fetch(`${MESHY_BASE}/v3/text-to-3d`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify(body),
@@ -366,7 +366,7 @@ async function pollMeshyTask(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, i === 0 ? 3_000 : intervalMs))
 
-    const res = await fetch(`${MESHY_BASE}/v2/text-to-3d/${taskId}`, {
+    const res = await fetch(`${MESHY_BASE}/v3/text-to-3d/${taskId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(10_000),
     })
@@ -392,7 +392,7 @@ async function pollMeshyTask(
 }
 
 async function getMeshyTask(taskId: string, apiKey: string): Promise<MeshyTask> {
-  const res = await fetch(`${MESHY_BASE}/v2/text-to-3d/${taskId}`, {
+  const res = await fetch(`${MESHY_BASE}/v3/text-to-3d/${taskId}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(10_000),
   })
@@ -666,7 +666,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const tierDenied = await requireTier(userId, 'HOBBY')
+    const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
   }
 
@@ -735,7 +735,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const tierDenied = await requireTier(userId, 'HOBBY')
+    const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
 
     // Rate limit: 20 AI requests per minute per user

@@ -3,7 +3,7 @@
  * Supports: text-to-3D, image-to-3D, async job polling, .fbx/.glb output
  */
 
-const MESHY_API_BASE = 'https://api.meshy.ai/v2'
+const MESHY_API_BASE = 'https://api.meshy.ai/v3'
 
 // Pricing estimates
 const MESHY_PRICING = {

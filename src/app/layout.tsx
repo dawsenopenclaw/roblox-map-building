@@ -112,7 +112,7 @@ export const metadata: Metadata = {
         '@type': 'Offer',
         price: '0',
         priceCurrency: 'USD',
-        description: 'Free tier available. Pro plans from $4.99/month.',
+        description: 'Free tier available. Paid plans from $9.99/month.',
       },
       /* aggregateRating removed — no real reviews yet */
       author: {

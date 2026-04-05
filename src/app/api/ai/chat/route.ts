@@ -2246,11 +2246,15 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     intent: 'analysis',
   },
   {
-    // Mesh/3D model generation — ONLY when user explicitly says "3d model", "mesh", or "3d asset"
-    // Simple descriptions like "make a sword" should go to building (multi-part code gen)
+    // Mesh/3D model generation — triggers on explicit 3D/mesh keywords OR natural
+    // "create a 3D X" / "generate a X model" phrasing.
+    // Simple "make a sword" still routes to building (multi-part Luau code gen).
     patterns: [
       /\b(3d\s*model|3d\s*mesh|generate\s*mesh|create\s*mesh|glb|fbx)\b/i,
-      /\bmesh[:\s]+/i, // "mesh: a sword" explicit prefix
+      /\bmesh[:\s]+/i,                                     // "mesh: a sword" explicit prefix
+      /\b(create|make|generate|build)\s+(a\s+|me\s+)?3d\b/i, // "create a 3D dragon"
+      /\b(generate|create|make)\s+(a\s+)?(custom\s+)?(3d\s+)?\w+\s+(model|mesh|asset)\b/i, // "generate a dragon model"
+      /\b3d\s+(dragon|monster|creature|character|weapon|vehicle|sword|shield|armor|gun|rifle|chest|barrel|crate|throne|castle|ship|spaceship|robot|alien|zombie)\b/i,
     ],
     intent: 'mesh',
   },
@@ -3413,13 +3417,28 @@ interface ChatMeshResult {
   rbxAssetId?: string
 }
 
+/**
+ * Strips conversational scaffolding from a raw user message so Meshy receives
+ * a clean object description rather than "create a 3D dragon for my game".
+ * Falls back to the full prompt when no object noun can be extracted.
+ */
+function extractMeshPrompt(rawMessage: string): string {
+  return rawMessage
+    // Remove leading verbs + filler: "create a 3D", "generate me a custom mesh", etc.
+    .replace(/^(generate|create|make|build|give me|i want|i need|can you make|could you make)\s+(me\s+)?a\s+(3d\s+)?(custom\s+)?(model|mesh|asset\s+of\s+)?(a\s+|an\s+)?/i, '')
+    // Remove trailing qualifiers: "for my game", "for roblox", "please"
+    .replace(/\s+(for\s+(my\s+)?(roblox\s+)?(game|map|world)|please|thanks?|3d\s+model|model|mesh|asset)[\s,.!?]*$/i, '')
+    .trim() || rawMessage
+}
+
 async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   const meshyKey = process.env.MESHY_API_KEY
+  const cleanPrompt = extractMeshPrompt(prompt)
 
   // Priority 1: Meshy (paid, best quality) — if API key is configured
   if (meshyKey) {
     try {
-      const taskId = await createMeshyChatTask(prompt, meshyKey)
+      const taskId = await createMeshyChatTask(cleanPrompt, meshyKey)
       const task = await pollMeshyChatTask(taskId, meshyKey)
 
       if (task.status === 'IN_PROGRESS') {
@@ -3441,7 +3460,7 @@ async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   // Priority 2: Free pipeline (HuggingFace Spaces — no API key needed)
   try {
     const { generateFreeMesh } = await import('@/lib/free-mesh-pipeline')
-    const freeResult = await generateFreeMesh(prompt)
+    const freeResult = await generateFreeMesh(cleanPrompt)
 
     if (freeResult.status === 'complete' && freeResult.meshUrl) {
       // Try to upload to Roblox for a real rbxassetid
@@ -3545,6 +3564,8 @@ interface ChatResponsePayload {
     thumbnailUrl: string | null
     polygonCount: number | null
     status: string
+    /** Meshy task ID — present when status is 'pending'; poll GET /api/ai/mesh?taskId=xxx */
+    taskId?: string
   }
   textureResult?: {
     textureUrl: string | null
@@ -4721,6 +4742,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                   thumbnailUrl: mesh.thumbnailUrl,
                   polygonCount: mesh.polygonCount,
                   status: mesh.status,
+                  taskId: mesh.taskId,
                 }
                 // Auto-place in Studio if mesh was generated and session exists
                 if (mesh.meshUrl && sessionId) {
@@ -4867,6 +4889,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             thumbnailUrl: mesh.thumbnailUrl,
             polygonCount: mesh.polygonCount,
             status: mesh.status,
+            taskId: mesh.taskId,
           }
           // Auto-place in Studio
           if (mesh.meshUrl && sessionId) {
@@ -5015,6 +5038,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         thumbnailUrl: result.thumbnailUrl,
         polygonCount: result.polygonCount,
         status: result.status,
+        taskId: result.taskId,
       }
       if (result.status === 'demo') {
         payload.message =

@@ -537,8 +537,28 @@ function ViewportArea({
         {/* Scrollable content */}
         <div style={{ position: 'relative', zIndex: 1, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
+          {/* Skip banner — prominent, at top */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.25)', borderRadius: 10 }}>
+            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
+              Just want to chat?
+            </span>
+            <button
+              onClick={onConfirmConnected}
+              style={{
+                padding: '7px 16px', borderRadius: 8, border: 'none',
+                background: '#D4AF37',
+                color: '#030712', fontSize: 13, fontWeight: 700,
+                fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                boxShadow: '0 0 16px rgba(212,175,55,0.35)',
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              Skip — chat without Studio
+            </button>
+          </div>
+
           {/* Header */}
-          <div style={{ textAlign: 'center', paddingTop: 8 }}>
+          <div style={{ textAlign: 'center', paddingTop: 4 }}>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white' }}>
               Connect to Roblox Studio
             </h3>
@@ -735,16 +755,11 @@ function ViewportArea({
             </div>
           </details>
 
-          {/* Skip option */}
-          <div style={{ textAlign: 'center', paddingBottom: 4 }}>
+          {/* Skip option — removed, now shown at top */}
+          <div style={{ paddingBottom: 4, display: 'none' }}>
             <button
               onClick={onConfirmConnected}
-              style={{
-                padding: '8px 16px', borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.08)', background: 'transparent',
-                color: 'rgba(255,255,255,0.35)', fontSize: 12, cursor: 'pointer',
-                transition: 'all 0.15s',
-              }}
+              style={{ display: 'none' }}
             >
               Skip for now — chat without Studio
             </button>
@@ -1890,6 +1905,13 @@ function EditorInner() {
       try { localStorage.setItem(LS_CHAT_HEIGHT_KEY, String(next)) } catch { /* ignore */ }
       return next
     })
+  }, [])
+
+  // Auto-focus chat input on mount
+  useEffect(() => {
+    const id = setTimeout(() => chat.textareaRef.current?.focus(), 120)
+    return () => clearTimeout(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Keyboard shortcuts

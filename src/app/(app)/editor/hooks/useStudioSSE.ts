@@ -279,7 +279,12 @@ export function useStudioSSE(sessionId: string | null) {
     es.onerror = () => {
       // onerror fires for both connection failures and server-sent errors.
       // EventSource readyState: 0=CONNECTING, 1=OPEN, 2=CLOSED
-      if (es.readyState === EventSource.CLOSED) {
+      // When the server returns 4xx/5xx or the network is unavailable the
+      // EventSource may stay CONNECTING and fire onerror repeatedly without
+      // ever reaching CLOSED. We close and schedule reconnect for both
+      // CONNECTING and CLOSED states — OPEN errors are non-fatal (e.g. a
+      // server-sent error event) so we leave those to the server to handle.
+      if (es.readyState !== EventSource.OPEN) {
         closeSSE()
         scheduleReconnect(sid)
       }
