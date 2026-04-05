@@ -4530,9 +4530,16 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
-  // Debug removed — key is present, just needs credits or Gemini fallback
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
-  if (anthropic) {
+
+  // Skip Claude entirely — go straight to free Gemini/Groq pipeline.
+  // The Anthropic API key has no credits, so every Claude call fails and
+  // then falls back to the free pipeline anyway — but the fallback path
+  // has a bug where the stream can produce empty responses.
+  // TODO: Re-enable when Anthropic credits are topped up.
+  const anthropicAvailable = false
+
+  if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).
     // Tokens are only spent after a successful response is confirmed.
     if (!isDemo && authedUserId && tokenCost > 0) {
