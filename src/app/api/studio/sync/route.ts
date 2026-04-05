@@ -253,6 +253,9 @@ async function handleSync(req: NextRequest) {
   }
 
   // Track each delivered command by type (fire-and-forget)
+  if (commands.length > 0) {
+    console.log('[studio/sync] Delivering', commands.length, 'commands to session:', sessionId, 'types:', commands.map(c => c.type).join(','))
+  }
   for (const cmd of commands) {
     trackCommand(cmd.type)
   }

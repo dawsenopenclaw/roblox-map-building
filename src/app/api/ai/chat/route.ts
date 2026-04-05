@@ -417,8 +417,13 @@ if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
 
 // Queue extracted code to Studio plugin for execution
 async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
-  if (!sessionId || !code) return false
+  if (!sessionId || !code) {
+    console.log('[sendCodeToStudio] Skipped: sessionId=' + (sessionId ?? 'null') + ' codeLen=' + (code?.length ?? 0))
+    return false
+  }
   try {
+    console.log('[sendCodeToStudio] Attempting for session:', sessionId, 'codeLen:', code.length)
+
     // Try to find the session — memory first, then Redis
     let session = await getSession(sessionId)
 
@@ -426,6 +431,7 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     // If the session isn't found (no Redis, or cold start), create a minimal one
     // so the command can be queued. The plugin's next /sync poll will find it.
     if (!session) {
+      console.log('[sendCodeToStudio] Session not found, creating ephemeral for:', sessionId)
       session = createSession({
         placeId: 'unknown',
         placeName: 'Unknown',
@@ -433,18 +439,23 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
         authToken: '',
         sessionId,
       })
+    } else {
+      console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
     }
 
     // Validate and auto-fix common AI mistakes before sending
     const { fixedCode, fixes } = validateAndFixLuau(code)
     if (fixes.length > 0) {
+      console.log('[sendCodeToStudio] Luau fixes applied:', fixes.length)
     }
     const result = await queueCommand(sessionId, {
       type: 'execute_luau',
       data: { code: fixedCode },
     })
+    console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result))
     return result.ok
-  } catch {
+  } catch (err) {
+    console.error('[sendCodeToStudio] Error:', err instanceof Error ? err.message : err)
     return false
   }
 }
@@ -4617,7 +4628,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             const hasCode = luau !== null
 
             let mcpResult: McpCallResult | undefined
-            const mcpIntentStream = detectMcpIntent(message, fullText)
+            const mcpIntentStream = detectMcpIntent(message, fullText)?.[0]
             if (mcpIntentStream) {
               try {
                 mcpResult = await callTool(
@@ -4767,7 +4778,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
       // Auto-trigger MCP tools based on what Claude said it's doing
       let mcpResult: McpCallResult | undefined
-      const mcpIntentVal = detectMcpIntent(message, responseText)
+      const mcpIntentVal = detectMcpIntent(message, responseText)?.[0]
       if (mcpIntentVal) {
         try {
           mcpResult = await callTool(mcpIntentVal.server, mcpIntentVal.tool, mcpIntentVal.args)
@@ -5007,7 +5018,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
   // ── Auto-trigger MCP for terrain/city/asset intents in demo path ─────────
   {
-    const mcpIntent = detectMcpIntent(message, DEMO_RESPONSES[intent] ?? '')
+    const mcpIntent = detectMcpIntent(message, DEMO_RESPONSES[intent] ?? '')?.[0]
     if (mcpIntent) {
       try {
         payload.mcpResult = await callTool(mcpIntent.server, mcpIntent.tool, mcpIntent.args)
