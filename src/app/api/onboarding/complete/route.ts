@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         })
         await tx.tokenBalance.upsert({
           where: { userId: user.id },
-          create: { userId: user.id, balance: 100, lifetimeEarned: 100 },
+          create: { userId: user.id, balance: 1000, lifetimeEarned: 1000 },
           update: {}, // already exists — first writer wins, leave balance untouched
         })
       })

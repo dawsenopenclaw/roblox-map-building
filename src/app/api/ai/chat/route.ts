@@ -3249,39 +3249,39 @@ type IntentKey =
 // Token costs per intent — cheap for conversation, expensive for generation
 const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   conversation: 0,  // Free — chatting, questions, learning
-  chat: 0,          // Free — alias for conversation
+  chat: 1,          // Chat/conversation
   undo: 0,          // Free — informational only
   help: 0,          // Free — capability explanation
   publish: 0,       // Free — publishing guidance
   education: 0,     // Free — explain/teach, no code generation
-  debug: 5,         // Diagnose error and suggest fix
-  performance: 5,   // Performance analysis and suggestions
-  modify: 5,        // Modify selection (color/size/position)
-  cleanup: 5,       // Delete/remove/clear operations
-  animate: 10,      // Animation scripts (TweenService/AnimationTrack)
-  datasave: 10,     // DataStore/ProfileStore save/load scripts
-  networking: 10,   // RemoteEvent/RemoteFunction/server-client scripts
-  multiscript: 30,  // Multi-file system generation
-  gamesystem: 25,   // Pre-built game system template (currency/shop/pets/etc.)
-  default: 5,       // General build request
-  analysis: 5,      // Analyzing existing work
-  script: 10,       // Script help
-  ui: 10,           // UI advice
-  audio: 10,        // Audio advice
-  lighting: 10,     // Lighting advice
-  economy: 10,      // Economy design
-  quest: 10,        // Quest design
-  combat: 10,       // Combat design
-  npc: 15,          // NPC generation
-  vehicle: 15,      // Vehicle generation
-  particle: 15,     // Particle effects
-  weather: 15,      // Weather effects (rain/snow/fog/sandstorm)
-  building: 20,     // Building generation (Luau code)
-  terrain: 25,      // Terrain generation
-  marketplace: 5,   // Asset search
-  fullgame: 50,     // Full game generation
-  mesh: 100,        // 3D mesh generation (Meshy API)
-  texture: 50,      // Texture generation (Fal.ai)
+  debug: 2,         // Diagnose error and suggest fix
+  performance: 2,   // Performance analysis and suggestions
+  modify: 2,        // Modify selection (color/size/position)
+  cleanup: 2,       // Delete/remove/clear operations
+  animate: 2,       // Animation scripts (TweenService/AnimationTrack)
+  datasave: 2,      // DataStore/ProfileStore save/load scripts
+  networking: 2,    // RemoteEvent/RemoteFunction/server-client scripts
+  multiscript: 10,  // Multi-file system generation
+  gamesystem: 10,   // Pre-built game system template (currency/shop/pets/etc.)
+  default: 2,       // General build request
+  analysis: 2,      // Analyzing existing work
+  script: 2,        // Script help
+  ui: 2,            // UI advice
+  audio: 2,         // Audio advice
+  lighting: 2,      // Lighting advice
+  economy: 2,       // Economy design
+  quest: 2,         // Quest design
+  combat: 2,        // Combat design
+  npc: 5,           // NPC generation
+  vehicle: 5,       // Vehicle generation
+  particle: 5,      // Particle effects
+  weather: 5,       // Weather effects (rain/snow/fog/sandstorm)
+  building: 5,      // Building generation (Luau code)
+  terrain: 5,       // Terrain generation
+  marketplace: 1,   // Asset search
+  fullgame: 15,     // Full game generation
+  mesh: 10,         // 3D mesh generation (Meshy API)
+  texture: 10,      // Texture generation (Fal.ai)
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [

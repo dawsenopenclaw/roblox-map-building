@@ -93,12 +93,12 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // Initialize token balance with 100 free signup tokens.
+        // Initialize token balance with 1000 free signup tokens.
         // Upsert guards against a race with onboarding/complete, which can also
         // create the row if the webhook fires after the user hits that endpoint.
         await tx.tokenBalance.upsert({
           where: { userId: user.id },
-          create: { userId: user.id, balance: 100, lifetimeEarned: 100 },
+          create: { userId: user.id, balance: 1000, lifetimeEarned: 1000 },
           update: {}, // already exists — first writer wins, leave balance untouched
         })
 
