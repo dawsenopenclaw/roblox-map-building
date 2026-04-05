@@ -14,13 +14,13 @@ interface Team {
 
 interface TeamSummary extends Team {
   memberCount: number
-  myRole: 'OWNER' | 'ADMIN' | 'EDITOR' | 'VIEWER'
+  myRole: 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER'
 }
 
 interface TeamMember {
   id: string
   userId: string
-  role: 'OWNER' | 'ADMIN' | 'EDITOR' | 'VIEWER'
+  role: 'OWNER' | 'ADMIN' | 'DEVELOPER' | 'VIEWER'
   joinedAt: string
 }
 
@@ -28,14 +28,14 @@ interface TeamDetail extends Team {
   members: TeamMember[]
 }
 
-const ROLE_OPTIONS = ['ADMIN', 'EDITOR', 'VIEWER'] as const
+const ROLE_OPTIONS = ['ADMIN', 'DEVELOPER', 'VIEWER'] as const
 type ChangeableRole = (typeof ROLE_OPTIONS)[number]
 
 const ROLE_COLORS = {
-  OWNER:  'text-[#D4AF37]',
-  ADMIN:  'text-blue-400',
-  EDITOR: 'text-purple-400',
-  VIEWER: 'text-gray-300',
+  OWNER:     'text-[#D4AF37]',
+  ADMIN:     'text-blue-400',
+  DEVELOPER: 'text-purple-400',
+  VIEWER:    'text-gray-300',
 }
 
 // Demo data shown when API is unreachable
@@ -58,9 +58,9 @@ const DEMO_DETAIL: TeamDetail = {
   slug: 'map-builders',
   ownerId: 'demo-user',
   members: [
-    { id: 'm1', userId: 'user_demo_owner', role: 'OWNER', joinedAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
-    { id: 'm2', userId: 'user_demo_alice', role: 'EDITOR', joinedAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
-    { id: 'm3', userId: 'user_demo_bob', role: 'VIEWER', joinedAt: new Date(Date.now() - 86400_000).toISOString() },
+    { id: 'm1', userId: 'user_demo_owner', role: 'OWNER',     joinedAt: new Date(Date.now() - 7 * 86400_000).toISOString() },
+    { id: 'm2', userId: 'user_demo_alice', role: 'DEVELOPER', joinedAt: new Date(Date.now() - 3 * 86400_000).toISOString() },
+    { id: 'm3', userId: 'user_demo_bob',   role: 'VIEWER',    joinedAt: new Date(Date.now() - 86400_000).toISOString() },
   ],
 }
 
@@ -204,13 +204,28 @@ export default function TeamSettingsPage() {
       <div className="max-w-3xl mx-auto text-center py-20">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/5 border border-white/10 mb-4">
           <svg className="w-7 h-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
           </svg>
         </div>
-        <p className="text-gray-300 text-sm">You need to be an Owner or Admin to manage team settings.</p>
-        <Link href="/editor" className="text-[#D4AF37] hover:underline text-sm mt-4 inline-block">
-          ← Back to editor
+        <p className="text-white font-semibold text-base mb-2">No team yet</p>
+        <p className="text-gray-400 text-sm mb-6">
+          You don&apos;t belong to any team as an Owner or Admin.<br />
+          Create a team to invite collaborators and manage roles.
+        </p>
+        <Link
+          href="/team/create"
+          className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E5A619] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors mb-4"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Create a team
         </Link>
+        <div>
+          <Link href="/team" className="text-[#D4AF37] hover:underline text-sm inline-block">
+            ← Back to team
+          </Link>
+        </div>
       </div>
     )
   }
@@ -218,8 +233,8 @@ export default function TeamSettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <Link href="/editor" className="text-[#D4AF37] hover:underline text-sm mb-2 inline-block">
-          ← Back to editor
+        <Link href="/team" className="text-[#D4AF37] hover:underline text-sm mb-2 inline-block">
+          ← Back to team
         </Link>
         <h1 className="text-2xl font-bold text-white">Team Settings</h1>
         <p className="text-gray-300 text-sm mt-1">Manage roles and permissions</p>
@@ -272,10 +287,10 @@ export default function TeamSettingsPage() {
           {/* Role legend */}
           <div className="px-5 py-4 border-b border-white/5 grid grid-cols-4 gap-3">
             {[
-              { role: 'OWNER', desc: 'Full control', color: 'text-[#D4AF37]' },
-              { role: 'ADMIN', desc: 'Manage members', color: 'text-blue-400' },
-              { role: 'EDITOR', desc: 'Edit & build', color: 'text-purple-400' },
-              { role: 'VIEWER', desc: 'View only', color: 'text-gray-300' },
+              { role: 'OWNER',     desc: 'Full control',   color: 'text-[#D4AF37]' },
+              { role: 'ADMIN',     desc: 'Manage members', color: 'text-blue-400' },
+              { role: 'DEVELOPER', desc: 'Edit & build',   color: 'text-purple-400' },
+              { role: 'VIEWER',    desc: 'View only',      color: 'text-gray-300' },
             ].map(({ role, desc, color }) => (
               <div key={role} className="bg-[#1c1c1c] rounded-xl p-3 text-center">
                 <p className={`text-xs font-semibold ${color}`}>{role}</p>
@@ -311,7 +326,7 @@ export default function TeamSettingsPage() {
                     {member.role !== 'OWNER' && (
                       <>
                         <select
-                          defaultValue={member.role}
+                          value={member.role}
                           onChange={(e) => handleRoleChange(member.id, e.target.value as ChangeableRole)}
                           disabled={updatingId === member.id}
                           className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#D4AF37]/50 transition-colors disabled:opacity-50"

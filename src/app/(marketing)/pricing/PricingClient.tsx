@@ -15,7 +15,6 @@ import {
   Sparkles,
   Crown,
   Shield,
-  CheckCircle2,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -39,8 +38,8 @@ const TIERS = [
     tagline: 'Build real games — no card needed',
     highlight: false,
     badge: null,
-    cta: 'Get Started Free',
-    ctaHref: '/sign-up',
+    cta: 'Start Free',
+    ctaHref: '/editor',
     features: [
       '1,000 tokens / month',
       '1 project',
@@ -62,7 +61,7 @@ const TIERS = [
     tagline: 'For hobbyists leveling up fast',
     highlight: false,
     badge: null,
-    cta: 'Start Free Trial',
+    cta: 'Get Hobby',
     ctaHref: '/sign-up?plan=hobby',
     features: [
       '2,000 tokens / month',
@@ -84,7 +83,7 @@ const TIERS = [
     tagline: 'For serious creators who ship',
     highlight: true,
     badge: 'Most Popular',
-    cta: 'Start Free Trial',
+    cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
       '7,000 tokens / month',
@@ -109,7 +108,7 @@ const TIERS = [
     tagline: 'For agencies & game studios',
     highlight: false,
     badge: null,
-    cta: 'Start Free Trial',
+    cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
     features: [
       '20,000 tokens / month',
@@ -125,106 +124,61 @@ const TIERS = [
       'Custom integrations',
     ],
   },
-  {
-    key: 'CUSTOM',
-    name: 'Custom',
-    icon: Crown,
-    priceMonthly: null,
-    priceYearly: null,
-    yearlyTotal: null,
-    tagline: 'Need more than 20K tokens/month?',
-    highlight: false,
-    badge: null,
-    cta: 'Talk to Sales',
-    ctaHref: '#contact-sales',
-    features: [
-      'Custom token limits',
-      'Unlimited projects',
-      'Dedicated AI cluster',
-      'Custom model training',
-      'Unlimited team members',
-      'White-glove onboarding',
-      'SLA guarantee',
-      'Invoice billing',
-    ],
-  },
 ] as const
 
-// Feature matrix for comparison table
+// Feature matrix for comparison table (4 tiers, 9 rows)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',        free: '1,000',     hobby: '2,000',     creator: '7,000',     studio: '20,000',    custom: 'Custom'     },
-  { label: 'Projects',              free: '1',         hobby: '5',         creator: 'Unlimited', studio: 'Unlimited', custom: 'Unlimited'  },
-  { label: 'Basic templates',       free: true,        hobby: true,        creator: true,        studio: true,        custom: true         },
-  { label: 'Voice-to-game',         free: false,       hobby: true,        creator: true,        studio: true,        custom: true         },
-  { label: 'Image-to-map',          free: false,       hobby: true,        creator: true,        studio: true,        custom: true         },
-  { label: 'Terrain generation',    free: 'Basic',     hobby: true,        creator: true,        studio: 'Full world', custom: true        },
-  { label: '3D asset generation',   free: false,       hobby: true,        creator: true,        studio: 'Bulk',       custom: true        },
-  { label: 'UI builder',            free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Economy design AI',     free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Marketplace access',    free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Marketplace selling',   free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Team members',          free: 'Solo',      hobby: 'Solo',      creator: '3',         studio: '50',        custom: 'Unlimited'  },
-  { label: 'Game DNA scanner',      free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Advanced analytics',    free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'Priority AI queue',     free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
-  { label: 'API access',            free: false,       hobby: false,       creator: false,       studio: true,        custom: true         },
-  { label: 'White-label exports',   free: false,       hobby: false,       creator: false,       studio: true,        custom: true         },
-  { label: 'Custom integrations',   free: false,       hobby: false,       creator: false,       studio: true,        custom: true         },
-  { label: 'Dedicated AI cluster',  free: false,       hobby: false,       creator: false,       studio: false,       custom: true         },
-  { label: 'Custom model training', free: false,       hobby: false,       creator: false,       studio: false,       custom: true         },
-  { label: 'SLA guarantee',         free: false,       hobby: false,       creator: false,       studio: false,       custom: true         },
-  { label: 'Invoice billing',       free: false,       hobby: false,       creator: false,       studio: false,       custom: true         },
-  { label: 'Support',               free: 'Community', hobby: 'Email',     creator: 'Priority',  studio: 'Dedicated', custom: 'White-glove'},
-  { label: 'COPPA compliant',       free: true,        hobby: true,        creator: true,        studio: true,        custom: true         },
+  { label: 'Tokens / month',     free: '1,000',     hobby: '2,000',     creator: '7,000',    studio: '20,000'    },
+  { label: 'AI Models',          free: 'Basic',     hobby: 'Standard',  creator: 'Advanced', studio: 'Advanced'  },
+  { label: 'Voice Commands',     free: false,       hobby: true,        creator: true,       studio: true        },
+  { label: 'Image-to-Map',       free: false,       hobby: true,        creator: true,       studio: true        },
+  { label: 'Game DNA',           free: false,       hobby: false,       creator: true,       studio: true        },
+  { label: 'Marketplace',        free: false,       hobby: false,       creator: true,       studio: true        },
+  { label: 'Team Members',       free: 'Solo',      hobby: 'Solo',      creator: '3',        studio: '50'        },
+  { label: 'API Access',         free: false,       hobby: false,       creator: false,      studio: true        },
+  { label: 'Support Level',      free: 'Community', hobby: 'Email',     creator: 'Priority', studio: 'Dedicated' },
 ]
 
-const TOKEN_USAGE_OPTIONS = [
-  '20K – 50K / month',
-  '50K – 100K / month',
-  '100K – 500K / month',
-  '500K+ / month',
+const TOKEN_PACKS = [
+  {
+    name: 'Starter',
+    tokens: '1,000',
+    price: '$10',
+    badge: null,
+    description: 'Perfect for one-off projects',
+  },
+  {
+    name: 'Creator',
+    tokens: '5,000',
+    price: '$45',
+    badge: null,
+    description: 'Stock up and keep building',
+  },
+  {
+    name: 'Pro',
+    tokens: '15,000',
+    price: '$120',
+    badge: 'Best Value',
+    description: 'Best price per token',
+  },
 ]
 
 const FAQ = [
   {
     q: 'What is a token and how are they used?',
-    a: 'Tokens are the currency for AI operations on ForjeGames. Each generation — terrain, buildings, scripts, maps, voice commands — consumes a certain number of tokens. Simple generations cost fewer tokens; complex multi-step builds cost more. Your token balance resets every month.',
-  },
-  {
-    q: 'Can I cancel anytime?',
-    a: 'Yes. No contracts, no cancellation fees. Cancel in one click from your account settings and you keep full access until the end of your current billing period.',
-  },
-  {
-    q: 'Is ForjeGames safe for kids?',
-    a: 'Yes. ForjeGames is COPPA compliant with parental controls built in. Safe for creators aged 8 and up with parental consent. All content is moderated.',
-  },
-  {
-    q: "What is the 14-day free trial?",
-    a: 'All paid plans include a 14-day free trial. No credit card required to start. You only get charged after your trial ends — and you can cancel before then at zero cost.',
-  },
-  {
-    q: "What's the 10% donation?",
-    a: '10% of every subscription payment goes directly to education charities. We partner with organizations that teach kids coding and STEM skills worldwide.',
-  },
-  {
-    q: 'Do I need to know how to code?',
-    a: 'No. The AI handles everything. Describe what you want in plain English and the platform builds it — scripts, terrain, assets, all of it.',
-  },
-  {
-    q: 'Can I sell what I make?',
-    a: 'Yes. Creator and Studio plans let you list templates and assets on the ForjeGames marketplace. You keep 70% of every sale.',
+    a: 'Tokens are the currency for AI operations on ForjeGames. Each generation — terrain, buildings, scripts, maps, voice commands — consumes tokens. Simple generations cost fewer; complex multi-step builds cost more. Your monthly allocation resets every billing cycle.',
   },
   {
     q: 'How does annual billing work?',
-    a: 'Annual billing charges you once per year at a 20% discount compared to monthly. Hobby billed at $95.90/yr, Creator at $239.90/yr, Studio at $479.90/yr. Switch between billing cycles anytime from account settings.',
+    a: 'Annual billing charges you once per year at a 20% discount vs. monthly. Hobby is billed at $95.90/yr ($7.99/mo), Creator at $239.90/yr ($19.99/mo), Studio at $479.90/yr ($39.99/mo). Switch billing cycles anytime from account settings.',
   },
   {
-    q: 'What is API access on Studio?',
-    a: 'Studio plan includes full REST API and SDK access (npm, Python, Go) so you can integrate ForjeGames into your own tools, CI/CD pipelines, or custom automation workflows.',
+    q: 'Can I buy extra tokens without upgrading my plan?',
+    a: 'Yes. Token packs let you add tokens to any plan without changing your subscription. Packs never expire — they roll over month to month until used.',
   },
   {
-    q: 'Can I upgrade or downgrade my plan?',
-    a: "Yes. Upgrades take effect immediately and are prorated. Downgrades take effect at your next billing cycle so you never lose features you've already paid for.",
+    q: 'Can I upgrade, downgrade, or cancel anytime?',
+    a: 'Yes to all three. Upgrades take effect immediately and are prorated. Downgrades take effect at your next billing cycle so you keep features you\'ve already paid for. Cancellations are instant with no fees — you retain access until the period ends.',
   },
 ]
 
@@ -350,207 +304,107 @@ function CompareCell({
 }
 
 // ---------------------------------------------------------------------------
-// ContactSalesSection
+// TokenPacksSection
 // ---------------------------------------------------------------------------
 
-type FormState = 'idle' | 'loading' | 'success' | 'error'
-
-function ContactSalesSection() {
-  const [name, setName]       = useState('')
-  const [email, setEmail]     = useState('')
-  const [message, setMessage] = useState('')
-  const [budget, setBudget]   = useState('')
-  const [status, setStatus]   = useState<FormState>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      setStatus('loading')
-      setErrorMsg('')
-      try {
-        const res = await fetch('/api/contact/sales', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, message, budget }),
-        })
-        if (!res.ok) {
-          const data = (await res.json()) as { error?: string }
-          throw new Error(data.error ?? 'Something went wrong')
-        }
-        setStatus('success')
-      } catch (err) {
-        setStatus('error')
-        setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
-      }
-    },
-    [name, email, message, budget],
-  )
-
-  const inputBase =
-    'w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-white placeholder-[#4A5580] outline-none transition-all duration-200 focus:border-[#7C3AED]/50 focus:bg-white/[0.06] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.12)]'
-
+function TokenPacksSection() {
   return (
-    <section
-      id="contact-sales"
-      className="mb-24 scroll-mt-20"
-    >
-      {/* Section header */}
+    <section className="mb-24">
       <div className="text-center mb-10">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
           Need more tokens?
         </h2>
         <p className="text-[#6B7699] text-sm max-w-md mx-auto leading-relaxed">
-          Our standard plans go up to 20,000 tokens/month. Need more? Tell us what you&apos;re building and we&apos;ll create a custom plan.
+          Top up any plan with a one-time token pack. Packs never expire — they roll over until used.
         </p>
       </div>
 
-      <div className="max-w-xl mx-auto">
-        <div
-          className="relative rounded-2xl border border-[rgba(124,58,237,0.2)] overflow-hidden"
-          style={{
-            background: 'linear-gradient(160deg, #0D0B1A 0%, #0A0914 50%, #0C0B1C 100%)',
-          }}
-        >
-          {/* Purple ambient glow */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              top: '-60px',
-              right: '-60px',
-              width: '300px',
-              height: '300px',
-              background:
-                'radial-gradient(ellipse at center, rgba(124,58,237,0.12) 0%, transparent 65%)',
-              filter: 'blur(30px)',
-              pointerEvents: 'none',
-            }}
-          />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+        {TOKEN_PACKS.map((pack) => {
+          const isBestValue = pack.badge === 'Best Value'
+          return (
+            <div
+              key={pack.name}
+              className={`relative flex flex-col rounded-2xl border p-6 transition-all duration-300 group hover:-translate-y-1 ${
+                isBestValue
+                  ? 'border-[rgba(212,175,55,0.4)] shadow-[0_0_40px_rgba(212,175,55,0.12)]'
+                  : 'border-[#141C35] bg-[#0A0F1E] hover:border-[#1E2A4A] hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
+              }`}
+              style={
+                isBestValue
+                  ? { background: 'linear-gradient(160deg, #0D1226 0%, #0A0E20 50%, #0C1128 100%)' }
+                  : {}
+              }
+            >
+              {/* Best Value badge */}
+              {isBestValue && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span
+                    className="inline-flex items-center gap-1.5 text-xs font-extrabold px-4 py-1.5 rounded-full text-[#0A0810] whitespace-nowrap shadow-[0_4px_16px_rgba(212,175,55,0.5)]"
+                    style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    {pack.badge}
+                  </span>
+                </div>
+              )}
 
-          <div className="relative p-8">
-            {status === 'success' ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-4 text-center">
+              {/* Gold ambient glow for best value */}
+              {isBestValue && (
                 <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center"
-                  style={{ background: 'rgba(124,58,237,0.15)' }}
-                >
-                  <CheckCircle2 className="w-7 h-7 text-[#A78BFA]" />
-                </div>
-                <p className="text-white font-bold text-lg">Message received</p>
-                <p className="text-[#6B7699] text-sm">
-                  We&apos;ll be in touch within 24 hours.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} noValidate className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="sales-name"
-                      className="block text-xs font-semibold text-[#8B95B0] mb-1.5 uppercase tracking-wide"
-                    >
-                      Name <span className="text-[#7C3AED]">*</span>
-                    </label>
-                    <input
-                      id="sales-name"
-                      type="text"
-                      required
-                      autoComplete="name"
-                      placeholder="Your name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={inputBase}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="sales-email"
-                      className="block text-xs font-semibold text-[#8B95B0] mb-1.5 uppercase tracking-wide"
-                    >
-                      Email <span className="text-[#7C3AED]">*</span>
-                    </label>
-                    <input
-                      id="sales-email"
-                      type="email"
-                      required
-                      autoComplete="email"
-                      placeholder="you@company.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={inputBase}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="sales-tokens"
-                    className="block text-xs font-semibold text-[#8B95B0] mb-1.5 uppercase tracking-wide"
-                  >
-                    Monthly token usage needed <span className="text-[#7C3AED]">*</span>
-                  </label>
-                  <select
-                    id="sales-tokens"
-                    required
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    className={`${inputBase} appearance-none cursor-pointer`}
-                    style={{ colorScheme: 'dark' }}
-                  >
-                    <option value="" disabled>
-                      Select token range
-                    </option>
-                    {TOKEN_USAGE_OPTIONS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="sales-message"
-                    className="block text-xs font-semibold text-[#8B95B0] mb-1.5 uppercase tracking-wide"
-                  >
-                    Message <span className="text-[#7C3AED]">*</span>
-                  </label>
-                  <textarea
-                    id="sales-message"
-                    required
-                    rows={4}
-                    placeholder="What are you building? Tell us about your project and token needs..."
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className={`${inputBase} resize-none`}
-                  />
-                </div>
-
-                {status === 'error' && (
-                  <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                    {errorMsg}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={status === 'loading'}
-                  className="w-full font-bold py-3.5 rounded-xl text-sm text-white transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 hover:scale-[1.01] active:scale-[0.99] shadow-[0_4px_24px_rgba(124,58,237,0.35)]"
+                  aria-hidden="true"
                   style={{
-                    background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
+                    position: 'absolute',
+                    inset: '-20px',
+                    background: 'radial-gradient(ellipse at 50% 30%, rgba(212,175,55,0.14) 0%, transparent 65%)',
+                    filter: 'blur(16px)',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    borderRadius: '2rem',
                   }}
-                >
-                  {status === 'loading' ? 'Sending...' : 'Send message'}
-                </button>
+                />
+              )}
 
-                <p className="text-center text-[11px] text-[#3D4A6A]">
-                  We respond within 24 hours on business days.
+              <div className="relative z-10">
+                <p
+                  className={`text-lg font-bold mb-1 ${isBestValue ? 'text-[#D4AF37]' : 'text-white'}`}
+                >
+                  {pack.name}
                 </p>
-              </form>
-            )}
-          </div>
-        </div>
+                <p className="text-[#6B7699] text-sm mb-5">{pack.description}</p>
+
+                <div className="flex items-end gap-1.5 mb-1">
+                  <span
+                    className={`text-4xl font-extrabold tracking-tight ${isBestValue ? 'text-white' : 'text-white'}`}
+                  >
+                    {pack.price}
+                  </span>
+                </div>
+                <p
+                  className={`text-sm font-semibold mb-6 ${isBestValue ? 'text-[#D4AF37]' : 'text-[#8B95B0]'}`}
+                >
+                  {pack.tokens} tokens
+                </p>
+
+                <Link
+                  href="/sign-up"
+                  className={`block text-center font-bold py-3 rounded-xl text-sm transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] ${
+                    isBestValue
+                      ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.4)]'
+                      : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
+                  }`}
+                  style={
+                    isBestValue
+                      ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
+                      : {}
+                  }
+                >
+                  Buy Pack
+                </Link>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </section>
   )
@@ -674,14 +528,6 @@ export default function PricingClient() {
       if (data.url) window.location.href = data.url
     } catch {
       window.location.href = '/billing'
-    }
-  }, [])
-
-  const handleCustomCta = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault()
-    const target = document.getElementById('contact-sales')
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 
@@ -847,11 +693,10 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Tier Cards                                                          */}
         {/* ------------------------------------------------------------------ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-16 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16 items-start">
           {TIERS.map((tier) => {
-            const price  = annual ? tier.priceYearly : tier.priceMonthly
-            const Icon   = tier.icon
-            const isCustom = tier.key === 'CUSTOM'
+            const price = annual ? tier.priceYearly : tier.priceMonthly
+            const Icon  = tier.icon
 
             return (
               <div
@@ -876,36 +721,16 @@ export default function PricingClient() {
                   />
                 )}
 
-                {/* Custom card glow orb */}
-                {isCustom && (
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      inset: '-20px',
-                      background:
-                        'radial-gradient(ellipse at 50% 40%, rgba(124,58,237,0.12) 0%, transparent 65%)',
-                      filter: 'blur(20px)',
-                      pointerEvents: 'none',
-                      zIndex: 0,
-                      borderRadius: '2rem',
-                    }}
-                  />
-                )}
-
                 <div
                   className={`relative flex flex-col rounded-2xl border transition-all duration-300 ${
                     tier.highlight
                       ? 'border-[rgba(212,175,55,0.4)] shadow-[0_0_60px_rgba(212,175,55,0.15),0_20px_60px_rgba(0,0,0,0.6)] pt-10 pb-10 px-6 group-hover:-translate-y-2 group-hover:shadow-[0_0_80px_rgba(212,175,55,0.22),0_30px_80px_rgba(0,0,0,0.7)]'
-                      : isCustom
-                      ? 'bg-[#0A0A18] border-[rgba(124,58,237,0.3)] p-6 group-hover:-translate-y-1.5 group-hover:border-[rgba(124,58,237,0.5)] group-hover:shadow-[0_12px_40px_rgba(124,58,237,0.15)]'
                       : 'bg-[#0A0F1E] border-[#141C35] p-6 group-hover:-translate-y-1.5 group-hover:border-[#1E2A4A] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
                   }`}
                   style={
                     tier.highlight
                       ? {
-                          background:
-                            'linear-gradient(160deg, #0D1226 0%, #0A0E20 50%, #0C1128 100%)',
+                          background: 'linear-gradient(160deg, #0D1226 0%, #0A0E20 50%, #0C1128 100%)',
                           zIndex: 1,
                         }
                       : { zIndex: 1 }
@@ -916,9 +741,7 @@ export default function PricingClient() {
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2">
                       <span
                         className="inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full text-[#0A0810] whitespace-nowrap shadow-[0_4px_20px_rgba(212,175,55,0.6)]"
-                        style={{
-                          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                        }}
+                        style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
                       >
                         <Crown className="w-3.5 h-3.5" />
                         {tier.badge}
@@ -932,8 +755,6 @@ export default function PricingClient() {
                       className={`inline-flex items-center justify-center w-11 h-11 rounded-xl mb-4 ${
                         tier.highlight
                           ? 'bg-[#D4AF37]/15 text-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.2)]'
-                          : isCustom
-                          ? 'bg-[#7C3AED]/15 text-[#A78BFA] shadow-[0_0_20px_rgba(124,58,237,0.2)]'
                           : 'bg-white/[0.06] text-[#6B7699]'
                       }`}
                     >
@@ -941,11 +762,7 @@ export default function PricingClient() {
                     </div>
                     <p
                       className={`text-2xl font-bold mb-1 ${
-                        tier.highlight
-                          ? 'text-[#D4AF37]'
-                          : isCustom
-                          ? 'text-[#A78BFA]'
-                          : 'text-white'
+                        tier.highlight ? 'text-[#D4AF37]' : 'text-white'
                       }`}
                     >
                       {tier.name}
@@ -955,22 +772,7 @@ export default function PricingClient() {
 
                   {/* Price block */}
                   <div className="mb-6 min-h-[80px]">
-                    {isCustom ? (
-                      <>
-                        <p
-                          className="text-5xl font-extrabold tracking-tight"
-                          style={{
-                            background: 'linear-gradient(135deg, #A78BFA 0%, #C4B5FD 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                          }}
-                        >
-                          Custom
-                        </p>
-                        <p className="text-xs text-[#6B7699] mt-1.5">Let&apos;s talk</p>
-                      </>
-                    ) : price === 0 ? (
+                    {price === 0 ? (
                       <>
                         <p className="text-5xl font-extrabold text-white tracking-tight">Free</p>
                         <p className="text-xs text-[#6B7699] mt-1.5">Forever free</p>
@@ -1004,34 +806,19 @@ export default function PricingClient() {
                   </div>
 
                   {/* CTA button */}
-                  {isCustom ? (
-                    <a
-                      href="#contact-sales"
-                      onClick={handleCustomCta}
-                      className="block text-center font-bold py-4 rounded-xl text-base text-white transition-all duration-200 mb-2 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] shadow-[0_6px_28px_rgba(124,58,237,0.45)]"
-                      style={{
-                        background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
-                      }}
-                    >
-                      {tier.cta}
-                    </a>
-                  ) : (
-                    <SubscribeCta
-                      tierKey={tier.key}
-                      highlight={tier.highlight}
-                      cta={tier.cta}
-                      ctaHref={tier.ctaHref}
-                      annual={annual}
-                      currentTier={currentTier}
-                      onManageBilling={openBillingPortal}
-                    />
-                  )}
+                  <SubscribeCta
+                    tierKey={tier.key}
+                    highlight={tier.highlight}
+                    cta={tier.cta}
+                    ctaHref={tier.ctaHref}
+                    annual={annual}
+                    currentTier={currentTier}
+                    onManageBilling={openBillingPortal}
+                  />
 
-                  {/* Trial / free / contact notice */}
+                  {/* Trial / free notice */}
                   <p className="text-center text-[11px] text-[#3D4A6A] mb-6 leading-relaxed">
-                    {isCustom
-                      ? 'Respond within 24 hours'
-                      : (tier.priceMonthly as number) > 0
+                    {(tier.priceMonthly as number) > 0
                       ? '14-day free trial · No credit card required'
                       : 'No credit card required'}
                   </p>
@@ -1041,8 +828,6 @@ export default function PricingClient() {
                     className={`h-px mb-5 ${
                       tier.highlight
                         ? 'bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent'
-                        : isCustom
-                        ? 'bg-gradient-to-r from-transparent via-[#7C3AED]/25 to-transparent'
                         : 'bg-[#141C35]'
                     }`}
                   />
@@ -1053,30 +838,18 @@ export default function PricingClient() {
                       <li key={f} className="flex items-start gap-3">
                         <div
                           className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center ${
-                            tier.highlight
-                              ? 'bg-[#D4AF37]/15'
-                              : isCustom
-                              ? 'bg-[#7C3AED]/15'
-                              : 'bg-white/[0.06]'
+                            tier.highlight ? 'bg-[#D4AF37]/15' : 'bg-white/[0.06]'
                           }`}
                         >
                           <Check
                             className={`w-3 h-3 ${
-                              tier.highlight
-                                ? 'text-[#D4AF37]'
-                                : isCustom
-                                ? 'text-[#A78BFA]'
-                                : 'text-[#6B7699]'
+                              tier.highlight ? 'text-[#D4AF37]' : 'text-[#6B7699]'
                             }`}
                           />
                         </div>
                         <span
                           className={`text-[15px] leading-snug ${
-                            tier.highlight
-                              ? 'text-[#E8EBF5]'
-                              : isCustom
-                              ? 'text-[#C4B5FD]'
-                              : 'text-[#8B95B0]'
+                            tier.highlight ? 'text-[#E8EBF5]' : 'text-[#8B95B0]'
                           }`}
                         >
                           {f}
@@ -1119,42 +892,37 @@ export default function PricingClient() {
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-[#141C35]">
-            <table className="w-full min-w-[800px] border-collapse">
+            <table className="w-full min-w-[640px] border-collapse">
               <thead>
-                <tr className="border-b border-[#141C35]">
-                  <th className="text-left py-5 px-6 text-[15px] font-semibold text-[#6B7699] w-[28%] bg-[#0A0F1E]">
+                <tr
+                  className="border-b border-[#141C35]"
+                  style={{ background: 'linear-gradient(90deg, #0D1020 0%, #0A0E1A 100%)' }}
+                >
+                  <th className="text-left py-5 px-6 text-[15px] font-semibold text-[#6B7699] w-[30%]">
                     Feature
                   </th>
-                  {TIERS.map((tier) => {
-                    const isCustom = tier.key === 'CUSTOM'
-                    return (
-                      <th
-                        key={tier.key}
-                        className={`text-center py-5 px-4 text-[15px] font-bold ${
-                          tier.highlight
-                            ? 'text-[#D4AF37] bg-[#D4AF37]/[0.06]'
-                            : isCustom
-                            ? 'text-[#A78BFA] bg-[#7C3AED]/[0.06]'
-                            : 'text-white bg-[#0A0F1E]'
-                        }`}
-                      >
-                        <div className="flex flex-col items-center gap-1">
-                          <span>{tier.name}</span>
-                          <span className="text-sm font-normal text-[#4A5580]">
-                            {isCustom
-                              ? "Let's talk"
-                              : annual
-                              ? tier.priceYearly === 0
-                                ? 'Free'
-                                : `${formatPrice(tier.priceYearly as number)}/mo`
-                              : tier.priceMonthly === 0
+                  {TIERS.map((tier) => (
+                    <th
+                      key={tier.key}
+                      className={`text-center py-5 px-4 text-[15px] font-bold ${
+                        tier.highlight ? 'text-[#D4AF37]' : 'text-white'
+                      }`}
+                      style={tier.highlight ? { background: 'rgba(212,175,55,0.07)' } : {}}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{tier.name}</span>
+                        <span className="text-sm font-normal text-[#4A5580]">
+                          {annual
+                            ? tier.priceYearly === 0
                               ? 'Free'
-                              : `${formatPrice(tier.priceMonthly as number)}/mo`}
-                          </span>
-                        </div>
-                      </th>
-                    )
-                  })}
+                              : `${formatPrice(tier.priceYearly as number)}/mo`
+                            : tier.priceMonthly === 0
+                            ? 'Free'
+                            : `${formatPrice(tier.priceMonthly as number)}/mo`}
+                        </span>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1173,21 +941,17 @@ export default function PricingClient() {
                       <CompareCell value={row.hobby} />
                     </td>
                     <td
-                      className={`py-4 px-4 text-center ${
-                        i % 2 === 0 ? 'bg-[#D4AF37]/[0.04]' : 'bg-[#D4AF37]/[0.025]'
-                      }`}
+                      className="py-4 px-4 text-center"
+                      style={{
+                        background: i % 2 === 0
+                          ? 'rgba(212,175,55,0.04)'
+                          : 'rgba(212,175,55,0.025)',
+                      }}
                     >
                       <CompareCell value={row.creator} isCreator />
                     </td>
                     <td className="py-4 px-4 text-center">
                       <CompareCell value={row.studio} />
-                    </td>
-                    <td
-                      className={`py-4 px-4 text-center ${
-                        i % 2 === 0 ? 'bg-[#7C3AED]/[0.04]' : 'bg-[#7C3AED]/[0.025]'
-                      }`}
-                    >
-                      <CompareCell value={row.custom} isCustom />
                     </td>
                   </tr>
                 ))}
@@ -1195,53 +959,29 @@ export default function PricingClient() {
               <tfoot>
                 <tr className="border-t border-[#141C35]">
                   <td className="py-6 px-6 bg-[#0A0F1E]" />
-                  {TIERS.map((tier) => {
-                    const isCustom = tier.key === 'CUSTOM'
-                    return (
-                      <td
-                        key={tier.key}
-                        className={`py-6 px-4 text-center ${
+                  {TIERS.map((tier) => (
+                    <td
+                      key={tier.key}
+                      className="py-6 px-4 text-center"
+                      style={tier.highlight ? { background: 'rgba(212,175,55,0.06)' } : { background: '#0A0F1E' }}
+                    >
+                      <Link
+                        href={tier.ctaHref}
+                        className={`inline-block text-sm font-bold py-3 px-6 rounded-xl transition-all duration-200 ${
                           tier.highlight
-                            ? 'bg-[#D4AF37]/[0.06]'
-                            : isCustom
-                            ? 'bg-[#7C3AED]/[0.06]'
-                            : 'bg-[#0A0F1E]'
+                            ? 'text-[#0A0810] hover:opacity-90 shadow-[0_4px_18px_rgba(212,175,55,0.4)]'
+                            : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
                         }`}
+                        style={
+                          tier.highlight
+                            ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
+                            : {}
+                        }
                       >
-                        {isCustom ? (
-                          <a
-                            href="#contact-sales"
-                            onClick={handleCustomCta}
-                            className="inline-block text-sm font-bold py-3 px-6 rounded-xl transition-all duration-200 text-white hover:opacity-90 shadow-[0_4px_18px_rgba(124,58,237,0.4)]"
-                            style={{
-                              background: 'linear-gradient(135deg, #7C3AED, #6366F1)',
-                            }}
-                          >
-                            Talk to Sales
-                          </a>
-                        ) : (
-                          <Link
-                            href={tier.ctaHref}
-                            className={`inline-block text-sm font-bold py-3 px-6 rounded-xl transition-all duration-200 ${
-                              tier.highlight
-                                ? 'text-[#0A0810] hover:opacity-90 shadow-[0_4px_18px_rgba(212,175,55,0.4)]'
-                                : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
-                            }`}
-                            style={
-                              tier.highlight
-                                ? {
-                                    background:
-                                      'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                                  }
-                                : {}
-                            }
-                          >
-                            {tier.key === 'FREE' ? 'Get Started' : 'Try Free'}
-                          </Link>
-                        )}
-                      </td>
-                    )
-                  })}
+                        {tier.cta}
+                      </Link>
+                    </td>
+                  ))}
                 </tr>
               </tfoot>
             </table>
@@ -1249,9 +989,9 @@ export default function PricingClient() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Contact Sales Section                                               */}
+        {/* Token Packs Section                                                 */}
         {/* ------------------------------------------------------------------ */}
-        <ContactSalesSection />
+        <TokenPacksSection />
 
         {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}
@@ -1259,17 +999,10 @@ export default function PricingClient() {
         <div className="max-w-2xl mx-auto mb-24">
           <div className="text-center mb-10">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-              Frequently asked questions
+              Have questions?
             </h2>
             <p className="text-[#6B7699] text-sm">
-              Still unsure?{' '}
-              <Link
-                href="#contact-sales"
-                className="text-[#D4AF37] hover:text-[#FFD966] transition-colors underline underline-offset-2"
-              >
-                Chat with us
-              </Link>
-              .
+              The answers to the most common pricing questions.
             </p>
           </div>
 
@@ -1292,11 +1025,8 @@ export default function PricingClient() {
         <div className="flex justify-center">
           <div
             className="relative overflow-hidden inline-flex items-start sm:items-center gap-5 rounded-2xl border border-[#D4AF37]/15 px-7 py-5 max-w-lg w-full"
-            style={{
-              background: 'linear-gradient(135deg, #0D1120 0%, #0A0E1A 100%)',
-            }}
+            style={{ background: 'linear-gradient(135deg, #0D1120 0%, #0A0E1A 100%)' }}
           >
-            {/* Subtle glow behind heart */}
             <div
               aria-hidden="true"
               style={{
@@ -1305,16 +1035,13 @@ export default function PricingClient() {
                 left: 0,
                 width: '120px',
                 height: '120px',
-                background:
-                  'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)',
+                background: 'radial-gradient(circle, rgba(212,175,55,0.08) 0%, transparent 70%)',
                 pointerEvents: 'none',
               }}
             />
-
             <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center">
               <Heart className="w-5 h-5 text-[#D4AF37]" />
             </div>
-
             <div>
               <p className="text-white font-bold text-sm">
                 10% of all revenue donated to charity

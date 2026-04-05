@@ -55,7 +55,42 @@ export async function GET(_req: NextRequest) {
       }),
     ])
 
-    return NextResponse.json({ sent, received })
+    // Normalize to the shape GiftsClient expects
+    const normalize = (
+      g: typeof sent[0] | typeof received[0],
+      side: 'sent' | 'received',
+    ) => {
+      const isSent = side === 'sent'
+      const raw = g as Record<string, unknown>
+      const tier = raw.tier as string | null | undefined
+      const tokenAmount = raw.tokenAmount as number | null | undefined
+      const giftType = raw.giftType as string
+      const itemLabel =
+        giftType === 'subscription' && tier
+          ? `${tier.charAt(0)}${tier.slice(1).toLowerCase()} Plan`
+          : giftType === 'tokens' && tokenAmount
+            ? `${tokenAmount.toLocaleString()} Tokens`
+            : giftType
+
+      const senderObj = (raw.sender as { email?: string } | null | undefined)
+      const recipientObj = (raw.redeemedBy as { email?: string } | null | undefined)
+
+      return {
+        id:             raw.id,
+        createdAt:      raw.createdAt,
+        type:           giftType,
+        itemLabel,
+        code:           raw.redeemCode,
+        status:         raw.status,
+        recipientEmail: isSent ? raw.recipientEmail : (recipientObj?.email ?? null),
+        senderEmail:    isSent ? null : (senderObj?.email ?? null),
+      }
+    }
+
+    return NextResponse.json({
+      sent:     sent.map((g)     => normalize(g, 'sent')),
+      received: received.map((g) => normalize(g, 'received')),
+    })
   } catch (err) {
     console.error('[gifts] Unhandled error', err)
     return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })

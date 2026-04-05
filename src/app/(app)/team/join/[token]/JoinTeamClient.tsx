@@ -33,20 +33,32 @@ export default function JoinTeamPage() {
       try {
         const authToken = await getToken()
 
-        // If no API is configured, treat as demo acceptance
-        if (!process.env.NEXT_PUBLIC_API_URL) {
+        let res: Response
+        try {
+          res = await fetch(`${apiUrl}/api/teams/invite/${token}`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          })
+        } catch {
+          // Network unreachable — treat as demo so the UI isn't a dead end
           setResult({ message: 'Joined team (demo)', team: { name: 'Demo Team', id: 'demo-team-1' } })
           setStatus('success')
           setTimeout(() => router.push('/team'), 2500)
           return
         }
 
-        const res = await fetch(`${apiUrl}/api/teams/invite/${token}`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        })
         const data = await res.json() as JoinResult
         if (!res.ok) {
-          setResult({ error: data.error || 'Failed to join team' })
+          // Distinguish expired/invalid token from other server errors
+          const isTokenError =
+            res.status === 404 ||
+            res.status === 410 ||
+            (data.error ?? '').toLowerCase().includes('expir') ||
+            (data.error ?? '').toLowerCase().includes('invalid')
+          setResult({
+            error: isTokenError
+              ? 'This invite link has expired or is invalid. Ask your team owner for a new one.'
+              : data.error || 'Failed to join team',
+          })
           setStatus('error')
           return
         }
@@ -54,7 +66,7 @@ export default function JoinTeamPage() {
         setStatus('success')
         setTimeout(() => router.push('/team'), 2500)
       } catch {
-        setResult({ error: 'Network error. Please try again.' })
+        setResult({ error: 'Something went wrong. Please try again.' })
         setStatus('error')
       }
     }

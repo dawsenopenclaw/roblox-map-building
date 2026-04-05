@@ -103,6 +103,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     isUnder13: under13,
-    redirect: under13 ? '/onboarding/parental-consent' : '/editor',
+    // Under-13: collect parental consent before proceeding.
+    // 13+: proceed through the onboarding wizard (profile, template, first build).
+    redirect: under13 ? '/onboarding/parental-consent' : '/onboarding',
   })
 }

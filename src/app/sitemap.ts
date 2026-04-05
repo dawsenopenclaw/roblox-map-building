@@ -28,6 +28,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/blog/voice-to-game-tutorial`, priority: 0.7, changeFrequency: 'monthly' as const, lastModified: dates.recent },
   ]
 
+  const installPages = [
+    { url: `${BASE_URL}/install`, priority: 0.8, changeFrequency: 'monthly' as const, lastModified: dates.recent },
+  ]
+
   const docsPages = [
     { url: `${BASE_URL}/docs/getting-started`, priority: 0.8, changeFrequency: 'monthly' as const, lastModified: dates.docs },
     { url: `${BASE_URL}/docs/api`, priority: 0.75, changeFrequency: 'monthly' as const, lastModified: dates.docs },
@@ -48,30 +52,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE_URL}/docs/studio#sync`, priority: 0.55, changeFrequency: 'monthly' as const, lastModified: dates.docs },
   ]
 
-  const legalPages = [
-    { url: `${BASE_URL}/terms`, priority: 0.3, changeFrequency: 'yearly' as const, lastModified: dates.legal },
-    { url: `${BASE_URL}/privacy`, priority: 0.3, changeFrequency: 'yearly' as const, lastModified: dates.legal },
-    { url: `${BASE_URL}/acceptable-use`, priority: 0.3, changeFrequency: 'yearly' as const, lastModified: dates.legal },
-    { url: `${BASE_URL}/dmca`, priority: 0.2, changeFrequency: 'yearly' as const, lastModified: dates.legal },
-  ]
+  // Legal pages are noIndex — excluded from sitemap intentionally
 
-  // Marketplace demo template URLs
-  const demoTemplates = [
-    { url: `${BASE_URL}/marketplace/demo-1`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-2`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-3`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-4`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-5`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-6`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-7`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-8`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-9`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-    { url: `${BASE_URL}/marketplace/demo-10`, priority: 0.6, changeFrequency: 'monthly' as const, lastModified: dates.recent },
-  ]
-
-  const marketplaceTemplates = demoTemplates
-
-  return [...marketingPages, ...blogPosts, ...docsPages, ...legalPages, ...marketplaceTemplates].map(
+  return [...marketingPages, ...blogPosts, ...docsPages, ...installPages].map(
     ({ url, priority, changeFrequency, lastModified }) => ({
       url,
       lastModified,

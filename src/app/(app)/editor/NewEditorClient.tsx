@@ -10,7 +10,7 @@ import { Viewport3D } from '@/components/editor/Viewport3D'
 import { CommandPalette } from '@/components/editor/CommandPalette'
 import { AIContextPanel } from '@/components/editor/AIContextPanel'
 import { parseLuauCode } from '@/lib/luau-parser'
-import { useChat } from './hooks/useChat'
+import { useChat, loadSessions, type ChatSessionMeta } from './hooks/useChat'
 import { useStudioConnection, type StudioActivity } from './hooks/useStudioConnection'
 import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
@@ -1792,6 +1792,319 @@ function SettingsSidebarPanel() {
   )
 }
 
+// ─── Chat History Panel ───────────────────────────────────────────────────────
+
+interface ChatHistoryPanelProps {
+  currentSessionId: string
+  listSessions: () => ChatSessionMeta[]
+  onLoadSession: (id: string) => void
+  onDeleteSession: (id: string) => void
+  onClearAll: () => void
+  onNewChat: () => void
+}
+
+// Keyframe injection for slide-out and pulse animations (injected once)
+const HISTORY_ANIM_ID = 'chat-history-animations'
+if (typeof document !== 'undefined' && !document.getElementById(HISTORY_ANIM_ID)) {
+  const style = document.createElement('style')
+  style.id = HISTORY_ANIM_ID
+  style.textContent = `
+    @keyframes slideOutLeft {
+      from { transform: translateX(0); opacity: 1; max-height: 80px; margin-bottom: 0; }
+      to   { transform: translateX(-110%); opacity: 0; max-height: 0; margin-bottom: -4px; }
+    }
+    .chat-session-item { animation: none; overflow: hidden; }
+    .chat-session-item.deleting {
+      animation: slideOutLeft 0.2s cubic-bezier(0.4,0,0.2,1) forwards;
+      pointer-events: none;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+function groupSessionsByDate(sessions: ChatSessionMeta[]): { label: string; items: ChatSessionMeta[] }[] {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const yesterdayStart = todayStart - 86400000
+  const weekStart = todayStart - 6 * 86400000
+
+  const groups: Record<string, ChatSessionMeta[]> = { Today: [], Yesterday: [], 'This Week': [], Older: [] }
+  for (const s of sessions) {
+    const t = new Date(s.updatedAt).getTime()
+    if (t >= todayStart) groups['Today'].push(s)
+    else if (t >= yesterdayStart) groups['Yesterday'].push(s)
+    else if (t >= weekStart) groups['This Week'].push(s)
+    else groups['Older'].push(s)
+  }
+  return (['Today', 'Yesterday', 'This Week', 'Older'] as const)
+    .filter((k) => groups[k].length > 0)
+    .map((k) => ({ label: k, items: groups[k] }))
+}
+
+function exportSessionToClipboard(id: string): void {
+  const session = loadSessions().find((s) => s.id === id)
+  if (!session) return
+  const lines: string[] = [`# ${session.title}`, `Date: ${new Date(session.createdAt).toLocaleString()}`, '']
+  for (const m of session.messages) {
+    if (m.role === 'user') lines.push(`You: ${m.content}`, '')
+    else if (m.role === 'assistant') lines.push(`AI: ${m.content}`, '')
+  }
+  void navigator.clipboard.writeText(lines.join('\n'))
+}
+
+function ChatHistoryPanel({ currentSessionId, listSessions, onLoadSession, onDeleteSession, onClearAll, onNewChat }: ChatHistoryPanelProps) {
+  const [sessions, setSessions] = React.useState<ChatSessionMeta[]>(() => listSessions())
+  const [hoveredId, setHoveredId] = React.useState<string | null>(null)
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
+  const [search, setSearch] = React.useState('')
+  const [confirmClearAll, setConfirmClearAll] = React.useState(false)
+  const [copiedId, setCopiedId] = React.useState<string | null>(null)
+
+  // Refresh list whenever panel renders (sessions may have changed)
+  React.useEffect(() => {
+    setSessions(listSessions())
+  }, [listSessions])
+
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    setDeletingId(id)
+    // Wait for slide-out animation before actually removing
+    setTimeout(() => {
+      onDeleteSession(id)
+      setSessions(listSessions())
+      setDeletingId(null)
+    }, 200)
+  }
+
+  const handleClearAll = () => {
+    if (!confirmClearAll) { setConfirmClearAll(true); return }
+    onClearAll()
+    setSessions([])
+    setConfirmClearAll(false)
+  }
+
+  const handleExport = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    exportSessionToClipboard(id)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
+  const filtered = search.trim()
+    ? sessions.filter((s) => s.title.toLowerCase().includes(search.toLowerCase()))
+    : sessions
+
+  const groups = groupSessionsByDate(filtered)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {/* New Chat button */}
+      <button
+        onClick={onNewChat}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 8, marginBottom: 4,
+          background: 'rgba(212,175,55,0.10)', border: '1px solid rgba(212,175,55,0.25)',
+          color: '#D4AF37', fontSize: 12, fontWeight: 600,
+          fontFamily: 'Inter, sans-serif', cursor: 'pointer', width: '100%',
+          transition: 'background 0.15s',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.18)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.10)' }}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M6 1v10M1 6h10" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+        New Chat
+      </button>
+
+      {/* Search input */}
+      {sessions.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 8 }}>
+          <svg
+            width="11" height="11" viewBox="0 0 11 11" fill="none"
+            style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+          >
+            <circle cx="4.5" cy="4.5" r="3.5" stroke="rgba(255,255,255,0.25)" strokeWidth="1.3"/>
+            <path d="M7.5 7.5l2 2" stroke="rgba(255,255,255,0.25)" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+          <input
+            type="text"
+            placeholder="Search chats..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '6px 10px 6px 26px', borderRadius: 7,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.75)', fontSize: 11, fontFamily: 'Inter, sans-serif',
+              outline: 'none', transition: 'border-color 0.15s',
+            }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)' }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                position: 'absolute', right: 7, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
+                fontSize: 11, cursor: 'pointer', padding: 0, lineHeight: 1,
+              }}
+            >✕</button>
+          )}
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, margin: 0, padding: '4px 2px' }}>
+          {search ? 'No chats match your search.' : 'No saved chats yet. Start a conversation to see history here.'}
+        </p>
+      ) : (
+        groups.map(({ label, items }) => (
+          <div key={label}>
+            {/* Date group label */}
+            <div style={{
+              fontSize: 10, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+              color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.07em',
+              padding: '6px 2px 4px',
+            }}>
+              {label}
+            </div>
+
+            {items.map((s) => {
+              const isActive = s.id === currentSessionId
+              const isHovered = hoveredId === s.id
+              const isDeleting = deletingId === s.id
+              const isCopied = copiedId === s.id
+
+              return (
+                <div
+                  key={s.id}
+                  className={`chat-session-item${isDeleting ? ' deleting' : ''}`}
+                  onClick={() => !isDeleting && onLoadSession(s.id)}
+                  onMouseEnter={() => setHoveredId(s.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  style={{
+                    position: 'relative', display: 'flex', flexDirection: 'column', gap: 2,
+                    padding: '8px 10px', borderRadius: 8, cursor: 'pointer', marginBottom: 2,
+                    background: isActive
+                      ? 'rgba(212,175,55,0.12)'
+                      : isHovered ? 'rgba(255,255,255,0.04)' : 'transparent',
+                    border: isActive
+                      ? '1px solid rgba(212,175,55,0.28)'
+                      : '1px solid transparent',
+                    transition: 'background 0.15s, border-color 0.15s',
+                  }}
+                >
+                  {/* Title row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+                    <span style={{
+                      fontSize: 12, fontWeight: 500, fontFamily: 'Inter, sans-serif',
+                      color: isActive ? '#D4AF37' : 'rgba(255,255,255,0.75)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      flex: 1, minWidth: 0,
+                    }}>
+                      {s.title}
+                    </span>
+
+                    {/* Action buttons — only on hover */}
+                    {isHovered && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                        {/* Export / copy button */}
+                        <button
+                          onClick={(e) => handleExport(e, s.id)}
+                          title="Copy chat to clipboard"
+                          style={{
+                            width: 18, height: 18, borderRadius: 4, padding: 0,
+                            background: isCopied ? 'rgba(100,200,100,0.15)' : 'rgba(255,255,255,0.07)',
+                            border: `1px solid ${isCopied ? 'rgba(100,200,100,0.3)' : 'rgba(255,255,255,0.12)'}`,
+                            color: isCopied ? 'rgba(100,220,100,0.9)' : 'rgba(255,255,255,0.45)',
+                            fontSize: 9, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                            transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                          }}
+                        >
+                          {isCopied ? '✓' : (
+                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                              <rect x="2.5" y="0.5" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1"/>
+                              <path d="M0.5 2.5v6h6" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
+                            </svg>
+                          )}
+                        </button>
+                        {/* Delete button */}
+                        <button
+                          onClick={(e) => handleDelete(e, s.id)}
+                          title="Delete chat"
+                          style={{
+                            width: 18, height: 18, borderRadius: 4, padding: 0,
+                            background: 'rgba(255,80,80,0.12)', border: '1px solid rgba(255,80,80,0.2)',
+                            color: 'rgba(255,100,100,0.8)', fontSize: 10, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,80,80,0.25)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,80,80,0.12)' }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI preview */}
+                  {s.firstAiPreview && (
+                    <span style={{
+                      fontSize: 10, fontFamily: 'Inter, sans-serif',
+                      color: 'rgba(255,255,255,0.28)', lineHeight: 1.4,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {s.firstAiPreview}
+                    </span>
+                  )}
+
+                  {/* Meta row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.22)', fontFamily: 'Inter, sans-serif' }}>
+                      {s.messageCount} {s.messageCount === 1 ? 'msg' : 'msgs'}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))
+      )}
+
+      {/* Clear All button */}
+      {sessions.length > 0 && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <button
+            onClick={handleClearAll}
+            onBlur={() => setConfirmClearAll(false)}
+            style={{
+              width: '100%', padding: '7px 10px', borderRadius: 7,
+              background: confirmClearAll ? 'rgba(255,60,60,0.15)' : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${confirmClearAll ? 'rgba(255,60,60,0.35)' : 'rgba(255,255,255,0.07)'}`,
+              color: confirmClearAll ? 'rgba(255,100,100,0.9)' : 'rgba(255,255,255,0.3)',
+              fontSize: 11, fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!confirmClearAll) e.currentTarget.style.background = 'rgba(255,80,80,0.08)'
+            }}
+            onMouseLeave={(e) => {
+              if (!confirmClearAll) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+            }}
+          >
+            {confirmClearAll ? 'Click again to confirm — this cannot be undone' : 'Clear All History'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function NewEditorClient() {
   return (
     <ThemeProvider>
@@ -2075,7 +2388,7 @@ function EditorInner() {
           isConnected={studio.isConnected}
           placeName={studio.placeName}
           totalTokens={chat.totalTokens}
-          onNewChat={() => window.location.reload()}
+          onNewChat={() => chat.newChat()}
           onConnect={() => { setStudioWizardOpen(true); studio.generateCode() }}
           onShowShortcuts={() => setShortcutsOpen(true)}
           editorLayout={editorLayout}
@@ -2429,7 +2742,7 @@ function EditorInner() {
                         {sidebarPanel === 'marketplace' && 'Marketplace'}
                         {sidebarPanel === 'generate' && 'Generate Asset'}
                         {sidebarPanel === 'settings' && 'Settings'}
-                        {sidebarPanel === 'history' && 'Build History'}
+                        {sidebarPanel === 'history' && 'Chat History'}
                         {sidebarPanel === 'context' && 'AI Context'}
                         {sidebarPanel === 'help' && 'Help'}
                         {sidebarPanel === 'preview' && 'Studio Preview'}
@@ -2471,23 +2784,14 @@ function EditorInner() {
                         />
                       )}
                       {sidebarPanel === 'history' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          {buildHistory.length === 0 ? (
-                            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, margin: 0 }}>
-                              Your builds will appear here as you create.
-                            </p>
-                          ) : (
-                            buildHistory.slice(0, 20).map((item) => (
-                              <BuildHistoryItem
-                                key={item.id}
-                                prompt={item.prompt}
-                                timestamp={item.timestamp}
-                                hasCode={item.hasCode}
-                                onRerun={() => chat.sendMessage(item.prompt)}
-                              />
-                            ))
-                          )}
-                        </div>
+                        <ChatHistoryPanel
+                          currentSessionId={chat.currentSessionId}
+                          listSessions={chat.listSessions}
+                          onLoadSession={(id) => { chat.loadSession(id); setSidebarPanel(null) }}
+                          onDeleteSession={chat.deleteSession}
+                          onClearAll={() => { chat.clearAllSessions(); setSidebarPanel(null) }}
+                          onNewChat={() => { chat.newChat(); setSidebarPanel(null) }}
+                        />
                       )}
                       {sidebarPanel === 'context' && (
                         <AIContextPanel
@@ -2546,7 +2850,7 @@ function EditorInner() {
                     active={sidebarPanel === 'marketplace'} onClick={() => toggleSidebar('marketplace')} />
                   <SidebarButton icon={<IconGenerate />} label="Generate Asset"
                     active={sidebarPanel === 'generate'} onClick={() => toggleSidebar('generate')} />
-                  <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
+                  <SidebarButton icon={<IconHistory />} label="Chat History" shortcut="⌘H"
                     active={sidebarPanel === 'history'} onClick={() => toggleSidebar('history')} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
                     active={sidebarPanel === 'settings'} onClick={() => toggleSidebar('settings')} />
@@ -2578,7 +2882,7 @@ function EditorInner() {
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('marketplace') }} />
                   <SidebarButton icon={<IconGenerate />} label="Generate Asset"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('generate') }} />
-                  <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
+                  <SidebarButton icon={<IconHistory />} label="Chat History" shortcut="⌘H"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('history') }} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('settings') }} />

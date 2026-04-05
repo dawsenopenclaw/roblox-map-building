@@ -1,11 +1,23 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { listProjects, deleteProject } from '@/hooks/useProject'
 import type { ProjectData } from '@/hooks/useProject'
 
-// ─── Helpers ────────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────────
+
+type StatusFilter = 'all' | 'draft' | 'in-progress' | 'published'
+
+interface ProjectStatus {
+  label: 'Draft' | 'In Progress' | 'Published'
+  key: 'draft' | 'in-progress' | 'published'
+  color: string
+  bg: string
+  border: string
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────────
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -26,41 +38,157 @@ function formatDate(iso: string): string {
   })
 }
 
-// ─── Mini scene preview ─────────────────────────────────────────────────────────
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return n.toString()
+}
 
-function MiniScenePreview({ objectCount }: { objectCount: number }) {
-  const count = Math.min(objectCount, 6)
-  const dots = Array.from({ length: count }, (_, i) => ({
-    x: 15 + (i % 3) * 28 + (i > 2 ? 14 : 0),
-    y: 20 + Math.floor(i / 3) * 28,
-  }))
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0] ?? '')
+    .join('')
+    .toUpperCase() || '?'
+}
+
+function getProjectTokens(project: ProjectData): number {
+  return project.messages.reduce((sum, m) => sum + (m.tokensUsed ?? 0), 0)
+}
+
+function getProjectStatus(project: ProjectData): ProjectStatus {
+  const tokens = getProjectTokens(project)
+  // Published: has objects in scene AND significant token usage
+  if (project.objectCount > 0 && tokens > 500) {
+    return {
+      label: 'Published',
+      key: 'published',
+      color: '#4ade80',
+      bg: 'rgba(74,222,128,0.1)',
+      border: 'rgba(74,222,128,0.25)',
+    }
+  }
+  // In Progress: has messages or objects but not fully built
+  if (project.messageCount > 1 || project.objectCount > 0) {
+    return {
+      label: 'In Progress',
+      key: 'in-progress',
+      color: '#D4AF37',
+      bg: 'rgba(212,175,55,0.1)',
+      border: 'rgba(212,175,55,0.25)',
+    }
+  }
+  // Draft: brand new / empty
+  return {
+    label: 'Draft',
+    key: 'draft',
+    color: '#71717a',
+    bg: 'rgba(113,113,122,0.1)',
+    border: 'rgba(113,113,122,0.2)',
+  }
+}
+
+// Deterministic gradient per project id
+function getThumbnailGradient(id: string): string {
+  const hash = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  const gradients = [
+    'linear-gradient(135deg, rgba(30,58,95,0.9) 0%, rgba(15,23,42,0.95) 100%)',
+    'linear-gradient(135deg, rgba(55,28,95,0.9) 0%, rgba(15,10,42,0.95) 100%)',
+    'linear-gradient(135deg, rgba(22,78,55,0.9) 0%, rgba(5,30,25,0.95) 100%)',
+    'linear-gradient(135deg, rgba(92,38,12,0.9) 0%, rgba(35,10,5,0.95) 100%)',
+    'linear-gradient(135deg, rgba(60,28,28,0.9) 0%, rgba(28,10,10,0.95) 100%)',
+    'linear-gradient(135deg, rgba(20,48,80,0.9) 0%, rgba(5,18,45,0.95) 100%)',
+  ]
+  return gradients[hash % gradients.length]!
+}
+
+// ─── Thumbnail ────────────────────────────────────────────────────────────────────
+
+function ProjectThumbnail({ project }: { project: ProjectData }) {
+  const initials = getInitials(project.name)
+  const gradient = getThumbnailGradient(project.id)
 
   return (
-    <svg viewBox="0 0 110 80" className="w-full h-full" aria-hidden>
-      <line x1="0" y1="72" x2="110" y2="72" stroke="rgba(255,255,255,0.06)" strokeWidth="1"/>
-      <line x1="0" y1="48" x2="110" y2="48" strokeDasharray="3 4" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
-      <rect x="8" y="40" width="22" height="32" rx="1" fill="#1E3A5F" stroke="#3B6EA8" strokeWidth="0.8"/>
-      <rect x="8" y="24" width="22" height="18" rx="0.5" fill="#2E5A8A" stroke="#4A7DC0" strokeWidth="0.5"/>
-      <rect x="38" y="50" width="16" height="22" rx="1" fill="#3A2010" stroke="#7A5230" strokeWidth="0.8"/>
-      <rect x="62" y="34" width="18" height="38" rx="1" fill="#1A3A28" stroke="#2E6644" strokeWidth="0.8"/>
-      <circle cx="72" cy="28" r="5" fill="#166534" stroke="#22883C" strokeWidth="0.6"/>
-      <rect x="86" y="44" width="18" height="28" rx="1" fill="#3A2860" stroke="#6B5AB6" strokeWidth="0.8"/>
-      {dots.map((d, i) => (
-        <circle
-          key={i}
-          cx={d.x}
-          cy={d.y}
-          r="4"
-          fill={`hsl(${(i * 57 + 200) % 360}, 60%, 55%)`}
-          opacity="0.7"
-          style={{ filter: 'blur(0.5px)' }}
-        />
-      ))}
-    </svg>
+    <div
+      className="relative w-full h-full flex items-center justify-center overflow-hidden"
+      style={{ background: gradient }}
+    >
+      {/* Subtle dot-grid */}
+      <svg
+        className="absolute inset-0 w-full h-full opacity-20"
+        aria-hidden
+        style={{ pointerEvents: 'none' }}
+      >
+        <defs>
+          <pattern id={`dot-${project.id}`} x="0" y="0" width="14" height="14" patternUnits="userSpaceOnUse">
+            <circle cx="1.5" cy="1.5" r="1" fill="rgba(255,255,255,0.4)" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill={`url(#dot-${project.id})`} />
+      </svg>
+
+      {/* Gold spark accent */}
+      <div
+        className="absolute top-3 right-4 w-1 h-1 rounded-full"
+        style={{ background: '#D4AF37', boxShadow: '0 0 6px 2px rgba(212,175,55,0.5)' }}
+        aria-hidden
+      />
+      <div
+        className="absolute bottom-4 left-5 w-0.5 h-0.5 rounded-full opacity-60"
+        style={{ background: '#D4AF37', boxShadow: '0 0 4px 1px rgba(212,175,55,0.4)' }}
+        aria-hidden
+      />
+
+      {/* Initials */}
+      <span
+        className="relative z-10 font-bold select-none"
+        style={{
+          fontSize: initials.length > 2 ? '1.1rem' : '1.5rem',
+          color: 'rgba(255,255,255,0.85)',
+          textShadow: '0 2px 8px rgba(0,0,0,0.6)',
+          letterSpacing: '0.05em',
+        }}
+      >
+        {initials}
+      </span>
+
+      {/* Object count pill — bottom left */}
+      {project.objectCount > 0 && (
+        <div
+          className="absolute bottom-2 left-2 text-[10px] font-medium px-1.5 py-0.5 rounded"
+          style={{
+            background: 'rgba(212,175,55,0.15)',
+            border: '1px solid rgba(212,175,55,0.3)',
+            color: '#D4AF37',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {project.objectCount} obj
+        </div>
+      )}
+    </div>
   )
 }
 
-// ─── Project card ───────────────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: ProjectStatus }) {
+  return (
+    <span
+      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+      style={{
+        background: status.bg,
+        border: `1px solid ${status.border}`,
+        color: status.color,
+      }}
+    >
+      {status.label}
+    </span>
+  )
+}
+
+// ─── Project card ─────────────────────────────────────────────────────────────────
 
 interface ProjectCardProps {
   project: ProjectData
@@ -69,6 +197,8 @@ interface ProjectCardProps {
 
 function ProjectCard({ project, onDelete }: ProjectCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const status = useMemo(() => getProjectStatus(project), [project])
+  const tokens = useMemo(() => getProjectTokens(project), [project])
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -83,62 +213,56 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
 
   return (
     <div
-      className="group relative rounded-xl overflow-hidden transition-all duration-200 hover:scale-[1.02] hover:shadow-2xl"
+      className="group relative rounded-xl overflow-hidden transition-all duration-200 hover:scale-[1.015] hover:shadow-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
         border: '1px solid rgba(255,255,255,0.07)',
       }}
     >
-      {/* Scene preview */}
+      {/* Thumbnail */}
       <Link href={`/editor?project=${project.id}`} className="block">
-        <div
-          className="relative h-32 overflow-hidden"
-          style={{ background: 'radial-gradient(ellipse at 30% 60%, rgba(30,58,95,0.3) 0%, transparent 60%), #0a0a0d' }}
-        >
-          <div className="w-full h-full opacity-80">
-            <MiniScenePreview objectCount={project.objectCount} />
-          </div>
+        <div className="relative h-36 overflow-hidden">
+          <ProjectThumbnail project={project} />
 
-          {project.objectCount > 0 && (
-            <div
-              className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded"
-              style={{
-                background: 'rgba(212,175,55,0.15)',
-                border: '1px solid rgba(212,175,55,0.25)',
-                color: '#D4AF37',
-              }}
-            >
-              {project.objectCount} obj
-            </div>
-          )}
-
+          {/* Hover overlay */}
           <div
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-            style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
           >
             <span
               className="text-sm font-semibold px-4 py-2 rounded-lg"
               style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
                 color: '#09090b',
+                boxShadow: '0 0 16px rgba(212,175,55,0.4)',
               }}
             >
-              Open Project
+              Open in Editor
             </span>
           </div>
         </div>
       </Link>
 
-      {/* Info */}
-      <div className="px-3 py-3">
-        <div className="flex items-start justify-between gap-2">
+      {/* Card body */}
+      <div className="px-3.5 pt-3 pb-3.5">
+
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-zinc-100 truncate">{project.name}</h3>
-            <p className="text-[11px] text-zinc-500 mt-0.5 truncate" title={formatDate(project.updatedAt)}>
+            <Link href={`/editor?project=${project.id}`} className="block">
+              <h3 className="text-sm font-semibold text-zinc-100 truncate hover:text-white transition-colors">
+                {project.name}
+              </h3>
+            </Link>
+            <p
+              className="text-[11px] text-zinc-500 mt-0.5 truncate"
+              title={formatDate(project.updatedAt)}
+            >
               {formatRelativeTime(project.updatedAt)}
             </p>
           </div>
 
+          {/* Delete button */}
           <button
             onClick={handleDeleteClick}
             className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center transition-all opacity-0 group-hover:opacity-100"
@@ -152,7 +276,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
           >
             {confirmDelete ? (
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-                <path d="M6 1L7.5 4.5H11L8.25 6.5l1 3.5L6 8.25 2.75 10l1-3.5L1 4.5h3.5L6 1z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                <path d="M6 1.5L7.2 4.5H10.5L8 6.3l.9 3L6 7.8 3.1 9.3l.9-3L1.5 4.5h3.3L6 1.5z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
               </svg>
             ) : (
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
@@ -162,52 +286,146 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 mt-2">
-          <span className="flex items-center gap-1 text-[10px] text-zinc-600">
-            <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
-              <path d="M5 1l1 3h3l-2.5 1.8.9 3L5 7.2 2.6 8.8l.9-3L1 4h3L5 1z" stroke="currentColor" strokeWidth="1"/>
-            </svg>
-            {project.messageCount} message{project.messageCount !== 1 ? 's' : ''}
-          </span>
-          <span className="flex items-center gap-1 text-[10px] text-zinc-600">
-            <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
-              <rect x="1" y="1" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
-              <rect x="5" y="1" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
-              <rect x="1" y="5" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
-              <rect x="5" y="5" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
-            </svg>
-            {project.objectCount} object{project.objectCount !== 1 ? 's' : ''}
-          </span>
+        {/* Status + meta row */}
+        <div className="flex items-center justify-between gap-2">
+          <StatusBadge status={status} />
+
+          <div className="flex items-center gap-2.5">
+            {/* Messages */}
+            <span className="flex items-center gap-1 text-[10px] text-zinc-600" title="Messages">
+              <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
+                <path d="M1.5 1.5h7a.5.5 0 01.5.5v5a.5.5 0 01-.5.5H3L1 9.5V2a.5.5 0 01.5-.5z" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+              {project.messageCount}
+            </span>
+
+            {/* Objects */}
+            <span className="flex items-center gap-1 text-[10px] text-zinc-600" title="Objects in scene">
+              <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
+                <rect x="1" y="1" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+                <rect x="5" y="1" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+                <rect x="1" y="5" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+                <rect x="5" y="5" width="4" height="4" rx="0.5" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+              {project.objectCount}
+            </span>
+
+            {/* Tokens */}
+            {tokens > 0 && (
+              <span
+                className="flex items-center gap-1 text-[10px]"
+                style={{ color: 'rgba(212,175,55,0.7)' }}
+                title={`${tokens.toLocaleString()} tokens used`}
+              >
+                <svg className="w-2.5 h-2.5" viewBox="0 0 10 10" fill="none">
+                  <circle cx="5" cy="5" r="3.5" stroke="currentColor" strokeWidth="1"/>
+                  <path d="M5 3v2l1 1" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round"/>
+                </svg>
+                {formatTokens(tokens)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Empty state ────────────────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────────
 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-        style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.15)' }}
-      >
-        <svg className="w-7 h-7" viewBox="0 0 28 28" fill="none" style={{ color: '#D4AF37' }}>
-          <path d="M6 6h7v7H6zM15 6h7v7h-7zM6 15h7v7H6zM15 15h7v7h-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-        </svg>
+function EmptyState({ filtered }: { filtered: boolean }) {
+  if (filtered) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+        >
+          <svg className="w-5 h-5 text-zinc-500" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M13.5 13.5L17 17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+        <p className="text-sm font-medium text-zinc-400 mb-1">No projects match your filters</p>
+        <p className="text-xs text-zinc-600">Try a different search or status filter</p>
       </div>
-      <h2 className="text-lg font-semibold text-zinc-200 mb-2">Your builds live here</h2>
-      <p className="text-sm text-zinc-500 mb-6 max-w-xs leading-relaxed">
-        Describe a game in plain English and watch it appear in Roblox Studio. Projects save automatically.
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
+      {/* Illustration area */}
+      <div className="relative w-48 h-32 mb-8">
+        {/* Subtle dot grid */}
+        <svg className="absolute inset-0 w-full h-full opacity-30" aria-hidden>
+          <defs>
+            <pattern id="empty-dot-grid" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+              <circle cx="1.5" cy="1.5" r="1" fill="rgba(255,255,255,0.35)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#empty-dot-grid)" />
+        </svg>
+
+        {/* Central card stack */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          {/* Back card */}
+          <div
+            className="absolute w-24 h-16 rounded-xl"
+            style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              transform: 'rotate(-6deg) translateY(4px)',
+            }}
+          />
+          {/* Mid card */}
+          <div
+            className="absolute w-24 h-16 rounded-xl"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              transform: 'rotate(-2deg) translateY(2px)',
+            }}
+          />
+          {/* Front card */}
+          <div
+            className="relative w-24 h-16 rounded-xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.04) 100%)',
+              border: '1px solid rgba(212,175,55,0.25)',
+            }}
+          >
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" style={{ color: '#D4AF37' }}>
+              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
+        </div>
+
+        {/* Gold spark — top right */}
+        <div
+          className="absolute top-2 right-6 w-1.5 h-1.5 rounded-full"
+          style={{ background: '#D4AF37', boxShadow: '0 0 8px 3px rgba(212,175,55,0.6)' }}
+          aria-hidden
+        />
+        {/* Dim spark — bottom left */}
+        <div
+          className="absolute bottom-3 left-4 w-1 h-1 rounded-full opacity-50"
+          style={{ background: '#D4AF37', boxShadow: '0 0 5px 2px rgba(212,175,55,0.4)' }}
+          aria-hidden
+        />
+      </div>
+
+      <h2 className="text-xl font-bold text-zinc-100 mb-2">No projects yet</h2>
+      <p className="text-sm text-zinc-500 mb-8 max-w-xs leading-relaxed">
+        Create your first Roblox game with AI. Describe it in plain English — we&apos;ll handle the rest.
       </p>
+
       <Link
         href="/editor"
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+        className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
         style={{
           background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
           color: '#09090b',
-          boxShadow: '0 0 24px rgba(212,175,55,0.35)',
+          boxShadow: '0 0 28px rgba(212,175,55,0.4)',
         }}
       >
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
@@ -219,11 +437,144 @@ function EmptyState() {
   )
 }
 
-// ─── Main component ─────────────────────────────────────────────────────────────
+// ─── Search + filter bar ──────────────────────────────────────────────────────────
+
+interface FilterBarProps {
+  query: string
+  onQueryChange: (q: string) => void
+  statusFilter: StatusFilter
+  onStatusChange: (s: StatusFilter) => void
+  total: number
+}
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'published', label: 'Published' },
+]
+
+function FilterBar({ query, onQueryChange, statusFilter, onStatusChange, total }: FilterBarProps) {
+  return (
+    <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* Search */}
+      <div className="relative flex-1">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none"
+          viewBox="0 0 16 16"
+          fill="none"
+        >
+          <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M10.5 10.5L13.5 13.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="Search projects..."
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 outline-none transition-all"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.07)',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
+            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(212,175,55,0.08)'
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+            e.currentTarget.style.boxShadow = 'none'
+          }}
+        />
+        {query && (
+          <button
+            onClick={() => onQueryChange('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
+            aria-label="Clear search"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+              <path d="M10.5 3.5l-7 7M3.5 3.5l7 7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Status filter pills */}
+      <div
+        className="flex items-center gap-1 p-1 rounded-xl"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        {STATUS_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onStatusChange(opt.value)}
+            className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
+            style={
+              statusFilter === opt.value
+                ? {
+                    background: 'rgba(212,175,55,0.15)',
+                    border: '1px solid rgba(212,175,55,0.3)',
+                    color: '#D4AF37',
+                  }
+                : {
+                    background: 'transparent',
+                    border: '1px solid transparent',
+                    color: '#71717a',
+                  }
+            }
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Count */}
+      <div className="hidden sm:flex items-center text-xs text-zinc-600 whitespace-nowrap self-center">
+        {total} project{total !== 1 ? 's' : ''}
+      </div>
+    </div>
+  )
+}
+
+// ─── Skeleton loader ──────────────────────────────────────────────────────────────
+
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="rounded-xl overflow-hidden animate-pulse"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            height: 220,
+          }}
+        >
+          <div style={{ height: 144, background: 'rgba(255,255,255,0.02)' }} />
+          <div className="px-3.5 pt-3">
+            <div
+              className="h-3.5 rounded-md w-3/4 mb-2"
+              style={{ background: 'rgba(255,255,255,0.05)' }}
+            />
+            <div
+              className="h-2.5 rounded-md w-1/3"
+              style={{ background: 'rgba(255,255,255,0.03)' }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────────
 
 export function ProjectsClient() {
   const [projects, setProjects] = useState<ProjectData[]>([])
   const [mounted, setMounted] = useState(false)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 
   useEffect(() => {
     setProjects(listProjects())
@@ -235,27 +586,31 @@ export function ProjectsClient() {
     setProjects((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
+  const filtered = useMemo(() => {
+    let result = projects
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      result = result.filter((p) => p.name.toLowerCase().includes(q))
+    }
+    if (statusFilter !== 'all') {
+      result = result.filter((p) => getProjectStatus(p).key === statusFilter)
+    }
+    return result
+  }, [projects, query, statusFilter])
+
+  const isFiltered = query.trim().length > 0 || statusFilter !== 'all'
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
 
-      {/* Page header — inside AppShell container */}
+      {/* Page header */}
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/editor"
-            className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors text-sm"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-              <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Editor
-          </Link>
-          <span className="text-zinc-700">/</span>
-          <h1 className="text-2xl font-bold text-white">Projects</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-white">My Projects</h1>
           {mounted && projects.length > 0 && (
-            <span className="text-xs text-zinc-600 font-normal mt-0.5">
-              {projects.length} project{projects.length !== 1 ? 's' : ''}
-            </span>
+            <p className="text-xs text-zinc-600 mt-0.5">
+              {projects.length} project{projects.length !== 1 ? 's' : ''} saved locally
+            </p>
           )}
         </div>
 
@@ -263,37 +618,45 @@ export function ProjectsClient() {
           href="/editor"
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
           style={{
-            background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
             color: '#09090b',
-            boxShadow: '0 0 12px rgba(212,175,55,0.2)',
+            boxShadow: '0 0 16px rgba(212,175,55,0.3)',
           }}
         >
-          <svg className="w-3.5 h-3.5" viewBox="0 0 12 12" fill="none">
-            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
+            <path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
           New Project
         </Link>
       </div>
 
-      {/* Content */}
-      {!mounted ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl overflow-hidden animate-pulse"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', height: 200 }}
-            />
-          ))}
-        </div>
-      ) : projects.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
-          ))}
-        </div>
+      {/* Loading skeletons */}
+      {!mounted && <SkeletonGrid />}
+
+      {/* Empty state — no projects at all */}
+      {mounted && projects.length === 0 && <EmptyState filtered={false} />}
+
+      {/* Projects exist: show filter bar + grid */}
+      {mounted && projects.length > 0 && (
+        <>
+          <FilterBar
+            query={query}
+            onQueryChange={setQuery}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            total={filtered.length}
+          />
+
+          {filtered.length === 0 ? (
+            <EmptyState filtered={isFiltered} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((project) => (
+                <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

@@ -50,11 +50,11 @@ echo.
 
 :: Try PowerShell first (available on all modern Windows)
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${APP_URL}/plugin/ForjeGames.rbxmx' -OutFile '%PLUGINS%\\ForjeGames.rbxmx' -UseBasicParsing; Write-Host '  Download complete!' } catch { Write-Host '  Download failed:' $_.Exception.Message; exit 1 }" 2>nul
+    "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${APP_URL}/api/studio/plugin' -OutFile '%PLUGINS%\\ForjeGames.rbxmx' -UseBasicParsing; Write-Host '  Download complete!' } catch { Write-Host '  Download failed:' $_.Exception.Message; exit 1 }" 2>nul
 
 if errorlevel 1 (
     :: Fallback to curl (available on Windows 10+)
-    curl -sL -o "%PLUGINS%\\ForjeGames.rbxmx" "${APP_URL}/plugin/ForjeGames.rbxmx" 2>nul
+    curl -sL -o "%PLUGINS%\\ForjeGames.rbxmx" "${APP_URL}/api/studio/plugin" 2>nul
     if errorlevel 1 (
         echo  ERROR: Download failed. Check your internet connection.
         pause
@@ -106,7 +106,7 @@ fi
 echo "  Downloading ForjeGames plugin..."
 echo ""
 
-curl -sL -o "$PLUGINS/ForjeGames.rbxmx" "${APP_URL}/plugin/ForjeGames.rbxmx" || {
+curl -sL -o "$PLUGINS/ForjeGames.rbxmx" "${APP_URL}/api/studio/plugin" || {
     echo "  ERROR: Download failed. Check your internet connection."
     exit 1
 }

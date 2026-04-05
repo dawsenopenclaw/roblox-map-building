@@ -14,9 +14,6 @@ import {
   ArrowRight,
   Monitor,
   Apple,
-  Wifi,
-  WifiOff,
-  Loader2,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -187,22 +184,9 @@ export default function InstallClient() {
   const handleRestarted = useCallback(() => setCurrentStep('connect'), [])
 
   async function handleVerify() {
-    setVerify({ state: 'checking' })
-    try {
-      const url = userId
-        ? `/api/studio/status?userId=${encodeURIComponent(userId)}`
-        : '/api/studio/status'
-      const res = await fetch(url)
-      const data = (await res.json()) as { connected: boolean; placeName?: string }
-      if (data.connected) {
-        setVerify({ state: 'connected', placeName: data.placeName })
-        setCurrentStep('connect')
-      } else {
-        setVerify({ state: 'not_connected' })
-      }
-    } catch {
-      setVerify({ state: 'not_connected' })
-    }
+    // The install page has no session token — connection state lives in the
+    // editor. Redirect there so the user can confirm the plugin is linked.
+    window.location.href = '/editor'
   }
 
   const command = os === 'windows' ? PS_COMMAND : CURL_COMMAND
@@ -283,7 +267,7 @@ export default function InstallClient() {
               >
                 ForjeGames.rbxmx
               </code>{' '}
-              — it&apos;s 71 KB and installs in seconds.
+              — it&apos;s 114 KB and installs in seconds.
             </p>
             <a
               href="/api/studio/plugin"
@@ -504,26 +488,17 @@ export default function InstallClient() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <button
                   onClick={() => void handleVerify()}
-                  disabled={verify.state === 'checking'}
-                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all"
                   style={{ background: GOLD, color: '#000' }}
-                  onMouseEnter={(e) => { if (verify.state !== 'checking') e.currentTarget.style.background = '#e0b82a' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e0b82a' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = GOLD }}
                 >
-                  {verify.state === 'checking' ? (
-                    <Loader2 size={15} className="animate-spin" />
-                  ) : (
-                    <Wifi size={15} />
-                  )}
-                  {verify.state === 'checking' ? 'Checking…' : 'Verify Installation'}
+                  <Plug size={15} />
+                  Open Editor to Verify
                 </button>
-
-                {verify.state === 'not_connected' && (
-                  <div className="flex items-center gap-2 text-sm" style={{ color: '#f87171' }}>
-                    <WifiOff size={14} />
-                    Not connected yet — open the plugin in Studio first
-                  </div>
-                )}
+                <span className="text-xs" style={{ color: '#555' }}>
+                  Connection state is confirmed in the editor
+                </span>
               </div>
             )}
           </div>

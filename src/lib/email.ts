@@ -23,7 +23,7 @@ function getResend(): Resend {
   return _resend
 }
 
-const FROM = 'ForjeGames <noreply@ForjeGames.com>'
+const FROM = 'ForjeGames <noreply@forjegames.com>'
 const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
 
 // ─── Parental Consent ─────────────────────────────────────────────────────────

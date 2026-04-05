@@ -97,8 +97,9 @@ export default function ReferralsClient() {
   const [stats, setStats]             = useState<ReferralStats | null>(null)
   const [referrals, setReferrals]     = useState<ReferralRow[]>([])
   const [dataLoading, setDataLoading] = useState(true)
-  const [linkCopied, setLinkCopied]   = useState(false)
-  const [codeCopied, setCodeCopied]   = useState(false)
+  const [linkCopied, setLinkCopied]       = useState(false)
+  const [codeCopied, setCodeCopied]       = useState(false)
+  const [discordCopied, setDiscordCopied] = useState(false)
 
   // Referral code is fetched from the server — never derived client-side.
   const referralCode = stats?.referralCode ?? '...'
@@ -155,8 +156,8 @@ export default function ReferralsClient() {
       `Sign up free with my link and we BOTH get 500 bonus tokens: ${referralLink}`
     try {
       await navigator.clipboard.writeText(msg)
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2500)
+      setDiscordCopied(true)
+      setTimeout(() => setDiscordCopied(false), 2500)
     } catch { /* clipboard unavailable */ }
   }
 
@@ -298,7 +299,7 @@ export default function ReferralsClient() {
             Copy for Discord
           </button>
         </div>
-        {linkCopied && (
+        {discordCopied && (
           <p className="text-green-400 text-xs mt-2.5 flex items-center gap-1.5">
             <IconCheck className="w-3 h-3" />
             Copied! Paste it into Discord.

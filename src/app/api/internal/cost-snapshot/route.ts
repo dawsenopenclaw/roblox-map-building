@@ -63,8 +63,10 @@ async function runSnapshot(req: NextRequest): Promise<NextResponse> {
       providerCosts,
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[cron/cost-snapshot] failed:', message)
     return NextResponse.json(
-      { error: 'Service temporarily unavailable', details: 'Database not connected' },
+      { error: 'Service temporarily unavailable', details: message },
       { status: 503 }
     )
   }

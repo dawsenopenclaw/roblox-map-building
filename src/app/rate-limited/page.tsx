@@ -100,7 +100,7 @@ function RateLimitedContent() {
               className="h-full rounded-full transition-all duration-1000 ease-linear"
               style={{
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #D4AF37 0%, #D4AF37 100%)',
+                background: 'linear-gradient(90deg, #D4AF37 0%, #E6A519 100%)',
               }}
             />
           </div>

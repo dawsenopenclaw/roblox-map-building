@@ -704,7 +704,7 @@ export default function MarketplacePage() {
             </div>
           </div>
         ) : templates.length === 0 ? (
-          <EmptyState query={searchQuery} onClear={() => { setSearchQuery(''); setActiveTab('all') }} />
+          <EmptyState query={searchQuery} onClear={() => { setSearchQuery(''); setActiveTab('all'); setPriceFilter('') }} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {templates.map((t) => <TemplateCard key={t.id} template={t} />)}

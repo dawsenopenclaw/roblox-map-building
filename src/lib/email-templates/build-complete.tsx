@@ -22,7 +22,7 @@ interface BuildCompleteEmailProps {
   buildId?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 export const BuildCompleteEmail = ({
   buildType = 'map',
@@ -146,7 +146,7 @@ export const BuildCompleteEmail = ({
               ForjeGames Inc. · All rights reserved
             </Text>
             <Text style={footerAddress}>
-              ForjeGames LLC · [PHYSICAL ADDRESS REQUIRED - UPDATE BEFORE LAUNCH] · United States
+              ForjeGames LLC · 2261 Market Street #4671 · San Francisco, CA 94114 · United States
             </Text>
           </Section>
         </Container>

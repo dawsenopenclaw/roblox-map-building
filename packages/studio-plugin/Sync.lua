@@ -414,13 +414,16 @@ end
 local function pollSync()
   if not _token then return end
 
+  -- Token goes in the Authorization header (not the URL) so it is not logged
+  -- by proxies, CDNs, or Roblox's own request logger.
+  -- sessionId is also sent as a header so the server can resolve the session
+  -- without needing a valid JWT on every Lambda cold-start.
   local path = "/api/studio/sync?lastSync=" .. tostring(math.floor(_lastSync))
   if _sessionId then
     path = path .. "&sessionId=" .. _sessionId
   end
-  if _token then
-    path = path .. "&token=" .. _token
-  end
+  -- pluginVer lets the server check for updates without relying on a separate header
+  path = path .. "&pluginVer=" .. PLUGIN_VERSION
 
   local result, netErr = httpGet(path)
 
@@ -449,7 +452,10 @@ local function pollSync()
     end)
 
     if ok and data then
-      _lastSync = data.serverTime or os.time()
+      -- serverTime is Unix milliseconds. tick() returns Unix seconds as a float.
+      -- If serverTime is missing, multiply tick() by 1000 to stay in ms.
+      -- Never fall back to os.time() — it is not available in all Roblox contexts.
+      _lastSync = data.serverTime or math.floor(tick() * 1000)
 
       -- Apply pending studio commands
       if data.changes and #data.changes > 0 then
@@ -498,9 +504,17 @@ local function pollSync()
     notifyStatus(false, _lastSync)
 
   elseif status == 429 then
-    -- Rate limited
-    _backoffInterval = math.min(_backoffInterval * 3, MAX_INTERVAL)
-    notifyStatus(false, _lastSync)
+    -- Rate limited — parse retryAfterMs from body if present, otherwise triple backoff.
+    -- Keep status as connected=true so the UI doesn't flash a disconnect banner for
+    -- a transient rate-limit; the plugin will resume normally on the next poll.
+    local rlOk, rlData = pcall(function() return HttpService:JSONDecode(result.Body) end)
+    if rlOk and rlData and rlData.retryAfterMs then
+      _backoffInterval = math.min(math.ceil(rlData.retryAfterMs / 1000) + 1, MAX_INTERVAL)
+    else
+      _backoffInterval = math.min(_backoffInterval * 3, MAX_INTERVAL)
+    end
+    -- Still report connected=true — we have a live session, just throttled
+    notifyStatus(true, _lastSync)
 
   else
     _backoffInterval = math.min(_backoffInterval * 2, MAX_INTERVAL)

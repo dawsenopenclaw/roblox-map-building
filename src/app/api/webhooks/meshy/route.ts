@@ -238,8 +238,13 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'meshy', status: payload.status },
       extra: { meshyTaskId },
     })
-    // Return 200 so Meshy does not retry — the error is captured in Sentry.
-    // A 5xx causes indefinite retries which could thrash the DB on a persistent error.
+    // Transient infrastructure errors (DB connection, timeout) return 500 so Meshy
+    // retries delivery — the event was not processed. Permanent errors return 200
+    // to stop retry loops since redelivery cannot fix a bad event.
+    const isTransient = /connect|timeout|ECONNREFUSED|P1001/i.test(message)
+    if (isTransient) {
+      return NextResponse.json({ error: 'transient_error' }, { status: 500 })
+    }
     return NextResponse.json({ received: true })
   }
 

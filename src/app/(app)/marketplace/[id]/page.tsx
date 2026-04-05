@@ -541,7 +541,11 @@ export default async function TemplateDetailPage({
       }
     }
   } catch (err) {
-    // Fall back to demo so page doesn't crash
+    // Re-throw Next.js navigation errors (notFound, redirect) — do not swallow them
+    if (err instanceof Error && (err.message === 'NEXT_NOT_FOUND' || err.message === 'NEXT_REDIRECT' || (err as { digest?: string }).digest?.startsWith('NEXT_NOT_FOUND'))) {
+      throw err
+    }
+    // Fall back to demo so the page doesn't crash on DB connection errors
     return <TemplateDetail template={FALLBACK_DEMO} id={id} user={null} hasPurchased={false} hasReviewed={false} isDemo />
   }
 

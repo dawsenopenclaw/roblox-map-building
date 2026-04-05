@@ -236,7 +236,9 @@ async function handleSync(req: NextRequest) {
 
   // ── Version check (Redis-backed manifest, 5-min cache) ───────────────────
   const manifest    = await getPluginManifest()
-  const needsUpdate = isOutdated(pluginVer, manifest)
+  // needsUpdate: plugin is behind the latest published version (show banner)
+  // forceUpdate: plugin is below the minimum supported version (block usage)
+  const needsUpdate = semverLt(pluginVer, manifest.version)
   const forceUpdate = semverLt(pluginVer, manifest.minVersion)
 
   // ── Parse lastSync — default to 0 (return everything in queue) ────────────

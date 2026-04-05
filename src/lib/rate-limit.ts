@@ -27,6 +27,15 @@ import { getRedis } from './redis'
  */
 const memoryCounters = new Map<string, { count: number; resetAt: number }>()
 
+// Prune expired buckets every 5 minutes to prevent unbounded Map growth.
+// Each bucket key encodes its window, so we only need to check resetAt.
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of memoryCounters) {
+    if (entry.resetAt <= now) memoryCounters.delete(key)
+  }
+}, 5 * 60 * 1000).unref()
+
 function checkMemoryLimit(
   identifier: string,
   limit: number,

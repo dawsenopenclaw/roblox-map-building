@@ -250,7 +250,7 @@ export default function OnboardingWizardPage() {
       // Non-fatal — proceed to dashboard regardless
     } finally {
       const encoded = encodeURIComponent(prompt)
-      router.push(`/dashboard?prompt=${encoded}`)
+      router.push(`/editor?prompt=${encoded}`)
     }
   }
 

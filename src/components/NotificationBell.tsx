@@ -166,7 +166,6 @@ function NotificationPanel({ notifications, onMarkAllRead, onMarkRead, onDelete,
 
             const inner = (
               <div
-                key={n.id}
                 role="listitem"
                 className={`group relative flex gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03] ${!n.read ? 'bg-white/[0.02]' : ''}`}
               >
@@ -404,13 +403,19 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
           <IconBell />
           {unreadCount > 0 && (
             <span
-              className="fj-badge-pulse absolute top-1.5 right-1.5 w-2 h-2 rounded-full border border-[#141414]"
+              className="fj-badge-pulse absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-0.5 rounded-full border border-[#141414] flex items-center justify-center"
               style={{
                 background: '#D4AF37',
                 animation: 'fj-badge-pulse 2.4s ease-in-out infinite',
+                fontSize: '9px',
+                fontWeight: 700,
+                color: '#000',
+                lineHeight: 1,
               }}
               aria-label={`${unreadCount} unread`}
-            />
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
           )}
         </button>
 

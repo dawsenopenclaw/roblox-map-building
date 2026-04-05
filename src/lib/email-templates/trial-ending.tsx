@@ -20,7 +20,7 @@ interface TrialEndingEmailProps {
   upgradeUrl?: string
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://ForjeGames.com'
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
 export const TrialEndingEmail = ({
   name = 'Creator',
@@ -98,7 +98,7 @@ export const TrialEndingEmail = ({
               <Link href={`${baseUrl}/unsubscribe`} style={footerLink}>Unsubscribe</Link>
             </Text>
             <Text style={footerAddress}>ForjeGames Inc. · All rights reserved</Text>
-            <Text style={footerAddress}>ForjeGames LLC · [PHYSICAL ADDRESS REQUIRED - UPDATE BEFORE LAUNCH] · United States</Text>
+            <Text style={footerAddress}>ForjeGames LLC · 2261 Market Street #4671 · San Francisco, CA 94114 · United States</Text>
           </Section>
         </Container>
       </Body>

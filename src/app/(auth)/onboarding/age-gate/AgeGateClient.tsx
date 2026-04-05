@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useSession } from '@clerk/nextjs'
+import { useState, useEffect } from 'react'
+import { useSession, useUser } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 // ─── Year picker — quick taps, no text input, COPPA compliant ─────────────────
 
@@ -12,9 +13,18 @@ const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR
 
 export default function AgeGatePage() {
   const { session } = useSession()
+  const { user } = useUser()
+  const router = useRouter()
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Skip age gate for returning users who already verified
+  useEffect(() => {
+    if (user?.publicMetadata?.dateOfBirth || user?.unsafeMetadata?.dateOfBirth) {
+      router.replace('/editor')
+    }
+  }, [user, router])
 
   async function handleContinue() {
     if (!selectedYear) {

@@ -207,7 +207,7 @@ export default function DownloadClient() {
 
         <div className="mt-4 flex items-center justify-center gap-4">
           <span className="text-sm" style={{ color: '#8B95B0' }}>
-            96 KB &bull; .rbxmx
+            114 KB &bull; .rbxmx
           </span>
           <span className="h-4 w-px" style={{ background: '#1A2550' }} aria-hidden />
           <span className="text-sm" style={{ color: '#8B95B0' }}>
@@ -319,7 +319,7 @@ export default function DownloadClient() {
                 }}
               >
                 <Download size={14} />
-                ForjeGames.rbxmx — 71 KB
+                ForjeGames.rbxmx — 114 KB
               </a>
             </div>
           </div>

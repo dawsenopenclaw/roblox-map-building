@@ -21,6 +21,28 @@ interface TokenData {
   planLimit: number
 }
 
+interface BillingStatus {
+  plan: string
+  tier: string
+  status: string
+  tokensUsed: number
+  tokenLimit: number
+  tokenBalance: number
+  renewDate: string | null
+  monthlyPrice: string
+  cancelAtPeriodEnd: boolean
+  marketplaceSearches: number
+  apiCallsThisMonth: number
+  buildsThisMonth: number
+}
+
+interface RecentProject {
+  id: string
+  title: string
+  updatedAt: string
+  type: string
+}
+
 interface DashboardStats {
   buildsThisWeek: number
   activeProjects: number
@@ -443,59 +465,69 @@ interface ActionDef {
 }
 
 const ACTIONS: ActionDef[] = [
-  { href: '/editor',      icon: '⚡', title: 'New Build',         description: 'Generate terrain, scripts, assets with AI' },
-  { href: '/marketplace', icon: '🛒', title: 'Browse Marketplace',description: 'Free & premium Roblox assets',  badge: 'New' },
-  { href: '/editor',      icon: '🔌', title: 'Connect Studio',    description: 'Sync builds directly to Roblox Studio' },
-  { href: '/docs',        icon: '📖', title: 'View Docs',         description: 'API reference and build guides' },
+  { href: '/editor',      icon: '⚡', title: 'Open Editor',        description: 'Generate terrain, scripts, assets with AI', badge: 'Gold' },
+  { href: '/marketplace', icon: '🛒', title: 'Browse Marketplace', description: 'Free & premium Roblox assets' },
+  { href: '/download',    icon: '🔌', title: 'Download Plugin',    description: 'Sync builds directly to Roblox Studio' },
+  { href: '/referrals',   icon: '🎁', title: 'Invite a Friend',    description: 'Share ForjeAI and earn bonus tokens' },
 ]
 
 function QuickActions() {
   return (
     <section>
       <h2 className="text-sm font-bold text-white mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-2 gap-3">
-        {ACTIONS.map((a) => (
-          <Link
-            key={a.href + a.title}
-            href={a.href}
-            className="group rounded-2xl border border-white/[0.08] p-4 flex flex-col gap-2 transition-all duration-200 hover:border-[#D4AF37]/30 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
-            style={{ background: '#111111' }}
-          >
-            {/* Radial hover glow */}
-            <div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-              style={{ background: `radial-gradient(circle at 0% 0%, ${GOLD}08 0%, transparent 70%)` }}
-            />
-            <div className="flex items-center justify-between">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-all duration-200 group-hover:scale-110"
-                style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}18` }}
-              >
-                {a.icon}
-              </div>
-              {a.badge && (
-                <span
-                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ color: '#0A0E27', background: GOLD }}
-                >
-                  {a.badge}
-                </span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-3">
+        {ACTIONS.map((a) => {
+          const isGold = a.badge === 'Gold'
+          return (
+            <Link
+              key={a.href + a.title}
+              href={a.href}
+              className="group rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+              style={{
+                background: isGold
+                  ? `linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)`
+                  : '#111111',
+                borderColor: isGold ? `${GOLD}35` : 'rgba(255,255,255,0.08)',
+              }}
+            >
+              {/* Top accent line for gold card */}
+              {isGold && (
+                <div
+                  className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+                  style={{ background: `linear-gradient(90deg, ${GOLD}00, ${GOLD}80, ${GOLD}00)` }}
+                />
               )}
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white group-hover:text-[#D4AF37] transition-colors">
-                {a.title}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{a.description}</p>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] text-gray-600 group-hover:text-[#D4AF37] transition-colors mt-auto">
-              Open
-              <svg className="w-3 h-3 translate-x-0 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </Link>
-        ))}
+              {/* Radial hover glow */}
+              <div
+                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ background: `radial-gradient(circle at 0% 0%, ${GOLD}08 0%, transparent 70%)` }}
+              />
+              <div className="flex items-center justify-between">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-base transition-all duration-200 group-hover:scale-110"
+                  style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}18` }}
+                >
+                  {a.icon}
+                </div>
+              </div>
+              <div>
+                <p
+                  className="text-sm font-semibold transition-colors"
+                  style={{ color: isGold ? GOLD : 'white' }}
+                >
+                  {a.title}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{a.description}</p>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-gray-600 group-hover:text-[#D4AF37] transition-colors mt-auto">
+                Open
+                <svg className="w-3 h-3 translate-x-0 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </section>
   )
@@ -591,6 +623,321 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
   )
 }
 
+// ─── Circular Progress Ring ───────────────────────────────────────────────────
+
+function CircularRing({ pct, size = 96 }: { pct: number; size?: number }) {
+  const r = (size - 10) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ - (Math.min(pct, 100) / 100) * circ
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rotate-[-90deg]">
+      {/* Track */}
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={6}
+      />
+      {/* Progress arc */}
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none"
+        stroke={GOLD}
+        strokeWidth={6}
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        style={{
+          transition: 'stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1)',
+          filter: `drop-shadow(0 0 4px ${GOLD}80)`,
+        }}
+      />
+    </svg>
+  )
+}
+
+// ─── Token Balance Widget ─────────────────────────────────────────────────────
+
+function TokenBalanceWidget({
+  billing,
+  fallbackBalance,
+}: {
+  billing: BillingStatus | null | undefined
+  fallbackBalance: number
+}) {
+  const balance = billing?.tokenBalance ?? fallbackBalance
+  const limit   = billing?.tokenLimit   ?? 0
+  const used    = billing?.tokensUsed   ?? 0
+  const pct     = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0
+  const remaining = limit > 0 ? limit - used : balance
+
+  return (
+    <div
+      className="rounded-2xl border p-5 flex flex-col gap-4 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)',
+        borderColor: `${GOLD}30`,
+      }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+        style={{ background: `linear-gradient(90deg, ${GOLD}00, ${GOLD}70, ${GOLD}00)` }} />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.12em]">Token Balance</p>
+          <p className="text-3xl font-bold tabular-nums mt-1 leading-none" style={{ color: GOLD }}>
+            {balance.toLocaleString()}
+          </p>
+          {limit > 0 && (
+            <p className="text-[11px] text-gray-500 mt-1">
+              of {limit.toLocaleString()}/month
+            </p>
+          )}
+        </div>
+        <div className="relative flex-shrink-0">
+          <CircularRing pct={pct} size={88} />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-sm font-bold tabular-nums" style={{ color: GOLD }}>
+              {pct}%
+            </span>
+            <span className="text-[9px] text-gray-600 leading-none">used</span>
+          </div>
+        </div>
+      </div>
+
+      {limit > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-gray-500">{used.toLocaleString()} used</span>
+            <span className="text-gray-500">{remaining.toLocaleString()} left</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${pct}%`,
+                background: `linear-gradient(90deg, ${GOLD}99, ${GOLD})`,
+                boxShadow: pct > 5 ? `0 0 6px ${GOLD}50` : 'none',
+                transition: 'width 1s cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {billing?.renewDate && (
+        <p className="text-[10px] text-gray-600">Renews {billing.renewDate}</p>
+      )}
+    </div>
+  )
+}
+
+// ─── Usage This Month Bar ─────────────────────────────────────────────────────
+
+function UsageThisMonth({ billing }: { billing: BillingStatus | null | undefined }) {
+  if (!billing || billing.tokenLimit === 0) return null
+
+  const { tokensUsed, tokenLimit, buildsThisMonth, apiCallsThisMonth } = billing
+  const usedPct  = Math.min(100, Math.round((tokensUsed / tokenLimit) * 100))
+  const freePct  = 100 - usedPct
+
+  const bars: { label: string; value: number; max: number; color: string }[] = [
+    { label: 'Tokens used',   value: tokensUsed,       max: tokenLimit, color: GOLD },
+    { label: 'Builds',        value: buildsThisMonth,  max: Math.max(buildsThisMonth, 10), color: '#7C3AED' },
+    { label: 'API calls',     value: apiCallsThisMonth, max: Math.max(apiCallsThisMonth, 50), color: '#34D399' },
+  ]
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-sm font-bold text-white">Usage This Month</h2>
+          <p className="text-[11px] text-gray-500 mt-0.5">{usedPct}% of token allowance consumed</p>
+        </div>
+        <span
+          className="text-[11px] font-bold px-2.5 py-1 rounded-full tabular-nums"
+          style={{ color: GOLD, background: `${GOLD}12`, border: `1px solid ${GOLD}20` }}
+        >
+          {tokensUsed.toLocaleString()} / {tokenLimit.toLocaleString()}
+        </span>
+      </div>
+
+      <div
+        className="rounded-2xl border border-white/[0.08] p-5 space-y-4"
+        style={{ background: '#111111' }}
+      >
+        {/* Stacked token bar */}
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-gray-500 mb-2">
+            <span>Token split</span>
+            <span>{freePct}% remaining</span>
+          </div>
+          <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
+            <div
+              className="h-full rounded-l-full"
+              style={{
+                width: `${usedPct}%`,
+                background: `linear-gradient(90deg, ${GOLD}bb, ${GOLD})`,
+                boxShadow: usedPct > 5 ? `0 0 8px ${GOLD}50` : 'none',
+                transition: 'width 1s cubic-bezier(0.22, 1, 0.36, 1)',
+                minWidth: usedPct > 0 ? 4 : 0,
+              }}
+            />
+            <div
+              className="h-full flex-1 rounded-r-full"
+              style={{ background: 'rgba(255,255,255,0.06)' }}
+            />
+          </div>
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm" style={{ background: GOLD }} />
+              <span className="text-[10px] text-gray-500">Used</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-sm bg-white/10" />
+              <span className="text-[10px] text-gray-500">Remaining</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Individual stat bars */}
+        <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+          {bars.map(({ label, value, max, color }) => {
+            const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0
+            return (
+              <div key={label}>
+                <div className="flex items-center justify-between text-[11px] mb-1.5">
+                  <span className="text-gray-400">{label}</span>
+                  <span className="tabular-nums font-semibold" style={{ color }}>
+                    {value.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${pct}%`,
+                      background: color,
+                      opacity: 0.85,
+                      transition: 'width 1s cubic-bezier(0.22, 1, 0.36, 1)',
+                      minWidth: pct > 0 ? 4 : 0,
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Recent Projects ──────────────────────────────────────────────────────────
+
+function RecentProjects({ builds }: { builds: RecentBuild[] }) {
+  // Reuse RecentBuild data but present as "projects" — dedupe by typeLabel and show latest 3
+  const projects = builds.slice(0, 3)
+
+  return (
+    <section>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-bold text-white">Recent Projects</h2>
+        <Link
+          href="/editor"
+          className="text-[11px] font-semibold transition-colors"
+          style={{ color: GOLD }}
+        >
+          New Project →
+        </Link>
+      </div>
+      <div
+        className="rounded-2xl border border-white/[0.08] overflow-hidden"
+        style={{ background: '#111111' }}
+      >
+        {projects.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl mb-3"
+              style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}20` }}
+            >
+              🗂️
+            </div>
+            <p className="text-sm font-bold text-white mb-1">No projects yet</p>
+            <p className="text-[12px] text-gray-500 mb-4 max-w-[220px] leading-relaxed">
+              Your builds will appear here once you start creating.
+            </p>
+            <Link
+              href="/editor"
+              className="text-xs font-bold px-4 py-2 rounded-xl text-black transition-all hover:opacity-90"
+              style={{ background: GOLD }}
+            >
+              Start Building
+            </Link>
+          </div>
+        ) : (
+          projects.map((build, idx) => (
+            <Link
+              key={build.id}
+              href={`/editor?build=${build.id}`}
+              className={`group flex items-center gap-4 px-5 py-3.5 transition-all duration-200 hover:bg-white/[0.04] ${
+                idx < projects.length - 1 ? 'border-b border-white/[0.06]' : ''
+              }`}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+                style={{ background: `${GOLD}10`, border: `1px solid ${GOLD}15` }}
+              >
+                {build.typeIcon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-200 truncate group-hover:text-white transition-colors">
+                  {build.description}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span
+                    className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                    style={{ color: GOLD, background: `${GOLD}12` }}
+                  >
+                    {build.typeLabel}
+                  </span>
+                  <span className="text-[11px] text-gray-500">{timeAgo(build.ts)}</span>
+                </div>
+              </div>
+              <svg
+                className="w-4 h-4 text-gray-600 group-hover:text-[#D4AF37] transition-colors flex-shrink-0"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          ))
+        )}
+      </div>
+    </section>
+  )
+}
+
+// ─── Plan Badge ───────────────────────────────────────────────────────────────
+
+const PLAN_COLORS: Record<string, { color: string; bg: string; border: string }> = {
+  FREE:    { color: '#9CA3AF', bg: 'rgba(156,163,175,0.10)', border: 'rgba(156,163,175,0.25)' },
+  HOBBY:   { color: GOLD,      bg: `${GOLD}10`,              border: `${GOLD}35` },
+  CREATOR: { color: '#A78BFA', bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.35)' },
+  STUDIO:  { color: '#34D399', bg: 'rgba(52,211,153,0.10)',  border: 'rgba(52,211,153,0.35)' },
+}
+
+function PlanBadge({ tier }: { tier: string }) {
+  const key = tier.toUpperCase()
+  const styles = PLAN_COLORS[key] ?? PLAN_COLORS.FREE
+  return (
+    <span
+      className="text-[11px] font-bold px-3 py-1.5 rounded-full border"
+      style={{ color: styles.color, borderColor: styles.border, background: styles.bg }}
+    >
+      {key}
+    </span>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 // ─── New-User Hero ────────────────────────────────────────────────────────────
@@ -680,6 +1027,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
   const { data: tokenData } = useSWR<TokenData>('/api/tokens/balance', fetcher, { refreshInterval: 30000 })
   const { data: statsData } = useSWR<DashboardStats>('/api/dashboard/stats', fetcher, { refreshInterval: 60000 })
   const { data: buildsData } = useSWR<RecentBuildsData>('/api/dashboard/recent-builds', fetcher, { refreshInterval: 60000 })
+  const { data: billingData } = useSWR<BillingStatus | null>('/api/billing/status', fetcher, { refreshInterval: 120000 })
   const { show: showToast } = useToast()
   const [currentDate, setCurrentDate] = useState('')
 
@@ -713,7 +1061,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
   const recentBuilds = buildsData?.builds ?? []
 
-  const tierLabel = subscription === 'FREE' ? 'Free' : subscription === 'PRO' ? 'Pro' : subscription
+  const activeTier = billingData?.tier ?? subscription
 
   // A user is "new" when stats have loaded and they have zero lifetime builds
   const statsLoaded = statsData !== undefined
@@ -760,12 +1108,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             </p>
           </div>
           <div className="flex items-center gap-3 flex-shrink-0" style={{ animation: 'fj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 120ms both' }}>
-            <span
-              className="text-[11px] font-bold px-3 py-1.5 rounded-full border"
-              style={{ color: GOLD, borderColor: `${GOLD}35`, background: `${GOLD}10` }}
-            >
-              {tierLabel} Plan
-            </span>
+            <PlanBadge tier={activeTier} />
             <Link
               href="/editor"
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90 hover:scale-[1.02]"
@@ -854,7 +1197,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               label="Token Balance"
               value={liveBalance}
               icon="⚡"
-              sub={`${liveSpent.toLocaleString()} spent lifetime`}
+              sub={liveSpent === 0 ? 'Nothing spent yet' : `${liveSpent.toLocaleString()} spent lifetime`}
               primary
             />,
             <StatCard
@@ -862,7 +1205,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               label="Builds This Week"
               value={buildsThisWeek}
               icon="🔨"
-              sub="Across all projects"
+              sub={buildsThisWeek === 0 ? 'No builds yet — start creating' : 'Across all projects'}
               sparkColor="#34D399"
             />,
             <StatCard
@@ -870,6 +1213,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               label="Active Projects"
               value={activeProjects}
               icon="🗂️"
+              sub={activeProjects === 0 ? 'Open the editor to begin' : undefined}
               sparkColor="#7C3AED"
               royalAccent
             />,
@@ -878,6 +1222,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               label="Streak Days"
               value={streakDays}
               icon="🔥"
+              sub={streakDays === 0 ? 'Build today to start your streak' : undefined}
               sparkColor="#F59E0B"
             />,
           ].map((card, i) => (
@@ -892,6 +1237,17 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
           {/* Left 2/3 */}
           <div className="xl:col-span-2 space-y-6">
+
+            {/* Token Balance Widget + Usage side-by-side on wide screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="fj-animate" style={staggerStyle(0, 360)}>
+                <TokenBalanceWidget billing={billingData} fallbackBalance={liveBalance} />
+              </div>
+              <div className="fj-animate" style={staggerStyle(1, 360)}>
+                <UsageThisMonth billing={billingData} />
+              </div>
+            </div>
+
             <div className="fj-animate" style={staggerStyle(0, 450)}>
               <ActivityChart activityVals={activityVals} />
             </div>
@@ -905,12 +1261,13 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             <div className="fj-animate" style={staggerStyle(2, 450)}>
               <QuickActions />
             </div>
+
             <div className="fj-animate" style={staggerStyle(3, 450)}>
-              <AchievementProgress achievements={[]} />
+              <RecentProjects builds={recentBuilds} />
             </div>
 
             {/* Token CTA for FREE users */}
-            {subscription === 'FREE' && (
+            {activeTier === 'FREE' && (
               <div className="fj-animate" style={staggerStyle(4, 450)}>
                 <section>
                   <div
@@ -922,14 +1279,14 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
                       <p className="text-sm font-bold text-white">Running low?</p>
                     </div>
                     <p className="text-[12px] text-gray-500 mb-4 leading-relaxed">
-                      Upgrade to Pro for unlimited tokens and priority AI generation.
+                      Upgrade for more tokens and priority AI generation.
                     </p>
                     <Link
                       href="/billing"
                       className="block text-center w-full py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
                       style={{ background: GOLD }}
                     >
-                      Upgrade to Pro
+                      View Plans
                     </Link>
                   </div>
                 </section>

@@ -14,18 +14,32 @@ export const metadata: Metadata = createMetadata({
     'Roblox terrain AI',
     'game development automation',
   ],
-  jsonLd: {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: 'How AI is Changing Roblox Game Development',
-    datePublished: '2026-03-29',
-    author: { '@type': 'Person', name: 'Dawsen Porter' },
-    publisher: { '@type': 'Organization', name: 'ForjeGames LLC' },
-  },
 })
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: 'How AI is Changing Roblox Game Development',
+  datePublished: '2026-03-29',
+  url: 'https://forjegames.com/blog/building-roblox-games-with-ai',
+  author: { '@type': 'Person', name: 'Dawsen Porter' },
+  publisher: {
+    '@type': 'Organization',
+    name: 'ForjeGames LLC',
+    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png' },
+  },
+  description:
+    'How AI agents remove scripting and terrain barriers for Roblox creators, transforming ideas into published games in hours.',
+  isPartOf: { '@type': 'WebSite', name: 'ForjeGames', url: 'https://forjegames.com' },
+}
 
 export default function AIRobloxBlogPost() {
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Breadcrumb */}
       <div className="border-b border-white/5 px-6 py-3 text-xs text-white/30">
@@ -147,9 +161,9 @@ export default function AIRobloxBlogPost() {
           <h2 className="text-xl font-bold text-white mt-10 mb-4">What AI still needs human direction</h2>
 
           <p>
-            Be honest about limitations: AI is not yet replacing the creative layer. Game feel —
-            the intuition about whether a jump height is satisfying, whether a combat system is
-            fair, whether the pacing is right — still requires a human player&apos;s judgment.
+            AI is not yet replacing the creative layer. Game feel — the intuition about whether a
+            jump height is satisfying, whether a combat system is fair, whether the pacing is right
+            — still requires a human player&apos;s judgment.
           </p>
 
           <p>
@@ -209,5 +223,6 @@ export default function AIRobloxBlogPost() {
         </div>
       </article>
     </div>
+    </>
   )
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useUser } from '@clerk/nextjs'
 
 // ---------------------------------------------------------------------------
 // Platform key label (⌘ on Mac, Ctrl elsewhere)
@@ -21,7 +22,7 @@ function useModKey() {
 // Types
 // ---------------------------------------------------------------------------
 
-type CommandGroup = 'Navigation' | 'Actions' | 'AI' | 'Recent' | 'Recent Builds' | 'Help'
+type CommandGroup = 'Navigation' | 'Actions' | 'AI' | 'Recent' | 'Recent Builds' | 'Help' | 'Admin'
 
 interface CommandItem {
   id: string
@@ -34,28 +35,159 @@ interface CommandItem {
 }
 
 // ---------------------------------------------------------------------------
-// Fuzzy search helpers
+// Fuzzy search — word-aware matching + highlight spans
 // ---------------------------------------------------------------------------
 
+/**
+ * Returns true if every word in `needle` matches against any word in `haystack`.
+ * e.g. "dev" matches "Dev Board" because "dev" prefix-matches "dev" in "Dev Board".
+ */
 function fuzzyMatch(needle: string, haystack: string): boolean {
   if (!needle) return true
-  const n = needle.toLowerCase()
-  const h = haystack.toLowerCase()
-  let ni = 0
-  for (let hi = 0; hi < h.length && ni < n.length; hi++) {
-    if (h[hi] === n[ni]) ni++
-  }
-  return ni === n.length
+  const needleWords = needle.toLowerCase().trim().split(/\s+/)
+  const haystackLower = haystack.toLowerCase()
+  // Each needle word must appear somewhere in the haystack (substring or sequential)
+  return needleWords.every((nw) => {
+    // Fast: is it a substring?
+    if (haystackLower.includes(nw)) return true
+    // Slower: sequential character match within a single haystack word
+    const haystackWords = haystackLower.split(/\s+/)
+    return haystackWords.some((hw) => {
+      let ni = 0
+      for (let hi = 0; hi < hw.length && ni < nw.length; hi++) {
+        if (hw[hi] === nw[ni]) ni++
+      }
+      return ni === nw.length
+    })
+  })
 }
 
 function fuzzyScore(needle: string, haystack: string): number {
   if (!needle) return 0
   const n = needle.toLowerCase()
   const h = haystack.toLowerCase()
-  if (h === n) return 4
-  if (h.startsWith(n)) return 3
-  if (h.includes(n)) return 2
+  if (h === n) return 5
+  if (h.startsWith(n)) return 4
+  if (h.includes(n)) return 3
+  // Word-start match
+  const words = h.split(/\s+/)
+  if (words.some((w) => w.startsWith(n))) return 2
   return 1
+}
+
+/**
+ * Returns an array of React-renderable segments: { text, highlight }.
+ * Highlights every occurrence of any needle word found in label.
+ */
+function highlightMatches(label: string, needle: string): { text: string; highlight: boolean }[] {
+  if (!needle.trim()) return [{ text: label, highlight: false }]
+  const needleWords = needle
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length) // longest first to avoid double-match
+
+  // Build a flat array of [start, end] ranges to highlight
+  const ranges: [number, number][] = []
+  const labelLower = label.toLowerCase()
+
+  for (const nw of needleWords) {
+    let pos = 0
+    while (pos < labelLower.length) {
+      const idx = labelLower.indexOf(nw, pos)
+      if (idx === -1) break
+      ranges.push([idx, idx + nw.length])
+      pos = idx + nw.length
+    }
+  }
+
+  if (ranges.length === 0) return [{ text: label, highlight: false }]
+
+  // Merge overlapping ranges
+  ranges.sort((a, b) => a[0] - b[0])
+  const merged: [number, number][] = [ranges[0]]
+  for (let i = 1; i < ranges.length; i++) {
+    const last = merged[merged.length - 1]
+    if (ranges[i][0] <= last[1]) {
+      last[1] = Math.max(last[1], ranges[i][1])
+    } else {
+      merged.push(ranges[i])
+    }
+  }
+
+  // Build segments
+  const segments: { text: string; highlight: boolean }[] = []
+  let cursor = 0
+  for (const [start, end] of merged) {
+    if (cursor < start) segments.push({ text: label.slice(cursor, start), highlight: false })
+    segments.push({ text: label.slice(start, end), highlight: true })
+    cursor = end
+  }
+  if (cursor < label.length) segments.push({ text: label.slice(cursor), highlight: false })
+  return segments
+}
+
+// ---------------------------------------------------------------------------
+// Category SVG icons
+// ---------------------------------------------------------------------------
+
+const CategoryIcon = ({ group }: { group: CommandGroup }) => {
+  const cls = 'w-3 h-3 flex-shrink-0'
+  switch (group) {
+    case 'Navigation':
+    case 'Recent Builds':
+      // Grid / pages
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      )
+    case 'Actions':
+      // Zap
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+        </svg>
+      )
+    case 'Admin':
+      // Shield
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      )
+    case 'AI':
+      // Sparkle / wand
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M15 4V2m0 20v-2M4 15H2m20 0h-2M6.3 6.3l-1.4-1.4m14.1 14.1-1.4-1.4M6.3 17.7l-1.4 1.4M18.1 6.3l-1.4-1.4" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      )
+    case 'Help':
+      // Question mark circle
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+        </svg>
+      )
+    case 'Recent':
+      // Clock
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
+      )
+    default:
+      return null
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +220,7 @@ const GROUP_ACCENT: Record<CommandGroup, string> = {
   Actions:          'text-emerald-400',
   AI:               'text-purple-400',
   Help:             'text-gray-500',
+  Admin:            'text-rose-400',
 }
 
 const GROUP_ICON_BG: Record<CommandGroup, string> = {
@@ -97,6 +230,7 @@ const GROUP_ICON_BG: Record<CommandGroup, string> = {
   Actions:          'bg-emerald-500/10',
   AI:               'bg-purple-500/10',
   Help:             'bg-white/5',
+  Admin:            'bg-rose-500/10',
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +238,7 @@ const GROUP_ICON_BG: Record<CommandGroup, string> = {
 // ---------------------------------------------------------------------------
 
 const MAX_RECENT = 5
-const LS_KEY = 'cmd_palette_recent_v1'
+const LS_KEY = 'fg_recent_commands'           // updated key per spec
 const LS_BUILDS_KEY = 'cmd_palette_recent_builds_v1'
 
 function loadRecentIds(): string[] {
@@ -145,7 +279,30 @@ interface CommandPaletteProps {
   onToggleSidebar?: () => void
 }
 
-const GROUP_ORDER: CommandGroup[] = ['Recent', 'Recent Builds', 'Navigation', 'Actions', 'AI', 'Help']
+const GROUP_ORDER: CommandGroup[] = ['Recent', 'Recent Builds', 'Navigation', 'Actions', 'AI', 'Help', 'Admin']
+
+const ADMIN_EMAIL = 'dawsenporter@gmail.com'
+
+// ---------------------------------------------------------------------------
+// Highlight label component
+// ---------------------------------------------------------------------------
+
+function HighlightedLabel({ label, query }: { label: string; query: string }) {
+  const segments = highlightMatches(label, query)
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.highlight ? (
+          <span key={i} className="text-[#FFB81C] font-semibold">
+            {seg.text}
+          </span>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 // ---------------------------------------------------------------------------
 // CommandPalette
@@ -159,9 +316,12 @@ export function CommandPalette({
   onToggleSidebar,
 }: CommandPaletteProps) {
   const router = useRouter()
+  const { user } = useUser()
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === ADMIN_EMAIL
   const mod = useModKey()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [hoveredItem, setHoveredItem] = useState<CommandItem | null>(null)
   const [recentIds, setRecentIds] = useState<string[]>([])
   const [recentBuilds, setRecentBuilds] = useState<RecentBuildEntry[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -182,7 +342,6 @@ export function CommandPalette({
     const dialog = dialogRef.current
     if (!dialog) return
 
-    // Restore focus to whatever triggered the dialog when it closes
     const previouslyFocused = document.activeElement as HTMLElement | null
 
     const focusable = () =>
@@ -192,7 +351,6 @@ export function CommandPalette({
         ),
       ).filter((el) => !el.hasAttribute('disabled'))
 
-    // Auto-focus the first focusable element (the search input)
     focusable()[0]?.focus()
 
     const handler = (e: KeyboardEvent) => {
@@ -338,6 +496,23 @@ export function CommandPalette({
       action: wrap('nav-tokens', () => navigate('/tokens')),
     },
     {
+      id: 'nav-projects',
+      group: 'Navigation',
+      label: 'Projects',
+      description: 'All your saved build projects',
+      icon: '◧',
+      shortcut: 'G+P',
+      action: wrap('nav-projects', () => navigate('/projects')),
+    },
+    {
+      id: 'nav-gifts',
+      group: 'Navigation',
+      label: 'Gifts',
+      description: 'Send & receive gifts',
+      icon: '◈',
+      action: wrap('nav-gifts', () => navigate('/gifts')),
+    },
+    {
       id: 'nav-achievements',
       group: 'Navigation',
       label: 'Achievements',
@@ -347,16 +522,48 @@ export function CommandPalette({
     },
     // ── Actions ───────────────────────────────────────────────────────────
     {
+      id: 'action-new-chat',
+      group: 'Actions',
+      label: 'New Chat',
+      description: 'Start a fresh AI build conversation',
+      icon: '⊕',
+      shortcut: mod + '+N',
+      action: wrap('action-new-chat', () => {
+        onClose()
+        onNewProject?.()
+      }),
+    },
+    {
       id: 'action-new-build',
       group: 'Actions',
       label: 'New Build',
       description: 'Start a new AI build session',
-      icon: '⊕',
-      shortcut: mod + '+N',
-      action: wrap('action-new-build', () => {
-        onClose()
-        onNewProject?.()
-      }),
+      icon: '⊞',
+      action: wrap('action-new-build', () => navigate('/editor')),
+    },
+    {
+      id: 'action-change-theme',
+      group: 'Actions',
+      label: 'Change Theme',
+      description: 'Appearance settings & color scheme',
+      icon: '◑',
+      action: wrap('action-change-theme', () => navigate('/settings?tab=appearance')),
+    },
+    {
+      id: 'action-download-plugin',
+      group: 'Actions',
+      label: 'Download Plugin',
+      description: 'Get the Roblox Studio plugin',
+      icon: '⊡',
+      action: wrap('action-download-plugin', () => navigate('/download')),
+    },
+    {
+      id: 'action-view-pricing',
+      group: 'Actions',
+      label: 'View Pricing',
+      description: 'Compare plans and features',
+      icon: '◇',
+      action: wrap('action-view-pricing', () => navigate('/pricing')),
     },
     {
       id: 'action-toggle-sidebar',
@@ -493,6 +700,35 @@ export function CommandPalette({
       icon: '◇',
       action: wrap('help-pricing', () => window.open('https://forgegames.com/pricing', '_blank')),
     },
+    // ── Admin (gated to dawsenporter@gmail.com) ────────────────────────────
+    ...(isAdmin
+      ? [
+          {
+            id: 'admin-dev-board',
+            group: 'Admin' as CommandGroup,
+            label: 'Dev Board',
+            description: 'Internal development task board',
+            icon: '⬡',
+            action: wrap('admin-dev-board', () => navigate('/admin/dev-board')),
+          },
+          {
+            id: 'admin-metrics',
+            group: 'Admin' as CommandGroup,
+            label: 'Admin Metrics',
+            description: 'Platform usage, revenue & health',
+            icon: '◉',
+            action: wrap('admin-metrics', () => navigate('/admin/metrics')),
+          },
+          {
+            id: 'admin-users',
+            group: 'Admin' as CommandGroup,
+            label: 'Admin Users',
+            description: 'Manage accounts, tiers & bans',
+            icon: '◭',
+            action: wrap('admin-users', () => navigate('/admin/users')),
+          },
+        ]
+      : []),
   ]
 
   // Build the Recent group from localStorage-backed state
@@ -543,9 +779,10 @@ export function CommandPalette({
   // Flat list for keyboard navigation
   const flat = (Object.values(grouped) as CommandItem[][]).flat()
 
-  // Reset selection on query change
+  // Reset selection + preview on query change
   useEffect(() => {
     setSelectedIndex(0)
+    setHoveredItem(null)
   }, [query])
 
   // Focus + reset on open
@@ -553,6 +790,7 @@ export function CommandPalette({
     if (isOpen) {
       setQuery('')
       setSelectedIndex(0)
+      setHoveredItem(null)
       const t = setTimeout(() => inputRef.current?.focus(), 50)
       return () => clearTimeout(t)
     }
@@ -562,6 +800,11 @@ export function CommandPalette({
   useEffect(() => {
     listRef.current?.querySelector(`[data-idx="${selectedIndex}"]`)?.scrollIntoView({ block: 'nearest' })
   }, [selectedIndex])
+
+  // Sync hovered item when keyboard navigates
+  useEffect(() => {
+    setHoveredItem(flat[selectedIndex] ?? null)
+  }, [selectedIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') {
@@ -577,6 +820,9 @@ export function CommandPalette({
       onClose()
     }
   }
+
+  // Preview description: prefer hovered/selected item description
+  const previewDescription = hoveredItem?.description ?? flat[selectedIndex]?.description ?? null
 
   return (
     <AnimatePresence>
@@ -630,18 +876,35 @@ export function CommandPalette({
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Search pages, actions, AI generators…"
-                  className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 outline-none"
-                  aria-label="Search commands"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Search pages, actions, AI generators…"
+                    className="w-full bg-transparent text-white text-sm placeholder-gray-600 outline-none"
+                    aria-label="Search commands"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {/* Instant preview — description of hovered/selected command */}
+                  <AnimatePresence mode="wait">
+                    {previewDescription && (
+                      <motion.span
+                        key={previewDescription}
+                        initial={{ opacity: 0, y: -2 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 2 }}
+                        transition={{ duration: 0.12 }}
+                        className="text-[11px] text-gray-500 truncate mt-0.5 leading-tight"
+                      >
+                        {previewDescription}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <kbd className="hidden sm:inline-flex items-center justify-center h-5 px-1.5 rounded bg-white/[0.07] border border-white/10 text-[10px] text-gray-500 font-mono flex-shrink-0">
                   Esc
                 </kbd>
@@ -662,15 +925,25 @@ export function CommandPalette({
                       No results for &ldquo;{query}&rdquo;
                     </p>
                     <p className="text-gray-600 text-xs leading-relaxed">
-                      Try a broader term — e.g. <span className="text-[#D4AF37]">&ldquo;gen&rdquo;</span> for AI
-                      generators, or{' '}
+                      Try:{' '}
+                      {['editor', 'settings', 'theme'].map((suggestion, i) => (
+                        <span key={suggestion}>
+                          {i > 0 && <span className="text-gray-700">, </span>}
+                          <button
+                            onClick={() => setQuery(suggestion)}
+                            className="text-[#D4AF37] hover:underline underline-offset-2 transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        </span>
+                      ))}
+                      {' · or '}
                       <button
                         onClick={() => setQuery('')}
                         className="text-[#D4AF37] underline underline-offset-2 hover:no-underline"
                       >
-                        clear the search
-                      </button>{' '}
-                      to browse all commands.
+                        clear search
+                      </button>
                     </p>
                   </div>
                 ) : (
@@ -679,25 +952,35 @@ export function CommandPalette({
                     return (Object.entries(grouped) as [CommandGroup, CommandItem[]][]).map(
                       ([group, items]) => (
                         <div key={group}>
+                          {/* Group header with category icon */}
                           <p
-                            className={`px-4 pt-2.5 pb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                            className={`px-4 pt-2.5 pb-1 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.14em] ${
                               GROUP_ACCENT[group as CommandGroup] ?? 'text-gray-600'
                             }`}
                           >
+                            <CategoryIcon group={group as CommandGroup} />
                             {group}
                           </p>
+
                           {items.map((item) => {
                             const idx = globalIdx++
                             const isSelected = idx === selectedIndex
                             const iconBg = GROUP_ICON_BG[item.group] ?? 'bg-white/5'
                             return (
-                              <button
+                              <motion.button
                                 key={item.id}
                                 role="option"
                                 aria-selected={isSelected}
                                 data-idx={idx}
                                 onClick={item.action}
-                                onMouseEnter={() => setSelectedIndex(idx)}
+                                onMouseEnter={() => {
+                                  setSelectedIndex(idx)
+                                  setHoveredItem(item)
+                                }}
+                                onMouseLeave={() => setHoveredItem(null)}
+                                initial={{ opacity: 0, x: -4 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.14, delay: idx * 0.03 }}
                                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors duration-[100ms] ${
                                   isSelected
                                     ? 'bg-[#D4AF37]/10 text-white'
@@ -720,13 +1003,8 @@ export function CommandPalette({
                                       isSelected ? 'text-white' : ''
                                     }`}
                                   >
-                                    {item.label}
+                                    <HighlightedLabel label={item.label} query={query} />
                                   </span>
-                                  {item.description && (
-                                    <span className="text-[11px] text-gray-600 block truncate mt-0.5">
-                                      {item.description}
-                                    </span>
-                                  )}
                                 </span>
 
                                 {/* Shortcut hint */}
@@ -749,7 +1027,7 @@ export function CommandPalette({
                                     />
                                   </svg>
                                 )}
-                              </button>
+                              </motion.button>
                             )
                           })}
                         </div>
@@ -779,25 +1057,25 @@ export function CommandPalette({
                 </p>
               </div>
 
-              {/* Footer */}
+              {/* Footer — keyboard hint */}
               <div className="px-4 py-2 border-t border-white/[0.05] flex items-center gap-4 text-[10px] text-gray-600">
                 <span className="flex items-center gap-1">
                   <kbd className="inline-flex items-center justify-center h-4 px-1 rounded bg-white/[0.07] border border-white/10 font-mono text-[9px]">
                     ↑↓
                   </kbd>{' '}
-                  navigate
+                  Navigate
                 </span>
                 <span className="flex items-center gap-1">
                   <kbd className="inline-flex items-center justify-center h-4 px-1 rounded bg-white/[0.07] border border-white/10 font-mono text-[9px]">
                     ↵
                   </kbd>{' '}
-                  select
+                  Select
                 </span>
                 <span className="flex items-center gap-1">
                   <kbd className="inline-flex items-center justify-center h-4 px-1 rounded bg-white/[0.07] border border-white/10 font-mono text-[9px]">
                     Esc
                   </kbd>{' '}
-                  close
+                  Close
                 </span>
                 <span className="ml-auto text-gray-700">
                   {flat.length} result{flat.length !== 1 ? 's' : ''}

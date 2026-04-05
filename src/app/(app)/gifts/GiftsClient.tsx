@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useToast } from '@/components/ui/toast-notification'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,15 +28,15 @@ interface GiftHistoryResponse {
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const SUBSCRIPTION_TIERS = [
-  { value: 'hobby', label: 'Hobby', price: '$9.99/mo' },
-  { value: 'creator', label: 'Creator', price: '$24.99/mo' },
-  { value: 'studio', label: 'Studio', price: '$49.99/mo' },
+  { value: 'HOBBY',   label: 'Hobby',   price: '$9.99/mo'  },
+  { value: 'CREATOR', label: 'Creator', price: '$24.99/mo' },
+  { value: 'STUDIO',  label: 'Studio',  price: '$49.99/mo' },
 ] as const
 
 const TOKEN_PACKS = [
-  { value: 'starter', label: 'Starter — 1,000 tokens', price: '$10.00' },
-  { value: 'creator', label: 'Creator — 5,000 tokens', price: '$45.00' },
-  { value: 'pro', label: 'Pro — 15,000 tokens', price: '$120.00' },
+  { value: 'starter', label: 'Starter — 1,000 tokens', price: '$10.00'  },
+  { value: 'creator', label: 'Creator — 5,000 tokens', price: '$45.00'  },
+  { value: 'pro',     label: 'Pro — 15,000 tokens',    price: '$120.00' },
 ] as const
 
 // ── Tiny primitives ───────────────────────────────────────────────────────────
@@ -79,40 +80,6 @@ function StatusBadge({ status }: { status: GiftStatus }) {
   )
 }
 
-function Toast({ message, type, onDismiss }: { message: string; type: 'success' | 'error'; onDismiss: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDismiss, 4000)
-    return () => clearTimeout(t)
-  }, [onDismiss])
-
-  return (
-    <div
-      className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-medium"
-      style={{
-        background: type === 'success' ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)',
-        borderColor: type === 'success' ? 'rgba(52,211,153,0.3)' : 'rgba(248,113,113,0.3)',
-        color: type === 'success' ? '#34d399' : '#f87171',
-      }}
-    >
-      {type === 'success' ? (
-        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      ) : (
-        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
-      {message}
-      <button onClick={onDismiss} className="ml-2 opacity-60 hover:opacity-100 transition-opacity">
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
-  )
-}
-
 // ── Input / Select helpers ────────────────────────────────────────────────────
 
 const inputCls =
@@ -138,7 +105,8 @@ function Label({ children }: { children: React.ReactNode }) {
 
 // ── Send a Gift section ───────────────────────────────────────────────────────
 
-function SendGiftSection({ onToast }: { onToast: (msg: string, type: 'success' | 'error') => void }) {
+function SendGiftSection() {
+  const { show } = useToast()
   const [giftType, setGiftType] = useState<GiftType>('subscription')
   const [subscriptionTier, setSubscriptionTier] = useState<string>('hobby')
   const [tokenPack, setTokenPack] = useState<string>('starter')
@@ -152,7 +120,7 @@ function SendGiftSection({ onToast }: { onToast: (msg: string, type: 'success' |
 
   async function handleSend() {
     if (!recipientEmail.trim()) {
-      onToast('Recipient email is required.', 'error')
+      show({ variant: 'error', title: 'Recipient email is required.' })
       return
     }
 
@@ -160,7 +128,7 @@ function SendGiftSection({ onToast }: { onToast: (msg: string, type: 'success' |
     try {
       const body = {
         type: giftType,
-        ...(giftType === 'subscription' ? { tier: subscriptionTier } : { pack: tokenPack }),
+        ...(giftType === 'subscription' ? { tier: subscriptionTier } : { tokenPackSlug: tokenPack }),
         recipientEmail: recipientEmail.trim(),
         message: message.trim() || undefined,
       }
@@ -174,19 +142,19 @@ function SendGiftSection({ onToast }: { onToast: (msg: string, type: 'success' |
       const data: { checkoutUrl?: string; error?: string } = await res.json()
 
       if (!res.ok) {
-        onToast(data.error ?? 'Failed to create gift.', 'error')
+        show({ variant: 'error', title: data.error ?? 'Failed to create gift.' })
         return
       }
 
       if (data.checkoutUrl) {
         window.location.href = data.checkoutUrl
       } else {
-        onToast('Gift created! The recipient will receive an email.', 'success')
+        show({ variant: 'success', title: 'Gift created!', description: 'The recipient will receive an email.' })
         setRecipientEmail('')
         setMessage('')
       }
     } catch {
-      onToast('Network error. Please try again.', 'error')
+      show({ variant: 'error', title: 'Network error. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -318,14 +286,15 @@ function SendGiftSection({ onToast }: { onToast: (msg: string, type: 'success' |
 
 // ── Redeem a Gift section ─────────────────────────────────────────────────────
 
-function RedeemGiftSection({ onToast }: { onToast: (msg: string, type: 'success' | 'error') => void }) {
+function RedeemGiftSection() {
+  const { show } = useToast()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function handleRedeem() {
     const trimmed = code.trim().toUpperCase()
     if (trimmed.length !== 8) {
-      onToast('Gift code must be exactly 8 characters.', 'error')
+      show({ variant: 'error', title: 'Gift code must be exactly 8 characters.' })
       return
     }
 
@@ -337,17 +306,23 @@ function RedeemGiftSection({ onToast }: { onToast: (msg: string, type: 'success'
         body: JSON.stringify({ code: trimmed }),
       })
 
-      const data: { message?: string; error?: string } = await res.json()
+      const data: { success?: boolean; giftType?: string; details?: { tier?: string; tokenAmount?: number; message?: string | null }; error?: string } = await res.json()
 
       if (!res.ok) {
-        onToast(data.error ?? 'Failed to redeem gift.', 'error')
+        show({ variant: 'error', title: data.error ?? 'Failed to redeem gift.' })
         return
       }
 
-      onToast(data.message ?? 'Gift redeemed successfully!', 'success')
+      const successMsg =
+        data.giftType === 'subscription' && data.details?.tier
+          ? `Subscription activated — ${data.details.tier.charAt(0)}${data.details.tier.slice(1).toLowerCase()} Plan is now live!`
+          : data.giftType === 'tokens' && data.details?.tokenAmount
+            ? `${data.details.tokenAmount.toLocaleString()} tokens added to your account!`
+            : 'Gift redeemed successfully!'
+      show({ variant: 'success', title: successMsg })
       setCode('')
     } catch {
-      onToast('Network error. Please try again.', 'error')
+      show({ variant: 'error', title: 'Network error. Please try again.' })
     } finally {
       setLoading(false)
     }
@@ -559,11 +534,6 @@ function GiftHistorySection() {
 
 export default function GiftsPage() {
   const { isLoaded, isSignedIn } = useUser()
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type })
-  }, [])
 
   if (!isLoaded) {
     return (
@@ -605,18 +575,10 @@ export default function GiftsPage() {
           </div>
         </div>
 
-        <SendGiftSection onToast={showToast} />
-        <RedeemGiftSection onToast={showToast} />
+        <SendGiftSection />
+        <RedeemGiftSection />
         <GiftHistorySection />
       </div>
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onDismiss={() => setToast(null)}
-        />
-      )}
     </div>
   )
 }

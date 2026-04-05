@@ -132,6 +132,19 @@ export async function GET() {
           take: 200,
         },
 
+        // GDPR Art. 15 — audit logs are personal data (they record user actions)
+        auditLogs: {
+          select: {
+            action: true,
+            resource: true,
+            resourceId: true,
+            metadata: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1000,
+        },
+
         apiUsage: {
           where: {
             createdAt: { gte: ninetyDaysAgo },
@@ -183,6 +196,7 @@ export async function GET() {
       streak: user.streak,
       purchases: user.boughtTemplates,
       gameScans: user.gameScans,
+      auditLogs: user.auditLogs,
       apiUsageRecords: user.apiUsage,
     }
 

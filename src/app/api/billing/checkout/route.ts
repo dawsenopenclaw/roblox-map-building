@@ -99,8 +99,8 @@ export async function POST(req: NextRequest) {
         priceId: pack.stripePriceId,
         userId: user.id,
         tokenPackSlug: pack.slug,
-        successUrl: `${appUrl}/dashboard?tokens_added=true`,
-        cancelUrl: `${appUrl}/dashboard`,
+        successUrl: `${appUrl}/tokens?tokens_added=true`,
+        cancelUrl: `${appUrl}/tokens`,
       })
       return NextResponse.json({ url: session.url })
     }

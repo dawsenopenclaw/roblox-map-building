@@ -18,7 +18,7 @@ const cspDirectives = [
   // Images: self + Clerk avatars + Roblox CDN + S3/R2 + Meshy thumbnails
   "img-src 'self' data: blob: https://img.clerk.com https://images.clerk.dev https://*.rbxcdn.com https://thumbnails.roblox.com https://*.amazonaws.com https://*.r2.dev https://assets.meshy.ai",
   // Connections: self + API calls to Anthropic, Gemini, Fal, Meshy, Stripe, Clerk + dev HMR
-  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.anthropic.com https://generativelanguage.googleapis.com https://queue.fal.run https://api.meshy.ai https://api.stripe.com https://*.ingest.sentry.io wss://*.clerk.accounts.dev${isDev ? ' ws://localhost:3000' : ''}`,
+  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.anthropic.com https://generativelanguage.googleapis.com https://queue.fal.run https://api.meshy.ai https://api.stripe.com https://*.ingest.sentry.io wss://*.clerk.accounts.dev https://app.posthog.com https://us.i.posthog.com https://eu.i.posthog.com${isDev ? ' ws://localhost:3000' : ''}`,
   // Frames: Stripe only (for Stripe Elements / payment UI)
   "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   // Workers: none

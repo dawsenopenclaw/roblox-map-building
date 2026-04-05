@@ -1,13 +1,71 @@
 'use client'
 
+import { useState, useRef, FormEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 /**
  * GameDnaClient — entry point for the Game DNA scanner.
- * Users submit a Roblox game URL/ID; the scanner analyses it and
- * redirects to the /game-dna/[id] report page.
+ * Users submit a Roblox game URL/ID; the scanner calls /api/game-scanner via
+ * fetch (not a native form POST) and redirects to /game-dna/[id] on success.
  */
 export default function GameDnaClient() {
+  const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const value = inputRef.current?.value.trim()
+    if (!value) return
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      // Determine whether the user pasted a URL or a bare place ID
+      const body = value.startsWith('http') ? { gameUrl: value } : { placeId: value }
+
+      const res = await fetch('/api/game-scanner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (res.status === 401) {
+        setError('Sign in to scan games.')
+        return
+      }
+      if (res.status === 403) {
+        setError('Game DNA requires a Creator plan or above.')
+        return
+      }
+      if (res.status === 429) {
+        setError('Daily scan limit reached. Try again tomorrow.')
+        return
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string; detail?: string }
+        setError(data.detail ?? data.error ?? 'Scan failed. Check the URL and try again.')
+        return
+      }
+
+      const data = await res.json() as { id?: string; scan?: { id?: string } }
+      // Support both { id } and { scan: { id } } shapes
+      const scanId = data.id ?? data.scan?.id
+      if (scanId) {
+        router.push(`/game-dna/${scanId}`)
+      } else {
+        setError('Scan started but no ID returned. Check your dashboard.')
+      }
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
 
@@ -50,24 +108,31 @@ export default function GameDnaClient() {
 
           {/* Input + button */}
           <form
-            action="/api/game-scanner"
-            method="POST"
+            onSubmit={handleSubmit}
             className="flex flex-col sm:flex-row gap-3 w-full max-w-xl"
           >
             <input
+              ref={inputRef}
               type="text"
               name="url"
               required
+              disabled={submitting}
               placeholder="Roblox game URL or Place ID"
-              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#D4AF37]/50 transition-colors"
+              className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#D4AF37]/50 transition-colors disabled:opacity-50"
             />
             <button
               type="submit"
-              className="bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors whitespace-nowrap"
+              disabled={submitting}
+              className="bg-[#D4AF37] hover:bg-[#E6A519] disabled:bg-[#D4AF37]/40 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-xl text-sm transition-colors whitespace-nowrap"
             >
-              Scan Game
+              {submitting ? 'Scanning…' : 'Scan Game'}
             </button>
           </form>
+
+          {/* Error state */}
+          {error && (
+            <p className="text-red-400 text-xs text-center max-w-sm">{error}</p>
+          )}
 
           <p className="text-xs text-gray-600">
             View past scans in{' '}

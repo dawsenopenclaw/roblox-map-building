@@ -185,6 +185,12 @@ const PULSE_STYLE = `
     0%   { background-position: -200% center; }
     100% { background-position: 200% center; }
   }
+  /* ── Scroll-to-bottom pulse ─────────────────────────────────────── */
+  @keyframes scrollBtnPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(212,175,55,0.55), 0 2px 12px rgba(212,175,55,0.45); }
+    40%  { box-shadow: 0 0 0 8px rgba(212,175,55,0.0), 0 2px 16px rgba(212,175,55,0.6); }
+    100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.0), 0 2px 12px rgba(212,175,55,0.45); }
+  }
   /* ── Empty state orb ────────────────────────────────────────────── */
   @keyframes orbFloat {
     0%,  100% { transform: translateY(0px) scale(1); }
@@ -2023,10 +2029,16 @@ export function ChatPanel({
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   // Model selector visibility — hidden behind gear by default, shown after first message
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   // Extra input controls (image + voice) — hidden until user has messages or expands
   const [inputExtrasOpen, setInputExtrasOpen] = useState(false)
+  // Scroll-to-bottom button visibility + unread badge
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [isPulsing, setIsPulsing] = useState(false)
+  const isScrolledUpRef = useRef(false)
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(input ? `${input} ${text}` : text)
@@ -2034,9 +2046,53 @@ export function ChatPanel({
 
   const { listening, supported: speechSupported, toggle: toggleSpeech } = useSpeech(handleVoiceResult)
 
-  // Scroll to bottom on new message
+  // Track scroll position to show/hide scroll-to-bottom button
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    const scrolledUp = distFromBottom > 200
+    setShowScrollBtn(scrolledUp)
+    isScrolledUpRef.current = scrolledUp
+    // Reset unread count when user scrolls back to bottom
+    if (!scrolledUp) setUnreadCount(0)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const start = el.scrollTop
+    const end = el.scrollHeight - el.clientHeight
+    const distance = end - start
+    if (distance <= 0) return
+    const duration = Math.min(400, Math.max(180, distance * 0.4))
+    let startTime: number | null = null
+    // Cubic-bezier ease-out approximation via requestAnimationFrame
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp
+      const elapsed = timestamp - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      el.scrollTop = start + distance * easeOutCubic(progress)
+      if (progress < 1) requestAnimationFrame(step)
+      else setUnreadCount(0)
+    }
+    requestAnimationFrame(step)
+  }, [])
+
+  // Scroll to bottom on new message — or increment unread count if scrolled up
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (isScrolledUpRef.current) {
+      // New message arrived while scrolled up — show badge + pulse
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg && lastMsg.role === 'assistant') {
+        setUnreadCount((n) => n + 1)
+        setIsPulsing(true)
+        setTimeout(() => setIsPulsing(false), 900)
+      }
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages])
 
   // Once messages appear, keep extras accessible
@@ -2068,13 +2124,15 @@ export function ChatPanel({
   return (
     <GlassPanel
       padding="none"
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
     >
       {/* MCP Toolbar — always visible at the top */}
       {/* McpToolbar hidden — keep UI clean */}
 
       {/* Messages area — hidden in compact mode */}
       <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -2085,6 +2143,7 @@ export function ChatPanel({
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.06) transparent',
           background: 'linear-gradient(180deg, rgba(12,16,36,0.15) 0%, rgba(8,12,28,0.35) 100%)',
+          position: 'relative',
         }}
       >
         {!hasMessages ? (
@@ -2158,6 +2217,71 @@ export function ChatPanel({
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Scroll-to-bottom button */}
+      {showScrollBtn && !compact && (
+        <button
+          onClick={scrollToBottom}
+          title="Scroll to bottom"
+          style={{
+            position: 'absolute',
+            bottom: 80,
+            right: 16,
+            width: 30,
+            height: 30,
+            borderRadius: '50%',
+            background: '#D4AF37',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: isPulsing
+              ? '0 0 0 6px rgba(212,175,55,0.25), 0 2px 12px rgba(212,175,55,0.55)'
+              : '0 2px 12px rgba(212,175,55,0.45)',
+            zIndex: 10,
+            transition: 'transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.3s ease',
+            animation: isPulsing ? 'scrollBtnPulse 0.9s cubic-bezier(0.4,0,0.2,1)' : 'none',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.12)'
+            e.currentTarget.style.boxShadow = '0 4px 20px rgba(212,175,55,0.65)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1)'
+            e.currentTarget.style.boxShadow = '0 2px 12px rgba(212,175,55,0.45)'
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M7 2v10M2 8l5 5 5-5" stroke="#1a1400" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {/* Unread badge */}
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: -6,
+              right: -6,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              background: '#FF4444',
+              border: '1.5px solid #0c1024',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 700,
+              fontFamily: 'Inter, sans-serif',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 3px',
+              lineHeight: 1,
+              pointerEvents: 'none',
+            }}>
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Input bar */}
       <div

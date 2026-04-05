@@ -223,7 +223,7 @@ export function AppSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
         {/* Logo */}
         <div className="px-4 py-4 border-b border-white/[0.07] flex items-center justify-between flex-shrink-0">
-          <Link href="/editor" className="flex items-center gap-2 min-w-0">
+          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
             <span
               className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#0a0a0a] font-black text-sm select-none"
               style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}

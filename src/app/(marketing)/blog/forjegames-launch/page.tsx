@@ -8,18 +8,32 @@ export const metadata: Metadata = createMetadata({
     'ForjeGames is officially live. Describe any Roblox game in plain English and watch 55 AI agents build it in real time — terrain, scripts, assets, and all.',
   path: '/blog/forjegames-launch',
   keywords: ['ForjeGames launch', 'AI Roblox builder', 'Roblox game development platform'],
-  jsonLd: {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: 'Introducing ForjeGames: AI-Powered Roblox Development',
-    datePublished: '2026-03-29',
-    author: { '@type': 'Person', name: 'Dawsen Porter' },
-    publisher: { '@type': 'Organization', name: 'ForjeGames LLC' },
-  },
 })
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: 'Introducing ForjeGames: AI-Powered Roblox Development',
+  datePublished: '2026-03-29',
+  url: 'https://forjegames.com/blog/forjegames-launch',
+  author: { '@type': 'Person', name: 'Dawsen Porter' },
+  publisher: {
+    '@type': 'Organization',
+    name: 'ForjeGames LLC',
+    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png' },
+  },
+  description:
+    'ForjeGames is officially live. Describe any Roblox game in plain English and watch 55 AI agents build it in real time — terrain, scripts, assets, and all.',
+  isPartOf: { '@type': 'WebSite', name: 'ForjeGames', url: 'https://forjegames.com' },
+}
 
 export default function LaunchBlogPost() {
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Breadcrumb */}
       <div className="border-b border-white/5 px-6 py-3 text-xs text-white/30">
@@ -171,5 +185,6 @@ export default function LaunchBlogPost() {
         </div>
       </article>
     </div>
+    </>
   )
 }

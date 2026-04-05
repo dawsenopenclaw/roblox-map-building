@@ -94,55 +94,74 @@ const VARIANT_SOUND: Partial<Record<ToastVariant, 'success' | 'error' | 'info'>>
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: string }> = {
-  success: {
-    border: 'border-[#D4AF37]/40',
-    icon: '✓',
-    bg: 'bg-[#D4AF37]/10',
-  },
-  error: {
-    border: 'border-red-500/40',
-    icon: '✕',
-    bg: 'bg-red-500/10',
-  },
-  info: {
-    border: 'border-blue-500/40',
-    icon: 'i',
-    bg: 'bg-blue-500/10',
-  },
-  warning: {
-    border: 'border-[#D4AF37]/40',
-    icon: '!',
-    bg: 'bg-[#D4AF37]/10',
-  },
-  achievement: {
-    border: 'border-[#D4AF37]/50',
-    icon: '★',
-    bg: 'bg-[#D4AF37]/10',
-  },
-  building: {
-    border: 'border-[#D4AF37]/50',
-    icon: '⚙',
-    bg: 'bg-[#D4AF37]/10',
-  },
+// Left-border accent colors per variant
+const BORDER_ACCENT: Record<ToastVariant, string> = {
+  success:     '#4ADE80',   // green
+  error:       '#F87171',   // red
+  info:        '#D4AF37',   // gold
+  warning:     '#FB923C',   // orange
+  achievement: '#D4AF37',   // gold
+  building:    '#D4AF37',   // gold
+}
+
+const ICON_SVG: Record<ToastVariant, React.ReactNode> = {
+  success: (
+    // Checkmark
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="w-4 h-4">
+      <path d="M3 8.5l3.5 3.5 6.5-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ),
+  error: (
+    // X
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="w-4 h-4">
+      <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  info: (
+    // Info circle
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="w-4 h-4">
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 7.5v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  warning: (
+    // Warning triangle
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true" className="w-4 h-4">
+      <path d="M8 2.5L14.5 13.5H1.5L8 2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M8 6.5v3M8 11v.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  ),
+  achievement: (
+    // Star
+    <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" className="w-4 h-4">
+      <path d="M8 1l1.85 3.8L14 5.6l-3 2.9.7 4.1L8 10.5l-3.7 2.1.7-4.1L2 5.6l4.15-.8L8 1z" />
+    </svg>
+  ),
+  building: (
+    // Spinner — rendered as spinning SVG
+    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
+      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+  ),
 }
 
 const ICON_COLOR: Record<ToastVariant, string> = {
-  success:     'text-[#D4AF37]',
-  error:       'text-red-400',
-  info:        'text-blue-400',
-  warning:     'text-[#D4AF37]',
-  achievement: 'text-[#D4AF37]',
-  building:    'text-[#D4AF37]',
+  success:     '#4ADE80',
+  error:       '#F87171',
+  info:        '#D4AF37',
+  warning:     '#FB923C',
+  achievement: '#D4AF37',
+  building:    '#D4AF37',
 }
 
 const PROGRESS_COLOR: Record<ToastVariant, string> = {
-  success:     'bg-[#D4AF37]',
-  error:       'bg-red-500',
-  info:        'bg-blue-500',
-  warning:     'bg-[#D4AF37]',
-  achievement: 'bg-[#D4AF37]',
-  building:    'bg-[#D4AF37]',
+  success:     '#4ADE80',
+  error:       '#F87171',
+  info:        '#D4AF37',
+  warning:     '#FB923C',
+  achievement: '#D4AF37',
+  building:    '#D4AF37',
 }
 
 // ─── Confetti (achievement only) ─────────────────────────────────────────────
@@ -171,19 +190,36 @@ function Confetti() {
   )
 }
 
+// ─── Dismiss button ───────────────────────────────────────────────────────────
+
+function DismissButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center opacity-40 hover:opacity-80 transition-opacity focus:outline-none focus:ring-1 focus:ring-white/30"
+      aria-label="Dismiss notification"
+    >
+      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="w-3 h-3">
+        <path d="M2 2l8 8M10 2l-8 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </button>
+  )
+}
+
 // ─── Single toast item ────────────────────────────────────────────────────────
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
-  const duration = toast.duration ?? 5000
-  const styles = VARIANT_STYLES[toast.variant]
-  const progressRef = useRef<HTMLDivElement>(null)
+  const duration = toast.duration ?? 4000
   const isBuilding = toast.variant === 'building'
+  const accentColor = BORDER_ACCENT[toast.variant]
+  const progressRef = useRef<HTMLDivElement>(null)
 
-  // Auto-dismiss timer
+  // Auto-dismiss timer — building variant stays until manually dismissed
   useEffect(() => {
+    if (isBuilding) return
     const timer = setTimeout(() => onDismiss(toast.id), duration)
     return () => clearTimeout(timer)
-  }, [toast.id, duration, onDismiss])
+  }, [toast.id, duration, onDismiss, isBuilding])
 
   // Play sound once on mount
   useEffect(() => {
@@ -198,20 +234,26 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       role="alert"
       aria-live={toast.variant === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
-      initial={{ opacity: 0, x: 64, y: -8, scale: 0.95 }}
-      animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 64, scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-      className={`relative w-80 rounded-xl border ${styles.border} bg-[#141414]/95 backdrop-blur-sm shadow-2xl overflow-hidden`}
-      onClick={() => onDismiss(toast.id)}
-      style={{ cursor: 'pointer' }}
+      // Slide in from right
+      initial={{ opacity: 0, x: 80, scale: 0.96 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 60, scale: 0.97, transition: { duration: 0.2, ease: 'easeIn' } }}
+      transition={{ type: 'spring', stiffness: 340, damping: 26 }}
+      className="relative w-80 rounded-xl bg-[#1a1a1a] shadow-2xl overflow-hidden"
+      style={{
+        // Colored left border accent
+        borderLeft: `3px solid ${accentColor}`,
+        border: `1px solid rgba(255,255,255,0.07)`,
+        borderLeftColor: accentColor,
+        borderLeftWidth: '3px',
+      }}
     >
       {/* Pulsing border overlay — building variant only */}
       {isBuilding && (
         <motion.div
           className="absolute inset-0 rounded-xl pointer-events-none"
-          style={{ border: '1px solid rgba(212,175,55,0.6)' }}
-          animate={{ opacity: [0.6, 0.15, 0.6] }}
+          style={{ border: '1px solid rgba(212,175,55,0.5)' }}
+          animate={{ opacity: [0.5, 0.12, 0.5] }}
           transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
           aria-hidden="true"
         />
@@ -219,27 +261,21 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
 
       {toast.variant === 'achievement' && <Confetti />}
 
-      <div className="flex items-start gap-3 p-4">
-        {/* Icon / spinner */}
+      <div className="flex items-start gap-3 px-4 py-3.5">
+        {/* Icon */}
         <div
-          className={`w-7 h-7 rounded-full ${styles.bg} flex items-center justify-center flex-shrink-0 text-sm font-bold ${ICON_COLOR[toast.variant]}`}
+          className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ color: ICON_COLOR[toast.variant], background: `${accentColor}18` }}
           aria-hidden="true"
         >
-          {(toast.loading || isBuilding) ? (
-            <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.25" />
-              <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-            </svg>
-          ) : (
-            styles.icon
-          )}
+          {ICON_SVG[toast.variant]}
         </div>
 
         {/* Text */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white leading-tight">{toast.title}</p>
           {toast.description && (
-            <p className="text-xs text-gray-300 mt-0.5 leading-snug">{toast.description}</p>
+            <p className="text-xs text-gray-400 mt-0.5 leading-snug">{toast.description}</p>
           )}
           {toast.action && (
             <button
@@ -250,17 +286,23 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
             </button>
           )}
         </div>
+
+        {/* X dismiss button */}
+        <DismissButton onClick={(e) => { e.stopPropagation(); onDismiss(toast.id) }} />
       </div>
 
-      {/* Shrinking progress bar */}
-      <motion.div
-        ref={progressRef}
-        className={`absolute bottom-0 left-0 h-0.5 ${PROGRESS_COLOR[toast.variant]}`}
-        initial={{ width: '100%' }}
-        animate={{ width: '0%' }}
-        transition={{ duration: duration / 1000, ease: 'linear' }}
-        aria-hidden="true"
-      />
+      {/* Shrinking progress bar — not shown on building variant */}
+      {!isBuilding && (
+        <motion.div
+          ref={progressRef}
+          className="absolute bottom-0 left-0 h-[2px]"
+          style={{ backgroundColor: accentColor }}
+          initial={{ width: '100%' }}
+          animate={{ width: '0%' }}
+          transition={{ duration: duration / 1000, ease: 'linear' }}
+          aria-hidden="true"
+        />
+      )}
     </motion.div>
   )
 }
@@ -274,20 +316,21 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null)
 
+/** Maximum number of toasts visible at once. Oldest is dropped when the 4th arrives. */
+const MAX_VISIBLE = 3
+
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
-  const MAX_TOASTS = 5
-
   const show = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2)
     setToasts((prev) => {
       const next = [...prev, { ...toast, id }]
-      // Cap at MAX_TOASTS — drop oldest when limit exceeded
-      return next.length > MAX_TOASTS ? next.slice(next.length - MAX_TOASTS) : next
+      // Drop oldest entries beyond the cap
+      return next.length > MAX_VISIBLE ? next.slice(next.length - MAX_VISIBLE) : next
     })
   }, [])
 
@@ -301,11 +344,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {mounted &&
         createPortal(
           <div
-            className="fixed bottom-4 right-4 z-[9999] flex flex-col-reverse gap-2 items-end"
+            className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 items-end"
             aria-label="Notifications"
             role="region"
           >
-            <AnimatePresence initial={false}>
+            <AnimatePresence initial={false} mode="sync">
               {toasts.map((t) => (
                 <ToastItem key={t.id} toast={t} onDismiss={dismiss} />
               ))}
@@ -317,7 +360,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ─── Fallback no-op context used when provider is not mounted ─────────────────
+// ─── Fallback no-op context ───────────────────────────────────────────────────
 
 const NOOP_CONTEXT: ToastContextValue = {
   show: () => {},
@@ -328,8 +371,7 @@ const NOOP_CONTEXT: ToastContextValue = {
 
 export function useToast() {
   const ctx = useContext(ToastContext)
-  // Return a no-op implementation instead of throwing so callers outside
-  // <ToastProvider> fail silently rather than crashing the component tree.
+  // Return a no-op when called outside <ToastProvider> instead of crashing.
   return ctx ?? NOOP_CONTEXT
 }
 

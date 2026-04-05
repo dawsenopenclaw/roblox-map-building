@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import InstallClient from './InstallClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Install Studio Plugin | ForjeGames',
+  title: 'Install Studio Plugin',
   description:
     'Install the ForjeGames Roblox Studio plugin in under a minute. Auto-detect your OS, copy a one-liner, and you\'re connected.',
   path: '/install',

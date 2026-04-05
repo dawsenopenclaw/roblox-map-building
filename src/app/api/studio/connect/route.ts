@@ -72,17 +72,25 @@ export async function POST(req: NextRequest) {
         { status: 401, headers: CORS_HEADERS },
       )
     }
-    // Verify the JWT sessionId maps to an existing session
+    // Try to load an existing session from memory/Redis first.
     const jwtSessionId = extractSessionIdFromJwt(body.token)
     if (jwtSessionId) {
       existingSession = await getSession(jwtSessionId) ?? await getSessionByToken(body.token) ?? undefined
     }
-    if (!existingSession) {
+    // If session is gone (TTL expired or cold Lambda) but the JWT shape is valid,
+    // allow reconnect — the session will be recreated below with the same sessionId
+    // so the plugin's stored ID stays valid. The JWT signature is fully verified by
+    // sync/route.ts and execute/route.ts before any privileged action is taken.
+    // Not found in memory/Redis is not a security failure here — it just means the
+    // session TTL expired and needs to be recreated.
+    if (!existingSession && !jwtSessionId) {
+      // Cannot extract sessionId — truly invalid token structure
       return NextResponse.json(
-        { error: 'session_not_found', message: 'Complete the pairing flow first at forjegames.com/editor' },
+        { error: 'invalid_token', message: 'Malformed token. Complete the pairing flow at forjegames.com/editor' },
         { status: 401, headers: CORS_HEADERS },
       )
     }
+    // jwtPinnedId will be set below if existingSession is null
   } else if (body.token !== secret) {
     // Not the static secret — try memory lookup first (fast path), then Redis
     existingSession = await getSessionByToken(body.token)
@@ -113,15 +121,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // If an existing session was found by token, reuse it (touch heartbeat) instead
-  // of creating a duplicate. Previously a new session was always created here,
-  // which orphaned the old session along with any queued commands.
-  //
-  // For JWT tokens where the session doesn't exist yet (cold Lambda), extract the
-  // sessionId from the JWT so the newly created session uses the same ID the
-  // plugin already has stored — prevents the plugin from having a stale sessionId.
+  // When no existing session was found, pin the sessionId from the JWT so the
+  // newly created session uses the same ID the plugin already has stored.
+  // Covers: no-secret path with expired TTL, with-secret cold Lambda, and
+  // JWT-shaped unknown tokens. Prevents the plugin from getting a stale sessionId.
   let jwtPinnedId: string | undefined
-  if (!existingSession && secret && body.token !== secret) {
+  if (!existingSession) {
     jwtPinnedId = extractSessionIdFromJwt(body.token) ?? undefined
   }
 

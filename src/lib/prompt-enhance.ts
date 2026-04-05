@@ -332,35 +332,48 @@ export function enhancePrompt(
   // Build the enhanced prompt
   let enhanced: string
   if (expansion) {
-    // Use the rich expansion for short/simple prompts
+    // Rich expansion for simple single-word prompts — produces stunning results
     enhanced = expansion
   } else if (cleaned.split(/\s+/).length <= 3) {
-    // Short prompt but no template — prepend category descriptor
+    // Short prompt with no expansion template — lead with category descriptor for detail
     enhanced = `${cleaned}, ${CATEGORY_DESCRIPTORS[resolvedCategory]}`
   } else {
-    // User already provided detail — just append quality modifiers
+    // User already provided a detailed prompt — append quality modifiers only,
+    // preserving the user's intent as the dominant part of the prompt.
     enhanced = `${cleaned}, ${CATEGORY_DESCRIPTORS[resolvedCategory]}`
   }
 
-  // Inject genre/theme style modifiers from game knowledge
+  // NOTE: do NOT call detectGenre/detectTheme here.
+  // mesh/route.ts → createMeshyTask → buildMeshyPrompt already calls
+  // enhanceMeshPromptWithGameKnowledge() which injects genre/theme context.
+  // If enhancePrompt() is called from somewhere else (e.g. a future endpoint),
+  // keep genre/theme injection so it still works standalone.
   const genre = detectGenre(userPrompt)
   const theme = detectTheme(userPrompt)
 
   if (genre && GAME_GENRES[genre]) {
     const g = GAME_GENRES[genre]
-    enhanced += `, ${g.colorScheme.split('.')[0].toLowerCase()}, Roblox ${genre} game style`
+    const genreSuffix = `, ${g.colorScheme.split('.')[0].toLowerCase()}, Roblox ${genre} game style`
+    if (enhanced.length + genreSuffix.length < MESHY_PROMPT_MAX - 50) {
+      enhanced += genreSuffix
+    }
   }
 
   if (theme && GAME_THEMES[theme]) {
     const t = GAME_THEMES[theme]
-    enhanced += `, ${t.colors.slice(0, 2).join(' and ')} color palette, ${t.materials.slice(0, 2).join(' and ')} materials`
+    const themeSuffix = `, ${t.colors.slice(0, 2).join(' and ')} color palette, ${t.materials.slice(0, 2).join(' and ')} materials`
+    if (enhanced.length + themeSuffix.length < MESHY_PROMPT_MAX - 30) {
+      enhanced += themeSuffix
+    }
   }
 
-  // Append universal quality suffix (Roblox-optimized)
+  // Append universal quality suffix (Roblox-optimized) only if room remains
   const qualitySuffix = ', game-ready, clean low-poly stylized, vibrant colors, Roblox compatible'
-  enhanced += qualitySuffix
+  if (enhanced.length + qualitySuffix.length <= MESHY_PROMPT_MAX) {
+    enhanced += qualitySuffix
+  }
 
-  // Truncate at word boundary to fit Meshy's limit
+  // Truncate at word boundary to fit Meshy's 500-char limit
   if (enhanced.length > MESHY_PROMPT_MAX) {
     enhanced = enhanced.slice(0, MESHY_PROMPT_MAX).replace(/,?\s*[^,]*$/, '')
   }

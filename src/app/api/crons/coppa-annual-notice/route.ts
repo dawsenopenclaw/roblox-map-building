@@ -81,7 +81,7 @@ async function runCoppaAnnualNotice(req: NextRequest): Promise<NextResponse> {
 
         try {
           await resend.emails.send({
-            from: 'ForjeGames <noreply@ForjeGames.com>',
+            from: 'ForjeGames <noreply@forjegames.com>',
             to: user.parentEmail,
             subject: `Annual COPPA notice — ${childName}'s ForjeGames account`,
             html: `

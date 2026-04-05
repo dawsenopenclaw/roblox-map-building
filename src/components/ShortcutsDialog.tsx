@@ -103,12 +103,13 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
     {
       title: 'General',
       items: [
-        { keys: [mod, 'K'],       label: 'Open command palette' },
-        { keys: [mod, 'N'],       label: 'New build / project' },
-        { keys: [mod, 'B'],       label: 'Toggle sidebar' },
-        { keys: [mod, '/'],       label: 'Show keyboard shortcuts' },
-        { keys: ['?'],            label: 'Show keyboard shortcuts' },
-        { keys: ['Esc'],          label: 'Close panel / dialog' },
+        { keys: [mod, 'K'],   label: 'Focus editor chat (navigate if away)' },
+        { keys: [mod, '/'],   label: 'Show keyboard shortcuts' },
+        { keys: [mod, ','],   label: 'Go to Settings' },
+        { keys: [mod, 'B'],   label: 'Go to Billing' },
+        { keys: [mod, 'G'],   label: 'Go to Gifts' },
+        { keys: ['?'],        label: 'Show keyboard shortcuts' },
+        { keys: ['Esc'],      label: 'Close panel / dialog' },
       ],
     },
     {
@@ -117,6 +118,7 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
         { keys: [mod, '↵'],          label: 'Send chat message' },
         { keys: [mod, 'K'],          label: 'Focus chat input' },
         { keys: [mod, 'N'],          label: 'New conversation' },
+        { keys: [mod, 'B'],          label: 'Toggle sidebar' },
         { keys: [mod, 'Shift', 'C'], label: 'Copy last code block' },
         { keys: [mod, 'Shift', 'R'], label: 'Run last code in Studio' },
         { keys: ['/'],               label: 'Open slash commands (empty input)' },
@@ -177,8 +179,8 @@ export function ShortcutsDialog({ isOpen, onClose }: ShortcutsDialogProps) {
               role="dialog"
               aria-modal="true"
               aria-labelledby="sd-title"
-              className="bg-[#141414] border border-white/[0.08] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
-              style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)' }}
+              className="bg-[#111113] border border-[#D4AF37]/30 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+              style={{ boxShadow: '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(212,175,55,0.08)' }}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07]">

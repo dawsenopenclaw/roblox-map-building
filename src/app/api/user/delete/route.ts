@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getStripe } from '@/lib/stripe'
@@ -139,6 +139,20 @@ export async function DELETE() {
         })
         console.error('[user/delete] PostHog person deletion failed (proceeding):', posthogErr)
       }
+    }
+
+    // Delete the Clerk account so the user cannot sign in again after their
+    // local PII has been wiped. This is the last step — DB and Stripe are already
+    // cleaned up. If this fails, the account is orphaned in Clerk but the local
+    // data is gone; ops can reconcile via the Clerk dashboard.
+    try {
+      const client = await clerkClient()
+      await client.users.deleteUser(clerkId)
+    } catch (clerkErr) {
+      Sentry.captureException(clerkErr, {
+        extra: { clerkId, context: 'user_deletion_clerk_delete' },
+      })
+      console.error('[user/delete] Clerk user deletion failed (local data already wiped):', clerkErr)
     }
 
     return NextResponse.json({

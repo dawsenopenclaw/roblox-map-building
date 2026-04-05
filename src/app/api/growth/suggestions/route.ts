@@ -245,16 +245,10 @@ export async function GET() {
       return NextResponse.json(buildDemoSuggestions())
     }
 
-    // Authenticated user with DB access — return empty suggestions until real data pipeline is built
-    return NextResponse.json({
-      build: [],
-      targeting: [],
-      pricing: [],
-      engagement: [],
-      powerUserAlerts: [],
-      generatedAt: new Date().toISOString(),
-      demo: false,
-    } satisfies GrowthSuggestionsResponse)
+    // Authenticated user — return demo suggestions until real data pipeline is built.
+    // Returning empty arrays would render the AI Suggestions tab blank, which is
+    // worse UX than showing realistic demo content with a "Demo" label.
+    return NextResponse.json(buildDemoSuggestions())
   } catch {
     return NextResponse.json(buildDemoSuggestions())
   }

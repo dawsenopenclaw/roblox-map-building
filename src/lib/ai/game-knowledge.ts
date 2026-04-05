@@ -247,32 +247,38 @@ export const ROBLOX_BUILDING = {
 
 // ─── Intent Detection Helpers ─────────────────────────────────────────────────
 
+// IMPORTANT: Keep keywords specific enough to avoid false-positives on common words.
+// Bad: "dark", "build", "car", "wave" — match too many unrelated prompts.
+// Good: "tycoon", "obby", "roleplay" — genre-specific compound or rare words only.
 const GENRE_KEYWORDS: Record<string, string[]> = {
-  tycoon: ["tycoon", "factory", "conveyor", "dropper", "upgrader", "money printer", "cash", "rebirth"],
-  simulator: ["simulator", "sim", "pet", "egg", "hatch", "grind", "training", "rebirth", "prestige"],
-  obby: ["obby", "obstacle", "parkour", "jump", "platform", "checkpoint", "kill brick"],
-  roleplay: ["roleplay", "rp", "brookhaven", "bloxburg", "town", "city", "house", "apartment", "job"],
-  horror: ["horror", "scary", "creepy", "haunted", "monster", "dark", "asylum", "abandoned"],
-  fighting: ["fighting", "fighter", "combat", "arena", "pvp", "battleground", "anime fighter", "boxing"],
-  racing: ["racing", "race", "track", "car", "vehicle", "drift", "speed", "garage"],
-  tower_defense: ["tower defense", "td", "tower", "wave", "defend", "enemy path"],
-  fps: ["fps", "shooter", "gun", "weapon", "tactical", "military", "sniper"],
-  sandbox: ["sandbox", "creative", "build", "freeform"],
+  tycoon: ["tycoon", "conveyor belt", "dropper", "upgrader", "money printer", "rebirth portal"],
+  simulator: ["simulator", "pet simulator", "egg hatch", "grind simulator", "prestige simulator"],
+  obby: ["obby", "obstacle course", "parkour game", "kill brick", "checkpoint game"],
+  roleplay: ["roleplay", "brookhaven", "bloxburg", "town roleplay", "life simulator"],
+  horror: ["horror game", "scary game", "haunted house game", "asylum horror", "survival horror"],
+  fighting: ["fighting game", "combat arena", "pvp arena", "battleground", "anime fighter", "boxing game"],
+  racing: ["racing game", "race track", "drift game", "racing simulator"],
+  tower_defense: ["tower defense", "td game", "wave defense", "defend the base"],
+  fps: ["fps game", "first person shooter", "tactical shooter", "military shooter"],
+  sandbox: ["sandbox game", "creative mode", "freeform building"],
 }
 
+// IMPORTANT: Avoid single common words — "ship", "snow", "ice", "neon", "ghost",
+// "zombie", "anime" all appear in non-themed prompts constantly.
+// Require compound phrases or clearly theme-specific terms.
 const THEME_KEYWORDS: Record<string, string[]> = {
-  medieval: ["medieval", "castle", "knight", "kingdom", "dungeon", "dragon", "sword and shield"],
-  futuristic: ["futuristic", "future", "sci-fi", "scifi", "tech", "cyber", "high-tech", "spaceship"],
-  tropical: ["tropical", "beach", "island", "palm", "ocean", "hawaii", "tiki", "paradise"],
-  space: ["space", "galaxy", "planet", "alien", "astronaut", "moon", "mars", "cosmic"],
-  candy: ["candy", "sweet", "dessert", "cake", "chocolate", "gummy", "sugar", "lollipop"],
-  pirate: ["pirate", "ship", "treasure", "ocean", "captain", "sail", "buccaneer"],
-  japanese: ["japanese", "japan", "anime", "sakura", "cherry blossom", "samurai", "ninja", "zen", "torii"],
-  cyberpunk: ["cyberpunk", "neon city", "dystopia", "neon", "rain city", "blade runner"],
-  winter: ["winter", "snow", "christmas", "frozen", "ice", "holiday", "north pole", "arctic"],
-  haunted: ["haunted", "halloween", "ghost", "spooky", "graveyard", "zombie", "vampire"],
-  underwater: ["underwater", "ocean", "deep sea", "submarine", "coral", "atlantis", "aquatic"],
-  wild_west: ["wild west", "western", "cowboy", "saloon", "sheriff", "desert town"],
+  medieval: ["medieval", "medieval castle", "knight kingdom", "dungeon crawler", "dragon lair", "sword and shield"],
+  futuristic: ["futuristic", "sci-fi", "scifi", "high-tech city", "space station", "futuristic building"],
+  tropical: ["tropical", "tropical island", "beach resort", "tiki bar", "tropical paradise"],
+  space: ["outer space", "space station", "alien planet", "space exploration", "cosmic", "zero gravity"],
+  candy: ["candy land", "candy world", "candy theme", "sweet kingdom", "sugar rush", "candy castle"],
+  pirate: ["pirate", "pirate ship", "pirate cove", "buccaneer", "treasure island"],
+  japanese: ["japanese", "japan theme", "sakura", "cherry blossom", "samurai", "ninja dojo", "torii gate", "zen garden"],
+  cyberpunk: ["cyberpunk", "neon city", "dystopian city", "blade runner style", "cyber city"],
+  winter: ["winter wonderland", "snowy", "christmas theme", "frozen kingdom", "north pole", "arctic"],
+  haunted: ["haunted", "halloween", "haunted house", "spooky graveyard", "ghost town"],
+  underwater: ["underwater", "deep sea", "ocean floor", "underwater city", "atlantis", "aquatic base"],
+  wild_west: ["wild west", "western town", "cowboy", "saloon", "frontier town"],
 }
 
 export function detectGenre(text: string): string | null {

@@ -115,7 +115,7 @@ export default function GlobalError({
                   </a>
                   {' · '}
                   <a
-                    href="https://status.ForjeGames.gg"
+                    href="https://status.forjegames.gg"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#D4AF37] hover:underline"

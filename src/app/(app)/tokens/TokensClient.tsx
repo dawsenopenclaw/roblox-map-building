@@ -204,14 +204,18 @@ export default function TokensClient() {
           <h1 className="text-2xl font-bold text-white">Token Usage</h1>
           <p className="text-gray-500 text-sm mt-1">Track consumption and top up your balance</p>
         </div>
-        <Link
-          href="/billing"
+        <a
+          href="#buy-tokens"
+          onClick={(e) => {
+            e.preventDefault()
+            document.getElementById('buy-tokens')?.scrollIntoView({ behavior: 'smooth' })
+          }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
           style={{ background: GOLD, boxShadow: `0 0 16px ${GOLD}30` }}
         >
           <IconCoins className="w-4 h-4" />
           Buy Tokens
-        </Link>
+        </a>
       </div>
 
       {/* Demo mode notice */}

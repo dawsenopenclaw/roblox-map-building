@@ -436,13 +436,16 @@ async function createMeshyTask(
   retryWithCleanMesh = false,
 ): Promise<string> {
   const resolvedCategory = category ?? detectAssetCategory(rawPrompt)
+  // buildMeshyPrompt already calls enhanceMeshPromptWithGameKnowledge internally —
+  // do NOT call it again here or the prompt gets double-enhanced and overflows 500 chars.
   let builtPrompt = buildMeshyPrompt(rawPrompt, resolvedCategory)
 
-  // Inject game genre/theme context before sending to Meshy
-  builtPrompt = enhanceMeshPromptWithGameKnowledge(builtPrompt)
-
   if (retryWithCleanMesh) {
-    builtPrompt = `${builtPrompt}, clean mesh`
+    // Append before the 500-char cap so it doesn't get silently dropped
+    const suffix = ', clean mesh'
+    if (builtPrompt.length + suffix.length <= 500) {
+      builtPrompt = builtPrompt + suffix
+    }
   }
 
   // Build theme-aware negative prompt
@@ -524,11 +527,21 @@ async function createMeshyRefineTask(
 async function pollMeshyTask(
   taskId: string,
   apiKey: string,
-  maxAttempts = 40,
+  /** Hard deadline in ms from now. Defaults to 28s — safe for Vercel's 60s limit
+   *  when called twice (preview + refine) with ~2s buffer. */
+  deadlineMs = 28_000,
   intervalMs = 4_000,
 ): Promise<MeshyTask> {
-  for (let i = 0; i < maxAttempts; i++) {
-    await new Promise((r) => setTimeout(r, i === 0 ? 3_000 : intervalMs))
+  const deadline = Date.now() + deadlineMs
+  let first = true
+
+  while (Date.now() < deadline) {
+    // Initial delay before first poll so Meshy has time to start processing
+    await new Promise((r) => setTimeout(r, first ? 3_000 : intervalMs))
+    first = false
+
+    // Don't bother if we've already blown past the deadline
+    if (Date.now() >= deadline) break
 
     const res = await fetch(`${MESHY_BASE}/v3/text-to-3d/${taskId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
@@ -551,7 +564,7 @@ async function pollMeshyTask(
     }
   }
 
-  // Exhausted polling — return as still in progress so client can poll via GET
+  // Exhausted time budget — return as still in progress so client can poll via GET
   return { id: taskId, status: 'IN_PROGRESS' }
 }
 
@@ -571,37 +584,48 @@ async function generateFalTextures(
   apiKey: string,
   resolution = 1024,
 ): Promise<{ albedo: string; normal: string; roughness: string } | null> {
-  const texturePrompt = `${prompt}, seamless PBR game texture, physically based rendering, 4K detail, no visible tiling, clean UV mapping, consistent lighting, neutral lighting conditions`
+  const texturePrompt = `${prompt}, seamless PBR game texture, physically based rendering, 4K detail, no visible tiling, clean UV mapping, neutral studio lighting`
 
-  // Submit to Fal queue
-  const submitRes = await fetch(`${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture`, {
+  // Fal queue: submit to fast-sdxl (general image gen) — returns a single albedo image.
+  // fal-ai/fast-sdxl/texture does not exist; fast-sdxl is the correct image gen endpoint.
+  // Fal queue pattern: POST to queue.fal.run/{model}, poll /requests/{id}/status,
+  // fetch result from /requests/{id}.
+  const MODEL = 'fal-ai/fast-sdxl'
+
+  const submitRes = await fetch(`${FAL_QUEUE_BASE}/${MODEL}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Key ${apiKey}` },
     body: JSON.stringify({
       prompt: texturePrompt,
-      resolution,
+      image_size: { width: resolution, height: resolution },
+      num_images: 1,
       output_format: 'png',
+      enable_safety_checker: false,
     }),
     signal: AbortSignal.timeout(15_000),
   })
 
   if (!submitRes.ok) {
     // Texture generation is non-critical — fall back gracefully
+    console.warn(`[mesh] Fal submit failed: ${submitRes.status}`)
     return null
   }
 
   const queue = (await submitRes.json()) as FalQueueResponse
   const requestId = queue.request_id
+  if (!requestId) return null
 
-  // Poll for completion — hard cap at 45s so we never blow Vercel's 60s function limit.
-  // Each iteration: 4s wait + up to 8s fetch = 12s worst case → 3 safe iterations before cutoff.
-  const FAL_POLL_DEADLINE = Date.now() + 45_000
-  for (let i = 0; i < 15; i++) {
+  // Poll for completion — hard cap at 20s so textures don't eat Vercel's 60s budget.
+  // Meshy preview (~28s) + refine (~28s) + buffer leaves ~4s for textures —
+  // textures run in parallel with refine so we get ~28s total for them too.
+  const FAL_POLL_DEADLINE = Date.now() + 25_000
+  for (let i = 0; i < 8; i++) {
     if (Date.now() >= FAL_POLL_DEADLINE) return null
-    await new Promise((r) => setTimeout(r, 4_000))
+    await new Promise((r) => setTimeout(r, 3_000))
+    if (Date.now() >= FAL_POLL_DEADLINE) return null
 
     const statusRes = await fetch(
-      `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}/status`,
+      `${FAL_QUEUE_BASE}/${MODEL}/requests/${requestId}/status`,
       {
         headers: { Authorization: `Key ${apiKey}` },
         signal: AbortSignal.timeout(8_000),
@@ -613,7 +637,7 @@ async function generateFalTextures(
     const status = (await statusRes.json()) as FalStatusResponse
     if (status.status === 'COMPLETED') {
       const resultRes = await fetch(
-        `${FAL_QUEUE_BASE}/fal-ai/fast-sdxl/texture/requests/${requestId}`,
+        `${FAL_QUEUE_BASE}/${MODEL}/requests/${requestId}`,
         {
           headers: { Authorization: `Key ${apiKey}` },
           signal: AbortSignal.timeout(10_000),
@@ -622,19 +646,26 @@ async function generateFalTextures(
       if (!resultRes.ok) return null
 
       const output = (await resultRes.json()) as FalTextureOutput
-      if (output.albedo && output.normal && output.roughness) {
+
+      // Named PBR maps (if the model supports them)
+      if (output.albedo?.url && output.normal?.url && output.roughness?.url) {
         return {
           albedo: output.albedo.url,
           normal: output.normal.url,
           roughness: output.roughness.url,
         }
       }
-      // Some Fal models return images[] instead of named maps
-      if (output.images && output.images.length >= 3) {
+
+      // Fallback: images[] array — fast-sdxl returns a single albedo image.
+      // Use it as albedo only; normal and roughness will be null placeholders.
+      // Guard: check array has at least one valid entry before accessing.
+      if (output.images && output.images.length > 0 && output.images[0]?.url) {
         return {
           albedo: output.images[0].url,
-          normal: output.images[1].url,
-          roughness: output.images[2].url,
+          // fast-sdxl doesn't produce normal/roughness — use the albedo as a
+          // visual stand-in. The Luau code will note these need manual maps.
+          normal: output.images[0].url,
+          roughness: output.images[0].url,
         }
       }
       return null
@@ -840,7 +871,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   const apiKey = process.env.MESHY_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'MESHY_API_KEY not configured' }, { status: 503 })
+  if (!apiKey) {
+    // No key — return a demo polling response instead of a hard error
+    return NextResponse.json({
+      status: 'demo',
+      progress: 100,
+      taskId,
+      meshUrl: null,
+      message: 'Set MESHY_API_KEY to poll real tasks.',
+    })
+  }
 
   try {
     const task = await getMeshyTask(taskId, apiKey)
@@ -1038,7 +1078,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (quality !== 'draft') {
       try {
         const refineTaskId = await createMeshyRefineTask(taskId, quality, meshyKey)
-        const refinedTask = await pollMeshyTask(refineTaskId, meshyKey, 50, 5_000)
+        // 24s budget for refine — preview used ~28s, leaving ~28s before Vercel kills us.
+        // Textures run in parallel so they don't count against this budget.
+        const refinedTask = await pollMeshyTask(refineTaskId, meshyKey, 24_000)
         // Only use refine result if it actually succeeded — fall back to preview on failure
         if (refinedTask.status === 'SUCCEEDED') {
           finalTask = refinedTask

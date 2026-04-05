@@ -6,23 +6,35 @@ import { useUser } from '@clerk/nextjs'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type Genre = 'RPG' | 'Tycoon' | 'Simulator' | 'Obby' | 'Racing' | 'FPS' | 'Roleplay' | 'Custom'
+type Interest =
+  | 'Tycoon Games'
+  | 'Simulators'
+  | 'Obbies'
+  | 'RPGs'
+  | 'Racing'
+  | 'Roleplay'
+  | 'Custom'
+
 type XPLevel = 'Beginner' | 'Intermediate' | 'Expert'
 
 interface Prefs {
-  genre: Genre | null
+  interests: Interest[]
   xp: XPLevel | null
-  goal: string | null
-  helpAreas: string[]
-  firstProject: string
-  studioChoice: 'connect' | 'skip' | null
 }
 
 // ─── Confetti ─────────────────────────────────────────────────────────────────
 
 interface Particle {
-  id: number; x: number; y: number; vx: number; vy: number
-  color: string; size: number; rotation: number; vr: number; opacity: number
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  color: string
+  size: number
+  rotation: number
+  vr: number
+  opacity: number
   shape: 'rect' | 'circle'
 }
 
@@ -115,76 +127,189 @@ function Confetti() {
   return <canvas ref={canvasRef} className="pointer-events-none fixed inset-0 z-50" />
 }
 
-// ─── Progress Bar ─────────────────────────────────────────────────────────────
+// ─── Progress Dots ─────────────────────────────────────────────────────────────
 
-function ProgressBar({ step, total }: { step: number; total: number }) {
-  const pct = ((step) / total) * 100
+function ProgressDots({ step, total }: { step: number; total: number }) {
   return (
-    <div className="w-full h-1 bg-white/8 rounded-full overflow-hidden mb-10">
-      <div
-        className="h-full rounded-full transition-all duration-500 ease-out"
-        style={{
-          width: `${pct}%`,
-          background: 'linear-gradient(90deg, #D4AF37 0%, #F5D060 100%)',
-          boxShadow: '0 0 12px rgba(212,175,55,0.6)',
-        }}
-      />
+    <div className="flex items-center justify-center gap-2 mb-8">
+      {Array.from({ length: total }, (_, i) => {
+        const n = i + 1
+        const done = n < step
+        const active = n === step
+        return (
+          <div
+            key={n}
+            className="rounded-full transition-all duration-400"
+            style={{
+              width: active ? 24 : 8,
+              height: 8,
+              background: done
+                ? '#D4AF37'
+                : active
+                  ? 'linear-gradient(90deg, #D4AF37, #F5D060)'
+                  : 'rgba(255,255,255,0.12)',
+              boxShadow: active ? '0 0 10px rgba(212,175,55,0.5)' : 'none',
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
 
-// ─── Step 1 — Genre ────────────────────────────────────────────────────────────
+// ─── Gold Logo Mark ────────────────────────────────────────────────────────────
 
-const GENRES: { id: Genre; icon: string; desc: string }[] = [
-  { id: 'RPG',       icon: '⚔️',  desc: 'Quests & combat'    },
-  { id: 'Tycoon',    icon: '🏭',  desc: 'Build & earn'       },
-  { id: 'Simulator', icon: '🎮',  desc: 'Grind & upgrade'    },
-  { id: 'Obby',      icon: '🏃',  desc: 'Parkour & puzzles'  },
-  { id: 'Racing',    icon: '🏎️',  desc: 'Tracks & speed'     },
-  { id: 'FPS',       icon: '🔫',  desc: 'Shooters & battles' },
-  { id: 'Roleplay',  icon: '🎭',  desc: 'Social & stories'   },
-  { id: 'Custom',    icon: '✨',  desc: 'Something unique'   },
+function LogoMark({ size = 64 }: { size?: number }) {
+  return (
+    <div
+      className="flex items-center justify-center rounded-2xl mx-auto"
+      style={{
+        width: size,
+        height: size,
+        background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(245,208,96,0.08) 100%)',
+        border: '1px solid rgba(212,175,55,0.35)',
+        boxShadow: '0 0 32px rgba(212,175,55,0.2), inset 0 1px 0 rgba(212,175,55,0.15)',
+      }}
+    >
+      {/* Stylised F lettermark */}
+      <svg
+        width={size * 0.44}
+        height={size * 0.44}
+        viewBox="0 0 28 28"
+        fill="none"
+      >
+        <path
+          d="M6 4h16M6 4v20M6 14h11"
+          stroke="#D4AF37"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6 4h16M6 4v20M6 14h11"
+          stroke="#F5D060"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.4"
+        />
+      </svg>
+    </div>
+  )
+}
+
+// ─── Step 1 — Welcome ──────────────────────────────────────────────────────────
+
+function StepWelcome({ firstName }: { firstName: string }) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 60)
+    return () => clearTimeout(t)
+  }, [])
+
+  return (
+    <div
+      className="text-center py-4"
+      style={{
+        transition: 'opacity 0.45s ease-out, transform 0.45s ease-out',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(14px)',
+      }}
+    >
+      <LogoMark size={72} />
+
+      <div className="mt-7 mb-3">
+        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+          Welcome to ForjeGames
+          {firstName ? (
+            <span style={{ color: '#D4AF37' }}>, {firstName}</span>
+          ) : null}
+        </h1>
+      </div>
+
+      <p className="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto mb-8">
+        Let's set up your workspace in 30 seconds so the AI knows exactly how to help you.
+      </p>
+
+      {/* Feature pills */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {[
+          { icon: '⚡', label: 'AI game builder' },
+          { icon: '🎮', label: 'Roblox Studio sync' },
+          { icon: '🚀', label: 'Ship faster' },
+        ].map(({ icon, label }) => (
+          <span
+            key={label}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              color: '#9CA3AF',
+            }}
+          >
+            <span>{icon}</span>
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Step 2 — Interests ────────────────────────────────────────────────────────
+
+const INTERESTS: { id: Interest; icon: string; desc: string }[] = [
+  { id: 'Tycoon Games', icon: '🏭', desc: 'Build & earn'       },
+  { id: 'Simulators',   icon: '🎮', desc: 'Grind & upgrade'    },
+  { id: 'Obbies',       icon: '🏃', desc: 'Parkour & puzzles'  },
+  { id: 'RPGs',         icon: '⚔️', desc: 'Quests & combat'    },
+  { id: 'Racing',       icon: '🏎️', desc: 'Tracks & speed'     },
+  { id: 'Roleplay',     icon: '🎭', desc: 'Social & stories'   },
+  { id: 'Custom',       icon: '✨', desc: 'Something unique'   },
 ]
 
-function StepGenre({
+function StepInterests({
   selected,
-  onSelect,
+  onToggle,
 }: {
-  selected: Genre | null
-  onSelect: (g: Genre) => void
+  selected: Interest[]
+  onToggle: (id: Interest) => void
 }) {
   return (
     <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        What do you want to build?
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">
+        What do you build?
       </h2>
-      <p className="text-gray-400 text-sm mb-8">
-        Pick the genre that best describes your game — we'll tailor suggestions for you.
+      <p className="text-gray-400 text-sm mb-7">
+        Select all that apply — we'll tailor suggestions for your genres.
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {GENRES.map(({ id, icon, desc }) => {
-          const active = selected === id
+        {INTERESTS.map(({ id, icon, desc }) => {
+          const active = selected.includes(id)
           return (
             <button
               key={id}
-              onClick={() => onSelect(id)}
-              className="group flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-200 active:scale-[0.97] text-center"
+              onClick={() => onToggle(id)}
+              className="group flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-200 active:scale-[0.96] text-center"
               style={{
                 background: active ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
                 borderColor: active ? 'rgba(212,175,55,0.7)' : 'rgba(255,255,255,0.08)',
-                boxShadow: active ? '0 0 20px rgba(212,175,55,0.2)' : 'none',
+                boxShadow: active ? '0 0 22px rgba(212,175,55,0.22)' : 'none',
               }}
             >
               <span className="text-2xl select-none">{icon}</span>
               <span
-                className="text-sm font-semibold"
+                className="text-[13px] font-semibold leading-tight"
                 style={{ color: active ? '#D4AF37' : '#E5E7EB' }}
               >
                 {id}
               </span>
               <span className="text-[11px] text-gray-500 leading-tight">{desc}</span>
               {active && (
-                <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center mt-1">
+                <div
+                  className="w-4 h-4 rounded-full flex items-center justify-center mt-0.5"
+                  style={{ background: '#D4AF37' }}
+                >
                   <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
                     <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -194,30 +319,35 @@ function StepGenre({
           )
         })}
       </div>
+      {selected.length > 0 && (
+        <p className="text-[11px] text-center mt-4" style={{ color: '#D4AF37' }}>
+          {selected.length} selected
+        </p>
+      )}
     </div>
   )
 }
 
-// ─── Step 2 — Experience ───────────────────────────────────────────────────────
+// ─── Step 3 — Experience ───────────────────────────────────────────────────────
 
 const XP_LEVELS: { id: XPLevel; icon: string; title: string; desc: string }[] = [
   {
     id: 'Beginner',
     icon: '🌱',
     title: 'Beginner',
-    desc: "I'm new to Roblox dev — keep explanations friendly and step-by-step.",
+    desc: "Never coded — keep explanations friendly and step-by-step.",
   },
   {
     id: 'Intermediate',
     icon: '🔧',
     title: 'Intermediate',
-    desc: 'I know the basics. I want to level up with smarter builds and systems.',
+    desc: 'Know some Luau. Want smarter builds and better systems.',
   },
   {
     id: 'Expert',
     icon: '🔥',
     title: 'Expert',
-    desc: 'I ship games for real. Give me raw code, no hand-holding needed.',
+    desc: 'Ship games regularly. Give me raw code, no hand-holding.',
   },
 ]
 
@@ -230,11 +360,11 @@ function StepExperience({
 }) {
   return (
     <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        How experienced are you?
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">
+        Your experience level?
       </h2>
-      <p className="text-gray-400 text-sm mb-8">
-        We'll adjust how ForjeAI talks to you — more guidance or more raw power.
+      <p className="text-gray-400 text-sm mb-7">
+        We'll adjust how ForjeAI talks to you and the default model complexity.
       </p>
       <div className="space-y-3">
         {XP_LEVELS.map(({ id, icon, title, desc }) => {
@@ -247,7 +377,7 @@ function StepExperience({
               style={{
                 background: active ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
                 borderColor: active ? 'rgba(212,175,55,0.6)' : 'rgba(255,255,255,0.08)',
-                boxShadow: active ? '0 0 24px rgba(212,175,55,0.15)' : 'none',
+                boxShadow: active ? '0 0 26px rgba(212,175,55,0.18)' : 'none',
               }}
             >
               <span className="text-2xl select-none flex-shrink-0">{icon}</span>
@@ -281,565 +411,16 @@ function StepExperience({
   )
 }
 
-// ─── Step 3 — Goal ─────────────────────────────────────────────────────────────
+// ─── Step 4 — Ready ────────────────────────────────────────────────────────────
 
-const GOALS: { id: string; icon: string; label: string; desc: string }[] = [
-  { id: 'first-game',   icon: '🚀', label: 'Ship my first game',    desc: 'I want to publish a real Roblox game that people can play' },
-  { id: 'grow-players', icon: '📈', label: 'Grow my player count',  desc: 'I have a game but need more visits, retention, and monetization' },
-  { id: 'learn-dev',    icon: '📚', label: 'Learn game development', desc: 'I want to understand Luau, Studio, and how Roblox games work' },
-  { id: 'speed-up',     icon: '⚡', label: 'Build faster',           desc: 'I already know what I\'m doing — I want AI to 10x my speed' },
-  { id: 'make-money',   icon: '💰', label: 'Earn Robux',             desc: 'I want to build games that generate real revenue' },
-  { id: 'portfolio',    icon: '🎨', label: 'Build a portfolio',      desc: 'I\'m building a showcase of game projects for my career' },
-]
-
-function StepGoal({
-  selected,
-  onSelect,
-}: {
-  selected: string | null
-  onSelect: (id: string) => void
-}) {
-  return (
-    <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        What are you trying to achieve?
-      </h2>
-      <p className="text-gray-400 text-sm mb-8">
-        Pick one — we'll prioritize features that get you there fastest.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {GOALS.map(({ id, icon, label, desc }) => {
-          const active = selected === id
-          return (
-            <button
-              key={id}
-              onClick={() => onSelect(id)}
-              className="flex items-start gap-3 p-4 rounded-2xl border text-left transition-all duration-200 active:scale-[0.98]"
-              style={{
-                background: active ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
-                borderColor: active ? 'rgba(212,175,55,0.7)' : 'rgba(255,255,255,0.08)',
-                boxShadow: active ? '0 0 20px rgba(212,175,55,0.2)' : 'none',
-              }}
-            >
-              <span className="text-xl select-none flex-shrink-0 mt-0.5">{icon}</span>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="font-semibold text-sm mb-0.5 leading-tight"
-                  style={{ color: active ? '#D4AF37' : '#E5E7EB' }}
-                >
-                  {label}
-                </p>
-                <p className="text-[11px] text-gray-500 leading-relaxed">{desc}</p>
-              </div>
-              {active && (
-                <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                    <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Step 4 — Help Areas ───────────────────────────────────────────────────────
-
-const HELP_AREAS: { id: string; icon: React.ReactNode; label: string; desc: string }[] = [
-  {
-    id: 'scripting',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M5 5L2 8l3 3M11 5l3 3-3 3M9 3l-2 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    label: 'Luau scripting',
-    desc: 'Writing game logic, events, data stores',
-  },
-  {
-    id: 'building',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M8 2L14 5v6L8 14 2 11V5L8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M8 2v12M2 5l6 3 6-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    label: 'Map building',
-    desc: 'Terrain, buildings, decorating game worlds',
-  },
-  {
-    id: 'ui-design',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M2 6h12" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M6 9h4M6 11h2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    label: 'UI / menus',
-    desc: 'Health bars, shops, inventory screens',
-  },
-  {
-    id: 'monetization',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M8 5v1m0 4v1m-1.5-4.5A1.5 1.5 0 018 5.5a1.5 1.5 0 011.5 1.5c0 .8-.6 1.3-1.5 1.5s-1.5.7-1.5 1.5A1.5 1.5 0 008 11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    ),
-    label: 'Monetization',
-    desc: 'Game passes, dev products, premium',
-  },
-  {
-    id: 'optimization',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M8 14A6 6 0 108 2a6 6 0 000 12z" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M8 8L11 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <circle cx="8" cy="8" r="1.2" fill="currentColor" />
-        <path d="M4 13.5l8-11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity="0.4" />
-      </svg>
-    ),
-    label: 'Performance',
-    desc: 'Lag, mobile optimization, streaming',
-  },
-  {
-    id: 'marketing',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M3 6h2v5H3zM5 7.5l5-4v9L5 9" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M12 6c.8.5 1.3 1.4 1.3 2.5S12.8 10.5 12 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
-    ),
-    label: 'Getting players',
-    desc: 'Thumbnails, descriptions, discovery',
-  },
-  {
-    id: 'animation',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M4 8l3 3 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
-      </svg>
-    ),
-    label: 'Animation',
-    desc: 'Character animations, cutscenes, effects',
-  },
-  {
-    id: 'sound',
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M3 6h2v4H3zM5 7l4-3v8L5 9" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        <path d="M11 5a4 4 0 010 6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-        <path d="M12.5 3.5a6.5 6.5 0 010 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.5" />
-      </svg>
-    ),
-    label: 'Audio / music',
-    desc: 'Sound effects, ambient audio, music',
-  },
-]
-
-const MAX_HELP = 3
-
-function StepHelp({
-  selected,
-  onToggle,
-}: {
-  selected: string[]
-  onToggle: (id: string) => void
-}) {
-  return (
-    <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        Where do you struggle most?
-      </h2>
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-gray-400 text-sm">
-          Pick up to 3 — ForjeAI will focus on these areas first.
-        </p>
-        <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ml-3"
-          style={{
-            background: selected.length >= MAX_HELP ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
-            color: selected.length >= MAX_HELP ? '#D4AF37' : '#6B7280',
-            border: `1px solid ${selected.length >= MAX_HELP ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
-          }}
-        >
-          {selected.length}/{MAX_HELP} selected
-        </span>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {HELP_AREAS.map(({ id, icon, label, desc }) => {
-          const active = selected.includes(id)
-          const maxed = selected.length >= MAX_HELP && !active
-          return (
-            <button
-              key={id}
-              onClick={() => !maxed && onToggle(id)}
-              disabled={maxed}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-200 active:scale-[0.97] text-center"
-              style={{
-                background: active ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
-                borderColor: active ? 'rgba(212,175,55,0.7)' : 'rgba(255,255,255,0.08)',
-                boxShadow: active ? '0 0 20px rgba(212,175,55,0.2)' : 'none',
-                opacity: maxed ? 0.35 : 1,
-                cursor: maxed ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{
-                  background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
-                  color: active ? '#D4AF37' : '#9CA3AF',
-                }}
-              >
-                {icon}
-              </div>
-              <span
-                className="text-xs font-semibold leading-tight"
-                style={{ color: active ? '#D4AF37' : '#E5E7EB' }}
-              >
-                {label}
-              </span>
-              <span className="text-[10px] text-gray-500 leading-tight">{desc}</span>
-              {active && (
-                <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center">
-                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                    <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-              )}
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ─── Step 5 — First Project ────────────────────────────────────────────────────
-
-const GENRE_CHIPS: Record<Genre, string[]> = {
-  RPG:       ['Fantasy Quest', 'Dungeon Crawler', 'Dragon Age RPG', 'Hero Adventure'],
-  Tycoon:    ['Pizza Tycoon', 'Car Wash Empire', 'Mining Simulator', 'Pet Shop'],
-  Simulator: ['Pet Simulator', 'Mining Tycoon', 'Fishing Simulator', 'Farm World'],
-  Obby:      ['Rainbow Obby', 'Impossible Parkour', 'Tower Escape', 'Sky Jump'],
-  Racing:    ['Street Racer', 'Drift City', 'Off-Road Arena', 'Formula Roblox'],
-  FPS:       ['Zombie Survival', 'Team Deathmatch', 'Sniper Arena', 'Base Defense'],
-  Roleplay:  ['High School RP', 'City Life', 'Hospital RP', 'Police & Robbers'],
-  Custom:    ['Unique World', 'Sandbox Game', 'Creative Space', 'Experimental'],
-}
-
-function StepFirstProject({
-  value,
-  genre,
-  onChange,
-}: {
-  value: string
-  genre: Genre | null
-  onChange: (v: string) => void
-}) {
-  const chips = genre ? GENRE_CHIPS[genre] : ['Tycoon Game', 'Adventure RPG', 'Fun Obby', 'Simulator']
-
-  return (
-    <div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-        What do you want to build first?
-      </h2>
-      <p className="text-gray-400 text-sm mb-6">
-        Type a short description and ForjeAI will have a plan ready in the editor.
-      </p>
-
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="e.g. A tycoon game where you build a pizza restaurant"
-        rows={3}
-        className="w-full resize-none text-sm leading-relaxed placeholder-gray-600 outline-none focus:ring-0 rounded-xl px-4 py-3.5 transition-all duration-200"
-        style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: value ? '1px solid rgba(212,175,55,0.4)' : '1px solid rgba(255,255,255,0.1)',
-          color: '#E5E7EB',
-          boxShadow: value ? '0 0 16px rgba(212,175,55,0.08)' : 'none',
-        }}
-      />
-
-      <p className="text-[11px] text-gray-600 mt-2 mb-4">
-        Optional — you can always describe your project later in the editor.
-      </p>
-
-      {/* Quick-pick chips */}
-      <div>
-        <p className="text-[11px] text-gray-500 uppercase tracking-widest mb-2.5">Quick picks</p>
-        <div className="flex flex-wrap gap-2">
-          {chips.map((chip) => {
-            const active = value === chip
-            return (
-              <button
-                key={chip}
-                onClick={() => onChange(active ? '' : chip)}
-                className="px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 active:scale-[0.97]"
-                style={{
-                  background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                  color: active ? '#D4AF37' : '#9CA3AF',
-                }}
-              >
-                {chip}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Step 6 — Studio Connect ───────────────────────────────────────────────────
-
-const STUDIO_BENEFITS = [
-  {
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <path d="M2 8h12M9 3l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    title: 'One-click deploy',
-    desc: 'AI builds appear directly in your Studio scene — zero copy-paste.',
-  },
-  {
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    ),
-    title: 'Live viewport',
-    desc: 'See your game update in real-time as the AI places parts.',
-  },
-  {
-    icon: (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M8 5v3l2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-      </svg>
-    ),
-    title: 'Build 10x faster',
-    desc: 'No switching windows. Prompt → build → play in seconds.',
-  },
-]
-
-// Visual showing the ForjeAI → Plugin → Studio flow
-function PluginFlowDiagram() {
-  return (
-    <div
-      className="rounded-xl p-4 mb-6"
-      style={{ background: 'rgba(212,175,55,0.04)', border: '1px solid rgba(212,175,55,0.12)' }}
-    >
-      <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3 text-center">How it works</p>
-      <div className="flex items-center justify-between gap-2">
-        {/* ForjeAI node */}
-        <div className="flex flex-col items-center gap-1.5 flex-1">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)' }}
-          >
-            <svg className="w-5 h-5 text-[#D4AF37]" viewBox="0 0 20 20" fill="none">
-              <path d="M10 3L12 8.5H18L13 11.5L15 17L10 14L5 17L7 11.5L2 8.5H8L10 3Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span className="text-[10px] text-gray-400 font-medium">ForjeAI</span>
-        </div>
-
-        {/* Arrow 1 */}
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
-          <div className="flex items-center gap-0.5">
-            <div className="w-6 h-px" style={{ background: 'linear-gradient(90deg, rgba(212,175,55,0.3), rgba(212,175,55,0.8))' }} />
-            <svg className="w-2 h-2 text-[#D4AF37]" viewBox="0 0 8 8" fill="currentColor">
-              <path d="M0 0L8 4L0 8z" />
-            </svg>
-          </div>
-          <span className="text-[9px] text-gray-700">Luau</span>
-        </div>
-
-        {/* Plugin node */}
-        <div className="flex flex-col items-center gap-1.5 flex-1">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            <svg className="w-5 h-5 text-gray-300" viewBox="0 0 20 20" fill="none">
-              <rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M3 8h14" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M7 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span className="text-[10px] text-gray-400 font-medium">Plugin</span>
-        </div>
-
-        {/* Arrow 2 */}
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
-          <div className="flex items-center gap-0.5">
-            <div className="w-6 h-px" style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.15), rgba(255,255,255,0.4))' }} />
-            <svg className="w-2 h-2 text-gray-500" viewBox="0 0 8 8" fill="currentColor">
-              <path d="M0 0L8 4L0 8z" />
-            </svg>
-          </div>
-          <span className="text-[9px] text-gray-700">places</span>
-        </div>
-
-        {/* Studio node */}
-        <div className="flex flex-col items-center gap-1.5 flex-1">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            <svg className="w-5 h-5 text-gray-300" viewBox="0 0 20 20" fill="none">
-              <rect x="2" y="2" width="16" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M2 7h16" stroke="currentColor" strokeWidth="1.3" />
-              <path d="M7 2v5" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
-          </div>
-          <span className="text-[10px] text-gray-400 font-medium">Studio</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StepStudio({
-  selected,
-  onSelect,
-}: {
-  selected: 'connect' | 'skip' | null
-  onSelect: (v: 'connect' | 'skip') => void
-}) {
-  return (
-    <div>
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-2">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={{ background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.3)' }}
-        >
-          <svg className="w-4.5 h-4.5 text-[#D4AF37]" width="18" height="18" viewBox="0 0 20 20" fill="none">
-            <rect x="2" y="2" width="16" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M2 7h16" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M7 2v5" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-            Connect Roblox Studio
-          </h2>
-          <p className="text-gray-400 text-sm mt-1">
-            This is what makes ForjeAI genuinely powerful.
-          </p>
-        </div>
-      </div>
-
-      {/* Plugin flow diagram */}
-      <div className="mt-5">
-        <PluginFlowDiagram />
-      </div>
-
-      {/* Benefits */}
-      <div className="space-y-2 mb-6">
-        {STUDIO_BENEFITS.map((b) => (
-          <div
-            key={b.title}
-            className="flex items-start gap-3 px-3.5 py-2.5 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 text-[#D4AF37]"
-              style={{ background: 'rgba(212,175,55,0.1)' }}
-            >
-              {b.icon}
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-white">{b.title}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{b.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Primary CTA — Connect */}
-      <button
-        onClick={() => onSelect('connect')}
-        className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-[0.98] mb-3"
-        style={{
-          background: selected === 'connect'
-            ? 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)'
-            : 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
-          color: '#030712',
-          boxShadow: '0 0 28px rgba(212,175,55,0.45), 0 4px 12px rgba(0,0,0,0.3)',
-          border: selected === 'connect' ? '2px solid #F5D060' : '2px solid transparent',
-        }}
-      >
-        <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-          <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M2 6h12" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M6 2v4" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-        Connect Roblox Studio
-        {selected === 'connect' && (
-          <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8l4 4 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </button>
-
-      {selected === 'connect' && (
-        <div
-          className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl mb-3"
-          style={{ background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)' }}
-        >
-          <svg className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" viewBox="0 0 14 14" fill="none">
-            <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M7 4.5v3M7 9.5v.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
-          <span className="text-xs text-gray-300">
-            You'll get a 6-character connection code on the next screen — paste it into the ForjeGames plugin in Studio.
-          </span>
-        </div>
-      )}
-
-      {/* Skip */}
-      <button
-        onClick={() => onSelect('skip')}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm transition-all duration-200 active:scale-[0.98]"
-        style={{
-          background: selected === 'skip' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
-          border: `1px solid ${selected === 'skip' ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)'}`,
-          color: selected === 'skip' ? '#9CA3AF' : '#6B7280',
-        }}
-      >
-        {selected === 'skip' && (
-          <svg className="w-3.5 h-3.5" viewBox="0 0 14 14" fill="none">
-            <path d="M3 7l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-        Skip for now — I'll connect in Settings later
-      </button>
-    </div>
-  )
-}
-
-// ─── Step 7 — Done ─────────────────────────────────────────────────────────────
-
-function StepDone({
+function StepReady({
   firstName,
-  prefs,
   onOpenEditor,
+  onDashboard,
 }: {
   firstName: string
-  prefs: Prefs
   onOpenEditor: () => void
+  onDashboard: () => void
 }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -849,88 +430,68 @@ function StepDone({
 
   return (
     <div
-      className="text-center"
-      style={{ transition: 'opacity 0.4s ease-out, transform 0.4s ease-out', opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(12px)' }}
+      className="text-center py-4"
+      style={{
+        transition: 'opacity 0.45s ease-out, transform 0.45s ease-out',
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(14px)',
+      }}
     >
-      <div className="text-5xl mb-5 select-none">🎉</div>
-      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-        You're ready{firstName ? `, ${firstName}` : ''}!
-      </h2>
-      <p className="text-gray-400 text-sm mb-8 max-w-xs mx-auto">
-        Your preferences are saved. ForjeAI is calibrated and waiting for your first prompt.
-      </p>
-
-      {/* Summary chips */}
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
-        {prefs.genre && (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(212,175,55,0.12)', color: '#D4AF37', border: '1px solid rgba(212,175,55,0.3)' }}
-          >
-            {prefs.genre}
-          </span>
-        )}
-        {prefs.xp && (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(255,255,255,0.05)', color: '#E5E7EB', border: '1px solid rgba(255,255,255,0.1)' }}
-          >
-            {prefs.xp}
-          </span>
-        )}
-        {prefs.goal && (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(255,255,255,0.05)', color: '#E5E7EB', border: '1px solid rgba(255,255,255,0.1)' }}
-          >
-            {GOALS.find((g) => g.id === prefs.goal)?.label ?? prefs.goal}
-          </span>
-        )}
-        {prefs.helpAreas.length > 0 && (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(255,255,255,0.05)', color: '#9CA3AF', border: '1px solid rgba(255,255,255,0.08)' }}
-          >
-            {prefs.helpAreas.length} focus area{prefs.helpAreas.length > 1 ? 's' : ''}
-          </span>
-        )}
-        {prefs.studioChoice === 'connect' ? (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(16,185,129,0.08)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}
-          >
-            Studio connecting
-          </span>
-        ) : (
-          <span
-            className="px-3 py-1.5 rounded-full text-xs font-semibold"
-            style={{ background: 'rgba(255,255,255,0.03)', color: '#6B7280', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            Studio: skipped
-          </span>
-        )}
+      {/* Animated gold check */}
+      <div
+        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-7"
+        style={{
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.2) 0%, rgba(245,208,96,0.08) 100%)',
+          border: '1px solid rgba(212,175,55,0.4)',
+          boxShadow: '0 0 40px rgba(212,175,55,0.25)',
+        }}
+      >
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <path
+            d="M5 14L11 20L23 8"
+            stroke="#D4AF37"
+            strokeWidth="2.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </div>
+
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+        You're all set{firstName ? `, ${firstName}` : ''}!
+      </h2>
+      <p className="text-gray-400 text-sm mb-10 max-w-xs mx-auto leading-relaxed">
+        Start building your first game. ForjeAI is calibrated and ready for your first prompt.
+      </p>
 
       {/* Primary CTA */}
       <button
         onClick={onOpenEditor}
-        className="px-10 py-3.5 rounded-xl text-sm font-bold text-black transition-all duration-200 hover:scale-[1.03] active:scale-[0.97]"
+        className="px-10 py-3.5 rounded-xl text-sm font-bold text-black transition-all duration-200 hover:scale-[1.04] active:scale-[0.97] mb-4"
         style={{
           background: 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
-          boxShadow: '0 0 32px rgba(212,175,55,0.4)',
+          boxShadow: '0 0 36px rgba(212,175,55,0.45), 0 4px 14px rgba(0,0,0,0.35)',
         }}
       >
         Open Editor →
       </button>
-      <p className="text-gray-600 text-xs mt-4">1,000 free tokens are loaded and ready.</p>
+
+      {/* Secondary link */}
+      <div>
+        <button
+          onClick={onDashboard}
+          className="text-sm text-gray-500 hover:text-gray-300 transition-colors underline underline-offset-4 decoration-gray-700 hover:decoration-gray-400"
+        >
+          or explore the dashboard
+        </button>
+      </div>
     </div>
   )
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
-const TOTAL_STEPS = 7
-const STEP_LABELS = ['Build', 'Level', 'Goal', 'Help', 'Project', 'Studio', 'Done']
+const TOTAL_STEPS = 4
 
 export default function WelcomePage() {
   const router = useRouter()
@@ -941,29 +502,20 @@ export default function WelcomePage() {
   const [showConfetti, setShowConfetti] = useState(false)
 
   const [prefs, setPrefs] = useState<Prefs>({
-    genre: null,
+    interests: [],
     xp: null,
-    goal: null,
-    helpAreas: [],
-    firstProject: '',
-    studioChoice: null,
   })
 
-  // Skip if already onboarded (only show once)
+  // Skip if already onboarded
   useEffect(() => {
     try {
-      if (localStorage.getItem('fg_onboarded') === 'true') {
+      if (localStorage.getItem('fg_onboarding_done') === 'true') {
         router.replace('/editor')
       }
     } catch { /* ignore */ }
   }, [router])
 
-  const firstName =
-    user?.firstName ||
-    user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
-    ''
-
-  // Load saved prefs from localStorage
+  // Load saved prefs
   useEffect(() => {
     try {
       const saved = localStorage.getItem('fg_onboarding_prefs')
@@ -971,19 +523,37 @@ export default function WelcomePage() {
         const parsed = JSON.parse(saved) as Partial<Prefs>
         setPrefs((p) => ({ ...p, ...parsed }))
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [])
 
-  // Save prefs whenever they change
+  // Auto-save prefs on change
   useEffect(() => {
     try {
       localStorage.setItem('fg_onboarding_prefs', JSON.stringify(prefs))
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }, [prefs])
+
+  const firstName =
+    user?.firstName ||
+    user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] ||
+    ''
+
+  const markDone = useCallback(() => {
+    try {
+      localStorage.setItem('fg_onboarding_done', 'true')
+      localStorage.setItem('fg_onboarding_prefs', JSON.stringify(prefs))
+    } catch { /* ignore */ }
+  }, [prefs])
+
+  const handleOpenEditor = useCallback(() => {
+    markDone()
+    router.push('/editor')
+  }, [markDone, router])
+
+  const handleDashboard = useCallback(() => {
+    markDone()
+    router.push('/dashboard')
+  }, [markDone, router])
 
   const goTo = useCallback(
     (target: number, dir: 'forward' | 'back') => {
@@ -1009,125 +579,54 @@ export default function WelcomePage() {
     if (step > 1) goTo(step - 1, 'back')
   }, [step, goTo])
 
-  const canAdvance = useCallback(() => {
-    if (step === 1) return prefs.genre !== null
-    if (step === 2) return prefs.xp !== null
-    if (step === 3) return prefs.goal !== null
-    if (step === 4) return prefs.helpAreas.length >= 1
-    if (step === 5) return true  // optional
-    if (step === 6) return prefs.studioChoice !== null
+  const canAdvance = useCallback((): boolean => {
+    if (step === 1) return true
+    if (step === 2) return prefs.interests.length > 0
+    if (step === 3) return prefs.xp !== null
     return true
   }, [step, prefs])
 
-  const handleOpenEditor = () => {
-    try {
-      localStorage.setItem('fg_onboarded', 'true')
-    } catch {
-      // ignore
-    }
-    // Fire-and-forget to API
-    fetch('/api/onboarding/wizard-complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(prefs),
-    }).catch(() => {})
-
-    if (prefs.studioChoice === 'connect') {
-      router.push('/settings/studio')
-    } else {
-      router.push('/editor')
-    }
-  }
+  const toggleInterest = useCallback((id: Interest) => {
+    setPrefs((p) => ({
+      ...p,
+      interests: p.interests.includes(id)
+        ? p.interests.filter((i) => i !== id)
+        : [...p.interests, id],
+    }))
+  }, [])
 
   const slideStyle = (active: boolean): React.CSSProperties => ({
     transition: animating ? 'none' : 'opacity 0.3s ease-out, transform 0.3s ease-out',
     opacity: active && !animating ? 1 : 0,
-    transform: active && !animating
-      ? 'translateX(0)'
-      : direction === 'forward'
-        ? 'translateX(18px)'
-        : 'translateX(-18px)',
+    transform:
+      active && !animating
+        ? 'translateX(0)'
+        : direction === 'forward'
+          ? 'translateX(20px)'
+          : 'translateX(-20px)',
     pointerEvents: active ? 'auto' : 'none',
   })
 
-  // Dynamic minHeight based on step
   const getMinHeight = () => {
-    if (step === 3) return 480   // Goal — 6 cards 2-col
-    if (step === 4) return 500   // Help — 8 cards 4-col
-    if (step === 5) return 360   // Project — textarea + chips
-    if (step === 6) return 520   // Studio
-    if (step === 7) return 380   // Done
-    return 340
+    if (step === 1) return 300
+    if (step === 2) return 440
+    if (step === 3) return 320
+    if (step === 4) return 340
+    return 300
   }
+
+  const isDone = step === TOTAL_STEPS
 
   return (
     <div
-      className="flex flex-col items-center justify-center px-4 py-12"
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-12 font-inter"
       style={{ background: '#0a0a0a' }}
     >
       {showConfetti && <Confetti />}
 
       <div className="w-full max-w-lg">
-        {/* Profile avatar — manage account */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-zinc-500">
-            {firstName ? `Hey ${firstName}` : 'Welcome'} — let&apos;s set things up
-          </p>
-          {/* Profile handled by global ProfileButton in root layout */}
-        </div>
-
-        {/* Step indicator pills */}
-        <div className="flex items-center justify-between mb-3 px-0.5">
-          <span className="text-xs text-gray-500 font-medium">
-            Step {step} of {TOTAL_STEPS}
-          </span>
-          <div className="flex items-center gap-1">
-            {STEP_LABELS.map((label, i) => {
-              const n = i + 1
-              const done = n < step
-              const active = n === step
-              return (
-                <div key={label} className="flex items-center gap-1">
-                  <div
-                    className="flex items-center justify-center rounded-full text-[9px] font-bold transition-all duration-300"
-                    style={{
-                      width: 18,
-                      height: 18,
-                      background: done
-                        ? '#D4AF37'
-                        : active
-                          ? 'rgba(212,175,55,0.15)'
-                          : 'rgba(255,255,255,0.05)',
-                      border: active
-                        ? '1px solid rgba(212,175,55,0.6)'
-                        : done
-                          ? '1px solid #D4AF37'
-                          : '1px solid rgba(255,255,255,0.08)',
-                      color: done ? '#000' : active ? '#D4AF37' : '#4B5563',
-                    }}
-                  >
-                    {done ? (
-                      <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
-                        <path d="M1 3L3 5L7 1" stroke="#000" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    ) : (
-                      n
-                    )}
-                  </div>
-                  {i < STEP_LABELS.length - 1 && (
-                    <div
-                      className="h-px transition-all duration-300"
-                      style={{ width: 14, background: n < step ? '#D4AF37' : 'rgba(255,255,255,0.08)' }}
-                    />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Gold progress bar */}
-        <ProgressBar step={step} total={TOTAL_STEPS} />
+        {/* Progress dots */}
+        <ProgressDots step={step} total={TOTAL_STEPS} />
 
         {/* Card */}
         <div
@@ -1138,79 +637,55 @@ export default function WelcomePage() {
             boxShadow: '0 40px 80px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.04)',
           }}
         >
-          {/* Inner glow top edge */}
+          {/* Top edge glow */}
           <div
             className="absolute inset-x-0 top-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.4) 50%, transparent 100%)' }}
+            style={{
+              background:
+                'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.4) 50%, transparent 100%)',
+            }}
           />
 
           <div className="p-6 sm:p-8">
-            {/* Steps */}
+            {/* Step content */}
             <div className="relative" style={{ minHeight: getMinHeight() }}>
               <div className="absolute inset-0" style={slideStyle(step === 1)}>
-                <StepGenre
-                  selected={prefs.genre}
-                  onSelect={(g) => setPrefs((p) => ({ ...p, genre: g }))}
-                />
+                <StepWelcome firstName={firstName} />
               </div>
               <div className="absolute inset-0" style={slideStyle(step === 2)}>
+                <StepInterests
+                  selected={prefs.interests}
+                  onToggle={toggleInterest}
+                />
+              </div>
+              <div className="absolute inset-0" style={slideStyle(step === 3)}>
                 <StepExperience
                   selected={prefs.xp}
                   onSelect={(x) => setPrefs((p) => ({ ...p, xp: x }))}
                 />
               </div>
-              <div className="absolute inset-0" style={slideStyle(step === 3)}>
-                <StepGoal
-                  selected={prefs.goal}
-                  onSelect={(id) => setPrefs((p) => ({ ...p, goal: id }))}
-                />
-              </div>
               <div className="absolute inset-0" style={slideStyle(step === 4)}>
-                <StepHelp
-                  selected={prefs.helpAreas}
-                  onToggle={(id) =>
-                    setPrefs((p) => ({
-                      ...p,
-                      helpAreas: p.helpAreas.includes(id)
-                        ? p.helpAreas.filter((a) => a !== id)
-                        : p.helpAreas.length < MAX_HELP
-                          ? [...p.helpAreas, id]
-                          : p.helpAreas,
-                    }))
-                  }
-                />
-              </div>
-              <div className="absolute inset-0" style={slideStyle(step === 5)}>
-                <StepFirstProject
-                  value={prefs.firstProject}
-                  genre={prefs.genre}
-                  onChange={(v) => setPrefs((p) => ({ ...p, firstProject: v }))}
-                />
-              </div>
-              <div className="absolute inset-0" style={slideStyle(step === 6)}>
-                <StepStudio
-                  selected={prefs.studioChoice}
-                  onSelect={(v) => setPrefs((p) => ({ ...p, studioChoice: v }))}
-                />
-              </div>
-              <div className="absolute inset-0" style={slideStyle(step === 7)}>
-                <StepDone
+                <StepReady
                   firstName={firstName}
-                  prefs={prefs}
                   onOpenEditor={handleOpenEditor}
+                  onDashboard={handleDashboard}
                 />
               </div>
             </div>
 
-            {/* Navigation — hidden on step 7 */}
-            {step < TOTAL_STEPS && (
-              <div className="flex items-center justify-between mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            {/* Navigation — hidden on final step */}
+            {!isDone && (
+              <div
+                className="flex items-center justify-between mt-8 pt-6"
+                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                {/* Back button — hidden on step 1 */}
                 {step > 1 ? (
                   <button
                     onClick={back}
-                    className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white transition-colors"
+                    className="px-4 py-2 rounded-lg text-sm text-gray-500 hover:text-white transition-colors"
                   >
-                    Back
+                    ← Back
                   </button>
                 ) : (
                   <div />
@@ -1225,25 +700,35 @@ export default function WelcomePage() {
                       ? 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)'
                       : 'rgba(255,255,255,0.08)',
                     color: canAdvance() ? '#000' : '#6B7280',
-                    boxShadow: canAdvance() ? '0 0 16px rgba(212,175,55,0.3)' : 'none',
+                    boxShadow: canAdvance() ? '0 0 18px rgba(212,175,55,0.35)' : 'none',
                   }}
                 >
-                  {step === TOTAL_STEPS - 1 ? 'Finish Setup' : 'Continue →'}
+                  {step === TOTAL_STEPS - 1 ? 'Finish →' : 'Continue →'}
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Skip link — visible and easy to tap */}
-        {step < TOTAL_STEPS && (
+        {/* Skip link — all steps except final */}
+        {!isDone && (
           <div className="text-center mt-5">
             <button
               onClick={handleOpenEditor}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors group"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-400 transition-colors"
             >
-              <svg className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
               Skip setup — go straight to the editor
             </button>

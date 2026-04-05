@@ -204,6 +204,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
     console.error('[clerk-webhook] Unhandled error processing event', {
       eventType: event.type,
       svixId,
@@ -213,8 +214,13 @@ export async function POST(req: NextRequest) {
       tags: { webhook: 'clerk', eventType: event.type },
       extra: { svixId },
     })
-    // Return 200 so Svix does not retry — the error is already captured in Sentry.
-    // A 5xx would trigger automatic retries that could re-process the same event.
+    // Transient infrastructure errors (DB connection, timeout) return 500 so Svix
+    // retries delivery — the event was not processed. Permanent errors (bad data,
+    // logic failures) return 200 to stop retry loops.
+    const isTransient = /connect|timeout|ECONNREFUSED|P1001/i.test(message)
+    if (isTransient) {
+      return NextResponse.json({ error: 'transient_error' }, { status: 500 })
+    }
     return NextResponse.json({ ok: true })
   }
 

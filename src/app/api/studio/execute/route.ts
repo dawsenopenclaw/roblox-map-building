@@ -241,7 +241,9 @@ export async function POST(req: NextRequest) {
       placeId:       jwtPayload?.pid ?? 'unknown',
       placeName:     jwtPayload?.pn ?? 'Studio',
       pluginVersion: jwtPayload?.pv ?? '4.0.0',
-      authToken:     bearerToken ?? sessionId,
+      // Always store the full bearer token so the token index in Redis is correct.
+      // Falling back to sessionId would corrupt the fj:studio:token:<tok> index.
+      authToken:     bearerToken!,
     })
   }
 

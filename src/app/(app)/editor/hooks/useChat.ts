@@ -3,6 +3,81 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 
+// ─── Chat Session Persistence ─────────────────────────────────────────────────
+
+const LS_SESSIONS_KEY = 'fg_chat_sessions'
+const MAX_SESSIONS = 20
+
+export interface ChatSession {
+  id: string
+  title: string
+  messages: ChatMessage[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChatSessionMeta {
+  id: string
+  title: string
+  createdAt: string
+  updatedAt: string
+  messageCount: number
+  firstAiPreview: string | null
+}
+
+export function loadSessions(): ChatSession[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(LS_SESSIONS_KEY)
+    return raw ? (JSON.parse(raw) as ChatSession[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveSessions(sessions: ChatSession[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(LS_SESSIONS_KEY, JSON.stringify(sessions))
+  } catch { /* quota exceeded — silently ignore */ }
+}
+
+// Strip filler prefixes so the title reads as the subject, not the command
+const TITLE_STRIP_PREFIXES = /^(build\s+me\s+(a\s+)?|create\s+(a\s+)?|make\s+(a\s+)?|generate\s+(a\s+)?|add\s+(a\s+)?|design\s+(a\s+)?|can\s+you\s+(build|create|make|generate)\s+(a\s+)?)/i
+
+function makeSessionTitle(messages: ChatMessage[]): string {
+  const first = messages.find((m) => m.role === 'user')
+  if (!first) return 'New Chat'
+  const cleaned = first.content.replace(/^\[AUTO-RETRY[^\]]*\]\s*/, '').trim()
+  const stripped = cleaned.replace(TITLE_STRIP_PREFIXES, '').trim()
+  const title = stripped || cleaned
+  // Capitalise first letter
+  return (title.charAt(0).toUpperCase() + title.slice(1)).slice(0, 45) || 'New Chat'
+}
+
+/** Persist a set of messages as a session. Creates or updates by id. */
+function persistSession(sessionId: string, messages: ChatMessage[]): void {
+  if (messages.filter((m) => m.role === 'user').length === 0) return
+  const sessions = loadSessions()
+  const existingIdx = sessions.findIndex((s) => s.id === sessionId)
+  const now = new Date().toISOString()
+  const session: ChatSession = {
+    id: sessionId,
+    title: makeSessionTitle(messages),
+    messages,
+    createdAt: existingIdx >= 0 ? sessions[existingIdx].createdAt : now,
+    updatedAt: now,
+  }
+  if (existingIdx >= 0) {
+    sessions[existingIdx] = session
+  } else {
+    sessions.unshift(session)
+    // Keep only last MAX_SESSIONS — oldest (end of array) are removed
+    while (sessions.length > MAX_SESSIONS) sessions.pop()
+  }
+  saveSessions(sessions)
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error'
@@ -242,6 +317,8 @@ export function useChat(options: UseChatOptions = {}) {
   const [guestMessageCount, setGuestMessageCount] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryListenerRef = useRef(false)
+  // Stable ID for the current chat session — new id on each "new chat"
+  const currentSessionIdRef = useRef<string>(uid())
   // Tracks whether the hook is still mounted; guards async callbacks that call setState.
   const mountedRef = useRef(true)
   // Ref used to read current messages inside async callbacks without stale closure
@@ -571,6 +648,9 @@ export function useChat(options: UseChatOptions = {}) {
             })
           }
 
+          // Persist session after AI response is fully finalized
+          persistSession(currentSessionIdRef.current, messagesRef.current)
+
           // Client-side fallback execution (only if server didn't already execute)
           if (studioConnected && luauCode && !meta.executedInStudio && onBuildComplete) {
             lastLuauRef.current = luauCode
@@ -695,8 +775,12 @@ export function useChat(options: UseChatOptions = {}) {
               })
             }
 
+            messagesRef.current = result
             return result
           })
+
+          // Persist session after non-streaming AI response
+          persistSession(currentSessionIdRef.current, messagesRef.current)
 
           let luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
 
@@ -839,6 +923,81 @@ export function useChat(options: UseChatOptions = {}) {
     [setMessagesSync, sendMessage],
   )
 
+  // ─── Session management ───────────────────────────────────────────────────────
+
+  /** Save current chat (if non-empty) then clear messages and start a new session. */
+  const newChat = useCallback(() => {
+    const current = messagesRef.current
+    if (current.filter((m) => m.role === 'user').length > 0) {
+      persistSession(currentSessionIdRef.current, current)
+    }
+    currentSessionIdRef.current = uid()
+    setMessagesSync(() => [])
+    setSuggestions([])
+    setTotalTokens(0)
+    setInput('')
+  }, [setMessagesSync])
+
+  /** Load a saved session by id, replacing current messages. */
+  const loadSession = useCallback((id: string) => {
+    const sessions = loadSessions()
+    const session = sessions.find((s) => s.id === id)
+    if (!session) return
+    // Save current chat before switching, if it has content
+    const current = messagesRef.current
+    if (current.filter((m) => m.role === 'user').length > 0) {
+      persistSession(currentSessionIdRef.current, current)
+    }
+    currentSessionIdRef.current = id
+    // Rehydrate timestamps as Date objects (JSON serializes them as strings)
+    const rehydrated = session.messages.map((m) => ({
+      ...m,
+      timestamp: new Date(m.timestamp),
+    }))
+    setMessagesSync(() => rehydrated)
+    setSuggestions([])
+  }, [setMessagesSync])
+
+  /** Return metadata for all saved sessions (no message payloads). */
+  const listSessions = useCallback((): ChatSessionMeta[] => {
+    return loadSessions().map(({ id, title, createdAt, updatedAt, messages }) => {
+      const firstAi = messages.find((m) => m.role === 'assistant')
+      const firstAiPreview = firstAi
+        ? firstAi.content.replace(/```[\s\S]*?```/g, '[code]').replace(/\s+/g, ' ').trim().slice(0, 60) || null
+        : null
+      return {
+        id,
+        title,
+        createdAt,
+        updatedAt,
+        messageCount: messages.length,
+        firstAiPreview,
+      }
+    })
+  }, [])
+
+  /** Delete a saved session by id. */
+  const deleteSession = useCallback((id: string) => {
+    const sessions = loadSessions().filter((s) => s.id !== id)
+    saveSessions(sessions)
+    // If we deleted the active session, reset to a fresh one
+    if (id === currentSessionIdRef.current) {
+      currentSessionIdRef.current = uid()
+      setMessagesSync(() => [])
+      setSuggestions([])
+      setTotalTokens(0)
+    }
+  }, [setMessagesSync])
+
+  /** Clear all saved sessions and reset to a fresh chat. */
+  const clearAllSessions = useCallback(() => {
+    saveSessions([])
+    currentSessionIdRef.current = uid()
+    setMessagesSync(() => [])
+    setSuggestions([])
+    setTotalTokens(0)
+  }, [setMessagesSync])
+
   return {
     messages,
     input,
@@ -857,5 +1016,12 @@ export function useChat(options: UseChatOptions = {}) {
     totalTokens,
     textareaRef,
     lastMcpResult,
+    // Session persistence
+    newChat,
+    loadSession,
+    listSessions,
+    deleteSession,
+    clearAllSessions,
+    currentSessionId: currentSessionIdRef.current,
   }
 }

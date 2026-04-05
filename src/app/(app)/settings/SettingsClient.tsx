@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useToast } from '@/components/ui/toast-notification'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
@@ -49,32 +50,6 @@ type ApiKey = {
   name: string
   prefix: string
   createdAt: string
-}
-
-// ─── Toast ────────────────────────────────────────────────────────────────────
-
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium shadow-xl border ${
-        type === 'success'
-          ? 'bg-[#141414] border-green-500/30 text-green-300'
-          : 'bg-[#141414] border-red-500/30 text-red-300'
-      }`}
-    >
-      {type === 'success' ? <Check size={14} /> : <Trash2 size={14} />}
-      {message}
-    </div>
-  )
-}
-
-function useToast() {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const show = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
-  }
-  return { toast, show }
 }
 
 // ─── Toggle ───────────────────────────────────────────────────────────────────
@@ -380,7 +355,7 @@ type ProfileData = {
 }
 
 function ProfileTab() {
-  const { toast, show } = useToast()
+  const { show } = useToast()
   const { user } = useUser()
   const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
@@ -433,13 +408,13 @@ function ProfileTab() {
         }),
       })
       if (res.ok) {
-        show('Profile saved')
+        show({ variant: 'success', title: 'Profile saved' })
       } else {
         const err = await res.json() as { error?: string }
-        show(err?.error ?? 'Failed to save', 'error')
+        show({ variant: 'error', title: err?.error ?? 'Failed to save' })
       }
     } catch {
-      show('Failed to save', 'error')
+      show({ variant: 'error', title: 'Failed to save' })
     } finally {
       setSaving(false)
     }
@@ -458,7 +433,7 @@ function ProfileTab() {
       // fall through
     }
     setDeleting(false)
-    show('Failed to delete account. Contact support.', 'error')
+    show({ variant: 'error', title: 'Failed to delete account. Contact support.' })
   }
 
   return (
@@ -472,8 +447,8 @@ function ProfileTab() {
           <AvatarUpload
             name={displayName || user?.fullName || 'User'}
             initialUrl={avatarUrl}
-            onError={(msg) => show(msg, 'error')}
-            onUploaded={(url) => { setAvatarUrl(url); show('Avatar updated') }}
+            onError={(msg) => show({ variant: 'error', title: msg })}
+            onUploaded={(url) => { setAvatarUrl(url); show({ variant: 'success', title: 'Avatar updated' }) }}
           />
         </div>
 
@@ -673,7 +648,6 @@ function ProfileTab() {
         )}
       </div>
 
-      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
 }
@@ -790,9 +764,11 @@ function BillingTab() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
-            { label: 'AI Generations', used: 142, limit: 200, color: '#D4AF37' },
-            { label: 'Marketplace Searches', used: 58, limit: 500, color: '#60a5fa' },
-            { label: 'API Calls', used: 3_420, limit: 10_000, color: '#a78bfa' },
+            ...(billingData?.usageBreakdown ?? [
+            { label: 'AI Generations', used: 0, limit: 200, color: '#D4AF37' },
+            { label: 'Marketplace Searches', used: 0, limit: 500, color: '#60a5fa' },
+            { label: 'API Calls', used: 0, limit: 10_000, color: '#a78bfa' },
+          ]),
           ].map((stat) => {
             const pct = Math.min(100, Math.round((stat.used / stat.limit) * 100))
             return (
@@ -838,273 +814,33 @@ function BillingTab() {
 
 // ─── API Keys Tab ─────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'forje_api_keys'
-
-const DEFAULT_KEYS: ApiKey[] = [
-  { id: '1', name: 'Production', prefix: 'rf_sk_prod_a3f9b72e...', createdAt: '2026-03-01' },
-  { id: '2', name: 'Development', prefix: 'rf_sk_dev_c7e2d891...', createdAt: '2026-03-15' },
-]
-
-function loadKeys(): ApiKey[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as ApiKey[]
-  } catch { /* ignore */ }
-  return DEFAULT_KEYS
-}
-
-function saveKeys(keys: ApiKey[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys))
-  } catch { /* ignore */ }
-}
-
 function ApiKeysTab() {
-  const { toast, show } = useToast()
-
-  const [keys, setKeys] = useState<ApiKey[]>(DEFAULT_KEYS)
-  const [hydrated, setHydrated] = useState(false)
-
-  // Load from localStorage after hydration to avoid SSR mismatch
-  useEffect(() => {
-    setKeys(loadKeys())
-    setHydrated(true)
-  }, [])
-
-  const [showCreate, setShowCreate] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [newKeyScope, setNewKeyScope] = useState<'read' | 'write' | 'admin'>('write')
-  const [creating, setCreating] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set())
-  const [justCreated, setJustCreated] = useState<string | null>(null)
-
-  const persistAndSet = (updater: (prev: ApiKey[]) => ApiKey[]) => {
-    setKeys((prev) => {
-      const next = updater(prev)
-      saveKeys(next)
-      return next
-    })
-  }
-
-  const generateKeyString = (name: string) => {
-    const slug = name.toLowerCase().replace(/\s+/g, '_').slice(0, 8)
-    const rand = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10)
-    return `rf_sk_${slug}_${rand}`
-  }
-
-  const handleCreate = async () => {
-    if (!newKeyName.trim()) return
-    setCreating(true)
-    await new Promise((r) => setTimeout(r, 600)) // simulate API call
-    const fullKey = generateKeyString(newKeyName.trim())
-    const newKey: ApiKey = {
-      id: Date.now().toString(),
-      name: newKeyName.trim(),
-      prefix: fullKey.slice(0, 22) + '...',
-      createdAt: new Date().toISOString().slice(0, 10),
-    }
-    // Store the full key temporarily for one-time display
-    setJustCreated(fullKey)
-    persistAndSet((k) => [...k, newKey])
-    setNewKeyName('')
-    setNewKeyScope('write')
-    setShowCreate(false)
-    setCreating(false)
-    show('API key created — copy it now, it won\'t be shown again')
-  }
-
-  const handleDelete = async (id: string) => {
-    persistAndSet((k) => k.filter((key) => key.id !== id))
-    setDeleteConfirm(null)
-    if (justCreated) setJustCreated(null)
-    show('API key revoked')
-  }
-
-  const toggleReveal = (id: string) =>
-    setRevealedKeys((s) => {
-      const next = new Set(s)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-
-  const copyKey = (text: string) => {
-    void navigator.clipboard.writeText(text)
-    show('Copied to clipboard')
-  }
-
-  void hydrated // suppress unused warning
-
   return (
-    <div className="space-y-4">
-      {toast && <Toast message={toast.message} type={toast.type} />}
-
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
-        <div className="flex items-center justify-between mb-5 gap-4 flex-wrap">
-          <div>
-            <h3 className="text-white font-semibold">API Keys</h3>
-            <p className="text-gray-400 text-xs mt-0.5">
-              Use these keys to authenticate ForjeGames API calls.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="inline-flex items-center gap-1.5 text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-xl transition-colors"
-          >
-            <Plus size={14} />
-            New Key
-          </button>
+    <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <div>
+          <h3 className="text-white font-semibold">API Keys</h3>
+          <p className="text-gray-400 text-xs mt-0.5">
+            Create and manage keys for programmatic access to ForjeGames.
+          </p>
         </div>
-
-        {/* Just-created key banner — one-time display */}
-        {justCreated && (
-          <div className="mb-5 p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/40 rounded-xl">
-            <p className="text-[#D4AF37] text-xs font-bold uppercase tracking-wider mb-2">
-              Copy your new API key now — it won&apos;t be shown again
-            </p>
-            <div className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2">
-              <code className="flex-1 text-white text-xs font-mono break-all select-all">{justCreated}</code>
-              <button
-                onClick={() => copyKey(justCreated)}
-                className="text-[#D4AF37] hover:text-[#E6A519] flex-shrink-0"
-              >
-                <Copy size={14} />
-              </button>
-            </div>
-            <button
-              onClick={() => setJustCreated(null)}
-              className="mt-2 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-            >
-              I&apos;ve saved it — dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Create form */}
-        {showCreate && (
-          <div className="mb-5 p-4 bg-white/5 border border-white/10 rounded-xl">
-            <p className="text-white text-sm font-medium mb-3">New API Key</p>
-            <label htmlFor="new-key-name" className="sr-only">Key name</label>
-            <input
-              id="new-key-name"
-              type="text"
-              value={newKeyName}
-              onChange={(e) => setNewKeyName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void handleCreate()}
-              placeholder="Key name (e.g. Production)"
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-400/50 transition-colors mb-3"
-              autoFocus
-            />
-            <div className="mb-3">
-              <p id="key-permissions-label" className="block text-xs text-gray-400 mb-1.5">Permissions</p>
-              <div className="flex gap-2" role="group" aria-labelledby="key-permissions-label">
-                {(['read', 'write', 'admin'] as const).map((scope) => (
-                  <button
-                    key={scope}
-                    onClick={() => setNewKeyScope(scope)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${
-                      newKeyScope === scope
-                        ? 'bg-[#D4AF37]/15 border-[#D4AF37]/40 text-[#D4AF37]'
-                        : 'border-white/10 text-gray-400 hover:border-white/20'
-                    }`}
-                  >
-                    {scope}
-                  </button>
-                ))}
-              </div>
-              <p className="text-gray-500 text-xs mt-1.5">
-                {newKeyScope === 'read' && 'Read-only access to your projects and assets.'}
-                {newKeyScope === 'write' && 'Create and modify projects, trigger AI builds.'}
-                {newKeyScope === 'admin' && 'Full access including billing and team management.'}
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => void handleCreate()}
-                disabled={!newKeyName.trim() || creating}
-                className="text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {creating ? 'Generating...' : 'Generate Key'}
-              </button>
-              <button
-                onClick={() => {
-                  setShowCreate(false)
-                  setNewKeyName('')
-                }}
-                className="text-sm border border-white/20 text-gray-300 hover:text-blue-400 px-4 py-2 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Keys list */}
-        {keys.length === 0 ? (
-          <p className="text-gray-400 text-sm py-4">No API keys yet. Create one to get started.</p>
-        ) : (
-          <div className="space-y-3">
-            {keys.map((key) => {
-              const revealed = revealedKeys.has(key.id)
-              return (
-                <div
-                  key={key.id}
-                  className="flex items-center justify-between gap-4 py-4 border-b border-white/5 last:border-0 flex-wrap"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Key size={13} className="text-[#D4AF37] flex-shrink-0" />
-                      <p className="text-white text-sm font-medium">{key.name}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-gray-400 text-xs font-mono">
-                        {revealed ? key.prefix : '\u2022'.repeat(16) + '...'}
-                      </p>
-                      <button
-                        onClick={() => toggleReveal(key.id)}
-                        className="text-gray-500 hover:text-gray-300 transition-colors"
-                      >
-                        {revealed ? <EyeOff size={12} /> : <Eye size={12} />}
-                      </button>
-                      <button
-                        onClick={() => copyKey(key.prefix)}
-                        className="text-gray-500 hover:text-[#D4AF37] transition-colors"
-                      >
-                        <Copy size={12} />
-                      </button>
-                    </div>
-                    <p className="text-gray-500 text-xs mt-0.5">Created {key.createdAt}</p>
-                  </div>
-
-                  {deleteConfirm === key.id ? (
-                    <div className="flex gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => void handleDelete(key.id)}
-                        className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(null)}
-                        className="text-xs border border-white/20 text-gray-300 hover:text-blue-400 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setDeleteConfirm(key.id)}
-                      className="text-xs border border-red-500/20 hover:border-red-500/40 hover:bg-red-500/5 text-red-400 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                    >
-                      Revoke
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <Link
+          href="/settings/api-keys"
+          className="inline-flex items-center gap-1.5 text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-xl transition-colors"
+        >
+          <Key size={14} />
+          Manage Keys
+        </Link>
       </div>
+      <p className="text-gray-500 text-sm">
+        API key management has its own dedicated page with full key creation, scopes, and revocation.
+      </p>
+      <Link
+        href="/settings/api-keys"
+        className="inline-flex items-center gap-1.5 mt-4 text-sm font-semibold text-[#D4AF37] hover:text-[#E6A519] transition-colors"
+      >
+        Open API Keys page →
+      </Link>
     </div>
   )
 }
@@ -1206,7 +942,7 @@ const ACCENT_PRESETS = [
 ]
 
 function AppearanceTab() {
-  const { toast, show } = useToast()
+  const { show } = useToast()
   const { theme: currentTheme, setTheme, themes, accentColor, setAccentColor } = useThemeHook()
   const { settings, update } = useEditorSettings()
   const [activeCategory, setActiveCategory] = useState<ThemeCategoryKey>('minimal')
@@ -1266,7 +1002,7 @@ function AppearanceTab() {
     setTheme(id)
     void persistPreferences({ theme: id })
     const t = themes.find((th) => th.id === id)
-    show(`${t?.name ?? 'Theme'} applied`)
+    show({ variant: 'info', title: `Theme: ${t?.name ?? 'Applied'}` })
   }
 
   const handleFontSize = (size: 'small' | 'medium' | 'large') => {
@@ -1284,8 +1020,6 @@ function AppearanceTab() {
 
   return (
     <div className="space-y-5">
-      {toast && <Toast message={toast.message} type={toast.type} />}
-
       {/* Active theme banner */}
       <div
         className="rounded-xl p-4 flex items-center gap-4 border transition-all duration-500"
@@ -1456,16 +1190,27 @@ function AppearanceTab() {
 // ─── Connected Accounts Tab ───────────────────────────────────────────────────
 
 function ConnectedTab() {
-  const { toast, show } = useToast()
+  const { show } = useToast()
+
+  const { data: connData } = useSWR<{
+    roblox: { connected: boolean; username: string | null; connectedAt: string | null }
+    github: { connected: boolean; username: string | null; connectedAt: string | null }
+  }>('/api/settings/connections', fetcher, { revalidateOnFocus: false })
 
   const [connections, setConnections] = useState({
-    roblox: { connected: true, username: 'Dawsen_Dev', connectedAt: '2026-01-14' },
-    github: {
-      connected: false,
-      username: null as string | null,
-      connectedAt: null as string | null,
-    },
+    roblox: { connected: false, username: null as string | null, connectedAt: null as string | null },
+    github: { connected: false, username: null as string | null, connectedAt: null as string | null },
   })
+
+  // Hydrate from API once loaded
+  useEffect(() => {
+    if (connData) {
+      setConnections({
+        roblox: connData.roblox ?? { connected: false, username: null, connectedAt: null },
+        github: connData.github ?? { connected: false, username: null, connectedAt: null },
+      })
+    }
+  }, [connData])
 
   type PlatformKey = keyof typeof connections
 
@@ -1478,7 +1223,7 @@ function ConnectedTab() {
       ...c,
       [platform]: { connected: false, username: null, connectedAt: null },
     }))
-    show(`${platform === 'roblox' ? 'Roblox' : 'GitHub'} disconnected`)
+    show({ variant: 'info', title: `${platform === 'roblox' ? 'Roblox' : 'GitHub'} disconnected` })
   }
 
   const items: {
@@ -1510,8 +1255,6 @@ function ConnectedTab() {
 
   return (
     <div className="space-y-4">
-      {toast && <Toast message={toast.message} type={toast.type} />}
-
       {items.map((item) => {
         const conn = connections[item.key]
         return (
@@ -1589,7 +1332,7 @@ function StudioTab() {
         </div>
         {!isConnected && (
           <Link
-            href="/connect"
+            href="/settings/studio"
             className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Plug size={14} />
