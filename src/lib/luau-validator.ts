@@ -280,6 +280,49 @@ export function validateAndFixLuau(code: string): ValidationResult {
     warnings.push('Warning: FireAllClients inside a loop without task.spawn may block — consider wrapping in task.spawn()')
   }
 
+  // 22. Warn on game.Workspace — should use the workspace global directly
+  if (/game\.Workspace\b/.test(fixed)) {
+    warnings.push('Warning: game.Workspace is deprecated — use the workspace global directly')
+  }
+
+  // 23. Warn on Instance.new("Part").Parent = workspace on the same line
+  // Setting Parent immediately (not last) skips deferred parenting optimizations
+  if (/Instance\.new\("[^"]+"\)\s*\.Parent\s*=/.test(fixed)) {
+    warnings.push('Warning: Setting .Parent immediately on Instance.new() result — set Parent last for better performance')
+  }
+
+  // 24. Auto-fix Color3.new(r,g,b) where any value > 1 → Color3.fromRGB()
+  // Color3.new() takes 0-1 range; values >1 are almost certainly a mistake
+  fixed = fixed.replace(
+    /Color3\.new\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\)/g,
+    (match, r: string, g: string, b: string) => {
+      const rn = parseFloat(r)
+      const gn = parseFloat(g)
+      const bn = parseFloat(b)
+      if (rn > 1 || gn > 1 || bn > 1) {
+        // Values look like 0-255 range — convert
+        const rOut = Math.round(Math.min(rn, 255))
+        const gOut = Math.round(Math.min(gn, 255))
+        const bOut = Math.round(Math.min(bn, 255))
+        fixes.push(`Fixed: Color3.new(${r},${g},${b}) → Color3.fromRGB(${rOut},${gOut},${bOut}) (Color3.new uses 0-1 range)`)
+        return `Color3.fromRGB(${rOut},${gOut},${bOut})`
+      }
+      return match
+    }
+  )
+
+  // 25. Warn on for i,v in pairs(...) — modern Luau generalized iteration doesn't need pairs()
+  const pairsCount = (fixed.match(/\bin\s+pairs\s*\(/g) || []).length
+  if (pairsCount > 0) {
+    warnings.push(`Warning: ${pairsCount} use(s) of pairs() detected — modern Luau uses generalized iteration: "for i,v in t do" (no pairs needed)`)
+  }
+
+  // 26. Warn on for i,v in ipairs(...) — same, ipairs() is redundant in modern Luau
+  const ipairsCount = (fixed.match(/\bin\s+ipairs\s*\(/g) || []).length
+  if (ipairsCount > 0) {
+    warnings.push(`Warning: ${ipairsCount} use(s) of ipairs() detected — modern Luau uses generalized iteration: "for i,v in t do" (no ipairs needed)`)
+  }
+
   return {
     valid: warnings.length === 0,
     fixedCode: fixed,
