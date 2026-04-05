@@ -10,7 +10,7 @@ import {
 import {
   DollarSign, Users, TrendingUp, Zap, Activity, BarChart3,
   ArrowUpRight, ArrowDownRight, Layers, Clock, Cpu, RefreshCw,
-  Coins, ChevronDown, ChevronUp, Receipt,
+  Coins, ChevronDown, ChevronUp, Receipt, Gift, Search, Loader2, Check,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -351,6 +351,231 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
     >
       {children}
     </div>
+  )
+}
+
+// ─── Quick Gift Tokens Panel ─────────────────────────────────────────────────
+
+const GIFT_PRESETS = [100, 500, 1000, 5000, 10000, 50000, 100000, 1000000]
+
+interface GiftUser {
+  id: string
+  email: string
+  displayName?: string | null
+  username?: string | null
+  tokenBalance?: { balance: number } | null
+}
+
+function QuickGiftPanel() {
+  const [userSearch, setUserSearch] = useState('')
+  const [results, setResults] = useState<GiftUser[]>([])
+  const [selectedUser, setSelectedUser] = useState<GiftUser | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [amount, setAmount] = useState(1000)
+  const [customAmount, setCustomAmount] = useState('')
+  const [useCustom, setUseCustom] = useState(false)
+  const [unlimited, setUnlimited] = useState(false)
+  const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    if (!userSearch.trim()) { setResults([]); return }
+    const t = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await fetch(`/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=6`)
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        setResults(data.users ?? [])
+      } catch { setResults([]) }
+      finally { setSearching(false) }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [userSearch])
+
+  const effectiveAmount = unlimited ? 999_999_999 : (useCustom ? parseInt(customAmount || '0', 10) : amount)
+
+  const handleGift = async () => {
+    if (!selectedUser) { setError('Select a user first'); return }
+    if (!unlimited && (effectiveAmount < 1 || effectiveAmount > 999_999_999)) { setError('Invalid amount'); return }
+    if (!reason.trim()) { setError('Reason is required'); return }
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/gift-tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selectedUser.id, amount: effectiveAmount, reason: reason.trim(), type: 'GIFT', unlimited }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+      setSuccess(true)
+      setTimeout(() => {
+        setSuccess(false)
+        setSelectedUser(null)
+        setUserSearch('')
+        setReason('')
+        setAmount(1000)
+        setCustomAmount('')
+        setUseCustom(false)
+        setUnlimited(false)
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-[#1f1f1f] bg-[#0c0c0c] p-6 space-y-4"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <Gift className="w-5 h-5 text-[#c9a227]" />
+        <h3 className="text-white font-bold text-base">Quick Gift Tokens</h3>
+      </div>
+
+      {/* User search */}
+      <div>
+        <p className="text-xs text-zinc-500 mb-1.5 font-medium">User</p>
+        {selectedUser ? (
+          <div className="flex items-center gap-2 px-3 py-2.5 bg-[#c9a227]/10 border border-[#c9a227]/20 rounded-xl">
+            <div className="w-7 h-7 bg-[#c9a227] rounded-full flex items-center justify-center text-xs font-bold text-black flex-shrink-0">
+              {(selectedUser.displayName || selectedUser.email)[0].toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm font-medium truncate">
+                {selectedUser.displayName || selectedUser.username || selectedUser.email}
+              </p>
+              <p className="text-zinc-400 text-xs truncate">{selectedUser.email} · {(selectedUser.tokenBalance?.balance ?? 0).toLocaleString()} tokens</p>
+            </div>
+            <button onClick={() => { setSelectedUser(null); setUserSearch('') }} className="text-zinc-500 hover:text-white text-lg">×</button>
+          </div>
+        ) : (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search by email or username..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-[#141414] border border-[#1f1f1f] rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a227] transition-colors"
+            />
+            {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 animate-spin" />}
+            {results.length > 0 && (
+              <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden shadow-2xl max-h-60 overflow-y-auto">
+                {results.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => { setSelectedUser(u); setResults([]); setUserSearch('') }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-[#1f1f1f] transition-colors flex items-center gap-2"
+                  >
+                    <div className="w-6 h-6 bg-[#c9a227]/20 rounded-full flex items-center justify-center text-xs font-bold text-[#c9a227] flex-shrink-0">
+                      {(u.displayName || u.email)[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium truncate">{u.displayName || u.username || u.email}</p>
+                      <p className="text-zinc-500 text-xs truncate">{u.email}</p>
+                    </div>
+                    <span className="text-xs text-zinc-600 tabular-nums flex-shrink-0">{(u.tokenBalance?.balance ?? 0).toLocaleString()}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Amount presets */}
+      <div>
+        <p className="text-xs text-zinc-500 mb-1.5 font-medium">Amount</p>
+        <div className="grid grid-cols-5 gap-1.5">
+          {GIFT_PRESETS.map((preset) => (
+            <button
+              key={preset}
+              onClick={() => { setAmount(preset); setUseCustom(false); setUnlimited(false) }}
+              className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
+                !useCustom && !unlimited && amount === preset
+                  ? 'bg-[#c9a227]/10 border-[#c9a227]/40 text-[#c9a227]'
+                  : 'bg-[#141414] border-[#1f1f1f] text-zinc-400 hover:border-[#c9a227]/30 hover:text-white'
+              }`}
+            >
+              {preset >= 1000000 ? `${preset / 1000000}M` : preset >= 1000 ? `${preset / 1000}k` : preset}
+            </button>
+          ))}
+          <button
+            onClick={() => { setUseCustom(true); setUnlimited(false) }}
+            className={`py-2 rounded-lg text-xs font-semibold border transition-colors ${
+              useCustom && !unlimited
+                ? 'bg-[#c9a227]/10 border-[#c9a227]/40 text-[#c9a227]'
+                : 'bg-[#141414] border-[#1f1f1f] text-zinc-400 hover:border-[#c9a227]/30 hover:text-white'
+            }`}
+          >
+            Custom
+          </button>
+          <button
+            onClick={() => { setUnlimited(!unlimited); setUseCustom(false) }}
+            className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
+              unlimited
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                : 'bg-[#141414] border-[#1f1f1f] text-zinc-400 hover:border-emerald-500/30 hover:text-white'
+            }`}
+          >
+            {unlimited ? '∞ ON' : '∞'}
+          </button>
+        </div>
+        {unlimited && (
+          <div className="mt-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 text-emerald-400 text-xs">
+            Sets balance to 999,999,999 tokens (unlimited).
+          </div>
+        )}
+        {useCustom && !unlimited && (
+          <input
+            type="number"
+            min={1}
+            max={999999999}
+            placeholder="Enter amount..."
+            value={customAmount}
+            onChange={(e) => setCustomAmount(e.target.value)}
+            className="mt-2 w-full px-3 py-2 bg-[#141414] border border-[#1f1f1f] rounded-lg text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a227]"
+          />
+        )}
+      </div>
+
+      {/* Reason */}
+      <div>
+        <p className="text-xs text-zinc-500 mb-1.5 font-medium">Reason</p>
+        <input
+          type="text"
+          placeholder="Why are you gifting these tokens?"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full px-3 py-2.5 bg-[#141414] border border-[#1f1f1f] rounded-xl text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a227] transition-colors"
+        />
+      </div>
+
+      {/* Error / Success */}
+      {error && <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
+      {success && (
+        <div className="flex items-center gap-2 text-emerald-400 text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+          <Check className="w-3.5 h-3.5" /> Tokens gifted successfully!
+        </div>
+      )}
+
+      {/* Send button */}
+      <button
+        onClick={handleGift}
+        disabled={loading || !selectedUser || (!unlimited && effectiveAmount < 1) || !reason.trim()}
+        className="w-full py-3 rounded-xl font-bold text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed bg-[#c9a227] text-black hover:bg-[#e0b840] active:scale-[0.98]"
+      >
+        {loading ? 'Sending...' : success ? 'Sent!' : `Gift ${unlimited ? 'Unlimited' : effectiveAmount.toLocaleString()} Tokens`}
+      </button>
+    </motion.div>
   )
 }
 
@@ -951,6 +1176,9 @@ export function DevBoardClient() {
           accentColor="#F59E0B"
         />
       </div>
+
+      {/* Quick Gift Tokens */}
+      <QuickGiftPanel />
 
       {/* Footer */}
       <div className="text-center pb-4">

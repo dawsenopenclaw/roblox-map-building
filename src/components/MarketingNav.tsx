@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard, Download as DownloadIcon } from 'lucide-react'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 const NAV_LINKS: { href: string; label: string; scroll: boolean; Icon: LucideIcon }[] = [
@@ -11,6 +11,7 @@ const NAV_LINKS: { href: string; label: string; scroll: boolean; Icon: LucideIco
   { href: '#showcase',  label: 'Showcase',  scroll: true,  Icon: Layout       },
   { href: '#pricing',   label: 'Pricing',   scroll: true,  Icon: CreditCard   },
   { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
+  { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy     },
 ]
 
 function MarketingNav() {

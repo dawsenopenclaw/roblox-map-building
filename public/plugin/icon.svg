@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <!-- Outer glow for ring -->
+    <filter id="ring-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur1"/>
+      <feComposite in="SourceGraphic" in2="blur1" operator="over"/>
+    </filter>
+    <!-- F letter glow -->
+    <filter id="letter-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Subtle radial background gradient -->
+    <radialGradient id="bg-gradient" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#0d1526"/>
+      <stop offset="100%" stop-color="#050810"/>
+    </radialGradient>
+    <!-- Gold ring gradient -->
+    <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD700"/>
+      <stop offset="40%" stop-color="#D4AF37"/>
+      <stop offset="70%" stop-color="#B8960C"/>
+      <stop offset="100%" stop-color="#FFD700"/>
+    </linearGradient>
+    <!-- F letter gradient -->
+    <linearGradient id="f-gradient" x1="0%" y1="0%" x2="30%" y2="100%">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="50%" stop-color="#D4AF37"/>
+      <stop offset="100%" stop-color="#B8960C"/>
+    </linearGradient>
+    <!-- Glow ring blur -->
+    <filter id="glow-soft">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="72" fill="url(#bg-gradient)"/>
+
+  <!-- Outer faint glow ring (blurred, behind the main ring) -->
+  <circle cx="256" cy="236" r="158" fill="none" stroke="#D4AF37" stroke-width="4" opacity="0.18" filter="url(#glow-soft)"/>
+
+  <!-- Main gold ring -->
+  <circle cx="256" cy="236" r="148" fill="none" stroke="url(#ring-gradient)" stroke-width="3.5" opacity="0.85" filter="url(#ring-glow)"/>
+
+  <!-- Inner subtle ring -->
+  <circle cx="256" cy="236" r="138" fill="none" stroke="#D4AF37" stroke-width="1" opacity="0.22"/>
+
+  <!-- The "F" letterform — bold, centered at 256, ~236 -->
+  <!-- Vertical stem -->
+  <rect x="186" y="140" width="52" height="196" rx="6" fill="url(#f-gradient)" filter="url(#letter-glow)"/>
+  <!-- Top horizontal bar -->
+  <rect x="186" y="140" width="148" height="52" rx="6" fill="url(#f-gradient)" filter="url(#letter-glow)"/>
+  <!-- Middle horizontal bar -->
+  <rect x="186" y="214" width="120" height="46" rx="6" fill="url(#f-gradient)" filter="url(#letter-glow)"/>
+
+  <!-- "ForjeGames" text -->
+  <text
+    x="256"
+    y="432"
+    font-family="Inter, Helvetica Neue, Arial, sans-serif"
+    font-size="34"
+    font-weight="500"
+    fill="#FFFFFF"
+    fill-opacity="0.82"
+    text-anchor="middle"
+    letter-spacing="3"
+  >ForjeGames</text>
+
+  <!-- Subtle bottom tagline dot separators -->
+  <circle cx="156" cy="432" r="2.5" fill="#D4AF37" opacity="0.5"/>
+  <circle cx="356" cy="432" r="2.5" fill="#D4AF37" opacity="0.5"/>
+</svg>

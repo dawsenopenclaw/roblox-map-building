@@ -199,6 +199,7 @@ function buildAssetLuauSnippet(
 const ASSET_REFERENCE_TABLE: string = (() => {
   const categories = new Map<string, CuratedAsset[]>()
   for (const a of CURATED_ASSETS) {
+    if (a.id === 0) continue // skip placeholders — id 0 is not a valid catalog asset
     const list = categories.get(a.category) ?? []
     list.push(a)
     categories.set(a.category, list)
@@ -944,7 +945,26 @@ local function vc(base, v)
   return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
 end
 
--- BUILD HERE using P(), vc(), CFrame.new(sp + Vector3.new(x,y,z))
+-- MARKETPLACE ASSET helper — use for trees, rocks, lamps, benches, fences, vehicles, furniture
+local IS = game:GetService("InsertService")
+local function placeAsset(assetId, position, scale, folder)
+  local ok, result = pcall(function()
+    local a = IS:LoadAsset(assetId)
+    local model = a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1]
+    if not model then a:Destroy() return end
+    if model:IsA("Model") then
+      model:PivotTo(CFrame.new(position))
+    elseif model:IsA("BasePart") then
+      model.Position = position
+    end
+    if scale and scale ~= 1 then model:ScaleTo(scale) end
+    model.Parent = folder or m
+    a:Destroy()
+  end)
+  if not ok then warn("[ForjeAI] Asset load failed id="..tostring(assetId).." "..tostring(result)) end
+end
+
+-- BUILD HERE using P() for structures, placeAsset() for props/nature/furniture
 
 m.PrimaryPart = --[[ set to the largest/base part ]]
 m.Parent = workspace
@@ -993,23 +1013,30 @@ USE THIS DATA:
 OUTPUT ONLY a \`\`\`lua code block. Use the REQUIRED PATTERN (P() helper, vc(), sp placement).
 
 THINK STEP BY STEP — decompose "${message}" into physical components:
-1. What is the BASE/FOUNDATION? (floor slab, ground plate, platform)
-2. What are the WALLS/STRUCTURE? (exterior walls, interior dividers, columns)
-3. What are the OPENINGS? (door frames, window frames, glass panes with transparency)
-4. What is the ROOF/TOP? (WedgeParts for slopes, flat roof slab, overhangs)
-5. What are the DETAILS? (trim strips along edges, baseboards, sills, railings, steps, handles)
-6. What are the DECORATIONS? (furniture, signs, plants, hanging objects)
-7. What is the LIGHTING? (PointLights inside ceiling parts, wall sconces, accent glow)
-8. What is the ATMOSPHERE? (ambient lights, color temperature, shadow-casting)
+1. What is the BASE/FOUNDATION? (floor slab, ground plate, platform) → build from Parts
+2. What are the WALLS/STRUCTURE? (exterior walls, interior dividers, columns) → build from Parts
+3. What are the OPENINGS? (door frames, window frames, glass panes with transparency) → build from Parts
+4. What is the ROOF/TOP? (WedgeParts for slopes, flat roof slab, overhangs) → build from Parts
+5. What are the DETAILS? (trim strips along edges, baseboards, sills, railings, steps, handles) → build from Parts
+6. What are the PROPS/NATURE? (trees, bushes, rocks, benches, lamps, barrels, fences, mailboxes) → placeAsset() MANDATORY
+7. What is the FURNITURE? (chairs, tables, beds, shelves, sofas) → placeAsset() MANDATORY
+8. What is the LIGHTING? (street lamps, lanterns → placeAsset(); interior PointLights → parent to a Part)
+9. What is the ATMOSPHERE? (ambient lights, color temperature, shadow-casting)
 
-EVERY component is a separate Part with unique Name, Size, Material, Color.
+HYBRID RULE — ALWAYS COMBINE BOTH APPROACHES:
+- Custom buildings, roads, terrain, unique structures → P() helper (Parts)
+- Trees, rocks, lamps, benches, fences, vehicles, furniture → placeAsset() MANDATORY
+- A house scene = P() for walls/roof/floors + placeAsset() for surrounding trees, path lamps, benches
+
+EVERY structural component is a separate Part with unique Name, Size, Material, Color.
 A "wall" is NOT one big box — it's a wall panel + window cutout frame + glass pane + sill + header trim.
 A "door" is NOT one box — it's a frame + door panel + handle + threshold + header.
-A "lamp" is NOT one cylinder — it's a base plate + pole cylinder + arm + shade + bulb sphere + PointLight.
+A "street lamp" is NOT built from cylinders — use placeAsset() with the lamp ID from the reference table.
+A "tree" is NOT built from spheres + cylinder — use placeAsset() with the tree ID from the reference table.
 
-USE VARIED SHAPES: Part (boxes), Part with wedge-like proportions, cylinders (set Shape=Enum.PartType.Cylinder), spheres (Shape=Enum.PartType.Ball).
+USE VARIED SHAPES for structures: Part (boxes), WedgePart (slopes), cylinders (Shape=Enum.PartType.Cylinder), spheres (Shape=Enum.PartType.Ball).
 USE VARIED SIZES: Mix thick structural parts (walls 0.5-1 stud) with thin detail parts (trim 0.2-0.3 stud).
-MINIMUM 25 parts. Aim for 35-50.`
+MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for props/nature.`
 
     // Race both models for code gen — first valid result wins
     console.log('[Pass2] Racing code gen for:', message.slice(0, 50))

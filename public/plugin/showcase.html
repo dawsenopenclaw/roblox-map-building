@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ForjeGames — Creator Store Thumbnails</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #D4AF37;
+      --gold-bright: #FFB81C;
+      --gold-dim: #9A7B20;
+      --bg: #050810;
+      --bg2: #0a0f1e;
+      --bg3: #0f1628;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1e2d4a;
+      --border-gold: rgba(212, 175, 55, 0.3);
+      --text: #f0f4ff;
+      --text-muted: #8896b3;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+    }
+
+    html, body {
+      background: #000;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Navigation ─────────────────────────────────── */
+    .nav {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(10, 15, 30, 0.92);
+      border: 1px solid var(--border-gold);
+      border-radius: 999px;
+      padding: 10px 20px;
+      z-index: 9999;
+      backdrop-filter: blur(12px);
+    }
+    .nav button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 999px;
+      transition: all 0.2s;
+    }
+    .nav button:hover { color: var(--gold); background: rgba(212,175,55,0.08); }
+    .nav button.active { background: var(--gold); color: #000; font-weight: 700; }
+    .nav .divider { width: 1px; height: 20px; background: var(--border); }
+    .nav .label { font-size: 11px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+    /* ── Slide container ────────────────────────────── */
+    .slides { position: relative; width: 1920px; height: 1080px; }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      display: none;
+      overflow: hidden;
+    }
+    .slide.active { display: flex; }
+
+    /* ── Shared layout pieces ───────────────────────── */
+    .slide-bg {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+    }
+
+    /* Gold noise texture overlay */
+    .slide-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 15% 50%, rgba(212,175,55,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 85% 50%, rgba(59,130,246,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .slide-content {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      padding: 80px 120px;
+      gap: 100px;
+      z-index: 1;
+    }
+
+    /* ── Logo badge ─────────────────────────────────── */
+    .logo-badge {
+      position: absolute;
+      top: 44px;
+      left: 72px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .logo-f {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #FFE066, #D4AF37);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 900;
+      color: #000;
+      box-shadow: 0 0 20px rgba(212,175,55,0.4);
+    }
+    .logo-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+    .logo-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 400;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* ── Tag pill ────────────────────────────────────── */
+    .tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(212,175,55,0.1);
+      border: 1px solid rgba(212,175,55,0.3);
+      border-radius: 999px;
+      padding: 7px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gold);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+    /* ── Left panel headings ─────────────────────────── */
+    .panel-left {
+      flex: 0 0 680px;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-right {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .headline {
+      font-size: 72px;
+      font-weight: 900;
+      line-height: 1.05;
+      color: var(--text);
+      margin-bottom: 28px;
+      letter-spacing: -1.5px;
+    }
+    .headline em {
+      font-style: normal;
+      color: var(--gold);
+    }
+    .subline {
+      font-size: 22px;
+      font-weight: 400;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 520px;
+      margin-bottom: 44px;
+    }
+
+    /* ── UI Mockup surfaces ──────────────────────────── */
+    .mockup-window {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(212,175,55,0.08),
+        0 40px 80px rgba(0,0,0,0.6),
+        0 0 60px rgba(212,175,55,0.06);
+    }
+    .window-bar {
+      background: var(--bg3);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .window-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .window-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-left: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Horizontal rule accent ──────────────────────── */
+    .gold-line {
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      border-radius: 2px;
+      margin-bottom: 32px;
+    }
+
+    /* ── ======================================================
+         SLIDE 1: Connect in seconds
+    ══════════════════════════════════════════════════════ ── */
+
+    /* Code input display */
+    .pair-widget {
+      width: 520px;
+    }
+    .pair-widget .window-bar { justify-content: space-between; }
+    .pair-body {
+      padding: 48px 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+    .pair-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+    }
+    .pair-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: -20px;
+    }
+    .code-boxes {
+      display: flex;
+      gap: 10px;
+    }
+    .code-box {
+      width: 68px;
+      height: 80px;
+      background: var(--bg2);
+      border: 2px solid var(--border-gold);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      box-shadow: 0 0 16px rgba(212,175,55,0.12);
+    }
+    .code-box.active {
+      border-color: var(--gold);
+      box-shadow: 0 0 24px rgba(212,175,55,0.3);
+      background: rgba(212,175,55,0.06);
+    }
+    .code-box.empty { color: var(--border); border-color: var(--border); }
+    .pair-hint {
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pair-hint-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .pair-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #D4AF37, #B8960C);
+      border: none;
+      border-radius: 12px;
+      padding: 18px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #000;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+    }
+
+    /* Steps list */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-top: 12px;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .step-num {
+      flex: 0 0 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(212,175,55,0.12);
+      border: 1.5px solid rgba(212,175,55,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .step-text { padding-top: 4px; }
+    .step-text strong { display: block; font-size: 17px; color: var(--text); margin-bottom: 4px; }
+    .step-text span { font-size: 14px; color: var(--text-muted); }
+
+    /* ── ======================================================
+         SLIDE 2: Describe it. Forje it.
+    ══════════════════════════════════════════════════════ ── */
+
+    .chat-window {
+      width: 600px;
+    }
+    .chat-body {
+      padding: 28px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 560px;
+    }
+    .chat-msg {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .chat-avatar.ai {
+      background: linear-gradient(135deg, #D4AF37, #B8960C);
+      color: #000;
+    }
+    .chat-avatar.user {
+      background: var(--surface2);
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .chat-bubble {
+      padding: 14px 18px;
+      border-radius: 16px;
+      font-size: 15px;
+      line-height: 1.6;
+      max-width: 440px;
+    }
+    .chat-bubble.ai {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-top-left-radius: 4px;
+      color: var(--text);
+    }
+    .chat-bubble.user {
+      background: rgba(212,175,55,0.12);
+      border: 1px solid rgba(212,175,55,0.25);
+      border-top-right-radius: 4px;
+      color: var(--text);
+    }
+    .chat-bubble code {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--gold);
+    }
+    .chat-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .chat-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .chat-step .check { color: var(--green); font-size: 13px; }
+    .chat-step .spin {
+      width: 14px; height: 14px;
+      border: 2px solid var(--gold);
+      border-top-color: transparent;
+      border-radius: 50%;
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .chat-input-area {
+      border-top: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .chat-input {
+      flex: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+      font-family: inherit;
+    }
+    .chat-send {
+      width: 42px; height: 42px;
+      background: var(--gold);
+      border: none;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    /* ── ======================================================
+         SLIDE 3: Live in Studio
+    ══════════════════════════════════════════════════════ ── */
+
+    .success-card {
+      width: 540px;
+      background: var(--surface);
+      border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 24px;
+      padding: 52px 52px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      box-shadow:
+        0 0 0 1px rgba(34,197,94,0.08),
+        0 0 60px rgba(34,197,94,0.08),
+        0 40px 80px rgba(0,0,0,0.5);
+    }
+    .success-icon {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: rgba(34,197,94,0.12);
+      border: 2px solid rgba(34,197,94,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 44px;
+      box-shadow: 0 0 32px rgba(34,197,94,0.2);
+    }
+    .success-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      text-align: center;
+    }
+    .success-sub {
+      font-size: 16px;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+    .success-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: var(--bg2);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .meta-label { font-size: 13px; color: var(--text-muted); }
+    .meta-value { font-size: 14px; font-weight: 600; color: var(--text); }
+    .meta-value.green { color: var(--green); }
+    .meta-value.gold { color: var(--gold); }
+
+    /* Studio fake preview panel */
+    .studio-preview {
+      width: 560px;
+    }
+    .studio-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+    }
+    .studio-panel {
+      background: var(--bg3);
+      border-right: 1px solid var(--border);
+      padding: 14px 16px;
+      font-size: 12px;
+    }
+    .studio-panel:last-child { border-right: none; }
+    .studio-panel-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .studio-tree-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: default;
+    }
+    .studio-tree-item.highlight {
+      background: rgba(212,175,55,0.1);
+      color: var(--gold);
+      border: 1px solid rgba(212,175,55,0.2);
+    }
+    .studio-icon { font-size: 11px; }
+    .studio-viewport {
+      background: #0a0f1e;
+      aspect-ratio: 16/9;
+      border-radius: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      grid-column: span 2;
+      position: relative;
+      overflow: hidden;
+    }
+    .studio-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(30,45,74,0.4) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30,45,74,0.4) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .studio-castle {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+    }
+    .studio-castle-shape {
+      width: 120px;
+      height: 90px;
+      background: linear-gradient(180deg, #4a5568 0%, #2d3748 100%);
+      border-radius: 8px 8px 0 0;
+      margin: 0 auto;
+      position: relative;
+    }
+    .castle-tower {
+      position: absolute;
+      width: 28px;
+      height: 40px;
+      background: linear-gradient(180deg, #5a6472 0%, #3a4555 100%);
+      border-radius: 4px 4px 0 0;
+      bottom: 0;
+    }
+    .castle-tower.left { left: -14px; }
+    .castle-tower.right { right: -14px; }
+    .castle-tag {
+      position: absolute;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(34,197,94,0.9);
+      color: #000;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    /* ── ======================================================
+         SLIDE 4: 9 AI Agents
+    ══════════════════════════════════════════════════════ ── */
+
+    .agents-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 660px;
+    }
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.2s;
+    }
+    .agent-card.featured {
+      border-color: rgba(212,175,55,0.4);
+      background: rgba(212,175,55,0.04);
+      box-shadow: 0 0 24px rgba(212,175,55,0.08);
+    }
+    .agent-icon {
+      font-size: 28px;
+      line-height: 1;
+    }
+    .agent-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .agent-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .agent-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: rgba(212,175,55,0.1);
+      color: var(--gold);
+      border: 1px solid rgba(212,175,55,0.2);
+      width: fit-content;
+    }
+
+    /* ── ======================================================
+         SLIDE 5: Free to start — Pricing
+    ══════════════════════════════════════════════════════ ── */
+
+    .pricing-grid {
+      display: flex;
+      gap: 20px;
+      align-items: stretch;
+    }
+    .pricing-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 30px;
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .pricing-card.popular {
+      border-color: rgba(212,175,55,0.5);
+      background: rgba(212,175,55,0.04);
+      box-shadow:
+        0 0 0 1px rgba(212,175,55,0.1),
+        0 0 40px rgba(212,175,55,0.08),
+        0 20px 40px rgba(0,0,0,0.4);
+      position: relative;
+      transform: scale(1.04);
+    }
+    .popular-badge {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #D4AF37, #B8960C);
+      color: #000;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 16px;
+      border-radius: 999px;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+    }
+    .pricing-tier {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+    .pricing-card.popular .pricing-tier { color: var(--gold); }
+    .pricing-price {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .price-num {
+      font-size: 44px;
+      font-weight: 900;
+      color: var(--text);
+      line-height: 1;
+    }
+    .price-num.gold { color: var(--gold); }
+    .price-per {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    .price-dollar { font-size: 22px; font-weight: 700; color: var(--text-muted); padding-top: 4px; }
+    .pricing-divider {
+      height: 1px;
+      background: var(--border);
+    }
+    .pricing-features {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .pricing-feature {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .pricing-feature .check { color: var(--green); font-size: 12px; font-weight: 700; }
+    .pricing-feature .dash { color: var(--border); }
+    .pricing-cta {
+      margin-top: auto;
+      width: 100%;
+      padding: 13px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .cta-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .cta-gold {
+      background: linear-gradient(135deg, #D4AF37, #B8960C);
+      color: #000;
+      box-shadow: 0 4px 16px rgba(212,175,55,0.3);
+    }
+    .cta-ghost {
+      background: rgba(212,175,55,0.08);
+      border: 1px solid rgba(212,175,55,0.2);
+      color: var(--gold);
+    }
+
+    /* ── Bottom right watermark ────────────────────────── */
+    .watermark {
+      position: absolute;
+      bottom: 40px;
+      right: 72px;
+      font-size: 13px;
+      color: var(--text-muted);
+      opacity: 0.5;
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="slides">
+
+  <!-- ════════════════════════════════════════════
+       SLIDE 1 — Connect in seconds
+  ════════════════════════════════════════════ -->
+  <div class="slide active" id="slide-1">
+    <div class="slide-bg"></div>
+
+    <div class="logo-badge">
+      <div class="logo-f">F</div>
+      <div>
+        <div class="logo-name">ForjeGames</div>
+        <div class="logo-sub">Roblox Studio Plugin</div>
+      </div>
+    </div>
+
+    <div class="slide-content">
+      <div class="panel-left">
+        <div class="tag-pill"><span class="tag-dot"></span>Setup</div>
+        <div class="gold-line"></div>
+        <div class="headline">Connect in<br/><em>seconds.</em></div>
+        <div class="subline">No login required in Studio. Enter the 6-character code shown in the plugin and you're paired instantly.</div>
+
+        <div class="steps-list">
+          <div class="step-item">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <strong>Open the ForjeGames plugin</strong>
+              <span>Available in the Roblox Creator Store, free to install</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <strong>A 6-character code appears</strong>
+              <span>Refreshes every 5 minutes for security</span>
+            </div>
+          </div>
+          <div class="step-item">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <strong>Enter it on ForjeGames.com</strong>
+              <span>Instant pairing — your Studio becomes AI-powered</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-right">
+        <div class="mockup-window pair-widget">
+          <div class="window-bar">
+            <div class="window-dot" style="background:#ff5f57"></div>
+            <div class="window-dot" style="background:#febc2e"></div>
+            <div class="window-dot" style="background:#28c840"></div>
+            <div class="window-title">ForjeGames — Pair Studio</div>
+          </div>
+          <div class="pair-body">
+            <div class="pair-title">Enter your pairing code</div>
+            <div class="pair-subtitle">From ForjeGames.com &rsaquo; Studio &rsaquo; Pair</div>
+
+            <div class="code-boxes">
+              <div class="code-box active">F</div>
+              <div class="code-box active">9</div>
+              <div class="code-box active">K</div>
+              <div class="code-box">2</div>
+              <div class="code-box empty">&#183;</div>
+              <div class="code-box empty">&#183;</div>
+            </div>
+
+            <div class="pair-hint">
+              <span class="pair-hint-dot"></span>
+              Waiting for full code&hellip;
+            </div>
+
+            <button class="pair-btn">Pair with Studio</button>
+
+            <div style="font-size:12px;color:var(--text-muted);text-align:center;">
+              Code found on <span style="color:var(--gold);font-weight:600;">forgegames.com/studio</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="watermark">forgegames.com</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SLIDE 2 — Describe it. Forje it.
+  ════════════════════════════════════════════ -->
+  <div class="slide" id="slide-2">
+    <div class="slide-bg" style="background: radial-gradient(ellipse 70% 60% at 80% 40%, rgba(212,175,55,0.05) 0%, transparent 70%), var(--bg);"></div>
+
+    <div class="logo-badge">
+      <div class="logo-f">F</div>
+      <div>
+        <div class="logo-name">ForjeGames</div>
+        <div class="logo-sub">AI Builder</div>
+      </div>
+    </div>
+
+    <div class="slide-content">
+      <div class="panel-left">
+        <div class="tag-pill"><span class="tag-dot"></span>AI Prompt</div>
+        <div class="gold-line"></div>
+        <div class="headline">Describe it.<br/><em>Forje it.</em></div>
+        <div class="subline">Type what you want to build. ForjeGames routes your prompt to the right AI agents and delivers it live into Roblox Studio.</div>
+
+        <div style="display:flex;flex-direction:column;gap:16px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:14px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+            <div style="font-size:24px;">🏔️</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);">Terrain Agent</div>
+              <div style="font-size:12px;color:var(--text-muted);">Mountains, lakes, caves, islands</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+            <div style="font-size:24px;">🏰</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text);">Structure Agent</div>
+              <div style="font-size:12px;color:var(--text-muted);">Buildings, castles, dungeons</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:18px 20px;background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.3);border-radius:14px;">
+            <div style="font-size:24px;">⚙️</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--gold);">Script Agent — Active</div>
+              <div style="font-size:12px;color:var(--text-muted);">Game logic, systems, events</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-right">
+        <div class="mockup-window chat-window">
+          <div class="window-bar">
+            <div class="window-dot" style="background:#ff5f57"></div>
+            <div class="window-dot" style="background:#febc2e"></div>
+            <div class="window-dot" style="background:#28c840"></div>
+            <div class="window-title">ForjeGames — AI Chat</div>
+          </div>
+          <div class="chat-body">
+
+            <div class="chat-msg user">
+              <div class="chat-avatar user">D</div>
+              <div class="chat-bubble user">
+                build me a medieval castle with working drawbridge and torches that light up at night
+              </div>
+            </div>
+
+            <div class="chat-msg">
+              <div class="chat-avatar ai">F</div>
+              <div class="chat-bubble ai">
+                Building your castle now. Routing to 3 agents:
+                <div class="chat-steps">
+                  <div class="chat-step"><span class="check">&#10003;</span> Structure Agent — castle keep + walls</div>
+                  <div class="chat-step"><span class="check">&#10003;</span> Script Agent — drawbridge mechanism</div>
+                  <div class="chat-step"><span class="spin"></span> Lighting Agent — torch day/night cycle&hellip;</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-msg">
+              <div class="chat-avatar ai">F</div>
+              <div class="chat-bubble ai">
+                Castle placed at <code>Workspace.Castle</code>. Drawbridge responds to <code>ProximityPrompt</code>. Torches auto-toggle at <code>Lighting.ClockTime</code> 18/6.
+                <br/><br/>
+                <span style="color:var(--green);font-weight:600;">&#10003; Sent to Roblox Studio</span>
+              </div>
+            </div>
+
+            <div class="chat-msg user">
+              <div class="chat-avatar user">D</div>
+              <div class="chat-bubble user">
+                add a dungeon underneath with treasure chests
+              </div>
+            </div>
+
+          </div>
+          <div class="chat-input-area">
+            <div class="chat-input">Continue building&hellip;</div>
+            <button class="chat-send" style="color:#000;">&#10148;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="watermark">forgegames.com</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SLIDE 3 — Live in Studio
+  ════════════════════════════════════════════ -->
+  <div class="slide" id="slide-3">
+    <div class="slide-bg" style="background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(34,197,94,0.04) 0%, transparent 70%), var(--bg);"></div>
+
+    <div class="logo-badge">
+      <div class="logo-f">F</div>
+      <div>
+        <div class="logo-name">ForjeGames</div>
+        <div class="logo-sub">Studio Bridge</div>
+      </div>
+    </div>
+
+    <div class="slide-content" style="justify-content:center;gap:80px;">
+      <div class="success-card">
+        <div class="success-icon">&#10003;</div>
+        <div class="success-title">Sent to Roblox Studio</div>
+        <div class="success-sub">Your AI-generated content has been<br/>placed directly into your workspace.</div>
+
+        <div class="success-meta">
+          <div class="meta-row">
+            <span class="meta-label">Objects created</span>
+            <span class="meta-value gold">47 parts</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Scripts added</span>
+            <span class="meta-value gold">3 scripts</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Location</span>
+            <span class="meta-value">Workspace.Castle</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Status</span>
+            <span class="meta-value green">&#9679; Live in Studio</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:24px;max-width:560px;">
+        <div class="tag-pill"><span class="tag-dot"></span>Studio Bridge</div>
+        <div class="gold-line"></div>
+        <div class="headline" style="font-size:62px;">Live in<br/><em>Studio.</em></div>
+        <div class="subline">No copy-pasting. No plugins to configure. ForjeGames writes directly into your open Roblox Studio session — objects, scripts, and all.</div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-weight:700;">&#10003;</span>
+            Works with any existing place file
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-weight:700;">&#10003;</span>
+            Full undo support — Ctrl+Z everything
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-weight:700;">&#10003;</span>
+            Real Roblox instances, not fake models
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text-muted);">
+            <span style="color:var(--green);font-weight:700;">&#10003;</span>
+            No internet connection needed in Studio
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="watermark">forgegames.com</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SLIDE 4 — 9 AI Agents
+  ════════════════════════════════════════════ -->
+  <div class="slide" id="slide-4">
+    <div class="slide-bg"></div>
+
+    <div class="logo-badge">
+      <div class="logo-f">F</div>
+      <div>
+        <div class="logo-name">ForjeGames</div>
+        <div class="logo-sub">AI Agent System</div>
+      </div>
+    </div>
+
+    <div class="slide-content" style="justify-content:center;gap:80px;">
+      <div style="display:flex;flex-direction:column;max-width:520px;">
+        <div class="tag-pill"><span class="tag-dot"></span>9 Specialists</div>
+        <div class="gold-line"></div>
+        <div class="headline" style="font-size:66px;"><em>9 AI agents.</em><br/>One prompt.</div>
+        <div class="subline">Each agent is a specialist. ForjeGames automatically routes your request to the right one — or coordinates multiple agents in parallel.</div>
+
+        <div style="margin-top:8px;padding:20px 24px;background:var(--surface);border:1px solid var(--border-gold);border-radius:16px;">
+          <div style="font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:12px;">Example prompt routing</div>
+          <div style="font-size:15px;color:var(--text);margin-bottom:12px;">"Build a racing game with leaderboard"</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);">
+              <span style="color:var(--gold);font-weight:700;">&#9658;</span> Terrain Agent &rarr; track layout
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);">
+              <span style="color:var(--gold);font-weight:700;">&#9658;</span> Script Agent &rarr; vehicle physics
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);">
+              <span style="color:var(--gold);font-weight:700;">&#9658;</span> UI Agent &rarr; leaderboard screen
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-muted);">
+              <span style="color:var(--gold);font-weight:700;">&#9658;</span> Economy Agent &rarr; coin rewards
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="agents-grid">
+        <div class="agent-card featured">
+          <div class="agent-icon">🏔️</div>
+          <div class="agent-name">Terrain</div>
+          <div class="agent-desc">Mountains, oceans, caves, biomes</div>
+          <div class="agent-tag">Build</div>
+        </div>
+        <div class="agent-card featured">
+          <div class="agent-icon">🏗️</div>
+          <div class="agent-name">Structure</div>
+          <div class="agent-desc">Buildings, props, maps</div>
+          <div class="agent-tag">Build</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">📜</div>
+          <div class="agent-name">Script</div>
+          <div class="agent-desc">Luau game logic &amp; systems</div>
+          <div class="agent-tag">Code</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">🖥️</div>
+          <div class="agent-name">UI</div>
+          <div class="agent-desc">Menus, HUDs, ScreenGui</div>
+          <div class="agent-tag">Design</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">💰</div>
+          <div class="agent-name">Economy</div>
+          <div class="agent-desc">Currencies, shops, balance</div>
+          <div class="agent-tag">Systems</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">🤖</div>
+          <div class="agent-name">NPC</div>
+          <div class="agent-desc">AI characters, pathfinding</div>
+          <div class="agent-tag">AI</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">💡</div>
+          <div class="agent-name">Lighting</div>
+          <div class="agent-desc">Atmosphere, effects, mood</div>
+          <div class="agent-tag">Visual</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">🎵</div>
+          <div class="agent-name">Audio</div>
+          <div class="agent-desc">Music, SFX, ambiance</div>
+          <div class="agent-tag">Audio</div>
+        </div>
+        <div class="agent-card">
+          <div class="agent-icon">🔧</div>
+          <div class="agent-name">Debug</div>
+          <div class="agent-desc">Fix errors, optimize, test</div>
+          <div class="agent-tag">QA</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="watermark">forgegames.com</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════
+       SLIDE 5 — Free to start — Pricing
+  ════════════════════════════════════════════ -->
+  <div class="slide" id="slide-5">
+    <div class="slide-bg" style="background: radial-gradient(ellipse 50% 60% at 50% 30%, rgba(212,175,55,0.06) 0%, transparent 60%), var(--bg);"></div>
+
+    <div class="logo-badge">
+      <div class="logo-f">F</div>
+      <div>
+        <div class="logo-name">ForjeGames</div>
+        <div class="logo-sub">Pricing</div>
+      </div>
+    </div>
+
+    <div class="slide-content" style="flex-direction:column;align-items:center;justify-content:center;gap:56px;padding-top:100px;">
+      <div style="text-align:center;">
+        <div class="tag-pill" style="margin:0 auto 24px;"><span class="tag-dot"></span>Free to start</div>
+        <div class="headline" style="font-size:68px;text-align:center;">Build for <em>free.</em><br/>Scale when you're ready.</div>
+        <div class="subline" style="text-align:center;margin:0 auto;">No credit card required to get started. Full AI access on the free tier. Upgrade when you need more.</div>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Free -->
+        <div class="pricing-card">
+          <div class="pricing-tier">Free</div>
+          <div class="pricing-price">
+            <span class="price-num">$0</span>
+            <span class="price-per">/mo</span>
+          </div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feature"><span class="check">&#10003;</span> 50 AI prompts/month</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> 3 AI agents</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Studio Bridge</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> 1 active project</div>
+            <div class="pricing-feature"><span class="dash">&#8212;</span> Priority processing</div>
+            <div class="pricing-feature"><span class="dash">&#8212;</span> Team members</div>
+          </div>
+          <button class="pricing-cta cta-outline">Get started free</button>
+        </div>
+
+        <!-- Pro (popular) -->
+        <div class="pricing-card popular">
+          <div class="popular-badge">Most Popular</div>
+          <div class="pricing-tier">Pro</div>
+          <div class="pricing-price">
+            <span class="price-dollar">$</span>
+            <span class="price-num gold">29</span>
+            <span class="price-per">/mo</span>
+          </div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feature"><span class="check">&#10003;</span> 500 AI prompts/month</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> All 9 AI agents</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Studio Bridge</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> 10 active projects</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Priority processing</div>
+            <div class="pricing-feature"><span class="dash">&#8212;</span> Team members</div>
+          </div>
+          <button class="pricing-cta cta-gold">Start Pro trial</button>
+        </div>
+
+        <!-- Studio -->
+        <div class="pricing-card">
+          <div class="pricing-tier">Studio</div>
+          <div class="pricing-price">
+            <span class="price-dollar">$</span>
+            <span class="price-num">79</span>
+            <span class="price-per">/mo</span>
+          </div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feature"><span class="check">&#10003;</span> Unlimited prompts</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> All 9 AI agents</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Studio Bridge</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Unlimited projects</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Priority processing</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> 5 team members</div>
+          </div>
+          <button class="pricing-cta cta-ghost">Get Studio</button>
+        </div>
+
+        <!-- Teams -->
+        <div class="pricing-card">
+          <div class="pricing-tier">Teams</div>
+          <div class="pricing-price">
+            <span class="price-num" style="font-size:32px;padding-top:6px;">Custom</span>
+          </div>
+          <div class="pricing-divider"></div>
+          <div class="pricing-features">
+            <div class="pricing-feature"><span class="check">&#10003;</span> Unlimited everything</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> All 9 AI agents</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Studio Bridge</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> SLA guarantee</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Dedicated support</div>
+            <div class="pricing-feature"><span class="check">&#10003;</span> Unlimited seats</div>
+          </div>
+          <button class="pricing-cta cta-outline">Contact sales</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="watermark">forgegames.com</div>
+  </div>
+
+</div><!-- /slides -->
+
+<!-- Navigation -->
+<div class="nav">
+  <span class="label">SLIDE</span>
+  <div class="divider"></div>
+  <button class="active" onclick="goTo(1)">1 — Connect</button>
+  <button onclick="goTo(2)">2 — Prompt</button>
+  <button onclick="goTo(3)">3 — Studio</button>
+  <button onclick="goTo(4)">4 — Agents</button>
+  <button onclick="goTo(5)">5 — Pricing</button>
+  <div class="divider"></div>
+  <button onclick="prev()">&#8592;</button>
+  <button onclick="next()">&#8594;</button>
+</div>
+
+<script>
+  let current = 1;
+  const total = 5;
+
+  function goTo(n) {
+    document.getElementById('slide-' + current).classList.remove('active');
+    document.querySelectorAll('.nav button').forEach((b, i) => {
+      if (i >= 2 && i <= 6) b.classList.toggle('active', i - 2 === n - 1);
+    });
+    current = n;
+    document.getElementById('slide-' + current).classList.add('active');
+  }
+
+  function next() { goTo(current < total ? current + 1 : 1); }
+  function prev() { goTo(current > 1 ? current - 1 : total); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next();
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') prev();
+    if (e.key >= '1' && e.key <= '5') goTo(parseInt(e.key));
+  });
+</script>
+
+</body>
+</html>
