@@ -150,7 +150,7 @@ export default function AboutPage() {
             style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
           >
             Your idea deserves to{' '}
-            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               exist in Roblox
             </span>
           </h1>

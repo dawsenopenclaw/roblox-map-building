@@ -269,7 +269,7 @@ function SignupPromptCard() {
               height: '100%',
               width: `${pct}%`,
               borderRadius: 99,
-              background: 'linear-gradient(90deg, #D4AF37 0%, #FFB81C 100%)',
+              background: 'linear-gradient(90deg, #D4AF37 0%, #C8962A 100%)',
               transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
             }} />
           </div>
@@ -304,7 +304,7 @@ function SignupPromptCard() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '9px 16px',
               borderRadius: 9,
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+              background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
               color: '#050810',
               fontWeight: 700,
               fontSize: 13,

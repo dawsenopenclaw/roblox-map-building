@@ -516,7 +516,7 @@ export function DevBoardClient() {
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%"   stopColor="#D4AF37" stopOpacity={0.45} />
-                    <stop offset="60%"  stopColor="#FFB81C" stopOpacity={0.12} />
+                    <stop offset="60%"  stopColor="#D4AF37" stopOpacity={0.12} />
                     <stop offset="100%" stopColor="#D4AF37" stopOpacity={0} />
                   </linearGradient>
                 </defs>

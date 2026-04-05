@@ -5600,6 +5600,2458 @@ print("[RoundsClient] HUD ready")
 `,
 }
 
+// ─── 19. Admin System ────────────────────────────────────────────────────────
+
+const ADMIN_SERVER: GameSystemFile = {
+  filename: 'AdminServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- AdminServer (ServerScript → ServerScriptService)
+-- Chat command parser with ban DataStore, admin panel RemoteEvents.
+-- Commands: /kick /ban /unban /tp /give /speed /fly /god /announce
+
+local Players           = game:GetService("Players")
+local DataStoreService  = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Chat              = game:GetService("Chat")
+
+local BanDS = DataStoreService:GetDataStore("AdminBansV1")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+-- Replace these with real admin UserIds
+local ADMIN_IDS: {number} = { 12345678, 87654321 }
+
+local function isAdmin(player: Player): boolean
+	for _, id in ADMIN_IDS do
+		if player.UserId == id then return true end
+	end
+	return false
+end
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "AdminRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local OpenPanel      = Instance.new("RemoteEvent");    OpenPanel.Name      = "OpenPanel";      OpenPanel.Parent      = Remotes
+local AdminAction    = Instance.new("RemoteFunction"); AdminAction.Name    = "AdminAction";    AdminAction.Parent    = Remotes
+local AnnounceAll    = Instance.new("RemoteEvent");    AnnounceAll.Name    = "AnnounceAll";    AnnounceAll.Parent    = Remotes
+local PlayerListSync = Instance.new("RemoteEvent");    PlayerListSync.Name = "PlayerListSync"; PlayerListSync.Parent = Remotes
+
+-- ── Ban helpers ───────────────────────────────────────────────────────────────
+local function banPlayer(targetId: number, reason: string)
+	local key = "ban_" .. tostring(targetId)
+	local ok, err = pcall(BanDS.SetAsync, BanDS, key, { banned = true, reason = reason, timestamp = os.time() })
+	if not ok then warn("[Admin] Ban save failed:", err) end
+end
+
+local function unbanPlayer(targetId: number)
+	local key = "ban_" .. tostring(targetId)
+	local ok, err = pcall(BanDS.RemoveAsync, BanDS, key)
+	if not ok then warn("[Admin] Unban failed:", err) end
+end
+
+local function isBanned(playerId: number): (boolean, string)
+	local key = "ban_" .. tostring(playerId)
+	local ok, data = pcall(BanDS.GetAsync, BanDS, key)
+	if ok and type(data) == "table" and data.banned == true then
+		return true, tostring(data.reason or "Banned")
+	end
+	return false, ""
+end
+
+-- ── Check ban on join ─────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	local banned, reason = isBanned(player.UserId)
+	if banned then
+		player:Kick("You are banned. Reason: " .. reason)
+		return
+	end
+	-- Sync player list to all admins
+	task.delay(1, function()
+		if not player.Parent then return end
+		local list: {{name: string, userId: number}} = {}
+		for _, p in Players:GetPlayers() do
+			table.insert(list, { name = p.Name, userId = p.UserId })
+		end
+		for _, p in Players:GetPlayers() do
+			if isAdmin(p) then
+				PlayerListSync:FireClient(p, list)
+			end
+		end
+		if isAdmin(player) then
+			OpenPanel:FireClient(player)
+		end
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(_player: Player)
+	task.delay(0.5, function()
+		local list: {{name: string, userId: number}} = {}
+		for _, p in Players:GetPlayers() do
+			table.insert(list, { name = p.Name, userId = p.UserId })
+		end
+		for _, p in Players:GetPlayers() do
+			if isAdmin(p) then
+				PlayerListSync:FireClient(p, list)
+			end
+		end
+	end)
+end)
+
+-- ── Chat command parser ───────────────────────────────────────────────────────
+local function parseCommand(admin: Player, message: string)
+	if not isAdmin(admin) then return end
+	local parts: {string} = {}
+	for word in message:gmatch("%S+") do
+		table.insert(parts, word)
+	end
+	if #parts == 0 then return end
+
+	local cmd = parts[1]:lower()
+
+	if cmd == "/kick" then
+		local targetName = parts[2]
+		local reason     = table.concat(parts, " ", 3) or "Kicked by admin"
+		if not targetName then return end
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				p:Kick("Kicked by admin. Reason: " .. reason)
+				break
+			end
+		end
+
+	elseif cmd == "/ban" then
+		local targetName = parts[2]
+		local reason     = table.concat(parts, " ", 3) or "Banned by admin"
+		if not targetName then return end
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				banPlayer(p.UserId, reason)
+				p:Kick("You have been banned. Reason: " .. reason)
+				break
+			end
+		end
+
+	elseif cmd == "/unban" then
+		local targetId = tonumber(parts[2])
+		if targetId then
+			unbanPlayer(targetId)
+			Chat:Chat(admin.Character or admin, "Unbanned UserId " .. tostring(targetId), Enum.ChatColor.Green)
+		end
+
+	elseif cmd == "/tp" then
+		-- /tp targetName OR /tp player1 player2
+		local targetName = parts[2]
+		local destName   = parts[3]
+		if not targetName then return end
+		local target: Player? = nil
+		local dest: Player?   = nil
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then target = p end
+			if destName and p.Name:lower():sub(1, #destName) == destName:lower() then dest = p end
+		end
+		if not target then return end
+		local destChar = (dest or admin).Character
+		local destRoot = destChar and destChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not destRoot then return end
+		local char = target.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root then root.CFrame = destRoot.CFrame + Vector3.new(0, 5, 0) end
+
+	elseif cmd == "/give" then
+		-- /give playerName itemId [quantity]
+		-- This fires an event to the inventory system; extend as needed.
+		local targetName = parts[2]
+		local itemId     = parts[3]
+		local qty        = tonumber(parts[4]) or 1
+		if not (targetName and itemId) then return end
+		-- Publish to AdminAction so other systems can hook in
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				-- Signal AdminAction handler below; inventory system should listen
+				print("[Admin] GIVE", p.Name, itemId, qty)
+				break
+			end
+		end
+
+	elseif cmd == "/speed" then
+		local targetName = parts[2]
+		local speed      = tonumber(parts[3]) or 16
+		speed = math.clamp(speed, 0, 500)
+		if not targetName then return end
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				local char = p.Character
+				local hum  = char and char:FindFirstChildOfClass("Humanoid")
+				if hum then (hum :: Humanoid).WalkSpeed = speed end
+				break
+			end
+		end
+
+	elseif cmd == "/fly" then
+		-- Toggle flight via BodyVelocity; actual implementation lives in client
+		local targetName = parts[2]
+		if not targetName then return end
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				AdminAction:InvokeClient(p, "toggle_fly")
+				break
+			end
+		end
+
+	elseif cmd == "/god" then
+		local targetName = parts[2]
+		if not targetName then return end
+		for _, p in Players:GetPlayers() do
+			if p.Name:lower():sub(1, #targetName) == targetName:lower() then
+				local char = p.Character
+				local hum  = char and char:FindFirstChildOfClass("Humanoid")
+				if hum then (hum :: Humanoid).MaxHealth = math.huge ; (hum :: Humanoid).Health = math.huge end
+				break
+			end
+		end
+
+	elseif cmd == "/announce" then
+		local msg = table.concat(parts, " ", 2)
+		if #msg > 0 then
+			AnnounceAll:FireAllClients(msg, admin.Name)
+		end
+
+	end
+end
+
+Players.PlayerAdded:Connect(function(player: Player)
+	player.Chatted:Connect(function(message: string)
+		if message:sub(1, 1) == "/" then
+			parseCommand(player, message)
+		end
+	end)
+end)
+
+-- ── Panel action handler (admin GUI buttons) ─────────────────────────────────
+AdminAction.OnServerInvoke = function(admin: Player, action: unknown, targetUserId: unknown, extra: unknown): (boolean, string)
+	if not isAdmin(admin) then return false, "Not an admin." end
+	if type(action) ~= "string" then return false, "Invalid action." end
+
+	if action == "kick" then
+		local uid = tonumber(targetUserId)
+		if not uid then return false, "Bad userId." end
+		local target = Players:GetPlayerByUserId(uid)
+		if target then
+			target:Kick("Kicked via admin panel by " .. admin.Name)
+			return true, "Kicked " .. target.Name
+		end
+		return false, "Player not found."
+
+	elseif action == "ban" then
+		local uid    = tonumber(targetUserId)
+		local reason = type(extra) == "string" and extra or "Admin ban"
+		if not uid then return false, "Bad userId." end
+		banPlayer(uid, reason)
+		local target = Players:GetPlayerByUserId(uid)
+		if target then target:Kick("Banned: " .. reason) end
+		return true, "Banned UserId " .. tostring(uid)
+
+	elseif action == "unban" then
+		local uid = tonumber(targetUserId)
+		if not uid then return false, "Bad userId." end
+		unbanPlayer(uid)
+		return true, "Unbanned UserId " .. tostring(uid)
+
+	end
+
+	return false, "Unknown action."
+end
+
+print("[AdminServer] Ready — " .. #ADMIN_IDS .. " admins configured")
+`,
+}
+
+const ADMIN_CLIENT: GameSystemFile = {
+  filename: 'AdminClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- AdminClient (LocalScript → StarterPlayerScripts)
+-- Admin panel ScreenGui: player list + action buttons. Only renders for admins.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes        = ReplicatedStorage:WaitForChild("AdminRemotes")
+local OpenPanel      = Remotes:WaitForChild("OpenPanel")      :: RemoteEvent
+local AdminAction    = Remotes:WaitForChild("AdminAction")    :: RemoteFunction
+local AnnounceAll    = Remotes:WaitForChild("AnnounceAll")    :: RemoteEvent
+local PlayerListSync = Remotes:WaitForChild("PlayerListSync") :: RemoteEvent
+
+-- ── Announcement overlay ──────────────────────────────────────────────────────
+local announceGui = Instance.new("ScreenGui")
+announceGui.Name = "AdminAnnounceGui"
+announceGui.ResetOnSpawn = false
+announceGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+announceGui.Parent = playerGui
+
+local announceBanner = Instance.new("Frame")
+announceBanner.Size = UDim2.new(0.7, 0, 0, 80)
+announceBanner.Position = UDim2.new(0.15, 0, 0, -90)
+announceBanner.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+announceBanner.Parent = announceGui
+Instance.new("UICorner").Parent = announceBanner
+local annStroke = Instance.new("UIStroke"); annStroke.Color = Color3.fromRGB(212, 175, 55); annStroke.Thickness = 2; annStroke.Parent = announceBanner
+
+local annTitle = Instance.new("TextLabel")
+annTitle.Size = UDim2.new(1, -16, 0, 22)
+annTitle.Position = UDim2.new(0, 8, 0, 6)
+annTitle.BackgroundTransparency = 1
+annTitle.Text = "ANNOUNCEMENT"
+annTitle.TextSize = 12
+annTitle.Font = Enum.Font.GothamBold
+annTitle.TextColor3 = Color3.fromRGB(212, 175, 55)
+annTitle.Parent = announceBanner
+
+local annMsg = Instance.new("TextLabel")
+annMsg.Size = UDim2.new(1, -16, 0, 40)
+annMsg.Position = UDim2.new(0, 8, 0, 28)
+annMsg.BackgroundTransparency = 1
+annMsg.Text = ""
+annMsg.TextSize = 18
+annMsg.Font = Enum.Font.GothamBold
+annMsg.TextColor3 = Color3.fromRGB(240, 240, 240)
+annMsg.TextWrapped = true
+annMsg.Parent = announceBanner
+
+AnnounceAll.OnClientEvent:Connect(function(message: string, adminName: string)
+	annTitle.Text = "ANNOUNCEMENT  —  " .. adminName:upper()
+	annMsg.Text = message
+	TweenService:Create(announceBanner,
+		TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(0.15, 0, 0, 16) }
+	):Play()
+	task.delay(6, function()
+		TweenService:Create(announceBanner,
+			TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = UDim2.new(0.15, 0, 0, -90) }
+		):Play()
+	end)
+end)
+
+-- ── Admin panel (only shown to admins via OpenPanel event) ────────────────────
+local panelGui = Instance.new("ScreenGui")
+panelGui.Name = "AdminPanelGui"
+panelGui.ResetOnSpawn = false
+panelGui.Enabled = false
+panelGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+panelGui.Parent = playerGui
+
+-- Backdrop
+local dimmer = Instance.new("Frame")
+dimmer.Size = UDim2.new(1, 0, 1, 0)
+dimmer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+dimmer.BackgroundTransparency = 0.6
+dimmer.Parent = panelGui
+
+-- Main panel
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 560, 0, 480)
+panel.Position = UDim2.new(0.5, -280, 0.5, -240)
+panel.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+panel.Parent = panelGui
+Instance.new("UICorner").Parent = panel
+local panelStroke = Instance.new("UIStroke"); panelStroke.Color = Color3.fromRGB(212, 175, 55); panelStroke.Thickness = 2; panelStroke.Parent = panel
+
+-- Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 52)
+header.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+header.Parent = panel
+Instance.new("UICorner").Parent = header
+
+local headerLbl = Instance.new("TextLabel")
+headerLbl.Size = UDim2.new(1, -60, 1, 0)
+headerLbl.Position = UDim2.new(0, 16, 0, 0)
+headerLbl.BackgroundTransparency = 1
+headerLbl.Text = "ADMIN PANEL"
+headerLbl.TextSize = 20
+headerLbl.Font = Enum.Font.GothamBold
+headerLbl.TextColor3 = Color3.fromRGB(12, 12, 22)
+headerLbl.TextXAlignment = Enum.TextXAlignment.Left
+headerLbl.Parent = header
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 36, 0, 36)
+closeBtn.Position = UDim2.new(1, -46, 0, 8)
+closeBtn.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+closeBtn.Text = "✕"
+closeBtn.TextSize = 16
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.fromRGB(212, 175, 55)
+closeBtn.Parent = header
+Instance.new("UICorner").Parent = closeBtn
+
+-- Status label
+local statusLbl = Instance.new("TextLabel")
+statusLbl.Size = UDim2.new(1, -32, 0, 24)
+statusLbl.Position = UDim2.new(0, 16, 0, 58)
+statusLbl.BackgroundTransparency = 1
+statusLbl.Text = ""
+statusLbl.TextSize = 13
+statusLbl.Font = Enum.Font.Gotham
+statusLbl.TextColor3 = Color3.fromRGB(100, 220, 100)
+statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+statusLbl.Parent = panel
+
+-- Player list scroll
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -32, 1, -150)
+scroll.Position = UDim2.new(0, 16, 0, 90)
+scroll.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 6
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.Parent = panel
+Instance.new("UICorner").Parent = scroll
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 6)
+listLayout.Parent = scroll
+
+local listPad = Instance.new("UIPadding")
+listPad.PaddingAll = UDim.new(0, 8)
+listPad.Parent = scroll
+
+-- Announce row at bottom
+local announceRow = Instance.new("Frame")
+announceRow.Size = UDim2.new(1, -32, 0, 44)
+announceRow.Position = UDim2.new(0, 16, 1, -56)
+announceRow.BackgroundTransparency = 1
+announceRow.Parent = panel
+
+local annInput = Instance.new("TextBox")
+annInput.Size = UDim2.new(1, -120, 1, 0)
+annInput.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+annInput.Text = ""
+annInput.PlaceholderText = "Announcement message..."
+annInput.TextSize = 13
+annInput.Font = Enum.Font.Gotham
+annInput.TextColor3 = Color3.fromRGB(220, 220, 220)
+annInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 120)
+annInput.ClearTextOnFocus = false
+annInput.Parent = announceRow
+Instance.new("UICorner").Parent = annInput
+
+local annBtn = Instance.new("TextButton")
+annBtn.Size = UDim2.new(0, 110, 1, 0)
+annBtn.Position = UDim2.new(1, -110, 0, 0)
+annBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+annBtn.Text = "ANNOUNCE"
+annBtn.TextSize = 12
+annBtn.Font = Enum.Font.GothamBold
+annBtn.TextColor3 = Color3.fromRGB(12, 12, 22)
+annBtn.Parent = announceRow
+Instance.new("UICorner").Parent = annBtn
+
+-- ── Populate player rows ───────────────────────────────────────────────────────
+local selectedUserId: number? = nil
+
+local function clearList()
+	for _, child in scroll:GetChildren() do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+end
+
+local function buildPlayerList(list: {{name: string, userId: number}})
+	clearList()
+	for _, info in list do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 44)
+		row.BackgroundColor3 = Color3.fromRGB(24, 24, 38)
+		row.Parent = scroll
+		Instance.new("UICorner").Parent = row
+
+		local nameLbl = Instance.new("TextLabel")
+		nameLbl.Size = UDim2.new(0.45, 0, 1, 0)
+		nameLbl.Position = UDim2.new(0, 10, 0, 0)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text = info.name
+		nameLbl.TextSize = 14
+		nameLbl.Font = Enum.Font.GothamBold
+		nameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+		nameLbl.Parent = row
+
+		local function makeActionBtn(label: string, posX: number, color: Color3, action: string)
+			local btn = Instance.new("TextButton")
+			btn.Size = UDim2.new(0, 80, 0, 30)
+			btn.Position = UDim2.new(0, posX, 0.5, -15)
+			btn.BackgroundColor3 = color
+			btn.Text = label
+			btn.TextSize = 12
+			btn.Font = Enum.Font.GothamBold
+			btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+			btn.Parent = row
+			Instance.new("UICorner").Parent = btn
+			local capturedId   = info.userId
+			local capturedName = info.name
+			btn.MouseButton1Click:Connect(function()
+				statusLbl.Text = "Running " .. label .. " on " .. capturedName .. "..."
+				statusLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+				local ok, msg = AdminAction:InvokeServer(action, capturedId, "Admin panel action")
+				statusLbl.Text = (ok and "✓ " or "✗ ") .. tostring(msg)
+				statusLbl.TextColor3 = ok
+					and Color3.fromRGB(100, 220, 100)
+					or  Color3.fromRGB(220, 80, 80)
+			end)
+		end
+
+		makeActionBtn("Kick",  210, Color3.fromRGB(200, 80, 60),  "kick")
+		makeActionBtn("Ban",   300, Color3.fromRGB(180, 40, 40),  "ban")
+
+		scroll.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 16)
+	end
+end
+
+PlayerListSync.OnClientEvent:Connect(function(list: {{name: string, userId: number}})
+	buildPlayerList(list)
+end)
+
+-- ── Announce button ───────────────────────────────────────────────────────────
+annBtn.MouseButton1Click:Connect(function()
+	local msg = annInput.Text
+	if #msg == 0 then return end
+	AdminAction:InvokeServer("announce_client", 0, msg)
+	annInput.Text = ""
+end)
+
+-- ── Open / close ──────────────────────────────────────────────────────────────
+OpenPanel.OnClientEvent:Connect(function()
+	panelGui.Enabled = true
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	panelGui.Enabled = false
+end)
+
+dimmer.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		panelGui.Enabled = false
+	end
+end)
+
+-- Hotkey: F9
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.F9 then
+		panelGui.Enabled = not panelGui.Enabled
+	end
+end)
+
+print("[AdminClient] Ready — F9 to toggle panel")
+`,
+}
+
+// ─── 20. Crafting System ─────────────────────────────────────────────────────
+
+const CRAFTING_SERVER: GameSystemFile = {
+  filename: 'CraftingServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- CraftingServer (ServerScript → ServerScriptService)
+-- 3×3 grid recipe matching, material consumption, output item with rarity.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ── Types ─────────────────────────────────────────────────────────────────────
+type Rarity  = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary"
+type Recipe  = {
+	name:    string,
+	pattern: {string?},  -- 9 slots, nil = empty, string = required itemId
+	output:  string,
+	qty:     number,
+	rarity:  Rarity,
+}
+
+-- ── Recipe DB ─────────────────────────────────────────────────────────────────
+-- Patterns are flat 9-element arrays (row-major, top-left → bottom-right).
+-- nil means the slot must be empty; a string means the slot must have that item.
+local RECIPES: {Recipe} = {
+	{
+		name    = "Iron Sword",
+		pattern = { nil, "iron_ingot", nil,
+		            nil, "iron_ingot", nil,
+		            nil, "stick",      nil },
+		output  = "sword_iron",
+		qty     = 1,
+		rarity  = "Common",
+	},
+	{
+		name    = "Gold Sword",
+		pattern = { nil, "gold_ingot", nil,
+		            nil, "gold_ingot", nil,
+		            nil, "stick",      nil },
+		output  = "sword_gold",
+		qty     = 1,
+		rarity  = "Uncommon",
+	},
+	{
+		name    = "Health Potion",
+		pattern = { nil,         "red_herb", nil,
+		            "red_herb",  "vial",     "red_herb",
+		            nil,         nil,        nil },
+		output  = "potion_health",
+		qty     = 2,
+		rarity  = "Common",
+	},
+	{
+		name    = "Magic Staff",
+		pattern = { nil,       "magic_gem", nil,
+		            nil,       "stick",     nil,
+		            nil,       "stick",     nil },
+		output  = "staff_magic",
+		qty     = 1,
+		rarity  = "Rare",
+	},
+	{
+		name    = "Legendary Blade",
+		pattern = { "magic_gem",  "diamond",   "magic_gem",
+		            nil,          "gold_ingot", nil,
+		            nil,          "stick",      nil },
+		output  = "blade_legendary",
+		qty     = 1,
+		rarity  = "Legendary",
+	},
+}
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "CraftingRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local GetRecipes    = Instance.new("RemoteFunction"); GetRecipes.Name    = "GetRecipes";    GetRecipes.Parent    = Remotes
+local AttemptCraft  = Instance.new("RemoteFunction"); AttemptCraft.Name  = "AttemptCraft";  AttemptCraft.Parent  = Remotes
+local CraftResult   = Instance.new("RemoteEvent");    CraftResult.Name   = "CraftResult";   CraftResult.Parent   = Remotes
+
+-- ── Pattern matching ──────────────────────────────────────────────────────────
+local function patternsMatch(grid: {string?}, pattern: {string?}): boolean
+	if #grid ~= 9 or #pattern ~= 9 then return false end
+	for i = 1, 9 do
+		if pattern[i] ~= grid[i] then return false end
+	end
+	return true
+end
+
+local function findRecipe(grid: {string?}): Recipe?
+	for _, recipe in RECIPES do
+		if patternsMatch(grid, recipe.pattern) then
+			return recipe
+		end
+	end
+	return nil
+end
+
+-- ── Material consumption helper ───────────────────────────────────────────────
+-- Expects inventory API from InventoryServer; falls back to a simple approach.
+local function consumeMaterials(player: Player, grid: {string?}): boolean
+	-- Count required items from grid
+	local needed: {[string]: number} = {}
+	for _, itemId in grid do
+		if itemId ~= nil then
+			needed[itemId] = (needed[itemId] or 0) + 1
+		end
+	end
+	-- Validate against leaderstats / inventory
+	-- This uses the player's backpack IntValues as a simple stand-in;
+	-- wire up to your InventoryServer.removeItem in production.
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then return true end  -- skip check if no backpack system
+	for itemId, count in needed do
+		local slot = backpack:FindFirstChild(itemId) :: IntValue?
+		if not slot or slot.Value < count then
+			return false
+		end
+	end
+	-- Deduct
+	for itemId, count in needed do
+		local slot = backpack:FindFirstChild(itemId) :: IntValue?
+		if slot then slot.Value -= count end
+	end
+	return true
+end
+
+local function grantItem(player: Player, itemId: string, qty: number)
+	-- Add to backpack IntValue (or wire to InventoryServer.addItem)
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		backpack = Instance.new("Folder")
+		backpack.Name = "Backpack"
+		backpack.Parent = player
+	end
+	local slot = backpack:FindFirstChild(itemId) :: IntValue?
+	if not slot then
+		slot = Instance.new("IntValue")
+		slot.Name = itemId
+		slot.Parent = backpack
+	end
+	slot.Value += qty
+end
+
+-- ── Remote handlers ───────────────────────────────────────────────────────────
+GetRecipes.OnServerInvoke = function(_player: Player): {Recipe}
+	return RECIPES
+end
+
+AttemptCraft.OnServerInvoke = function(player: Player, grid: unknown): (boolean, string, string?, number?, Rarity?)
+	if type(grid) ~= "table" then return false, "Invalid grid.", nil, nil, nil end
+	local g = grid :: {string?}
+	if #g ~= 9 then return false, "Grid must have 9 slots.", nil, nil, nil end
+
+	-- Sanitize: only strings or nil allowed
+	for i = 1, 9 do
+		local v = g[i]
+		if v ~= nil and type(v) ~= "string" then
+			return false, "Invalid slot value.", nil, nil, nil
+		end
+	end
+
+	local recipe = findRecipe(g)
+	if not recipe then
+		return false, "No matching recipe.", nil, nil, nil
+	end
+
+	local consumed = consumeMaterials(player, g)
+	if not consumed then
+		return false, "Not enough materials.", nil, nil, nil
+	end
+
+	grantItem(player, recipe.output, recipe.qty)
+	CraftResult:FireClient(player, recipe.name, recipe.output, recipe.qty, recipe.rarity)
+	return true, "Crafted " .. recipe.name, recipe.output, recipe.qty, recipe.rarity
+end
+
+print("[CraftingServer] Ready — " .. #RECIPES .. " recipes loaded")
+`,
+}
+
+const CRAFTING_CLIENT: GameSystemFile = {
+  filename: 'CraftingClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- CraftingClient (LocalScript → StarterPlayerScripts)
+-- 3×3 crafting grid, recipe book panel, craft button with progress bar.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes     = ReplicatedStorage:WaitForChild("CraftingRemotes")
+local GetRecipes  = Remotes:WaitForChild("GetRecipes")   :: RemoteFunction
+local AttemptCraft = Remotes:WaitForChild("AttemptCraft") :: RemoteFunction
+local CraftResult  = Remotes:WaitForChild("CraftResult")  :: RemoteEvent
+
+-- ── Rarity colours ────────────────────────────────────────────────────────────
+local RARITY_COLORS: {[string]: Color3} = {
+	Common    = Color3.fromRGB(180, 180, 180),
+	Uncommon  = Color3.fromRGB(80, 200, 100),
+	Rare      = Color3.fromRGB(80, 140, 255),
+	Epic      = Color3.fromRGB(180, 80, 255),
+	Legendary = Color3.fromRGB(255, 160, 30),
+}
+
+-- ── Build GUI ─────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "CraftingGui"
+screen.ResetOnSpawn = false
+screen.Enabled = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+local dimmer = Instance.new("Frame")
+dimmer.Size = UDim2.new(1, 0, 1, 0)
+dimmer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+dimmer.BackgroundTransparency = 0.55
+dimmer.Parent = screen
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 680, 0, 520)
+panel.Position = UDim2.new(0.5, -340, 0.5, -260)
+panel.BackgroundColor3 = Color3.fromRGB(14, 14, 24)
+panel.Parent = screen
+Instance.new("UICorner").Parent = panel
+local panelStroke = Instance.new("UIStroke"); panelStroke.Color = Color3.fromRGB(212, 175, 55); panelStroke.Thickness = 2; panelStroke.Parent = panel
+
+-- Header
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 52)
+header.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+header.Parent = panel
+Instance.new("UICorner").Parent = header
+
+local headerLbl = Instance.new("TextLabel")
+headerLbl.Size = UDim2.new(1, -60, 1, 0)
+headerLbl.Position = UDim2.new(0, 16, 0, 0)
+headerLbl.BackgroundTransparency = 1
+headerLbl.Text = "CRAFTING TABLE"
+headerLbl.TextSize = 20
+headerLbl.Font = Enum.Font.GothamBold
+headerLbl.TextColor3 = Color3.fromRGB(12, 12, 22)
+headerLbl.TextXAlignment = Enum.TextXAlignment.Left
+headerLbl.Parent = header
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 36, 0, 36)
+closeBtn.Position = UDim2.new(1, -46, 0, 8)
+closeBtn.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+closeBtn.Text = "✕"
+closeBtn.TextSize = 16
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.fromRGB(212, 175, 55)
+closeBtn.Parent = header
+Instance.new("UICorner").Parent = closeBtn
+
+-- ── 3×3 Grid ──────────────────────────────────────────────────────────────────
+local gridFrame = Instance.new("Frame")
+gridFrame.Size = UDim2.new(0, 240, 0, 240)
+gridFrame.Position = UDim2.new(0, 24, 0, 70)
+gridFrame.BackgroundTransparency = 1
+gridFrame.Parent = panel
+
+local SLOT_SIZE   = 72
+local SLOT_GAP    = 8
+local gridSlots: {TextButton} = {}
+local gridValues: {string?}   = {}
+
+for i = 1, 9 do
+	local col = (i - 1) % 3
+	local row = math.floor((i - 1) / 3)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, SLOT_SIZE, 0, SLOT_SIZE)
+	btn.Position = UDim2.new(0, col * (SLOT_SIZE + SLOT_GAP), 0, row * (SLOT_SIZE + SLOT_GAP))
+	btn.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+	btn.Text = ""
+	btn.TextSize = 11
+	btn.Font = Enum.Font.Gotham
+	btn.TextColor3 = Color3.fromRGB(180, 180, 180)
+	btn.TextWrapped = true
+	btn.Parent = gridFrame
+	Instance.new("UICorner").Parent = btn
+	local bStroke = Instance.new("UIStroke"); bStroke.Color = Color3.fromRGB(50, 50, 70); bStroke.Thickness = 1.5; bStroke.Parent = btn
+	gridSlots[i] = btn
+	gridValues[i] = nil
+
+	local capturedI = i
+	btn.MouseButton1Click:Connect(function()
+		-- Cycle through a test item set (wire up to real inventory in production)
+		local items: {string?} = { nil, "iron_ingot", "gold_ingot", "stick", "red_herb", "vial", "magic_gem", "diamond" }
+		local cur = gridValues[capturedI]
+		local idx = 1
+		for j, v in items do
+			if v == cur then idx = j; break end
+		end
+		idx = (idx % #items) + 1
+		gridValues[capturedI] = items[idx]
+		btn.Text = gridValues[capturedI] or ""
+		(bStroke :: UIStroke).Color = gridValues[capturedI]
+			and Color3.fromRGB(212, 175, 55)
+			or  Color3.fromRGB(50, 50, 70)
+	end)
+end
+
+-- ── Output slot ────────────────────────────────────────────────────────────────
+local arrowLbl = Instance.new("TextLabel")
+arrowLbl.Size = UDim2.new(0, 40, 0, 40)
+arrowLbl.Position = UDim2.new(0, 272, 0, 180)
+arrowLbl.BackgroundTransparency = 1
+arrowLbl.Text = "▶"
+arrowLbl.TextSize = 28
+arrowLbl.Font = Enum.Font.GothamBold
+arrowLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+arrowLbl.Parent = panel
+
+local outputSlot = Instance.new("Frame")
+outputSlot.Size = UDim2.new(0, 100, 0, 100)
+outputSlot.Position = UDim2.new(0, 320, 0, 150)
+outputSlot.BackgroundColor3 = Color3.fromRGB(22, 22, 36)
+outputSlot.Parent = panel
+Instance.new("UICorner").Parent = outputSlot
+local outStroke = Instance.new("UIStroke"); outStroke.Color = Color3.fromRGB(50, 50, 70); outStroke.Thickness = 2; outStroke.Parent = outputSlot
+
+local outputLbl = Instance.new("TextLabel")
+outputLbl.Size = UDim2.new(1, -8, 0.6, 0)
+outputLbl.Position = UDim2.new(0, 4, 0.1, 0)
+outputLbl.BackgroundTransparency = 1
+outputLbl.Text = "?"
+outputLbl.TextSize = 13
+outputLbl.Font = Enum.Font.GothamBold
+outputLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+outputLbl.TextWrapped = true
+outputLbl.Parent = outputSlot
+
+local rarityLbl = Instance.new("TextLabel")
+rarityLbl.Size = UDim2.new(1, 0, 0, 20)
+rarityLbl.Position = UDim2.new(0, 0, 1, -22)
+rarityLbl.BackgroundTransparency = 1
+rarityLbl.Text = ""
+rarityLbl.TextSize = 11
+rarityLbl.Font = Enum.Font.GothamBold
+rarityLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+rarityLbl.Parent = outputSlot
+
+-- ── Craft button + progress bar ───────────────────────────────────────────────
+local craftBtn = Instance.new("TextButton")
+craftBtn.Size = UDim2.new(0, 200, 0, 44)
+craftBtn.Position = UDim2.new(0, 24, 1, -68)
+craftBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+craftBtn.Text = "CRAFT"
+craftBtn.TextSize = 18
+craftBtn.Font = Enum.Font.GothamBold
+craftBtn.TextColor3 = Color3.fromRGB(12, 12, 22)
+craftBtn.Parent = panel
+Instance.new("UICorner").Parent = craftBtn
+
+local progressBg = Instance.new("Frame")
+progressBg.Size = UDim2.new(0, 200, 0, 8)
+progressBg.Position = UDim2.new(0, 24, 1, -18)
+progressBg.BackgroundColor3 = Color3.fromRGB(30, 30, 44)
+progressBg.Parent = panel
+Instance.new("UICorner").Parent = progressBg
+
+local progressBar = Instance.new("Frame")
+progressBar.Size = UDim2.new(0, 0, 1, 0)
+progressBar.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+progressBar.Parent = progressBg
+Instance.new("UICorner").Parent = progressBar
+
+local resultLbl = Instance.new("TextLabel")
+resultLbl.Size = UDim2.new(0, 420, 0, 28)
+resultLbl.Position = UDim2.new(0, 240, 1, -42)
+resultLbl.BackgroundTransparency = 1
+resultLbl.Text = ""
+resultLbl.TextSize = 14
+resultLbl.Font = Enum.Font.GothamBold
+resultLbl.TextColor3 = Color3.fromRGB(100, 220, 100)
+resultLbl.TextXAlignment = Enum.TextXAlignment.Left
+resultLbl.Parent = panel
+
+-- ── Recipe book (right side) ──────────────────────────────────────────────────
+local recipeScroll = Instance.new("ScrollingFrame")
+recipeScroll.Size = UDim2.new(0, 240, 0, 340)
+recipeScroll.Position = UDim2.new(1, -256, 0, 70)
+recipeScroll.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+recipeScroll.BorderSizePixel = 0
+recipeScroll.ScrollBarThickness = 4
+recipeScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+recipeScroll.Parent = panel
+Instance.new("UICorner").Parent = recipeScroll
+
+local recipeLayout = Instance.new("UIListLayout")
+recipeLayout.Padding = UDim.new(0, 6)
+recipeLayout.Parent = recipeScroll
+
+local recipePad = Instance.new("UIPadding")
+recipePad.PaddingAll = UDim.new(0, 8)
+recipePad.Parent = recipeScroll
+
+local recipeTitleLbl = Instance.new("TextLabel")
+recipeTitleLbl.Size = UDim2.new(0, 240, 0, 22)
+recipeTitleLbl.Position = UDim2.new(1, -256, 0, 420)
+recipeTitleLbl.BackgroundTransparency = 1
+recipeTitleLbl.Text = "RECIPE BOOK"
+recipeTitleLbl.TextSize = 12
+recipeTitleLbl.Font = Enum.Font.GothamBold
+recipeTitleLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+recipeTitleLbl.Parent = panel
+
+-- ── Craft button handler ───────────────────────────────────────────────────────
+local crafting = false
+
+craftBtn.MouseButton1Click:Connect(function()
+	if crafting then return end
+	crafting = true
+	craftBtn.Text = "Crafting..."
+	craftBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+
+	-- Animate progress bar
+	TweenService:Create(progressBar, TweenInfo.new(1.2, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(1, 0, 1, 0)
+	}):Play()
+
+	task.delay(1.2, function()
+		local ok, msg, outId, qty, rarity = AttemptCraft:InvokeServer(gridValues)
+		crafting = false
+		craftBtn.Text = "CRAFT"
+		craftBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+
+		-- Reset bar
+		progressBar.Size = UDim2.new(0, 0, 1, 0)
+
+		resultLbl.Text = tostring(msg)
+		resultLbl.TextColor3 = (ok :: boolean)
+			and Color3.fromRGB(100, 220, 100)
+			or  Color3.fromRGB(220, 80, 80)
+
+		if ok and outId then
+			local rarityStr = tostring(rarity or "Common")
+			outputLbl.Text = tostring(outId) .. " x" .. tostring(qty or 1)
+			rarityLbl.Text = rarityStr
+			rarityLbl.TextColor3 = RARITY_COLORS[rarityStr] or Color3.fromRGB(180, 180, 180)
+			outStroke.Color = RARITY_COLORS[rarityStr] or Color3.fromRGB(50, 50, 70)
+		end
+	end)
+end)
+
+-- ── Populate recipe book ───────────────────────────────────────────────────────
+task.spawn(function()
+	local recipes = GetRecipes:InvokeServer()
+	for _, recipe in (recipes :: any) do
+		local row = Instance.new("TextButton")
+		row.Size = UDim2.new(1, 0, 0, 52)
+		row.BackgroundColor3 = Color3.fromRGB(24, 24, 38)
+		row.Text = ""
+		row.Parent = recipeScroll
+		Instance.new("UICorner").Parent = row
+
+		local nameLbl2 = Instance.new("TextLabel")
+		nameLbl2.Size = UDim2.new(1, -8, 0, 22)
+		nameLbl2.Position = UDim2.new(0, 8, 0, 4)
+		nameLbl2.BackgroundTransparency = 1
+		nameLbl2.Text = recipe.name
+		nameLbl2.TextSize = 13
+		nameLbl2.Font = Enum.Font.GothamBold
+		nameLbl2.TextColor3 = Color3.fromRGB(220, 220, 220)
+		nameLbl2.TextXAlignment = Enum.TextXAlignment.Left
+		nameLbl2.Parent = row
+
+		local rarLbl2 = Instance.new("TextLabel")
+		rarLbl2.Size = UDim2.new(1, -8, 0, 18)
+		rarLbl2.Position = UDim2.new(0, 8, 0, 26)
+		rarLbl2.BackgroundTransparency = 1
+		rarLbl2.Text = recipe.rarity .. "  →  " .. recipe.output
+		rarLbl2.TextSize = 11
+		rarLbl2.Font = Enum.Font.Gotham
+		rarLbl2.TextColor3 = RARITY_COLORS[recipe.rarity] or Color3.fromRGB(180, 180, 180)
+		rarLbl2.TextXAlignment = Enum.TextXAlignment.Left
+		rarLbl2.Parent = row
+
+		-- Click to load pattern into grid
+		row.MouseButton1Click:Connect(function()
+			for i = 1, 9 do
+				gridValues[i] = recipe.pattern[i]
+				gridSlots[i].Text = gridValues[i] or ""
+				local bStroke2 = gridSlots[i]:FindFirstChildOfClass("UIStroke")
+				if bStroke2 then
+					(bStroke2 :: UIStroke).Color = gridValues[i]
+						and Color3.fromRGB(212, 175, 55)
+						or  Color3.fromRGB(50, 50, 70)
+				end
+			end
+		end)
+	end
+	recipeScroll.CanvasSize = UDim2.new(0, 0, 0, recipeLayout.AbsoluteContentSize.Y + 16)
+end)
+
+-- ── Open / close ──────────────────────────────────────────────────────────────
+closeBtn.MouseButton1Click:Connect(function() screen.Enabled = false end)
+dimmer.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then screen.Enabled = false end
+end)
+
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.C then
+		screen.Enabled = not screen.Enabled
+	end
+end)
+
+print("[CraftingClient] Ready — press C to open crafting table")
+`,
+}
+
+// ─── 21. Dialogue System ─────────────────────────────────────────────────────
+
+const DIALOGUE_SERVER: GameSystemFile = {
+  filename: 'DialogueServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- DialogueServer (ServerScript → ServerScriptService)
+-- NPC dialogue tree: nodes with text + choice arrays.
+-- Supports quest acceptance, shop opening, lore delivery.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ── Types ─────────────────────────────────────────────────────────────────────
+type Choice = {
+	text:   string,
+	nextId: string,
+	action: string?,  -- optional: "accept_quest:questId", "open_shop", "close"
+}
+
+type DialogueNode = {
+	id:       string,
+	text:     string,
+	speaker:  string,
+	choices:  {Choice},
+}
+
+type DialogueTree = {
+	npcName: string,
+	nodes:   {[string]: DialogueNode},
+	start:   string,
+}
+
+-- ── Dialogue DB (define one tree per NPC) ─────────────────────────────────────
+local DIALOGUE_TREES: {[string]: DialogueTree} = {
+	["NPC_Merchant"] = {
+		npcName = "Merchant Aldric",
+		start   = "root",
+		nodes   = {
+			root = {
+				id      = "root",
+				text    = "Ah, welcome traveller! What can I do for you today?",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "I'd like to browse your wares.",   nextId = "shop",    action = "open_shop" },
+					{ text = "Do you have any work for me?",     nextId = "quest_intro" },
+					{ text = "Tell me about this town.",         nextId = "lore_1" },
+					{ text = "Nothing, goodbye.",                nextId = "farewell", action = "close" },
+				},
+			},
+			shop = {
+				id      = "shop",
+				text    = "Of course! Take a look at my finest goods.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "Thanks, that's all.", nextId = "farewell", action = "close" },
+				},
+			},
+			quest_intro = {
+				id      = "quest_intro",
+				text    = "Actually, yes. Wolves have been terrorising the village roads. Kill 5 of them and I'll reward you handsomely.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "I'll take care of it.",   nextId = "quest_accept", action = "accept_quest:wolves_quest" },
+					{ text = "Sounds too dangerous.",   nextId = "quest_decline" },
+				},
+			},
+			quest_accept = {
+				id      = "quest_accept",
+				text    = "Wonderful! The wolves prowl the forest to the east. Stay safe out there.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "Understood. Farewell.", nextId = "farewell", action = "close" },
+				},
+			},
+			quest_decline = {
+				id      = "quest_decline",
+				text    = "No worries. Come back if you change your mind.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "Goodbye.", nextId = "farewell", action = "close" },
+				},
+			},
+			lore_1 = {
+				id      = "lore_1",
+				text    = "Thornhaven has stood for two centuries. Founded by the explorer Theron, it became a trade hub after the Great Road was built.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "Who built the Great Road?",    nextId = "lore_2" },
+					{ text = "Interesting. Goodbye.",        nextId = "farewell", action = "close" },
+				},
+			},
+			lore_2 = {
+				id      = "lore_2",
+				text    = "The Stoneguard dwarves built it — took forty years, they say. You can still see their runes carved into the milestones.",
+				speaker = "Merchant Aldric",
+				choices = {
+					{ text = "Fascinating. Thank you.", nextId = "farewell", action = "close" },
+				},
+			},
+			farewell = {
+				id      = "farewell",
+				text    = "Safe travels, friend. Come back anytime!",
+				speaker = "Merchant Aldric",
+				choices = {},
+			},
+		},
+	},
+	["NPC_Guard"] = {
+		npcName = "Guard Captain",
+		start   = "root",
+		nodes   = {
+			root = {
+				id      = "root",
+				text    = "Halt! State your business in Thornhaven.",
+				speaker = "Guard Captain",
+				choices = {
+					{ text = "I'm a trader passing through.", nextId = "trader" },
+					{ text = "I'm here to help with the wolves.", nextId = "wolf_ref" },
+					{ text = "Just looking around.",           nextId = "farewell", action = "close" },
+				},
+			},
+			trader = {
+				id      = "trader",
+				text    = "Very well. Keep your weapons sheathed and stay out of trouble.",
+				speaker = "Guard Captain",
+				choices = {
+					{ text = "Understood.", nextId = "farewell", action = "close" },
+				},
+			},
+			wolf_ref = {
+				id      = "wolf_ref",
+				text    = "You've heard about that? Good. See the merchant in the market square — he's been organising the bounty.",
+				speaker = "Guard Captain",
+				choices = {
+					{ text = "I'll do that. Thanks.", nextId = "farewell", action = "close" },
+				},
+			},
+			farewell = {
+				id      = "farewell",
+				text    = "Move along.",
+				speaker = "Guard Captain",
+				choices = {},
+			},
+		},
+	},
+}
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "DialogueRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local StartDialogue  = Instance.new("RemoteEvent");    StartDialogue.Name  = "StartDialogue";  StartDialogue.Parent  = Remotes
+local GetNode        = Instance.new("RemoteFunction"); GetNode.Name        = "GetNode";        GetNode.Parent        = Remotes
+local DialogueAction = Instance.new("RemoteEvent");    DialogueAction.Name = "DialogueAction"; DialogueAction.Parent = Remotes
+local EndDialogue    = Instance.new("RemoteEvent");    EndDialogue.Name    = "EndDialogue";    EndDialogue.Parent    = Remotes
+
+-- ── Active sessions: player → { treeId, nodeId } ──────────────────────────────
+local sessions: {[number]: { treeId: string, nodeId: string }} = {}
+
+-- ── ProximityPrompt hookup ────────────────────────────────────────────────────
+-- Expects NPCs to have a Model with a ProximityPrompt named "DialoguePrompt"
+-- and an attribute "DialogueTreeId" set to the key in DIALOGUE_TREES.
+local function hookNPC(npcModel: Model)
+	local treeId = npcModel:GetAttribute("DialogueTreeId")
+	if type(treeId) ~= "string" then return end
+	if not DIALOGUE_TREES[treeId] then return end
+
+	local prompt = npcModel:FindFirstChild("DialoguePrompt", true)
+	if not prompt or not prompt:IsA("ProximityPrompt") then
+		-- Create one if missing
+		local root = npcModel:FindFirstChildOfClass("BasePart") :: BasePart?
+		if not root then return end
+		prompt = Instance.new("ProximityPrompt")
+		;(prompt :: ProximityPrompt).ActionText = "Talk"
+		;(prompt :: ProximityPrompt).ObjectText  = DIALOGUE_TREES[treeId].npcName
+		;(prompt :: ProximityPrompt).HoldDuration = 0
+		prompt.Parent = root
+	end
+
+	;(prompt :: ProximityPrompt).Triggered:Connect(function(player: Player)
+		local tree = DIALOGUE_TREES[treeId]
+		sessions[player.UserId] = { treeId = treeId, nodeId = tree.start }
+		local startNode = tree.nodes[tree.start]
+		StartDialogue:FireClient(player, tree.npcName, startNode)
+	end)
+end
+
+-- Auto-hook all current and future NPCs
+for _, obj in workspace:GetDescendants() do
+	if obj:IsA("Model") and obj:GetAttribute("DialogueTreeId") then
+		hookNPC(obj :: Model)
+	end
+end
+workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("Model") and obj:GetAttribute("DialogueTreeId") then
+		hookNPC(obj :: Model)
+	end
+end)
+
+-- ── GetNode: client requests next node by choosing a choice index ─────────────
+GetNode.OnServerInvoke = function(player: Player, choiceIndex: unknown): DialogueNode?
+	local session = sessions[player.UserId]
+	if not session then return nil end
+
+	local tree    = DIALOGUE_TREES[session.treeId]
+	if not tree   then return nil end
+
+	local curNode = tree.nodes[session.nodeId]
+	if not curNode then return nil end
+
+	if type(choiceIndex) ~= "number" then return nil end
+	local choice = curNode.choices[choiceIndex]
+	if not choice then return nil end
+
+	-- Fire action if present
+	if choice.action then
+		DialogueAction:FireClient(player, choice.action)
+	end
+
+	-- Advance session
+	local nextNode = tree.nodes[choice.nextId]
+	if nextNode then
+		sessions[player.UserId].nodeId = nextNode.id
+		if #nextNode.choices == 0 then
+			-- Leaf node — end dialogue after delivery
+			task.delay(2, function()
+				EndDialogue:FireClient(player)
+				sessions[player.UserId] = nil
+			end)
+		end
+		return nextNode
+	end
+
+	sessions[player.UserId] = nil
+	EndDialogue:FireClient(player)
+	return nil
+end
+
+-- Cleanup on leave
+Players.PlayerRemoving:Connect(function(player: Player)
+	sessions[player.UserId] = nil
+end)
+
+print("[DialogueServer] Ready — " .. (function()
+	local n = 0; for _ in DIALOGUE_TREES do n += 1 end; return n
+end)() .. " NPC trees loaded")
+`,
+}
+
+const DIALOGUE_CLIENT: GameSystemFile = {
+  filename: 'DialogueClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- DialogueClient (LocalScript → StarterPlayerScripts)
+-- Bottom-screen dialogue box, NPC name, typewriter text, choice buttons.
+-- Handles: quest acceptance, shop opening, lore delivery.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes       = ReplicatedStorage:WaitForChild("DialogueRemotes")
+local StartDialogue = Remotes:WaitForChild("StartDialogue")  :: RemoteEvent
+local GetNode       = Remotes:WaitForChild("GetNode")        :: RemoteFunction
+local DialogueAction = Remotes:WaitForChild("DialogueAction") :: RemoteEvent
+local EndDialogue   = Remotes:WaitForChild("EndDialogue")    :: RemoteEvent
+
+-- ── GUI construction ──────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "DialogueGui"
+screen.ResetOnSpawn = false
+screen.Enabled = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- Main box at bottom of screen
+local box = Instance.new("Frame")
+box.Size = UDim2.new(0.75, 0, 0, 200)
+box.Position = UDim2.new(0.125, 0, 1, -220)
+box.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+box.BackgroundTransparency = 0.1
+box.Parent = screen
+Instance.new("UICorner").Parent = box
+local boxStroke = Instance.new("UIStroke"); boxStroke.Color = Color3.fromRGB(212, 175, 55); boxStroke.Thickness = 2; boxStroke.Parent = box
+
+-- NPC name tab
+local nameTag = Instance.new("Frame")
+nameTag.Size = UDim2.new(0, 220, 0, 34)
+nameTag.Position = UDim2.new(0, 16, 0, -17)
+nameTag.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+nameTag.Parent = box
+Instance.new("UICorner").Parent = nameTag
+
+local nameLbl = Instance.new("TextLabel")
+nameLbl.Size = UDim2.new(1, -16, 1, 0)
+nameLbl.Position = UDim2.new(0, 8, 0, 0)
+nameLbl.BackgroundTransparency = 1
+nameLbl.Text = ""
+nameLbl.TextSize = 15
+nameLbl.Font = Enum.Font.GothamBold
+nameLbl.TextColor3 = Color3.fromRGB(12, 12, 22)
+nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+nameLbl.Parent = nameTag
+
+-- Dialogue text area
+local textArea = Instance.new("TextLabel")
+textArea.Size = UDim2.new(1, -32, 0, 80)
+textArea.Position = UDim2.new(0, 16, 0, 28)
+textArea.BackgroundTransparency = 1
+textArea.Text = ""
+textArea.TextSize = 16
+textArea.Font = Enum.Font.Gotham
+textArea.TextColor3 = Color3.fromRGB(230, 230, 230)
+textArea.TextWrapped = true
+textArea.TextXAlignment = Enum.TextXAlignment.Left
+textArea.TextYAlignment = Enum.TextYAlignment.Top
+textArea.Parent = box
+
+-- Choices container
+local choiceFrame = Instance.new("Frame")
+choiceFrame.Size = UDim2.new(1, -32, 0, 80)
+choiceFrame.Position = UDim2.new(0, 16, 0, 114)
+choiceFrame.BackgroundTransparency = 1
+choiceFrame.Parent = box
+
+local choiceLayout = Instance.new("UIListLayout")
+choiceLayout.FillDirection = Enum.FillDirection.Vertical
+choiceLayout.Padding = UDim.new(0, 6)
+choiceLayout.Parent = choiceFrame
+
+-- ── Typewriter effect ─────────────────────────────────────────────────────────
+local typewriterThread: thread? = nil
+
+local function typewriterPlay(text: string, onDone: () -> ())
+	if typewriterThread then task.cancel(typewriterThread) end
+	textArea.Text = ""
+	typewriterThread = task.spawn(function()
+		for i = 1, #text do
+			textArea.Text = text:sub(1, i)
+			task.wait(0.03)
+		end
+		typewriterThread = nil
+		onDone()
+	end)
+end
+
+-- ── Choice buttons ────────────────────────────────────────────────────────────
+local choiceButtons: {TextButton} = {}
+
+local function clearChoices()
+	for _, btn in choiceButtons do btn:Destroy() end
+	choiceButtons = {}
+end
+
+local function buildChoices(choices: {{text: string, nextId: string, action: string?}})
+	clearChoices()
+	for i, choice in choices do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 28)
+		btn.BackgroundColor3 = Color3.fromRGB(22, 22, 38)
+		btn.Text = tostring(i) .. ". " .. choice.text
+		btn.TextSize = 13
+		btn.Font = Enum.Font.Gotham
+		btn.TextColor3 = Color3.fromRGB(212, 175, 55)
+		btn.TextXAlignment = Enum.TextXAlignment.Left
+		btn.Parent = choiceFrame
+		Instance.new("UICorner").Parent = btn
+
+		table.insert(choiceButtons, btn)
+
+		local capturedI = i
+		btn.MouseButton1Click:Connect(function()
+			clearChoices()
+			-- Small visual flash
+			TweenService:Create(btn,
+				TweenInfo.new(0.15),
+				{ BackgroundColor3 = Color3.fromRGB(40, 40, 60) }
+			):Play()
+			local nextNode = GetNode:InvokeServer(capturedI)
+			if nextNode then
+				nameLbl.Text = nextNode.speaker
+				typewriterPlay(nextNode.text, function()
+					if #nextNode.choices > 0 then
+						buildChoices(nextNode.choices)
+					end
+				end)
+			end
+		end)
+	end
+end
+
+-- ── Open / close ──────────────────────────────────────────────────────────────
+local function openDialogue(npcName: string, node: {id: string, text: string, speaker: string, choices: {any}})
+	clearChoices()
+	nameLbl.Text = npcName
+	screen.Enabled = true
+	-- Slide in
+	box.Position = UDim2.new(0.125, 0, 1, 50)
+	TweenService:Create(box, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.125, 0, 1, -220)
+	}):Play()
+	typewriterPlay(node.text, function()
+		if #node.choices > 0 then
+			buildChoices(node.choices)
+		end
+	end)
+end
+
+local function closeDialogue()
+	if typewriterThread then task.cancel(typewriterThread); typewriterThread = nil end
+	clearChoices()
+	TweenService:Create(box,
+		TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(0.125, 0, 1, 50) }
+	):Play()
+	task.delay(0.28, function() screen.Enabled = false end)
+end
+
+StartDialogue.OnClientEvent:Connect(function(npcName: string, node: any)
+	openDialogue(npcName, node)
+end)
+
+EndDialogue.OnClientEvent:Connect(closeDialogue)
+
+-- ── Handle actions fired from server ──────────────────────────────────────────
+DialogueAction.OnClientEvent:Connect(function(action: string)
+	if action == "open_shop" then
+		-- Signal the shop system
+		local shopRemotes = ReplicatedStorage:FindFirstChild("ShopRemotes")
+		if shopRemotes then
+			local openShop = shopRemotes:FindFirstChild("OpenShop") :: RemoteEvent?
+			if openShop then openShop:FireServer() end
+		end
+	elseif action:sub(1, 13) == "accept_quest:" then
+		local questId = action:sub(14)
+		-- Signal the quest system
+		local questRemotes = ReplicatedStorage:FindFirstChild("QuestRemotes")
+		if questRemotes then
+			local acceptQuest = questRemotes:FindFirstChild("AcceptQuest") :: RemoteEvent?
+			if acceptQuest then acceptQuest:FireServer(questId) end
+		end
+		print("[Dialogue] Quest accepted:", questId)
+	elseif action == "close" then
+		task.delay(0.5, closeDialogue)
+	end
+end)
+
+print("[DialogueClient] Ready")
+`,
+}
+
+// ─── 22. Achievement System ──────────────────────────────────────────────────
+
+const ACHIEVEMENT_SERVER: GameSystemFile = {
+  filename: 'AchievementServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- AchievementServer (ServerScript → ServerScriptService)
+-- Achievement definitions, per-player progress tracking, DataStore persistence.
+-- Criteria types: reach_level, collect_items, kill_enemies, play_time, visit_zone.
+
+local Players           = game:GetService("Players")
+local DataStoreService  = game:GetService("DataStoreService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local AchDS = DataStoreService:GetDataStore("AchievementsV1")
+
+-- ── Types ─────────────────────────────────────────────────────────────────────
+type CriteriaType = "reach_level" | "collect_items" | "kill_enemies" | "play_time" | "visit_zone"
+
+type Achievement = {
+	id:          string,
+	title:       string,
+	description: string,
+	icon:        string,       -- rbxassetid string or emoji placeholder
+	criteriaType: CriteriaType,
+	criteriaKey:  string,      -- e.g. itemId for collect_items, zone name for visit_zone
+	criteriaGoal: number,      -- target value
+	rewardCoins:  number,
+	rewardXP:     number,
+}
+
+type PlayerProgress = {
+	unlocked:  {[string]: boolean},  -- achievementId → true if unlocked
+	progress:  {[string]: number},   -- achievementId → current count
+}
+
+-- ── Achievement definitions ───────────────────────────────────────────────────
+local ACHIEVEMENTS: {Achievement} = {
+	{
+		id = "first_level", title = "First Steps", description = "Reach Level 5",
+		icon = "⭐", criteriaType = "reach_level", criteriaKey = "level",
+		criteriaGoal = 5, rewardCoins = 100, rewardXP = 0,
+	},
+	{
+		id = "veteran", title = "Veteran", description = "Reach Level 25",
+		icon = "🏅", criteriaType = "reach_level", criteriaKey = "level",
+		criteriaGoal = 25, rewardCoins = 500, rewardXP = 1000,
+	},
+	{
+		id = "collector", title = "Collector", description = "Collect 50 Iron Ingots",
+		icon = "🔩", criteriaType = "collect_items", criteriaKey = "iron_ingot",
+		criteriaGoal = 50, rewardCoins = 200, rewardXP = 500,
+	},
+	{
+		id = "warrior", title = "Warrior", description = "Defeat 100 enemies",
+		icon = "⚔️", criteriaType = "kill_enemies", criteriaKey = "any",
+		criteriaGoal = 100, rewardCoins = 300, rewardXP = 750,
+	},
+	{
+		id = "explorer", title = "Explorer", description = "Spend 60 minutes in-game",
+		icon = "🗺️", criteriaType = "play_time", criteriaKey = "minutes",
+		criteriaGoal = 60, rewardCoins = 150, rewardXP = 200,
+	},
+	{
+		id = "zone_dungeon", title = "Dungeon Delver", description = "Visit the Dungeon Zone",
+		icon = "🏰", criteriaType = "visit_zone", criteriaKey = "Dungeon",
+		criteriaGoal = 1, rewardCoins = 250, rewardXP = 500,
+	},
+	{
+		id = "zone_volcano", title = "Fire Walker", description = "Visit the Volcano Zone",
+		icon = "🌋", criteriaType = "visit_zone", criteriaKey = "Volcano",
+		criteriaGoal = 1, rewardCoins = 300, rewardXP = 600,
+	},
+}
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "AchievementRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local GetAchievements   = Instance.new("RemoteFunction"); GetAchievements.Name   = "GetAchievements";   GetAchievements.Parent   = Remotes
+local GetProgress       = Instance.new("RemoteFunction"); GetProgress.Name       = "GetProgress";       GetProgress.Parent       = Remotes
+local AchievementUnlocked = Instance.new("RemoteEvent"); AchievementUnlocked.Name = "AchievementUnlocked"; AchievementUnlocked.Parent = Remotes
+local UpdateProgress    = Instance.new("RemoteEvent");    UpdateProgress.Name    = "UpdateProgress";    UpdateProgress.Parent    = Remotes
+
+-- ── In-memory progress ────────────────────────────────────────────────────────
+local playerProgress: {[number]: PlayerProgress} = {}
+
+local function loadProgress(player: Player): PlayerProgress
+	local ok, data = pcall(AchDS.GetAsync, AchDS, "ach_" .. tostring(player.UserId))
+	if ok and type(data) == "table" then
+		return data :: PlayerProgress
+	end
+	return { unlocked = {}, progress = {} }
+end
+
+local function saveProgress(player: Player)
+	local prog = playerProgress[player.UserId]
+	if not prog then return end
+	local ok, err = pcall(AchDS.SetAsync, AchDS, "ach_" .. tostring(player.UserId), prog)
+	if not ok then warn("[Achievements] Save failed:", err) end
+end
+
+Players.PlayerAdded:Connect(function(player: Player)
+	playerProgress[player.UserId] = loadProgress(player)
+	UpdateProgress:FireClient(player, playerProgress[player.UserId])
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	saveProgress(player)
+	playerProgress[player.UserId] = nil
+end)
+
+game:BindToClose(function()
+	for _, p in Players:GetPlayers() do saveProgress(p) end
+end)
+
+-- ── Unlock helper ─────────────────────────────────────────────────────────────
+local function tryUnlock(player: Player, achievement: Achievement)
+	local prog = playerProgress[player.UserId]
+	if not prog then return end
+	if prog.unlocked[achievement.id] then return end
+
+	local current = prog.progress[achievement.id] or 0
+	if current < achievement.criteriaGoal then return end
+
+	prog.unlocked[achievement.id] = true
+
+	-- Grant rewards
+	local ls = player:FindFirstChild("leaderstats")
+	if ls then
+		local coins = ls:FindFirstChild("Coins") :: IntValue?
+		if coins then coins.Value += achievement.rewardCoins end
+		local xp = ls:FindFirstChild("XP") :: IntValue?
+		if xp then xp.Value += achievement.rewardXP end
+	end
+
+	AchievementUnlocked:FireClient(player, achievement)
+	UpdateProgress:FireClient(player, prog)
+	saveProgress(player)
+end
+
+-- ── Public API for other server scripts ───────────────────────────────────────
+local function recordProgress(player: Player, criteriaType: string, criteriaKey: string, amount: number)
+	local prog = playerProgress[player.UserId]
+	if not prog then return end
+
+	for _, ach in ACHIEVEMENTS do
+		if ach.criteriaType == criteriaType and (ach.criteriaKey == criteriaKey or ach.criteriaKey == "any") then
+			if not prog.unlocked[ach.id] then
+				prog.progress[ach.id] = math.min(
+					(prog.progress[ach.id] or 0) + amount,
+					ach.criteriaGoal
+				)
+				tryUnlock(player, ach)
+			end
+		end
+	end
+
+	UpdateProgress:FireClient(player, prog)
+end
+
+-- ── Play-time tracking ────────────────────────────────────────────────────────
+local joinTimes: {[number]: number} = {}
+
+Players.PlayerAdded:Connect(function(player: Player)
+	joinTimes[player.UserId] = os.time()
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	local jt = joinTimes[player.UserId]
+	if jt then
+		local minutesPlayed = (os.time() - jt) / 60
+		recordProgress(player, "play_time", "minutes", minutesPlayed)
+		joinTimes[player.UserId] = nil
+	end
+end)
+
+-- ── Remote handlers ───────────────────────────────────────────────────────────
+GetAchievements.OnServerInvoke = function(_player: Player): {Achievement}
+	return ACHIEVEMENTS
+end
+
+GetProgress.OnServerInvoke = function(player: Player): PlayerProgress
+	return playerProgress[player.UserId] or { unlocked = {}, progress = {} }
+end
+
+-- ── Expose API ────────────────────────────────────────────────────────────────
+return { recordProgress = recordProgress }
+`,
+}
+
+const ACHIEVEMENT_CLIENT: GameSystemFile = {
+  filename: 'AchievementClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- AchievementClient (LocalScript → StarterPlayerScripts)
+-- Unlock popup (gold border + confetti), achievement log GUI.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes           = ReplicatedStorage:WaitForChild("AchievementRemotes")
+local GetAchievements   = Remotes:WaitForChild("GetAchievements")   :: RemoteFunction
+local GetProgress       = Remotes:WaitForChild("GetProgress")       :: RemoteFunction
+local AchievementUnlocked = Remotes:WaitForChild("AchievementUnlocked") :: RemoteEvent
+local UpdateProgress    = Remotes:WaitForChild("UpdateProgress")    :: RemoteEvent
+
+-- ── Popup GUI ─────────────────────────────────────────────────────────────────
+local popupGui = Instance.new("ScreenGui")
+popupGui.Name = "AchievementPopupGui"
+popupGui.ResetOnSpawn = false
+popupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+popupGui.Parent = playerGui
+
+local popup = Instance.new("Frame")
+popup.Size = UDim2.new(0, 340, 0, 90)
+popup.Position = UDim2.new(0.5, -170, 0, -100)
+popup.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+popup.Parent = popupGui
+Instance.new("UICorner").Parent = popup
+local popupStroke = Instance.new("UIStroke"); popupStroke.Color = Color3.fromRGB(212, 175, 55); popupStroke.Thickness = 3; popupStroke.Parent = popup
+
+local popupIcon = Instance.new("TextLabel")
+popupIcon.Size = UDim2.new(0, 60, 1, 0)
+popupIcon.BackgroundTransparency = 1
+popupIcon.Text = "🏆"
+popupIcon.TextSize = 34
+popupIcon.Font = Enum.Font.GothamBold
+popupIcon.Parent = popup
+
+local popupTitle = Instance.new("TextLabel")
+popupTitle.Size = UDim2.new(1, -70, 0, 22)
+popupTitle.Position = UDim2.new(0, 66, 0, 14)
+popupTitle.BackgroundTransparency = 1
+popupTitle.Text = "Achievement Unlocked!"
+popupTitle.TextSize = 13
+popupTitle.Font = Enum.Font.GothamBold
+popupTitle.TextColor3 = Color3.fromRGB(212, 175, 55)
+popupTitle.TextXAlignment = Enum.TextXAlignment.Left
+popupTitle.Parent = popup
+
+local popupName = Instance.new("TextLabel")
+popupName.Size = UDim2.new(1, -70, 0, 28)
+popupName.Position = UDim2.new(0, 66, 0, 36)
+popupName.BackgroundTransparency = 1
+popupName.Text = ""
+popupName.TextSize = 18
+popupName.Font = Enum.Font.GothamBold
+popupName.TextColor3 = Color3.fromRGB(240, 240, 240)
+popupName.TextXAlignment = Enum.TextXAlignment.Left
+popupName.Parent = popup
+
+local popupDesc = Instance.new("TextLabel")
+popupDesc.Size = UDim2.new(1, -70, 0, 18)
+popupDesc.Position = UDim2.new(0, 66, 0, 64)
+popupDesc.BackgroundTransparency = 1
+popupDesc.Text = ""
+popupDesc.TextSize = 12
+popupDesc.Font = Enum.Font.Gotham
+popupDesc.TextColor3 = Color3.fromRGB(160, 160, 160)
+popupDesc.TextXAlignment = Enum.TextXAlignment.Left
+popupDesc.Parent = popup
+
+-- ── Confetti particles ─────────────────────────────────────────────────────────
+local confettiGui = Instance.new("ScreenGui")
+confettiGui.Name = "ConfettiGui"
+confettiGui.ResetOnSpawn = false
+confettiGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+confettiGui.Parent = playerGui
+
+local CONFETTI_COLORS = {
+	Color3.fromRGB(212, 175, 55),
+	Color3.fromRGB(80, 200, 100),
+	Color3.fromRGB(80, 140, 255),
+	Color3.fromRGB(255, 80, 80),
+	Color3.fromRGB(255, 200, 80),
+}
+
+local function spawnConfetti()
+	for _ = 1, 30 do
+		local dot = Instance.new("Frame")
+		dot.Size = UDim2.new(0, math.random(6, 14), 0, math.random(6, 14))
+		dot.Position = UDim2.new(math.random() * 0.6 + 0.2, 0, 0, math.random(-20, 20))
+		dot.BackgroundColor3 = CONFETTI_COLORS[math.random(1, #CONFETTI_COLORS)]
+		dot.Rotation = math.random(0, 360)
+		dot.BorderSizePixel = 0
+		dot.Parent = confettiGui
+
+		TweenService:Create(dot, TweenInfo.new(math.random(100, 250) / 100, Enum.EasingStyle.Quad), {
+			Position = UDim2.new(dot.Position.X.Scale, 0, 1, math.random(50, 120)),
+			Rotation = dot.Rotation + math.random(180, 540),
+			BackgroundTransparency = 1,
+		}):Play()
+
+		task.delay(2.5, function()
+			if dot.Parent then dot:Destroy() end
+		end)
+	end
+end
+
+-- ── Popup queue ───────────────────────────────────────────────────────────────
+local popupQueue: {{title: string, description: string, icon: string}} = {}
+local popupActive = false
+
+local function showNextPopup()
+	if #popupQueue == 0 or popupActive then return end
+	popupActive = true
+	local ach = table.remove(popupQueue, 1)
+	popupIcon.Text = ach.icon
+	popupName.Text = ach.title
+	popupDesc.Text = ach.description
+
+	-- Slide in from top
+	popup.Position = UDim2.new(0.5, -170, 0, -100)
+	TweenService:Create(popup, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, -170, 0, 20)
+	}):Play()
+
+	spawnConfetti()
+
+	task.delay(4, function()
+		TweenService:Create(popup, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Position = UDim2.new(0.5, -170, 0, -100)
+		}):Play()
+		task.delay(0.4, function()
+			popupActive = false
+			showNextPopup()
+		end)
+	end)
+end
+
+AchievementUnlocked.OnClientEvent:Connect(function(ach: any)
+	table.insert(popupQueue, {
+		title       = tostring(ach.title),
+		description = tostring(ach.description),
+		icon        = tostring(ach.icon),
+	})
+	showNextPopup()
+end)
+
+-- ── Achievement log GUI ───────────────────────────────────────────────────────
+local logGui = Instance.new("ScreenGui")
+logGui.Name = "AchievementLogGui"
+logGui.ResetOnSpawn = false
+logGui.Enabled = false
+logGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+logGui.Parent = playerGui
+
+local logDimmer = Instance.new("Frame")
+logDimmer.Size = UDim2.new(1, 0, 1, 0)
+logDimmer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+logDimmer.BackgroundTransparency = 0.55
+logDimmer.Parent = logGui
+
+local logPanel = Instance.new("Frame")
+logPanel.Size = UDim2.new(0, 560, 0, 500)
+logPanel.Position = UDim2.new(0.5, -280, 0.5, -250)
+logPanel.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+logPanel.Parent = logGui
+Instance.new("UICorner").Parent = logPanel
+Instance.new("UIStroke", logPanel).Color = Color3.fromRGB(212, 175, 55)
+
+local logHeader = Instance.new("Frame")
+logHeader.Size = UDim2.new(1, 0, 0, 52)
+logHeader.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+logHeader.Parent = logPanel
+Instance.new("UICorner").Parent = logHeader
+
+local logTitle = Instance.new("TextLabel")
+logTitle.Size = UDim2.new(1, -60, 1, 0)
+logTitle.Position = UDim2.new(0, 16, 0, 0)
+logTitle.BackgroundTransparency = 1
+logTitle.Text = "ACHIEVEMENTS"
+logTitle.TextSize = 20
+logTitle.Font = Enum.Font.GothamBold
+logTitle.TextColor3 = Color3.fromRGB(12, 12, 22)
+logTitle.TextXAlignment = Enum.TextXAlignment.Left
+logTitle.Parent = logHeader
+
+local logClose = Instance.new("TextButton")
+logClose.Size = UDim2.new(0, 36, 0, 36)
+logClose.Position = UDim2.new(1, -46, 0, 8)
+logClose.BackgroundColor3 = Color3.fromRGB(12, 12, 22)
+logClose.Text = "✕"
+logClose.TextSize = 16
+logClose.Font = Enum.Font.GothamBold
+logClose.TextColor3 = Color3.fromRGB(212, 175, 55)
+logClose.Parent = logHeader
+Instance.new("UICorner").Parent = logClose
+
+local logScroll = Instance.new("ScrollingFrame")
+logScroll.Size = UDim2.new(1, -32, 1, -72)
+logScroll.Position = UDim2.new(0, 16, 0, 62)
+logScroll.BackgroundColor3 = Color3.fromRGB(18, 18, 30)
+logScroll.BorderSizePixel = 0
+logScroll.ScrollBarThickness = 6
+logScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+logScroll.Parent = logPanel
+Instance.new("UICorner").Parent = logScroll
+
+local logLayout = Instance.new("UIListLayout")
+logLayout.Padding = UDim.new(0, 8)
+logLayout.Parent = logScroll
+local logPad = Instance.new("UIPadding")
+logPad.PaddingAll = UDim.new(0, 10)
+logPad.Parent = logScroll
+
+-- ── Populate log ───────────────────────────────────────────────────────────────
+local cachedProgress: {unlocked: {[string]: boolean}, progress: {[string]: number}}? = nil
+
+local function refreshLog()
+	for _, child in logScroll:GetChildren() do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+
+	local allAchs = GetAchievements:InvokeServer()
+	local prog    = cachedProgress or GetProgress:InvokeServer()
+
+	for _, ach in (allAchs :: any) do
+		local unlocked = prog.unlocked[ach.id] == true
+		local current  = prog.progress[ach.id] or 0
+
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 64)
+		row.BackgroundColor3 = unlocked
+			and Color3.fromRGB(20, 30, 20)
+			or  Color3.fromRGB(22, 22, 36)
+		row.Parent = logScroll
+		Instance.new("UICorner").Parent = row
+		local rowStroke = Instance.new("UIStroke")
+		rowStroke.Color = unlocked
+			and Color3.fromRGB(80, 200, 100)
+			or  Color3.fromRGB(40, 40, 60)
+		rowStroke.Parent = row
+
+		local iconLbl2 = Instance.new("TextLabel")
+		iconLbl2.Size = UDim2.new(0, 50, 1, 0)
+		iconLbl2.BackgroundTransparency = 1
+		iconLbl2.Text = ach.icon
+		iconLbl2.TextSize = 28
+		iconLbl2.Font = Enum.Font.GothamBold
+		iconLbl2.Parent = row
+
+		local titleLbl2 = Instance.new("TextLabel")
+		titleLbl2.Size = UDim2.new(0.55, 0, 0, 22)
+		titleLbl2.Position = UDim2.new(0, 58, 0, 8)
+		titleLbl2.BackgroundTransparency = 1
+		titleLbl2.Text = ach.title
+		titleLbl2.TextSize = 14
+		titleLbl2.Font = Enum.Font.GothamBold
+		titleLbl2.TextColor3 = unlocked
+			and Color3.fromRGB(100, 220, 100)
+			or  Color3.fromRGB(200, 200, 200)
+		titleLbl2.TextXAlignment = Enum.TextXAlignment.Left
+		titleLbl2.Parent = row
+
+		local descLbl2 = Instance.new("TextLabel")
+		descLbl2.Size = UDim2.new(0.55, 0, 0, 18)
+		descLbl2.Position = UDim2.new(0, 58, 0, 30)
+		descLbl2.BackgroundTransparency = 1
+		descLbl2.Text = ach.description
+		descLbl2.TextSize = 11
+		descLbl2.Font = Enum.Font.Gotham
+		descLbl2.TextColor3 = Color3.fromRGB(140, 140, 160)
+		descLbl2.TextXAlignment = Enum.TextXAlignment.Left
+		descLbl2.Parent = row
+
+		-- Progress bar
+		local pBg = Instance.new("Frame")
+		pBg.Size = UDim2.new(0, 180, 0, 8)
+		pBg.Position = UDim2.new(1, -196, 0.5, -4)
+		pBg.BackgroundColor3 = Color3.fromRGB(30, 30, 44)
+		pBg.Parent = row
+		Instance.new("UICorner").Parent = pBg
+
+		local pFill = Instance.new("Frame")
+		local pct = unlocked and 1 or math.clamp(current / ach.criteriaGoal, 0, 1)
+		pFill.Size = UDim2.new(pct, 0, 1, 0)
+		pFill.BackgroundColor3 = unlocked
+			and Color3.fromRGB(80, 200, 100)
+			or  Color3.fromRGB(212, 175, 55)
+		pFill.Parent = pBg
+		Instance.new("UICorner").Parent = pFill
+
+		local pLbl = Instance.new("TextLabel")
+		pLbl.Size = UDim2.new(0, 180, 0, 18)
+		pLbl.Position = UDim2.new(1, -196, 0.5, 6)
+		pLbl.BackgroundTransparency = 1
+		pLbl.Text = unlocked
+			and "Completed!"
+			or  tostring(math.floor(current)) .. " / " .. tostring(ach.criteriaGoal)
+		pLbl.TextSize = 11
+		pLbl.Font = Enum.Font.Gotham
+		pLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+		pLbl.TextXAlignment = Enum.TextXAlignment.Right
+		pLbl.Parent = row
+	end
+
+	logScroll.CanvasSize = UDim2.new(0, 0, 0, logLayout.AbsoluteContentSize.Y + 20)
+end
+
+UpdateProgress.OnClientEvent:Connect(function(prog: any)
+	cachedProgress = prog
+	if logGui.Enabled then refreshLog() end
+end)
+
+logClose.MouseButton1Click:Connect(function() logGui.Enabled = false end)
+logDimmer.InputBegan:Connect(function(input: InputObject)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then logGui.Enabled = false end
+end)
+
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.H then
+		logGui.Enabled = not logGui.Enabled
+		if logGui.Enabled then refreshLog() end
+	end
+end)
+
+print("[AchievementClient] Ready — press H to open achievement log")
+`,
+}
+
+// ─── 23. Zone System ─────────────────────────────────────────────────────────
+
+const ZONE_SERVER: GameSystemFile = {
+  filename: 'ZoneServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- ZoneServer (ServerScript → ServerScriptService)
+-- Zone detection via ZoneTag attribute, player enter/exit events,
+-- zone music, lighting mood, zone gate (require level/item), transitions.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Lighting          = game:GetService("Lighting")
+local RunService        = game:GetService("RunService")
+
+-- ── Types ─────────────────────────────────────────────────────────────────────
+type ZoneDef = {
+	id:            string,
+	displayName:   string,
+	musicId:       string,      -- rbxassetid
+	ambientColor:  Color3,
+	fogEnd:        number,
+	brightness:    number,
+	requireLevel:  number?,     -- min level to enter
+	requireItem:   string?,     -- item id required to enter
+	abilityFlags:  {[string]: boolean},  -- e.g. { canFly = true }
+}
+
+-- ── Zone definitions ──────────────────────────────────────────────────────────
+-- Place BaseParts/Folders in workspace with attribute ZoneId = key below.
+-- Parts tagged with ZoneId define the zone boundary (TouchEnded/TouchBegan).
+local ZONE_DEFS: {[string]: ZoneDef} = {
+	Overworld = {
+		id = "Overworld", displayName = "Overworld",
+		musicId = "rbxassetid://0",
+		ambientColor = Color3.fromRGB(100, 110, 130),
+		fogEnd = 1000, brightness = 1,
+		requireLevel = nil, requireItem = nil,
+		abilityFlags = {},
+	},
+	Dungeon = {
+		id = "Dungeon", displayName = "Dark Dungeon",
+		musicId = "rbxassetid://0",
+		ambientColor = Color3.fromRGB(30, 20, 40),
+		fogEnd = 200, brightness = 0.3,
+		requireLevel = 5, requireItem = nil,
+		abilityFlags = { canFly = false },
+	},
+	Volcano = {
+		id = "Volcano", displayName = "Volcano Crater",
+		musicId = "rbxassetid://0",
+		ambientColor = Color3.fromRGB(180, 60, 20),
+		fogEnd = 300, brightness = 1.5,
+		requireLevel = 10, requireItem = "fire_charm",
+		abilityFlags = {},
+	},
+	Sky = {
+		id = "Sky", displayName = "Sky Realm",
+		musicId = "rbxassetid://0",
+		ambientColor = Color3.fromRGB(140, 190, 255),
+		fogEnd = 2000, brightness = 2,
+		requireLevel = 15, requireItem = nil,
+		abilityFlags = { canFly = true },
+	},
+}
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "ZoneRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local ZoneEntered      = Instance.new("RemoteEvent");    ZoneEntered.Name      = "ZoneEntered";      ZoneEntered.Parent      = Remotes
+local ZoneExited       = Instance.new("RemoteEvent");    ZoneExited.Name       = "ZoneExited";       ZoneExited.Parent       = Remotes
+local ZoneBlocked      = Instance.new("RemoteEvent");    ZoneBlocked.Name      = "ZoneBlocked";      ZoneBlocked.Parent      = Remotes
+local GetCurrentZone   = Instance.new("RemoteFunction"); GetCurrentZone.Name   = "GetCurrentZone";   GetCurrentZone.Parent   = Remotes
+
+-- ── Per-player zone tracking ──────────────────────────────────────────────────
+local playerZone: {[number]: string} = {}   -- userId → current zoneId
+
+local function getPlayerLevel(player: Player): number
+	local ls = player:FindFirstChild("leaderstats")
+	if not ls then return 1 end
+	local lv = ls:FindFirstChild("Level") :: IntValue?
+	return lv and lv.Value or 1
+end
+
+local function playerHasItem(player: Player, itemId: string): boolean
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then return false end
+	local slot = backpack:FindFirstChild(itemId) :: IntValue?
+	return slot ~= nil and slot.Value > 0
+end
+
+local function canEnterZone(player: Player, zone: ZoneDef): (boolean, string)
+	if zone.requireLevel and getPlayerLevel(player) < zone.requireLevel then
+		return false, "Requires Level " .. zone.requireLevel
+	end
+	if zone.requireItem and not playerHasItem(player, zone.requireItem) then
+		return false, "Requires: " .. zone.requireItem
+	end
+	return true, ""
+end
+
+-- ── Touch detection ───────────────────────────────────────────────────────────
+local function hookZonePart(part: BasePart)
+	local zoneId = part:GetAttribute("ZoneId")
+	if type(zoneId) ~= "string" then return end
+	local zone = ZONE_DEFS[zoneId]
+	if not zone then return end
+
+	part.Touched:Connect(function(hit: BasePart)
+		local char = hit.Parent
+		if not char then return end
+		local player = Players:GetPlayerFromCharacter(char :: Model)
+		if not player then return end
+
+		-- Debounce: only fire if zone changed
+		if playerZone[player.UserId] == zoneId then return end
+
+		local ok, reason = canEnterZone(player, zone)
+		if not ok then
+			ZoneBlocked:FireClient(player, zone.displayName, reason)
+			-- Push player back
+			local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if root then
+				root.CFrame = root.CFrame - root.CFrame.LookVector * 10
+			end
+			return
+		end
+
+		local previousZone = playerZone[player.UserId]
+		playerZone[player.UserId] = zoneId
+		ZoneEntered:FireClient(player, zone, previousZone)
+
+		-- Achievement: visit_zone
+		-- (call AchievementServer.recordProgress if available)
+	end)
+end
+
+-- Hook all existing zone parts
+for _, obj in workspace:GetDescendants() do
+	if obj:IsA("BasePart") and obj:GetAttribute("ZoneId") then
+		hookZonePart(obj :: BasePart)
+	end
+end
+workspace.DescendantAdded:Connect(function(obj)
+	if obj:IsA("BasePart") and obj:GetAttribute("ZoneId") then
+		hookZonePart(obj :: BasePart)
+	end
+end)
+
+-- ── Remote handlers ───────────────────────────────────────────────────────────
+GetCurrentZone.OnServerInvoke = function(player: Player): string
+	return playerZone[player.UserId] or "Overworld"
+end
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	playerZone[player.UserId] = nil
+end)
+
+-- ── Expose API ────────────────────────────────────────────────────────────────
+return {
+	getPlayerZone = function(player: Player): string
+		return playerZone[player.UserId] or "Overworld"
+	end,
+}
+`,
+}
+
+const ZONE_CLIENT: GameSystemFile = {
+  filename: 'ZoneClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- ZoneClient (LocalScript → StarterPlayerScripts)
+-- Zone name popup, music swap, lighting mood, ability flag application,
+-- loading transition overlay between zones.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local Lighting          = game:GetService("Lighting")
+local SoundService      = game:GetService("SoundService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes       = ReplicatedStorage:WaitForChild("ZoneRemotes")
+local ZoneEntered   = Remotes:WaitForChild("ZoneEntered")   :: RemoteEvent
+local ZoneExited    = Remotes:WaitForChild("ZoneExited")    :: RemoteEvent
+local ZoneBlocked   = Remotes:WaitForChild("ZoneBlocked")   :: RemoteEvent
+
+-- ── Zone name popup ───────────────────────────────────────────────────────────
+local zoneGui = Instance.new("ScreenGui")
+zoneGui.Name = "ZoneGui"
+zoneGui.ResetOnSpawn = false
+zoneGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+zoneGui.Parent = playerGui
+
+local zoneBanner = Instance.new("Frame")
+zoneBanner.Size = UDim2.new(0, 300, 0, 60)
+zoneBanner.Position = UDim2.new(0.5, -150, 0, -70)
+zoneBanner.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+zoneBanner.BackgroundTransparency = 0.2
+zoneBanner.Parent = zoneGui
+Instance.new("UICorner").Parent = zoneBanner
+local zoneStroke = Instance.new("UIStroke"); zoneStroke.Color = Color3.fromRGB(212, 175, 55); zoneStroke.Thickness = 2; zoneStroke.Parent = zoneBanner
+
+local zoneTitleLbl = Instance.new("TextLabel")
+zoneTitleLbl.Size = UDim2.new(1, -16, 0, 18)
+zoneTitleLbl.Position = UDim2.new(0, 8, 0, 8)
+zoneTitleLbl.BackgroundTransparency = 1
+zoneTitleLbl.Text = "ENTERING"
+zoneTitleLbl.TextSize = 11
+zoneTitleLbl.Font = Enum.Font.GothamBold
+zoneTitleLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+zoneTitleLbl.Parent = zoneBanner
+
+local zoneNameLbl = Instance.new("TextLabel")
+zoneNameLbl.Size = UDim2.new(1, -16, 0, 30)
+zoneNameLbl.Position = UDim2.new(0, 8, 0, 24)
+zoneNameLbl.BackgroundTransparency = 1
+zoneNameLbl.Text = ""
+zoneNameLbl.TextSize = 22
+zoneNameLbl.Font = Enum.Font.GothamBold
+zoneNameLbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+zoneNameLbl.Parent = zoneBanner
+
+-- ── Transition overlay ────────────────────────────────────────────────────────
+local transGui = Instance.new("ScreenGui")
+transGui.Name = "ZoneTransitionGui"
+transGui.ResetOnSpawn = false
+transGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+transGui.Parent = playerGui
+
+local transFrame = Instance.new("Frame")
+transFrame.Size = UDim2.new(1, 0, 1, 0)
+transFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+transFrame.BackgroundTransparency = 1
+transFrame.Parent = transGui
+
+-- ── Zone blocked popup ────────────────────────────────────────────────────────
+local blockedGui = Instance.new("ScreenGui")
+blockedGui.Name = "ZoneBlockedGui"
+blockedGui.ResetOnSpawn = false
+blockedGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+blockedGui.Parent = playerGui
+
+local blockedBanner = Instance.new("Frame")
+blockedBanner.Size = UDim2.new(0, 320, 0, 70)
+blockedBanner.Position = UDim2.new(0.5, -160, 0.5, 120)
+blockedBanner.BackgroundColor3 = Color3.fromRGB(40, 10, 10)
+blockedBanner.BackgroundTransparency = 0.1
+blockedBanner.Parent = blockedGui
+Instance.new("UICorner").Parent = blockedBanner
+local blockStroke = Instance.new("UIStroke"); blockStroke.Color = Color3.fromRGB(220, 60, 60); blockStroke.Thickness = 2; blockStroke.Parent = blockedBanner
+
+local blockedTitle = Instance.new("TextLabel")
+blockedTitle.Size = UDim2.new(1, -16, 0, 22)
+blockedTitle.Position = UDim2.new(0, 8, 0, 6)
+blockedTitle.BackgroundTransparency = 1
+blockedTitle.Text = "AREA LOCKED"
+blockedTitle.TextSize = 13
+blockedTitle.Font = Enum.Font.GothamBold
+blockedTitle.TextColor3 = Color3.fromRGB(220, 60, 60)
+blockedTitle.Parent = blockedBanner
+
+local blockedReason = Instance.new("TextLabel")
+blockedReason.Size = UDim2.new(1, -16, 0, 26)
+blockedReason.Position = UDim2.new(0, 8, 0, 30)
+blockedReason.BackgroundTransparency = 1
+blockedReason.Text = ""
+blockedReason.TextSize = 15
+blockedReason.Font = Enum.Font.GothamBold
+blockedReason.TextColor3 = Color3.fromRGB(240, 240, 240)
+blockedReason.Parent = blockedBanner
+
+blockedBanner.BackgroundTransparency = 1  -- hidden initially
+
+-- ── Active music ──────────────────────────────────────────────────────────────
+local activeSound: Sound? = nil
+
+local function playZoneMusic(musicId: string)
+	if activeSound then
+		activeSound:Stop()
+		activeSound:Destroy()
+		activeSound = nil
+	end
+	if musicId == "rbxassetid://0" then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = musicId
+	sound.Volume  = 0.5
+	sound.Looped  = true
+	sound.Parent  = SoundService
+	sound:Play()
+	activeSound = sound
+end
+
+-- ── Apply zone effects ────────────────────────────────────────────────────────
+local function applyZoneEffects(zone: any)
+	-- Lighting transition
+	TweenService:Create(Lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad), {
+		Ambient    = zone.ambientColor,
+		FogEnd     = zone.fogEnd,
+		Brightness = zone.brightness,
+	}):Play()
+
+	-- Music
+	playZoneMusic(zone.musicId)
+
+	-- Ability flags: canFly, etc.
+	-- Wire up to your fly/ability system here
+	if zone.abilityFlags then
+		if zone.abilityFlags.canFly == true then
+			print("[ZoneClient] Fly ability ENABLED in", zone.displayName)
+		elseif zone.abilityFlags.canFly == false then
+			print("[ZoneClient] Fly ability DISABLED in", zone.displayName)
+		end
+	end
+end
+
+-- ── Zone entered handler ──────────────────────────────────────────────────────
+ZoneEntered.OnClientEvent:Connect(function(zone: any, _previousZone: string?)
+	-- Fade-out → fade-in transition
+	TweenService:Create(transFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad), {
+		BackgroundTransparency = 0
+	}):Play()
+
+	task.delay(0.28, function()
+		applyZoneEffects(zone)
+
+		-- Show zone name banner
+		zoneNameLbl.Text = tostring(zone.displayName)
+		zoneBanner.Position = UDim2.new(0.5, -150, 0, -70)
+		TweenService:Create(zoneBanner, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+			Position = UDim2.new(0.5, -150, 0, 20)
+		}):Play()
+
+		-- Fade back in
+		TweenService:Create(transFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
+			BackgroundTransparency = 1
+		}):Play()
+
+		task.delay(3, function()
+			TweenService:Create(zoneBanner, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+				Position = UDim2.new(0.5, -150, 0, -70)
+			}):Play()
+		end)
+	end)
+end)
+
+ZoneExited.OnClientEvent:Connect(function(_zoneId: string)
+	-- Nothing special needed — ZoneEntered on the next zone handles the transition
+end)
+
+-- ── Zone blocked handler ──────────────────────────────────────────────────────
+local blockActive = false
+
+ZoneBlocked.OnClientEvent:Connect(function(zoneName: string, reason: string)
+	if blockActive then return end
+	blockActive = true
+	blockedTitle.Text = "AREA LOCKED — " .. zoneName:upper()
+	blockedReason.Text = reason
+	blockedBanner.BackgroundTransparency = 0.1
+	TweenService:Create(blockedBanner, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+		Position = UDim2.new(0.5, -160, 0.5, 120)
+	}):Play()
+
+	task.delay(3, function()
+		TweenService:Create(blockedBanner, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1
+		}):Play()
+		task.delay(0.3, function()
+			blockActive = false
+		end)
+	end)
+end)
+
+print("[ZoneClient] Ready")
+`,
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const GAME_SYSTEMS: Record<string, GameSystem> = {
@@ -5693,6 +8145,31 @@ export const GAME_SYSTEMS: Record<string, GameSystem> = {
     description: 'Full round lifecycle — intermission → active → results, with timer, scoreboard, and win conditions',
     files: [ROUNDS_SERVER, ROUNDS_CLIENT],
   },
+  admin: {
+    id: 'admin',
+    description: 'Chat command parser (/kick /ban /tp /give /speed /fly /god /announce), ban DataStore, admin panel GUI',
+    files: [ADMIN_SERVER, ADMIN_CLIENT],
+  },
+  crafting: {
+    id: 'crafting',
+    description: '3×3 recipe grid with pattern matching, material consumption, rarity output, and recipe book GUI',
+    files: [CRAFTING_SERVER, CRAFTING_CLIENT],
+  },
+  dialogue: {
+    id: 'dialogue',
+    description: 'NPC dialogue tree with ProximityPrompt trigger, typewriter text, choice buttons, and action hooks',
+    files: [DIALOGUE_SERVER, DIALOGUE_CLIENT],
+  },
+  achievement: {
+    id: 'achievement',
+    description: 'Achievement system with DataStore progress, unlock popup with confetti, and achievement log GUI',
+    files: [ACHIEVEMENT_SERVER, ACHIEVEMENT_CLIENT],
+  },
+  zone: {
+    id: 'zone',
+    description: 'Zone detection via ZoneTag attribute, music/lighting transitions, zone gates, and name popup',
+    files: [ZONE_SERVER, ZONE_CLIENT],
+  },
 }
 
 // ─── Intent detection helper ─────────────────────────────────────────────────
@@ -5770,6 +8247,26 @@ const SYSTEM_PATTERNS: Array<{ patterns: RegExp[]; systemId: string }> = [
   {
     patterns: [/\b(round system|match system|intermission|game loop|round.?based|round manager|match manager|round timer|kill limit|round results?)\b/i],
     systemId: 'rounds',
+  },
+  {
+    patterns: [/\b(admin system|admin panel|admin commands?|chat commands?|moderator|kick system|ban system|\/kick|\/ban|admin tools?|admin gui)\b/i],
+    systemId: 'admin',
+  },
+  {
+    patterns: [/\b(crafting system|recipe system|craft(?:ing)?|workbench|forge items?|3x3 grid|recipe book|recipe grid|crafting table)\b/i],
+    systemId: 'crafting',
+  },
+  {
+    patterns: [/\b(dialogue system|npc talk|conversation system|dialogue tree|branching dialogue|proximity dialogue|npc dialogue|typewriter text|choice buttons?)\b/i],
+    systemId: 'dialogue',
+  },
+  {
+    patterns: [/\b(achievement system|achievements?|badge system|unlock system|trophies|trophy system|milestones?|achievement log|achievement popup)\b/i],
+    systemId: 'achievement',
+  },
+  {
+    patterns: [/\b(zone system|area system|regions?|zone gate|zone transition|zone detection|zone effect|lighting zone|zone music|enter zone)\b/i],
+    systemId: 'zone',
   },
 ]
 

@@ -166,7 +166,7 @@ async function createMeshyTask(prompt: string, artStyle: string, polyTarget: num
     body: JSON.stringify({
       mode: 'preview',
       prompt,
-      negative_prompt: 'low quality, blurry, distorted, floating parts, disconnected mesh, NSFW',
+      negative_prompt: 'low quality, blurry, distorted, floating parts, disconnected mesh, NSFW, text, watermark, multiple objects, background, base plate, excessive detail, wireframe',
       art_style: artStyle,
       topology: 'quad',
       target_polycount: polyTarget,
@@ -275,6 +275,46 @@ async function generatePbrTextures(prompt: string): Promise<TextureSet> {
   throw new Error('Fal texture generation timed out')
 }
 
+// ── Meshy prompt enhancement ──────────────────────────────────────────────────
+
+/**
+ * Deterministic pre-pass that strips noise words and injects quality modifiers
+ * before any optional AI enrichment. Runs synchronously — no API call needed.
+ *
+ * Goal: turn "create a building for my roblox game" into
+ * "building, stylized game asset, high quality, clean topology"
+ */
+function enhanceMeshyPrompt(raw: string): string {
+  // 1. Strip generic filler words that dilute the Meshy prompt
+  let prompt = raw
+    .replace(
+      /\b(create|make|generate|build|design|produce|a|an|the|for|my|your|game|roblox|please|me|some)\b/gi,
+      ' ',
+    )
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  // 2. Ensure we still have meaningful content after stripping
+  if (prompt.length < 3) prompt = raw.trim()
+
+  // 3. Append style qualifier if no style descriptor already present
+  if (!/\b(style|poly|cartoon|realistic|stylized|pbr|low.?poly|anime|toon)\b/i.test(prompt)) {
+    prompt += ', stylized game asset'
+  }
+
+  // 4. Append quality/topology modifiers if absent
+  if (!/\b(quality|detailed|clean|topology|optimized|optimised|crisp|sharp)\b/i.test(prompt)) {
+    prompt += ', high quality, clean topology'
+  }
+
+  // 5. Ensure Roblox-friendliness hints are present
+  if (!/\b(roblox|game.ready|watertight|no.floating|single.mesh)\b/i.test(prompt)) {
+    prompt += ', game-ready, watertight mesh, no floating parts'
+  }
+
+  return prompt
+}
+
 // ── Prompt enrichment ─────────────────────────────────────────────────────────
 
 async function enrichPrompt(description: string): Promise<string> {
@@ -364,9 +404,12 @@ export interface TextTo3dResult {
 export async function toolTextTo3d(args: TextTo3dArgs): Promise<TextTo3dResult> {
   const { prompt, style = 'roblox', polyTarget = 10_000, enrichPromptWithAI = false } = args
   const artStyle = ART_STYLE_MAP[style] ?? 'low-poly'
+
+  // Always run deterministic enhancement first, then optionally layer AI enrichment on top
+  const enhanced = enhanceMeshyPrompt(prompt)
   const finalPrompt = enrichPromptWithAI
-    ? await enrichPrompt(prompt)
-    : `${prompt}, Roblox-ready game asset, no floating geometry, watertight mesh`
+    ? await enrichPrompt(enhanced)
+    : enhanced
 
   const taskId = await createMeshyTask(finalPrompt, artStyle, polyTarget)
   const task = await pollMeshyTask(taskId)

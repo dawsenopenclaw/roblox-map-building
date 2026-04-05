@@ -24,6 +24,7 @@ import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import Anthropic from '@anthropic-ai/sdk'
+import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 
 // ─── Curated Roblox Marketplace Asset Database ───────────────────────────────
 // Asset IDs sourced from the Roblox public catalog free-model section.
@@ -43,7 +44,7 @@ import Anthropic from '@anthropic-ai/sdk'
 interface CuratedAsset {
   id: number
   name: string
-  category: 'nature' | 'prop' | 'building' | 'vehicle' | 'furniture' | 'character' | 'light' | 'sign' | 'fence'
+  category: 'nature' | 'prop' | 'building' | 'vehicle' | 'furniture' | 'character' | 'light' | 'sign' | 'fence' | 'scifi' | 'fantasy' | 'horror' | 'food' | 'weapon' | 'medieval' | 'industrial' | 'sport'
   tags: string[]
   /** Suggested uniform scale applied after insert (1 = no change) */
   scale: number
@@ -119,6 +120,36 @@ const CURATED_ASSETS: CuratedAsset[] = [
   { id: 4134200596,      name: 'Refrigerator',     category: 'furniture', tags: ['fridge','refrigerator','kitchen'],         scale: 1.0, description: 'Retro refrigerator' },
   // Characters and NPCs
   { id: 2823778520, name: 'Merchant NPC',        category: 'character', tags: ['merchant','vendor','shop','npc'],          scale: 1.0, description: 'Village merchant NPC with bag' },
+  // Modern Buildings
+  { id: 0, name: 'Apartment Building',   category: 'building', tags: ['apartment','building','modern','residential','city','urban'],      scale: 1.0, description: 'Multi-story modern apartment block' },                   // TODO: find real asset ID
+  { id: 0, name: 'Skyscraper',           category: 'building', tags: ['skyscraper','tower','highrise','city','glass','office'],           scale: 1.0, description: 'Tall glass-facade office skyscraper' },                   // TODO: find real asset ID
+  { id: 0, name: 'Shopping Mall',        category: 'building', tags: ['mall','shopping','center','retail','modern'],                      scale: 1.0, description: 'Modern shopping mall exterior' },                         // TODO: find real asset ID
+  { id: 0, name: 'Office Building',      category: 'building', tags: ['office','building','corporate','modern','urban'],                  scale: 1.0, description: 'Mid-rise corporate office building' },                    // TODO: find real asset ID
+  { id: 0, name: 'Gas Station',          category: 'building', tags: ['gas','station','petrol','fuel','pump','modern'],                   scale: 1.0, description: 'Modern gas station with canopy' },                        // TODO: find real asset ID
+  // Sci-fi / Space
+  { id: 0, name: 'Space Station Module', category: 'scifi',    tags: ['space','station','module','sci-fi','scifi','futuristic'],          scale: 1.0, description: 'Cylindrical space station habitat module' },             // TODO: find real asset ID
+  { id: 0, name: 'Sci-fi Laser Emitter', category: 'scifi',    tags: ['laser','scifi','sci-fi','beam','emitter','weapon'],                scale: 1.0, description: 'Wall-mounted sci-fi laser cannon' },                      // TODO: find real asset ID
+  { id: 0, name: 'Hologram Projector',   category: 'scifi',    tags: ['hologram','projector','scifi','sci-fi','futuristic','tech'],       scale: 1.0, description: 'Floor-standing holographic display projector' },         // TODO: find real asset ID
+  { id: 0, name: 'Sci-fi Blast Door',    category: 'scifi',    tags: ['door','scifi','sci-fi','sliding','futuristic','metal'],            scale: 1.0, description: 'Sliding sci-fi blast door' },                            // TODO: find real asset ID
+  { id: 0, name: 'Alien Pod',            category: 'scifi',    tags: ['alien','pod','scifi','sci-fi','capsule','space'],                  scale: 1.0, description: 'Organic alien pod / egg structure' },                    // TODO: find real asset ID
+  // Fantasy
+  { id: 0, name: 'Crystal Formation',    category: 'fantasy',  tags: ['crystal','gem','formation','magic','fantasy','glowing'],           scale: 1.0, description: 'Cluster of glowing magical crystals' },                  // TODO: find real asset ID
+  { id: 0, name: 'Magic Portal',         category: 'fantasy',  tags: ['portal','magic','fantasy','teleport','swirling','gate'],           scale: 1.0, description: 'Swirling arcane teleportation portal' },                  // TODO: find real asset ID
+  { id: 0, name: 'Magic Circle',         category: 'fantasy',  tags: ['magic','circle','rune','ritual','glow','fantasy'],                 scale: 1.0, description: 'Glowing runic magic circle on ground' },                 // TODO: find real asset ID
+  { id: 0, name: 'Dragon Skull',         category: 'fantasy',  tags: ['dragon','skull','bones','fantasy','large','decoration'],           scale: 1.5, description: 'Massive decorative dragon skull prop' },                  // TODO: find real asset ID
+  { id: 0, name: 'Enchanted Tree',       category: 'fantasy',  tags: ['tree','enchanted','magic','glowing','fantasy','nature'],           scale: 1.0, description: 'Glowing magical fantasy tree' },                         // TODO: find real asset ID
+  // Horror
+  { id: 0, name: 'Coffin',               category: 'horror',   tags: ['coffin','casket','horror','spooky','cemetery','vampire'],          scale: 1.0, description: 'Wooden vampire coffin prop' },                           // TODO: find real asset ID
+  { id: 0, name: 'Skull Pile',           category: 'horror',   tags: ['skull','bones','pile','horror','spooky','death'],                  scale: 0.8, description: 'Pile of decorative skulls' },                           // TODO: find real asset ID
+  { id: 0, name: 'Cobweb Decoration',    category: 'horror',   tags: ['cobweb','spider','web','horror','spooky','halloween'],             scale: 1.0, description: 'Corner cobweb decoration' },                             // TODO: find real asset ID
+  { id: 0, name: 'Tombstone',            category: 'horror',   tags: ['tombstone','grave','cemetery','horror','spooky','stone'],          scale: 1.0, description: 'Chipped stone graveyard tombstone' },                    // TODO: find real asset ID
+  { id: 0, name: 'Haunted Lantern',      category: 'horror',   tags: ['lantern','haunted','horror','spooky','ghost','glow'],              scale: 0.9, description: 'Flickering haunted lantern with eerie glow' },          // TODO: find real asset ID
+  // Sports Equipment
+  { id: 0, name: 'Basketball Hoop',      category: 'sports',   tags: ['basketball','hoop','net','court','sports','outdoor'],              scale: 1.0, description: 'Regulation basketball hoop on pole' },                   // TODO: find real asset ID
+  { id: 0, name: 'Soccer Goal',          category: 'sports',   tags: ['soccer','goal','net','football','field','sports'],                 scale: 1.0, description: 'Full-size soccer goal with net' },                       // TODO: find real asset ID
+  { id: 0, name: 'Bleacher Stand',       category: 'sports',   tags: ['bleacher','stand','seats','stadium','sports','audience'],          scale: 1.0, description: 'Metal bleacher seating section' },                       // TODO: find real asset ID
+  { id: 0, name: 'Tennis Net',           category: 'sports',   tags: ['tennis','net','court','sports','white'],                           scale: 1.0, description: 'Tennis court net on posts' },                             // TODO: find real asset ID
+  { id: 0, name: 'Scoreboard',           category: 'sports',   tags: ['scoreboard','score','board','stadium','display','sports'],         scale: 1.0, description: 'Electronic stadium scoreboard' },                        // TODO: find real asset ID
 ]
 
 /** Find the best-matching curated asset for a keyword/phrase. Returns null when nothing matches. */
@@ -1208,6 +1239,46 @@ Example: "a chair" produces:
   Variant C: "Royal Throne" — tall ornate back, gold Marble arms, red cushion, carved details
 Group all variants in one Model named "{object}_Variants". Add a BillboardGui label above each one showing its name.
 The user picks the one they like, you delete the others and build more of the chosen style.
+
+VARIANT D (for complex objects): "AI Generated 3D" — if the object is organic or complex (creature, character, statue, vehicle with curves, detailed weapon, etc.), offer a 4th option after presenting the 3 built variants:
+"I also have a 4th option — I can generate a custom 3D model that'll look way more realistic. Want me to?"
+Only offer Variant D when Parts genuinely can't capture the object's shape well. Don't offer it for buildings, furniture, or anything geometric.
+
+=== 3D MESH GENERATION — WHEN PARTS AREN'T ENOUGH ===
+
+You have access to Meshy AI for generating real 3D models. Use it when:
+
+ALWAYS USE MESHY FOR:
+- Organic shapes: characters, creatures, animals, dragons, monsters
+- Complex props: statues, sculptures, trophies, detailed weapons
+- Unique assets: custom logos, mascots, branded items
+- Natural objects: detailed rocks, coral, mushrooms, crystals (when marketplace doesn't have the right one)
+- Vehicles with curves: sports cars, spaceships, boats with smooth hulls
+
+NEVER USE MESHY FOR (use Parts/marketplace instead):
+- Buildings, walls, floors, roads (Parts are better — precise dimensions)
+- Simple furniture (marketplace has better options)
+- Trees, lamps, benches (marketplace has these)
+- UI elements (use ScreenGui)
+- Anything that needs exact dimensions for gameplay
+
+HOW TO TRIGGER MESHY:
+When you identify something that needs a custom 3D model, tell the user:
+"This would look way better as a custom 3D model — let me generate one for you."
+Then describe the object in your response, and the system will auto-detect the 3D intent
+and generate it via Meshy. The model will be delivered as a GLB file.
+
+QUALITY PROMPTS FOR MESHY (what to send):
+- Be specific about style: "low-poly cartoon dragon with purple scales and small wings"
+- Specify game-ready: "game-ready, low polygon count, clean topology"
+- Include material hints: "metallic armor with gold trim" or "wooden with paint chipping"
+- Always add "roblox style" or "game asset" for appropriate aesthetic
+- Negative: "no floating parts, no disconnected mesh, clean single mesh"
+
+MESH INTEGRATION WITH SCENE:
+After Meshy generates a model, it can be inserted into Studio as a MeshPart.
+Position it using the same CFrame system as Parts. Scale with mesh:ScaleTo(factor).
+Apply materials via SurfaceAppearance for PBR textures.
 
 === CREATIVE INVENTION ENGINE — BUILD ANYTHING NOT IN THE LIBRARY ===
 The object library above is a STARTING POINT, not a limit. Users WILL ask for things not listed.
@@ -5079,11 +5150,13 @@ return placeMesh()`
 async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   const meshyKey = process.env.MESHY_API_KEY
   const cleanPrompt = extractMeshPrompt(prompt)
+  // Enhance the clean prompt with detected genre/theme context before sending to Meshy
+  const enhancedPrompt = enhanceMeshPromptWithGameKnowledge(cleanPrompt)
 
   // Priority 1: Meshy v3 (paid, best quality) — preview → refine → textured GLB
   if (meshyKey) {
     try {
-      const previewTaskId = await createMeshyChatTask(cleanPrompt, meshyKey)
+      const previewTaskId = await createMeshyChatTask(enhancedPrompt, meshyKey)
       const previewTask = await pollMeshyChatTask(previewTaskId, meshyKey)
 
       if (previewTask.status === 'IN_PROGRESS') {
@@ -6202,7 +6275,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext }] },
+            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext }] },
             contents: [
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
@@ -6250,7 +6323,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           model: 'gpt-4o',
           max_tokens: 1024,
           messages: [
-            { role: 'system', content: FORJEAI_SYSTEM_PROMPT },
+            { role: 'system', content: FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) },
             ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
@@ -6286,9 +6359,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const customAnthropic = new Anthropic({ apiKey: customApiKey })
       const isBuildIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh'].includes(intent)
       const customMaxTokens = isBuildIntent ? 4096 : 1024
+      const customGameKnowledge = buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' '))
       const customSystemPrompt = isBuildIntent
-        ? FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext
-        : FORJEAI_CORE_PROMPT + cameraContext
+        ? FORJEAI_SYSTEM_PROMPT + customGameKnowledge + cameraContext + multiStepContext
+        : FORJEAI_CORE_PROMPT + customGameKnowledge + cameraContext
       const aiResponse = await customAnthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: customMaxTokens,
@@ -6363,9 +6437,11 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       // Build-intent detection: only include the massive object library for build requests.
       // Chat/conversation gets just the core personality prompt (~2K tokens vs ~25K).
       const isBuildingIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh'].includes(intent)
+      const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
+      const gameKnowledge = buildGameKnowledgePrompt(recentContext)
       const systemPrompt = isBuildingIntent
-        ? FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext
-        : FORJEAI_CORE_PROMPT + cameraContext
+        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext
+        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext
 
       // ── STREAMING PATH ───────────────────────────────────────────────────────────
       // When the frontend sends stream:true, pipe text chunks in real time.

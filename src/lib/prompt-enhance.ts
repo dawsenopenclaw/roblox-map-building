@@ -8,6 +8,8 @@
  * Used by both the Meshy 3D mesh pipeline and the Luau code generation path.
  */
 
+import { detectGenre, detectTheme, GAME_GENRES, GAME_THEMES } from '@/lib/ai/game-knowledge'
+
 // ── Category types ───────────────────────────────────────────────────────────
 
 export type AssetCategory =
@@ -338,6 +340,20 @@ export function enhancePrompt(
   } else {
     // User already provided detail — just append quality modifiers
     enhanced = `${cleaned}, ${CATEGORY_DESCRIPTORS[resolvedCategory]}`
+  }
+
+  // Inject genre/theme style modifiers from game knowledge
+  const genre = detectGenre(userPrompt)
+  const theme = detectTheme(userPrompt)
+
+  if (genre && GAME_GENRES[genre]) {
+    const g = GAME_GENRES[genre]
+    enhanced += `, ${g.colorScheme.split('.')[0].toLowerCase()}, Roblox ${genre} game style`
+  }
+
+  if (theme && GAME_THEMES[theme]) {
+    const t = GAME_THEMES[theme]
+    enhanced += `, ${t.colors.slice(0, 2).join(' and ')} color palette, ${t.materials.slice(0, 2).join(' and ')} materials`
   }
 
   // Append universal quality suffix (Roblox-optimized)

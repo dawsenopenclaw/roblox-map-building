@@ -363,8 +363,8 @@ export default function HomeClient() {
                   '--delay': '1.1s',
                   left: '40px',
                   top: '30px',
-                  background: '#FFB81C',
-                  boxShadow: '0 0 6px 2px rgba(255,184,28,0.7)',
+                  background: '#D4AF37',
+                  boxShadow: '0 0 6px 2px rgba(212,175,55,0.7)',
                 } as React.CSSProperties}
               />
               {/* Spark 3 — drifts center-left */}
@@ -413,9 +413,9 @@ export default function HomeClient() {
                 href="/editor"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 32px rgba(255,184,28,0.4), 0 4px 16px rgba(0,0,0,0.4)',
+                  boxShadow: '0 0 32px rgba(212,175,55,0.4), 0 4px 16px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
                 }}
               >
@@ -923,9 +923,9 @@ export default function HomeClient() {
                 href="/sign-up"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 40px rgba(255,184,28,0.35), 0 8px 24px rgba(0,0,0,0.4)',
+                  boxShadow: '0 0 40px rgba(212,175,55,0.35), 0 8px 24px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
                 }}
               >
@@ -1143,9 +1143,9 @@ export default function HomeClient() {
                 href="/sign-up"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 48px rgba(255,184,28,0.4), 0 8px 32px rgba(0,0,0,0.5)',
+                  boxShadow: '0 0 48px rgba(212,175,55,0.4), 0 8px 32px rgba(0,0,0,0.5)',
                   letterSpacing: '0.01em',
                 }}
               >

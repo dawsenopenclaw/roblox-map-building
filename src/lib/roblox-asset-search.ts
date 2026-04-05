@@ -565,7 +565,18 @@ export interface SmartPickOptions {
 
 /**
  * Given a list of free assets, pick the best one for the current build context.
- * Scoring: thumbnail presence + theme keyword match + scale hint match.
+ *
+ * Scoring breakdown (higher = better):
+ *   +15  thumbnail present (strong quality signal — placeholder assets have none)
+ *   +12  theme keyword exact-match in asset name
+ *   +5   theme keyword match in description
+ *   +10  scale correctly matches preferred (large/small)
+ *   -12  scale clearly wrong (large asset for a small prop, or vice-versa)
+ *   +6   description is substantive (> 40 chars) — indicates complete/quality upload
+ *   +3   description exists (> 10 chars)
+ *   +4   name contains a quality indicator word (e.g. "hd", "detailed", "optimized")
+ *   -5   name contains a low-quality signal word (e.g. "test", "old", "broken", "wip")
+ *   +3   creator is a known high-volume Roblox asset publisher (id heuristic: > 100 000)
  */
 export function pickBestAsset(
   assets: MarketplaceAsset[],
@@ -582,38 +593,59 @@ export function pickBestAsset(
 
   if (candidates.length === 0) return assets[0] // fallback to first
 
+  // Precompute theme words once
+  const themeWords: string[] = theme
+    ? (THEME_STYLE_PREFIX[theme] ?? theme).split(' ').filter(Boolean)
+    : []
+
+  const QUALITY_SIGNALS   = /\b(hd|high.?res|detailed|optimized|optimised|clean|crisp|polished|realistic|pbr|premium)\b/i
+  const LOW_QUALITY_WORDS = /\b(test|old|broken|wip|placeholder|temp|draft|ugly|bad|delete|unused)\b/i
+
   // Score each candidate
   const scored = candidates.map((asset) => {
     let score = 0
     const nameLower = asset.name.toLowerCase()
     const descLower = asset.description.toLowerCase()
+    const combined  = `${nameLower} ${descLower}`
 
-    // Thumbnail = quality signal
-    if (asset.thumbnailUrl) score += 10
+    // ── Thumbnail — strongest quality signal ─────────────────────────────────
+    if (asset.thumbnailUrl) score += 15
 
-    // Theme match in name/description
-    if (theme) {
-      const prefix = THEME_STYLE_PREFIX[theme] ?? theme
-      const themeWords = prefix.split(' ')
-      for (const tw of themeWords) {
-        if (nameLower.includes(tw)) score += 8
-        if (descLower.includes(tw)) score += 3
+    // ── Theme keyword match ───────────────────────────────────────────────────
+    for (const tw of themeWords) {
+      if (nameLower.includes(tw)) score += 12   // name match is highly relevant
+      else if (descLower.includes(tw)) score += 5  // description match is weaker
+    }
+
+    // ── Scale hint — reward correct size, penalise obvious mismatches ────────
+    if (preferredScale && preferredScale !== 'any') {
+      const looksLarge  = /\b(large|huge|big|massive|full|complete|set|pack|tall)\b/.test(nameLower)
+      const looksMedium = /\b(medium|mid|standard|regular)\b/.test(nameLower)
+      const looksSmall  = /\b(small|tiny|mini|little|prop|decoration|detail|short)\b/.test(nameLower)
+
+      if (preferredScale === 'large') {
+        if (looksLarge)  score += 10
+        if (looksSmall)  score -= 12
+      } else if (preferredScale === 'small') {
+        if (looksSmall)  score += 10
+        if (looksLarge)  score -= 12
+      } else if (preferredScale === 'medium') {
+        if (looksMedium) score += 6
+        if (looksLarge || looksSmall) score -= 4
       }
     }
 
-    // Scale hint match — penalize obvious mismatches
-    if (preferredScale && preferredScale !== 'any') {
-      // Infer scale from name keywords
-      const looksLarge = /\b(large|huge|big|massive|full|complete|set|pack)\b/.test(nameLower)
-      const looksSmall = /\b(small|tiny|mini|little|prop|decoration|detail)\b/.test(nameLower)
-      if (preferredScale === 'large' && looksLarge) score += 5
-      if (preferredScale === 'small' && looksSmall) score += 5
-      if (preferredScale === 'large' && looksSmall) score -= 8
-      if (preferredScale === 'small' && looksLarge) score -= 8
-    }
+    // ── Description length — completeness signal ──────────────────────────────
+    if (asset.description.length > 40) score += 6
+    else if (asset.description.length > 10) score += 3
 
-    // Prefer assets with descriptions (more complete, typically higher quality)
-    if (asset.description.length > 20) score += 2
+    // ── Quality keyword signals ───────────────────────────────────────────────
+    if (QUALITY_SIGNALS.test(combined))   score += 4
+    if (LOW_QUALITY_WORDS.test(combined)) score -= 5
+
+    // ── Creator quality heuristic — large creator IDs correlate with prolific
+    //    asset publishers on the Roblox platform (rough heuristic only) ────────
+    if (asset.creatorId > 100_000) score += 3
 
     return { asset, score }
   })

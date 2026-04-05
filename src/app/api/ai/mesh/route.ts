@@ -37,6 +37,11 @@ import {
   downloadAndUploadTexture,
   type UploadAssetResult,
 } from '@/lib/roblox-asset-upload'
+import {
+  enhanceMeshPromptWithGameKnowledge,
+  detectTheme,
+  GAME_THEMES,
+} from '@/lib/ai/game-knowledge'
 
 export const maxDuration = 60
 
@@ -247,6 +252,23 @@ const NEGATIVE_PROMPTS: Record<AssetCategory, string> = {
 const NEGATIVE_PROMPT =
   'low quality, blurry, distorted, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, NSFW, watermark, text, deformed, ugly'
 
+// Theme-specific quality directives prepended to the negative prompt.
+// Kept short so they fit within Meshy's 200-char negative_prompt limit when combined.
+const THEME_NEGATIVE_DIRECTIVES: Record<string, string> = {
+  medieval:   'no modern elements, no plastic look, no neon colors',
+  futuristic: 'no medieval elements, no wood textures, no rust',
+  tropical:   'no dark colors, no urban elements, no snow',
+  space:      'no organic textures, no grass, no warm colors',
+  candy:      'no dark colors, no realistic textures, no gritty materials',
+  pirate:     'no modern elements, no clean surfaces, no neon',
+  japanese:   'no western elements, no neon signs, no clutter',
+  cyberpunk:  'no natural materials, no daylight, no clean surfaces',
+  winter:     'no warm colors, no tropical elements, no sand',
+  haunted:    'no bright colors, no cheerful elements, no clean surfaces',
+  underwater: 'no fire, no dry desert, no urban elements',
+  wild_west:  'no modern technology, no neon, no sci-fi elements',
+}
+
 // Style detection from user prompt
 const STYLE_MODIFIERS: Record<string, string> = {
   'low poly':    ', flat shading, low polygon count, minimal vertices, stylized game asset',
@@ -415,14 +437,28 @@ async function createMeshyTask(
 ): Promise<string> {
   const resolvedCategory = category ?? detectAssetCategory(rawPrompt)
   let builtPrompt = buildMeshyPrompt(rawPrompt, resolvedCategory)
+
+  // Inject game genre/theme context before sending to Meshy
+  builtPrompt = enhanceMeshPromptWithGameKnowledge(builtPrompt)
+
   if (retryWithCleanMesh) {
     builtPrompt = `${builtPrompt}, clean mesh`
   }
 
+  // Build theme-aware negative prompt
+  const detectedTheme = detectTheme(rawPrompt)
+  const themeNegative = detectedTheme && GAME_THEMES[detectedTheme]
+    ? THEME_NEGATIVE_DIRECTIVES[detectedTheme] ?? ''
+    : ''
+  const baseNegative = getNegativePrompt(resolvedCategory)
+  const negative_prompt = themeNegative
+    ? `${themeNegative}, ${baseNegative}`.slice(0, 200)
+    : baseNegative
+
   const body: Record<string, unknown> = {
     mode: 'preview',
     prompt: builtPrompt,
-    negative_prompt: getNegativePrompt(resolvedCategory),
+    negative_prompt,
     art_style: 'realistic',
     topology: 'quad',
     target_polycount: POLY_TARGETS[quality],
