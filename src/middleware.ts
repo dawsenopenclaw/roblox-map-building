@@ -34,6 +34,8 @@ const isPublicRoute = createRouteMatcher([
   // Landing + marketing
   '/',
   '/pricing',
+  // Editor — guest mode with limited functionality (auth adds save/sync features)
+  '/editor(.*)',
   '/docs(.*)',
   '/download(.*)',
   '/showcase(.*)',

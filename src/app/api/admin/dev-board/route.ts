@@ -80,9 +80,10 @@ export async function GET() {
       db.user.count({ where: { deletedAt: null, createdAt: { gte: startOfWeek } } }),
       db.user.count({ where: { deletedAt: null, createdAt: { gte: startOfMonth } } }),
 
-      // Subscription tiers
+      // Subscription tiers — only ACTIVE or TRIALING count toward MRR
       db.subscription.groupBy({
         by: ['tier'],
+        where: { status: { in: ['ACTIVE', 'TRIALING'] } },
         _count: { tier: true },
       }),
 
@@ -92,7 +93,7 @@ export async function GET() {
         _avg: { balance: true },
       }),
 
-      // Tokens purchased (PURCHASE transactions)
+      // Tokens purchased (PURCHASE type only — TokenTransaction has no stripeSessionId field)
       db.tokenTransaction.aggregate({
         where: { type: 'PURCHASE' },
         _sum: { amount: true },
@@ -201,12 +202,12 @@ export async function GET() {
       }),
     ])
 
-    // Compute MRR
+    // Compute MRR — only ACTIVE/TRIALING subs with correct prices
     const tierPricesCents: Record<string, number> = {
       FREE: 0,
-      HOBBY: 499,
-      CREATOR: 1299,
-      STUDIO: 3999,
+      HOBBY: 999,
+      CREATOR: 2499,
+      STUDIO: 4999,
     }
     const mrrCents = subsByTier.reduce((sum, row) => {
       return sum + (tierPricesCents[row.tier] ?? 0) * row._count.tier
