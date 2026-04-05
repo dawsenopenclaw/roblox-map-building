@@ -12,28 +12,45 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const theme = getThemeById(settings.theme)
     const root = document.documentElement
-
-    // Apply all theme CSS vars (text, border, orb vars are now defined per-theme)
-    for (const [key, val] of Object.entries(theme.vars)) {
-      root.style.setProperty(key, val)
-    }
-
-    // Apply accent override if set
-    if (settings.accentColor) {
-      root.style.setProperty('--accent', settings.accentColor)
-      root.style.setProperty('--gold', settings.accentColor)
-    }
-
-    // color-scheme for browser native inputs
     const isLight = LIGHT_IDS.has(settings.theme)
-    root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
-  }, [settings.theme, settings.accentColor])
-
-  // Apply font size as a CSS variable so components can consume --font-size-base
-  useEffect(() => {
     const px = FONT_SIZE_MAP[settings.fontSize]
-    document.documentElement.style.setProperty('--font-size-base', `${px}px`)
-  }, [settings.fontSize])
+
+    // Batch all CSS var writes into a single cssText assignment to trigger one
+    // style recalculation instead of one per setProperty call.
+    const entries: string[] = []
+
+    for (const [key, val] of Object.entries(theme.vars)) {
+      entries.push(`${key}:${val}`)
+    }
+
+    if (settings.accentColor) {
+      entries.push(`--accent:${settings.accentColor}`)
+      entries.push(`--gold:${settings.accentColor}`)
+    }
+
+    entries.push(`color-scheme:${isLight ? 'light' : 'dark'}`)
+    entries.push(`--font-size-base:${px}px`)
+
+    // cssText replaces the entire inline style block — preserve any existing
+    // vars that are not part of this batch by reading current style first.
+    const existing = root.getAttribute('style') ?? ''
+    // Strip out vars we are about to rewrite so we don't accumulate duplicates
+    const keysToStrip = new Set([
+      ...Object.keys(theme.vars),
+      '--accent', '--gold', 'color-scheme', '--font-size-base',
+    ])
+    const preserved = existing
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => {
+        if (!s) return false
+        const prop = s.split(':')[0].trim()
+        return !keysToStrip.has(prop)
+      })
+      .join('; ')
+
+    root.setAttribute('style', [...(preserved ? [preserved] : []), ...entries].join('; '))
+  }, [settings.theme, settings.accentColor, settings.fontSize])
 
   return <>{children}</>
 }

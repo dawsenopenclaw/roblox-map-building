@@ -10,8 +10,42 @@ html {
   color-scheme: dark;
   scroll-behavior: smooth;
 }
+
+/* ─── Gold text selection ───────────────────────────────────────────────────── */
+::selection {
+  background: rgba(212, 175, 55, 0.28);
+  color: #FAFAFA;
+}
+
+/* ─── Focus-visible: gold ring instead of browser default ──────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(212, 175, 55, 0.7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Reduced motion: kill all animations / transitions ────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Page fade-in on route change ─────────────────────────────────────────── */
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.page-fade-in {
+  animation: page-fade-in 0.3s ease-out both;
+  will-change: opacity, transform;
 }
 
 /* ─── Global mobile overflow guard ─────────────────────────────────────────── */
@@ -138,7 +172,7 @@ body {
 .animate-float-x      {                              animation: float-x     6s   ease-in-out infinite; }
 .animate-glow-pulse   {                              animation: glow-pulse  2.5s ease-in-out infinite; }
 .animate-gold-pulse   {                              animation: gold-pulse  2s   ease-in-out infinite; }
-.animate-fade-in      {                              animation: fade-in     0.3s ease forwards;        }
+.animate-fade-in      {                              animation: fade-in     0.3s ease-out forwards;    }
 .animate-shimmer      { background-size: 200% auto; animation: shimmer     2.5s linear infinite;      }
 
 /* ─── Feature card hover (transition supplement) ─────────────────────────── */
@@ -289,7 +323,8 @@ body {
   transform: translateY(24px);
 }
 .scroll-reveal.is-visible {
-  animation: scroll-fade-up 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: scroll-fade-up 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: opacity, transform;
 }
 
 /* Staggered scroll reveal — uses CSS var --reveal-delay */
@@ -298,8 +333,9 @@ body {
   transform: translateY(20px);
 }
 .scroll-reveal-stagger.is-visible {
-  animation: scroll-fade-up 480ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: scroll-fade-up 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
 }
 
 /* ─── Section Header Entrance ────────────────────────────────────────────────── */
@@ -326,8 +362,9 @@ body {
 
 .card-stagger-in {
   opacity: 0;
-  animation: card-stagger-in 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: card-stagger-in 250ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: var(--card-delay, 0ms);
+  will-change: opacity, transform;
 }
 
 /* ─── Splash Screen Glitch ───────────────────────────────────────────────────── */
@@ -466,12 +503,13 @@ body {
 /* ── scroll reveal ── */
 .reveal {
   opacity: 0;
-  transform: translateY(32px);
-  filter: blur(4px);
+  transform: translateY(20px);
+  filter: blur(3px);
   transition:
-    opacity  750ms cubic-bezier(0.16,1,0.3,1),
-    transform 750ms cubic-bezier(0.16,1,0.3,1),
-    filter   650ms cubic-bezier(0.16,1,0.3,1);
+    opacity   400ms cubic-bezier(0.16,1,0.3,1),
+    transform 400ms cubic-bezier(0.16,1,0.3,1),
+    filter    300ms cubic-bezier(0.16,1,0.3,1);
+  will-change: opacity, transform, filter;
 }
 .reveal.visible {
   opacity: 1;

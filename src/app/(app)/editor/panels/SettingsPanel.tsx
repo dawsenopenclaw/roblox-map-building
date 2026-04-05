@@ -353,7 +353,7 @@ export default function SettingsPanel({
 
       <div className="px-3 py-2.5">
         <p className="text-xs text-gray-200 font-medium leading-tight">Language</p>
-        <p className="text-[10px] text-gray-500 mt-0.5">English &mdash; more coming soon</p>
+        <p className="text-[10px] text-gray-500 mt-0.5">English</p>
       </div>
 
       <Divider />

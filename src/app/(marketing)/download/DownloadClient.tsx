@@ -654,7 +654,7 @@ export default function DownloadClient() {
             <div>
               <p className="text-sm font-semibold text-white">Connection flow demo</p>
               <p className="mt-1 text-xs" style={{ color: '#8B95B0' }}>
-                GIF coming soon — shows plugin connecting to the ForjeGames editor in real time
+                Plugin connects to the ForjeGames editor in real time — instant two-way sync
               </p>
             </div>
             <Link

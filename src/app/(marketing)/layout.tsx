@@ -7,7 +7,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <MarketingNav />
 
       {/* pt-16 offsets the fixed 64px navbar */}
-      <main id="main-content" className="flex-1 pt-16">
+      <div className="flex-1 pt-16">
         {children}
       </main>
 

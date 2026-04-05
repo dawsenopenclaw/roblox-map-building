@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Mic, Wand2, Command, MessageSquare, Zap, ArrowLeft } from 'lucide-react'
+import { Mic, Command, MessageSquare, Zap, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
 const FEATURES = [
@@ -114,10 +114,6 @@ export default function VoiceClient() {
             </div>
           </div>
 
-          <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25 mb-4">
-            Coming Soon
-          </span>
-
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Voice{' '}
             <span
@@ -130,6 +126,10 @@ export default function VoiceClient() {
           <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
             Describe your game out loud and watch it come to life.
             The fastest way to build has no keyboard.
+          </p>
+
+          <p className="text-gray-300 text-sm max-w-sm mx-auto mt-4 leading-relaxed">
+            Voice building is available inside the Editor. Open the editor and click the microphone icon to start speaking.
           </p>
         </div>
       </div>
@@ -166,14 +166,14 @@ export default function VoiceClient() {
 
       {/* CTA */}
       <div className="flex justify-center">
-        <a
-          href="mailto:hello@forjegames.com?subject=Voice%20Builder%20Waitlist"
+        <Link
+          href="/editor"
           className="inline-flex items-center gap-2.5 px-7 py-3 rounded-xl font-bold text-sm text-[#050810] transition-all hover:scale-[1.03] active:scale-100"
           style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
         >
-          <Wand2 className="w-4 h-4" />
-          Join Waitlist
-        </a>
+          <Mic className="w-4 h-4" />
+          Open Editor
+        </Link>
       </div>
     </div>
   )

@@ -125,10 +125,6 @@ export default function ImageToMapClient() {
         <div className="relative z-10">
           <ImageToGridIllustration />
 
-          <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25 mb-4">
-            Coming Soon
-          </span>
-
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Image{' '}
             <span
@@ -141,6 +137,10 @@ export default function ImageToMapClient() {
           <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
             Drop a photo or sketch and watch it become a full Roblox map.
             No prompts. No manual placing. Just upload.
+          </p>
+
+          <p className="text-gray-300 text-sm max-w-sm mx-auto mt-4 leading-relaxed">
+            Image-to-map is available inside the Editor. Upload an image and our AI will analyze it to generate your Roblox map.
           </p>
         </div>
       </div>
@@ -177,14 +177,14 @@ export default function ImageToMapClient() {
 
       {/* CTA */}
       <div className="flex justify-center">
-        <a
-          href="mailto:hello@forjegames.com?subject=Image%20to%20Map%20Waitlist"
+        <Link
+          href="/editor"
           className="inline-flex items-center gap-2.5 px-7 py-3 rounded-xl font-bold text-sm text-[#050810] transition-all hover:scale-[1.03] active:scale-100"
           style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
         >
-          <Wand2 className="w-4 h-4" />
-          Join Waitlist
-        </a>
+          <ImageIcon className="w-4 h-4" />
+          Open Editor
+        </Link>
       </div>
     </div>
   )

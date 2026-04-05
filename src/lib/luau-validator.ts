@@ -130,8 +130,9 @@ export function validateAndFixLuau(code: string): ValidationResult {
 
   // 8. Fix PointLight/SpotLight CFrame assignment — lights don't have CFrame, use Parent.CFrame
   // AI often does: light.CFrame = CFrame.new(...) which fails
+  // Trailing newline is optional — code may not end with \n or may use \r\n
   fixed = fixed.replace(
-    /(\w+)\.CFrame\s*=\s*(CFrame\.new\([^)]*\))\s*\n/g,
+    /(\w+)\.CFrame\s*=\s*(CFrame\.new\([^)]*\))\s*\n?/g,
     (match, varName, cframeExpr) => {
       // Check if varName looks like a light (contains Light, light, lamp, etc.)
       if (/[Ll]ight|[Ll]amp|[Gg]low|[Ss]pot|[Ss]urface/.test(varName)) {
@@ -229,11 +230,10 @@ export function validateAndFixLuau(code: string): ValidationResult {
     }
   }
 
-  // 17. Add --!strict at top if missing (promotes type safety)
-  if (!fixed.trimStart().startsWith('--!strict') && !fixed.trimStart().startsWith('--!nocheck')) {
-    fixed = '--!strict\n' + fixed
-    fixes.push('Added: --!strict type annotation at top')
-  }
+  // 17. REMOVED: --!strict injection was crashing loadstring in Studio.
+  // loadstring() does not support Luau type annotations — injecting --!strict
+  // causes a parse error before any code runs. Type safety must be enforced
+  // at author-time in Studio scripts, not in dynamically executed code.
 
   // 18. Fix common ParticleEmitter property typos
   const particleTypos: Array<[RegExp, string, string]> = [

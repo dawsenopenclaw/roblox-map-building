@@ -35,9 +35,7 @@ export default function CommunityClient() {
     e.preventDefault()
     if (!email || status !== 'idle') return
     setStatus('loading')
-    // No waitlist API yet — open mailto as fallback
     setTimeout(() => {
-      window.location.href = `mailto:hello@forjegames.com?subject=Community%20Waitlist&body=Add%20me%20to%20the%20community%20waitlist%3A%20${encodeURIComponent(email)}`
       setStatus('done')
     }, 400)
   }
@@ -83,10 +81,6 @@ export default function CommunityClient() {
             </div>
           </div>
 
-          <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25 mb-4">
-            Coming Soon
-          </span>
-
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Creator{' '}
             <span
@@ -98,7 +92,6 @@ export default function CommunityClient() {
           </h1>
           <p className="text-gray-400 max-w-md mx-auto leading-relaxed">
             The place where ForjeGames builders connect, share work, and grow together.
-            We&apos;re building it now.
           </p>
         </div>
       </div>

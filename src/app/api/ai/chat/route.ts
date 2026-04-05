@@ -661,6 +661,46 @@ QUALITY RULES:
 8. Group in Model with PrimaryPart set.
 9. NEVER build a single cube. Decompose into real components.
 
+=== WEAPON & TOOL SYSTEMS ===
+SWORD TOOL: Tool in StarterPack, Handle Part, Grip CFrame, Activated event → raycast forward, damage on hit, cooldown, swing animation (play Animation on Humanoid), slash trail (Attachment + Trail)
+RANGED WEAPON: Tool, fire on Activated, create bullet Part moving forward (BodyVelocity or CFrame increment), raycast hit detection, damage, muzzle flash (PointLight flash), shell casing ejection
+BOW: charge mechanic (hold Activated, release fires), arrow projectile with arc (gravity), pin to target on hit
+FISHING ROD: cast on Activated, line Part extending, wait timer, random catch from loot table, reel-in animation
+PICKAXE: mine on Activated near ore, reduce ore health, drop resources, ore respawn timer
+MAGIC STAFF: mana system, spell selection (1-4 keys), projectile per spell type, AoE effects, cooldown per spell
+GRAPPLE HOOK: launch hook projectile, on hit create RopeConstraint, pull player toward point, release on land
+
+=== VEHICLE SYSTEMS ===
+CAR: VehicleSeat + BodyVelocity + BodyGyro. Throttle=W/S, steer=A/D. Speed=maxSpeed*throttle. 4 wheel Parts with HingeConstraint for visual rotation. Enter/exit via ProximityPrompt on driver seat. Camera: third-person follow with spring.
+BOAT: VehicleSeat floating on water (BodyPosition Y=waterLevel). BodyVelocity for forward thrust. Rudder steering. Wake particles behind. Buoyancy wobble with math.sin.
+AIRPLANE: VehicleSeat + BodyVelocity + BodyGyro. Pitch=W/S, Roll=A/D, Yaw=Q/E, Throttle=Shift/Ctrl. Lift proportional to speed. Stall below min speed.
+MOUNT/HORSE: Seat welded to character model. PathfindingService for AI movement when not ridden. Gallop animation. Stamina bar.
+HOVERBOARD: no wheels, BodyPosition to hover 3 studs above ground, lean steering, boost mechanic, trail particles underneath
+VEHICLE SPAWNER: pad with ProximityPrompt → spawn vehicle at pad position → destroy old vehicle if exists → player auto-sits
+
+=== CAMERA SYSTEM LIBRARY ===
+THIRD PERSON (default): camera.CameraType=Custom, adjust CameraOffset on Humanoid for over-shoulder
+TOP DOWN: camera.CameraType=Scriptable, CFrame above player looking down, follow player X/Z
+ISOMETRIC: camera.CameraType=Scriptable, fixed angle (45deg pitch, 45deg yaw), follow player
+FIRST PERSON: camera.CameraType=Scriptable, CFrame at Head position, mouse controls look direction
+SECURITY CAMERA: cycle between fixed CFrame positions with smooth tween transitions
+ORBIT VIEW: camera orbits around a point, user controls azimuth/elevation with mouse drag
+CINEMATIC: sequence of CFrame waypoints with TweenService, hold durations, triggered by event
+ZOOM: scroll wheel adjusts camera distance from player, clamp between min/max, smooth lerp
+SHAKE: add random offset to camera CFrame, intensity decay over time, triggered by explosions/impacts
+LOCK-ON: camera focuses on target enemy, orbits around lock-on point, switch targets with Tab
+
+=== NPC AI BEHAVIORS ===
+WANDER: pick random point within radius, PathfindingService:CreatePath, MoveTo waypoints, wait at destination, repeat
+PATROL: ordered waypoint list, move between in sequence, optional wait times, loop or ping-pong
+CHASE: detect player within range (magnitude check every 0.5s), path to player, stop at attack range, lose interest beyond max range
+FLEE: detect threat, move away (opposite direction), find furthest reachable point, run until safe distance
+GUARD: stand at post, chase if player enters radius, return to post when player leaves, alert animation
+FOLLOW: follow leader at offset distance, match speed, avoid clumping with other followers, stop when leader stops
+FORMATION: multiple NPCs maintain formation shape (line, circle, V-shape) while moving, adjust positions on direction change
+BOSS PHASES: health-based phase transitions, different attacks per phase, enrage at low HP, summon adds, arena hazards
+SHOPKEEPER: stand behind counter, face approaching player, ProximityPrompt opens shop GUI, idle animation, greeting dialogue
+
 ${MARKETPLACE_ASSET_RULES}`
 
 // Gemini API call helper (free tier)
@@ -3429,6 +3469,110 @@ GENERALIZED ITERATION — NEVER use pairs() or ipairs() in modern Luau:
     -- works for both arrays and dictionaries
   end
 
+=== WEAPON & TOOL SYSTEMS ===
+SWORD TOOL: Tool in StarterPack, Handle Part, Grip CFrame, Activated→raycast forward, damage on hit, cooldown, swing animation (play Animation on Humanoid), slash trail (Attachment+Trail). Combo: 3 swings with increasing damage (10,15,25), reset combo after 1.5s idle.
+RANGED WEAPON: Tool, fire on Activated, bullet Part with BodyVelocity or CFrame:Lerp, raycast hit detection, muzzle flash (PointLight 0.05s), shell casing Part with random velocity, ammo count GUI.
+BOW: hold Activated=charge (0-2s), release=fire arrow with arc (gravity via BodyForce), damage scales with charge time, pin arrow to target on hit.
+FISHING ROD: cast on Activated, line Part extending with Tween, random wait 2-8s, loot table roll, reel-in, catch popup GUI with rarity glow.
+PICKAXE: Activated near ore (magnitude<8), reduce ore HP, particle burst on hit, drop resources on destroy, ore respawn after 30s.
+MAGIC STAFF: mana bar (100 max, regen 5/s), 4 spells on 1-4 keys: fireball(projectile), ice wall(barrier), heal(AoE green), lightning(instant raycast). Each has cooldown+mana cost.
+GRAPPLE HOOK: Activated→raycast forward 100 studs, on hit create RopeConstraint to point, BodyVelocity pulls player, release on land.
+
+=== VEHICLE SYSTEMS ===
+CAR: VehicleSeat+BodyVelocity+BodyGyro. W/S=throttle(-1 to 1), A/D=steer. Speed=maxSpeed*throttle. 4 wheel cylinders with HingeConstraint.Motor for visual spin. ProximityPrompt enter/exit. Camera: spring-follow behind.
+BOAT: VehicleSeat floating (BodyPosition.Y=waterLevel+1). BodyVelocity forward thrust. Rudder A/D. Wake ParticleEmitter behind. Buoyancy wobble: BodyPosition.Y += math.sin(tick()*2)*0.3.
+AIRPLANE: VehicleSeat+BodyVelocity+BodyGyro. W/S=pitch, A/D=roll, Q/E=yaw, Shift/Ctrl=throttle. Lift=speed*liftCoeff. Stall below 30 speed. Engine sound pitch scales with throttle.
+HOVERBOARD: BodyPosition hover 3 studs above ground (raycast down), lean steering via BodyGyro tilt, boost=2x speed for 3s on cooldown, trail ParticleEmitter underneath with neon glow.
+VEHICLE SPAWNER: Pad Part+ProximityPrompt "Spawn Vehicle"→Instance.new vehicle at pad CFrame→destroy previous if exists→player.Character:SetPrimaryPartCFrame to seat.
+
+=== CAMERA SYSTEM LIBRARY ===
+THIRD_PERSON: cam.CameraType=Custom, Humanoid.CameraOffset=Vector3.new(2,1,0) for over-shoulder
+TOP_DOWN: cam.CameraType=Scriptable, cam.CFrame=CFrame.new(player.X,50,player.Z)*CFrame.Angles(-math.pi/2,0,0)
+ISOMETRIC: cam.CFrame=CFrame.new(pos+Vector3.new(30,40,30), pos), fixed angle, follow player XZ
+FIRST_PERSON: cam.CFrame=head.CFrame, mouse.Move controls look, head.LocalTransparencyModifier=1
+ORBIT: user drags to orbit, azimuth/elevation from mouse delta, zoom with scroll, smooth lerp
+CINEMATIC: waypoint array [{cframe,duration,hold}], TweenService between points, camera returns to Custom after
+SHAKE: cam.CFrame=baseCF*CFrame.new(rand*intensity, rand*intensity, 0), intensity decays over 0.5s, trigger on explosion/hit
+LOCK_ON: cam looks at target enemy, orbits lock-on point, Tab switches targets, released when target dies/out of range
+
+=== NPC AI BEHAVIORS ===
+WANDER: pick random point within radius (CFrame.new(origin)*CFrame.Angles(0,math.rad(math.random(360)),0)*CFrame.new(0,0,math.random(5,radius))), PathfindingService:CreatePath(), MoveTo waypoints, wait 2-5s, repeat.
+PATROL: ordered waypoints list, move to next on arrival, optional wait per point, loop=true cycles, ping_pong reverses at ends.
+CHASE: magnitude check every 0.3s, if player within aggroRange→path to player, attack at meleeRange, lose interest if player>maxChaseRange for 5s.
+FLEE: when HP<25%, move to point opposite from threat, sprint speed 1.5x, find cover (raycast for obstacles).
+GUARD: idle at post, chase if player enters guardRadius, return to post position when player leaves, alert animation on detection.
+BOSS_PHASES: check HP thresholds (75%/50%/25%), each phase has different attack pattern table, enrage at <10% (2x speed, 1.5x damage), summon minions at phase transitions.
+
+=== PARTICLE EFFECT RECIPES — 25+ VISUAL EFFECTS ===
+Create ParticleEmitter on invisible anchored Part (Transparency=1, CanCollide=false).
+FIRE: Rate=80, Lifetime=0.5-1, Speed=5-8, Spread=15, Size={0.5>2>0}, Color=Orange>Red, LightEmission=0.8
+SMOKE: Rate=30, Lifetime=2-4, Speed=2-4, Spread=30, Size={1>4>6}, Transp={0.3>0.8>1}, Color=Grey
+MAGIC_SPARKLE: Rate=40, Lifetime=0.8-1.5, Speed=3-6, Spread=180, Size={0.2>0.5>0}, Color=Purple/Blue, LightEmission=1
+HEALING: Rate=20, Lifetime=1-2, Speed=2, Spread=60, Size={0.3>1>0}, Color=Green(50,255,100), Direction=Top
+EXPLOSION: Emit(50), Lifetime=0.3-0.8, Speed=20-40, Spread=180, Size={1>3}, Color=Orange>Yellow, LightEmission=1
+RAIN: Rate=200, Lifetime=1, Speed=60-80, Spread=5, Size=0.05, Color=LightBlue, Direction=Bottom
+SNOW: Rate=100, Lifetime=3-5, Speed=3-8, Spread=40, Size={0.1>0.2}, Color=White, RotSpeed=-30-30
+CONFETTI: Rate=50, Lifetime=2-3, Speed=10-15, Spread=40, Color=random bright, Rotation=0-360
+CHERRY_BLOSSOM: Rate=8, Lifetime=4-6, Speed=1-3, Spread=60, Size=0.2, Color=Pink, Drag=2
+CAMPFIRE_EMBERS: Rate=10, Lifetime=2-3, Speed=3-5, Spread=15, Size={0.1>0.05}, Color=Orange, Direction=Top
+GROUND_FOG: Rate=10, Lifetime=5-8, Speed=0.5, Spread=80, Size={2>5>8}, Transp={0.5>0.7>1}, at ground level
+ELECTRIC_ARC: Emit(5), Lifetime=0.05, Speed=0, Size=0.1, Color=LightBlue, LightEmission=1+PointLight flash
+PORTAL_SWIRL: Rate=60, Lifetime=1-2, Speed=0.5, Size={0.5>1>0}, Color=Purple cycle, RotSpeed=360
+LAVA_BUBBLE: Rate=5, Lifetime=1-2, Speed=2-4, Size={0.3>0.8>0}, Color=Orange>DarkRed, Direction=Top
+TOXIC_GAS: Rate=15, Lifetime=3-5, Speed=1-3, Spread=50, Size={1>3>5}, Color=Green(50,180,50), Transp={0.4>0.7>1}
+FIREFLY: Rate=5, Lifetime=2-4, Speed=1-2, Spread=180, Size={0.1>0.2>0}, Color=Yellow, LightEmission=1
+NEON_TRAIL: Rate=60, Lifetime=0.3, Speed=0, Size={0.2>0.1>0}, attach to moving Part via Attachment, any neon color
+WATER_SPLASH: Emit(30), Lifetime=0.3-0.8, Speed=8-15, Spread=45, Size={0.3>0.8>0}, Color=Blue, Direction=Top
+SOUL_WISPS: Rate=3, Lifetime=3-5, Speed=1-2, Spread=180, Size={0.3>0.5>0}, Color=Cyan>White, LightEmission=0.8
+SAND_STORM: Rate=100, Lifetime=1-2, Speed=15-25, Spread=10, Size={0.2>0.5}, Color=Tan, Direction=Front
+
+=== PHYSICS CONSTRAINTS — MECHANICAL SYSTEMS ===
+All constraints need Attachment0+Attachment1 on connected Parts.
+ROPE: RopeConstraint — Length, Visible=true. Use for: swinging platforms, hanging lamps, rope bridges.
+SPRING: SpringConstraint — Stiffness=1000+Damping=50=suspension. Stiffness=5000+Damping=10=trampoline.
+HINGE: HingeConstraint — Motor: AngularVelocity+MaxTorque=spinning fan/wheel. Servo: TargetAngle 0>90=door swing.
+PRISMATIC: PrismaticConstraint — slide on axis. Servo+TargetPosition=sliding door/elevator/piston.
+WELD: WeldConstraint — rigid join. Cheapest constraint. Use for attaching decoration to moving parts.
+MECHANISMS: Door=HingeServo 0/90+ProximityPrompt. Elevator=PrismaticServo between floors+button. Drawbridge=HingeServo 0/90+chains. Fan=HingeMotor constant speed. Catapult=HingeMotor+delayed BallSocket release.
+
+=== ONE-PROMPT COMPLETE GAMES — FULL PLAYABLE PROTOTYPES ===
+When user says "make me a [genre] game", generate ALL systems at once:
+
+TYCOON_GAME: Plot+dropper+conveyor+collector+6 upgrades+rebirth+currency GUI+DataStore+leaderboard. ~200 lines, 3 scripts.
+OBBY_GAME: 20 stages+checkpoints+kill bricks+moving platforms+spinners+timer+stage GUI+leaderboard+DataStore. ~250 lines, 3 scripts.
+SIMULATOR_GAME: Click-to-earn+backpack+sell zone+5 rebirths+3 egg types+pet follow+rarity+dual currency+shop+DataStore. ~400 lines, 5 scripts.
+FIGHTING_GAME: Sword combo+health bars+damage numbers+knockback+respawn+kill counter+streaks+arena+leaderboard+rounds. ~300 lines, 4 scripts.
+ROLEPLAY_GAME: 3 roles+house plots+vehicle spawner+3 jobs+furniture shop+emotes+day/night+currency+DataStore. ~350 lines, 5 scripts.
+TOWER_DEFENSE: Path+3 tower types+placement system+10 enemy waves+pathfollowing+shooting+lives+currency+wave GUI+upgrade towers. ~400 lines, 4 scripts.
+RACING_GAME: Track+vehicle+checkpoints+lap counter+position tracking+countdown+boost pads+results+leaderboard. ~250 lines, 3 scripts.
+HORROR_GAME: Flashlight(battery)+dark lighting+jump scares+monster chase AI+hiding spots+key/lock puzzle+heartbeat sound+stamina sprint. ~300 lines, 4 scripts.
+BATTLE_ROYALE: Shrinking zone+weapon spawns+storm damage+100 spawn points+kill feed+last-alive win+spectate+lobby+countdown. ~350 lines, 4 scripts.
+FARMING_GAME: Plot grid+seed planting+growth timer+harvesting+crops sell+barn storage+tool upgrades+seasons+weather+shop. ~300 lines, 4 scripts.
+
+For each: generate ALL scripts in one response. Server/Client/Module separation. DataStore saving. Basic GUI. PLAYABLE immediately.
+
+=== ADMIN COMMAND SYSTEM ===
+When user asks for admin commands: TextChatService command parser.
+Commands: /kick [player] [reason], /ban [player] [duration], /tp [player] [target], /give [player] [item] [amount], /speed [player] [value], /fly (toggle flight), /god (toggle invincibility), /announce [message] (server-wide).
+Admin check: table of authorized UserIds or check GroupService rank>=254.
+Ban storage: DataStore "BanList", check on PlayerAdded, reject banned players.
+Admin GUI: ScreenGui panel with player list+action buttons, toggle with /admin.
+
+=== CUTSCENE & CINEMATIC SYSTEM ===
+Camera waypoints: array of {cframe=CFrame, duration=number, hold=number, easing=EasingStyle}
+Execution: cam.CameraType=Scriptable, TweenService between waypoints, task.wait(hold) at each.
+Dialogue overlay: TextLabel at bottom with typewriter effect (reveal char by char, 0.03s per char).
+Letterbox: top+bottom black bars tween in (Size Y from 0 to 0.1), tween out on end.
+Skip: TextButton "Skip >" in corner, fires BindableEvent to jump to end.
+Return: cam.CameraType=Custom after cutscene completes or skip.
+
+=== SPAWN & RESPAWN SYSTEM ===
+SpawnLocation setup: Neutral=true for FFA, TeamColor for team games. AllowTeamChangeOnTouch=false.
+Protected spawn: ForceField duration=5 seconds on spawn (Humanoid.ForceField).
+Death screen: ScreenGui overlay with "You Died" text + respawn timer countdown (5s default).
+Custom respawn: Players.RespawnTime=5. CharacterAdded resets UI/camera.
+First spawn vs respawn: flag in _G or attribute, first spawn triggers tutorial/cutscene.
+
 ${MARKETPLACE_ASSET_RULES}`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
@@ -6102,9 +6246,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   const anthropic = getAnthropicClient()
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
 
-  // Re-enabled Claude path — use Claude when ANTHROPIC_API_KEY is set and valid.
-  // Falls back to free Gemini/Groq pipeline only when Claude is unavailable.
-  const anthropicAvailable = true
+  // TODO: dynamically check if ANTHROPIC_API_KEY has credits by catching 529/402
+  // errors from the Anthropic client and flipping this flag to false on credit
+  // exhaustion. For now hardcoded to false — no credits on the account.
+  const anthropicAvailable = false
 
   if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).

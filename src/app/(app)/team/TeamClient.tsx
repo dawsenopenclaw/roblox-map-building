@@ -78,10 +78,6 @@ export default function TeamClient() {
             </div>
           </div>
 
-          <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25 mb-4">
-            Coming Soon
-          </span>
-
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Team{' '}
             <span
@@ -145,26 +141,66 @@ export default function TeamClient() {
         })}
       </div>
 
-      {/* CTA row */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 justify-center">
-        <a
-          href="mailto:hello@forjegames.com?subject=Team%20Features%20Waitlist"
+      {/* Hub nav cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        <Link
+          href="/team/history"
+          className="group rounded-2xl p-5 transition-all duration-200 hover:scale-[1.02]"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+            style={{
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.18)',
+            }}
+          >
+            <GitBranch className="w-4 h-4 text-[#D4AF37]" />
+          </div>
+          <p className="text-white font-semibold text-sm mb-1">Build History</p>
+          <p className="text-gray-400 text-xs leading-relaxed">
+            Full audit log of every build — who made it, when, and what changed.
+          </p>
+        </Link>
+
+        <Link
+          href="/team/settings"
+          className="group rounded-2xl p-5 transition-all duration-200 hover:scale-[1.02]"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
+            style={{
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.18)',
+            }}
+          >
+            <Lock className="w-4 h-4 text-[#D4AF37]" />
+          </div>
+          <p className="text-white font-semibold text-sm mb-1">Team Settings</p>
+          <p className="text-gray-400 text-xs leading-relaxed">
+            Manage roles, permissions, and workspace configuration.
+          </p>
+        </Link>
+      </div>
+
+      {/* Invite CTA */}
+      <div className="flex justify-center">
+        <Link
+          href="/team/settings"
           className="inline-flex items-center gap-2.5 px-7 py-3 rounded-xl font-bold text-sm text-[#050810] transition-all hover:scale-[1.03] active:scale-100"
           style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
         >
           <UserPlus className="w-4 h-4" />
-          Join Waitlist
-        </a>
-        <Link
-          href="/billing"
-          className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-bold text-sm text-white/70 hover:text-white transition-all hover:scale-[1.02]"
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <Wand2 className="w-4 h-4 text-[#D4AF37]" />
-          View Plans
+          Invite Team Member
         </Link>
       </div>
     </div>

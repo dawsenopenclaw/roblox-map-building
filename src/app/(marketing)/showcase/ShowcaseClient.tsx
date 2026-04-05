@@ -110,7 +110,7 @@ export default function ShowcaseClient() {
           </div>
 
           <span className="inline-block text-xs font-bold px-3 py-1 rounded-full bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/25 mb-4">
-            Coming Soon
+            Preview
           </span>
 
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
@@ -170,7 +170,7 @@ export default function ShowcaseClient() {
           <Bell className="w-5 h-5 text-[#D4AF37]" />
         </div>
         <div className="flex-1 text-center sm:text-left">
-          <p className="text-white font-bold">Creator showcases coming soon</p>
+          <p className="text-white font-bold">Creator showcases launching soon</p>
           <p className="text-gray-400 text-sm mt-0.5">
             The best community builds in one place. Get notified when we launch.
           </p>
