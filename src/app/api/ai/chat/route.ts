@@ -608,7 +608,7 @@ async function callGemini(
             })),
             { role: 'user', parts: [{ text: userMessage }] },
           ],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 },
         }),
       },
     )
@@ -646,7 +646,7 @@ async function callGroq(
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         max_tokens: maxTokens,
-        temperature: 0.4,
+        temperature: 0.2,
         messages: [
           { role: 'system', content: systemPrompt },
           ...history.map((h) => ({ role: h.role, content: h.content })),
@@ -741,44 +741,51 @@ async function freeModelTwoPass(
   if (isBuildIntent) {
     // Use a SHORT focused prompt for Pass 2 — the full CODE_GENERATION_PROMPT is 2900+ lines
     // which overwhelms free models. This compact version gets reliable code output.
-    const codePrompt = `You are a Roblox Luau code generator for Edit Mode. Output ONLY a \`\`\`lua code block.
+    const codePrompt = `You are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. No other text.
 
-RULES:
-- Use ChangeHistoryService:TryBeginRecording/FinishRecording for undo
-- Place relative to camera: local cam=workspace.CurrentCamera; local sp=cam.CFrame.Position+cam.CFrame.LookVector*25
-- Raycast down for ground: local ray=workspace:Raycast(sp+Vector3.new(0,50,0),Vector3.new(0,-200,0)); local groundY=ray and ray.Position.Y or 0
-- Group in a Model, set PrimaryPart, parent to workspace
-- Use REAL materials: Enum.Material.Slate, .Granite, .WoodPlanks, .Glass, .Metal, .Marble, .Cobblestone, .Neon, .Brick, .Concrete, .Fabric
-- Use REALISTIC colors: Color3.fromRGB(r,g,b) — stone grays, warm browns, NOT bright primary colors
-- MINIMUM 10 parts for ANY build, even tiny props. Short descriptions get rich builds:
-  "a lamp" = base+pole+arm+fixture+glass+light = 10 parts. "a sword" = blade+guard+handle+pommel+edge = 10 parts.
-  "a shop" = walls+roof+door+windows+awning+sign+lights+plants = 25+ parts.
-- Add architectural detail: window frames, trim, steps, columns
-- Doors: 4x7 studs. Windows: 4x4. Wall thickness: 1.5 studs. Ceiling height: 12 studs
-- Character is 5.5 studs tall
-- NEVER use SmoothPlastic or Plastic — use Concrete, Granite, Metal, Slate instead
-- Add PointLights (warm 255,200,140) for atmosphere. Every variant gets at least one light.
-- Tag with CollectionService:AddTag(model,"ForjeAI")
-- Select result: game:GetService("Selection"):Set({model})
-- ALWAYS build 3 STYLE VARIANTS spaced 15 studs apart on X axis.
-  Each variant = different style (e.g. Victorian/Modern/Medieval or Rustic/Elegant/Industrial).
-  Add BillboardGui with TextLabel above each. Group in Model named "{object}_Variants".
-- ADVANCED QUALITY (do ALL of these):
-  → Color vary: add math.random()*0.05 to R,G,B of each Part so no two are identical
-  → Weathering: add a thin dark Part (Transparency=0.7, Color3.fromRGB(30,25,20)) at ground contact
-  → Shadow: add thin dark Part (Transparency=0.8) under overhangs/arms/roofs
-  → Bolts: add 2-4 tiny cylinder Parts (0.12x0.06x0.12, Metal dark) at joints/connections
-  → Base detail: every post/pole gets a wider base plate or decorative footing
-  → Edge highlight: thin lighter-colored Part along top edges of major surfaces
-- For props use InsertService:LoadAsset() with these IDs:
-  Trees: 5763950(Oak) 5763974(Pine) 2768898073(Palm) 3038459267(Cherry) 131961978(Birch)
-  Lamps: 135031212967724(Iron Street) 3583066088(Modern Street) 6660038993(Floor) 4934138742(Chandelier)
-  Benches: 5902690736(Wooden)  Trash: 129522007661406  Hydrant: 234171628  Barrel: 172270997(Wood)
-  Fountain: 74355704971397(Stone)  Cars: 8930669091(Sedan) 7658302807(Pickup Truck)
-  Chairs: 4824976957(Wooden)  Tables: 697456358(Dining)  Beds: 880178537(Double)  Bookshelves: 9914694425
-  Helper: local IS=game:GetService("InsertService")
-  local function placeAsset(id,pos,folder) local a=IS:LoadAsset(id) local m=a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1] if m then if m:IsA("Model") then m:PivotTo(CFrame.new(pos)) elseif m:IsA("BasePart") then m.Position=pos end m.Parent=folder end a:Destroy() end
-- Build custom structures from Part primitives. Use marketplace assets for props/furniture/nature.
+ENVIRONMENT: Roblox Studio Edit Mode plugin. No Players, no LocalPlayer, no Character, no runtime events.
+
+FORBIDDEN (will crash):
+- BrickColor.new() — use Color3.fromRGB()
+- SetPrimaryPartCFrame() — use PivotTo()
+- .PrimaryPartCFrame — use :PivotTo()
+- wait() — use task.wait()
+- spawn() — use task.spawn()
+- game.Players — not available in Edit Mode
+- Setting CFrame/Position/Size on PointLight/SpotLight/Fire/Smoke — lights inherit parent position
+- Instance.new("Part", parent) — set .Parent separately after all properties
+
+REQUIRED PATTERN:
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI Build")
+local folder = Instance.new("Folder")
+folder.Name = "FJ_Build"
+folder.Parent = workspace
+
+-- Create parts with ALL properties set BEFORE parenting:
+local p = Instance.new("Part")
+p.Name = "Wall"
+p.Anchored = true
+p.Size = Vector3.new(20, 12, 1)
+p.CFrame = CFrame.new(0, 6, 0)
+p.Color = Color3.fromRGB(180, 160, 140)
+p.Material = Enum.Material.Brick
+p.Parent = folder
+
+-- Lights go INSIDE a Part (not standalone):
+local light = Instance.new("PointLight")
+light.Brightness = 1
+light.Range = 20
+light.Parent = p  -- parent to a Part, never set CFrame on light
+
+-- Finish:
+game:GetService("Selection"):Set({folder})
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
+
+MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, SmoothPlastic, Wood, WoodPlanks
+COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
+SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
+MINIMUM: 15 parts per build. Add PointLights inside Parts for atmosphere.
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
     const buildInstruction = `Build this: ${message}
 
@@ -3356,7 +3363,7 @@ interface MeshyChatTask {
 }
 
 async function createMeshyChatTask(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch(`${MESHY_BASE_URL}/v2/text-to-3d`, {
+  const res = await fetch(`${MESHY_BASE_URL}/v3/text-to-3d`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -3382,7 +3389,7 @@ async function pollMeshyChatTask(
 ): Promise<MeshyChatTask> {
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, i === 0 ? 3_000 : intervalMs))
-    const res = await fetch(`${MESHY_BASE_URL}/v2/text-to-3d/${taskId}`, {
+    const res = await fetch(`${MESHY_BASE_URL}/v3/text-to-3d/${taskId}`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(10_000),
     })
@@ -3394,6 +3401,29 @@ async function pollMeshyChatTask(
     }
   }
   return { id: taskId, status: 'IN_PROGRESS' }
+}
+
+async function refineMeshyChatTask(
+  previewTaskId: string,
+  apiKey: string,
+): Promise<MeshyChatTask> {
+  // Kick off the refine step from the completed preview
+  const refineRes = await fetch(`${MESHY_BASE_URL}/v3/text-to-3d`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      mode: 'refine',
+      preview_task_id: previewTaskId,
+      texture_richness: 'high',
+    }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!refineRes.ok) throw new Error(`Meshy refine creation failed (${refineRes.status})`)
+  const refineData = (await refineRes.json()) as { result: string }
+  const refineTaskId = refineData.result
+
+  // Poll the refine task — allow more time since texturing takes longer
+  return pollMeshyChatTask(refineTaskId, apiKey, 50, 5_000)
 }
 
 // A small 32×32 grey SVG placeholder encoded as a data URI so the client
@@ -3410,11 +3440,14 @@ const DEMO_THUMBNAIL_SVG =
 
 interface ChatMeshResult {
   meshUrl: string | null
+  glbUrl: string | null
+  fbxUrl: string | null
   thumbnailUrl: string | null
   polygonCount: number | null
   status: 'complete' | 'pending' | 'demo'
   taskId?: string
   rbxAssetId?: string
+  luauCode: string | null
 }
 
 /**
@@ -3431,26 +3464,90 @@ function extractMeshPrompt(rawMessage: string): string {
     .trim() || rawMessage
 }
 
+function buildMeshLuauCode(opts: {
+  meshName: string
+  glbUrl: string | null
+  rbxAssetId?: string
+  polygonCount: number | null
+}): string {
+  const safeName = opts.meshName.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40) || 'GeneratedMesh'
+  const assetRef = opts.rbxAssetId
+    ? `"rbxassetid://${opts.rbxAssetId}"`
+    : opts.glbUrl
+      ? `"${opts.glbUrl}" -- replace with rbxassetid after uploading`
+      : '"rbxassetid://0" -- upload your GLB to get a real asset ID'
+
+  return `-- ForjeAI Generated MeshPart: ${safeName}
+-- Polygons: ${opts.polygonCount ?? 'unknown'}
+-- Generated: ${new Date().toISOString().split('T')[0]}
+
+local function placeMesh()
+  local meshPart = Instance.new("MeshPart")
+  meshPart.Name = "${safeName}"
+  meshPart.MeshId = ${assetRef}
+  meshPart.Size = Vector3.new(4, 4, 4)
+  meshPart.Anchored = true
+  meshPart.CastShadow = true
+  meshPart.Position = Vector3.new(0, 2, 0)
+  meshPart.Parent = workspace
+  return meshPart
+end
+
+return placeMesh()`
+}
+
 async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   const meshyKey = process.env.MESHY_API_KEY
   const cleanPrompt = extractMeshPrompt(prompt)
 
-  // Priority 1: Meshy (paid, best quality) — if API key is configured
+  // Priority 1: Meshy v3 (paid, best quality) — preview → refine → textured GLB
   if (meshyKey) {
     try {
-      const taskId = await createMeshyChatTask(cleanPrompt, meshyKey)
-      const task = await pollMeshyChatTask(taskId, meshyKey)
+      const previewTaskId = await createMeshyChatTask(cleanPrompt, meshyKey)
+      const previewTask = await pollMeshyChatTask(previewTaskId, meshyKey)
 
-      if (task.status === 'IN_PROGRESS') {
-        return { meshUrl: null, thumbnailUrl: null, polygonCount: null, status: 'pending', taskId }
+      if (previewTask.status === 'IN_PROGRESS') {
+        return {
+          meshUrl: null,
+          glbUrl: null,
+          fbxUrl: null,
+          thumbnailUrl: null,
+          polygonCount: null,
+          status: 'pending',
+          taskId: previewTaskId,
+          luauCode: null,
+        }
       }
 
+      // Preview succeeded — run the refine step to get textures
+      let finalTask = previewTask
+      try {
+        finalTask = await refineMeshyChatTask(previewTaskId, meshyKey)
+      } catch (refineErr) {
+        console.warn('[mesh] Refine step failed, using preview result:', refineErr instanceof Error ? refineErr.message : String(refineErr))
+        // Fall back to preview result — at least the geometry is there
+      }
+
+      const glbUrl = finalTask.model_urls?.glb ?? previewTask.model_urls?.glb ?? null
+      const fbxUrl = finalTask.model_urls?.fbx ?? previewTask.model_urls?.fbx ?? null
+      const meshUrl = glbUrl ?? fbxUrl ?? finalTask.model_urls?.obj ?? null
+      const polygonCount = finalTask.polygon_count ?? previewTask.polygon_count ?? null
+
+      const luauCode = buildMeshLuauCode({
+        meshName: cleanPrompt,
+        glbUrl,
+        polygonCount,
+      })
+
       return {
-        meshUrl: task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null,
-        thumbnailUrl: task.thumbnail_url ?? null,
-        polygonCount: task.polygon_count ?? null,
+        meshUrl,
+        glbUrl,
+        fbxUrl,
+        thumbnailUrl: finalTask.thumbnail_url ?? previewTask.thumbnail_url ?? null,
+        polygonCount,
         status: 'complete',
-        taskId,
+        taskId: previewTaskId,
+        luauCode,
       }
     } catch (err) {
       console.warn('[mesh] Meshy failed, falling through to free pipeline:', err instanceof Error ? err.message : String(err))
@@ -3479,12 +3576,24 @@ async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
         }
       }
 
+      const glbUrl = freeResult.meshUrl.endsWith('.glb') ? freeResult.meshUrl : null
+      const fbxUrl = freeResult.meshUrl.endsWith('.fbx') ? freeResult.meshUrl : null
+      const luauCode = buildMeshLuauCode({
+        meshName: cleanPrompt,
+        glbUrl: freeResult.meshUrl,
+        rbxAssetId,
+        polygonCount: freeResult.polygonCount,
+      })
+
       return {
         meshUrl: freeResult.meshUrl,
+        glbUrl,
+        fbxUrl,
         thumbnailUrl: freeResult.thumbnailUrl,
         polygonCount: freeResult.polygonCount,
         status: 'complete',
         rbxAssetId,
+        luauCode,
       } as ChatMeshResult
     }
 
@@ -3492,9 +3601,12 @@ async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
     if (freeResult.thumbnailUrl) {
       return {
         meshUrl: null,
+        glbUrl: null,
+        fbxUrl: null,
         thumbnailUrl: freeResult.thumbnailUrl,
         polygonCount: null,
         status: 'pending',
+        luauCode: null,
       }
     }
 
@@ -3506,9 +3618,12 @@ async function generateMeshForChat(prompt: string): Promise<ChatMeshResult> {
   // Priority 3: Demo placeholder
   return {
     meshUrl: null,
+    glbUrl: null,
+    fbxUrl: null,
     thumbnailUrl: DEMO_THUMBNAIL_SVG,
     polygonCount: null,
     status: 'demo',
+    luauCode: null,
   }
 }
 
@@ -3561,11 +3676,15 @@ interface ChatResponsePayload {
   buildPlan?: BuildPlan
   meshResult?: {
     meshUrl: string | null
+    glbUrl: string | null
+    fbxUrl: string | null
     thumbnailUrl: string | null
     polygonCount: number | null
     status: string
     /** Meshy task ID — present when status is 'pending'; poll GET /api/ai/mesh?taskId=xxx */
     taskId?: string
+    /** Ready-to-paste MeshPart Luau script */
+    luauCode: string | null
   }
   textureResult?: {
     textureUrl: string | null
@@ -4739,24 +4858,18 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                 const mesh = await generateMeshForChat(message)
                 meshResult = {
                   meshUrl: mesh.meshUrl,
+                  glbUrl: mesh.glbUrl,
+                  fbxUrl: mesh.fbxUrl,
                   thumbnailUrl: mesh.thumbnailUrl,
                   polygonCount: mesh.polygonCount,
                   status: mesh.status,
                   taskId: mesh.taskId,
+                  luauCode: mesh.luauCode,
                 }
-                // Auto-place in Studio if mesh was generated and session exists
-                if (mesh.meshUrl && sessionId) {
+                // Auto-place in Studio using the generated Luau if available
+                if (mesh.luauCode && sessionId) {
                   try {
-                    const { detectObjectType, generatePlacementLuau } = await import('@/lib/free-mesh-pipeline')
-                    const objType = detectObjectType(message)
-                    const rbxId = (mesh as unknown as Record<string, unknown>).rbxAssetId as string | undefined
-                    const placementCode = generatePlacementLuau({
-                      rbxAssetId: rbxId,
-                      glbUrl: mesh.meshUrl,
-                      meshName: message.replace(/^(generate|create|make|build)\s+(a\s+|me\s+)?/i, '').trim().slice(0, 40),
-                      objectType: objType,
-                    })
-                    await sendCodeToStudio(sessionId, placementCode)
+                    await sendCodeToStudio(sessionId, mesh.luauCode)
                     executedInStudio = true
                   } catch {
                     // Non-fatal — mesh still available for manual download
@@ -4765,9 +4878,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               } catch {
                 meshResult = {
                   meshUrl: null,
+                  glbUrl: null,
+                  fbxUrl: null,
                   thumbnailUrl: DEMO_THUMBNAIL_SVG,
                   polygonCount: null,
                   status: 'demo',
+                  luauCode: null,
                 }
               }
             }
@@ -4886,32 +5002,29 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           const mesh = await generateMeshForChat(message)
           meshResult = {
             meshUrl: mesh.meshUrl,
+            glbUrl: mesh.glbUrl,
+            fbxUrl: mesh.fbxUrl,
             thumbnailUrl: mesh.thumbnailUrl,
             polygonCount: mesh.polygonCount,
             status: mesh.status,
             taskId: mesh.taskId,
+            luauCode: mesh.luauCode,
           }
-          // Auto-place in Studio
-          if (mesh.meshUrl && sessionId) {
+          // Auto-place in Studio using the generated Luau if available
+          if (mesh.luauCode && sessionId) {
             try {
-              const { detectObjectType, generatePlacementLuau } = await import('@/lib/free-mesh-pipeline')
-              const objType = detectObjectType(message)
-              const rbxId = mesh.rbxAssetId
-              const placementCode = generatePlacementLuau({
-                rbxAssetId: rbxId,
-                glbUrl: mesh.meshUrl,
-                meshName: message.replace(/^(generate|create|make|build)\s+(a\s+|me\s+)?/i, '').trim().slice(0, 40),
-                objectType: objType,
-              })
-              executedInStudioMesh = await sendCodeToStudio(sessionId, placementCode)
+              executedInStudioMesh = await sendCodeToStudio(sessionId, mesh.luauCode)
             } catch { /* non-fatal */ }
           }
         } catch {
           meshResult = {
             meshUrl: null,
+            glbUrl: null,
+            fbxUrl: null,
             thumbnailUrl: DEMO_THUMBNAIL_SVG,
             polygonCount: null,
             status: 'demo',
+            luauCode: null,
           }
         }
       }
@@ -5035,10 +5148,13 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const result = await generateMeshForChat(message)
       payload.meshResult = {
         meshUrl: result.meshUrl,
+        glbUrl: result.glbUrl,
+        fbxUrl: result.fbxUrl,
         thumbnailUrl: result.thumbnailUrl,
         polygonCount: result.polygonCount,
         status: result.status,
         taskId: result.taskId,
+        luauCode: result.luauCode,
       }
       if (result.status === 'demo') {
         payload.message =
@@ -5056,9 +5172,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       // Mesh generation failed — fall through to demo message
       payload.meshResult = {
         meshUrl: null,
+        glbUrl: null,
+        fbxUrl: null,
         thumbnailUrl: DEMO_THUMBNAIL_SVG,
         polygonCount: null,
         status: 'demo',
+        luauCode: null,
       }
       payload.message =
         'Mesh generation unavailable right now. Set MESHY_API_KEY for real 3D models. Used ' +
@@ -5126,18 +5245,51 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   if (intent === 'building' || intent === 'terrain' || intent === 'fullgame') {
     // Try one more time to generate code with a simpler prompt
     const lastChanceCode = await callGroq(
-      `You are a Roblox Luau code generator for Edit Mode. Output ONLY a \`\`\`lua code block. No other text.
-Use ChangeHistoryService, camera-relative placement, proper materials (Slate, WoodPlanks, Glass, Metal, Granite, Cobblestone, Brick, WoodPlanks), realistic muted colors (greys, browns, dark greens — never bright primary colors), group in a Model.
-CRITICAL: Build DETAILED multi-part objects. Even simple requests get rich builds:
-  "a lamp" = base cylinder + pole cylinder + arm + fixture box + glass sphere + PointLight + bolts = 10+ parts
-  "a sword" = blade Part + edge + fuller groove + crossguard + grip wrap + pommel sphere = 10+ parts
-  "a bench" = seat plank + back slats + 4 legs + 2 armrests + support rails = 10+ parts
-  "a shop" = 4 walls + window frames + door frame + door + awning + sign + roof + overhang + foundation + lights + 2 plants = 25+ parts
-ALWAYS build 3 STYLE VARIANTS spaced 15 studs apart on X axis. Each variant = different style/theme.
-  Example: "a lamp" → Classic iron lamp (x-15), Modern LED lamp (x), Medieval torch (x+15).
-Add BillboardGui name label above each variant. Group all in Model named "{object}_Variants".
-Minimum 10 parts PER VARIANT. Add PointLights for atmosphere. Character is 5.5 studs tall. Doors 4x7, windows 4x4.
-Every Part needs: Name, CFrame, Size, Material, Color, Anchored=true, Parent.`,
+      `You are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. No other text.
+
+ENVIRONMENT: Roblox Studio Edit Mode plugin. No Players, no LocalPlayer, no Character, no runtime events.
+
+FORBIDDEN (will crash):
+- BrickColor.new() — use Color3.fromRGB()
+- SetPrimaryPartCFrame() — use PivotTo()
+- .PrimaryPartCFrame — use :PivotTo()
+- wait() — use task.wait()
+- spawn() — use task.spawn()
+- game.Players — not available in Edit Mode
+- Setting CFrame/Position/Size on PointLight/SpotLight/Fire/Smoke — lights inherit parent position
+- Instance.new("Part", parent) — set .Parent separately after all properties
+
+REQUIRED PATTERN:
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI Build")
+local folder = Instance.new("Folder")
+folder.Name = "FJ_Build"
+folder.Parent = workspace
+
+-- Create parts with ALL properties set BEFORE parenting:
+local p = Instance.new("Part")
+p.Name = "Wall"
+p.Anchored = true
+p.Size = Vector3.new(20, 12, 1)
+p.CFrame = CFrame.new(0, 6, 0)
+p.Color = Color3.fromRGB(180, 160, 140)
+p.Material = Enum.Material.Brick
+p.Parent = folder
+
+-- Lights go INSIDE a Part (not standalone):
+local light = Instance.new("PointLight")
+light.Brightness = 1
+light.Range = 20
+light.Parent = p  -- parent to a Part, never set CFrame on light
+
+-- Finish:
+game:GetService("Selection"):Set({folder})
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
+
+MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, SmoothPlastic, Wood, WoodPlanks
+COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
+SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
+MINIMUM: 15 parts per build. Add PointLights inside Parts for atmosphere.`,
       `Generate a complete Luau script that builds 3 style variants of: ${message}
 Space them 15 studs apart on X. Each variant = different style (e.g. classic/modern/fantasy).
 Label each with a BillboardGui. Group in one Model. Short descriptions = DETAILED builds with 10+ parts each.
