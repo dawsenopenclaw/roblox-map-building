@@ -330,6 +330,78 @@ export function validateAndFixLuau(code: string): ValidationResult {
     warnings.push(`Warning: ${ipairsCount} use(s) of ipairs() detected — modern Luau uses generalized iteration: "for i,v in t do" (no ipairs needed)`)
   }
 
+  // 27. Fix Part.Shape string literals → Enum.PartType
+  // AI frequently writes Shape = "Cylinder" or Shape = "Ball" instead of using the enum
+  const shapeStringFixes: Array<[RegExp, string]> = [
+    [/\.Shape\s*=\s*"Cylinder"/g, '.Shape = Enum.PartType.Cylinder'],
+    [/\.Shape\s*=\s*"Ball"/g,     '.Shape = Enum.PartType.Ball'],
+    [/\.Shape\s*=\s*"Block"/g,    '.Shape = Enum.PartType.Block'],
+    [/\.Shape\s*=\s*"Wedge"/g,    '.Shape = Enum.PartType.Wedge'],
+    [/\.Shape\s*=\s*"Corner"/g,   '.Shape = Enum.PartType.CornerWedge'],
+  ]
+  for (const [pattern, replacement] of shapeStringFixes) {
+    if (pattern.test(fixed)) {
+      const before = fixed
+      fixed = fixed.replace(pattern, replacement)
+      if (fixed !== before) {
+        fixes.push(`Fixed: .Shape string literal → ${replacement.replace('.Shape = ', '')}`)
+      }
+      pattern.lastIndex = 0
+    }
+  }
+
+  // 28. Fix invalid Enum.Material names AI commonly hallucinates
+  const materialFixes: Array<[RegExp, string, string]> = [
+    [/Enum\.Material\.Wooden\b/g,  'Enum.Material.Wood',    'Enum.Material.Wooden → Enum.Material.Wood'],
+    [/Enum\.Material\.Stone\b/g,   'Enum.Material.Slate',   'Enum.Material.Stone → Enum.Material.Slate'],
+    [/Enum\.Material\.Dirt\b/g,    'Enum.Material.Ground',  'Enum.Material.Dirt → Enum.Material.Ground'],
+    [/Enum\.Material\.Grass\b/g,   'Enum.Material.LeafyGrass', 'Enum.Material.Grass → Enum.Material.LeafyGrass'],
+    [/Enum\.Material\.Concrete\b/g,'Enum.Material.Pebble',  'Enum.Material.Concrete → Enum.Material.Pebble'],
+    [/Enum\.Material\.Rock\b/g,    'Enum.Material.Slate',   'Enum.Material.Rock → Enum.Material.Slate'],
+    [/Enum\.Material\.Sand\b/g,    'Enum.Material.Sand',    ''], // valid — skip
+    [/Enum\.Material\.Metal\b/g,   'Enum.Material.Metal',   ''], // valid — skip
+  ]
+  for (const [pattern, replacement, msg] of materialFixes) {
+    if (msg && pattern.test(fixed)) {
+      fixed = fixed.replace(pattern, replacement)
+      fixes.push(`Fixed: ${msg}`)
+      pattern.lastIndex = 0
+    }
+  }
+
+  // 29. Inject Anchored = true after every Instance.new("Part"/"WedgePart"/etc.) if absent
+  // Fix 14 warns about this — now we actually inject the fix instead of just warning
+  const anchoredPartTypes = ['Part', 'WedgePart', 'CylinderPart', 'SpherePart', 'MeshPart', 'TrussPart', 'CornerWedgePart']
+  // Per-variable: check if each Part variable has .Anchored = set anywhere in the script
+  const anchoredMatches: Array<{ varName: string }> = []
+  let am
+  const anchoredPatternScan = new RegExp(
+    `local\\s+(\\w+)\\s*=\\s*Instance\\.new\\("(?:${anchoredPartTypes.join('|')})"\\)`,
+    'g'
+  )
+  while ((am = anchoredPatternScan.exec(fixed)) !== null) {
+    anchoredMatches.push({ varName: am[1] })
+  }
+  let anchoredInjectCount = 0
+  for (const { varName } of anchoredMatches) {
+    // Check if Anchored is set for this variable anywhere in the script
+    const anchoredSetPattern = new RegExp(`${varName}\\.Anchored\\s*=`)
+    if (!anchoredSetPattern.test(fixed)) {
+      // Inject Anchored = true on the line immediately after the Instance.new declaration
+      fixed = fixed.replace(
+        new RegExp(`(local\\s+${varName}\\s*=\\s*Instance\\.new\\("[^"]+"\\)[^\\n]*)`),
+        `$1\n${varName}.Anchored = true`
+      )
+      anchoredInjectCount++
+    }
+  }
+  if (anchoredInjectCount > 0) {
+    fixes.push(`Added: Anchored = true for ${anchoredInjectCount} Part instance(s)`)
+    // Remove the old "warning" for missing Anchored since we now fix it
+    const anchoredWarnIdx = warnings.findIndex(w => w.includes('Anchored=true'))
+    if (anchoredWarnIdx !== -1) warnings.splice(anchoredWarnIdx, 1)
+  }
+
   return {
     valid: warnings.length === 0,
     fixedCode: fixed,
