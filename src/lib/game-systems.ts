@@ -8052,6 +8052,3216 @@ print("[ZoneClient] Ready")
 `,
 }
 
+// ─── 20. Tower Defense System ─────────────────────────────────────────────────
+
+const TOWER_DEFENSE_SERVER: GameSystemFile = {
+  filename: 'TowerDefenseServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- TowerDefenseServer (ServerScript → ServerScriptService)
+-- Wave spawner, tower placement/targeting, projectile damage, currency per kill.
+-- Compatible with Toilet Tower Defense / All Star Tower Defense style games.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService  = game:GetService("DataStoreService")
+local RunService        = game:GetService("RunService")
+
+local DS = DataStoreService:GetDataStore("TowerDefenseV1")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+local TOTAL_WAVES       = 10
+local BASE_ENEMY_HP     = 100
+local HP_SCALE          = 1.3      -- HP multiplier per wave
+local BASE_ENEMY_SPEED  = 12
+local ENEMY_REWARD      = 10       -- coins per kill
+local START_LIVES       = 20
+local GRID_SIZE         = 4        -- stud grid snap
+local WAVE_DELAY        = 8        -- seconds between waves
+
+-- Tower definitions: { name, cost, damage, range, fireRate, splash }
+local TOWER_DATA: {[string]: {cost:number,damage:number,range:number,fireRate:number,splash:boolean}} = {
+  Basic   = { cost = 100,  damage = 20,  range = 18, fireRate = 1.0, splash = false },
+  Splash  = { cost = 250,  damage = 15,  range = 14, fireRate = 0.8, splash = true  },
+  Sniper  = { cost = 500,  damage = 80,  range = 40, fireRate = 0.4, splash = false },
+}
+
+-- Tower upgrade costs (level 1→2, 2→3)
+local UPGRADE_COST = { [1] = 150, [2] = 300 }
+local UPGRADE_DMG_BONUS = 1.5  -- damage multiplier per upgrade
+
+-- Waypoints folder must exist in Workspace: Workspace.Waypoints.Point1..PointN
+local WAYPOINTS_FOLDER_NAME = "TDWaypoints"
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local gameActive   = false
+local currentWave  = 0
+local livesLeft    = START_LIVES
+local enemyCounter = 0
+local activeEnemies: {[string]: {model:Model, hp:number, maxHp:number, waypoint:number}} = {}
+local placedTowers: {[string]: {model:Model, towerType:string, owner:Player, level:number, lastFire:number}} = {}
+local playerCoins: {[number]: number} = {}
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "TDRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local PlaceTower    = Instance.new("RemoteEvent");   PlaceTower.Name    = "PlaceTower";    PlaceTower.Parent    = Remotes
+local UpgradeTower  = Instance.new("RemoteEvent");   UpgradeTower.Name  = "UpgradeTower";  UpgradeTower.Parent  = Remotes
+local SellTower     = Instance.new("RemoteEvent");   SellTower.Name     = "SellTower";     SellTower.Parent     = Remotes
+local UpdateHUD     = Instance.new("RemoteEvent");   UpdateHUD.Name     = "UpdateHUD";     UpdateHUD.Parent     = Remotes
+local WaveStart     = Instance.new("RemoteEvent");   WaveStart.Name     = "WaveStart";     WaveStart.Parent     = Remotes
+local GameOver      = Instance.new("RemoteEvent");   GameOver.Name      = "GameOver";      GameOver.Parent      = Remotes
+local RequestUpgrade = Instance.new("RemoteFunction"); RequestUpgrade.Name = "RequestUpgrade"; RequestUpgrade.Parent = Remotes
+
+-- ── DataStore helpers ─────────────────────────────────────────────────────────
+local function loadHighestWave(player: Player): number
+  local ok, val = pcall(DS.GetAsync, DS, "HW_"..player.UserId)
+  if ok and type(val) == "number" then return val end
+  return 0
+end
+
+local function saveHighestWave(player: Player, wave: number)
+  local ok, err = pcall(DS.SetAsync, DS, "HW_"..player.UserId, wave)
+  if not ok then warn("[TD] Save failed:", err) end
+end
+
+-- ── Utility ───────────────────────────────────────────────────────────────────
+local function getWaypoints(): {BasePart}
+  local folder = workspace:FindFirstChild(WAYPOINTS_FOLDER_NAME)
+  if not folder then
+    -- Create default straight-line waypoints if none exist
+    local f = Instance.new("Folder"); f.Name = WAYPOINTS_FOLDER_NAME; f.Parent = workspace
+    for i = 1, 8 do
+      local p = Instance.new("Part")
+      p.Name = "Point"..i; p.Size = Vector3.new(1,1,1); p.Anchored = true
+      p.CanCollide = false; p.Transparency = 1
+      p.Position = Vector3.new(-60 + (i-1)*20, 3, 0)
+      p.Parent = f
+    end
+    folder = f
+  end
+  local pts: {BasePart} = {}
+  for i = 1, 50 do
+    local p = folder:FindFirstChild("Point"..i) :: BasePart?
+    if p then table.insert(pts, p) else break end
+  end
+  return pts
+end
+
+local function snapToGrid(pos: Vector3): Vector3
+  return Vector3.new(
+    math.round(pos.X / GRID_SIZE) * GRID_SIZE,
+    pos.Y,
+    math.round(pos.Z / GRID_SIZE) * GRID_SIZE
+  )
+end
+
+local function isOccupied(snapped: Vector3): boolean
+  for _, data in placedTowers do
+    local model = data.model
+    if model and model.PrimaryPart then
+      local diff = model.PrimaryPart.Position - snapped
+      if math.abs(diff.X) < GRID_SIZE and math.abs(diff.Z) < GRID_SIZE then
+        return true
+      end
+    end
+  end
+  return false
+end
+
+local function broadcastHUD()
+  for _, player in Players:GetPlayers() do
+    UpdateHUD:FireClient(player, {
+      wave   = currentWave,
+      lives  = livesLeft,
+      coins  = playerCoins[player.UserId] or 0,
+    })
+  end
+end
+
+local function addCoins(player: Player, amount: number)
+  playerCoins[player.UserId] = (playerCoins[player.UserId] or 0) + amount
+  UpdateHUD:FireClient(player, {
+    wave  = currentWave,
+    lives = livesLeft,
+    coins = playerCoins[player.UserId],
+  })
+end
+
+local function spendCoins(player: Player, amount: number): boolean
+  local current = playerCoins[player.UserId] or 0
+  if current < amount then return false end
+  playerCoins[player.UserId] = current - amount
+  UpdateHUD:FireClient(player, {
+    wave  = currentWave,
+    lives = livesLeft,
+    coins = playerCoins[player.UserId],
+  })
+  return true
+end
+
+-- ── Enemy creation ────────────────────────────────────────────────────────────
+local function spawnEnemy(wave: number)
+  enemyCounter += 1
+  local id = "Enemy_"..enemyCounter
+
+  local maxHp = math.floor(BASE_ENEMY_HP * (HP_SCALE ^ (wave - 1)))
+  local speed = BASE_ENEMY_SPEED + wave * 0.5
+
+  local pts = getWaypoints()
+  if #pts == 0 then return end
+
+  -- Build enemy model
+  local model = Instance.new("Model"); model.Name = "Enemy_"..wave.."_"..enemyCounter
+  local body = Instance.new("Part")
+  body.Name = "HumanoidRootPart"; body.Size = Vector3.new(3, 4, 2)
+  body.BrickColor = BrickColor.new("Bright red"); body.Anchored = false
+  body.Position = pts[1].Position + Vector3.new(0, 2, 0)
+  body.Parent = model
+
+  local hum = Instance.new("Humanoid"); hum.MaxHealth = maxHp; hum.Health = maxHp
+  hum.WalkSpeed = speed; hum.Parent = model
+
+  -- HP bar BillboardGui
+  local billboard = Instance.new("BillboardGui")
+  billboard.Size = UDim2.new(4, 0, 0.5, 0); billboard.StudsOffset = Vector3.new(0, 3, 0)
+  billboard.AlwaysOnTop = false; billboard.Parent = body
+
+  local barBg = Instance.new("Frame")
+  barBg.Size = UDim2.new(1,0,1,0); barBg.BackgroundColor3 = Color3.fromRGB(50,50,50); barBg.Parent = billboard
+  local barFill = Instance.new("Frame")
+  barFill.Name = "Fill"; barFill.Size = UDim2.new(1,0,1,0)
+  barFill.BackgroundColor3 = Color3.fromRGB(220,50,50); barFill.Parent = barBg
+
+  model.PrimaryPart = body
+  model.Parent = workspace
+
+  activeEnemies[id] = { model = model, hp = maxHp, maxHp = maxHp, waypoint = 2 }
+
+  -- Movement coroutine: lerp between waypoints
+  task.spawn(function()
+    local data = activeEnemies[id]
+    if not data then return end
+    while data and data.model and data.model.Parent do
+      local wpt = data.waypoint
+      if wpt > #pts then
+        -- Reached end — lose a life
+        livesLeft -= 1
+        broadcastHUD()
+        if data.model then data.model:Destroy() end
+        activeEnemies[id] = nil
+        if livesLeft <= 0 then
+          GameOver:FireAllClients(false, currentWave)
+          gameActive = false
+        end
+        return
+      end
+      local target = pts[wpt].Position + Vector3.new(0, 2, 0)
+      local dist = (body.Position - target).Magnitude
+      local travelTime = dist / speed
+      local elapsed = 0
+      local startPos = body.CFrame
+      while elapsed < travelTime and data.model and data.model.Parent do
+        elapsed += task.wait()
+        local alpha = math.min(elapsed / travelTime, 1)
+        if body and body.Parent then
+          body.CFrame = startPos:Lerp(CFrame.new(target), alpha)
+        end
+      end
+      if data then data.waypoint += 1 end
+    end
+  end)
+end
+
+-- ── Tower attack loop ─────────────────────────────────────────────────────────
+local function findTarget(towerPos: Vector3, range: number, targeting: string): (string?, Vector3?)
+  local best: string? = nil
+  local bestVal = -math.huge
+  for id, eData in activeEnemies do
+    if not (eData.model and eData.model.Parent) then continue end
+    local eBody = eData.model:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not eBody then continue end
+    local dist = (towerPos - eBody.Position).Magnitude
+    if dist > range then continue end
+    local val = if targeting == "first" then eData.waypoint
+                elseif targeting == "strongest" then eData.hp
+                else -(dist)  -- nearest
+    if val > bestVal then bestVal = val; best = id end
+  end
+  return best, if best then
+    (activeEnemies[best] and activeEnemies[best].model:FindFirstChild("HumanoidRootPart") :: BasePart?) and
+    (activeEnemies[best].model:FindFirstChild("HumanoidRootPart") :: BasePart).Position
+    else nil
+  else nil
+end
+
+local function dealDamage(enemyId: string, damage: number, splash: boolean, origin: Vector3)
+  local function damageOne(id: string, dmg: number)
+    local eData = activeEnemies[id]
+    if not eData or not eData.model or not eData.model.Parent then return end
+    eData.hp -= dmg
+    -- Update HP bar
+    local body = eData.model:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if body then
+      local bb = body:FindFirstChildOfClass("BillboardGui")
+      if bb then
+        local fill = bb:FindFirstChild("Fill") :: Frame?
+        if fill then fill.Size = UDim2.new(math.max(0, eData.hp / eData.maxHp), 0, 1, 0) end
+      end
+    end
+    if eData.hp <= 0 then
+      -- Reward all players split / just give to first player for simplicity
+      for _, p in Players:GetPlayers() do
+        addCoins(p, math.floor(ENEMY_REWARD / math.max(1, #Players:GetPlayers())))
+      end
+      if eData.model then eData.model:Destroy() end
+      activeEnemies[id] = nil
+    end
+  end
+
+  damageOne(enemyId, damage)
+  if splash then
+    local eData = activeEnemies[enemyId]
+    local splashRadius = 10
+    for id, other in activeEnemies do
+      if id == enemyId then continue end
+      if not (other.model and other.model.Parent) then continue end
+      local b = other.model:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if b and (b.Position - origin).Magnitude <= splashRadius then
+        damageOne(id, math.floor(damage * 0.5))
+      end
+    end
+  end
+end
+
+-- ── Wave spawner ──────────────────────────────────────────────────────────────
+local function runWave(wave: number)
+  local enemyCount = 5 + wave * 3
+  WaveStart:FireAllClients(wave, enemyCount)
+  broadcastHUD()
+
+  for i = 1, enemyCount do
+    if not gameActive then break end
+    spawnEnemy(wave)
+    task.wait(1.2)
+  end
+
+  -- Wait until all enemies dead or lives gone
+  while gameActive do
+    task.wait(0.5)
+    local count = 0
+    for _ in activeEnemies do count += 1 end
+    if count == 0 then break end
+  end
+
+  if not gameActive then return end
+
+  if wave >= TOTAL_WAVES then
+    -- Victory
+    for _, p in Players:GetPlayers() do
+      saveHighestWave(p, TOTAL_WAVES)
+    end
+    GameOver:FireAllClients(true, wave)
+    gameActive = false
+    return
+  end
+
+  task.wait(WAVE_DELAY)
+end
+
+local function startGame()
+  if gameActive then return end
+  gameActive   = true
+  currentWave  = 0
+  livesLeft    = START_LIVES
+  activeEnemies = {}
+
+  task.spawn(function()
+    for wave = 1, TOTAL_WAVES do
+      if not gameActive then break end
+      currentWave = wave
+      runWave(wave)
+    end
+  end)
+end
+
+-- ── Tower placement ───────────────────────────────────────────────────────────
+PlaceTower.OnServerEvent:Connect(function(player: Player, towerTypeRaw: unknown, posRaw: unknown)
+  if type(towerTypeRaw) ~= "string" then return end
+  local towerType = towerTypeRaw :: string
+  local tData = TOWER_DATA[towerType]
+  if not tData then return end
+
+  if type(posRaw) ~= "vector" and typeof(posRaw) ~= "Vector3" then return end
+  local rawPos = posRaw :: Vector3
+  local snapped = snapToGrid(rawPos)
+
+  if not spendCoins(player, tData.cost) then
+    UpdateHUD:FireClient(player, {
+      wave = currentWave, lives = livesLeft,
+      coins = playerCoins[player.UserId] or 0,
+      error = "Not enough coins!",
+    })
+    return
+  end
+
+  if isOccupied(snapped) then
+    addCoins(player, tData.cost)  -- refund
+    return
+  end
+
+  -- Build tower model
+  local model = Instance.new("Model"); model.Name = towerType.."Tower_"..player.UserId
+  local base = Instance.new("Part")
+  base.Name = "Base"; base.Size = Vector3.new(GRID_SIZE, 1, GRID_SIZE)
+  base.Anchored = true; base.BrickColor = BrickColor.new("Dark stone grey")
+  base.Position = snapped + Vector3.new(0, 0.5, 0); base.Parent = model
+
+  local turret = Instance.new("Part")
+  turret.Name = "Turret"; turret.Size = Vector3.new(2, 2, 2)
+  turret.Anchored = true
+  turret.BrickColor = if towerType == "Basic" then BrickColor.new("Bright blue")
+                       elseif towerType == "Splash" then BrickColor.new("Bright orange")
+                       else BrickColor.new("Bright yellow")
+  turret.Position = snapped + Vector3.new(0, 2, 0); turret.Parent = model
+
+  -- Range indicator (transparent sphere, visible briefly)
+  local rangeIndicator = Instance.new("Part")
+  rangeIndicator.Name = "RangeIndicator"; rangeIndicator.Shape = Enum.PartType.Ball
+  rangeIndicator.Size = Vector3.new(tData.range*2, tData.range*2, tData.range*2)
+  rangeIndicator.Anchored = true; rangeIndicator.CanCollide = false
+  rangeIndicator.Transparency = 0.85; rangeIndicator.BrickColor = BrickColor.new("Cyan")
+  rangeIndicator.Position = snapped + Vector3.new(0, 1, 0); rangeIndicator.Parent = model
+  task.delay(2, function() if rangeIndicator and rangeIndicator.Parent then rangeIndicator.Transparency = 1 end end)
+
+  -- Level label
+  local billboard = Instance.new("BillboardGui")
+  billboard.Size = UDim2.new(3, 0, 1, 0); billboard.StudsOffset = Vector3.new(0, 4, 0)
+  billboard.AlwaysOnTop = false; billboard.Parent = turret
+  local lvlLabel = Instance.new("TextLabel")
+  lvlLabel.Name = "LevelLabel"; lvlLabel.Size = UDim2.new(1,0,1,0)
+  lvlLabel.BackgroundTransparency = 1; lvlLabel.TextColor3 = Color3.fromRGB(255,255,100)
+  lvlLabel.TextScaled = true; lvlLabel.Font = Enum.Font.GothamBold
+  lvlLabel.Text = towerType.." Lv1"; lvlLabel.Parent = billboard
+
+  model.PrimaryPart = base
+  model.Parent = workspace
+
+  local towerId = tostring(player.UserId).."_"..tostring(tick())
+  placedTowers[towerId] = {
+    model = model, towerType = towerType, owner = player, level = 1, lastFire = 0
+  }
+end)
+
+-- ── Upgrade handler ───────────────────────────────────────────────────────────
+RequestUpgrade.OnServerInvoke = function(player: Player, towerIdRaw: unknown): boolean
+  if type(towerIdRaw) ~= "string" then return false end
+  local towerId = towerIdRaw :: string
+  local tData = placedTowers[towerId]
+  if not tData then return false end
+  if tData.owner ~= player then return false end
+  if tData.level >= 3 then return false end
+
+  local cost = UPGRADE_COST[tData.level] or 999999
+  if not spendCoins(player, cost) then return false end
+
+  tData.level += 1
+  -- Update label
+  local turret = tData.model:FindFirstChild("Turret") :: BasePart?
+  if turret then
+    local bb = turret:FindFirstChildOfClass("BillboardGui")
+    if bb then
+      local lbl = bb:FindFirstChild("LevelLabel") :: TextLabel?
+      if lbl then lbl.Text = tData.towerType.." Lv"..tData.level end
+    end
+    turret.Size = Vector3.new(2 + tData.level * 0.3, 2 + tData.level * 0.3, 2 + tData.level * 0.3)
+  end
+  return true
+end
+
+-- ── Sell tower ────────────────────────────────────────────────────────────────
+SellTower.OnServerEvent:Connect(function(player: Player, towerIdRaw: unknown)
+  if type(towerIdRaw) ~= "string" then return end
+  local towerId = towerIdRaw :: string
+  local tData = placedTowers[towerId]
+  if not tData then return end
+  if tData.owner ~= player then return end
+
+  local baseCost = TOWER_DATA[tData.towerType].cost
+  local refund = math.floor(baseCost * 0.5)
+  addCoins(player, refund)
+  if tData.model then tData.model:Destroy() end
+  placedTowers[towerId] = nil
+end)
+
+-- ── Tower attack RunService loop ──────────────────────────────────────────────
+RunService.Heartbeat:Connect(function()
+  if not gameActive then return end
+  local now = tick()
+  for towerId, tData in placedTowers do
+    if not (tData.model and tData.model.Parent) then
+      placedTowers[towerId] = nil
+      continue
+    end
+    local tConfig = TOWER_DATA[tData.towerType]
+    local dmgMult = UPGRADE_DMG_BONUS ^ (tData.level - 1)
+    local finalDmg = math.floor(tConfig.damage * dmgMult)
+    local cooldown = 1 / tConfig.fireRate
+
+    if (now - tData.lastFire) < cooldown then continue end
+
+    local turret = tData.model:FindFirstChild("Turret") :: BasePart?
+    if not turret then continue end
+
+    local targetId, targetPos = findTarget(turret.Position, tConfig.range, "first")
+    if not targetId then continue end
+
+    tData.lastFire = now
+
+    -- Face turret toward target
+    if targetPos then
+      turret.CFrame = CFrame.new(turret.Position, Vector3.new(targetPos.X, turret.Position.Y, targetPos.Z))
+    end
+
+    -- Visual projectile
+    if targetPos then
+      task.spawn(function()
+        local proj = Instance.new("Part")
+        proj.Size = Vector3.new(0.4, 0.4, 0.4); proj.Shape = Enum.PartType.Ball
+        proj.Anchored = false; proj.CanCollide = false
+        proj.BrickColor = BrickColor.new("Bright yellow"); proj.CastShadow = false
+        proj.Position = turret.Position; proj.Parent = workspace
+        local startP = proj.Position
+        local dist = (targetPos - startP).Magnitude
+        local travelT = math.max(0.05, dist / 60)
+        local t = 0
+        while t < travelT and proj.Parent do
+          t += task.wait()
+          local a = math.min(t / travelT, 1)
+          proj.Position = startP:Lerp(targetPos, a)
+        end
+        if proj.Parent then proj:Destroy() end
+      end)
+    end
+
+    dealDamage(targetId, finalDmg, tConfig.splash, turret.Position)
+  end
+end)
+
+-- ── Player lifecycle ──────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+  playerCoins[player.UserId] = 150  -- starting coins
+
+  -- Create leaderstats
+  local ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
+  local hwVal = Instance.new("IntValue"); hwVal.Name = "HighestWave"
+  hwVal.Value = loadHighestWave(player); hwVal.Parent = ls
+
+  -- Start game when first player joins
+  if #Players:GetPlayers() == 1 then
+    task.delay(3, startGame)
+  end
+
+  UpdateHUD:FireClient(player, { wave = currentWave, lives = livesLeft, coins = 150 })
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  if currentWave > 0 then
+    saveHighestWave(player, currentWave)
+  end
+  playerCoins[player.UserId] = nil
+end)
+
+game:BindToClose(function()
+  for _, player in Players:GetPlayers() do
+    if currentWave > 0 then saveHighestWave(player, currentWave) end
+  end
+end)
+
+print("[TowerDefenseServer] Ready — "..TOTAL_WAVES.." waves, "..#(function() local t={} for k in TOWER_DATA do table.insert(t,k) end return t end()).." tower types")
+`,
+}
+
+const TOWER_DEFENSE_CLIENT: GameSystemFile = {
+  filename: 'TowerDefenseClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- TowerDefenseClient (LocalScript → StarterPlayerScripts)
+-- Tower shop GUI, ghost placement preview, wave counter, lives, upgrade button.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService  = game:GetService("UserInputService")
+local RunService        = game:GetService("RunService")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local mouse     = player:GetMouse()
+local playerGui = player:WaitForChild("PlayerGui")
+local camera    = workspace.CurrentCamera
+
+local Remotes       = ReplicatedStorage:WaitForChild("TDRemotes")
+local PlaceTower    = Remotes:WaitForChild("PlaceTower")    :: RemoteEvent
+local UpgradeTower  = Remotes:WaitForChild("UpgradeTower")  :: RemoteEvent
+local SellTower     = Remotes:WaitForChild("SellTower")     :: RemoteEvent
+local UpdateHUD     = Remotes:WaitForChild("UpdateHUD")     :: RemoteEvent
+local WaveStart     = Remotes:WaitForChild("WaveStart")     :: RemoteEvent
+local GameOver      = Remotes:WaitForChild("GameOver")      :: RemoteEvent
+local RequestUpgrade = Remotes:WaitForChild("RequestUpgrade") :: RemoteFunction
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local selectedTower: string? = nil
+local ghostModel:    Model?  = nil
+local myCoins        = 0
+local GRID_SIZE      = 4
+
+local TOWER_COSTS = { Basic = 100, Splash = 250, Sniper = 500 }
+local TOWER_COLORS = {
+  Basic  = Color3.fromRGB(80, 120, 220),
+  Splash = Color3.fromRGB(230, 140, 40),
+  Sniper = Color3.fromRGB(220, 220, 60),
+}
+
+-- ── Screen GUI ────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "TowerDefenseGui"; screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- HUD bar (top center)
+local hudFrame = Instance.new("Frame")
+hudFrame.Size = UDim2.new(0, 500, 0, 56)
+hudFrame.Position = UDim2.new(0.5, -250, 0, 10)
+hudFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+hudFrame.BackgroundTransparency = 0.2
+hudFrame.Parent = screen
+Instance.new("UICorner", hudFrame).CornerRadius = UDim.new(0, 10)
+local hudStroke = Instance.new("UIStroke", hudFrame)
+hudStroke.Color = Color3.fromRGB(212, 175, 55); hudStroke.Thickness = 1.5
+
+local function makeHudLabel(name: string, pos: UDim2, text: string): TextLabel
+  local lbl = Instance.new("TextLabel")
+  lbl.Name = name; lbl.Size = UDim2.new(0, 140, 1, 0); lbl.Position = pos
+  lbl.BackgroundTransparency = 1; lbl.TextColor3 = Color3.fromRGB(255,255,255)
+  lbl.TextScaled = true; lbl.Font = Enum.Font.GothamBold; lbl.Text = text
+  lbl.Parent = hudFrame
+  return lbl
+end
+
+local waveLabel  = makeHudLabel("Wave",  UDim2.new(0,  10, 0, 0), "Wave: 0/10")
+local livesLabel = makeHudLabel("Lives", UDim2.new(0, 180, 0, 0), "Lives: 20")
+local coinsLabel = makeHudLabel("Coins", UDim2.new(0, 350, 0, 0), "Coins: 150")
+
+-- Tower Shop (bottom center)
+local shopFrame = Instance.new("Frame")
+shopFrame.Size = UDim2.new(0, 420, 0, 90)
+shopFrame.Position = UDim2.new(0.5, -210, 1, -105)
+shopFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+shopFrame.BackgroundTransparency = 0.15; shopFrame.Parent = screen
+Instance.new("UICorner", shopFrame).CornerRadius = UDim.new(0, 12)
+local shopStroke = Instance.new("UIStroke", shopFrame)
+shopStroke.Color = Color3.fromRGB(212, 175, 55); shopStroke.Thickness = 1.5
+
+local shopLayout = Instance.new("UIListLayout", shopFrame)
+shopLayout.FillDirection = Enum.FillDirection.Horizontal
+shopLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+shopLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+shopLayout.Padding = UDim.new(0, 10)
+
+local towerButtons: {[string]: TextButton} = {}
+
+local function makeTowerButton(name: string, cost: number, color: Color3): TextButton
+  local btn = Instance.new("TextButton")
+  btn.Size = UDim2.new(0, 115, 0, 68)
+  btn.BackgroundColor3 = color
+  btn.BackgroundTransparency = 0.3
+  btn.TextColor3 = Color3.fromRGB(255,255,255)
+  btn.TextScaled = true; btn.Font = Enum.Font.GothamBold
+  btn.Text = name.."\n$"..cost
+  btn.Parent = shopFrame
+  Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+  return btn
+end
+
+for _, entry in ipairs({ {"Basic",100}, {"Splash",250}, {"Sniper",500} }) do
+  local name = entry[1] :: string
+  local cost = entry[2] :: number
+  local btn = makeTowerButton(name, cost, TOWER_COLORS[name])
+  towerButtons[name] = btn
+
+  btn.MouseButton1Click:Connect(function()
+    if myCoins < cost then
+      -- Flash red
+      local orig = btn.BackgroundColor3
+      btn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+      task.delay(0.3, function() btn.BackgroundColor3 = orig end)
+      return
+    end
+    selectedTower = if selectedTower == name then nil else name
+    -- Highlight selected
+    for tName, b in towerButtons do
+      b.BackgroundTransparency = if tName == selectedTower then 0 else 0.3
+    end
+    -- Destroy old ghost
+    if ghostModel then ghostModel:Destroy(); ghostModel = nil end
+  end)
+end
+
+-- Cancel placement on RMB
+UserInputService.InputBegan:Connect(function(input: InputObject)
+  if input.UserInputType == Enum.UserInputType.MouseButton2 then
+    selectedTower = nil
+    if ghostModel then ghostModel:Destroy(); ghostModel = nil end
+    for _, b in towerButtons do b.BackgroundTransparency = 0.3 end
+  end
+end)
+
+-- ── Ghost preview ─────────────────────────────────────────────────────────────
+local function createGhost(towerType: string): Model
+  local model = Instance.new("Model"); model.Name = "GhostTower"
+  local base = Instance.new("Part")
+  base.Name = "Base"; base.Size = Vector3.new(GRID_SIZE, 1, GRID_SIZE)
+  base.Anchored = true; base.CanCollide = false; base.Transparency = 0.5
+  base.BrickColor = BrickColor.new("Sand blue"); base.Parent = model
+  local turret = Instance.new("Part")
+  turret.Name = "Turret"; turret.Size = Vector3.new(2,2,2)
+  turret.Anchored = true; turret.CanCollide = false; turret.Transparency = 0.5
+  turret.Color = TOWER_COLORS[towerType] or Color3.new(1,1,1); turret.Parent = model
+  model.PrimaryPart = base
+  model.Parent = workspace
+  return model
+end
+
+RunService.RenderStepped:Connect(function()
+  if not selectedTower then
+    if ghostModel then ghostModel:Destroy(); ghostModel = nil end
+    return
+  end
+
+  if not ghostModel then ghostModel = createGhost(selectedTower) end
+
+  -- Raycast from mouse
+  local unitRay = camera:ScreenPointToRay(mouse.X, mouse.Y)
+  local rayParams = RaycastParams.new()
+  rayParams.FilterType = Enum.RaycastFilterType.Exclude
+  if ghostModel then rayParams.FilterDescendantsInstances = {ghostModel} end
+  local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 500, rayParams)
+
+  if result then
+    local hit = result.Position
+    local snapped = Vector3.new(
+      math.round(hit.X / GRID_SIZE) * GRID_SIZE,
+      hit.Y + 0.5,
+      math.round(hit.Z / GRID_SIZE) * GRID_SIZE
+    )
+    if ghostModel and ghostModel.PrimaryPart then
+      ghostModel:PivotTo(CFrame.new(snapped))
+      local turret = ghostModel:FindFirstChild("Turret") :: BasePart?
+      if turret then turret.Position = snapped + Vector3.new(0, 2, 0) end
+    end
+  end
+end)
+
+-- Left-click to place
+mouse.Button1Down:Connect(function()
+  if not selectedTower then return end
+  if not ghostModel or not ghostModel.PrimaryPart then return end
+  local placePos = ghostModel.PrimaryPart.Position
+  PlaceTower:FireServer(selectedTower, placePos)
+  -- Keep selection active for multi-placing
+end)
+
+-- ── HUD updates ───────────────────────────────────────────────────────────────
+UpdateHUD.OnClientEvent:Connect(function(data: {wave:number,lives:number,coins:number,error:string?})
+  waveLabel.Text  = "Wave: "..data.wave.."/10"
+  livesLabel.Text = "Lives: "..data.lives
+  coinsLabel.Text = "Coins: "..data.coins
+  myCoins = data.coins
+
+  if data.lives and data.lives <= 5 then
+    livesLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
+  else
+    livesLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+  end
+
+  if data.error then
+    -- Show error toast
+    local toast = Instance.new("TextLabel")
+    toast.Size = UDim2.new(0, 240, 0, 40); toast.Position = UDim2.new(0.5, -120, 0.5, -20)
+    toast.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    toast.TextColor3 = Color3.fromRGB(255,255,255); toast.TextScaled = true
+    toast.Font = Enum.Font.GothamBold; toast.Text = data.error
+    toast.Parent = screen; Instance.new("UICorner", toast).CornerRadius = UDim.new(0,8)
+    TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+      {Position = UDim2.new(0.5,-120,0.5,-60)}):Play()
+    task.delay(1.5, function()
+      TweenService:Create(toast, TweenInfo.new(0.2), {BackgroundTransparency=1, TextTransparency=1}):Play()
+      task.delay(0.2, function() if toast.Parent then toast:Destroy() end end)
+    end)
+  end
+end)
+
+-- ── Wave start announcement ───────────────────────────────────────────────────
+WaveStart.OnClientEvent:Connect(function(wave: number, _enemyCount: number)
+  local banner = Instance.new("TextLabel")
+  banner.Size = UDim2.new(0, 320, 0, 60); banner.Position = UDim2.new(0.5,-160,0.3,-30)
+  banner.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+  banner.TextColor3 = Color3.fromRGB(255,255,255); banner.TextScaled = true
+  banner.Font = Enum.Font.GothamBold; banner.Text = "WAVE "..wave.." INCOMING!"
+  banner.Parent = screen; Instance.new("UICorner", banner).CornerRadius = UDim.new(0,12)
+  banner.BackgroundTransparency = 1; banner.TextTransparency = 1
+  TweenService:Create(banner, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {BackgroundTransparency=0.1, TextTransparency=0, Position=UDim2.new(0.5,-160,0.3,-30)}):Play()
+  task.delay(2, function()
+    TweenService:Create(banner, TweenInfo.new(0.3), {BackgroundTransparency=1, TextTransparency=1}):Play()
+    task.delay(0.3, function() if banner.Parent then banner:Destroy() end end)
+  end)
+end)
+
+-- ── Game over screen ──────────────────────────────────────────────────────────
+GameOver.OnClientEvent:Connect(function(won: boolean, wave: number)
+  if ghostModel then ghostModel:Destroy(); ghostModel = nil end
+  selectedTower = nil
+
+  local overlay = Instance.new("Frame")
+  overlay.Size = UDim2.new(1,0,1,0); overlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  overlay.BackgroundTransparency = 0.4; overlay.Parent = screen
+
+  local title = Instance.new("TextLabel")
+  title.Size = UDim2.new(0,400,0,80); title.Position = UDim2.new(0.5,-200,0.35,-40)
+  title.BackgroundTransparency = 1
+  title.TextColor3 = if won then Color3.fromRGB(100,255,100) else Color3.fromRGB(255,80,80)
+  title.TextScaled = true; title.Font = Enum.Font.GothamBold
+  title.Text = if won then "VICTORY! All Waves Cleared!" else "GAME OVER — Wave "..wave
+  title.Parent = overlay
+
+  local sub = Instance.new("TextLabel")
+  sub.Size = UDim2.new(0,300,0,40); sub.Position = UDim2.new(0.5,-150,0.5,-20)
+  sub.BackgroundTransparency = 1; sub.TextColor3 = Color3.fromRGB(200,200,200)
+  sub.TextScaled = true; sub.Font = Enum.Font.Gotham
+  sub.Text = "Highest wave saved!"; sub.Parent = overlay
+end)
+
+print("[TowerDefenseClient] Ready")
+`,
+}
+
+// ─── 21. Anime Fighter System ──────────────────────────────────────────────────
+
+const ANIME_FIGHTER_SERVER: GameSystemFile = {
+  filename: 'AnimeFighterServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- AnimeFighterServer (ServerScript → ServerScriptService)
+-- Stand/ability system, M1 combos, knockback, stamina, blocking.
+-- Strongest Battlegrounds / Anime Fighters style.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris            = game:GetService("Debris")
+
+-- ── Ability definitions ────────────────────────────────────────────────────────
+-- key: remote name, damage, cooldown (seconds), effect tag, aoe radius (0=melee hit)
+local ABILITIES: {[string]: {damage:number, cooldown:number, effect:string, radius:number}} = {
+  Q = { damage = 35,  cooldown = 6,  effect = "Slash",     radius = 8  },
+  E = { damage = 50,  cooldown = 10, effect = "Blast",     radius = 15 },
+  R = { damage = 20,  cooldown = 8,  effect = "Barrage",   radius = 6  },
+  F = { damage = 80,  cooldown = 20, effect = "Ultimate",  radius = 20 },
+}
+
+-- M1 combo: 3 quick punches then uppercut
+local M1_HITS     = { 12, 12, 12, 22 }  -- damage per hit in combo
+local M1_WINDOW   = 2    -- seconds to continue combo
+local KNOCKBACK_HEAVY = 60  -- studs for uppercut / heavy abilities
+local KNOCKBACK_LIGHT = 20
+local BLOCK_REDUCTION = 0.70   -- 70% damage reduction when blocking
+local STAMINA_MAX      = 100
+local STAMINA_REGEN    = 10    -- per second
+local STAMINA_DODGE    = 25
+local BASE_HP          = 150
+
+-- ── State per player ──────────────────────────────────────────────────────────
+type PlayerState = {
+  hp: number,
+  stamina: number,
+  blocking: boolean,
+  comboIndex: number,
+  lastM1: number,
+  abilityCooldowns: {[string]: number},
+  isAlive: boolean,
+}
+local playerStates: {[number]: PlayerState} = {}
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name  = "AFRemotes"; Remotes.Parent = ReplicatedStorage
+
+local UseAbility   = Instance.new("RemoteEvent"); UseAbility.Name   = "UseAbility";   UseAbility.Parent   = Remotes
+local M1Attack     = Instance.new("RemoteEvent"); M1Attack.Name     = "M1Attack";     M1Attack.Parent     = Remotes
+local SetBlocking  = Instance.new("RemoteEvent"); SetBlocking.Name  = "SetBlocking";  SetBlocking.Parent  = Remotes
+local DodgeRoll    = Instance.new("RemoteEvent"); DodgeRoll.Name    = "DodgeRoll";    DodgeRoll.Parent    = Remotes
+local SyncState    = Instance.new("RemoteEvent"); SyncState.Name    = "SyncState";    SyncState.Parent    = Remotes
+local HitEffect    = Instance.new("RemoteEvent"); HitEffect.Name    = "HitEffect";    HitEffect.Parent    = Remotes
+local PlayerDied   = Instance.new("RemoteEvent"); PlayerDied.Name   = "PlayerDied";   PlayerDied.Parent   = Remotes
+local KillFeedEv   = Instance.new("RemoteEvent"); KillFeedEv.Name   = "KillFeed";     KillFeedEv.Parent   = Remotes
+
+-- ── Utility ───────────────────────────────────────────────────────────────────
+local function getState(player: Player): PlayerState
+  local uid = player.UserId
+  if not playerStates[uid] then
+    playerStates[uid] = {
+      hp = BASE_HP, stamina = STAMINA_MAX, blocking = false,
+      comboIndex = 0, lastM1 = 0,
+      abilityCooldowns = { Q=0, E=0, R=0, F=0 },
+      isAlive = true,
+    }
+  end
+  return playerStates[uid]
+end
+
+local function syncToClient(player: Player)
+  local st = getState(player)
+  SyncState:FireClient(player, {
+    hp = st.hp, maxHp = BASE_HP,
+    stamina = st.stamina, maxStamina = STAMINA_MAX,
+    blocking = st.blocking,
+    cooldowns = st.abilityCooldowns,
+  })
+end
+
+local function applyKnockback(target: Player, direction: Vector3, force: number)
+  local char = target.Character
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+  local bv = Instance.new("BodyVelocity")
+  bv.Velocity = direction.Unit * force + Vector3.new(0, force * 0.3, 0)
+  bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+  bv.P = 5000
+  bv.Parent = hrp
+  Debris:AddItem(bv, 0.25)
+end
+
+local function dealDamage(attacker: Player, target: Player, rawDamage: number, isHeavy: boolean)
+  if attacker == target then return end
+  local tState = getState(target)
+  if not tState.isAlive then return end
+
+  local damage = rawDamage
+  if tState.blocking then damage = math.floor(damage * (1 - BLOCK_REDUCTION)) end
+
+  tState.hp -= damage
+  syncToClient(target)
+
+  -- Notify attacker with damage number
+  HitEffect:FireClient(attacker, target, damage, isHeavy)
+  -- Also notify target (screen flash)
+  HitEffect:FireClient(target, nil, damage, isHeavy)
+
+  -- Knockback
+  local aChar = attacker.Character
+  local tChar = target.Character
+  if aChar and tChar then
+    local aHrp = aChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+    local tHrp = tChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if aHrp and tHrp then
+      local dir = (tHrp.Position - aHrp.Position).Unit
+      applyKnockback(target, dir, if isHeavy then KNOCKBACK_HEAVY else KNOCKBACK_LIGHT)
+    end
+  end
+
+  if tState.hp <= 0 then
+    tState.hp = 0; tState.isAlive = false
+    -- Kill
+    local tChar2 = target.Character
+    if tChar2 then
+      local hum = tChar2:FindFirstChildOfClass("Humanoid") :: Humanoid?
+      if hum then hum.Health = 0 end
+    end
+    PlayerDied:FireAllClients(attacker.Name, target.Name)
+    KillFeedEv:FireAllClients(attacker.Name, target.Name)
+    task.delay(4, function()
+      tState.hp = BASE_HP; tState.isAlive = true
+      syncToClient(target)
+    end)
+  end
+end
+
+-- ── AoE damage helper ─────────────────────────────────────────────────────────
+local function aoeAttack(attacker: Player, origin: Vector3, radius: number, damage: number, isHeavy: boolean)
+  for _, other in Players:GetPlayers() do
+    if other == attacker then continue end
+    local char = other.Character
+    if not char then continue end
+    local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not hrp then continue end
+    if (hrp.Position - origin).Magnitude <= radius then
+      dealDamage(attacker, other, damage, isHeavy)
+    end
+  end
+end
+
+-- ── M1 combo handler ──────────────────────────────────────────────────────────
+M1Attack.OnServerEvent:Connect(function(player: Player, targetPlayerRaw: unknown)
+  local st = getState(player)
+  if not st.isAlive then return end
+
+  local now = tick()
+  -- Reset combo if window expired
+  if (now - st.lastM1) > M1_WINDOW then st.comboIndex = 0 end
+  st.comboIndex = (st.comboIndex % 4) + 1
+  st.lastM1 = now
+
+  local hitIndex = st.comboIndex
+  local dmg = M1_HITS[hitIndex]
+  local isUppercut = (hitIndex == 4)
+
+  if typeof(targetPlayerRaw) == "Instance" and targetPlayerRaw:IsA("Player") then
+    dealDamage(player, targetPlayerRaw :: Player, dmg, isUppercut)
+  else
+    -- AoE check in front of attacker
+    local char = player.Character
+    if char then
+      local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if hrp then
+        local forward = hrp.CFrame.LookVector
+        aoeAttack(player, hrp.Position + forward * 4, 5, dmg, isUppercut)
+      end
+    end
+  end
+end)
+
+-- ── Ability handler ───────────────────────────────────────────────────────────
+UseAbility.OnServerEvent:Connect(function(player: Player, keyRaw: unknown)
+  if type(keyRaw) ~= "string" then return end
+  local key = keyRaw :: string
+  local abilityData = ABILITIES[key]
+  if not abilityData then return end
+
+  local st = getState(player)
+  if not st.isAlive then return end
+
+  local now = tick()
+  if now < (st.abilityCooldowns[key] or 0) then return end  -- on cooldown
+
+  st.abilityCooldowns[key] = now + abilityData.cooldown
+  syncToClient(player)
+
+  local char = player.Character
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+
+  local origin = hrp.Position + hrp.CFrame.LookVector * 8
+  local isHeavy = (key == "F" or key == "R")
+
+  aoeAttack(player, origin, abilityData.radius, abilityData.damage, isHeavy)
+
+  -- Visual effect broadcast (clients handle VFX)
+  HitEffect:FireAllClients(player, nil, 0, false)  -- ability fired signal
+end)
+
+-- ── Block ─────────────────────────────────────────────────────────────────────
+SetBlocking.OnServerEvent:Connect(function(player: Player, blocking: unknown)
+  if type(blocking) ~= "boolean" then return end
+  local st = getState(player)
+  st.blocking = blocking :: boolean
+  syncToClient(player)
+end)
+
+-- ── Dodge roll ────────────────────────────────────────────────────────────────
+DodgeRoll.OnServerEvent:Connect(function(player: Player, dirRaw: unknown)
+  if typeof(dirRaw) ~= "Vector3" then return end
+  local st = getState(player)
+  if st.stamina < STAMINA_DODGE then return end
+  st.stamina -= STAMINA_DODGE
+  syncToClient(player)
+
+  local char = player.Character
+  if not char then return end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return end
+  local dir = (dirRaw :: Vector3).Unit
+  applyKnockback(player, dir, 45)
+end)
+
+-- ── Stamina regen loop ────────────────────────────────────────────────────────
+task.spawn(function()
+  while true do
+    task.wait(1)
+    for _, player in Players:GetPlayers() do
+      local st = playerStates[player.UserId]
+      if not st then continue end
+      if not st.blocking and st.stamina < STAMINA_MAX then
+        st.stamina = math.min(STAMINA_MAX, st.stamina + STAMINA_REGEN)
+        syncToClient(player)
+      end
+    end
+  end
+end)
+
+-- ── Player lifecycle ──────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+  local _ = getState(player)  -- initialize
+
+  -- Create leaderstats for kill tracking
+  local ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
+  local kills = Instance.new("IntValue"); kills.Name = "Kills"; kills.Value = 0; kills.Parent = ls
+  local deaths = Instance.new("IntValue"); deaths.Name = "Deaths"; deaths.Value = 0; deaths.Parent = ls
+
+  player.CharacterAdded:Connect(function()
+    local st = getState(player)
+    st.hp = BASE_HP; st.stamina = STAMINA_MAX; st.isAlive = true
+    st.comboIndex = 0; st.blocking = false
+    task.delay(0.5, function() syncToClient(player) end)
+  end)
+
+  task.delay(1, function() syncToClient(player) end)
+end)
+
+KillFeedEv.OnServerEvent:Connect(function() end)  -- client→server kill feed handled server-side above
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  playerStates[player.UserId] = nil
+end)
+
+print("[AnimeFighterServer] Ready — 4 abilities, M1 combo, block/dodge system")
+`,
+}
+
+const ANIME_FIGHTER_CLIENT: GameSystemFile = {
+  filename: 'AnimeFighterClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- AnimeFighterClient (LocalScript → StarterPlayerScripts)
+-- Ability cooldown GUI, HP/stamina bars, combo counter, damage numbers, kill feed.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
+local RunService        = game:GetService("RunService")
+
+local player    = Players.LocalPlayer
+local mouse     = player:GetMouse()
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes     = ReplicatedStorage:WaitForChild("AFRemotes")
+local UseAbility  = Remotes:WaitForChild("UseAbility")  :: RemoteEvent
+local M1Attack    = Remotes:WaitForChild("M1Attack")    :: RemoteEvent
+local SetBlocking = Remotes:WaitForChild("SetBlocking") :: RemoteEvent
+local DodgeRoll   = Remotes:WaitForChild("DodgeRoll")   :: RemoteEvent
+local SyncState   = Remotes:WaitForChild("SyncState")   :: RemoteEvent
+local HitEffect   = Remotes:WaitForChild("HitEffect")   :: RemoteEvent
+local KillFeed    = Remotes:WaitForChild("KillFeed")    :: RemoteEvent
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local currentHp      = 150; local maxHp      = 150
+local currentStamina = 100; local maxStamina  = 100
+local comboCount     = 0;   local lastHit     = 0
+local cooldownEndTimes = { Q=0, E=0, R=0, F=0 }
+local isBlocking     = false
+
+-- ── Screen GUI ────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "AnimeFighterGui"; screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- ── HP Bar (bottom left) ──────────────────────────────────────────────────────
+local hpFrame = Instance.new("Frame")
+hpFrame.Size = UDim2.new(0, 260, 0, 24)
+hpFrame.Position = UDim2.new(0, 16, 1, -120)
+hpFrame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+hpFrame.Parent = screen
+Instance.new("UICorner", hpFrame).CornerRadius = UDim.new(1, 0)
+
+local hpFill = Instance.new("Frame")
+hpFill.Name = "Fill"; hpFill.Size = UDim2.new(1,0,1,0)
+hpFill.BackgroundColor3 = Color3.fromRGB(50,200,80); hpFill.Parent = hpFrame
+Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1,0)
+
+local hpLabel = Instance.new("TextLabel")
+hpLabel.Size = UDim2.new(1,0,1,0); hpLabel.BackgroundTransparency = 1
+hpLabel.TextColor3 = Color3.fromRGB(255,255,255); hpLabel.TextScaled = true
+hpLabel.Font = Enum.Font.GothamBold; hpLabel.Text = "150/150"; hpLabel.Parent = hpFrame
+
+-- ── Stamina Bar (bottom left, below HP) ──────────────────────────────────────
+local stFrame = Instance.new("Frame")
+stFrame.Size = UDim2.new(0, 260, 0, 14)
+stFrame.Position = UDim2.new(0, 16, 1, -90)
+stFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
+stFrame.Parent = screen
+Instance.new("UICorner", stFrame).CornerRadius = UDim.new(1,0)
+
+local stFill = Instance.new("Frame")
+stFill.Name = "Fill"; stFill.Size = UDim2.new(1,0,1,0)
+stFill.BackgroundColor3 = Color3.fromRGB(80,160,255); stFill.Parent = stFrame
+Instance.new("UICorner", stFill).CornerRadius = UDim.new(1,0)
+
+local stLabel = Instance.new("TextLabel")
+stLabel.Size = UDim2.new(1,0,1,0); stLabel.BackgroundTransparency = 1
+stLabel.TextColor3 = Color3.fromRGB(200,200,255); stLabel.TextScaled = true
+stLabel.Font = Enum.Font.Gotham; stLabel.Text = "STA 100/100"; stLabel.Parent = stFrame
+
+-- ── Ability Icons (bottom center) ─────────────────────────────────────────────
+local abilityBar = Instance.new("Frame")
+abilityBar.Size = UDim2.new(0, 340, 0, 72)
+abilityBar.Position = UDim2.new(0.5, -170, 1, -88)
+abilityBar.BackgroundTransparency = 1
+abilityBar.Parent = screen
+
+local abilityLayout = Instance.new("UIListLayout", abilityBar)
+abilityLayout.FillDirection = Enum.FillDirection.Horizontal
+abilityLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+abilityLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+abilityLayout.Padding = UDim.new(0, 6)
+
+local ABILITY_COLORS = { Q=Color3.fromRGB(80,200,255), E=Color3.fromRGB(255,160,40), R=Color3.fromRGB(200,80,255), F=Color3.fromRGB(255,60,60) }
+local ABILITY_COOLDOWNS = { Q=6, E=10, R=8, F=20 }
+local abilityIcons: {[string]: {frame:Frame, overlay:Frame, label:TextLabel}} = {}
+
+for _, key in ipairs({"Q","E","R","F"}) do
+  local iconFrame = Instance.new("Frame")
+  iconFrame.Size = UDim2.new(0, 72, 0, 72)
+  iconFrame.BackgroundColor3 = Color3.fromRGB(20,20,30)
+  iconFrame.BorderSizePixel = 0; iconFrame.Parent = abilityBar
+  Instance.new("UICorner", iconFrame).CornerRadius = UDim.new(0,10)
+  local stroke = Instance.new("UIStroke", iconFrame)
+  stroke.Color = ABILITY_COLORS[key]; stroke.Thickness = 2
+
+  local keyLabel = Instance.new("TextLabel")
+  keyLabel.Size = UDim2.new(1,0,0.5,0); keyLabel.BackgroundTransparency = 1
+  keyLabel.TextColor3 = ABILITY_COLORS[key]; keyLabel.TextScaled = true
+  keyLabel.Font = Enum.Font.GothamBold; keyLabel.Text = key; keyLabel.Parent = iconFrame
+
+  local cdOverlay = Instance.new("Frame")
+  cdOverlay.Name = "Overlay"; cdOverlay.Size = UDim2.new(1,0,0,0)
+  cdOverlay.AnchorPoint = Vector2.new(0,1); cdOverlay.Position = UDim2.new(0,0,1,0)
+  cdOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0); cdOverlay.BackgroundTransparency = 0.3
+  cdOverlay.BorderSizePixel = 0; cdOverlay.Parent = iconFrame
+  Instance.new("UICorner", cdOverlay).CornerRadius = UDim.new(0,10)
+
+  local cdLabel = Instance.new("TextLabel")
+  cdLabel.Name = "CDLabel"; cdLabel.Size = UDim2.new(1,0,0.5,0); cdLabel.Position = UDim2.new(0,0,0.5,0)
+  cdLabel.BackgroundTransparency = 1; cdLabel.TextColor3 = Color3.fromRGB(255,255,255)
+  cdLabel.TextScaled = true; cdLabel.Font = Enum.Font.GothamBold
+  cdLabel.Text = ""; cdLabel.Parent = iconFrame
+
+  abilityIcons[key] = { frame = iconFrame, overlay = cdOverlay, label = cdLabel }
+end
+
+-- ── Combo counter (center screen) ────────────────────────────────────────────
+local comboLabel = Instance.new("TextLabel")
+comboLabel.Size = UDim2.new(0, 200, 0, 60)
+comboLabel.Position = UDim2.new(0.5, -100, 0.4, 0)
+comboLabel.BackgroundTransparency = 1
+comboLabel.TextColor3 = Color3.fromRGB(255, 220, 50)
+comboLabel.TextScaled = true; comboLabel.Font = Enum.Font.GothamBold
+comboLabel.Text = ""; comboLabel.Parent = screen
+
+-- ── Kill feed (top right) ─────────────────────────────────────────────────────
+local killFeedFrame = Instance.new("Frame")
+killFeedFrame.Size = UDim2.new(0, 280, 0, 200)
+killFeedFrame.Position = UDim2.new(1, -296, 0, 60)
+killFeedFrame.BackgroundTransparency = 1; killFeedFrame.Parent = screen
+
+local killFeedLayout = Instance.new("UIListLayout", killFeedFrame)
+killFeedLayout.FillDirection = Enum.FillDirection.Vertical
+killFeedLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+killFeedLayout.Padding = UDim.new(0, 4)
+
+-- ── Input handling ────────────────────────────────────────────────────────────
+local function getMovementDirection(): Vector3
+  local char = player.Character; if not char then return Vector3.zero end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?; if not hrp then return Vector3.zero end
+  local dir = Vector3.zero
+  if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += hrp.CFrame.LookVector end
+  if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= hrp.CFrame.LookVector end
+  if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= hrp.CFrame.RightVector end
+  if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += hrp.CFrame.RightVector end
+  return if dir.Magnitude > 0 then dir.Unit else hrp.CFrame.LookVector
+end
+
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+  if gameProcessed then return end
+
+  if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    M1Attack:FireServer(nil)
+    -- Local combo display
+    comboCount += 1; lastHit = tick()
+    comboLabel.Text = comboCount.."x Combo!"
+    local scaleTween = TweenService:Create(comboLabel, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+      {TextSize = 48})
+    scaleTween:Play()
+    task.delay(0.1, function()
+      TweenService:Create(comboLabel, TweenInfo.new(0.1), {TextSize = 36}):Play()
+    end)
+    return
+  end
+
+  if input.KeyCode == Enum.KeyCode.Q then UseAbility:FireServer("Q"); triggerCooldown("Q") end
+  if input.KeyCode == Enum.KeyCode.E then UseAbility:FireServer("E"); triggerCooldown("E") end
+  if input.KeyCode == Enum.KeyCode.R then UseAbility:FireServer("R"); triggerCooldown("R") end
+  if input.KeyCode == Enum.KeyCode.F then UseAbility:FireServer("F"); triggerCooldown("F") end
+
+  if input.KeyCode == Enum.KeyCode.G then
+    isBlocking = true
+    SetBlocking:FireServer(true)
+  end
+
+  if input.KeyCode == Enum.KeyCode.Space then
+    DodgeRoll:FireServer(getMovementDirection())
+  end
+end)
+
+UserInputService.InputEnded:Connect(function(input: InputObject)
+  if input.KeyCode == Enum.KeyCode.G then
+    isBlocking = false
+    SetBlocking:FireServer(false)
+  end
+end)
+
+function triggerCooldown(key: string)
+  local cd = ABILITY_COOLDOWNS[key]
+  cooldownEndTimes[key] = tick() + cd
+end
+
+-- ── Cooldown sweep animation (RenderStepped) ──────────────────────────────────
+RunService.RenderStepped:Connect(function()
+  local now = tick()
+  for key, icons in abilityIcons do
+    local remaining = math.max(0, cooldownEndTimes[key] - now)
+    local total = ABILITY_COOLDOWNS[key]
+    local progress = remaining / total  -- 1 = fully on cooldown, 0 = ready
+    icons.overlay.Size = UDim2.new(1, 0, progress, 0)
+    icons.label.Text = if remaining > 0 then string.format("%.1f", remaining) else ""
+  end
+
+  -- Combo decay
+  if comboCount > 0 and (now - lastHit) > 2 then
+    comboCount = 0
+    comboLabel.Text = ""
+  end
+end)
+
+-- ── State sync from server ────────────────────────────────────────────────────
+SyncState.OnClientEvent:Connect(function(data: {hp:number,maxHp:number,stamina:number,maxStamina:number,blocking:boolean,cooldowns:{[string]:number}})
+  currentHp      = data.hp
+  maxHp          = data.maxHp
+  currentStamina = data.stamina
+  maxStamina     = data.maxStamina
+  isBlocking     = data.blocking
+
+  -- Update CD end times from server
+  local now = tick()
+  for key, endTime in data.cooldowns do
+    -- Server sends absolute tick() end times
+    cooldownEndTimes[key] = endTime
+  end
+
+  -- HP bar
+  local hpRatio = math.max(0, currentHp / maxHp)
+  TweenService:Create(hpFill, TweenInfo.new(0.15), {Size = UDim2.new(hpRatio, 0, 1, 0)}):Play()
+  hpFill.BackgroundColor3 = if hpRatio > 0.5 then Color3.fromRGB(50,200,80)
+                             elseif hpRatio > 0.25 then Color3.fromRGB(255,200,0)
+                             else Color3.fromRGB(220,50,50)
+  hpLabel.Text = currentHp.."/"..maxHp
+
+  -- Stamina bar
+  local stRatio = math.max(0, currentStamina / maxStamina)
+  TweenService:Create(stFill, TweenInfo.new(0.1), {Size = UDim2.new(stRatio, 0, 1, 0)}):Play()
+  stLabel.Text = "STA "..currentStamina.."/"..maxStamina
+end)
+
+-- ── Hit effect (damage numbers + screen flash) ────────────────────────────────
+HitEffect.OnClientEvent:Connect(function(_attacker: unknown, damage: number, isHeavy: boolean)
+  if damage and damage > 0 then
+    -- Floating damage number
+    local dmgLabel = Instance.new("TextLabel")
+    dmgLabel.Size = UDim2.new(0, 80, 0, 40)
+    dmgLabel.Position = UDim2.new(
+      0.3 + math.random() * 0.4,
+      0,
+      0.3 + math.random() * 0.3,
+      0
+    )
+    dmgLabel.BackgroundTransparency = 1
+    dmgLabel.TextColor3 = if isHeavy then Color3.fromRGB(255, 100, 50) else Color3.fromRGB(255, 255, 100)
+    dmgLabel.TextScaled = true
+    dmgLabel.Font = Enum.Font.GothamBold
+    dmgLabel.Text = "-"..damage
+    dmgLabel.ZIndex = 10
+    dmgLabel.Parent = screen
+    TweenService:Create(dmgLabel, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+      {Position = UDim2.new(dmgLabel.Position.X.Scale, 0, dmgLabel.Position.Y.Scale - 0.1, 0), TextTransparency = 1}):Play()
+    task.delay(0.8, function() if dmgLabel.Parent then dmgLabel:Destroy() end end)
+  end
+
+  -- Screen edge flash when taking damage
+  local flash = Instance.new("Frame")
+  flash.Size = UDim2.new(1,0,1,0); flash.BackgroundColor3 = Color3.fromRGB(200,0,0)
+  flash.BackgroundTransparency = 0.6; flash.BorderSizePixel = 0; flash.ZIndex = 20
+  flash.Parent = screen
+  TweenService:Create(flash, TweenInfo.new(0.4), {BackgroundTransparency = 1}):Play()
+  task.delay(0.4, function() if flash.Parent then flash:Destroy() end end)
+end)
+
+-- ── Kill feed ─────────────────────────────────────────────────────────────────
+KillFeed.OnClientEvent:Connect(function(killerName: string, victimName: string)
+  local entry = Instance.new("TextLabel")
+  entry.Size = UDim2.new(1,0,0,28)
+  entry.BackgroundColor3 = Color3.fromRGB(15,15,20); entry.BackgroundTransparency = 0.3
+  entry.TextColor3 = Color3.fromRGB(255,255,255); entry.TextScaled = true
+  entry.Font = Enum.Font.Gotham; entry.Text = killerName.." eliminated "..victimName
+  entry.TextXAlignment = Enum.TextXAlignment.Right; entry.Parent = killFeedFrame
+  Instance.new("UICorner", entry).CornerRadius = UDim.new(0,6)
+  task.delay(5, function()
+    TweenService:Create(entry, TweenInfo.new(0.3), {TextTransparency=1, BackgroundTransparency=1}):Play()
+    task.delay(0.3, function() if entry.Parent then entry:Destroy() end end)
+  end)
+end)
+
+print("[AnimeFighterClient] Ready — Q/E/R/F abilities, M1 combo, G=block, Space=dodge")
+`,
+}
+
+// ─── 22. Find the Morphs System ───────────────────────────────────────────────
+
+const FIND_MORPHS_SERVER: GameSystemFile = {
+  filename: 'FindMorphsServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- FindMorphsServer (ServerScript → ServerScriptService)
+-- 30 collectible items, touch detection, DataStore tracking, hint system, leaderboard.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService  = game:GetService("DataStoreService")
+
+local DS = DataStoreService:GetDataStore("FindMorphsV1")
+
+-- ── Morph definitions (30 items) ──────────────────────────────────────────────
+-- rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary"
+-- spawnPos: position in workspace where the collectible is placed
+type MorphDef = { id: number, name: string, rarity: string, color: Color3, spawnPos: Vector3 }
+
+local MORPHS: {MorphDef} = {
+  { id=1,  name="Noob",         rarity="Common",    color=Color3.fromRGB(180,180,180), spawnPos=Vector3.new(10,1,10)    },
+  { id=2,  name="Builder",      rarity="Common",    color=Color3.fromRGB(200,140,80),  spawnPos=Vector3.new(-15,1,25)   },
+  { id=3,  name="Skater",       rarity="Common",    color=Color3.fromRGB(100,200,100), spawnPos=Vector3.new(30,1,-10)   },
+  { id=4,  name="Ninja",        rarity="Uncommon",  color=Color3.fromRGB(60,60,60),    spawnPos=Vector3.new(-40,8,15)   },
+  { id=5,  name="Knight",       rarity="Uncommon",  color=Color3.fromRGB(120,120,160), spawnPos=Vector3.new(50,1,30)    },
+  { id=6,  name="Wizard",       rarity="Uncommon",  color=Color3.fromRGB(160,60,200),  spawnPos=Vector3.new(0,15,50)    },
+  { id=7,  name="Pirate",       rarity="Uncommon",  color=Color3.fromRGB(120,80,40),   spawnPos=Vector3.new(-60,1,-20)  },
+  { id=8,  name="Robot",        rarity="Rare",      color=Color3.fromRGB(80,180,220),  spawnPos=Vector3.new(70,1,0)     },
+  { id=9,  name="Zombie",       rarity="Rare",      color=Color3.fromRGB(80,160,80),   spawnPos=Vector3.new(-20,1,-60)  },
+  { id=10, name="Ghost",        rarity="Rare",      color=Color3.fromRGB(220,220,255), spawnPos=Vector3.new(40,20,40)   },
+  { id=11, name="Cat",          rarity="Rare",      color=Color3.fromRGB(255,160,100), spawnPos=Vector3.new(-80,1,10)   },
+  { id=12, name="Dog",          rarity="Rare",      color=Color3.fromRGB(200,160,100), spawnPos=Vector3.new(90,1,-30)   },
+  { id=13, name="Alien",        rarity="Epic",      color=Color3.fromRGB(80,255,120),  spawnPos=Vector3.new(0,30,0)     },
+  { id=14, name="Vampire",      rarity="Epic",      color=Color3.fromRGB(140,0,0),     spawnPos=Vector3.new(-100,1,50)  },
+  { id=15, name="Mermaid",      rarity="Epic",      color=Color3.fromRGB(0,180,200),   spawnPos=Vector3.new(60,1,80)    },
+  { id=16, name="Dragon",       rarity="Epic",      color=Color3.fromRGB(220,60,60),   spawnPos=Vector3.new(-30,1,100)  },
+  { id=17, name="Phoenix",      rarity="Epic",      color=Color3.fromRGB(255,120,0),   spawnPos=Vector3.new(100,1,60)   },
+  { id=18, name="Titan",        rarity="Epic",      color=Color3.fromRGB(160,120,200), spawnPos=Vector3.new(-60,40,60)  },
+  { id=19, name="Cyclops",      rarity="Epic",      color=Color3.fromRGB(80,100,40),   spawnPos=Vector3.new(0,1,-100)   },
+  { id=20, name="Witch",        rarity="Epic",      color=Color3.fromRGB(80,0,120),    spawnPos=Vector3.new(-120,1,0)   },
+  { id=21, name="Samurai",      rarity="Legendary", color=Color3.fromRGB(255,200,0),   spawnPos=Vector3.new(120,1,20)   },
+  { id=22, name="Astronaut",    rarity="Legendary", color=Color3.fromRGB(200,220,255), spawnPos=Vector3.new(0,50,120)   },
+  { id=23, name="Cyborg",       rarity="Legendary", color=Color3.fromRGB(0,200,255),   spawnPos=Vector3.new(-80,1,-80)  },
+  { id=24, name="God",          rarity="Legendary", color=Color3.fromRGB(255,240,100), spawnPos=Vector3.new(80,1,-80)   },
+  { id=25, name="Time Traveler",rarity="Legendary", color=Color3.fromRGB(180,100,255), spawnPos=Vector3.new(140,1,-40)  },
+  { id=26, name="Shadow",       rarity="Legendary", color=Color3.fromRGB(20,20,40),    spawnPos=Vector3.new(-140,1,40)  },
+  { id=27, name="Lava Giant",   rarity="Legendary", color=Color3.fromRGB(255,80,0),    spawnPos=Vector3.new(0,1,140)    },
+  { id=28, name="Ice Queen",    rarity="Legendary", color=Color3.fromRGB(180,230,255), spawnPos=Vector3.new(-20,1,-140) },
+  { id=29, name="Void Walker",  rarity="Legendary", color=Color3.fromRGB(40,0,80),     spawnPos=Vector3.new(0,60,60)    },
+  { id=30, name="?????",        rarity="Legendary", color=Color3.fromRGB(255,50,255),  spawnPos=Vector3.new(0,80,0)     },
+}
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "FMRemotes"; Remotes.Parent = ReplicatedStorage
+
+local MorphFound   = Instance.new("RemoteEvent");   MorphFound.Name   = "MorphFound";   MorphFound.Parent   = Remotes
+local SyncFound    = Instance.new("RemoteEvent");   SyncFound.Name    = "SyncFound";    SyncFound.Parent    = Remotes
+local HintArrow    = Instance.new("RemoteEvent");   HintArrow.Name    = "HintArrow";    HintArrow.Parent    = Remotes
+local RequestData  = Instance.new("RemoteFunction"); RequestData.Name  = "RequestData";  RequestData.Parent  = Remotes
+
+-- ── DataStore helpers ─────────────────────────────────────────────────────────
+local function loadFoundMorphs(player: Player): {[number]: boolean}
+  local ok, val = pcall(DS.GetAsync, DS, "FM_"..player.UserId)
+  if ok and type(val) == "table" then return val :: {[number]:boolean} end
+  return {}
+end
+
+local function saveFoundMorphs(player: Player, found: {[number]: boolean})
+  local ok, err = pcall(DS.SetAsync, DS, "FM_"..player.UserId, found)
+  if not ok then warn("[FM] Save failed:", err) end
+end
+
+-- ── In-memory found sets ──────────────────────────────────────────────────────
+local playerFound: {[number]: {[number]: boolean}} = {}
+
+local function getFound(player: Player): {[number]: boolean}
+  if not playerFound[player.UserId] then
+    playerFound[player.UserId] = loadFoundMorphs(player)
+  end
+  return playerFound[player.UserId]
+end
+
+local function countFound(found: {[number]: boolean}): number
+  local n = 0
+  for _ in found do n += 1 end
+  return n
+end
+
+-- ── Spawn collectibles in workspace ──────────────────────────────────────────
+local collectibleParts: {[number]: BasePart} = {}
+
+local function spawnCollectibles()
+  local folder = Instance.new("Folder"); folder.Name = "MorphCollectibles"; folder.Parent = workspace
+  for _, morph in ipairs(MORPHS) do
+    local part = Instance.new("Part")
+    part.Name        = "Morph_"..morph.id
+    part.Size        = Vector3.new(2.5, 2.5, 2.5)
+    part.Shape       = Enum.PartType.Ball
+    part.Anchored    = true
+    part.CanCollide  = false
+    part.BrickColor  = BrickColor.new("Bright yellow")
+    part.Color       = morph.color
+    part.Material    = Enum.Material.Neon
+    part.CastShadow  = false
+    part.Position    = morph.spawnPos
+    part.Parent      = folder
+
+    -- Floating label above
+    local billboard = Instance.new("BillboardGui")
+    billboard.Size = UDim2.new(4,0,1.5,0); billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+    billboard.AlwaysOnTop = false; billboard.Parent = part
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(1,0,0.6,0); nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = morph.color; nameLabel.TextScaled = true
+    nameLabel.Font = Enum.Font.GothamBold; nameLabel.Text = morph.name; nameLabel.Parent = billboard
+    local rarityLabel = Instance.new("TextLabel")
+    rarityLabel.Size = UDim2.new(1,0,0.4,0); rarityLabel.Position = UDim2.new(0,0,0.6,0)
+    rarityLabel.BackgroundTransparency = 1
+    rarityLabel.TextColor3 = Color3.fromRGB(200,200,200); rarityLabel.TextScaled = true
+    rarityLabel.Font = Enum.Font.Gotham; rarityLabel.Text = morph.rarity; rarityLabel.Parent = billboard
+
+    -- Gentle spin
+    task.spawn(function()
+      while part.Parent do
+        part.CFrame = part.CFrame * CFrame.Angles(0, math.rad(1), 0)
+        part.Position = morph.spawnPos + Vector3.new(0, math.sin(tick() * 1.5) * 0.5, 0)
+        task.wait(0.016)
+      end
+    end)
+
+    collectibleParts[morph.id] = part
+  end
+end
+
+-- ── Touch detection ───────────────────────────────────────────────────────────
+local function setupTouchDetection()
+  for _, morph in ipairs(MORPHS) do
+    local part = collectibleParts[morph.id]
+    if not part then continue end
+    part.Touched:Connect(function(hit: BasePart)
+      local character = hit.Parent
+      if not character then return end
+      local player = Players:GetPlayerFromCharacter(character)
+      if not player then return end
+
+      local found = getFound(player)
+      if found[morph.id] then return end  -- already found
+
+      found[morph.id] = true
+
+      -- Update leaderstats
+      local ls = player:FindFirstChild("leaderstats")
+      if ls then
+        local foundVal = ls:FindFirstChild("Found") :: IntValue?
+        if foundVal then foundVal.Value = countFound(found) end
+      end
+
+      -- Apply morph: color the character's parts
+      local char = player.Character
+      if char then
+        for _, part2 in char:GetDescendants() do
+          if part2:IsA("BasePart") and part2.Name ~= "HumanoidRootPart" then
+            TweenService:Create(part2 :: BasePart, TweenInfo.new(0.5), {Color = morph.color}):Play()
+          end
+        end
+      end
+
+      -- Notify client
+      MorphFound:FireClient(player, morph.id, morph.name, morph.rarity, morph.color)
+      SyncFound:FireClient(player, found)
+
+      -- Save async
+      task.spawn(function() saveFoundMorphs(player, found) end)
+    end)
+  end
+end
+
+-- TweenService needed for morph color application above
+local TweenService = game:GetService("TweenService")
+
+-- ── Hint system (every 60s per player) ───────────────────────────────────────
+local function findNearestUnfound(player: Player): MorphDef?
+  local found = getFound(player)
+  local char  = player.Character
+  if not char then return nil end
+  local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+  if not hrp then return nil end
+
+  local bestMorph: MorphDef? = nil
+  local bestDist  = math.huge
+  for _, morph in ipairs(MORPHS) do
+    if found[morph.id] then continue end
+    local dist = (morph.spawnPos - hrp.Position).Magnitude
+    if dist < bestDist then bestDist = dist; bestMorph = morph end
+  end
+  return bestMorph
+end
+
+task.spawn(function()
+  while true do
+    task.wait(60)
+    for _, player in Players:GetPlayers() do
+      local nearest = findNearestUnfound(player)
+      if nearest then
+        HintArrow:FireClient(player, nearest.spawnPos, nearest.name)
+      end
+    end
+  end
+end)
+
+-- ── Remote function: get initial data ────────────────────────────────────────
+RequestData.OnServerInvoke = function(player: Player): {found:{[number]:boolean}, total:number}
+  return { found = getFound(player), total = #MORPHS }
+end
+
+-- ── Player lifecycle ──────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+  local found = getFound(player)  -- loads from DS
+
+  local ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
+  local foundVal = Instance.new("IntValue"); foundVal.Name = "Found"
+  foundVal.Value = countFound(found); foundVal.Parent = ls
+
+  -- Send initial sync after brief delay (let client LocalScript load)
+  task.delay(2, function()
+    if player.Parent then
+      SyncFound:FireClient(player, found)
+    end
+  end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  local found = playerFound[player.UserId]
+  if found then
+    saveFoundMorphs(player, found)
+    playerFound[player.UserId] = nil
+  end
+end)
+
+game:BindToClose(function()
+  for _, player in Players:GetPlayers() do
+    local found = playerFound[player.UserId]
+    if found then saveFoundMorphs(player, found) end
+  end
+end)
+
+spawnCollectibles()
+setupTouchDetection()
+print("[FindMorphsServer] Ready — "..#MORPHS.." morphs spawned")
+`,
+}
+
+const FIND_MORPHS_CLIENT: GameSystemFile = {
+  filename: 'FindMorphsClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- FindMorphsClient (LocalScript → StarterPlayerScripts)
+-- Collection grid GUI, find notification, hint arrow, morph application.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local RunService        = game:GetService("RunService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes     = ReplicatedStorage:WaitForChild("FMRemotes")
+local MorphFound  = Remotes:WaitForChild("MorphFound")  :: RemoteEvent
+local SyncFound   = Remotes:WaitForChild("SyncFound")   :: RemoteEvent
+local HintArrow   = Remotes:WaitForChild("HintArrow")   :: RemoteEvent
+local RequestData = Remotes:WaitForChild("RequestData") :: RemoteFunction
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local TOTAL_MORPHS  = 30
+local foundSet: {[number]: boolean} = {}
+local hintTarget: Vector3? = nil
+
+local RARITY_COLORS = {
+  Common    = Color3.fromRGB(180,180,180),
+  Uncommon  = Color3.fromRGB(80,220,80),
+  Rare      = Color3.fromRGB(60,120,255),
+  Epic      = Color3.fromRGB(160,60,220),
+  Legendary = Color3.fromRGB(255,180,0),
+}
+
+-- ── Screen GUI ────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "FindMorphsGui"; screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- Progress bar (top left)
+local progressFrame = Instance.new("Frame")
+progressFrame.Size = UDim2.new(0, 200, 0, 36)
+progressFrame.Position = UDim2.new(0, 16, 0, 16)
+progressFrame.BackgroundColor3 = Color3.fromRGB(15,15,20)
+progressFrame.BackgroundTransparency = 0.2; progressFrame.Parent = screen
+Instance.new("UICorner", progressFrame).CornerRadius = UDim.new(0,10)
+local stroke = Instance.new("UIStroke", progressFrame); stroke.Color = Color3.fromRGB(212,175,55); stroke.Thickness = 1.5
+
+local progressBg = Instance.new("Frame")
+progressBg.Size = UDim2.new(0.85,0,0.35,0); progressBg.Position = UDim2.new(0.075,0,0.55,0)
+progressBg.BackgroundColor3 = Color3.fromRGB(40,40,40); progressBg.Parent = progressFrame
+Instance.new("UICorner", progressBg).CornerRadius = UDim.new(1,0)
+
+local progressFill = Instance.new("Frame")
+progressFill.Name = "Fill"; progressFill.Size = UDim2.new(0,0,1,0)
+progressFill.BackgroundColor3 = Color3.fromRGB(212,175,55); progressFill.Parent = progressBg
+Instance.new("UICorner", progressFill).CornerRadius = UDim.new(1,0)
+
+local progressLabel = Instance.new("TextLabel")
+progressLabel.Size = UDim2.new(1,0,0.5,0); progressLabel.BackgroundTransparency = 1
+progressLabel.TextColor3 = Color3.fromRGB(255,255,255); progressLabel.TextScaled = true
+progressLabel.Font = Enum.Font.GothamBold; progressLabel.Text = "0/30 Found"
+progressLabel.Parent = progressFrame
+
+-- Toggle button for collection grid
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0, 40, 0, 36)
+toggleBtn.Position = UDim2.new(0, 220, 0, 16)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(212,175,55)
+toggleBtn.TextColor3 = Color3.fromRGB(0,0,0); toggleBtn.TextScaled = true
+toggleBtn.Font = Enum.Font.GothamBold; toggleBtn.Text = "+"
+toggleBtn.Parent = screen
+Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(0,8)
+
+-- Collection grid (scrolling frame)
+local gridVisible = false
+local gridPanel = Instance.new("ScrollingFrame")
+gridPanel.Size = UDim2.new(0, 380, 0, 460)
+gridPanel.Position = UDim2.new(0, 16, 0, 60)
+gridPanel.BackgroundColor3 = Color3.fromRGB(10,10,18); gridPanel.BackgroundTransparency = 0.1
+gridPanel.Visible = false; gridPanel.ScrollBarThickness = 6
+gridPanel.CanvasSize = UDim2.new(0,0,0,600); gridPanel.Parent = screen
+Instance.new("UICorner", gridPanel).CornerRadius = UDim.new(0,12)
+local gridStroke = Instance.new("UIStroke", gridPanel); gridStroke.Color = Color3.fromRGB(212,175,55); gridStroke.Thickness = 1.5
+
+local gridLayout = Instance.new("UIGridLayout", gridPanel)
+gridLayout.CellSize = UDim2.new(0,80,0,80); gridLayout.CellPadding = UDim2.new(0,6,0,6)
+gridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local gridPadding = Instance.new("UIPadding", gridPanel)
+gridPadding.PaddingTop = UDim.new(0,8); gridPadding.PaddingLeft = UDim.new(0,8); gridPadding.PaddingRight = UDim.new(0,8)
+
+-- Pre-build 30 grid slots
+local gridSlots: {[number]: Frame} = {}
+-- We'll populate these dynamically — names/rarities come from server sync
+-- For now build placeholders
+local MORPH_NAMES = {
+  "Noob","Builder","Skater","Ninja","Knight","Wizard","Pirate","Robot","Zombie","Ghost",
+  "Cat","Dog","Alien","Vampire","Mermaid","Dragon","Phoenix","Titan","Cyclops","Witch",
+  "Samurai","Astronaut","Cyborg","God","Time Traveler","Shadow","Lava Giant","Ice Queen","Void Walker","?????"
+}
+local MORPH_RARITIES = {
+  "Common","Common","Common","Uncommon","Uncommon","Uncommon","Uncommon",
+  "Rare","Rare","Rare","Rare","Rare",
+  "Epic","Epic","Epic","Epic","Epic","Epic","Epic","Epic",
+  "Legendary","Legendary","Legendary","Legendary","Legendary","Legendary","Legendary","Legendary","Legendary","Legendary"
+}
+
+for i = 1, 30 do
+  local slot = Instance.new("Frame")
+  slot.Name = "Slot_"..i; slot.BackgroundColor3 = Color3.fromRGB(30,30,40)
+  slot.Parent = gridPanel
+  Instance.new("UICorner", slot).CornerRadius = UDim.new(0,8)
+
+  local icon = Instance.new("Frame")
+  icon.Name = "Icon"; icon.Size = UDim2.new(0.7,0,0.7,0); icon.Position = UDim2.new(0.15,0,0.05,0)
+  icon.BackgroundColor3 = Color3.fromRGB(50,50,60); icon.Parent = slot
+  Instance.new("UICorner", icon).CornerRadius = UDim.new(0,6)
+
+  local nameLbl = Instance.new("TextLabel")
+  nameLbl.Name = "NameLabel"; nameLbl.Size = UDim2.new(1,0,0.25,0); nameLbl.Position = UDim2.new(0,0,0.75,0)
+  nameLbl.BackgroundTransparency = 1; nameLbl.TextColor3 = Color3.fromRGB(100,100,100)
+  nameLbl.TextScaled = true; nameLbl.Font = Enum.Font.Gotham
+  nameLbl.Text = "?"; nameLbl.Parent = slot
+
+  gridSlots[i] = slot
+end
+
+local function updateGrid()
+  local count = 0
+  for id in foundSet do
+    if id and foundSet[id] then count += 1 end
+  end
+  progressLabel.Text = count.."/"..TOTAL_MORPHS.." Found"
+  TweenService:Create(progressFill, TweenInfo.new(0.3, Enum.EasingStyle.Quad),
+    {Size = UDim2.new(count / TOTAL_MORPHS, 0, 1, 0)}):Play()
+
+  for i = 1, 30 do
+    local slot = gridSlots[i]
+    if not slot then continue end
+    local icon = slot:FindFirstChild("Icon") :: Frame?
+    local nameLbl = slot:FindFirstChild("NameLabel") :: TextLabel?
+    local rarColor = RARITY_COLORS[MORPH_RARITIES[i]] or Color3.fromRGB(150,150,150)
+
+    if foundSet[i] then
+      if icon then icon.BackgroundColor3 = rarColor end
+      if nameLbl then
+        nameLbl.Text = MORPH_NAMES[i]
+        nameLbl.TextColor3 = rarColor
+      end
+      -- Gold stroke
+      local existingStroke = slot:FindFirstChildOfClass("UIStroke")
+      if not existingStroke then
+        local s = Instance.new("UIStroke", slot); s.Color = rarColor; s.Thickness = 2
+      else
+        existingStroke.Color = rarColor; existingStroke.Thickness = 2
+      end
+    else
+      if icon then icon.BackgroundColor3 = Color3.fromRGB(30,30,40) end
+      if nameLbl then nameLbl.Text = "?"; nameLbl.TextColor3 = Color3.fromRGB(80,80,80) end
+    end
+  end
+
+  -- Auto-resize canvas
+  local rows = math.ceil(30 / 4)
+  gridPanel.CanvasSize = UDim2.new(0, 0, 0, rows * 86 + 16)
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+  gridVisible = not gridVisible
+  gridPanel.Visible = gridVisible
+  toggleBtn.Text = if gridVisible then "X" else "+"
+end)
+
+-- ── Sync from server ──────────────────────────────────────────────────────────
+SyncFound.OnClientEvent:Connect(function(found: {[number]: boolean})
+  foundSet = found
+  updateGrid()
+end)
+
+-- ── Find notification popup ───────────────────────────────────────────────────
+MorphFound.OnClientEvent:Connect(function(morphId: number, name: string, rarity: string, color: Color3)
+  foundSet[morphId] = true
+  updateGrid()
+
+  -- Notification popup
+  local popup = Instance.new("Frame")
+  popup.Size = UDim2.new(0, 300, 0, 80)
+  popup.Position = UDim2.new(0.5, -150, -0.1, 0)
+  popup.BackgroundColor3 = Color3.fromRGB(10,10,20)
+  popup.BackgroundTransparency = 0.1; popup.Parent = screen
+  Instance.new("UICorner", popup).CornerRadius = UDim.new(0,12)
+  local popupStroke = Instance.new("UIStroke", popup)
+  popupStroke.Color = RARITY_COLORS[rarity] or Color3.fromRGB(200,200,200); popupStroke.Thickness = 2
+
+  local popupIcon = Instance.new("Frame")
+  popupIcon.Size = UDim2.new(0,60,0,60); popupIcon.Position = UDim2.new(0,10,0,10)
+  popupIcon.BackgroundColor3 = color; popupIcon.Parent = popup
+  Instance.new("UICorner", popupIcon).CornerRadius = UDim.new(0,8)
+
+  local popupTitle = Instance.new("TextLabel")
+  popupTitle.Size = UDim2.new(0,210,0,30); popupTitle.Position = UDim2.new(0,78,0,8)
+  popupTitle.BackgroundTransparency = 1
+  popupTitle.TextColor3 = RARITY_COLORS[rarity] or Color3.fromRGB(255,255,255)
+  popupTitle.TextScaled = true; popupTitle.Font = Enum.Font.GothamBold
+  popupTitle.Text = "Found: "..name; popupTitle.Parent = popup
+
+  local popupRarity = Instance.new("TextLabel")
+  popupRarity.Size = UDim2.new(0,210,0,24); popupRarity.Position = UDim2.new(0,78,0,42)
+  popupRarity.BackgroundTransparency = 1; popupRarity.TextColor3 = Color3.fromRGB(180,180,180)
+  popupRarity.TextScaled = true; popupRarity.Font = Enum.Font.Gotham
+  popupRarity.Text = rarity.." — "..morphId.."/30"; popupRarity.Parent = popup
+
+  -- Slide in
+  TweenService:Create(popup, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {Position = UDim2.new(0.5,-150,0.1,0)}):Play()
+  task.delay(3, function()
+    TweenService:Create(popup, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+      {Position = UDim2.new(0.5,-150,-0.12,0)}):Play()
+    task.delay(0.4, function() if popup.Parent then popup:Destroy() end end)
+  end)
+end)
+
+-- ── Hint arrow ────────────────────────────────────────────────────────────────
+local hintLabel: TextLabel? = nil
+
+HintArrow.OnClientEvent:Connect(function(targetPos: Vector3, morphName: string)
+  hintTarget = targetPos
+
+  if hintLabel then hintLabel:Destroy() end
+  local lbl = Instance.new("TextLabel")
+  lbl.Size = UDim2.new(0, 200, 0, 40); lbl.Position = UDim2.new(0.5, -100, 0.85, 0)
+  lbl.BackgroundColor3 = Color3.fromRGB(212,175,55); lbl.BackgroundTransparency = 0.2
+  lbl.TextColor3 = Color3.fromRGB(0,0,0); lbl.TextScaled = true
+  lbl.Font = Enum.Font.GothamBold; lbl.Text = "Hint: "..morphName.." is near!"
+  lbl.ZIndex = 5; lbl.Parent = screen
+  Instance.new("UICorner", lbl).CornerRadius = UDim.new(0,8)
+  hintLabel = lbl
+
+  task.delay(8, function()
+    if lbl.Parent then
+      TweenService:Create(lbl, TweenInfo.new(0.5), {BackgroundTransparency=1, TextTransparency=1}):Play()
+      task.delay(0.5, function() if lbl.Parent then lbl:Destroy() end; hintLabel = nil end)
+    end
+  end)
+end)
+
+-- Request initial data
+task.spawn(function()
+  task.wait(2)
+  local ok, data = pcall(function()
+    return RequestData:InvokeServer()
+  end)
+  if ok and data and data.found then
+    foundSet = data.found
+    if data.total then TOTAL_MORPHS = data.total end
+    updateGrid()
+  end
+end)
+
+print("[FindMorphsClient] Ready — 30 morphs, collection grid, hint arrows")
+`,
+}
+
+// ─── 23. Clicker Simulator System ─────────────────────────────────────────────
+
+const CLICKER_SIM_SERVER: GameSystemFile = {
+  filename: 'ClickerSimServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- ClickerSimServer (ServerScript → ServerScriptService)
+-- Click handler, rebirth, auto-clicker, zone gates, pet multiplier, DataStore.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService  = game:GetService("DataStoreService")
+local RunService        = game:GetService("RunService")
+
+local DS = DataStoreService:GetDataStore("ClickerSimV1")
+
+-- ── Config ─────────────────────────────────────────────────────────────────────
+local BASE_CLICK_VALUE   = 1
+local MAX_CLICKS_PER_SEC = 20    -- anti-exploit
+local REBIRTH_COST       = 1e6   -- 1 million coins
+local REBIRTH_MULTIPLIER = 2     -- permanent x2 per rebirth
+
+local ZONES = {
+  { name = "Zone 1", cost = 0,    position = Vector3.new(0, 0, 0)   },
+  { name = "Zone 2", cost = 10000, position = Vector3.new(0, 0, 200) },
+  { name = "Zone 3", cost = 1e6,  position = Vector3.new(0, 0, 400)  },
+}
+
+local AUTO_CLICKER_UPGRADES: {[number]: {cost:number, cps:number}} = {
+  [1] = { cost = 500,   cps = 1   },
+  [2] = { cost = 5000,  cps = 5   },
+  [3] = { cost = 50000, cps = 25  },
+  [4] = { cost = 500000,cps = 100 },
+  [5] = { cost = 5e6,   cps = 500 },
+}
+
+-- ── State per player ──────────────────────────────────────────────────────────
+type PlayerData = {
+  coins: number,
+  rebirths: number,
+  multiplier: number,
+  autoLevel: number,
+  zone: number,
+  lastClickTime: number,
+  clicksThisSecond: number,
+  clickWindowStart: number,
+}
+
+local playerData: {[number]: PlayerData} = {}
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "CSRemotes"; Remotes.Parent = ReplicatedStorage
+
+local ClickEvent      = Instance.new("RemoteEvent");   ClickEvent.Name      = "Click";       ClickEvent.Parent      = Remotes
+local RebirthEvent    = Instance.new("RemoteEvent");   RebirthEvent.Name    = "Rebirth";     RebirthEvent.Parent    = Remotes
+local UpgradeAuto     = Instance.new("RemoteEvent");   UpgradeAuto.Name     = "UpgradeAuto"; UpgradeAuto.Parent     = Remotes
+local UnlockZone      = Instance.new("RemoteEvent");   UnlockZone.Name      = "UnlockZone";  UnlockZone.Parent      = Remotes
+local SyncData        = Instance.new("RemoteEvent");   SyncData.Name        = "SyncData";    SyncData.Parent        = Remotes
+
+-- ── Number formatting (shared constant for reference) ─────────────────────────
+-- Formatting done on client; server sends raw numbers.
+
+-- ── DataStore helpers ─────────────────────────────────────────────────────────
+type SaveData = { coins:number, rebirths:number, autoLevel:number, zone:number }
+
+local function loadData(player: Player): PlayerData
+  local ok, val = pcall(DS.GetAsync, DS, "CS_"..player.UserId)
+  if ok and type(val) == "table" then
+    local v = val :: SaveData
+    local rebirths = v.rebirths or 0
+    return {
+      coins = v.coins or 0,
+      rebirths = rebirths,
+      multiplier = REBIRTH_MULTIPLIER ^ rebirths,
+      autoLevel = v.autoLevel or 0,
+      zone = v.zone or 1,
+      lastClickTime = 0,
+      clicksThisSecond = 0,
+      clickWindowStart = 0,
+    }
+  end
+  return {
+    coins = 0, rebirths = 0, multiplier = 1, autoLevel = 0, zone = 1,
+    lastClickTime = 0, clicksThisSecond = 0, clickWindowStart = 0,
+  }
+end
+
+local function saveData(player: Player)
+  local d = playerData[player.UserId]
+  if not d then return end
+  local ok, err = pcall(DS.SetAsync, DS, "CS_"..player.UserId, {
+    coins = d.coins, rebirths = d.rebirths, autoLevel = d.autoLevel, zone = d.zone,
+  })
+  if not ok then warn("[CS] Save failed:", err) end
+end
+
+-- ── Sync helper ───────────────────────────────────────────────────────────────
+local function syncPlayer(player: Player)
+  local d = playerData[player.UserId]
+  if not d then return end
+  SyncData:FireClient(player, {
+    coins      = d.coins,
+    rebirths   = d.rebirths,
+    multiplier = d.multiplier,
+    autoLevel  = d.autoLevel,
+    zone       = d.zone,
+    nextAutoUpgrade = AUTO_CLICKER_UPGRADES[d.autoLevel + 1],
+    rebirthCost = REBIRTH_COST,
+    zones      = ZONES,
+  })
+  -- Update leaderstats
+  local ls = player:FindFirstChild("leaderstats")
+  if ls then
+    local coinsVal = ls:FindFirstChild("Coins") :: NumberValue?
+    if coinsVal then coinsVal.Value = d.coins end
+    local rebVal = ls:FindFirstChild("Rebirths") :: IntValue?
+    if rebVal then rebVal.Value = d.rebirths end
+  end
+end
+
+-- ── Click handler ─────────────────────────────────────────────────────────────
+ClickEvent.OnServerEvent:Connect(function(player: Player)
+  local d = playerData[player.UserId]
+  if not d then return end
+
+  local now = tick()
+  -- Anti-exploit: sliding window check
+  if (now - d.clickWindowStart) >= 1 then
+    d.clickWindowStart = now
+    d.clicksThisSecond = 0
+  end
+  d.clicksThisSecond += 1
+  if d.clicksThisSecond > MAX_CLICKS_PER_SEC then return end
+
+  -- Earn coins: base * rebirth multiplier
+  local earned = BASE_CLICK_VALUE * d.multiplier
+  d.coins += earned
+  syncPlayer(player)
+end)
+
+-- ── Auto-clicker: passive income loop ────────────────────────────────────────
+RunService.Heartbeat:Connect(function()
+  -- Runs 60x/sec, accumulate and award per second
+end)
+
+task.spawn(function()
+  while true do
+    task.wait(1)
+    for _, player in Players:GetPlayers() do
+      local d = playerData[player.UserId]
+      if not d then continue end
+      if d.autoLevel > 0 then
+        local autoData = AUTO_CLICKER_UPGRADES[d.autoLevel]
+        if autoData then
+          d.coins += autoData.cps * d.multiplier
+          syncPlayer(player)
+        end
+      end
+    end
+  end
+end)
+
+-- ── Rebirth ────────────────────────────────────────────────────────────────────
+RebirthEvent.OnServerEvent:Connect(function(player: Player)
+  local d = playerData[player.UserId]
+  if not d then return end
+  if d.coins < REBIRTH_COST then return end
+
+  d.coins = 0
+  d.rebirths += 1
+  d.multiplier = REBIRTH_MULTIPLIER ^ d.rebirths
+  d.autoLevel = 0  -- reset auto-clicker
+  syncPlayer(player)
+  task.spawn(function() saveData(player) end)
+end)
+
+-- ── Auto-clicker upgrade ──────────────────────────────────────────────────────
+UpgradeAuto.OnServerEvent:Connect(function(player: Player)
+  local d = playerData[player.UserId]
+  if not d then return end
+  local nextLevel = d.autoLevel + 1
+  local upgrade = AUTO_CLICKER_UPGRADES[nextLevel]
+  if not upgrade then return end  -- max level
+  if d.coins < upgrade.cost then return end
+  d.coins -= upgrade.cost
+  d.autoLevel = nextLevel
+  syncPlayer(player)
+  task.spawn(function() saveData(player) end)
+end)
+
+-- ── Zone unlock ───────────────────────────────────────────────────────────────
+UnlockZone.OnServerEvent:Connect(function(player: Player, zoneIndexRaw: unknown)
+  if type(zoneIndexRaw) ~= "number" then return end
+  local zoneIndex = zoneIndexRaw :: number
+  local zoneData = ZONES[zoneIndex]
+  if not zoneData then return end
+
+  local d = playerData[player.UserId]
+  if not d then return end
+  if d.coins < zoneData.cost then return end
+  if d.zone >= zoneIndex then return end  -- already unlocked
+
+  d.coins -= zoneData.cost
+  d.zone = zoneIndex
+
+  -- Teleport player
+  local char = player.Character
+  if char then
+    local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if hrp then hrp.CFrame = CFrame.new(zoneData.position + Vector3.new(0, 5, 0)) end
+  end
+
+  syncPlayer(player)
+  task.spawn(function() saveData(player) end)
+end)
+
+-- ── Player lifecycle ──────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+  playerData[player.UserId] = loadData(player)
+
+  local ls = Instance.new("Folder"); ls.Name = "leaderstats"; ls.Parent = player
+  local coinsVal = Instance.new("NumberValue"); coinsVal.Name = "Coins"; coinsVal.Value = 0; coinsVal.Parent = ls
+  local rebVal   = Instance.new("IntValue");    rebVal.Name   = "Rebirths"; rebVal.Value = 0; rebVal.Parent = ls
+
+  task.delay(1, function()
+    if player.Parent then syncPlayer(player) end
+  end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  saveData(player)
+  playerData[player.UserId] = nil
+end)
+
+game:BindToClose(function()
+  for _, player in Players:GetPlayers() do saveData(player) end
+end)
+
+-- Auto-save every 60s
+task.spawn(function()
+  while true do
+    task.wait(60)
+    for _, player in Players:GetPlayers() do saveData(player) end
+  end
+end)
+
+print("[ClickerSimServer] Ready — max 20 clicks/sec, rebirth at 1M, "..#ZONES.." zones")
+`,
+}
+
+const CLICKER_SIM_CLIENT: GameSystemFile = {
+  filename: 'ClickerSimClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- ClickerSimClient (LocalScript → StarterPlayerScripts)
+-- Big click button, numbers flying up, rebirth, auto upgrade, zone buttons, abbreviated display.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes    = ReplicatedStorage:WaitForChild("CSRemotes")
+local ClickEvent = Remotes:WaitForChild("Click")       :: RemoteEvent
+local Rebirth    = Remotes:WaitForChild("Rebirth")     :: RemoteEvent
+local UpgradeAuto = Remotes:WaitForChild("UpgradeAuto") :: RemoteEvent
+local UnlockZone = Remotes:WaitForChild("UnlockZone")  :: RemoteEvent
+local SyncData   = Remotes:WaitForChild("SyncData")    :: RemoteEvent
+
+-- ── Number abbreviation ───────────────────────────────────────────────────────
+local SUFFIXES = {"","K","M","B","T","Qa","Qi","Sx","Sp","Oc","No","Dc"}
+
+local function abbreviate(n: number): string
+  if n < 1000 then return tostring(math.floor(n)) end
+  local idx = 1
+  while n >= 1000 and idx < #SUFFIXES do
+    n /= 1000; idx += 1
+  end
+  local formatted = string.format("%.2f", n)
+  -- Remove trailing zeros: "1.50" → "1.5", "1.00" → "1"
+  formatted = formatted:gsub("%.?0+$", "")
+  return formatted..SUFFIXES[idx]
+end
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local myCoins      = 0
+local myRebirths   = 0
+local myMultiplier = 1
+local myAutoLevel  = 0
+local myZone       = 1
+
+-- ── Screen GUI ────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "ClickerSimGui"; screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- Background panel (subtle dark)
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(1,0,1,0); bg.BackgroundColor3 = Color3.fromRGB(8,8,16)
+bg.BackgroundTransparency = 0.6; bg.Parent = screen
+
+-- Coins display (top center)
+local coinsDisplay = Instance.new("TextLabel")
+coinsDisplay.Size = UDim2.new(0, 320, 0, 56)
+coinsDisplay.Position = UDim2.new(0.5, -160, 0, 16)
+coinsDisplay.BackgroundColor3 = Color3.fromRGB(20,20,30)
+coinsDisplay.BackgroundTransparency = 0.1
+coinsDisplay.TextColor3 = Color3.fromRGB(255,220,50)
+coinsDisplay.TextScaled = true; coinsDisplay.Font = Enum.Font.GothamBold
+coinsDisplay.Text = "0 Coins"; coinsDisplay.Parent = screen
+Instance.new("UICorner", coinsDisplay).CornerRadius = UDim.new(0,12)
+local cdStroke = Instance.new("UIStroke", coinsDisplay); cdStroke.Color = Color3.fromRGB(212,175,55); cdStroke.Thickness = 2
+
+-- Multiplier display (below coins)
+local multDisplay = Instance.new("TextLabel")
+multDisplay.Size = UDim2.new(0, 200, 0, 30)
+multDisplay.Position = UDim2.new(0.5, -100, 0, 78)
+multDisplay.BackgroundTransparency = 1
+multDisplay.TextColor3 = Color3.fromRGB(180,180,255); multDisplay.TextScaled = true
+multDisplay.Font = Enum.Font.Gotham; multDisplay.Text = "x1 Multiplier (0 Rebirths)"
+multDisplay.Parent = screen
+
+-- Big click button (center)
+local clickBtn = Instance.new("TextButton")
+clickBtn.Size = UDim2.new(0, 200, 0, 200)
+clickBtn.Position = UDim2.new(0.5, -100, 0.5, -120)
+clickBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+clickBtn.TextColor3 = Color3.fromRGB(0,0,0); clickBtn.TextScaled = true
+clickBtn.Font = Enum.Font.GothamBold; clickBtn.Text = "CLICK!\n+1"
+clickBtn.Parent = screen
+local clickCorner = Instance.new("UICorner", clickBtn); clickCorner.CornerRadius = UDim.new(1,0)
+Instance.new("UIStroke", clickBtn).Thickness = 3
+
+-- Click button animation + fire
+clickBtn.MouseButton1Down:Connect(function()
+  ClickEvent:FireServer()
+
+  -- Scale pop animation
+  TweenService:Create(clickBtn, TweenInfo.new(0.05, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    {Size = UDim2.new(0,185,0,185), Position = UDim2.new(0.5,-92.5,0.5,-112.5)}):Play()
+
+  -- Floating +number
+  local earned = math.floor(myMultiplier)
+  local floatLbl = Instance.new("TextLabel")
+  floatLbl.Size = UDim2.new(0, 100, 0, 36)
+  floatLbl.Position = UDim2.new(
+    0.5 + (math.random() - 0.5) * 0.2,
+    -50,
+    0.5 - 0.05,
+    0
+  )
+  floatLbl.BackgroundTransparency = 1
+  floatLbl.TextColor3 = Color3.fromRGB(255,220,50)
+  floatLbl.TextScaled = true; floatLbl.Font = Enum.Font.GothamBold
+  floatLbl.Text = "+"..abbreviate(earned); floatLbl.ZIndex = 5
+  floatLbl.Parent = screen
+  TweenService:Create(floatLbl, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    {Position = UDim2.new(floatLbl.Position.X.Scale, -50, floatLbl.Position.Y.Scale - 0.12, 0),
+     TextTransparency = 1}):Play()
+  task.delay(0.9, function() if floatLbl.Parent then floatLbl:Destroy() end end)
+end)
+
+clickBtn.MouseButton1Up:Connect(function()
+  TweenService:Create(clickBtn, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {Size = UDim2.new(0,200,0,200), Position = UDim2.new(0.5,-100,0.5,-120)}):Play()
+end)
+
+-- ── Rebirth button (bottom center) ────────────────────────────────────────────
+local rebirthBtn = Instance.new("TextButton")
+rebirthBtn.Size = UDim2.new(0, 180, 0, 50)
+rebirthBtn.Position = UDim2.new(0.5, -90, 1, -160)
+rebirthBtn.BackgroundColor3 = Color3.fromRGB(220,60,60)
+rebirthBtn.TextColor3 = Color3.fromRGB(255,255,255); rebirthBtn.TextScaled = true
+rebirthBtn.Font = Enum.Font.GothamBold; rebirthBtn.Text = "REBIRTH (1M)"
+rebirthBtn.Parent = screen
+Instance.new("UICorner", rebirthBtn).CornerRadius = UDim.new(0,10)
+
+rebirthBtn.MouseButton1Click:Connect(function()
+  if myCoins < 1e6 then
+    rebirthBtn.BackgroundColor3 = Color3.fromRGB(180,30,30)
+    task.delay(0.3, function() rebirthBtn.BackgroundColor3 = Color3.fromRGB(220,60,60) end)
+    return
+  end
+  Rebirth:FireServer()
+end)
+
+-- ── Auto-clicker upgrade (right side) ─────────────────────────────────────────
+local autoFrame = Instance.new("Frame")
+autoFrame.Size = UDim2.new(0, 180, 0, 90)
+autoFrame.Position = UDim2.new(1, -196, 0.5, -45)
+autoFrame.BackgroundColor3 = Color3.fromRGB(15,15,30)
+autoFrame.BackgroundTransparency = 0.2; autoFrame.Parent = screen
+Instance.new("UICorner", autoFrame).CornerRadius = UDim.new(0,10)
+local autoStroke = Instance.new("UIStroke", autoFrame); autoStroke.Color = Color3.fromRGB(100,100,255); autoStroke.Thickness = 1.5
+
+local autoLabel = Instance.new("TextLabel")
+autoLabel.Size = UDim2.new(1,0,0.5,0); autoLabel.BackgroundTransparency = 1
+autoLabel.TextColor3 = Color3.fromRGB(180,180,255); autoLabel.TextScaled = true
+autoLabel.Font = Enum.Font.GothamBold; autoLabel.Text = "Auto: Level 0"
+autoLabel.Parent = autoFrame
+
+local autoBtn = Instance.new("TextButton")
+autoBtn.Size = UDim2.new(0.9,0,0.4,0); autoBtn.Position = UDim2.new(0.05,0,0.55,0)
+autoBtn.BackgroundColor3 = Color3.fromRGB(80,80,200)
+autoBtn.TextColor3 = Color3.fromRGB(255,255,255); autoBtn.TextScaled = true
+autoBtn.Font = Enum.Font.GothamBold; autoBtn.Text = "Upgrade (500)"
+autoBtn.Parent = autoFrame
+Instance.new("UICorner", autoBtn).CornerRadius = UDim.new(0,6)
+
+autoBtn.MouseButton1Click:Connect(function()
+  UpgradeAuto:FireServer()
+end)
+
+-- ── Zone sidebar (left) ───────────────────────────────────────────────────────
+local zoneFrame = Instance.new("Frame")
+zoneFrame.Size = UDim2.new(0, 160, 0, 200)
+zoneFrame.Position = UDim2.new(0, 16, 0.5, -100)
+zoneFrame.BackgroundColor3 = Color3.fromRGB(12,12,24)
+zoneFrame.BackgroundTransparency = 0.2; zoneFrame.Parent = screen
+Instance.new("UICorner", zoneFrame).CornerRadius = UDim.new(0,10)
+local zoneStroke = Instance.new("UIStroke", zoneFrame); zoneStroke.Color = Color3.fromRGB(212,175,55); zoneStroke.Thickness = 1.5
+
+local zoneTitle = Instance.new("TextLabel")
+zoneTitle.Size = UDim2.new(1,0,0.18,0); zoneTitle.BackgroundTransparency = 1
+zoneTitle.TextColor3 = Color3.fromRGB(212,175,55); zoneTitle.TextScaled = true
+zoneTitle.Font = Enum.Font.GothamBold; zoneTitle.Text = "Zones"; zoneTitle.Parent = zoneFrame
+
+local zoneBtns: {TextButton} = {}
+local ZONE_COSTS_DISPLAY = {"Free", "10K", "1M"}
+for i = 1, 3 do
+  local zBtn = Instance.new("TextButton")
+  zBtn.Size = UDim2.new(0.88,0,0.22,0); zBtn.Position = UDim2.new(0.06,0,0.18+(i-1)*0.26,0)
+  zBtn.BackgroundColor3 = Color3.fromRGB(30,30,50)
+  zBtn.TextColor3 = Color3.fromRGB(200,200,200); zBtn.TextScaled = true
+  zBtn.Font = Enum.Font.Gotham; zBtn.Text = "Zone "..i.." ("..ZONE_COSTS_DISPLAY[i]..")"
+  zBtn.Parent = zoneFrame
+  Instance.new("UICorner", zBtn).CornerRadius = UDim.new(0,6)
+  table.insert(zoneBtns, zBtn)
+
+  local capturedI = i
+  zBtn.MouseButton1Click:Connect(function()
+    if capturedI == 1 then return end  -- Zone 1 is free, just teleport
+    UnlockZone:FireServer(capturedI)
+  end)
+end
+
+-- ── Data sync ─────────────────────────────────────────────────────────────────
+type SyncPayload = {
+  coins:number, rebirths:number, multiplier:number, autoLevel:number, zone:number,
+  nextAutoUpgrade:{cost:number,cps:number}?, rebirthCost:number,
+  zones:{{name:string,cost:number,position:Vector3}}?
+}
+
+SyncData.OnClientEvent:Connect(function(data: SyncPayload)
+  myCoins      = data.coins
+  myRebirths   = data.rebirths
+  myMultiplier = data.multiplier
+  myAutoLevel  = data.autoLevel
+  myZone       = data.zone
+
+  coinsDisplay.Text = abbreviate(myCoins).." Coins"
+  multDisplay.Text  = "x"..abbreviate(myMultiplier).." Multiplier ("..myRebirths.." Rebirths)"
+  clickBtn.Text = "CLICK!\n+"..abbreviate(myMultiplier)
+
+  -- Auto label
+  autoLabel.Text = "Auto: Level "..myAutoLevel
+  if data.nextAutoUpgrade then
+    autoBtn.Text = "Upgrade ("..abbreviate(data.nextAutoUpgrade.cost)..")"
+    autoBtn.BackgroundTransparency = 0
+  else
+    autoBtn.Text = "MAX LEVEL"; autoBtn.BackgroundTransparency = 0.5
+  end
+
+  -- Zone highlights
+  for i, zBtn in ipairs(zoneBtns) do
+    if i <= myZone then
+      zBtn.BackgroundColor3 = Color3.fromRGB(212,175,55)
+      zBtn.TextColor3 = Color3.fromRGB(0,0,0)
+    else
+      zBtn.BackgroundColor3 = Color3.fromRGB(30,30,50)
+      zBtn.TextColor3 = Color3.fromRGB(200,200,200)
+    end
+  end
+
+  -- Rebirth button color
+  rebirthBtn.BackgroundTransparency = if myCoins >= 1e6 then 0 else 0.4
+end)
+
+print("[ClickerSimClient] Ready — click to earn, rebirth at 1M, K/M/B/T abbreviations")
+`,
+}
+
+// ─── 24. Story Horror System ───────────────────────────────────────────────────
+
+const STORY_HORROR_SERVER: GameSystemFile = {
+  filename: 'StoryHorrorServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- StoryHorrorServer (ServerScript → ServerScriptService)
+-- Room progression, monster AI, hiding mechanic, key/lock puzzles, flashlight battery.
+-- Doors / Apeirophobia / The Mimic style.
+
+local Players               = game:GetService("Players")
+local ReplicatedStorage     = game:GetService("ReplicatedStorage")
+local PathfindingService    = game:GetService("PathfindingService")
+local RunService             = game:GetService("RunService")
+
+-- ── Config ─────────────────────────────────────────────────────────────────────
+local TOTAL_ROOMS          = 50
+local MONSTER_SPEED        = 20
+local MONSTER_CHASE_RANGE  = 60   -- studs — monster starts chasing
+local MONSTER_KILL_RANGE   = 4    -- studs — kills player
+local HIDE_SPOT_COOLDOWN   = 8    -- monster checks hiding spots every 8s
+local KEY_ROOM_INTERVAL    = 5    -- key puzzle every N rooms
+local STAMINA_MAX          = 100
+local STAMINA_DRAIN_SPRINT = 15   -- per second while sprinting
+local STAMINA_REGEN_WALK   = 8    -- per second while walking
+local FLASHLIGHT_MAX       = 120  -- seconds
+local FLASHLIGHT_PICKUP_RESTORE = 50  -- seconds restored per pickup
+local BATTERY_SPAWN_CHANCE = 0.4  -- 40% chance per room
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+type PlayerState = {
+  room:       number,
+  alive:      boolean,
+  hiding:     boolean,
+  stamina:    number,
+  sprinting:  boolean,
+  battery:    number,   -- seconds remaining
+  flashOn:    boolean,
+  hasKey:     boolean,
+}
+local playerStates: {[number]: PlayerState} = {}
+
+-- Monster state (shared — one monster per server)
+local monsterActive  = false
+local monsterPos     = Vector3.new(0, 0, -1000)  -- start far away
+local monsterModel:  Model? = nil
+local monsterHrp:    BasePart? = nil
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder"); Remotes.Name = "SHRemotes"; Remotes.Parent = ReplicatedStorage
+
+local RoomLoad      = Instance.new("RemoteEvent");   RoomLoad.Name      = "RoomLoad";      RoomLoad.Parent      = Remotes
+local PlayerKilled  = Instance.new("RemoteEvent");   PlayerKilled.Name  = "PlayerKilled";  PlayerKilled.Parent  = Remotes
+local SyncState     = Instance.new("RemoteEvent");   SyncState.Name     = "SyncState";     SyncState.Parent     = Remotes
+local MonsterNear   = Instance.new("RemoteEvent");   MonsterNear.Name   = "MonsterNear";   MonsterNear.Parent   = Remotes
+local JumpScare     = Instance.new("RemoteEvent");   JumpScare.Name     = "JumpScare";     JumpScare.Parent     = Remotes
+local DoorInteract  = Instance.new("RemoteEvent");   DoorInteract.Name  = "DoorInteract";  DoorInteract.Parent  = Remotes
+local HideInteract  = Instance.new("RemoteEvent");   HideInteract.Name  = "HideInteract";  HideInteract.Parent  = Remotes
+local PickupBattery = Instance.new("RemoteEvent");   PickupBattery.Name = "PickupBattery"; PickupBattery.Parent = Remotes
+local SprintUpdate  = Instance.new("RemoteEvent");   SprintUpdate.Name  = "SprintUpdate";  SprintUpdate.Parent  = Remotes
+
+-- ── Utility ───────────────────────────────────────────────────────────────────
+local function getState(player: Player): PlayerState
+  local uid = player.UserId
+  if not playerStates[uid] then
+    playerStates[uid] = {
+      room = 0, alive = true, hiding = false,
+      stamina = STAMINA_MAX, sprinting = false,
+      battery = FLASHLIGHT_MAX, flashOn = true, hasKey = false,
+    }
+  end
+  return playerStates[uid]
+end
+
+local function syncToClient(player: Player)
+  local st = getState(player)
+  SyncState:FireClient(player, {
+    room    = st.room,
+    alive   = st.alive,
+    hiding  = st.hiding,
+    stamina = st.stamina,
+    battery = st.battery,
+    flashOn = st.flashOn,
+    hasKey  = st.hasKey,
+    total   = TOTAL_ROOMS,
+  })
+end
+
+-- ── Room builder ──────────────────────────────────────────────────────────────
+-- Each room is a rectangular area positioned along Z axis.
+-- In a real game you'd have pre-built room models; here we procedurally build basics.
+local ROOM_WIDTH  = 30
+local ROOM_HEIGHT = 14
+local ROOM_DEPTH  = 50
+local roomModels: {[number]: Model} = {}
+
+local function buildRoom(roomNum: number): Model
+  local zOffset = (roomNum - 1) * (ROOM_DEPTH + 4)
+  local model = Instance.new("Model"); model.Name = "Room_"..roomNum; model.Parent = workspace
+
+  local function addPart(name:string, size:Vector3, pos:Vector3, color:BrickColor)
+    local p = Instance.new("Part"); p.Name = name; p.Size = size
+    p.Anchored = true; p.BrickColor = color; p.Position = pos; p.Parent = model
+    return p
+  end
+
+  -- Floor
+  addPart("Floor", Vector3.new(ROOM_WIDTH,1,ROOM_DEPTH), Vector3.new(0,0,zOffset), BrickColor.new("Dark stone grey"))
+  -- Ceiling
+  addPart("Ceiling", Vector3.new(ROOM_WIDTH,1,ROOM_DEPTH), Vector3.new(0,ROOM_HEIGHT,zOffset), BrickColor.new("Dark stone grey"))
+  -- Left wall
+  addPart("WallL", Vector3.new(1,ROOM_HEIGHT,ROOM_DEPTH), Vector3.new(-ROOM_WIDTH/2,ROOM_HEIGHT/2,zOffset), BrickColor.new("Dark grey"))
+  -- Right wall
+  addPart("WallR", Vector3.new(1,ROOM_HEIGHT,ROOM_DEPTH), Vector3.new(ROOM_WIDTH/2,ROOM_HEIGHT/2,zOffset), BrickColor.new("Dark grey"))
+  -- Back wall
+  addPart("WallBack", Vector3.new(ROOM_WIDTH,ROOM_HEIGHT,1), Vector3.new(0,ROOM_HEIGHT/2,zOffset-ROOM_DEPTH/2), BrickColor.new("Medium stone grey"))
+
+  -- Door (front of room — player walks through)
+  local doorPart = Instance.new("Part"); doorPart.Name = "Door"
+  doorPart.Size = Vector3.new(6,10,1); doorPart.Anchored = true
+  doorPart.BrickColor = BrickColor.new("Brown"); doorPart.CanCollide = true
+  doorPart.Position = Vector3.new(0, 5, zOffset + ROOM_DEPTH/2); doorPart.Parent = model
+
+  -- Door proximity prompt
+  local pp = Instance.new("ProximityPrompt"); pp.ActionText = "Open Door"
+  pp.KeyboardKeyCode = Enum.KeyCode.E; pp.HoldDuration = 0; pp.Parent = doorPart
+  pp.Triggered:Connect(function(plr: Player)
+    local st = getState(plr)
+    if st.room ~= roomNum then return end
+    -- Check if key required
+    if roomNum % KEY_ROOM_INTERVAL == 0 then
+      if not st.hasKey then
+        SyncState:FireClient(plr, {
+          room=st.room, alive=st.alive, hiding=st.hiding,
+          stamina=st.stamina, battery=st.battery, flashOn=st.flashOn,
+          hasKey=false, total=TOTAL_ROOMS,
+          message="You need the key!",
+        })
+        return
+      end
+      st.hasKey = false
+    end
+    -- Advance room
+    st.room += 1
+    doorPart.CanCollide = false
+    TweenService:Create(doorPart, TweenInfo.new(0.5), {CFrame = doorPart.CFrame * CFrame.new(0,6,0)}):Play()
+
+    -- Teleport player
+    local char = plr.Character
+    if char then
+      local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if hrp then
+        hrp.CFrame = CFrame.new(0, 5, zOffset + ROOM_DEPTH/2 + 8)
+      end
+    end
+
+    -- Load next room
+    if st.room <= TOTAL_ROOMS then
+      if not roomModels[st.room] then
+        roomModels[st.room] = buildRoom(st.room)
+        -- Spawn key if needed
+        if st.room % KEY_ROOM_INTERVAL == 0 then spawnKey(plr, st.room) end
+        -- Maybe spawn battery
+        if math.random() < BATTERY_SPAWN_CHANCE then spawnBattery(st.room) end
+      end
+      RoomLoad:FireClient(plr, st.room, TOTAL_ROOMS)
+    else
+      -- Victory
+      RoomLoad:FireClient(plr, TOTAL_ROOMS + 1, TOTAL_ROOMS)  -- signal victory
+    end
+    syncToClient(plr)
+  end)
+
+  -- Hiding spot (closet-like)
+  local hidePart = Instance.new("Part"); hidePart.Name = "HideSpot"
+  hidePart.Size = Vector3.new(4,8,4); hidePart.Anchored = true; hidePart.CanCollide = false
+  hidePart.Transparency = 0.7; hidePart.BrickColor = BrickColor.new("Dark brown")
+  hidePart.Position = Vector3.new(-ROOM_WIDTH/2 + 3, 4, zOffset - 5); hidePart.Parent = model
+
+  local hidePP = Instance.new("ProximityPrompt"); hidePP.ActionText = "Hide"
+  hidePP.KeyboardKeyCode = Enum.KeyCode.F; hidePP.HoldDuration = 0; hidePP.Parent = hidePart
+  hidePP.Triggered:Connect(function(plr: Player)
+    local st = getState(plr)
+    if st.hiding then
+      -- Exit hide
+      st.hiding = false
+      local char = plr.Character
+      if char then
+        local hum = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+        if hum then hum.WalkSpeed = 16 end
+      end
+      hidePP.ActionText = "Hide"
+    else
+      -- Enter hide
+      st.hiding = true
+      local char = plr.Character
+      if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+        if hrp then hrp.CFrame = CFrame.new(hidePart.Position + Vector3.new(0,0.5,0)) end
+        local hum = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+        if hum then hum.WalkSpeed = 0 end
+      end
+      hidePP.ActionText = "Exit"
+    end
+    HideInteract:FireClient(plr, st.hiding)
+    syncToClient(plr)
+  end)
+
+  return model
+end
+
+local TweenService = game:GetService("TweenService")
+
+function spawnKey(player: Player, roomNum: number)
+  local zOffset = (roomNum - 1) * (ROOM_DEPTH + 4)
+  local keyPart = Instance.new("Part"); keyPart.Name = "RoomKey"
+  keyPart.Size = Vector3.new(1,1,0.2); keyPart.Anchored = true; keyPart.CanCollide = false
+  keyPart.BrickColor = BrickColor.new("Bright yellow"); keyPart.Material = Enum.Material.Neon
+  keyPart.Position = Vector3.new(5, 2, zOffset + 10); keyPart.Parent = workspace
+
+  -- Spin
+  task.spawn(function()
+    while keyPart.Parent do
+      keyPart.CFrame = keyPart.CFrame * CFrame.Angles(0, math.rad(2), 0)
+      task.wait(0.016)
+    end
+  end)
+
+  local pp = Instance.new("ProximityPrompt"); pp.ActionText = "Pick Up Key"
+  pp.KeyboardKeyCode = Enum.KeyCode.E; pp.Parent = keyPart
+  pp.Triggered:Connect(function(plr: Player)
+    if plr ~= player then return end
+    local st = getState(plr)
+    st.hasKey = true; syncToClient(plr)
+    keyPart:Destroy()
+  end)
+end
+
+function spawnBattery(roomNum: number)
+  local zOffset = (roomNum - 1) * (ROOM_DEPTH + 4)
+  local bat = Instance.new("Part"); bat.Name = "Battery"
+  bat.Size = Vector3.new(0.8,1.5,0.8); bat.Anchored = true; bat.CanCollide = false
+  bat.BrickColor = BrickColor.new("Lime green"); bat.Material = Enum.Material.Neon
+  bat.Position = Vector3.new(-5, 2, zOffset + 15); bat.Parent = workspace
+
+  local pp = Instance.new("ProximityPrompt"); pp.ActionText = "Pick Up Battery"
+  pp.KeyboardKeyCode = Enum.KeyCode.E; pp.Parent = bat
+  pp.Triggered:Connect(function(plr: Player)
+    local st = getState(plr)
+    st.battery = math.min(FLASHLIGHT_MAX, st.battery + FLASHLIGHT_PICKUP_RESTORE)
+    syncToClient(plr)
+    PickupBattery:FireClient(plr)
+    bat:Destroy()
+  end)
+end
+
+-- ── Monster AI ────────────────────────────────────────────────────────────────
+local function spawnMonster()
+  if monsterModel then monsterModel:Destroy() end
+  local model = Instance.new("Model"); model.Name = "TheMonster"; model.Parent = workspace
+  local hrp = Instance.new("Part"); hrp.Name = "HumanoidRootPart"
+  hrp.Size = Vector3.new(3, 5, 2); hrp.Anchored = false; hrp.CanCollide = false
+  hrp.BrickColor = BrickColor.new("Really black"); hrp.Position = monsterPos
+  hrp.Parent = model
+
+  local hum = Instance.new("Humanoid"); hum.MaxHealth = math.huge; hum.Health = math.huge
+  hum.WalkSpeed = MONSTER_SPEED; hum.Parent = model
+
+  -- Glowing red eyes billboard
+  local bb = Instance.new("BillboardGui"); bb.Size = UDim2.new(4,0,2,0); bb.StudsOffset = Vector3.new(0,3,0); bb.Parent = hrp
+  local eyes = Instance.new("TextLabel"); eyes.Size = UDim2.new(1,0,1,0); eyes.BackgroundTransparency = 1
+  eyes.TextColor3 = Color3.fromRGB(255,0,0); eyes.TextScaled = true; eyes.Font = Enum.Font.GothamBold
+  eyes.Text = "* *"; eyes.Parent = bb
+
+  model.PrimaryPart = hrp
+  monsterModel = model; monsterHrp = hrp
+  monsterActive = true
+end
+
+-- Monster pathfinding loop
+task.spawn(function()
+  while true do
+    task.wait(0.5)
+    if not monsterActive or not monsterHrp then continue end
+
+    -- Find closest non-hiding player
+    local closestPlayer: Player? = nil
+    local closestDist = math.huge
+    for _, player in Players:GetPlayers() do
+      local st = playerStates[player.UserId]
+      if not st or not st.alive or st.hiding then continue end
+      local char = player.Character
+      if not char then continue end
+      local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if not hrp then continue end
+      local dist = (monsterHrp.Position - hrp.Position).Magnitude
+      if dist < closestDist then closestDist = dist; closestPlayer = player end
+    end
+
+    if not closestPlayer then continue end
+    local char = closestPlayer.Character
+    if not char then continue end
+    local targetHrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if not targetHrp then continue end
+
+    local dist = closestDist
+
+    -- Broadcast proximity to nearby players
+    for _, player in Players:GetPlayers() do
+      local st = playerStates[player.UserId]
+      if not st then continue end
+      local pChar = player.Character
+      if not pChar then continue end
+      local pHrp = pChar:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if not pHrp then continue end
+      local pDist = (monsterHrp.Position - pHrp.Position).Magnitude
+      if pDist < MONSTER_CHASE_RANGE * 1.5 then
+        MonsterNear:FireClient(player, pDist)
+      end
+    end
+
+    if dist > MONSTER_CHASE_RANGE then continue end
+
+    -- Pathfind toward player
+    local path = PathfindingService:CreatePath({
+      AgentRadius = 2, AgentHeight = 6, AgentCanJump = true, AgentMaxSlope = 45,
+    })
+    local ok = pcall(function()
+      path:ComputeAsync(monsterHrp.Position, targetHrp.Position)
+    end)
+    if not ok or path.Status ~= Enum.PathStatus.Success then
+      -- Fallback: direct move
+      local hum = monsterModel and monsterModel:FindFirstChildOfClass("Humanoid") :: Humanoid?
+      if hum then hum:MoveTo(targetHrp.Position) end
+      continue
+    end
+
+    local waypoints = path:GetWaypoints()
+    local monHum = monsterModel and monsterModel:FindFirstChildOfClass("Humanoid") :: Humanoid?
+    if not monHum then continue end
+
+    for _, wp in waypoints do
+      if not monsterActive then break end
+      if wp.Action == Enum.PathWaypointAction.Jump then monHum.Jump = true end
+      monHum:MoveTo(wp.Position)
+      monHum.MoveToFinished:Wait()
+
+      -- Check kill
+      local freshDist = (monsterHrp.Position - targetHrp.Position).Magnitude
+      if freshDist < MONSTER_KILL_RANGE then
+        local st = playerStates[closestPlayer.UserId]
+        if st and st.alive and not st.hiding then
+          st.alive = false
+          JumpScare:FireClient(closestPlayer)
+          task.delay(0.5, function()
+            PlayerKilled:FireClient(closestPlayer)
+            local killChar = closestPlayer.Character
+            if killChar then
+              local killHum = killChar:FindFirstChildOfClass("Humanoid") :: Humanoid?
+              if killHum then killHum.Health = 0 end
+            end
+          end)
+          -- Reset player after 5s
+          task.delay(5, function()
+            if playerStates[closestPlayer.UserId] then
+              playerStates[closestPlayer.UserId].alive = true
+              syncToClient(closestPlayer)
+            end
+          end)
+        end
+        break
+      end
+    end
+  end
+end)
+
+-- ── Sprint handler ─────────────────────────────────────────────────────────────
+SprintUpdate.OnServerEvent:Connect(function(player: Player, sprintingRaw: unknown)
+  if type(sprintingRaw) ~= "boolean" then return end
+  local st = getState(player)
+  local sprinting = sprintingRaw :: boolean
+  st.sprinting = sprinting
+  local char = player.Character
+  if char then
+    local hum = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+    if hum then hum.WalkSpeed = if sprinting and st.stamina > 0 then 28 else 16 end
+  end
+end)
+
+-- ── Stamina + flashlight drain loop ──────────────────────────────────────────
+task.spawn(function()
+  while true do
+    task.wait(1)
+    for _, player in Players:GetPlayers() do
+      local st = playerStates[player.UserId]
+      if not st or not st.alive then continue end
+
+      -- Stamina
+      if st.sprinting and st.stamina > 0 then
+        st.stamina = math.max(0, st.stamina - STAMINA_DRAIN_SPRINT)
+        if st.stamina == 0 then
+          -- Force stop sprint
+          local char = player.Character
+          if char then
+            local hum = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+            if hum then hum.WalkSpeed = 16 end
+          end
+        end
+      elseif not st.sprinting then
+        st.stamina = math.min(STAMINA_MAX, st.stamina + STAMINA_REGEN_WALK)
+      end
+
+      -- Flashlight battery
+      if st.flashOn then
+        st.battery = math.max(0, st.battery - 1)
+        if st.battery == 0 then
+          st.flashOn = false
+        end
+      end
+
+      syncToClient(player)
+    end
+  end
+end)
+
+-- ── Player lifecycle ──────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+  local st = getState(player)
+  st.room = 1
+
+  -- Build first 2 rooms
+  if not roomModels[1] then roomModels[1] = buildRoom(1) end
+  if not roomModels[2] then roomModels[2] = buildRoom(2) end
+
+  -- Spawn monster after 10s if not already active
+  if not monsterActive then
+    task.delay(10, function()
+      spawnMonster()
+    end)
+  end
+
+  player.CharacterAdded:Connect(function(char)
+    task.delay(0.5, function()
+      local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+      if hrp then
+        hrp.CFrame = CFrame.new(0, 5, -(ROOM_DEPTH/2) + 5)
+      end
+      syncToClient(player)
+    end)
+  end)
+
+  task.delay(1.5, function()
+    if player.Parent then
+      RoomLoad:FireClient(player, 1, TOTAL_ROOMS)
+      syncToClient(player)
+    end
+  end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+  playerStates[player.UserId] = nil
+end)
+
+print("[StoryHorrorServer] Ready — "..TOTAL_ROOMS.." rooms, monster AI, hiding, keys, flashlight")
+`,
+}
+
+const STORY_HORROR_CLIENT: GameSystemFile = {
+  filename: 'StoryHorrorClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- StoryHorrorClient (LocalScript → StarterPlayerScripts)
+-- Stamina bar, flashlight toggle, door/hide prompts, monster vignette, jumpscare, death screen.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService  = game:GetService("UserInputService")
+local TweenService      = game:GetService("TweenService")
+local SoundService      = game:GetService("SoundService")
+local RunService        = game:GetService("RunService")
+local Lighting          = game:GetService("Lighting")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes       = ReplicatedStorage:WaitForChild("SHRemotes")
+local RoomLoad      = Remotes:WaitForChild("RoomLoad")      :: RemoteEvent
+local PlayerKilled  = Remotes:WaitForChild("PlayerKilled")  :: RemoteEvent
+local SyncState     = Remotes:WaitForChild("SyncState")     :: RemoteEvent
+local MonsterNear   = Remotes:WaitForChild("MonsterNear")   :: RemoteEvent
+local JumpScare     = Remotes:WaitForChild("JumpScare")     :: RemoteEvent
+local SprintUpdate  = Remotes:WaitForChild("SprintUpdate")  :: RemoteEvent
+local PickupBattery = Remotes:WaitForChild("PickupBattery") :: RemoteEvent
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+local currentRoom   = 1
+local totalRooms    = 50
+local flashOn       = true
+local isSprinting   = false
+local monsterDist   = 1000
+
+-- ── Screen GUI ────────────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "StoryHorrorGui"; screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- Room counter (top center)
+local roomLabel = Instance.new("TextLabel")
+roomLabel.Size = UDim2.new(0, 200, 0, 40)
+roomLabel.Position = UDim2.new(0.5, -100, 0, 12)
+roomLabel.BackgroundColor3 = Color3.fromRGB(0,0,0)
+roomLabel.BackgroundTransparency = 0.5
+roomLabel.TextColor3 = Color3.fromRGB(220,220,220)
+roomLabel.TextScaled = true; roomLabel.Font = Enum.Font.GothamBold
+roomLabel.Text = "Room 1/50"; roomLabel.Parent = screen
+Instance.new("UICorner", roomLabel).CornerRadius = UDim.new(0,8)
+
+-- Flashlight indicator (top right)
+local flashLabel = Instance.new("TextLabel")
+flashLabel.Size = UDim2.new(0, 140, 0, 36)
+flashLabel.Position = UDim2.new(1, -156, 0, 12)
+flashLabel.BackgroundColor3 = Color3.fromRGB(0,0,0); flashLabel.BackgroundTransparency = 0.5
+flashLabel.TextColor3 = Color3.fromRGB(255,255,150)
+flashLabel.TextScaled = true; flashLabel.Font = Enum.Font.Gotham
+flashLabel.Text = "Flashlight: ON"; flashLabel.Parent = screen
+Instance.new("UICorner", flashLabel).CornerRadius = UDim.new(0,8)
+
+-- Battery bar (top right, below flashlight)
+local batFrame = Instance.new("Frame")
+batFrame.Size = UDim2.new(0, 140, 0, 10)
+batFrame.Position = UDim2.new(1, -156, 0, 54)
+batFrame.BackgroundColor3 = Color3.fromRGB(40,40,40); batFrame.Parent = screen
+Instance.new("UICorner", batFrame).CornerRadius = UDim.new(1,0)
+local batFill = Instance.new("Frame")
+batFill.Name = "Fill"; batFill.Size = UDim2.new(1,0,1,0)
+batFill.BackgroundColor3 = Color3.fromRGB(255,255,100); batFill.Parent = batFrame
+Instance.new("UICorner", batFill).CornerRadius = UDim.new(1,0)
+
+-- Stamina bar (bottom center)
+local stFrame = Instance.new("Frame")
+stFrame.Size = UDim2.new(0, 280, 0, 16)
+stFrame.Position = UDim2.new(0.5, -140, 1, -60)
+stFrame.BackgroundColor3 = Color3.fromRGB(30,30,30); stFrame.Parent = screen
+Instance.new("UICorner", stFrame).CornerRadius = UDim.new(1,0)
+local stFill = Instance.new("Frame")
+stFill.Name = "Fill"; stFill.Size = UDim2.new(1,0,1,0)
+stFill.BackgroundColor3 = Color3.fromRGB(80,200,255); stFill.Parent = stFrame
+Instance.new("UICorner", stFill).CornerRadius = UDim.new(1,0)
+local stLabel = Instance.new("TextLabel")
+stLabel.Size = UDim2.new(1,0,1,0); stLabel.BackgroundTransparency = 1
+stLabel.TextColor3 = Color3.fromRGB(200,220,255); stLabel.TextScaled = true
+stLabel.Font = Enum.Font.Gotham; stLabel.Text = "STAMINA"; stLabel.Parent = stFrame
+
+-- Monster proximity vignette (dark screen edges)
+local vignette = Instance.new("Frame")
+vignette.Name = "Vignette"; vignette.Size = UDim2.new(1,0,1,0)
+vignette.BackgroundColor3 = Color3.fromRGB(180,0,0); vignette.BackgroundTransparency = 1
+vignette.BorderSizePixel = 0; vignette.ZIndex = 8; vignette.Parent = screen
+
+-- Hiding overlay (dark tint when inside closet)
+local hideOverlay = Instance.new("Frame")
+hideOverlay.Name = "HideOverlay"; hideOverlay.Size = UDim2.new(1,0,1,0)
+hideOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0); hideOverlay.BackgroundTransparency = 1
+hideOverlay.ZIndex = 7; hideOverlay.Parent = screen
+
+-- Has key indicator
+local keyIndicator = Instance.new("TextLabel")
+keyIndicator.Size = UDim2.new(0, 120, 0, 36)
+keyIndicator.Position = UDim2.new(0, 16, 0, 60)
+keyIndicator.BackgroundColor3 = Color3.fromRGB(212,175,55); keyIndicator.BackgroundTransparency = 0.3
+keyIndicator.TextColor3 = Color3.fromRGB(0,0,0); keyIndicator.TextScaled = true
+keyIndicator.Font = Enum.Font.GothamBold; keyIndicator.Text = "KEY Found!"
+keyIndicator.Visible = false; keyIndicator.Parent = screen
+Instance.new("UICorner", keyIndicator).CornerRadius = UDim.new(0,8)
+
+-- ── Flashlight toggle ─────────────────────────────────────────────────────────
+local function setFlashlight(on: boolean)
+  flashOn = on
+  flashLabel.Text = if on then "Flashlight: ON" else "Flashlight: OFF"
+  flashLabel.TextColor3 = if on then Color3.fromRGB(255,255,150) else Color3.fromRGB(150,150,150)
+
+  -- Toggle a PointLight on the camera's character
+  local char = player.Character
+  if char then
+    local hrp = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+    if hrp then
+      local light = hrp:FindFirstChildOfClass("PointLight") or Instance.new("PointLight", hrp)
+      light.Enabled = on; light.Brightness = 3; light.Range = 30
+      light.Color = Color3.fromRGB(220, 220, 180)
+    end
+  end
+end
+
+-- ── Sprint ────────────────────────────────────────────────────────────────────
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+  if gameProcessed then return end
+
+  if input.KeyCode == Enum.KeyCode.F then
+    setFlashlight(not flashOn)
+  end
+
+  if input.KeyCode == Enum.KeyCode.LeftShift then
+    isSprinting = true
+    SprintUpdate:FireServer(true)
+  end
+end)
+
+UserInputService.InputEnded:Connect(function(input: InputObject)
+  if input.KeyCode == Enum.KeyCode.LeftShift then
+    isSprinting = false
+    SprintUpdate:FireServer(false)
+  end
+end)
+
+-- ── Monster proximity vignette (RenderStepped) ───────────────────────────────
+RunService.RenderStepped:Connect(function()
+  -- Smoothly intensify vignette based on monster distance
+  local maxDist = 60
+  local intensity = math.max(0, 1 - (monsterDist / maxDist))
+  vignette.BackgroundTransparency = 1 - intensity * 0.65
+
+  -- Also affect ambient light
+  Lighting.Ambient = Color3.fromRGB(
+    math.floor(80 - intensity * 60),
+    math.floor(80 - intensity * 80),
+    math.floor(80 - intensity * 80)
+  )
+end)
+
+-- ── State sync ────────────────────────────────────────────────────────────────
+type SyncPayload = {
+  room:number, alive:boolean, hiding:boolean,
+  stamina:number, battery:number, flashOn:boolean, hasKey:boolean, total:number,
+  message:string?,
+}
+
+SyncState.OnClientEvent:Connect(function(data: SyncPayload)
+  currentRoom = data.room
+  totalRooms  = data.total
+  roomLabel.Text = "Room "..data.room.."/"..data.total
+
+  -- Stamina bar
+  local stRatio = data.stamina / 100
+  TweenService:Create(stFill, TweenInfo.new(0.15), {Size = UDim2.new(stRatio,0,1,0)}):Play()
+  stFill.BackgroundColor3 = if stRatio > 0.5 then Color3.fromRGB(80,200,255)
+                             elseif stRatio > 0.2 then Color3.fromRGB(255,200,0)
+                             else Color3.fromRGB(255,60,60)
+
+  -- Battery bar
+  local batRatio = data.battery / 120
+  TweenService:Create(batFill, TweenInfo.new(0.3), {Size = UDim2.new(batRatio,0,1,0)}):Play()
+  batFill.BackgroundColor3 = if batRatio > 0.4 then Color3.fromRGB(255,255,100)
+                               elseif batRatio > 0.15 then Color3.fromRGB(255,160,0)
+                               else Color3.fromRGB(255,50,50)
+
+  -- Key indicator
+  keyIndicator.Visible = data.hasKey
+
+  -- Hiding overlay
+  TweenService:Create(hideOverlay, TweenInfo.new(0.4), {
+    BackgroundTransparency = if data.hiding then 0.3 else 1
+  }):Play()
+
+  if not data.flashOn and flashOn then
+    setFlashlight(false)
+  end
+
+  -- Optional message popup
+  if data.message then
+    local msgLbl = Instance.new("TextLabel")
+    msgLbl.Size = UDim2.new(0,260,0,44); msgLbl.Position = UDim2.new(0.5,-130,0.4,-22)
+    msgLbl.BackgroundColor3 = Color3.fromRGB(180,40,40); msgLbl.BackgroundTransparency = 0.1
+    msgLbl.TextColor3 = Color3.fromRGB(255,255,255); msgLbl.TextScaled = true
+    msgLbl.Font = Enum.Font.GothamBold; msgLbl.Text = data.message
+    msgLbl.ZIndex = 10; msgLbl.Parent = screen
+    Instance.new("UICorner", msgLbl).CornerRadius = UDim.new(0,8)
+    task.delay(2, function()
+      TweenService:Create(msgLbl, TweenInfo.new(0.3), {BackgroundTransparency=1,TextTransparency=1}):Play()
+      task.delay(0.3, function() if msgLbl.Parent then msgLbl:Destroy() end end)
+    end)
+  end
+end)
+
+-- ── Room load notification ────────────────────────────────────────────────────
+RoomLoad.OnClientEvent:Connect(function(room: number, total: number)
+  currentRoom = room; totalRooms = total
+  roomLabel.Text = "Room "..room.."/"..total
+
+  if room > total then
+    -- Victory screen
+    local victoryOverlay = Instance.new("Frame")
+    victoryOverlay.Size = UDim2.new(1,0,1,0); victoryOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    victoryOverlay.BackgroundTransparency = 0.2; victoryOverlay.ZIndex = 20; victoryOverlay.Parent = screen
+    local vTitle = Instance.new("TextLabel")
+    vTitle.Size = UDim2.new(0,400,0,80); vTitle.Position = UDim2.new(0.5,-200,0.4,-40)
+    vTitle.BackgroundTransparency = 1; vTitle.TextColor3 = Color3.fromRGB(100,255,100)
+    vTitle.TextScaled = true; vTitle.Font = Enum.Font.GothamBold
+    vTitle.Text = "YOU ESCAPED!"; vTitle.ZIndex = 21; vTitle.Parent = victoryOverlay
+    return
+  end
+
+  -- Brief flash on room transition
+  local flash = Instance.new("Frame")
+  flash.Size = UDim2.new(1,0,1,0); flash.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  flash.BackgroundTransparency = 0; flash.ZIndex = 15; flash.Parent = screen
+  TweenService:Create(flash, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+  task.delay(0.5, function() if flash.Parent then flash:Destroy() end end)
+
+  -- Initialize flashlight for new character
+  task.delay(0.1, function() setFlashlight(true) end)
+end)
+
+-- ── Monster proximity ─────────────────────────────────────────────────────────
+MonsterNear.OnClientEvent:Connect(function(dist: number)
+  monsterDist = dist
+end)
+
+-- ── Jump scare ────────────────────────────────────────────────────────────────
+JumpScare.OnClientEvent:Connect(function()
+  local jsOverlay = Instance.new("Frame")
+  jsOverlay.Size = UDim2.new(1,0,1,0); jsOverlay.BackgroundColor3 = Color3.fromRGB(255,255,255)
+  jsOverlay.BackgroundTransparency = 0; jsOverlay.ZIndex = 30; jsOverlay.Parent = screen
+
+  local jsLabel = Instance.new("TextLabel")
+  jsLabel.Size = UDim2.new(1,0,1,0); jsLabel.BackgroundTransparency = 1
+  jsLabel.TextColor3 = Color3.fromRGB(180,0,0); jsLabel.TextScaled = true
+  jsLabel.Font = Enum.Font.GothamBold; jsLabel.Text = "BOO!"; jsLabel.ZIndex = 31; jsLabel.Parent = jsOverlay
+
+  -- Screen shake (camera offset)
+  local cam = workspace.CurrentCamera
+  if cam then
+    task.spawn(function()
+      for _ = 1, 10 do
+        cam.CFrame = cam.CFrame * CFrame.new(
+          (math.random()-0.5)*2,
+          (math.random()-0.5)*2,
+          0
+        )
+        task.wait(0.05)
+      end
+    end)
+  end
+
+  task.delay(0.5, function()
+    TweenService:Create(jsOverlay, TweenInfo.new(0.3), {BackgroundTransparency=1}):Play()
+    task.delay(0.3, function() if jsOverlay.Parent then jsOverlay:Destroy() end end)
+  end)
+end)
+
+-- ── Death screen ──────────────────────────────────────────────────────────────
+PlayerKilled.OnClientEvent:Connect(function()
+  local deathOverlay = Instance.new("Frame")
+  deathOverlay.Size = UDim2.new(1,0,1,0); deathOverlay.BackgroundColor3 = Color3.fromRGB(0,0,0)
+  deathOverlay.BackgroundTransparency = 0.1; deathOverlay.ZIndex = 25; deathOverlay.Parent = screen
+
+  local deathTitle = Instance.new("TextLabel")
+  deathTitle.Size = UDim2.new(0,360,0,80); deathTitle.Position = UDim2.new(0.5,-180,0.35,-40)
+  deathTitle.BackgroundTransparency = 1; deathTitle.TextColor3 = Color3.fromRGB(200,0,0)
+  deathTitle.TextScaled = true; deathTitle.Font = Enum.Font.GothamBold
+  deathTitle.Text = "YOU DIED"; deathTitle.ZIndex = 26; deathTitle.Parent = deathOverlay
+
+  local deathRoom = Instance.new("TextLabel")
+  deathRoom.Size = UDim2.new(0,300,0,40); deathRoom.Position = UDim2.new(0.5,-150,0.5,-20)
+  deathRoom.BackgroundTransparency = 1; deathRoom.TextColor3 = Color3.fromRGB(160,160,160)
+  deathRoom.TextScaled = true; deathRoom.Font = Enum.Font.Gotham
+  deathRoom.Text = "Room "..currentRoom.."/"..totalRooms
+  deathRoom.ZIndex = 26; deathRoom.Parent = deathOverlay
+
+  local retryBtn = Instance.new("TextButton")
+  retryBtn.Size = UDim2.new(0,180,0,50); retryBtn.Position = UDim2.new(0.5,-90,0.6,-25)
+  retryBtn.BackgroundColor3 = Color3.fromRGB(180,0,0); retryBtn.TextColor3 = Color3.fromRGB(255,255,255)
+  retryBtn.TextScaled = true; retryBtn.Font = Enum.Font.GothamBold; retryBtn.Text = "Try Again"
+  retryBtn.ZIndex = 26; retryBtn.Parent = deathOverlay
+  Instance.new("UICorner", retryBtn).CornerRadius = UDim.new(0,10)
+
+  retryBtn.MouseButton1Click:Connect(function()
+    deathOverlay:Destroy()
+    monsterDist = 1000
+    Lighting.Ambient = Color3.fromRGB(80,80,80)
+    player:LoadCharacter()
+  end)
+
+  -- Auto-fade after 5s if not clicked
+  task.delay(5, function()
+    if deathOverlay.Parent then
+      TweenService:Create(deathOverlay, TweenInfo.new(0.5), {BackgroundTransparency=1}):Play()
+      task.delay(0.5, function() if deathOverlay.Parent then deathOverlay:Destroy() end end)
+    end
+  end)
+end)
+
+-- ── Battery pickup flash ──────────────────────────────────────────────────────
+PickupBattery.OnClientEvent:Connect(function()
+  local flash = Instance.new("Frame")
+  flash.Size = UDim2.new(1,0,1,0); flash.BackgroundColor3 = Color3.fromRGB(255,255,100)
+  flash.BackgroundTransparency = 0.7; flash.ZIndex = 12; flash.Parent = screen
+  TweenService:Create(flash, TweenInfo.new(0.4), {BackgroundTransparency=1}):Play()
+  task.delay(0.4, function() if flash.Parent then flash:Destroy() end end)
+end)
+
+-- Initialize flashlight on spawn
+player.CharacterAdded:Connect(function()
+  task.delay(0.5, function() setFlashlight(true) end)
+  monsterDist = 1000
+end)
+
+print("[StoryHorrorClient] Ready — F=flashlight, Shift=sprint, E=door/key, F=hide")
+`,
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const GAME_SYSTEMS: Record<string, GameSystem> = {
@@ -8170,6 +11380,31 @@ export const GAME_SYSTEMS: Record<string, GameSystem> = {
     description: 'Zone detection via ZoneTag attribute, music/lighting transitions, zone gates, and name popup',
     files: [ZONE_SERVER, ZONE_CLIENT],
   },
+  towerdefense: {
+    id: 'towerdefense',
+    description: '10-wave tower defense with grid placement, 3 tower types, targeting AI, and DataStore high-wave tracking',
+    files: [TOWER_DEFENSE_SERVER, TOWER_DEFENSE_CLIENT],
+  },
+  animefighter: {
+    id: 'animefighter',
+    description: 'Anime fighter with 4 ability keys, M1 combo, blocking, dodge, damage numbers, stamina, and kill feed',
+    files: [ANIME_FIGHTER_SERVER, ANIME_FIGHTER_CLIENT],
+  },
+  findmorphs: {
+    id: 'findmorphs',
+    description: '30 collectible morphs scattered across the map with touch detection, DataStore tracking, hint arrows, and collection grid GUI',
+    files: [FIND_MORPHS_SERVER, FIND_MORPHS_CLIENT],
+  },
+  clickersim: {
+    id: 'clickersim',
+    description: 'Clicker simulator with anti-exploit, rebirth, auto-clicker upgrades, zone gates, and K/M/B/T number abbreviation',
+    files: [CLICKER_SIM_SERVER, CLICKER_SIM_CLIENT],
+  },
+  storyhorror: {
+    id: 'storyhorror',
+    description: '50-room horror with PathfindingService monster AI, hiding spots, key puzzles, flashlight battery, and jump scare overlay',
+    files: [STORY_HORROR_SERVER, STORY_HORROR_CLIENT],
+  },
 }
 
 // ─── Intent detection helper ─────────────────────────────────────────────────
@@ -8267,6 +11502,26 @@ const SYSTEM_PATTERNS: Array<{ patterns: RegExp[]; systemId: string }> = [
   {
     patterns: [/\b(zone system|area system|regions?|zone gate|zone transition|zone detection|zone effect|lighting zone|zone music|enter zone)\b/i],
     systemId: 'zone',
+  },
+  {
+    patterns: [/\b(tower defense|td game|waves?|tower placement|enemy waves?|wave spawner|toilet tower|all star tower|tower system)\b/i],
+    systemId: 'towerdefense',
+  },
+  {
+    patterns: [/\b(anime fighter|fighting game|battlegrounds?|abilities|stands?|combos?|strongest battlegrounds?|anime fight|ability system|m1 combo)\b/i],
+    systemId: 'animefighter',
+  },
+  {
+    patterns: [/\b(find the|morphs?|markers?|hidden items?|collectibles?|scavenger|find the memes?|find the markers?|morph system|collectible system)\b/i],
+    systemId: 'findmorphs',
+  },
+  {
+    patterns: [/\b(clicker|clicking simulator|idle game|tap game|auto.?clicker|rebirth clicker|pet simulator|clicking game|clicker sim|clicker system)\b/i],
+    systemId: 'clickersim',
+  },
+  {
+    patterns: [/\b(horror game|doors style|scary game|monster chase|rooms horror|escape rooms?|apeirophobia|the mimic|horror system|jumpscare|jump scare)\b/i],
+    systemId: 'storyhorror',
   },
 ]
 
