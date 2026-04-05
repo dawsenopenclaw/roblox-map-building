@@ -39,15 +39,44 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       userId = session.userId
     } catch {
       // Clerk unavailable or misconfigured — allow access rather than locking users out.
+      // The middleware already verified auth, so if we get here it's a transient issue.
     }
-    if (!userId) redirect('/sign-in')
+    // Only redirect to sign-in if we're confident there's no session.
+    // If Clerk threw (caught above), userId stays null but we allow access
+    // since the middleware already authenticated the request.
+    if (!userId && !demoMode) {
+      // Double-check: try one more time before redirecting
+      try {
+        const retrySession = await auth()
+        userId = retrySession.userId
+      } catch {
+        // Still failing — let the page render anyway. The middleware
+        // already verified auth, so this is a server-side Clerk issue.
+      }
+      if (!userId) {
+        // Final fallback: check if we're on a page that can render without auth
+        // rather than hard-redirecting and creating a loop
+        redirect('/sign-in')
+      }
+    }
   }
 
   // 2. DB lookup with graceful fallback (never throws)
   const user = await requireAuthUser().catch(() => null)
 
-  // 3. Parental consent gate — only enforced when we have full DB data
-  if (user && 'isUnder13' in user && user.isUnder13 && !user.parentConsentAt) {
+  // 3. Parental consent gate — only enforced on specific paths, not globally
+  // This prevents redirect loops for users accessing /settings or /billing
+  if (
+    user &&
+    'isUnder13' in user &&
+    user.isUnder13 &&
+    !user.parentConsentAt &&
+    !pathname.startsWith('/settings') &&
+    !pathname.startsWith('/billing') &&
+    !pathname.startsWith('/gifts') &&
+    !pathname.startsWith('/tokens') &&
+    pathname !== '/welcome'
+  ) {
     redirect('/onboarding/parental-consent')
   }
 

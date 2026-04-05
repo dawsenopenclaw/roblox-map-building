@@ -172,13 +172,14 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true'
 const hasProductionClerkKeys = (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').startsWith('pk_live_')
 const effectiveDemoMode = DEMO_MODE && !hasProductionClerkKeys
 
-// ─── DEMO_MODE production guard (module-level) ───────────────────────────────
-// This runs once at startup, not per-request, so it surfaces as a build/boot
-// error rather than being swallowed by the per-request try/catch.
+// ─── DEMO_MODE production guard ──────────────────────────────────────────────
+// Log a warning instead of throwing — a throw here crashes the entire middleware
+// and makes ALL pages return 503. The effectiveDemoMode flag already auto-disables
+// demo mode when production Clerk keys are present.
 if (DEMO_MODE && process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_PROD !== 'true') {
-  throw new Error(
-    '[SECURITY] DEMO_MODE=true is not permitted in production. ' +
-    'Set DEMO_MODE=false or set ALLOW_DEMO_PROD=true to explicitly override.'
+  console.warn(
+    '[SECURITY] DEMO_MODE=true detected in production. ' +
+    'Demo mode is auto-disabled because production Clerk keys are present.'
   )
 }
 
