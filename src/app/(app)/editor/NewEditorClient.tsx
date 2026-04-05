@@ -1786,8 +1786,14 @@ function EditorInner() {
 
   // Layout state — persisted to localStorage
   const [editorLayout, setEditorLayout] = useState<EditorLayout>(() => {
-    if (typeof window === 'undefined') return 'default'
-    return (localStorage.getItem('fg_editor_layout') as EditorLayout) || 'minimal'
+    if (typeof window === 'undefined') return 'minimal'
+    // Force minimal as default — clean UI. Users can switch via layout buttons.
+    const saved = localStorage.getItem('fg_editor_layout') as EditorLayout | null
+    if (saved === 'default') {
+      localStorage.setItem('fg_editor_layout', 'minimal')
+      return 'minimal'
+    }
+    return saved || 'minimal'
   })
 
   useEffect(() => {
