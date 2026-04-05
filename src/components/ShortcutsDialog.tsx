@@ -9,7 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 function useModKey() {
   const [mod, setMod] = useState('Ctrl')
   useEffect(() => {
-    if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)) {
+    if (typeof navigator === 'undefined') return
+    // navigator.platform is deprecated — prefer userAgentData, fall back to userAgent
+    const ua =
+      (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform ||
+      navigator.userAgent
+    if (/Mac|iPhone|iPad|iPod/i.test(ua)) {
       setMod('⌘')
     }
   }, [])

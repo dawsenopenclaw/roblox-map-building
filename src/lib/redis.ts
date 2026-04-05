@@ -54,11 +54,17 @@ export const redis = new Proxy({} as Redis, {
       // pipeline/multi need a chainable stub so callers can do .incr(k).exec()
       if (prop === 'pipeline' || prop === 'multi') return () => pipelineChainable
       if (['get', 'set', 'del', 'expire', 'ttl', 'exists', 'incr', 'decr',
-           'hget', 'hset', 'hdel', 'hgetall', 'keys', 'scan',
-           'lpush', 'rpush', 'lrange', 'llen',
-           'sadd', 'srem', 'smembers',
-           'zadd', 'zrange', 'zrem', 'zscore', 'zrank',
-           'publish', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe'].includes(prop))
+           'mget', 'mset', 'msetnx',
+           'hget', 'hset', 'hdel', 'hgetall', 'hmget', 'hmset', 'hincrby', 'hkeys', 'hvals', 'hlen',
+           'keys', 'scan', 'type', 'rename',
+           'lpush', 'rpush', 'lrange', 'llen', 'lpop', 'rpop', 'lrem', 'lindex', 'lset',
+           'sadd', 'srem', 'smembers', 'sismember', 'scard', 'sunion', 'sinter', 'sdiff',
+           'zadd', 'zrange', 'zrangebyscore', 'zrangebylex', 'zrem', 'zscore', 'zrank', 'zrevrank',
+           'zcount', 'zcard', 'zincrby', 'zrevrange', 'zrevrangebyscore',
+           'publish', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe',
+           'pexpire', 'pttl', 'persist', 'dump', 'restore', 'object',
+           'bitcount', 'bitop', 'bitpos', 'getbit', 'setbit',
+           'geoadd', 'geodist', 'geopos', 'georadius', 'geosearch'].includes(prop))
         return () => Promise.resolve(null)
       return undefined
     }

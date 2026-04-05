@@ -24,21 +24,25 @@ export async function POST(req: NextRequest) {
 
     // Demo mode — no Clerk session
     if (!clerkId) {
-      return NextResponse.json({
-        url: '/pricing?demo=true',
-        demo: true,
-        message: 'Sign in to complete checkout',
-      })
+      return NextResponse.json(
+        {
+          error: 'Authentication required',
+          redirect: '/sign-in',
+        },
+        { status: 401 },
+      )
     }
 
-    // Try real Stripe checkout
+    // Stripe not configured — return a clear, non-crashing error
     const stripeKeyMissing = !process.env.STRIPE_SECRET_KEY
     if (stripeKeyMissing) {
-      return NextResponse.json({
-        url: '/pricing?demo=true',
-        demo: true,
-        message: 'Billing not yet configured',
-      })
+      return NextResponse.json(
+        {
+          error: 'Stripe not configured yet',
+          setup: 'Add STRIPE_SECRET_KEY to environment variables',
+        },
+        { status: 503 },
+      )
     }
 
     const { db } = await import('@/lib/db')

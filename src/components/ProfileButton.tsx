@@ -51,10 +51,17 @@ export function ProfileButton() {
     return () => document.removeEventListener('keydown', handler)
   }, [])
 
-  // Clamp dropdown inside viewport
+  // Clamp dropdown inside viewport — always reset first so previous clamps don't persist
   const clampDropdown = useCallback(() => {
     if (!dropdownRef.current) return
     const el = dropdownRef.current
+
+    // Reset any previously applied overrides before measuring
+    el.style.maxHeight = ''
+    el.style.overflowY = ''
+    el.style.left = ''
+    el.style.right = ''
+
     const rect = el.getBoundingClientRect()
     const viewH = window.innerHeight
     const viewW = window.innerWidth
@@ -66,7 +73,7 @@ export function ProfileButton() {
       el.style.overflowY = 'auto'
     }
 
-    // If it overflows left (half screen), shift it
+    // If it overflows left, shift it right
     if (rect.left < 8) {
       el.style.right = 'auto'
       el.style.left = `${-rect.left + 8}px`

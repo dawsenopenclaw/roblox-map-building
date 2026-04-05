@@ -108,7 +108,7 @@ function Label({ children }: { children: React.ReactNode }) {
 function SendGiftSection() {
   const { show } = useToast()
   const [giftType, setGiftType] = useState<GiftType>('subscription')
-  const [subscriptionTier, setSubscriptionTier] = useState<string>('hobby')
+  const [subscriptionTier, setSubscriptionTier] = useState<string>('HOBBY')
   const [tokenPack, setTokenPack] = useState<string>('starter')
   const [recipientEmail, setRecipientEmail] = useState('')
   const [message, setMessage] = useState('')

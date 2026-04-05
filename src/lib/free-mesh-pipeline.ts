@@ -318,7 +318,7 @@ export function generatePlacementLuau(opts: {
   objectType: MeshObjectType
 }): string {
   const { rbxAssetId, glbUrl, meshName, objectType } = opts
-  const safeName = meshName.replace(/[^%w_]/g, '').slice(0, 30) || 'ForjeAIMesh'
+  const safeName = meshName.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30) || 'ForjeAIMesh'
 
   // If we have a real rbxassetid, use MeshPart directly
   const meshSetup = rbxAssetId

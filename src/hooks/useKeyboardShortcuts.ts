@@ -68,12 +68,15 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers) {
 
       // ── Modifier shortcuts (always fire) ────────────────────────────────────
       if (mod) {
-        // Ctrl+K — Command palette
+        // Ctrl+K — Command palette (skip if target opted out via data-no-palette)
         if (e.key === 'k' || e.key === 'K') {
-          e.preventDefault()
-          clearGSequence()
-          handlers.onCommandPalette()
-          return
+          const noPalette = (target as HTMLElement).dataset?.noPalette === 'true'
+          if (!noPalette) {
+            e.preventDefault()
+            clearGSequence()
+            handlers.onCommandPalette()
+            return
+          }
         }
 
         // Ctrl+N — New project

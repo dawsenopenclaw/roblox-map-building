@@ -14,14 +14,15 @@ export interface KeyboardActions {
 
 /** All registered shortcuts — used for the help overlay */
 export const SHORTCUTS = [
-  { keys: ['Ctrl', 'K'], label: 'Command palette', category: 'Navigation' },
-  { keys: ['Ctrl', '/'], label: 'Focus chat input', category: 'Navigation' },
+  { keys: ['Ctrl', 'K'], label: 'Focus chat input', category: 'Navigation' },
+  { keys: ['Ctrl', '/'], label: 'Toggle shortcuts help', category: 'Navigation' },
   { keys: ['Ctrl', '\\'], label: 'Toggle viewport expand', category: 'Viewport' },
   { keys: ['Ctrl', 'B'], label: 'Toggle sidebar', category: 'Navigation' },
   { keys: ['Ctrl', 'N'], label: 'New chat', category: 'Chat' },
   { keys: ['Esc'], label: 'Close panel / blur input', category: 'Navigation' },
   { keys: ['?'], label: 'Toggle shortcuts help', category: 'Navigation' },
   { keys: ['Enter'], label: 'Send message', category: 'Chat' },
+  { keys: ['Ctrl', 'Enter'], label: 'Send message (alternative)', category: 'Chat' },
   { keys: ['Shift', 'Enter'], label: 'New line in chat', category: 'Chat' },
 ] as const
 
@@ -38,17 +39,17 @@ export function useEditorKeyboard(actions: KeyboardActions) {
         target instanceof HTMLInputElement ||
         target?.getAttribute('contenteditable') === 'true'
 
-      // Ctrl/Cmd + K → command palette
+      // Ctrl/Cmd + K → focus chat input
       if (mod && e.key === 'k') {
         e.preventDefault()
-        actions.openCommandPalette()
+        actions.focusChatInput()
         return
       }
 
-      // Ctrl/Cmd + / → focus chat
+      // Ctrl/Cmd + / → toggle shortcuts help
       if (mod && e.key === '/') {
         e.preventDefault()
-        actions.focusChatInput()
+        actions.toggleShortcutsHelp()
         return
       }
 

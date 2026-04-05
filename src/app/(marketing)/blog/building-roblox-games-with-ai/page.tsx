@@ -26,7 +26,7 @@ const jsonLd = {
   publisher: {
     '@type': 'Organization',
     name: 'ForjeGames LLC',
-    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png' },
+    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png', width: 400, height: 400 },
   },
   description:
     'How AI agents remove scripting and terrain barriers for Roblox creators, transforming ideas into published games in hours.',

@@ -667,7 +667,24 @@ export function CommandPalette({
       icon: '⬖',
       action: wrap('ai-3d-model', () => navigate('/editor?prompt=generate+3d+model')),
     },
+    // ── Connect Studio ────────────────────────────────────────────────────
+    {
+      id: 'action-connect-studio',
+      group: 'Actions',
+      label: 'Connect Studio',
+      description: 'Link Roblox Studio to ForjeGames via the plugin',
+      icon: '⊛',
+      action: wrap('action-connect-studio', () => navigate('/download')),
+    },
     // ── Help ──────────────────────────────────────────────────────────────
+    {
+      id: 'help-center',
+      group: 'Help',
+      label: 'Help Center',
+      description: 'Guides, FAQs and support articles',
+      icon: '◻',
+      action: wrap('help-center', () => window.open('https://docs.forgegames.com/help', '_blank')),
+    },
     {
       id: 'help-docs',
       group: 'Help',

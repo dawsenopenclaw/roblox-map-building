@@ -135,7 +135,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#09090b" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon.svg" />
         <link rel="icon" type="image/svg+xml" sizes="16x16" href="/favicon.svg" />
@@ -190,11 +190,11 @@ export default function RootLayout({
           <SplashScreen>
             <Suspense fallback={null}>
               <GlassOrbEffect />
-              <ProfileButton />
               <SkipToContent />
               <OfflineIndicator />
               <GlobalShortcuts />
               <ThemeProvider>
+                <ProfileButton />
                 <ToastProvider>
                   <PostHogConsentWrapper>
                     <main id="main-content">
@@ -202,9 +202,9 @@ export default function RootLayout({
                     </main>
                   </PostHogConsentWrapper>
                 </ToastProvider>
+                <InstallPrompt />
+                <CookieBanner />
               </ThemeProvider>
-              <InstallPrompt />
-              <CookieBanner />
             </Suspense>
           </SplashScreen>
         </ClerkProvider>

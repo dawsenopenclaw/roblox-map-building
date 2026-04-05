@@ -127,8 +127,37 @@ export default function Footer() {
               <span className="text-white">Games</span>
             </Link>
             <p className="text-[#8B95B0] text-sm mt-2 max-w-xs leading-relaxed">
-              AI-powered Roblox game development.
+              Your game. Forjed by AI.
             </p>
+            <p className="text-[#6B7394] text-xs mt-1">
+              Built by Forje Labs
+            </p>
+          </div>
+        </div>
+
+        {/* Testimonial quote */}
+        <div
+          className="rounded-2xl px-7 py-5 mb-10"
+          style={{
+            background: 'rgba(212,175,55,0.04)',
+            border: '1px solid rgba(212,175,55,0.12)',
+          }}
+        >
+          <p className="text-sm leading-relaxed mb-3" style={{ color: '#8B95B0' }}>
+            &ldquo;Finally, an AI that builds the WHOLE game, not just scripts&rdquo;
+          </p>
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+              style={{
+                background: 'hsl(30, 45%, 20%)',
+                border: '1px solid rgba(212,175,55,0.25)',
+                color: '#D4AF37',
+              }}
+            >
+              RK
+            </div>
+            <span className="text-[12px]" style={{ color: '#52525B' }}>RK &mdash; Roblox creator</span>
           </div>
         </div>
 

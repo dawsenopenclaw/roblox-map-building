@@ -1,5 +1,5 @@
 --[[
-  ForjeGames Studio Plugin v4.4.0 — Main Entry
+  ForjeGames Studio Plugin v4.6.0 — Main Entry
   Dark theme: #0a0a0a bg, #D4AF37 gold accent
 
   Auth flow: user enters 6-char code from forjegames.com/editor

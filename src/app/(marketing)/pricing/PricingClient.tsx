@@ -15,6 +15,7 @@ import {
   Sparkles,
   Crown,
   Shield,
+  AlertTriangle,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -191,6 +192,74 @@ function formatPrice(p: number) {
 }
 
 // ---------------------------------------------------------------------------
+// useCheckout — shared hook for all checkout actions
+// ---------------------------------------------------------------------------
+
+type CheckoutPayload =
+  | { type: 'subscription'; tier: string; yearly: boolean }
+  | { type: 'token_pack'; packSlug: string }
+
+type CheckoutResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string; redirect?: string }
+
+async function postCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
+  let res: Response
+  try {
+    res = await fetch('/api/billing/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    return { ok: false, error: 'Network error — please try again.' }
+  }
+
+  let data: Record<string, unknown>
+  try {
+    data = (await res.json()) as Record<string, unknown>
+  } catch {
+    return { ok: false, error: 'Unexpected server response.' }
+  }
+
+  if (res.status === 401 && typeof data.redirect === 'string') {
+    return { ok: false, error: 'Sign in to continue.', redirect: data.redirect as string }
+  }
+  if (!res.ok) {
+    const msg = typeof data.error === 'string' ? data.error : 'Checkout failed.'
+    const setup = typeof data.setup === 'string' ? ` ${data.setup}` : ''
+    return { ok: false, error: `${msg}${setup}` }
+  }
+  if (typeof data.url === 'string') {
+    return { ok: true, url: data.url }
+  }
+  return { ok: false, error: 'No checkout URL returned.' }
+}
+
+// ---------------------------------------------------------------------------
+// ErrorToast — dismissible banner shown when checkout fails
+// ---------------------------------------------------------------------------
+
+function ErrorToast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
+  return (
+    <div
+      role="alert"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-start gap-3 bg-[#1A0F0F] border border-red-500/30 text-red-300 rounded-2xl px-5 py-4 shadow-2xl max-w-sm w-full text-sm"
+    >
+      <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-400" />
+      <span className="flex-1 leading-relaxed">{message}</span>
+      <button
+        onClick={onDismiss}
+        aria-label="Dismiss"
+        className="text-red-500/60 hover:text-red-400 transition-colors flex-shrink-0 mt-0.5"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // FaqItem — animated accordion
 // ---------------------------------------------------------------------------
 
@@ -307,7 +376,38 @@ function CompareCell({
 // TokenPacksSection
 // ---------------------------------------------------------------------------
 
-function TokenPacksSection() {
+// slug map: display name → API slug
+const PACK_SLUGS: Record<string, string> = {
+  Starter: 'starter',
+  Creator: 'creator',
+  Pro: 'pro',
+}
+
+function TokenPacksSection({
+  onError,
+}: {
+  onError: (msg: string) => void
+}) {
+  const [loadingPack, setLoadingPack] = useState<string | null>(null)
+
+  async function handleBuyPack(packName: string) {
+    const packSlug = PACK_SLUGS[packName]
+    if (!packSlug) return
+    setLoadingPack(packName)
+    try {
+      const result = await postCheckout({ type: 'token_pack', packSlug })
+      if (result.ok) {
+        window.location.href = result.url
+      } else if (result.redirect) {
+        window.location.href = result.redirect
+      } else {
+        onError(result.error)
+      }
+    } finally {
+      setLoadingPack(null)
+    }
+  }
+
   return (
     <section className="mb-24">
       <div className="text-center mb-10">
@@ -322,6 +422,7 @@ function TokenPacksSection() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
         {TOKEN_PACKS.map((pack) => {
           const isBestValue = pack.badge === 'Best Value'
+          const isLoading = loadingPack === pack.name
           return (
             <div
               key={pack.name}
@@ -374,9 +475,7 @@ function TokenPacksSection() {
                 <p className="text-[#6B7699] text-sm mb-5">{pack.description}</p>
 
                 <div className="flex items-end gap-1.5 mb-1">
-                  <span
-                    className={`text-4xl font-extrabold tracking-tight ${isBestValue ? 'text-white' : 'text-white'}`}
-                  >
+                  <span className="text-4xl font-extrabold tracking-tight text-white">
                     {pack.price}
                   </span>
                 </div>
@@ -386,9 +485,10 @@ function TokenPacksSection() {
                   {pack.tokens} tokens
                 </p>
 
-                <Link
-                  href="/sign-up"
-                  className={`block text-center font-bold py-3 rounded-xl text-sm transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] ${
+                <button
+                  onClick={() => void handleBuyPack(pack.name)}
+                  disabled={isLoading}
+                  className={`w-full text-center font-bold py-3 rounded-xl text-sm transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 ${
                     isBestValue
                       ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.4)]'
                       : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
@@ -399,8 +499,8 @@ function TokenPacksSection() {
                       : {}
                   }
                 >
-                  Buy Pack
-                </Link>
+                  {isLoading ? 'Redirecting...' : 'Buy Pack'}
+                </button>
               </div>
             </div>
           )
@@ -426,9 +526,10 @@ type SubscribeCtaProps = {
   annual: boolean
   currentTier: string | null
   onManageBilling: () => void
+  onError: (msg: string) => void
 }
 
-function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, onManageBilling }: SubscribeCtaProps) {
+function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, onManageBilling, onError }: SubscribeCtaProps) {
   const [loading, setLoading] = useState(false)
 
   const isCurrent = currentTier !== null && currentTier === tierKey
@@ -470,34 +571,30 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, o
   async function handleCheckout() {
     setLoading(true)
     try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'subscription',
-          tier: tierKey,
-          yearly: annual,
-        }),
+      const result = await postCheckout({
+        type: 'subscription',
+        tier: tierKey,
+        yearly: annual,
       })
-      const data = await res.json() as { url?: string; demo?: boolean }
-      if (data.url) {
-        window.location.href = data.url
+      if (result.ok) {
+        window.location.href = result.url
+      } else if (result.redirect) {
+        window.location.href = result.redirect
+      } else {
+        onError(result.error)
       }
-    } catch {
-      window.location.href = ctaHref
     } finally {
       setLoading(false)
     }
   }
 
-  // Not yet subscribed and this tier needs auth — fall through to sign-up if demo
   const label = loading ? 'Redirecting...' : isSubscribed ? 'Switch Plan' : cta
 
   return (
     <button
       className={className}
       style={style}
-      onClick={handleCheckout}
+      onClick={() => void handleCheckout()}
       disabled={loading}
     >
       {label}
@@ -510,8 +607,13 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, o
 // ---------------------------------------------------------------------------
 
 export default function PricingClient() {
-  const [annual, setAnnual]   = useState(false)
-  const [openFaq, setOpenFaq] = useState<string | null>(null)
+  const [annual, setAnnual]     = useState(false)
+  const [openFaq, setOpenFaq]   = useState<string | null>(null)
+  const [toastMsg, setToastMsg] = useState<string | null>(null)
+
+  const showError = useCallback((msg: string) => {
+    setToastMsg(msg)
+  }, [])
 
   // Fetch current billing status to highlight active plan
   const { data: billingStatus } = useSWR<{ tier: string } | null>(
@@ -638,16 +740,21 @@ export default function PricingClient() {
             Upgrade when you&apos;re ready.
           </p>
 
-          {/* Competitor differentiation badge */}
-          <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 mb-10 text-sm font-medium"
-            style={{
-              background: 'rgba(212,175,55,0.07)',
-              border: '1px solid rgba(212,175,55,0.2)',
-              color: '#D4AF37',
-            }}
-          >
-            <Shield className="w-4 h-4 flex-shrink-0" />
-            The only Roblox AI that builds terrain, scripts, 3D assets, UI &amp; economy — not just code
+          {/* Competitor differentiation */}
+          <div className="flex flex-col items-center gap-2 mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium"
+              style={{
+                background: 'rgba(212,175,55,0.07)',
+                border: '1px solid rgba(212,175,55,0.2)',
+                color: '#D4AF37',
+              }}
+            >
+              <Shield className="w-4 h-4 flex-shrink-0" />
+              The only Roblox AI that builds the whole game — not just scripts
+            </div>
+            <p className="text-[12px]" style={{ color: '#3D4A6A' }}>
+              Other tools: scripts only &nbsp;&middot;&nbsp; Forje: terrain + scripts + 3D assets + UI + economy
+            </p>
           </div>
 
           {/* Billing toggle */}
@@ -814,14 +921,25 @@ export default function PricingClient() {
                     annual={annual}
                     currentTier={currentTier}
                     onManageBilling={openBillingPortal}
+                    onError={showError}
                   />
 
                   {/* Trial / free notice */}
-                  <p className="text-center text-[11px] text-[#3D4A6A] mb-6 leading-relaxed">
+                  <p className="text-center text-[11px] text-[#3D4A6A] mb-1 leading-relaxed">
                     {(tier.priceMonthly as number) > 0
                       ? '14-day free trial · No credit card required'
-                      : 'No credit card required'}
+                      : (
+                        <span className="text-[#6B9A6B] font-semibold">
+                          No credit card required — free forever
+                        </span>
+                      )}
                   </p>
+                  {(tier.priceMonthly as number) > 0 && (
+                    <p className="text-center text-[11px] text-[#3D4A6A] mb-6 leading-relaxed">
+                      30-day money-back guarantee
+                    </p>
+                  )}
+                  {(tier.priceMonthly as number) === 0 && <div className="mb-6" />}
 
                   {/* Divider */}
                   <div
@@ -991,7 +1109,7 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Token Packs Section                                                 */}
         {/* ------------------------------------------------------------------ */}
-        <TokenPacksSection />
+        <TokenPacksSection onError={showError} />
 
         {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}
@@ -1055,6 +1173,11 @@ export default function PricingClient() {
         </div>
 
       </div>
+
+      {/* Error toast — shown when checkout fails */}
+      {toastMsg && (
+        <ErrorToast message={toastMsg} onDismiss={() => setToastMsg(null)} />
+      )}
     </div>
   )
 }

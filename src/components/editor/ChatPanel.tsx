@@ -130,6 +130,278 @@ function stripCodeBlocksForDisplay(content: string): string {
   return result.replace(/\n{3,}/g, '\n\n').trim()
 }
 
+// ─── Luau syntax highlighting ─────────────────────────────────────────────────
+
+function highlightLuau(code: string): React.ReactNode[] {
+  type Span = { start: number; end: number; type: 'keyword' | 'string' | 'comment' | 'number' }
+  const spans: Span[] = []
+
+  const addMatches = (re: RegExp, type: Span['type']) => {
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(code)) !== null) {
+      spans.push({ start: m.index, end: m.index + m[0].length, type })
+    }
+  }
+
+  // Priority: comments (highest) > strings > numbers > keywords
+  addMatches(/(--\[\[[\s\S]*?\]\]|--[^\n]*)/g, 'comment')
+  addMatches(/(["'])(?:\\.|(?!\1)[^\\])*?\1/g, 'string')
+  addMatches(/\b(\d+\.?\d*(?:[eE][+-]?\d+)?|0x[0-9a-fA-F]+)\b/g, 'number')
+  addMatches(/\b(local|function|if|then|else|elseif|end|for|while|do|repeat|until|return|break|continue|in|and|or|not|true|false|nil|self|type|export|import)\b/g, 'keyword')
+
+  spans.sort((a, b) => a.start - b.start)
+  const resolved: Span[] = []
+  let cursor = 0
+  for (const span of spans) {
+    if (span.start < cursor) continue
+    resolved.push(span)
+    cursor = span.end
+  }
+
+  const colorMap: Record<Span['type'], string> = {
+    keyword: '#D4AF37',
+    string: '#4ADE80',
+    comment: 'rgba(255,255,255,0.28)',
+    number: '#67E8F9',
+  }
+
+  const nodes: React.ReactNode[] = []
+  let pos = 0
+  for (const span of resolved) {
+    if (pos < span.start) nodes.push(code.slice(pos, span.start))
+    nodes.push(
+      <span key={span.start} style={{ color: colorMap[span.type] }}>
+        {code.slice(span.start, span.end)}
+      </span>
+    )
+    pos = span.end
+  }
+  if (pos < code.length) nodes.push(code.slice(pos))
+  return nodes
+}
+
+// ─── LuauCodeBlock component ──────────────────────────────────────────────────
+
+function LuauCodeBlock({
+  code,
+  onSendToStudio,
+  studioConnected,
+}: {
+  code: string
+  onSendToStudio?: (luauCode: string) => void
+  studioConnected?: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code).catch(() => {})
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleRun = () => {
+    if (!onSendToStudio) return
+    onSendToStudio(code)
+    setSent(true)
+    setTimeout(() => setSent(false), 2000)
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        marginBottom: 4,
+        borderRadius: 10,
+        background: 'rgba(0,0,0,0.45)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '5px 10px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          background: 'rgba(255,255,255,0.02)',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            color: 'rgba(212,175,55,0.5)',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase' as const,
+          }}
+        >
+          Luau
+        </span>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {studioConnected && onSendToStudio && (
+            <button
+              onClick={handleRun}
+              style={{
+                fontSize: 10,
+                padding: '2px 8px',
+                borderRadius: 5,
+                border: sent ? '1px solid rgba(74,222,128,0.4)' : '1px solid rgba(212,175,55,0.3)',
+                background: sent ? 'rgba(74,222,128,0.1)' : 'rgba(212,175,55,0.1)',
+                color: sent ? 'rgba(74,222,128,0.85)' : 'rgba(212,175,55,0.85)',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'all 0.15s',
+              }}
+            >
+              {sent ? 'Sent!' : 'Run in Studio'}
+            </button>
+          )}
+          <button
+            onClick={handleCopy}
+            style={{
+              fontSize: 10,
+              padding: '2px 8px',
+              borderRadius: 5,
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: copied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
+              color: copied ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.35)',
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              transition: 'all 0.15s',
+            }}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      </div>
+      <pre
+        style={{
+          margin: 0,
+          padding: '10px 12px',
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: 'rgba(255,255,255,0.72)',
+          overflowX: 'auto',
+          maxHeight: 320,
+          overflowY: 'auto',
+          whiteSpace: 'pre',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(255,255,255,0.08) transparent',
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        }}
+      >
+        <code>{highlightLuau(code)}</code>
+      </pre>
+    </div>
+  )
+}
+
+// ─── Content renderer: splits prose and fenced code blocks ───────────────────
+
+function RenderMessageContent({
+  content,
+  onSendToStudio,
+  studioConnected,
+}: {
+  content: string
+  onSendToStudio?: (luauCode: string) => void
+  studioConnected?: boolean
+}) {
+  const parts: React.ReactNode[] = []
+  const fenceRe = /```(?:lua|luau|[a-z]*)?\n([\s\S]*?)```/g
+  let last = 0
+  let key = 0
+  let m: RegExpExecArray | null
+  fenceRe.lastIndex = 0
+  while ((m = fenceRe.exec(content)) !== null) {
+    if (m.index > last) {
+      parts.push(
+        <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {content.slice(last, m.index)}
+        </span>
+      )
+    }
+    parts.push(
+      <LuauCodeBlock
+        key={key++}
+        code={m[1].trimEnd()}
+        onSendToStudio={onSendToStudio}
+        studioConnected={studioConnected}
+      />
+    )
+    last = m.index + m[0].length
+  }
+  if (last < content.length) {
+    parts.push(
+      <span key={key++} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {content.slice(last)}
+      </span>
+    )
+  }
+  return <>{parts}</>
+}
+
+// ─── Build success particle burst (CSS-only) ─────────────────────────────────
+
+function BuildSuccessCelebration() {
+  const DOTS = [
+    { angle: 0,   dist: 26 },
+    { angle: 60,  dist: 30 },
+    { angle: 120, dist: 24 },
+    { angle: 180, dist: 28 },
+    { angle: 240, dist: 26 },
+    { angle: 300, dist: 32 },
+  ]
+  return (
+    <>
+      <style>{`
+        @keyframes particleBurst {
+          0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+          60%  { opacity: 0.9; }
+          100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.2); }
+        }
+        @keyframes goldTextPulse {
+          0%   { color: rgba(74,222,128,0.9); }
+          40%  { color: #D4AF37; text-shadow: 0 0 12px rgba(212,175,55,0.6); }
+          100% { color: rgba(74,222,128,0.9); text-shadow: none; }
+        }
+      `}</style>
+      <div
+        aria-hidden="true"
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible', zIndex: 10 }}
+      >
+        {DOTS.map((dot, i) => {
+          const rad = (dot.angle * Math.PI) / 180
+          const tx = Math.round(Math.cos(rad) * dot.dist)
+          const ty = Math.round(Math.sin(rad) * dot.dist)
+          return (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                width: i % 3 === 0 ? 5 : 4,
+                height: i % 3 === 0 ? 5 : 4,
+                borderRadius: '50%',
+                background: i % 2 === 0 ? '#D4AF37' : '#FFB81C',
+                marginTop: -2,
+                marginLeft: -2,
+                ['--tx' as string]: `${tx}px`,
+                ['--ty' as string]: `${ty}px`,
+                animation: `particleBurst 0.7s cubic-bezier(0.2, 0.8, 0.4, 1) ${i * 40}ms forwards`,
+              } as React.CSSProperties}
+            />
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
 // Pulse animation for "Sent to Studio" success dot + all chat sci-fi animations
 const PULSE_STYLE = `
   @keyframes statusPulse {
@@ -218,10 +490,10 @@ const SIGNUP_FADE_STYLE = `
 const GUEST_TOKEN_LIMIT = 100
 
 function SignupPromptCard() {
-  const [tokensUsed, setTokensUsed] = useState(GUEST_TOKEN_LIMIT)
+  const [tokensUsed, setTokensUsed] = useState(0)
 
   useEffect(() => {
-    const stored = Number(localStorage.getItem('fg_guest_tokens') ?? GUEST_TOKEN_LIMIT)
+    const stored = Number(localStorage.getItem('fg_guest_tokens') ?? '0')
     setTokensUsed(Math.min(stored, GUEST_TOKEN_LIMIT))
   }, [])
 
@@ -352,18 +624,22 @@ function SignupPromptCard() {
 
 function MessageBubble({
   msg,
+  userPrompt,
   onRetry,
   onBuildDifferently,
   onDismiss,
   onEditAndResend,
   onSendToStudio,
+  studioConnected,
 }: {
   msg: ChatMessage
+  userPrompt?: string
   onRetry?: () => void
   onBuildDifferently?: () => void
   onDismiss?: (id: string) => void
   onEditAndResend?: (id: string, newContent: string) => void
   onSendToStudio?: (luauCode: string) => void
+  studioConnected?: boolean
 }) {
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -494,9 +770,11 @@ function MessageBubble({
 
   if (isStatus) {
     const isSuccess = msg.content.toLowerCase().includes('studio') && !msg.content.toLowerCase().includes('thinking')
+    const isBuildSent = msg.content.toLowerCase().includes('check your viewport')
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 10, padding: '4px 0' }}>
         <style>{PULSE_STYLE}</style>
+        {/* Avatar dot — use position:relative so particles burst from its center */}
         <div
           style={{
             width: 28,
@@ -510,6 +788,7 @@ function MessageBubble({
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
+            position: 'relative',
           }}
         >
           {isSuccess ? (
@@ -521,6 +800,8 @@ function MessageBubble({
               <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
             </svg>
           )}
+          {/* Particle burst on "check your viewport" — plays once on mount */}
+          {isBuildSent && <BuildSuccessCelebration />}
         </div>
 
         {isSuccess ? (
@@ -551,6 +832,7 @@ function MessageBubble({
                 color: 'rgba(74,222,128,0.9)',
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 500,
+                animation: isBuildSent ? 'goldTextPulse 0.8s ease-out forwards' : undefined,
               }}
             >
               {msg.content}
@@ -935,15 +1217,21 @@ function MessageBubble({
             }}
           />
         )}
-        <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
-        </p>
+        <div style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
+          {msg.streaming
+            ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
+            : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} />
+          }
+        </div>
         {!msg.streaming && msg.meshResult && (
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} />
+          )}
+          {msg.hasCode && !msg.streaming && (
+            <ShareBuildButton prompt={userPrompt} />
           )}
           {msg.tokensUsed !== undefined && (
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: 'Inter, sans-serif' }}>
@@ -1244,6 +1532,86 @@ function MeshResultCard({
         </div>
       )}
     </div>
+  )
+}
+
+// ─── Share Build Button ──────────────────────────────────────────────────────
+
+function ShareBuildButton({ prompt }: { prompt?: string }) {
+  const [shared, setShared] = useState(false)
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const description = prompt
+      ? prompt.slice(0, 60) + (prompt.length > 60 ? '...' : '')
+      : 'Roblox game'
+    const text = `I just forjed a ${description} with @ForjeGames! Try it free: forjegames.com`
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
+    setShared(true)
+    setTimeout(() => setShared(false), 3000)
+  }
+
+  return (
+    <button
+      onClick={handleShare}
+      title="Copy shareable text to clipboard"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        fontSize: 10,
+        padding: '2px 7px',
+        borderRadius: 4,
+        background: shared ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.08)',
+        color: shared ? 'rgba(212,175,55,0.9)' : 'rgba(212,175,55,0.6)',
+        border: `1px solid ${shared ? 'rgba(212,175,55,0.3)' : 'rgba(212,175,55,0.15)'}`,
+        fontFamily: 'Inter, sans-serif',
+        cursor: 'pointer',
+        transition: 'all 0.15s',
+        flexShrink: 0,
+      }}
+      onMouseEnter={(e) => {
+        if (!shared) {
+          e.currentTarget.style.background = 'rgba(212,175,55,0.15)'
+          e.currentTarget.style.color = 'rgba(212,175,55,0.9)'
+          e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!shared) {
+          e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
+          e.currentTarget.style.color = 'rgba(212,175,55,0.6)'
+          e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)'
+        }
+      }}
+    >
+      {shared ? (
+        <>
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+            <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Copied! Share on X/Discord
+        </>
+      ) : (
+        <>
+          {/* Share2 icon */}
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Share this build
+        </>
+      )}
+    </button>
   )
 }
 
@@ -2004,6 +2372,8 @@ interface ChatPanelProps {
   onEditAndResend?: (id: string, newContent: string) => void
   /** Called when user clicks "Send to Studio" on a mesh result card */
   onSendToStudio?: (luauCode: string) => void
+  /** Whether Roblox Studio is currently connected — enables "Run in Studio" on code blocks */
+  studioConnected?: boolean
 }
 
 export function ChatPanel({
@@ -2025,6 +2395,7 @@ export function ChatPanel({
   mcpToolResult = null,
   onEditAndResend,
   onSendToStudio,
+  studioConnected = false,
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -2104,6 +2475,13 @@ export function ChatPanel({
   const [sendPressed, setSendPressed] = useState(false)
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const mod = e.ctrlKey || e.metaKey
+    // Ctrl/Cmd+Enter — send message (alternative to plain Enter)
+    if (mod && e.key === 'Enter') {
+      e.preventDefault()
+      onSend(input)
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       onSend(input)
@@ -2149,17 +2527,23 @@ export function ChatPanel({
         {!hasMessages ? (
           <EmptyState onQuickAction={(prompt) => onSend(prompt)} />
         ) : (
-          messages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              msg={msg}
-              onRetry={onRetry}
-              onBuildDifferently={onBuildDifferently}
-              onDismiss={onDismiss}
-              onEditAndResend={onEditAndResend}
-              onSendToStudio={onSendToStudio}
-            />
-          ))
+          messages.map((msg, idx) => {
+            // Find the nearest preceding user message to use as the share prompt
+            const precedingUser = [...messages.slice(0, idx)].reverse().find((m) => m.role === 'user')
+            return (
+              <MessageBubble
+                key={msg.id}
+                msg={msg}
+                userPrompt={precedingUser?.content}
+                onRetry={onRetry}
+                onBuildDifferently={onBuildDifferently}
+                onDismiss={onDismiss}
+                onEditAndResend={onEditAndResend}
+                onSendToStudio={onSendToStudio}
+                studioConnected={studioConnected}
+              />
+            )
+          })
         )}
 
         {/* MCP tool result card — appears after messages when a tool completes/fails */}
@@ -2455,6 +2839,7 @@ export function ChatPanel({
             placeholder="Describe what you want to build..."
             rows={1}
             disabled={loading}
+            data-no-palette="true"
             style={{
               flex: 1,
               background: 'transparent',

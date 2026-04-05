@@ -318,7 +318,14 @@ export function useChat(options: UseChatOptions = {}) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryListenerRef = useRef(false)
   // Stable ID for the current chat session — new id on each "new chat"
-  const currentSessionIdRef = useRef<string>(uid())
+  const _initialSessionId = uid()
+  const currentSessionIdRef = useRef<string>(_initialSessionId)
+  const [currentSessionId, setCurrentSessionId] = useState<string>(_initialSessionId)
+  /** Update both the ref (for synchronous access inside callbacks) and the state (to trigger re-renders). */
+  const setSessionId = useCallback((id: string) => {
+    currentSessionIdRef.current = id
+    setCurrentSessionId(id)
+  }, [])
   // Tracks whether the hook is still mounted; guards async callbacks that call setState.
   const mountedRef = useRef(true)
   // Ref used to read current messages inside async callbacks without stale closure
@@ -378,7 +385,7 @@ export function useChat(options: UseChatOptions = {}) {
       const statusMsg: ChatMessage = {
         id: statusMsgId,
         role: 'status',
-        content: 'ForjeAI is thinking...',
+        content: 'Forje is building...',
         timestamp: new Date(),
       }
 
@@ -931,12 +938,12 @@ export function useChat(options: UseChatOptions = {}) {
     if (current.filter((m) => m.role === 'user').length > 0) {
       persistSession(currentSessionIdRef.current, current)
     }
-    currentSessionIdRef.current = uid()
+    setSessionId(uid())
     setMessagesSync(() => [])
     setSuggestions([])
     setTotalTokens(0)
     setInput('')
-  }, [setMessagesSync])
+  }, [setMessagesSync, setSessionId])
 
   /** Load a saved session by id, replacing current messages. */
   const loadSession = useCallback((id: string) => {
@@ -948,7 +955,7 @@ export function useChat(options: UseChatOptions = {}) {
     if (current.filter((m) => m.role === 'user').length > 0) {
       persistSession(currentSessionIdRef.current, current)
     }
-    currentSessionIdRef.current = id
+    setSessionId(id)
     // Rehydrate timestamps as Date objects (JSON serializes them as strings)
     const rehydrated = session.messages.map((m) => ({
       ...m,
@@ -956,7 +963,7 @@ export function useChat(options: UseChatOptions = {}) {
     }))
     setMessagesSync(() => rehydrated)
     setSuggestions([])
-  }, [setMessagesSync])
+  }, [setMessagesSync, setSessionId])
 
   /** Return metadata for all saved sessions (no message payloads). */
   const listSessions = useCallback((): ChatSessionMeta[] => {
@@ -982,21 +989,21 @@ export function useChat(options: UseChatOptions = {}) {
     saveSessions(sessions)
     // If we deleted the active session, reset to a fresh one
     if (id === currentSessionIdRef.current) {
-      currentSessionIdRef.current = uid()
+      setSessionId(uid())
       setMessagesSync(() => [])
       setSuggestions([])
       setTotalTokens(0)
     }
-  }, [setMessagesSync])
+  }, [setMessagesSync, setSessionId])
 
   /** Clear all saved sessions and reset to a fresh chat. */
   const clearAllSessions = useCallback(() => {
     saveSessions([])
-    currentSessionIdRef.current = uid()
+    setSessionId(uid())
     setMessagesSync(() => [])
     setSuggestions([])
     setTotalTokens(0)
-  }, [setMessagesSync])
+  }, [setMessagesSync, setSessionId])
 
   return {
     messages,
@@ -1022,6 +1029,6 @@ export function useChat(options: UseChatOptions = {}) {
     listSessions,
     deleteSession,
     clearAllSessions,
-    currentSessionId: currentSessionIdRef.current,
+    currentSessionId,
   }
 }

@@ -341,6 +341,45 @@ export default function HomeClient() {
 
           <div className="relative max-w-4xl mx-auto w-full">
 
+            {/* Typewriter tagline rotation — CSS only */}
+            <style>{`
+              @keyframes forje-typewriter-cursor {
+                0%, 100% { opacity: 1; }
+                50%       { opacity: 0; }
+              }
+              @keyframes forje-tag-in {
+                0%   { opacity: 0; transform: translateY(6px); }
+                8%   { opacity: 1; transform: translateY(0); }
+                80%  { opacity: 1; transform: translateY(0); }
+                88%  { opacity: 0; transform: translateY(-4px); }
+                100% { opacity: 0; transform: translateY(-4px); }
+              }
+              .forje-tag-rotate {
+                display: inline-block;
+                position: relative;
+                height: 1.4em;
+                overflow: hidden;
+                vertical-align: bottom;
+                min-width: 260px;
+              }
+              .forje-tag-rotate span {
+                display: block;
+                position: absolute;
+                left: 0; right: 0;
+                opacity: 0;
+                animation: forje-tag-in 12s ease-in-out infinite;
+              }
+              .forje-tag-rotate span:nth-child(1) { animation-delay: 0s; }
+              .forje-tag-rotate span:nth-child(2) { animation-delay: 4s; }
+              .forje-tag-rotate span:nth-child(3) { animation-delay: 8s; }
+              .forje-tagline-cursor::after {
+                content: '|';
+                color: #D4AF37;
+                animation: forje-typewriter-cursor 0.9s step-end infinite;
+                margin-left: 1px;
+              }
+            `}</style>
+
             {/* Forge spark particles — pure CSS, no JS */}
             <div aria-hidden="true" className="absolute left-1/2 top-4 w-0 h-0">
               {/* Spark 1 — drifts left */}
@@ -391,20 +430,30 @@ export default function HomeClient() {
                 letterSpacing: '-0.025em',
               }}
             >
-              <span className="hero-word hero-word-1">Speak it.</span>{' '}
-              <span className="hero-word hero-word-2">Build it.</span>{' '}
+              <span className="hero-word hero-word-1">Describe it.</span>{' '}
               <br />
-              <span className="hero-word hero-word-3 gradient-text text-shimmer">Play it.</span>
+              <span className="hero-word hero-word-2 gradient-text text-shimmer">Forje it.</span>
             </h1>
 
             {/* Subheadline */}
             <p
-              className="reveal reveal-delay-2 leading-relaxed max-w-2xl mx-auto mb-10"
+              className="reveal reveal-delay-2 leading-relaxed max-w-2xl mx-auto mb-6"
               style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.2vw, 1.2rem)' }}
             >
-              The first AI that builds complete Roblox games — not just scripts.
-              <br className="hidden sm:block" />
-              Voice, image, or text to terrain, assets, scripts, and economy. Live in Studio.
+              The AI that turns words into complete, playable Roblox games — terrain, assets, scripts, and economy. Live in Studio.
+            </p>
+
+            {/* Rotating tagline — CSS only typewriter */}
+            <p
+              className="reveal reveal-delay-2 mb-10 text-center forje-tagline-cursor"
+              style={{ color: '#52525B', fontSize: '0.9rem', minHeight: '1.4em' }}
+              aria-label="Forje examples"
+            >
+              <span className="forje-tag-rotate" aria-hidden="true">
+                <span style={{ color: '#D4AF37', opacity: 0.8 }}>Forje a medieval castle</span>
+                <span style={{ color: '#D4AF37', opacity: 0.8 }}>Forje a racing game</span>
+                <span style={{ color: '#D4AF37', opacity: 0.8 }}>Forje a tycoon empire</span>
+              </span>
             </p>
 
             {/* CTA row */}
@@ -467,15 +516,38 @@ export default function HomeClient() {
           }} />
 
           <div className="relative max-w-5xl mx-auto">
-            <p className="reveal text-center text-[12px] font-semibold uppercase tracking-[0.12em] mb-10" style={{ color: '#3F3F46' }}>
+            <p className="reveal text-center text-[12px] font-semibold uppercase tracking-[0.12em] mb-3" style={{ color: '#3F3F46' }}>
               Trusted by Roblox creators worldwide
             </p>
+
+            {/* Creator avatar cluster */}
+            <div className="reveal flex items-center justify-center gap-0 mb-10">
+              {(['AK', 'MJ', 'TR', 'SL', 'DV', 'PW'] as const).map((initials, i) => (
+                <div
+                  key={initials}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
+                  style={{
+                    background: `hsl(${i * 42 + 30}, 45%, 20%)`,
+                    border: '2px solid rgba(10,14,39,1)',
+                    outline: '1px solid rgba(212,175,55,0.2)',
+                    color: '#D4AF37',
+                    marginLeft: i > 0 ? '-6px' : 0,
+                    zIndex: 6 - i,
+                    position: 'relative',
+                  }}
+                >
+                  {initials}
+                </div>
+              ))}
+              <span className="text-[12px] ml-4" style={{ color: '#52525B' }}>Creators already building</span>
+            </div>
+
             <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8 text-center">
               {[
-                { value: 5,     suffix: '',  label: 'AI models',            color: '#D4AF37'  },
-                { value: 55,    suffix: '+', label: 'Specialized agents',   color: '#60A5FA'  },
-                { value: 50,    suffix: '+', label: 'Game templates',       color: '#7C3AED'  },
-                { value: 10,    suffix: 'min', label: 'Time to first map',  color: '#10B981'  },
+                { value: 9,   suffix: '',    label: '9 AI Agents',           color: '#D4AF37'  },
+                { value: 55,  suffix: '+',   label: 'Roblox asset types',    color: '#60A5FA'  },
+                { value: 6,   suffix: '',    label: 'AI models',             color: '#7C3AED'  },
+                { value: 10,  suffix: 'min', label: 'Time to first map',     color: '#10B981'  },
               ].map(({ value, suffix, label, color }, i) => (
                 <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
                   <p
@@ -487,6 +559,12 @@ export default function HomeClient() {
                   <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#52525B' }}>{label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Real-time Studio sync callout */}
+            <div className="reveal flex items-center justify-center gap-2 mt-8">
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
+              <span className="text-[12px]" style={{ color: '#3F3F46' }}>Real-time Studio sync — every generation pushes live to Roblox Studio</span>
             </div>
           </div>
         </section>

@@ -373,6 +373,133 @@ export async function GET(req: NextRequest) {
     )
   }
 
+  if (type === 'editor') {
+    const title = name || 'AI Roblox Builder'
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            width: 1200,
+            height: 630,
+            background: BG,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '60px',
+            fontFamily: 'sans-serif',
+            position: 'relative',
+          }}
+        >
+          {/* Gold top bar */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 6,
+              background: 'linear-gradient(90deg, #D4AF37, #FFB81C, #D4AF37)',
+            }}
+          />
+
+          {/* Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 52 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                background: GOLD,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 26,
+                fontWeight: 900,
+                color: '#000',
+              }}
+            >
+              F
+            </div>
+            <span style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>
+              <span style={{ color: GOLD }}>Forje</span>Games
+            </span>
+          </div>
+
+          {/* Main headline */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ color: GRAY, fontSize: 18, fontWeight: 600, letterSpacing: 2, marginBottom: 16, textTransform: 'uppercase' }}>
+              AI-Powered Editor
+            </div>
+            <div
+              style={{
+                fontSize: title.length > 40 ? 44 : 60,
+                fontWeight: 900,
+                color: '#FFFFFF',
+                lineHeight: 1.1,
+                marginBottom: 28,
+                maxWidth: 900,
+              }}
+            >
+              {title}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  background: `${GOLD}18`,
+                  border: `1px solid ${GOLD}40`,
+                  borderRadius: 8,
+                  padding: '6px 18px',
+                  color: GOLD,
+                  fontSize: 18,
+                  fontWeight: 700,
+                }}
+              >
+                Type → Build → Ship
+              </div>
+              <div
+                style={{
+                  background: 'rgba(52,211,153,0.12)',
+                  border: '1px solid rgba(52,211,153,0.3)',
+                  borderRadius: 8,
+                  padding: '6px 18px',
+                  color: '#34D399',
+                  fontSize: 18,
+                  fontWeight: 700,
+                }}
+              >
+                Free to start
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 48 }}>
+            <span style={{ color: GRAY, fontSize: 14 }}>forjegames.com</span>
+            <span style={{ color: GRAY, fontSize: 14 }}>Build Roblox games with AI</span>
+          </div>
+
+          {/* Gold bottom bar */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 4,
+              background: 'linear-gradient(90deg, transparent, #D4AF37, transparent)',
+            }}
+          />
+        </div>
+      ),
+      { width: 1200, height: 630 }
+    )
+  }
+
   // Default — home page/social sharing
   return new ImageResponse(
     (

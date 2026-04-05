@@ -132,8 +132,11 @@ export const BuildCompleteEmail = ({
 
           {/* Footer */}
           <Section style={footer}>
+            <Text style={footerSignature}>
+              &mdash; The Forje Team
+            </Text>
             <Text style={footerText}>
-              ForjeGames &mdash; AI-powered Roblox game building
+              Your game. Forjed by AI.
             </Text>
             <Text style={footerLinks}>
               <Link href={`${baseUrl}/privacy`} style={footerLink}>Privacy Policy</Link>
@@ -354,6 +357,13 @@ const tipBullet: React.CSSProperties = {
 const footer: React.CSSProperties = {
   padding: '24px 40px',
   textAlign: 'center',
+}
+
+const footerSignature: React.CSSProperties = {
+  color: '#8b92b8',
+  fontSize: '14px',
+  fontWeight: '600',
+  margin: '0 0 12px',
 }
 
 const footerText: React.CSSProperties = {

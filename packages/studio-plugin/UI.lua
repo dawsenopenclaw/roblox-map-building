@@ -271,7 +271,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local versionLabel = Instance.new("TextLabel")
   versionLabel.Name                  = "Version"
-  versionLabel.Text                  = "v4.4.0"
+  versionLabel.Text                  = "v4.6.0"
   versionLabel.Font                  = Enum.Font.Gotham
   versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim
@@ -1000,15 +1000,16 @@ function UI.build(widget, state, COLORS, pluginRef)
     local versionStr = info.latestVersion and ("v" .. info.latestVersion) or "latest"
     bannerTitle.Text = "Update Available (" .. versionStr .. ")"
 
+    local targetHeight
     if info.changelog and #info.changelog > 0 then
       bannerChangelog.Text    = info.changelog
       bannerChangelog.Visible = true
       downloadBtn.Position    = UDim2.new(0, 12, 0, 62)
-      updateBanner.Size       = UDim2.new(1, 0, 0, 104)
+      targetHeight            = 104
     else
       bannerChangelog.Visible = false
       downloadBtn.Position    = UDim2.new(0, 12, 0, 34)
-      updateBanner.Size       = UDim2.new(1, 0, 0, 76)
+      targetHeight            = 76
     end
 
     if info.forceUpdate then
@@ -1019,12 +1020,13 @@ function UI.build(widget, state, COLORS, pluginRef)
       updateBanner.BackgroundColor3 = Color3.fromHex("1a0000")
     end
 
+    -- Start collapsed, then animate to full height
+    updateBanner.Size    = UDim2.new(1, 0, 0, 0)
     updateBanner.Visible = true
 
-    -- Animate in: expand from 0 height
     TweenService:Create(updateBanner, TweenInfo.new(
       0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
-    ), { Size = updateBanner.Size }):Play()
+    ), { Size = UDim2.new(1, 0, 0, targetHeight) }):Play()
   end
 
   -- ── Force-update lock: disables plugin functionality ──
@@ -1081,7 +1083,7 @@ function UI.build(widget, state, COLORS, pluginRef)
     instrLabel.Visible     = true
     errorLabel.Visible     = false
     authCard.Size          = UDim2.new(1, 0, 0, 210)
-    authBtn.Position       = UDim2.new(0, 14, 0, 126)
+    authBtn.Position       = UDim2.new(0, 14, 0, 128)
     statusDot.BackgroundColor3 = C.textDim
     statusText.Text            = "Offline"
     statusText.TextColor3      = C.textDim

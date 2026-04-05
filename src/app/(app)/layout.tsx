@@ -75,6 +75,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     !pathname.startsWith('/billing') &&
     !pathname.startsWith('/gifts') &&
     !pathname.startsWith('/tokens') &&
+    !pathname.startsWith('/onboarding') &&
     pathname !== '/welcome'
   ) {
     redirect('/onboarding/parental-consent')

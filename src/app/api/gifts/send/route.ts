@@ -92,13 +92,22 @@ export async function POST(req: NextRequest) {
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        mode: 'payment',
+        mode: 'subscription',
         payment_method_types: ['card'],
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${appUrl}/dashboard/gifts?gifted=true&code=${redeemCode}`,
         cancel_url: `${appUrl}/dashboard/gifts?canceled=true`,
         automatic_tax: { enabled: true },
         customer_update: { address: 'auto' },
+        subscription_data: {
+          metadata: {
+            userId: sender.id,
+            type: 'gift',
+            giftId: gift.id,
+            giftType: 'subscription',
+            recipientEmail,
+          },
+        },
         metadata: {
           userId: sender.id,
           type: 'gift',

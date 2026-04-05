@@ -28,7 +28,7 @@ local Sync = {}
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.4.0"
+local PLUGIN_VERSION     = "4.6.0"
 local MIN_INTERVAL       = 2    -- seconds
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
@@ -210,25 +210,18 @@ end
 local function handleExecuteLuau(data)
   if not data or not data.code then return end
 
-  local loadOk = false
-  pcall(function()
-    local fn, parseErr = loadstring(data.code)
-    if fn then
-      loadOk = true
-      local ok, execErr = pcall(fn)
-      if not ok then
-        warn("[ForjeGames] Execution error: " .. tostring(execErr))
-      end
-    else
-      warn("[ForjeGames] Parse error: " .. tostring(parseErr))
-      if data.structured then
-        executeStructuredCommand(data.structured)
-      end
+  local fn, parseErr = loadstring(data.code)
+  if fn then
+    local ok, execErr = pcall(fn)
+    if not ok then
+      warn("[ForjeGames] Execution error: " .. tostring(execErr))
     end
-  end)
-
-  if not loadOk and data.structured then
-    executeStructuredCommand(data.structured)
+  else
+    warn("[ForjeGames] Parse error: " .. tostring(parseErr))
+    -- Fall back to structured command when code cannot be parsed
+    if data.structured then
+      pcall(executeStructuredCommand, data.structured)
+    end
   end
 end
 
@@ -618,8 +611,9 @@ function Sync.pushScreenshot(imageData)
     sessionId = _sessionId,
     timestamp = os.time(),
   }
-  local result = httpPost("/api/studio/screenshot", payload)
-  return result and result.StatusCode == 200
+  local result, netErr = httpPost("/api/studio/screenshot", payload)
+  if netErr then return false end
+  return result ~= nil and result.StatusCode == 200
 end
 
 -- ============================================================

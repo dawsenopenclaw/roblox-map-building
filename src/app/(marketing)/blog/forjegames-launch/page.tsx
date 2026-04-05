@@ -20,7 +20,7 @@ const jsonLd = {
   publisher: {
     '@type': 'Organization',
     name: 'ForjeGames LLC',
-    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png' },
+    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png', width: 400, height: 400 },
   },
   description:
     'ForjeGames is officially live. Describe any Roblox game in plain English and watch 55 AI agents build it in real time — terrain, scripts, assets, and all.',

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const LS_KEY = 'fg_onboarding_v2_done'
+const LS_KEY = 'fg_editor_toured'
 
 // ─── Step definitions ──────────────────────────────────────────────────────────
 
@@ -13,7 +13,7 @@ interface OnboardingStep {
   title: string
   body: string
   /** Which UI zone to highlight */
-  zone: 'chat' | 'input' | 'code' | 'connect' | 'try'
+  zone: 'input' | 'templates' | 'connect'
   /** Optional CTA label override */
   cta?: string
   /** Auto-focus the input on this step */
@@ -22,42 +22,32 @@ interface OnboardingStep {
 
 const STEPS: OnboardingStep[] = [
   {
-    id: 'welcome',
-    title: 'This is ForjeAI',
-    body: 'Your Roblox building assistant. Describe anything in plain English and watch it come to life in Studio.',
-    zone: 'chat',
-  },
-  {
     id: 'input',
     title: 'Type what you want to build',
-    body: 'Natural language works. "Build me a castle", "add fog", "make the towers taller" — ForjeAI understands context.',
+    body: 'Terrain, scripts, 3D models, anything — describe it in plain English and ForjeAI builds it.',
     zone: 'input',
   },
   {
-    id: 'code',
-    title: 'AI generates the code',
-    body: 'ForjeAI writes Luau scripts, places assets, sculpts terrain. Hit Import to push the build directly into Studio.',
-    zone: 'code',
+    id: 'templates',
+    title: 'Or click a starter to begin instantly',
+    body: 'Pick one of the example builds above to jump straight in with a single click.',
+    zone: 'templates',
   },
   {
     id: 'connect',
-    title: 'Connect Studio for real-time builds',
-    body: 'Link Roblox Studio so ForjeAI builds inside your place live — no copy-pasting required.',
+    title: 'See builds appear live in Studio',
+    body: 'Connect Roblox Studio once and every build goes straight into your place — no copy-pasting.',
     zone: 'connect',
-  },
-  {
-    id: 'try',
-    title: 'Try it now',
-    body: 'Type "build me a castle" to generate your first build. The chat input is ready and waiting.',
-    zone: 'try',
-    cta: 'Start building',
+    cta: 'Got it',
     focusInput: true,
   },
 ]
 
 // ─── Spotlight geometry per zone ───────────────────────────────────────────────
-// Coordinates expressed as viewport percentages / fixed values to match
-// the NewEditorClient two-panel layout (chat = left 45%, studio = right 55%).
+// Coordinates match the NewEditorClient two-panel layout:
+//   chat panel  = left ~45%  (left: 12px, width: calc(45% - 18px))
+//   studio panel = right ~55% (left: calc(45% + 6px), width: calc(55% - 18px))
+// SuggestedPrompts renders just above ChatPanel, roughly 80px tall at bottom of left column.
 
 interface SpotRect {
   top: string
@@ -68,21 +58,15 @@ interface SpotRect {
 
 function getSpotRect(zone: OnboardingStep['zone']): SpotRect {
   switch (zone) {
-    case 'chat':
-      // Full chat panel (left 45% excluding padding)
-      return { top: '68px', left: '12px', width: 'calc(45% - 18px)', height: 'calc(100dvh - 92px)' }
     case 'input':
-      // Bottom input bar of chat panel
-      return { top: 'calc(100dvh - 130px)', left: '12px', width: 'calc(45% - 18px)', height: '106px' }
-    case 'code':
-      // Right studio panel
-      return { top: '68px', left: 'calc(45% + 6px)', width: 'calc(55% - 18px)', height: 'calc(100dvh - 92px)' }
+      // Chat textarea at the very bottom of the left panel
+      return { top: 'calc(100dvh - 128px)', left: '12px', width: 'calc(45% - 18px)', height: '104px' }
+    case 'templates':
+      // SuggestedPrompts row sits just above the chat input
+      return { top: 'calc(100dvh - 220px)', left: '12px', width: 'calc(45% - 18px)', height: '84px' }
     case 'connect':
-      // Studio panel header / connect button area (top portion of right panel)
-      return { top: '68px', left: 'calc(45% + 6px)', width: 'calc(55% - 18px)', height: '220px' }
-    case 'try':
-      // Input bar again
-      return { top: 'calc(100dvh - 130px)', left: '12px', width: 'calc(45% - 18px)', height: '106px' }
+      // Top portion of right studio panel (Connect Studio button lives there)
+      return { top: '68px', left: 'calc(45% + 6px)', width: 'calc(55% - 18px)', height: '200px' }
   }
 }
 
@@ -98,16 +82,15 @@ interface TooltipPos {
 
 function getTooltipPos(zone: OnboardingStep['zone']): TooltipPos {
   switch (zone) {
-    case 'chat':
-      return { top: '50%', left: 'calc(45% + 20px)', transform: 'translateY(-50%)' }
     case 'input':
-      return { bottom: '148px', left: '12px' }
-    case 'code':
-      return { top: '50%', right: 'calc(55% + 20px)', transform: 'translateY(-50%)' }
+      // Above the highlighted input bar, anchored left
+      return { bottom: '144px', left: '12px' }
+    case 'templates':
+      // Above the highlighted templates row, anchored left
+      return { bottom: '236px', left: '12px' }
     case 'connect':
-      return { top: '68px', right: 'calc(55% + 20px)' }
-    case 'try':
-      return { bottom: '148px', left: '12px' }
+      // Left of the right panel, vertically centred with the highlight
+      return { top: '88px', right: 'calc(55% + 20px)' }
   }
 }
 
@@ -117,11 +100,9 @@ type ArrowDir = 'left' | 'right' | 'down' | 'up' | 'none'
 
 function getArrowDir(zone: OnboardingStep['zone']): ArrowDir {
   switch (zone) {
-    case 'chat':    return 'left'
-    case 'input':   return 'down'
-    case 'code':    return 'right'
-    case 'connect': return 'right'
-    case 'try':     return 'down'
+    case 'input':     return 'down'
+    case 'templates': return 'down'
+    case 'connect':   return 'right'
   }
 }
 
@@ -157,7 +138,7 @@ function ArrowNub({ dir }: { dir: ArrowDir }) {
 
 interface OnboardingOverlayProps {
   onDone: () => void
-  /** Ref to the chat textarea so step 5 can auto-focus it */
+  /** Ref to the chat textarea so the last step can auto-focus it */
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
 }
 
@@ -397,37 +378,31 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
 
 function StepIcon({ step }: { step: string }) {
   switch (step) {
-    case 'welcome':
-      return (
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M9 1.5L11 7H16.5L12 10.5l1.5 5L9 13l-4.5 2.5 1.5-5L1.5 7H7L9 1.5z" fill="#D4AF37" opacity={0.9}/>
-        </svg>
-      )
     case 'input':
+      // Keyboard / type icon
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <rect x="2" y="5" width="14" height="8" rx="3" stroke="#D4AF37" strokeWidth="1.4"/>
           <path d="M5 9h4M11 7v4" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
         </svg>
       )
-    case 'code':
+    case 'templates':
+      // Grid / card icon
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M6 6L2 9l4 3M12 6l4 3-4 3M10 5l-2 8" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          <rect x="2" y="2" width="6" height="6" rx="1.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <rect x="10" y="2" width="6" height="6" rx="1.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <rect x="2" y="10" width="6" height="6" rx="1.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <rect x="10" y="10" width="6" height="6" rx="1.5" stroke="#D4AF37" strokeWidth="1.4"/>
         </svg>
       )
     case 'connect':
+      // Plug / link icon
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <circle cx="4" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
           <circle cx="14" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
           <path d="M6.5 9h5" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
-        </svg>
-      )
-    case 'try':
-      return (
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <path d="M5 3l10 6-10 6V3z" fill="#D4AF37" opacity={0.9}/>
         </svg>
       )
     default:

@@ -499,6 +499,7 @@ export default function WelcomePage() {
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState<'forward' | 'back'>('forward')
   const [animating, setAnimating] = useState(false)
+  const [prevStep, setPrevStep] = useState<number | null>(null)
   const [showConfetti, setShowConfetti] = useState(false)
 
   const [prefs, setPrefs] = useState<Prefs>({
@@ -560,15 +561,25 @@ export default function WelcomePage() {
       if (animating) return
       setAnimating(true)
       setDirection(dir)
+      setPrevStep(step)
+      // Phase 1 (0–160ms): outgoing step slides out (CSS transition runs)
+      // Phase 2 (160ms): swap step index — incoming step is pre-positioned off-screen
+      // Phase 3 (next frame): clear animating so incoming step transitions to center
       setTimeout(() => {
         setStep(target)
-        setAnimating(false)
-        if (target === TOTAL_STEPS) {
-          setTimeout(() => setShowConfetti(true), 200)
-        }
+        // Use rAF so the browser commits the pre-position before starting transition
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setAnimating(false)
+            setPrevStep(null)
+            if (target === TOTAL_STEPS) {
+              setTimeout(() => setShowConfetti(true), 200)
+            }
+          })
+        })
       }, 160)
     },
-    [animating],
+    [animating, step],
   )
 
   const next = useCallback(() => {
@@ -595,17 +606,50 @@ export default function WelcomePage() {
     }))
   }, [])
 
-  const slideStyle = (active: boolean): React.CSSProperties => ({
-    transition: animating ? 'none' : 'opacity 0.3s ease-out, transform 0.3s ease-out',
-    opacity: active && !animating ? 1 : 0,
-    transform:
-      active && !animating
-        ? 'translateX(0)'
-        : direction === 'forward'
-          ? 'translateX(20px)'
-          : 'translateX(-20px)',
-    pointerEvents: active ? 'auto' : 'none',
-  })
+  const slideStyle = (n: number): React.CSSProperties => {
+    const isActive = n === step
+    const isLeaving = n === prevStep && animating
+
+    // Leaving step: slides out in the exit direction (no transition needed —
+    // it was already visible and now gets pushed away over 160ms).
+    if (isLeaving) {
+      return {
+        transition: 'opacity 0.16s ease-in, transform 0.16s ease-in',
+        opacity: 0,
+        transform: direction === 'forward' ? 'translateX(-20px)' : 'translateX(20px)',
+        pointerEvents: 'none',
+      }
+    }
+
+    // Incoming active step while animating: pre-position off-screen (no transition),
+    // then on the next double-rAF animating flips false and it slides to center.
+    if (isActive && animating) {
+      return {
+        transition: 'none',
+        opacity: 0,
+        transform: direction === 'forward' ? 'translateX(20px)' : 'translateX(-20px)',
+        pointerEvents: 'none',
+      }
+    }
+
+    // Active step at rest: fully visible.
+    if (isActive) {
+      return {
+        transition: 'opacity 0.28s ease-out, transform 0.28s ease-out',
+        opacity: 1,
+        transform: 'translateX(0)',
+        pointerEvents: 'auto',
+      }
+    }
+
+    // All other inactive steps: hidden, no transition.
+    return {
+      transition: 'none',
+      opacity: 0,
+      transform: 'translateX(0)',
+      pointerEvents: 'none',
+    }
+  }
 
   const getMinHeight = () => {
     if (step === 1) return 300
@@ -649,22 +693,22 @@ export default function WelcomePage() {
           <div className="p-6 sm:p-8">
             {/* Step content */}
             <div className="relative" style={{ minHeight: getMinHeight() }}>
-              <div className="absolute inset-0" style={slideStyle(step === 1)}>
+              <div className="absolute inset-0" style={slideStyle(1)}>
                 <StepWelcome firstName={firstName} />
               </div>
-              <div className="absolute inset-0" style={slideStyle(step === 2)}>
+              <div className="absolute inset-0" style={slideStyle(2)}>
                 <StepInterests
                   selected={prefs.interests}
                   onToggle={toggleInterest}
                 />
               </div>
-              <div className="absolute inset-0" style={slideStyle(step === 3)}>
+              <div className="absolute inset-0" style={slideStyle(3)}>
                 <StepExperience
                   selected={prefs.xp}
                   onSelect={(x) => setPrefs((p) => ({ ...p, xp: x }))}
                 />
               </div>
-              <div className="absolute inset-0" style={slideStyle(step === 4)}>
+              <div className="absolute inset-0" style={slideStyle(4)}>
                 <StepReady
                   firstName={firstName}
                   onOpenEditor={handleOpenEditor}
