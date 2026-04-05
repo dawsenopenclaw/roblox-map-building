@@ -6452,10 +6452,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   const anthropic = getAnthropicClient()
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
 
-  // TODO: dynamically check if ANTHROPIC_API_KEY has credits by catching 529/402
-  // errors from the Anthropic client and flipping this flag to false on credit
-  // exhaustion. For now hardcoded to false — no credits on the account.
-  const anthropicAvailable = false
+  // anthropicAvailable: true when a client exists AND the key isn't disabled.
+  // The block inside catches 529/AuthenticationError/PermissionDeniedError and
+  // falls through to Gemini → Groq, so there is no risk in trying Claude first.
+  const anthropicAvailable = anthropic !== null && process.env.ANTHROPIC_DISABLED !== 'true'
 
   if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).

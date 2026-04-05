@@ -480,12 +480,10 @@ export function detectMcpIntent(
  * This function is synchronous and safe to call at module evaluation time.
  */
 export function getMcpToolStatus(): McpToolStatus {
-  const meshyAvailable = Boolean(
-    process.env.MESHY_API_KEY ?? process.env.NEXT_PUBLIC_MESHY_KEY
-  )
-  const falAvailable = Boolean(
-    process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? process.env.NEXT_PUBLIC_FAL_KEY
-  )
+  // Only reference server-side env vars here. Never fall back to NEXT_PUBLIC_*
+  // names for API keys — those would be bundled into the client JS if set.
+  const meshyAvailable = Boolean(process.env.MESHY_API_KEY)
+  const falAvailable = Boolean(process.env.FAL_KEY ?? process.env.FAL_API_KEY)
 
   return {
     // moduleLoaded reflects last cached state; true once first successful import

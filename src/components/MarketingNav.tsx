@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
-const NAV_LINKS: { href: string; label: string; scroll: boolean }[] = [
-  { href: '#features',  label: 'Features',  scroll: true  },
-  { href: '#showcase',  label: 'Showcase',  scroll: true  },
-  { href: '#pricing',   label: 'Pricing',   scroll: true  },
-  { href: '/download',  label: 'Download',  scroll: false },
+const NAV_LINKS: { href: string; label: string; scroll: boolean; Icon: LucideIcon }[] = [
+  { href: '#features',  label: 'Features',  scroll: true,  Icon: Sparkles     },
+  { href: '#showcase',  label: 'Showcase',  scroll: true,  Icon: Layout       },
+  { href: '#pricing',   label: 'Pricing',   scroll: true,  Icon: CreditCard   },
+  { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
 ]
 
 function MarketingNav() {
@@ -89,8 +91,9 @@ function MarketingNav() {
               key={link.href}
               href={link.href}
               onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
+              <link.Icon size={14} aria-hidden="true" />
               {link.label}
             </Link>
           ))}

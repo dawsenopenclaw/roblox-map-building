@@ -220,7 +220,9 @@ function GiftTokensDialog({
         <div className="bg-[#1c1c1c] rounded-xl px-4 py-3 flex items-center justify-between text-sm">
           <span className="text-[#B0B0B0]">New balance after gift</span>
           <span className="text-[#c9a227] font-bold tabular-nums">
-            {((user.tokenBalance?.balance ?? 0) + effectiveAmount).toLocaleString()} tokens
+            {unlimited
+              ? '∞ Unlimited'
+              : ((user.tokenBalance?.balance ?? 0) + effectiveAmount).toLocaleString() + ' tokens'}
           </span>
         </div>
 
@@ -232,11 +234,11 @@ function GiftTokensDialog({
 
         <button
           onClick={handleSubmit}
-          disabled={loading || effectiveAmount < 1}
+          disabled={loading || (!unlimited && effectiveAmount < 1)}
           className="w-full py-3 bg-[#c9a227] hover:bg-[#b8921f] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
-          Gift {effectiveAmount >= 1 ? effectiveAmount.toLocaleString() : '—'} Tokens
+          {unlimited ? 'Gift ∞ Unlimited Tokens' : `Gift ${effectiveAmount >= 1 ? effectiveAmount.toLocaleString() : '—'} Tokens`}
         </button>
       </div>
     </div>
@@ -587,12 +589,21 @@ export default function AdminUsersPage() {
     setActionUserId(userId)
     try {
       const user = data?.users.find((u) => u.id === userId)
-      await fetch(`/api/admin/users/${userId}`, {
+      const isBanned = !!user?.deletedAt
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ banned: !user?.deletedAt }),
+        body: JSON.stringify({ banned: !isBanned }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        showSuccess(`Error: ${(err as { error?: string }).error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      showSuccess(isBanned ? 'User unbanned' : 'User banned')
       await fetchUsers()
+    } catch {
+      showSuccess('Error: request failed')
     } finally {
       setActionUserId(null)
     }
@@ -602,12 +613,20 @@ export default function AdminUsersPage() {
     if (isDemo) return
     setActionUserId(userId)
     try {
-      await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ verified: !currentVerified }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        showSuccess(`Error: ${(err as { error?: string }).error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      showSuccess(currentVerified ? 'Verification removed' : 'User verified')
       await fetchUsers()
+    } catch {
+      showSuccess('Error: request failed')
     } finally {
       setActionUserId(null)
     }
@@ -618,12 +637,20 @@ export default function AdminUsersPage() {
     if (isDemo) return
     setActionUserId(userId)
     try {
-      await fetch(`/api/admin/users/${userId}`, {
+      const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tier }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        showSuccess(`Error: ${(err as { error?: string }).error ?? `HTTP ${res.status}`}`)
+        return
+      }
+      showSuccess(`Tier set to ${tier}`)
       await fetchUsers()
+    } catch {
+      showSuccess('Error: request failed')
     } finally {
       setActionUserId(null)
     }

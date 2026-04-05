@@ -397,7 +397,7 @@ function HeroSection() {
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#D4AF37] hover:bg-[#c9a832] text-black text-sm font-bold rounded-xl transition-colors"
         >
           <Download size={15} />
-          Download Plugin (.lua)
+          Download Plugin (.rbxmx)
         </a>
         <a
           href="#install"

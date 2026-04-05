@@ -1348,13 +1348,14 @@ function StudioTab() {
           Install the ForjeGames plugin in Roblox Studio to sync builds directly.
         </p>
         <div className="space-y-3">
-          <Link
-            href="/plugin/ForjeGames.rbxmx"
+          <a
+            href="/api/studio/plugin"
+            download="ForjeGames.rbxmx"
             className="inline-flex items-center gap-2 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Download size={14} />
             Download Plugin
-          </Link>
+          </a>
         </div>
       </div>
 
