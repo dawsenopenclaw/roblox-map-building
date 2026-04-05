@@ -3,20 +3,19 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
-const NAV_LINKS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/#features', label: 'Features', icon: Sparkles },
-  { href: '/#showcase', label: 'Showcase', icon: Layout },
-  { href: '/pricing', label: 'Pricing', icon: CreditCard },
+const NAV_LINKS: { href: string; label: string; scroll: boolean }[] = [
+  { href: '#features',  label: 'Features',  scroll: true  },
+  { href: '#showcase',  label: 'Showcase',  scroll: true  },
+  { href: '#pricing',   label: 'Pricing',   scroll: true  },
+  { href: '/download',  label: 'Download',  scroll: false },
 ]
 
 function MarketingNav() {
-  const [scrolled, setScrolled] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
-  const { isSignedIn, isLoaded } = useAuth()
-  const navRef = useRef<HTMLElement>(null)
+  const [scrolled, setScrolled]   = useState(false)
+  const [menuOpen, setMenuOpen]   = useState(false)
+  const { isSignedIn, isLoaded }  = useAuth()
+  const navRef                    = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -24,6 +23,7 @@ function MarketingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  /* Close mobile menu on outside click */
   useEffect(() => {
     if (!menuOpen) return
     const handler = (e: MouseEvent) => {
@@ -35,6 +35,7 @@ function MarketingNav() {
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
 
+  /* Close mobile menu on Escape */
   useEffect(() => {
     if (!menuOpen) return
     const handler = (e: KeyboardEvent) => {
@@ -43,6 +44,17 @@ function MarketingNav() {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [menuOpen])
+
+  /* Smooth-scroll handler for anchor links */
+  function handleAnchorClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    if (!href.startsWith('#')) return
+    e.preventDefault()
+    const target = document.getElementById(href.slice(1))
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    setMenuOpen(false)
+  }
 
   return (
     <header
@@ -57,7 +69,7 @@ function MarketingNav() {
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
 
-        {/* Logo */}
+        {/* Logo — left */}
         <Link
           href="/"
           className="flex-shrink-0 font-extrabold text-xl tracking-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] rounded"
@@ -67,7 +79,7 @@ function MarketingNav() {
           <span className="text-white">Games</span>
         </Link>
 
-        {/* Desktop nav links */}
+        {/* Desktop nav — center */}
         <nav
           className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
           aria-label="Site navigation"
@@ -76,44 +88,43 @@ function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] flex items-center gap-1.5"
+              onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
-              <link.icon size={14} strokeWidth={1.8} aria-hidden="true" />
               {link.label}
             </Link>
           ))}
         </nav>
 
-        {/* Desktop CTAs */}
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+        {/* Desktop CTA — right */}
+        <div className="hidden md:flex items-center flex-shrink-0">
           {isLoaded && isSignedIn ? (
             <Link
               href="/editor"
-              className="text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150 text-black"
-              style={{ background: '#D4AF37' }}
+              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black"
+              style={{
+                background: '#D4AF37',
+                boxShadow: '0 0 16px rgba(212,175,55,0.35)',
+              }}
             >
               Open Editor
             </Link>
           ) : isLoaded ? (
-            <>
-              <Link
-                href="/sign-in"
-                className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/sign-up"
-                className="nav-cta-gold text-sm font-medium px-4 py-2 rounded-lg transition-colors duration-150"
-              >
-                Start building
-              </Link>
-            </>
+            <Link
+              href="/editor"
+              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black"
+              style={{
+                background: '#D4AF37',
+                boxShadow: '0 0 16px rgba(212,175,55,0.30)',
+              }}
+            >
+              Start Building
+            </Link>
           ) : null}
         </div>
 
         {/* Mobile hamburger */}
-        <div className="md:hidden flex items-center gap-3">
+        <div className="md:hidden flex items-center">
           <button
             onClick={() => setMenuOpen((v) => !v)}
             className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
@@ -138,7 +149,7 @@ function MarketingNav() {
       {menuOpen && (
         <div
           id="mobile-menu"
-          className="md:hidden bg-[#0A0E27]/95 backdrop-blur-md border-b border-white/[0.06]"
+          className="md:hidden bg-[#050810]/95 backdrop-blur-md border-b border-white/[0.06]"
           role="navigation"
           aria-label="Mobile navigation"
         >
@@ -147,40 +158,32 @@ function MarketingNav() {
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2"
+                onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : () => setMenuOpen(false)}
+                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
-                <link.icon size={15} strokeWidth={1.8} aria-hidden="true" />
                 {link.label}
               </Link>
             ))}
-            <div className="border-t border-white/[0.06] mt-2 pt-3 flex flex-col gap-2">
+            <div className="border-t border-white/[0.06] mt-2 pt-3">
               {isLoaded && isSignedIn ? (
                 <Link
                   href="/editor"
                   onClick={() => setMenuOpen(false)}
-                  className="nav-cta-gold text-center text-sm font-medium px-4 py-3 rounded-lg transition-colors"
+                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all text-black"
+                  style={{ background: '#D4AF37' }}
                 >
                   Open Editor
                 </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/sign-in"
-                    onClick={() => setMenuOpen(false)}
-                    className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/sign-up"
-                    onClick={() => setMenuOpen(false)}
-                    className="nav-cta-gold text-center text-sm font-medium px-4 py-3 rounded-lg transition-colors"
-                  >
-                    Start building
-                  </Link>
-                </>
-              )}
+              ) : isLoaded ? (
+                <Link
+                  href="/editor"
+                  onClick={() => setMenuOpen(false)}
+                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all text-black"
+                  style={{ background: '#D4AF37' }}
+                >
+                  Start Building
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>

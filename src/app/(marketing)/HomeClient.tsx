@@ -302,75 +302,120 @@ export default function HomeClient() {
         ══════════════════════════════════════════════════════════════════ */}
         <section
           className="relative flex flex-col items-center justify-center text-center overflow-hidden"
-          style={{ paddingTop: '10vh', paddingBottom: '4vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+          style={{ paddingTop: '14vh', paddingBottom: '8vh', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
         >
-          {/* Deep radial background */}
+          {/* Forge spark CSS animations */}
+          <style>{`
+            @keyframes forge-drift {
+              0%   { transform: translateY(0)   translateX(0)   scale(1);   opacity: 0; }
+              10%  { opacity: 1; }
+              80%  { opacity: 0.7; }
+              100% { transform: translateY(-90px) translateX(var(--drift-x)) scale(0.4); opacity: 0; }
+            }
+            .forge-spark {
+              position: absolute;
+              width: 4px;
+              height: 4px;
+              border-radius: 50%;
+              background: #D4AF37;
+              box-shadow: 0 0 6px 2px rgba(212,175,55,0.7);
+              animation: forge-drift var(--dur) ease-in infinite;
+              animation-delay: var(--delay);
+              pointer-events: none;
+            }
+          `}</style>
+
+          {/* Deep radial background — more dramatic gold center glow */}
           <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
             <div style={{
               position: 'absolute', inset: 0,
               background: [
-                'radial-gradient(ellipse 80% 60% at 50% 20%, rgba(212,175,55,0.05) 0%, transparent 70%)',
-                'radial-gradient(ellipse 60% 40% at 20% 80%, rgba(99,102,241,0.04) 0%, transparent 60%)',
-                'radial-gradient(ellipse 60% 40% at 80% 60%, rgba(124,58,237,0.05) 0%, transparent 60%)',
+                'radial-gradient(ellipse 70% 50% at 50% 10%, rgba(212,175,55,0.13) 0%, rgba(212,175,55,0.04) 40%, transparent 70%)',
+                'radial-gradient(ellipse 50% 35% at 50% 5%,  rgba(255,184,28,0.08) 0%, transparent 55%)',
+                'radial-gradient(ellipse 90% 60% at 50% 0%,  rgba(212,175,55,0.03) 0%, transparent 80%)',
               ].join(', '),
             }} />
             {/* Subtle grid */}
-            <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.5 }} />
+            <div className="absolute inset-0 grid-overlay" style={{ opacity: 0.4 }} />
           </div>
 
           <div className="relative max-w-4xl mx-auto w-full">
 
-            {/* Floating badge */}
-            <div
-              className="reveal inline-flex items-center gap-2.5 px-4 py-2 rounded-full text-[13px] mb-10 cursor-default"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.09)',
-                color: '#A1A1AA',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              Scripts + 3D assets + terrain + UI + economy — all in one AI
-              <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
-              <span style={{ color: '#D4AF37' }}>Free to start</span>
+            {/* Forge spark particles — pure CSS, no JS */}
+            <div aria-hidden="true" className="absolute left-1/2 top-4 w-0 h-0">
+              {/* Spark 1 — drifts left */}
+              <span
+                className="forge-spark"
+                style={{
+                  '--drift-x': '-28px',
+                  '--dur': '3.2s',
+                  '--delay': '0s',
+                  left: '-60px',
+                  top: '20px',
+                } as React.CSSProperties}
+              />
+              {/* Spark 2 — drifts right */}
+              <span
+                className="forge-spark"
+                style={{
+                  '--drift-x': '22px',
+                  '--dur': '2.8s',
+                  '--delay': '1.1s',
+                  left: '40px',
+                  top: '30px',
+                  background: '#FFB81C',
+                  boxShadow: '0 0 6px 2px rgba(255,184,28,0.7)',
+                } as React.CSSProperties}
+              />
+              {/* Spark 3 — drifts center-left */}
+              <span
+                className="forge-spark"
+                style={{
+                  '--drift-x': '-8px',
+                  '--dur': '3.6s',
+                  '--delay': '2.0s',
+                  left: '-10px',
+                  top: '10px',
+                  width: '3px',
+                  height: '3px',
+                } as React.CSSProperties}
+              />
             </div>
 
-            {/* Headline — word-by-word reveal */}
+            {/* Headline */}
             <h1
               className="font-bold tracking-tight mb-6"
               style={{
-                fontSize: 'clamp(2.8rem, 8vw, 5.5rem)',
-                lineHeight: 1.05,
-                letterSpacing: '-0.02em',
+                fontSize: 'clamp(3rem, 8.5vw, 5.75rem)',
+                lineHeight: 1.04,
+                letterSpacing: '-0.025em',
               }}
             >
-              <span className="hero-word hero-word-1">Build</span>{' '}
-              <span className="hero-word hero-word-2">Roblox</span>{' '}
-              <span className="hero-word hero-word-3">Games</span>
+              <span className="hero-word hero-word-1">Speak it.</span>{' '}
+              <span className="hero-word hero-word-2">Build it.</span>{' '}
               <br />
-              <span className="hero-word hero-word-4 gradient-text text-shimmer">with AI.</span>
+              <span className="hero-word hero-word-3 gradient-text text-shimmer">Play it.</span>
             </h1>
 
             {/* Subheadline */}
             <p
-              className="reveal reveal-delay-2 text-xl leading-relaxed max-w-2xl mx-auto mb-12"
-              style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
+              className="reveal reveal-delay-2 leading-relaxed max-w-2xl mx-auto mb-10"
+              style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.2vw, 1.2rem)' }}
             >
-              Voice a prompt. Get terrain, 3D models, scripts, UI, and economy —
+              The first AI that builds complete Roblox games — not just scripts.
               <br className="hidden sm:block" />
-              all synced live to Roblox Studio. Not just scripts. Everything.
+              Voice, image, or text to terrain, assets, scripts, and economy. Live in Studio.
             </p>
 
             {/* CTA row */}
-            <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
+            <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
               <Link
-                href="/sign-up"
+                href="/editor"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
                   background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 28px rgba(255,184,28,0.35), 0 4px 16px rgba(0,0,0,0.4)',
+                  boxShadow: '0 0 32px rgba(255,184,28,0.4), 0 4px 16px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
                 }}
               >
@@ -378,11 +423,11 @@ export default function HomeClient() {
                 <IconArrow size={15} />
               </Link>
               <Link
-                href="#features"
+                href="#showcase"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
-                  border: '1px solid rgba(255,255,255,0.09)',
+                  border: '1px solid rgba(255,255,255,0.12)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -390,22 +435,13 @@ export default function HomeClient() {
                   <circle cx="12" cy="12" r="10" />
                   <polygon points="10 8 16 12 10 16 10 8" />
                 </svg>
-                See what gets built
+                Watch Demo
               </Link>
             </div>
 
-            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#71717A' }}>
-              No credit card required &middot; No setup &middot; Works with Roblox Studio
+            <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#52525B' }}>
+              No account needed &middot; Free forever &middot; Works with Roblox Studio
             </p>
-          </div>
-
-          {/* Scroll indicator */}
-          <div
-            className="reveal reveal-delay-5 mt-12 flex flex-col items-center gap-1.5 opacity-40"
-            aria-hidden="true"
-          >
-            <span className="text-[11px] tracking-widest uppercase" style={{ color: '#52525B' }}>Scroll</span>
-            <div className="w-px h-8" style={{ background: 'linear-gradient(to bottom, #52525B, transparent)' }} />
           </div>
         </section>
 
