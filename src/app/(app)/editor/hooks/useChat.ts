@@ -58,14 +58,10 @@ export interface ChatMessage {
 }
 
 export const MODELS: ModelOption[] = [
-  { id: 'gemini-2',         label: 'Gemini 2.0',       provider: 'Google',    color: '#4285F4', badge: 'BEST' },
-  { id: 'claude-4',         label: 'Claude 4',         provider: 'Anthropic', color: '#CC785C', badge: 'BYO' },
-  { id: 'claude-3-5',       label: 'Claude 3.5',       provider: 'Anthropic', color: '#CC785C' },
-  { id: 'gpt-4o',           label: 'GPT-4o',           provider: 'OpenAI',    color: '#10A37F' },
-  { id: 'grok-3',           label: 'Grok 3',           provider: 'xAI',       color: '#8B5CF6' },
-  { id: 'custom-anthropic', label: 'My Anthropic Key', provider: 'Custom',    color: '#D4AF37', badge: 'BYO' },
-  { id: 'custom-openai',    label: 'My OpenAI Key',    provider: 'Custom',    color: '#D4AF37', badge: 'BYO' },
-  { id: 'custom-google',    label: 'My Google Key',    provider: 'Custom',    color: '#D4AF37', badge: 'BYO' },
+  { id: 'gemini-2',         label: 'Forje AI',          provider: 'Free',      color: '#D4AF37', badge: 'FREE' },
+  { id: 'custom-anthropic', label: 'Claude 4',          provider: 'Your Key',  color: '#CC785C', badge: 'PRO' },
+  { id: 'custom-openai',    label: 'GPT-4o',            provider: 'Your Key',  color: '#10A37F', badge: 'PRO' },
+  { id: 'custom-google',    label: 'Gemini Pro',        provider: 'Your Key',  color: '#4285F4', badge: 'PRO' },
 ]
 
 const GUEST_MESSAGE_LIMIT = 3 // must match server GUEST_LIMIT in api/ai/chat/route.ts
