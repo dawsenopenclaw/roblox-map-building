@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
   // SECURITY: If no STUDIO_PLUGIN_SECRET is set, we MUST still validate the token
   // is either a valid JWT or matches a known session. Never accept arbitrary tokens.
   if (!secret) {
-    // No static secret configured — token MUST be a valid JWT shape
-    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
+    // No static secret configured — token MUST be a valid JWT shape (header.payload.signature)
+    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
     if (!isJwtShape) {
       return NextResponse.json(
         { error: 'invalid_token', message: 'Token must be a valid JWT from the pairing flow' },
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       // Check whether the token looks like a valid JWT before rejecting.
       // If it's a JWT (two dots), the session simply doesn't exist yet on this
       // Lambda — recreate it. If it's not a JWT and not the static secret, reject.
-      const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
+      const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
       if (!isJwtShape) {
         return NextResponse.json(
           { error: 'invalid_token' },
