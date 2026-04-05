@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 
 // Vercel serverless: allow up to 60s for streaming AI responses.
 // Without this, the default 10-15s timeout kills the stream mid-response,
@@ -3784,6 +3784,7 @@ function buildErrorResponse(err: unknown, intent: IntentKey): string {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const isDemo = process.env.DEMO_MODE === 'true'
   let authedUserId: string | null = null
+  let isAdmin = false
 
   if (!isDemo) {
     let userId: string | null = null
@@ -3796,6 +3797,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (userId) {
       authedUserId = userId
+
+      // Admin bypass: check if this user's email is in ADMIN_EMAILS.
+      // Admins skip all token spend/balance checks so they can test freely.
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(userId)
+        const email =
+          clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+            ?.emailAddress ?? null
+        if (email) {
+          const adminList = (process.env.ADMIN_EMAILS ?? '')
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean)
+          isAdmin = adminList.includes(email.toLowerCase())
+        }
+      } catch {
+        // Clerk unavailable — treat as non-admin
+      }
 
       // Check tier — skip if DB unavailable (allow through as FREE)
       try {
@@ -4354,8 +4374,8 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const responseText = formatGameSystemResponse(system)
       const tokenCostGs  = INTENT_TOKEN_COST.gamesystem
 
-      // Spend tokens for authenticated users
-      if (!isDemo && authedUserId && tokenCostGs > 0) {
+      // Spend tokens for authenticated users (admins are exempt)
+      if (!isDemo && !isAdmin && authedUserId && tokenCostGs > 0) {
         try {
           await spendTokens(authedUserId, tokenCostGs, `Game system: ${system.id}`, {
             prompt: message.slice(0, 100),
@@ -4542,7 +4562,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).
     // Tokens are only spent after a successful response is confirmed.
-    if (!isDemo && authedUserId && tokenCost > 0) {
+    if (!isDemo && !isAdmin && authedUserId && tokenCost > 0) {
       try {
         const bal = await getTokenBalance(authedUserId)
         const currentBalance = bal?.balance ?? 0
@@ -4616,8 +4636,8 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             const finalMsg = await stream.finalMessage()
             tokensUsed = finalMsg.usage.input_tokens + finalMsg.usage.output_tokens
 
-            // Deduct tokens now that we have a confirmed successful response
-            if (!isDemo && authedUserId && tokenCost > 0) {
+            // Deduct tokens now that we have a confirmed successful response (admins exempt)
+            if (!isDemo && !isAdmin && authedUserId && tokenCost > 0) {
               try {
                 await spendTokens(authedUserId, tokenCost, `AI ${intent} request`, { prompt: message.slice(0, 100), intent })
               } catch (spendErr) {
@@ -4772,8 +4792,8 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
       const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
 
-      // Deduct tokens now that we have a confirmed successful response
-      if (!isDemo && authedUserId && tokenCost > 0) {
+      // Deduct tokens now that we have a confirmed successful response (admins exempt)
+      if (!isDemo && !isAdmin && authedUserId && tokenCost > 0) {
         try {
           await spendTokens(authedUserId, tokenCost, `AI ${intent} request`, { prompt: message.slice(0, 100), intent })
         } catch (spendErr) {
@@ -5071,7 +5091,7 @@ Output ONLY the code inside \`\`\`lua fences. No explanation.`,
         }
         const buildMsg = `I built that for you! ${executedInStudio ? 'Check your Studio — it should appear near your camera.' : 'Click "Import to Studio" to paste the code.'}\n\nWhat would you like to change or add next?`
         if (wantsStream) {
-          return toStreamResponse(buildMsg + '\n\n```lua\n' + luau + '\n```', {
+          return toStreamResponse(buildMsg, {
             intent,
             hasCode: true,
             tokensUsed,
@@ -5102,8 +5122,7 @@ Output ONLY the code inside \`\`\`lua fences. No explanation.`,
       ? `Built it! Check your Studio — it should appear near your camera. What would you like to change or add?`
       : `Here's the build code! Click "Import to Studio" to place it in your game.`
     if (wantsStream) {
-      const fbStreamText = fallbackLuau ? fbMsg + '\n\n```lua\n' + fallbackLuau + '\n```' : fbMsg
-      return toStreamResponse(fbStreamText, {
+      return toStreamResponse(fbMsg, {
         intent,
         hasCode: true,
         tokensUsed,
