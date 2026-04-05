@@ -345,7 +345,7 @@ export function StudioConnectionBanner({
           Don&apos;t have the plugin?
         </span>
         <a
-          href="/api/studio/plugin"
+          href="/plugin/ForjeGames.rbxmx"
           download="ForjeGames.rbxmx"
           className="text-[11px] text-[#D4AF37] font-semibold hover:underline underline-offset-2 transition-colors"
         >

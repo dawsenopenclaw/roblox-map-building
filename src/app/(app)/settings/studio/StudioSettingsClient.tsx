@@ -173,7 +173,7 @@ function InstallSection() {
             <div>
               <p className="text-xs text-gray-500 mb-2">1. Download the plugin file:</p>
               <a
-                href="/api/studio/plugin"
+                href="/plugin/ForjeGames.rbxmx"
                 download="ForjeGames.rbxmx"
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold
                   bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-gray-300 transition-colors"

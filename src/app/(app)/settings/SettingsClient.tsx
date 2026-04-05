@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs'
 import useSWR from 'swr'
 import { NotificationPreferences } from '@/components/NotificationPreferences'
 import { useTheme as useThemeHook } from '@/components/ThemeProvider'
+import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
 import {
   User,
   Key,
@@ -107,9 +108,25 @@ function Toggle({
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 
-function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string) => void }) {
+function AvatarUpload({
+  name,
+  initialUrl,
+  onError,
+  onUploaded,
+}: {
+  name: string
+  initialUrl?: string | null
+  onError?: (msg: string) => void
+  onUploaded?: (url: string) => void
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(initialUrl ?? null)
+  const [uploading, setUploading] = useState(false)
+
+  // Sync when parent provides an initial URL after fetch
+  useEffect(() => {
+    if (initialUrl) setPreview(initialUrl)
+  }, [initialUrl])
 
   const initials = name
     .split(' ')
@@ -118,20 +135,45 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
     .toUpperCase()
     .slice(0, 2)
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) {
-      onError?.('Please upload an image file.')
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      onError?.('Please upload a PNG, JPEG, or WebP image.')
       e.target.value = ''
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      onError?.('File too large. Max 5MB.')
+    if (file.size > 2 * 1024 * 1024) {
+      onError?.('File too large. Max 2 MB.')
       e.target.value = ''
       return
     }
-    setPreview(URL.createObjectURL(file))
+
+    // Optimistic preview
+    const objectUrl = URL.createObjectURL(file)
+    setPreview(objectUrl)
+    setUploading(true)
+
+    try {
+      const form = new FormData()
+      form.append('avatar', file)
+      const res = await fetch('/api/settings/avatar', { method: 'POST', body: form })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        throw new Error(err?.error ?? 'Upload failed')
+      }
+      const data = await res.json() as { avatarUrl: string }
+      setPreview(data.avatarUrl)
+      onUploaded?.(data.avatarUrl)
+    } catch (err) {
+      // Revert optimistic preview
+      setPreview(initialUrl ?? null)
+      onError?.(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   return (
@@ -147,24 +189,44 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
           ) : (
             <span className="text-[#D4AF37] font-bold text-lg" aria-hidden="true">{initials}</span>
           )}
+          {uploading && (
+            <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center">
+              <svg className="animate-spin w-5 h-5 text-[#D4AF37]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            </div>
+          )}
         </label>
-        <label
-          htmlFor="avatar-upload"
-          className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-          aria-hidden="true"
-        >
-          <Upload size={16} className="text-white" />
-        </label>
-        <input ref={inputRef} id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleFile} aria-label="Upload avatar image" />
+        {!uploading && (
+          <label
+            htmlFor="avatar-upload"
+            className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            aria-hidden="true"
+          >
+            <Upload size={16} className="text-white" />
+          </label>
+        )}
+        <input
+          ref={inputRef}
+          id="avatar-upload"
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(e) => { void handleFile(e) }}
+          aria-label="Upload avatar image"
+          disabled={uploading}
+        />
       </div>
       <div>
         <p className="text-white text-sm font-semibold">{name}</p>
         <label
           htmlFor="avatar-upload"
-          className="text-xs text-[#D4AF37] hover:text-[#E6A519] transition-colors mt-0.5 cursor-pointer"
+          className={`text-xs transition-colors mt-0.5 cursor-pointer ${uploading ? 'text-gray-500 cursor-not-allowed' : 'text-[#D4AF37] hover:text-[#E6A519]'}`}
         >
-          Change avatar
+          {uploading ? 'Uploading...' : 'Change avatar'}
         </label>
+        <p className="text-[11px] text-gray-600 mt-0.5">PNG, JPEG, WebP · max 2 MB</p>
       </div>
     </div>
   )
@@ -172,24 +234,18 @@ function AvatarUpload({ name, onError }: { name: string; onError?: (msg: string)
 
 // ─── Account Stats Card ───────────────────────────────────────────────────────
 
-const ACCT_STATS: {
-  totalBuilds: number | null
-  tokensUsed: number | null
-  memberSince: string | null
-  tierLabel: string | null
-  tierColor: string
-  referralCode: string | null
-  streakDays: number | null
-  totalXp: number | null
-} = {
-  totalBuilds:  null,
-  tokensUsed:   null,
-  memberSince:  null,
-  tierLabel:    null,
-  tierColor:    '#60A5FA',
-  referralCode: null,
-  streakDays:   null,
-  totalXp:      null,
+type AccountStats = {
+  totalBuilds:     number
+  tokensUsed:      number
+  tokensRemaining: number
+  memberSince:     string
+  apiKeysActive:   number
+  streakDays:      number
+  totalXp:         number
+  xpTier:          string
+  tierLabel:       string
+  tierColor:       string
+  referralCode:    string | null
 }
 
 function InlineCopyButton({ text }: { text: string }) {
@@ -217,41 +273,58 @@ function InlineCopyButton({ text }: { text: string }) {
 }
 
 function AccountStatsCard() {
-  const s = ACCT_STATS
+  const { data, isLoading } = useSWR<AccountStats>('/api/settings/stats', fetcher, {
+    revalidateOnFocus: false,
+  })
+
+  const s = data
+  const tierColor = s?.tierColor ?? '#60A5FA'
+
+  const memberSinceFormatted = s?.memberSince
+    ? new Date(s.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '—'
+
   const statItems = [
-    { label: 'Total Builds', value: s.totalBuilds != null ? Number(s.totalBuilds).toLocaleString() : '—', icon: '🔨' },
-    { label: 'Tokens Used',  value: s.tokensUsed  != null ? Number(s.tokensUsed).toLocaleString()  : '—', icon: '⚡' },
-    { label: 'Streak Days',  value: s.streakDays  != null ? `${s.streakDays} days`                 : '—', icon: '🔥' },
-    { label: 'Member Since', value: s.memberSince ?? '—',                                                icon: '📅' },
+    { label: 'Total Builds', value: s ? s.totalBuilds.toLocaleString()   : '—', icon: '🔨' },
+    { label: 'Tokens Used',  value: s ? s.tokensUsed.toLocaleString()    : '—', icon: '⚡' },
+    { label: 'Streak Days',  value: s ? `${s.streakDays} days`           : '—', icon: '🔥' },
+    { label: 'Member Since', value: memberSinceFormatted,                        icon: '📅' },
   ]
+
   return (
     <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
       <h3 className="text-white font-semibold mb-5">Account Stats</h3>
       {/* Tier badge row */}
       <div
         className="flex items-center gap-3 p-4 rounded-xl mb-4"
-        style={{ background: `${s.tierColor}08`, border: `1px solid ${s.tierColor}22` }}
+        style={{ background: `${tierColor}08`, border: `1px solid ${tierColor}22` }}
       >
         <div
           className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-          style={{ background: `${s.tierColor}12`, border: `1px solid ${s.tierColor}20` }}
+          style={{ background: `${tierColor}12`, border: `1px solid ${tierColor}20` }}
         >
           🎓
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Current Tier</p>
-          <p className="text-lg font-bold" style={{ color: s.tierColor }}>{s.tierLabel ?? '—'}</p>
+          {isLoading
+            ? <div className="h-5 w-16 bg-white/10 rounded animate-pulse mt-1" />
+            : <p className="text-lg font-bold" style={{ color: tierColor }}>{s?.tierLabel ?? '—'}</p>
+          }
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="text-sm font-bold text-white tabular-nums">{s.totalXp !== null ? `${s.totalXp.toLocaleString()} XP` : '—'}</p>
-          <p className="text-[10px] text-gray-500 mt-0.5">—</p>
+          {isLoading
+            ? <div className="h-4 w-14 bg-white/10 rounded animate-pulse" />
+            : <p className="text-sm font-bold text-white tabular-nums">{s ? `${s.totalXp.toLocaleString()} XP` : '—'}</p>
+          }
+          <p className="text-[10px] text-gray-500 mt-0.5">{s?.xpTier ?? '—'}</p>
         </div>
       </div>
       {/* XP progress */}
       <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mb-5">
         <div
           className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${s.totalXp !== null ? Math.round((s.totalXp / 2000) * 100) : 0}%`, background: s.tierColor }}
+          style={{ width: `${s ? Math.min(100, Math.round((s.totalXp / 2000) * 100)) : 0}%`, background: tierColor }}
         />
       </div>
       {/* Stats grid */}
@@ -266,7 +339,10 @@ function AccountStatsCard() {
               <span className="text-sm">{item.icon}</span>
               <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest truncate">{item.label}</span>
             </div>
-            <p className="text-base font-bold text-white tabular-nums">{item.value}</p>
+            {isLoading
+              ? <div className="h-5 w-12 bg-white/10 rounded animate-pulse mt-1" />
+              : <p className="text-base font-bold text-white tabular-nums">{item.value}</p>
+            }
           </div>
         ))}
       </div>
@@ -277,8 +353,11 @@ function AccountStatsCard() {
           className="flex items-center justify-between gap-3 p-3 rounded-xl"
           style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
         >
-          <code className="text-sm font-mono text-[#D4AF37] tracking-wide truncate">{s.referralCode ?? '—'}</code>
-          {s.referralCode && <InlineCopyButton text={s.referralCode} />}
+          {isLoading
+            ? <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
+            : <code className="text-sm font-mono text-[#D4AF37] tracking-wide truncate">{s?.referralCode ?? '—'}</code>
+          }
+          {s?.referralCode && <InlineCopyButton text={s.referralCode} />}
         </div>
         <p className="text-[11px] text-gray-600 mt-1.5">
           Share to earn 500 tokens per friend who signs up.
@@ -290,27 +369,26 @@ function AccountStatsCard() {
 
 // ─── Profile Tab ──────────────────────────────────────────────────────────────
 
-const SOCIAL_STORAGE_KEY = 'fg_profile_social'
-
-function loadSocialFromStorage() {
-  if (typeof window === 'undefined') return { bio: '', twitter: '', discord: '', github: '' }
-  try {
-    const raw = localStorage.getItem(SOCIAL_STORAGE_KEY)
-    return raw ? JSON.parse(raw) as { bio: string; twitter: string; discord: string; github: string } : { bio: '', twitter: '', discord: '', github: '' }
-  } catch {
-    return { bio: '', twitter: '', discord: '', github: '' }
-  }
+type ProfileData = {
+  displayName: string | null
+  username: string | null
+  avatarUrl: string | null
+  bio: string | null
+  twitterHandle: string | null
+  discordHandle: string | null
+  githubHandle: string | null
 }
 
 function ProfileTab() {
   const { toast, show } = useToast()
   const { user } = useUser()
-  const [displayName, setDisplayName] = useState('Dawsen')
+  const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
   const [bio, setBio] = useState('')
   const [twitter, setTwitter] = useState('')
   const [discord, setDiscord] = useState('')
   const [github, setGithub] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [charity, setCharity] = useState('Code.org')
   const [saving, setSaving] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -319,19 +397,20 @@ function ProfileTab() {
 
   const charities = ['Code.org', 'Girls Who Code', 'Khan Academy']
 
-  // Hydrate from API + localStorage on mount
+  // Hydrate everything from the API — schema has all these columns
   useEffect(() => {
-    const social = loadSocialFromStorage()
-    setBio(social.bio)
-    setTwitter(social.twitter)
-    setDiscord(social.discord)
-    setGithub(social.github)
-
     fetch('/api/settings/profile')
       .then((r) => r.json())
-      .then((data: { profile?: { displayName?: string | null; username?: string | null } }) => {
-        if (data.profile?.displayName) setDisplayName(data.profile.displayName)
-        if (data.profile?.username) setUsername(data.profile.username)
+      .then((data: { profile?: ProfileData }) => {
+        const p = data.profile
+        if (!p) return
+        if (p.displayName) setDisplayName(p.displayName)
+        if (p.username)    setUsername(p.username)
+        if (p.bio)         setBio(p.bio)
+        if (p.twitterHandle) setTwitter(p.twitterHandle)
+        if (p.discordHandle) setDiscord(p.discordHandle)
+        if (p.githubHandle)  setGithub(p.githubHandle)
+        if (p.avatarUrl)     setAvatarUrl(p.avatarUrl)
       })
       .catch(() => {/* non-fatal */})
   }, [])
@@ -343,7 +422,7 @@ function ProfileTab() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          displayName,
+          displayName: displayName || undefined,
           username: username || undefined,
           bio,
           twitterHandle: twitter || null,
@@ -352,8 +431,6 @@ function ProfileTab() {
         }),
       })
       if (res.ok) {
-        // Persist social/bio locally since schema columns may not exist yet
-        localStorage.setItem(SOCIAL_STORAGE_KEY, JSON.stringify({ bio, twitter, discord, github }))
         show('Profile saved')
       } else {
         const err = await res.json() as { error?: string }
@@ -390,7 +467,12 @@ function ProfileTab() {
 
         {/* Avatar */}
         <div className="mb-6 pb-6 border-b border-white/5">
-          <AvatarUpload name={displayName} onError={(msg) => show(msg, 'error')} />
+          <AvatarUpload
+            name={displayName || user?.fullName || 'User'}
+            initialUrl={avatarUrl}
+            onError={(msg) => show(msg, 'error')}
+            onUploaded={(url) => { setAvatarUrl(url); show('Avatar updated') }}
+          />
         </div>
 
         <div className="space-y-4">
@@ -1110,10 +1192,23 @@ function ThemePreviewCard({
   )
 }
 
+const ACCENT_PRESETS = [
+  { label: 'Gold',    value: '#D4AF37' },
+  { label: 'Blue',    value: '#60A5FA' },
+  { label: 'Purple',  value: '#A78BFA' },
+  { label: 'Green',   value: '#34D399' },
+  { label: 'Rose',    value: '#FB7185' },
+  { label: 'Orange',  value: '#FB923C' },
+  { label: 'Cyan',    value: '#22D3EE' },
+  { label: 'Default', value: undefined as string | undefined },
+]
+
 function AppearanceTab() {
   const { toast, show } = useToast()
-  const { theme: currentTheme, setTheme, themes } = useThemeHook()
+  const { theme: currentTheme, setTheme, themes, accentColor, setAccentColor } = useThemeHook()
+  const { settings, update } = useEditorSettings()
   const [activeCategory, setActiveCategory] = useState<ThemeCategoryKey>('minimal')
+  const [syncing, setSyncing] = useState(false)
 
   // Default to the category of the current active theme
   useEffect(() => {
@@ -1121,13 +1216,61 @@ function AppearanceTab() {
     if (CATEGORY_META.some((c) => c.key === cat)) setActiveCategory(cat)
   }, [currentTheme.category])
 
-  const handleSelect = (id: string) => {
+  // On mount: pull server preferences and apply them (cross-device sync)
+  useEffect(() => {
+    fetch('/api/settings/preferences')
+      .then((r) => r.json())
+      .then((data: { preferences?: { theme?: string; fontSize?: string; accentColor?: string | null } }) => {
+        const p = data.preferences
+        if (!p) return
+        // Only apply server value if it differs from current localStorage value
+        // (localStorage wins for the device that just changed — server wins on new devices)
+        if (p.theme && p.theme !== settings.theme) update('theme', p.theme)
+        if (p.fontSize && p.fontSize !== settings.fontSize) {
+          update('fontSize', p.fontSize as 'small' | 'medium' | 'large')
+        }
+        if ('accentColor' in p && p.accentColor !== accentColor) {
+          update('accentColor', p.accentColor ?? undefined)
+        }
+      })
+      .catch(() => {/* non-fatal — offline or DB unreachable */})
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const persistPreferences = async (patch: { theme?: string; fontSize?: string; accentColor?: string | null }) => {
+    setSyncing(true)
+    try {
+      await fetch('/api/settings/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+    } catch {
+      /* non-fatal */
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  const handleSelectTheme = (id: string) => {
     setTheme(id)
+    void persistPreferences({ theme: id })
     const t = themes.find((th) => th.id === id)
     show(`${t?.name ?? 'Theme'} applied`)
   }
 
+  const handleFontSize = (size: 'small' | 'medium' | 'large') => {
+    update('fontSize', size)
+    void persistPreferences({ fontSize: size })
+  }
+
+  const handleAccent = (value: string | undefined) => {
+    setAccentColor(value)
+    void persistPreferences({ accentColor: value ?? null })
+  }
+
   const catThemes = themes.filter((t) => t.category === activeCategory)
+  const isLight = currentTheme.id === 'light' || currentTheme.id === 'paper'
 
   return (
     <div className="space-y-5">
@@ -1163,51 +1306,138 @@ function AppearanceTab() {
             >
               Active
             </span>
+            {syncing && (
+              <span className="text-[10px] text-gray-500">syncing...</span>
+            )}
           </div>
           <p className="text-gray-400 text-xs truncate">{currentTheme.description}</p>
         </div>
         <Sparkles size={16} style={{ color: currentTheme.preview.accent }} className="flex-shrink-0 opacity-60" />
       </div>
 
-      {/* Category tab strip */}
-      <div className="flex gap-1.5 flex-wrap">
-        {CATEGORY_META.map((cat) => {
-          const isSelected = activeCategory === cat.key
-          const count = themes.filter((t) => t.category === cat.key).length
-          return (
+      {/* Light / Dark quick toggle */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Mode</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleSelectTheme('default')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+              !isLight
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
+                : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
+            }`}
+          >
+            <Moon size={14} />
+            Dark
+          </button>
+          <button
+            onClick={() => handleSelectTheme('light')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border transition-all ${
+              isLight
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
+                : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
+            }`}
+          >
+            <Sun size={14} />
+            Light
+          </button>
+        </div>
+      </div>
+
+      {/* Accent color */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Accent Color</p>
+        <div className="flex flex-wrap gap-2">
+          {ACCENT_PRESETS.map((preset) => {
+            const displayColor = preset.value ?? currentTheme.preview.accent
+            const isActive = preset.value === undefined
+              ? accentColor === undefined
+              : accentColor === preset.value
+            return (
+              <button
+                key={preset.label}
+                onClick={() => handleAccent(preset.value)}
+                title={preset.label}
+                className={`w-8 h-8 rounded-full border-2 transition-all ${
+                  isActive ? 'scale-110 border-white' : 'border-transparent hover:scale-105 hover:border-white/40'
+                }`}
+                style={{ background: displayColor }}
+                aria-label={`${preset.label} accent${preset.value === undefined ? ' (default)' : ''}`}
+              >
+                {isActive && (
+                  <Check size={12} className="mx-auto" style={{ color: '#000' }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <p className="text-[11px] text-gray-600 mt-2">
+          Overrides the theme&apos;s default accent across buttons, highlights, and indicators.
+        </p>
+      </div>
+
+      {/* Font size */}
+      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Font Size</p>
+        <div className="flex gap-2">
+          {(['small', 'medium', 'large'] as const).map((size) => (
             <button
-              key={cat.key}
-              onClick={() => setActiveCategory(cat.key)}
-              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
-                isSelected
+              key={size}
+              onClick={() => handleFontSize(size)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all capitalize ${
+                settings.fontSize === size
                   ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
                   : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
               }`}
             >
-              <span className="text-[11px]">{cat.icon}</span>
-              {cat.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/[0.07] text-gray-500'}`}>
-                {count}
-              </span>
+              {size}
             </button>
-          )
-        })}
+          ))}
+        </div>
       </div>
 
-      {/* Theme grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {catThemes.map((t) => (
-          <ThemePreviewCard
-            key={t.id}
-            t={t}
-            isActive={currentTheme.id === t.id}
-            onSelect={() => handleSelect(t.id)}
-          />
-        ))}
+      {/* Category tab strip */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Theme</p>
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {CATEGORY_META.map((cat) => {
+            const isSelected = activeCategory === cat.key
+            const count = themes.filter((t) => t.category === cat.key).length
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                  isSelected
+                    ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/25'
+                    : 'text-gray-400 border-white/[0.06] hover:text-white hover:border-white/15'
+                }`}
+              >
+                <span className="text-[11px]">{cat.icon}</span>
+                {cat.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isSelected ? 'bg-[#D4AF37]/20 text-[#D4AF37]' : 'bg-white/[0.07] text-gray-500'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Theme grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {catThemes.map((t) => (
+            <ThemePreviewCard
+              key={t.id}
+              t={t}
+              isActive={currentTheme.id === t.id}
+              onSelect={() => handleSelectTheme(t.id)}
+            />
+          ))}
+        </div>
       </div>
 
       <p className="text-[11px] text-gray-600 px-1">
-        Themes save locally and apply instantly across the entire app — includes light mode. Toggle quickly via the Sun/Moon button in the topbar.
+        Preferences sync across devices. Toggle light/dark quickly via the Sun/Moon button in the topbar.
       </p>
     </div>
   )
@@ -1366,7 +1596,7 @@ function StudioTab() {
         </p>
         <div className="space-y-3">
           <Link
-            href="/api/studio/plugin"
+            href="/plugin/ForjeGames.rbxmx"
             className="inline-flex items-center gap-2 bg-white/[0.05] hover:bg-white/[0.08] border border-white/[0.08] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Download size={14} />
