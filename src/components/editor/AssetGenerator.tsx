@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { ModelPreview } from './ModelPreview'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type AssetType = 'building' | 'character' | 'vehicle' | 'weapon' | 'furniture' | 'terrain' | 'prop' | 'effect' | 'custom'
 type AssetStyle = 'realistic' | 'stylized' | 'lowpoly' | 'roblox'
-type GenerateStatus = 'idle' | 'loading' | 'complete' | 'error'
+type GenerateStatus = 'idle' | 'loading' | 'queued' | 'generating' | 'optimizing' | 'uploading' | 'complete' | 'ready' | 'failed' | 'error'
 
 interface AssetTemplate {
   id:        string
@@ -28,8 +29,9 @@ interface TemplateCategory {
 }
 
 interface GeneratedAsset {
-  status:       'complete' | 'pending' | 'demo'
+  status:       'complete' | 'pending' | 'demo' | 'queued' | 'generating' | 'optimizing' | 'uploading' | 'failed'
   taskId?:      string
+  assetId?:     string
   asset: {
     meshUrl:      string | null
     textureUrls:  { albedo: string | null; normal: string | null; roughness: string | null; metallic: string | null }
@@ -263,7 +265,14 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
   const [error, setError]             = useState<string | null>(null)
   const [showLuau, setShowLuau]       = useState(false)
 
-  const abortRef = useRef<AbortController | null>(null)
+  const abortRef   = useRef<AbortController | null>(null)
+  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null)
+  const assetIdRef = useRef<string | null>(null)
+
+  // Stop polling on unmount
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+  }, [])
 
   // Computed token estimate
   const tokenEstimate = estimateTokens(assetType, textured, rigged, animated)
@@ -290,12 +299,84 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
     setStatus('idle')
   }, [])
 
+  // Poll for async generation status
+  const startPolling = useCallback((assetId: string, initialData: GeneratedAsset) => {
+    assetIdRef.current = assetId
+    if (pollRef.current) clearInterval(pollRef.current)
+
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/ai/generation-status?assetId=${encodeURIComponent(assetId)}`)
+        if (!res.ok) return
+        const data = await res.json() as {
+          assetId: string
+          status: string
+          meshUrl?: string | null
+          thumbnailUrl?: string | null
+          polyCount?: number
+          albedoUrl?: string | null
+          normalUrl?: string | null
+          roughnessUrl?: string | null
+          metallicUrl?: string | null
+          errorMessage?: string | null
+          tokensCost?: number
+        }
+
+        // Map pipeline status to UI status
+        const pipelineStatus = data.status
+
+        if (pipelineStatus === 'ready' || pipelineStatus === 'complete') {
+          clearInterval(pollRef.current!)
+          pollRef.current = null
+          setResult((prev) => prev ? {
+            ...prev,
+            status: 'complete' as const,
+            asset: {
+              ...prev.asset,
+              meshUrl:     data.meshUrl ?? prev.asset.meshUrl,
+              thumbnailUrl: data.thumbnailUrl ?? prev.asset.thumbnailUrl,
+              polyCount:   data.polyCount ?? prev.asset.polyCount,
+              textureUrls: {
+                albedo:    data.albedoUrl ?? prev.asset.textureUrls.albedo,
+                normal:    data.normalUrl ?? prev.asset.textureUrls.normal,
+                roughness: data.roughnessUrl ?? prev.asset.textureUrls.roughness,
+                metallic:  data.metallicUrl ?? prev.asset.textureUrls.metallic,
+              },
+            },
+            tokensCost: data.tokensCost ?? prev.tokensCost,
+          } : prev)
+          setStatus('complete')
+        } else if (pipelineStatus === 'failed') {
+          clearInterval(pollRef.current!)
+          pollRef.current = null
+          setError(data.errorMessage ?? 'Generation failed')
+          setStatus('error')
+        } else {
+          // queued | generating | optimizing | uploading
+          const uiStatus = pipelineStatus as GenerateStatus
+          setStatus(uiStatus)
+          setResult((prev) => prev ? {
+            ...prev,
+            status: uiStatus as GeneratedAsset['status'],
+          } : prev)
+        }
+      } catch {
+        // Non-fatal — keep polling
+      }
+    }, 5000)
+
+    // Set initial queued state immediately
+    setResult(initialData)
+    setStatus('queued')
+  }, [])
+
   // Generate asset
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim() || status === 'loading') return
 
     abortRef.current?.abort()
     abortRef.current = new AbortController()
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
 
     setStatus('loading')
     setResult(null)
@@ -326,14 +407,21 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
       }
 
       const data = (await res.json()) as GeneratedAsset
-      setResult(data)
-      setStatus('complete')
+
+      if (data.status === 'queued' && data.assetId) {
+        // Async pipeline — start polling
+        startPolling(data.assetId, data)
+      } else {
+        // Synchronous / demo response
+        setResult(data)
+        setStatus('complete')
+      }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
       setError(err instanceof Error ? err.message : 'Generation failed')
       setStatus('error')
     }
-  }, [prompt, assetType, style, polyTarget, textured, rigged, animated, exportFmt, status])
+  }, [prompt, assetType, style, polyTarget, textured, rigged, animated, exportFmt, status, startPolling])
 
   const handleSendToStudio = useCallback(() => {
     if (!result || !onSendToStudio) return
@@ -587,6 +675,16 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
                 <div style={{ color: '#D4AF37' }}><Spinner /></div>
                 <span className="text-[11px]" style={{ color: '#52525b' }}>Generating asset...</span>
               </div>
+            ) : result?.asset.meshUrl ? (
+              <ModelPreview
+                glbUrl={result.asset.meshUrl}
+                thumbnailUrl={result.asset.thumbnailUrl}
+                width="100%"
+                height={140}
+                autoRotate
+                showToggle
+                expandable
+              />
             ) : (
               <CubePreview
                 active={status === 'complete'}
@@ -745,21 +843,41 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
         {/* Generate button */}
         <button
           onClick={handleGenerate}
-          disabled={!prompt.trim() || status === 'loading'}
+          disabled={!prompt.trim() || status === 'loading' || status === 'queued' || status === 'generating' || status === 'optimizing' || status === 'uploading'}
           className="flex items-center gap-1.5 px-4 py-1.5 rounded text-[12px] font-semibold transition-all"
           style={{
-            background: !prompt.trim() || status === 'loading'
+            background: !prompt.trim() || !(['idle', 'complete', 'error'] as GenerateStatus[]).includes(status)
               ? 'rgba(212,175,55,0.2)'
               : 'linear-gradient(135deg, #D4AF37 0%, #B8941F 100%)',
-            color:  !prompt.trim() || status === 'loading' ? 'rgba(212,175,55,0.4)' : '#0a0a0c',
-            cursor: !prompt.trim() || status === 'loading' ? 'not-allowed' : 'pointer',
-            boxShadow: !prompt.trim() || status === 'loading' ? 'none' : '0 2px 12px rgba(212,175,55,0.3)',
+            color:  !prompt.trim() || !(['idle', 'complete', 'error'] as GenerateStatus[]).includes(status) ? 'rgba(212,175,55,0.4)' : '#0a0a0c',
+            cursor: !prompt.trim() || !(['idle', 'complete', 'error'] as GenerateStatus[]).includes(status) ? 'not-allowed' : 'pointer',
+            boxShadow: !prompt.trim() || !(['idle', 'complete', 'error'] as GenerateStatus[]).includes(status) ? 'none' : '0 2px 12px rgba(212,175,55,0.3)',
           }}
         >
           {status === 'loading' ? (
             <>
               <div style={{ color: 'rgba(212,175,55,0.6)' }}><Spinner /></div>
+              Queuing...
+            </>
+          ) : status === 'queued' ? (
+            <>
+              <div style={{ color: 'rgba(212,175,55,0.6)' }}><Spinner /></div>
+              Queued...
+            </>
+          ) : status === 'generating' ? (
+            <>
+              <div style={{ color: 'rgba(212,175,55,0.6)' }}><Spinner /></div>
               Generating...
+            </>
+          ) : status === 'optimizing' ? (
+            <>
+              <div style={{ color: 'rgba(212,175,55,0.6)' }}><Spinner /></div>
+              Optimizing...
+            </>
+          ) : status === 'uploading' ? (
+            <>
+              <div style={{ color: 'rgba(212,175,55,0.6)' }}><Spinner /></div>
+              Uploading...
             </>
           ) : (
             <>

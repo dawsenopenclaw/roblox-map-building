@@ -1,34 +1,38 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from '@clerk/nextjs'
+
+// ─── Year picker — quick taps, no text input, COPPA compliant ─────────────────
+
+const CURRENT_YEAR = new Date().getFullYear()
+
+// Years from 1990 to current year (most users are 13–35)
+const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i)
 
 export default function AgeGatePage() {
   const { session } = useSession()
-  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [today, setToday] = useState('')
 
-  useEffect(() => {
-    setToday(new Date().toISOString().split('T')[0])
-  }, [])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!dateOfBirth) {
-      setError('Please enter your date of birth.')
+  async function handleContinue() {
+    if (!selectedYear) {
+      setError('Please select your birth year.')
       return
     }
 
     setLoading(true)
     setError('')
 
+    // Use Jan 1 of selected year — we only need the year for COPPA purposes
+    const dateOfBirth = new Date(`${selectedYear}-01-01T00:00:00Z`).toISOString()
+
     try {
       const res = await fetch('/api/onboarding/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dateOfBirth: new Date(`${dateOfBirth}T00:00:00Z`).toISOString() }),
+        body: JSON.stringify({ dateOfBirth }),
       })
 
       const data = await res.json()
@@ -73,52 +77,77 @@ export default function AgeGatePage() {
     <div className="w-full">
       <h1 className="text-xl font-bold text-white mb-1">One quick thing</h1>
       <p className="text-sm text-zinc-500 mb-6">
-        We need your date of birth to keep everyone safe.
+        What year were you born? We need this to keep everyone safe.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="dob" className="block text-xs font-medium text-zinc-400 mb-1.5">
-            Date of birth
-          </label>
-          <input
-            id="dob"
-            type="date"
-            min="1900-01-01"
-            max={today}
-            value={dateOfBirth}
-            onChange={(e) => { setDateOfBirth(e.target.value); setError('') }}
-            required
-            autoComplete="bday"
-            className="w-full rounded-lg px-4 py-2.5 text-white text-sm focus:outline-none transition-colors [color-scheme:dark]"
-            style={{
-              background: '#1a1a1c',
-              border: `1px solid ${error ? 'rgba(239,68,68,0.5)' : dateOfBirth ? 'rgba(212,175,55,0.4)' : 'rgba(255,255,255,0.08)'}`,
-              height: 40,
-            }}
-          />
-        </div>
-
-        {error && (
-          <p role="alert" className="text-sm text-red-400">{error}</p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading || !dateOfBirth}
-          className="w-full rounded-lg font-semibold text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{
-            background: '#D4AF37',
-            color: '#09090b',
-            height: 40,
-          }}
+      {/* Year grid — tap to select */}
+      <div
+        className="rounded-xl border mb-4 overflow-hidden"
+        style={{ border: '1px solid rgba(255,255,255,0.08)', background: '#111' }}
+      >
+        <div
+          className="grid grid-cols-4 gap-px overflow-y-auto"
+          style={{ maxHeight: 220, background: 'rgba(255,255,255,0.04)' }}
+          role="listbox"
+          aria-label="Birth year"
         >
-          {loading ? 'Saving...' : 'Continue'}
-        </button>
-      </form>
+          {YEARS.map((year) => {
+            const active = selectedYear === year
+            return (
+              <button
+                key={year}
+                role="option"
+                aria-selected={active}
+                onClick={() => { setSelectedYear(year); setError('') }}
+                className="py-3 text-sm font-medium transition-all duration-100 active:scale-95"
+                style={{
+                  background: active
+                    ? 'rgba(212,175,55,0.15)'
+                    : 'transparent',
+                  color: active ? '#D4AF37' : '#9CA3AF',
+                  borderBottom: active ? '1px solid rgba(212,175,55,0.3)' : '1px solid transparent',
+                  fontWeight: active ? 700 : 400,
+                }}
+              >
+                {year}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Selected display */}
+      {selectedYear && (
+        <div
+          className="flex items-center justify-between px-4 py-2.5 rounded-lg mb-4"
+          style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)' }}
+        >
+          <span className="text-sm text-gray-300">Born in</span>
+          <span className="text-sm font-bold" style={{ color: '#D4AF37' }}>{selectedYear}</span>
+        </div>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm text-red-400 mb-3">{error}</p>
+      )}
+
+      <button
+        type="button"
+        onClick={handleContinue}
+        disabled={loading || !selectedYear}
+        className="w-full rounded-lg font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
+        style={{
+          background: '#D4AF37',
+          color: '#09090b',
+          height: 40,
+          boxShadow: selectedYear ? '0 0 20px rgba(212,175,55,0.3)' : 'none',
+        }}
+      >
+        {loading ? 'Saving...' : 'Continue'}
+      </button>
 
       <p className="mt-5 text-xs text-center text-zinc-600">
-        We collect this to comply with COPPA child safety laws.
+        Required by COPPA child safety law. We never share this.
       </p>
     </div>
   )

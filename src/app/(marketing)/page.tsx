@@ -32,7 +32,7 @@ const organizationJsonLd = {
   '@type': 'Organization',
   name: 'ForjeGames',
   url: 'https://forjegames.com',
-  logo: 'https://forjegames.com/logo.png',
+  logo: 'https://forjegames.com/favicon.svg',
   sameAs: [
     'https://twitter.com/forjegames',
     'https://discord.gg/forjegames',

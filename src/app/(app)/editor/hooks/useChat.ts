@@ -25,6 +25,17 @@ export interface ModelOption {
   badge?: string
 }
 
+export interface MeshResult {
+  meshUrl: string | null
+  glbUrl: string | null
+  fbxUrl: string | null
+  thumbnailUrl: string | null
+  polygonCount: number | null
+  status: string
+  taskId?: string
+  luauCode: string | null
+}
+
 export interface ChatMessage {
   id: string
   role: MessageRole
@@ -42,6 +53,8 @@ export interface ChatMessage {
   buildError?: string
   /** Set on 'build-error' messages — which attempt number this was (1-based) */
   retryAttempt?: number
+  /** 3D mesh generated alongside this response */
+  meshResult?: MeshResult
 }
 
 export const MODELS: ModelOption[] = [
@@ -111,6 +124,7 @@ interface StreamMeta {
   model?: string
   error?: string
   mcpResult?: McpAgentResult
+  meshResult?: MeshResult
 }
 
 async function readStream(
@@ -502,6 +516,7 @@ export function useChat(options: UseChatOptions = {}) {
               suggestions: meta.suggestions,
               intent: meta.intent,
               hasCode: meta.hasCode,
+              ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
             }
             // Append mesh result message if present
             const result: ChatMessage[] = [...updated]

@@ -33,29 +33,7 @@ const cspDirectives = [
 
 const nextConfig: NextConfig = {
   async redirects() {
-    return [
-      // Consolidated routes — redirect old pages to new locations
-      { source: '/dashboard', destination: '/editor', permanent: false },
-      { source: '/dashboard/:path*', destination: '/editor', permanent: false },
-      { source: '/voice', destination: '/editor', permanent: false },
-      { source: '/image-to-map', destination: '/editor', permanent: false },
-      { source: '/billing', destination: '/settings?tab=billing', permanent: false },
-      { source: '/tokens', destination: '/settings?tab=billing', permanent: false },
-      // Future features — redirect to editor for now
-      { source: '/game-dna', destination: '/editor', permanent: false },
-      { source: '/game-dna/:path*', destination: '/editor', permanent: false },
-      { source: '/marketplace', destination: '/editor', permanent: false },
-      { source: '/marketplace/:path*', destination: '/editor', permanent: false },
-      { source: '/achievements', destination: '/editor', permanent: false },
-      { source: '/referrals', destination: '/editor', permanent: false },
-      { source: '/growth', destination: '/editor', permanent: false },
-      { source: '/community', destination: '/editor', permanent: false },
-      { source: '/team', destination: '/settings', permanent: false },
-      { source: '/team/:path*', destination: '/settings', permanent: false },
-      { source: '/projects', destination: '/editor', permanent: false },
-      { source: '/business', destination: '/editor', permanent: false },
-      { source: '/earnings', destination: '/settings?tab=billing', permanent: false },
-    ]
+    return []
   },
   async headers() {
     return [

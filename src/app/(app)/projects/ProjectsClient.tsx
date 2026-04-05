@@ -197,23 +197,23 @@ function EmptyState() {
           <path d="M6 6h7v7H6zM15 6h7v7h-7zM6 15h7v7H6zM15 15h7v7h-7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-zinc-200 mb-2">No projects yet</h2>
+      <h2 className="text-lg font-semibold text-zinc-200 mb-2">Your builds live here</h2>
       <p className="text-sm text-zinc-500 mb-6 max-w-xs leading-relaxed">
-        Start building your first Roblox game. Projects are saved automatically as you chat.
+        Describe a game in plain English and watch it appear in Roblox Studio. Projects save automatically.
       </p>
       <Link
         href="/editor"
         className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
         style={{
-          background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
           color: '#09090b',
-          boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+          boxShadow: '0 0 24px rgba(212,175,55,0.35)',
         }}
       >
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
           <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
         </svg>
-        New Project
+        Start Building
       </Link>
     </div>
   )

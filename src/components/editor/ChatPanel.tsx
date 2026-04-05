@@ -2,10 +2,11 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { GlassPanel } from './GlassPanel'
-import type { ChatMessage, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
+import type { ChatMessage, MeshResult, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
 import { McpToolCard, type McpToolResult } from './McpToolCard'
 import { McpToolbar } from './McpToolbar'
+import { ModelPreview } from './ModelPreview'
 
 // ─── Showcase example prompts (empty state) ───────────────────────────────────
 
@@ -205,12 +206,14 @@ function MessageBubble({
   onBuildDifferently,
   onDismiss,
   onEditAndResend,
+  onSendToStudio,
 }: {
   msg: ChatMessage
   onRetry?: () => void
   onBuildDifferently?: () => void
   onDismiss?: (id: string) => void
   onEditAndResend?: (id: string, newContent: string) => void
+  onSendToStudio?: (luauCode: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -826,6 +829,9 @@ function MessageBubble({
         <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {msg.streaming ? stripCodeBlocksForDisplay(msg.content) : msg.content}
         </p>
+        {!msg.streaming && msg.meshResult && (
+          <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} />
@@ -889,6 +895,245 @@ function MessageBubble({
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Mesh Result Card ────────────────────────────────────────────────────────
+
+function MeshResultCard({
+  mesh,
+  onSendToStudio,
+}: {
+  mesh: MeshResult
+  onSendToStudio?: (luauCode: string) => void
+}) {
+  const [luauCopied, setLuauCopied] = useState(false)
+
+  const handleCopyLuau = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!mesh.luauCode) return
+    await navigator.clipboard.writeText(mesh.luauCode).catch(() => {})
+    setLuauCopied(true)
+    setTimeout(() => setLuauCopied(false), 1500)
+  }
+
+  const handleSendToStudio = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (mesh.luauCode && onSendToStudio) onSendToStudio(mesh.luauCode)
+  }
+
+  const isDemo = mesh.status === 'demo'
+  const isPending = mesh.status === 'pending'
+  const isComplete = mesh.status === 'complete'
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        borderRadius: 10,
+        border: '1px solid rgba(212,175,55,0.2)',
+        background: 'rgba(212,175,55,0.04)',
+        overflow: 'hidden',
+        fontFamily: 'Inter, sans-serif',
+      }}
+    >
+      {/* Preview row — 3D when GLB is available, thumbnail fallback otherwise */}
+      {(mesh.glbUrl || mesh.thumbnailUrl) && (
+        <div style={{ padding: '10px 12px 0' }}>
+          <div
+            style={{
+              width: '100%',
+              height: 150,
+              borderRadius: 6,
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: '#080B16',
+            }}
+          >
+            {mesh.glbUrl ? (
+              <ModelPreview
+                glbUrl={mesh.glbUrl}
+                thumbnailUrl={mesh.thumbnailUrl}
+                width="100%"
+                height={150}
+                autoRotate
+                showToggle
+                expandable
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={mesh.thumbnailUrl!}
+                alt="3D mesh preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 10, padding: '10px 12px', alignItems: 'flex-start' }}>
+        <div style={{ width: 0, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <path d="M5 1L9 3.5V6.5L5 9L1 6.5V3.5L5 1Z" stroke="#D4AF37" strokeWidth="1.2" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(212,175,55,0.9)' }}>
+              {isComplete ? '3D Mesh Ready' : isPending ? 'Generating…' : 'Demo Preview'}
+            </span>
+            {isDemo && (
+              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.3)' }}>
+                DEMO
+              </span>
+            )}
+          </div>
+          {mesh.polygonCount !== null && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>
+              {mesh.polygonCount.toLocaleString()} polygons
+            </div>
+          )}
+          {isPending && mesh.taskId && (
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
+              Task: {mesh.taskId.slice(0, 16)}…
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      {isComplete && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 6,
+            padding: '8px 12px',
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Download GLB */}
+          {mesh.glbUrl && (
+            <a
+              href={mesh.glbUrl}
+              download
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 5,
+                background: 'rgba(212,175,55,0.12)',
+                color: 'rgba(212,175,55,0.85)',
+                border: '1px solid rgba(212,175,55,0.25)',
+                textDecoration: 'none',
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <path d="M4.5 1v5M2 5l2.5 2.5L7 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              Download GLB
+            </a>
+          )}
+
+          {/* Download FBX (fallback if no GLB) */}
+          {!mesh.glbUrl && mesh.fbxUrl && (
+            <a
+              href={mesh.fbxUrl}
+              download
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 5,
+                background: 'rgba(212,175,55,0.12)',
+                color: 'rgba(212,175,55,0.85)',
+                border: '1px solid rgba(212,175,55,0.25)',
+                textDecoration: 'none',
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <path d="M4.5 1v5M2 5l2.5 2.5L7 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 8h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              Download FBX
+            </a>
+          )}
+
+          {/* Copy Luau */}
+          {mesh.luauCode && (
+            <button
+              onClick={handleCopyLuau}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 5,
+                background: luauCopied ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.05)',
+                color: luauCopied ? 'rgba(74,222,128,0.85)' : 'rgba(255,255,255,0.5)',
+                border: luauCopied ? '1px solid rgba(74,222,128,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {luauCopied ? (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                    <path d="M1.5 4.5l2.5 2.5 3.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                    <rect x="3" y="3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.1"/>
+                    <path d="M1 6V1h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  Copy Luau
+                </>
+              )}
+            </button>
+          )}
+
+          {/* Send to Studio */}
+          {mesh.luauCode && onSendToStudio && (
+            <button
+              onClick={handleSendToStudio}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 5,
+                background: 'rgba(99,102,241,0.12)',
+                color: 'rgba(165,180,252,0.85)',
+                border: '1px solid rgba(99,102,241,0.25)',
+                fontFamily: 'Inter, sans-serif',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                <path d="M1 4.5h6M5 2l2.5 2.5L5 7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Send to Studio
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1140,13 +1385,14 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: 16,
-        padding: '40px 20px',
+        justifyContent: 'flex-end',
+        gap: 20,
+        padding: '0 20px 28px',
       }}
     >
+      {/* Heading */}
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fafafa', letterSpacing: '-0.02em' }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fafafa', letterSpacing: '-0.02em' }}>
           What do you want to build?
         </h2>
         <p style={{ margin: '8px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
@@ -1154,36 +1400,48 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         </p>
       </div>
 
-      {/* 3 simple suggestion chips */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', maxWidth: 500 }}>
-        {[
-          'Build me a medieval castle',
-          'Create a mountain terrain',
-          'Make a cozy cafe interior',
-        ].map((prompt) => (
+      {/* Template cards — one click sends immediately */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          maxWidth: 560,
+          width: '100%',
+        }}
+      >
+        {SHOWCASE_EXAMPLES.slice(0, 4).map((ex) => (
           <button
-            key={prompt}
-            onClick={() => onQuickAction(prompt)}
+            key={ex.label}
+            onClick={() => onQuickAction(ex.prompt)}
             style={{
-              padding: '8px 16px',
-              borderRadius: 20,
-              border: '1px solid rgba(212,175,55,0.2)',
-              background: 'rgba(212,175,55,0.06)',
-              color: 'rgba(212,175,55,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 14px',
+              borderRadius: 12,
+              border: `1px solid ${ex.border}`,
+              background: ex.bg,
+              color: ex.color,
               fontSize: 13,
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 500,
               cursor: 'pointer',
-              transition: 'all 0.15s',
+              transition: 'all 0.15s ease-out',
+              whiteSpace: 'nowrap',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(212,175,55,0.12)'
-              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+              e.currentTarget.style.opacity = '0.8'
+              e.currentTarget.style.transform = 'translateY(-1px)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
-              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
+              e.currentTarget.style.opacity = '1'
+              e.currentTarget.style.transform = 'translateY(0)'
             }}
           >
-            {prompt}
+            <span style={{ fontSize: 16, lineHeight: 1 }}>{ex.emoji}</span>
+            {ex.label}
           </button>
         ))}
       </div>
@@ -1635,6 +1893,8 @@ interface ChatPanelProps {
   mcpToolResult?: McpToolResult | null
   /** Called when the user edits a user message and re-sends it */
   onEditAndResend?: (id: string, newContent: string) => void
+  /** Called when user clicks "Send to Studio" on a mesh result card */
+  onSendToStudio?: (luauCode: string) => void
 }
 
 export function ChatPanel({
@@ -1655,10 +1915,15 @@ export function ChatPanel({
   activeMcpTool = null,
   mcpToolResult = null,
   onEditAndResend,
+  onSendToStudio,
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // Model selector visibility — hidden behind gear by default, shown after first message
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
+  // Extra input controls (image + voice) — hidden until user has messages or expands
+  const [inputExtrasOpen, setInputExtrasOpen] = useState(false)
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(input ? `${input} ${text}` : text)
@@ -1670,6 +1935,12 @@ export function ChatPanel({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Once messages appear, keep extras accessible
+  const hasMessages = messages.length > 0
+  useEffect(() => {
+    if (hasMessages) setInputExtrasOpen(true)
+  }, [hasMessages])
 
   const [sendPressed, setSendPressed] = useState(false)
 
@@ -1691,8 +1962,6 @@ export function ChatPanel({
   const charCountWarning = input.length > MAX_INPUT * 0.85
   const showSlashHint = input === '/'
 
-  const hasMessages = messages.length > 0
-
   return (
     <GlassPanel
       padding="none"
@@ -1706,7 +1975,7 @@ export function ChatPanel({
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: compact ? '0' : '20px 16px',
+          padding: compact ? '0' : hasMessages ? '20px 16px' : '0',
           display: compact ? 'none' : 'flex',
           flexDirection: 'column',
           gap: 16,
@@ -1726,6 +1995,7 @@ export function ChatPanel({
               onBuildDifferently={onBuildDifferently}
               onDismiss={onDismiss}
               onEditAndResend={onEditAndResend}
+              onSendToStudio={onSendToStudio}
             />
           ))
         )}
@@ -1840,6 +2110,116 @@ export function ChatPanel({
         >
           {/* Textarea row */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+
+          {/* + button — expands image/voice extras. Always visible; extras toggle on click */}
+          <button
+            onClick={() => setInputExtrasOpen((v) => !v)}
+            title={inputExtrasOpen ? 'Hide extras' : 'Attach image or use voice'}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 9,
+              border: inputExtrasOpen ? '1px solid rgba(212,175,55,0.3)' : '1px solid rgba(255,255,255,0.07)',
+              background: inputExtrasOpen ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.03)',
+              color: inputExtrasOpen ? '#D4AF37' : 'rgba(255,255,255,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => {
+              if (!inputExtrasOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+            }}
+            onMouseLeave={(e) => {
+              if (!inputExtrasOpen) e.currentTarget.style.color = 'rgba(255,255,255,0.3)'
+            }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d={inputExtrasOpen ? 'M2 6h8' : 'M6 2v8M2 6h8'} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+
+          {/* Image upload — only shown when extras open */}
+          {inputExtrasOpen && (
+            <label
+              title="Upload an image"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'rgba(255,255,255,0.03)',
+                color: 'rgba(255,255,255,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s',
+                animation: 'msgFadeUp 0.15s ease-out forwards',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+                  e.currentTarget.style.color = '#D4AF37'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
+                <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                disabled={loading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setInput(input ? `${input}\n[Uploaded: ${file.name}]` : `[Uploaded: ${file.name}] Describe what to build from this image`)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          )}
+
+          {/* Voice button — only shown when extras open */}
+          {inputExtrasOpen && speechSupported && (
+            <button
+              onClick={toggleSpeech}
+              title={listening ? 'Stop listening' : 'Voice input'}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                border: `1px solid ${listening ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                background: listening ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
+                color: listening ? '#F87171' : 'rgba(255,255,255,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s',
+                animation: 'msgFadeUp 0.15s ease-out forwards',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="4.5" y="1" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
+                <path d="M2 7.5a5 5 0 0010 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                <path d="M7 12.5v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+
           <textarea
             ref={taRef}
             value={input}
@@ -1868,81 +2248,6 @@ export function ChatPanel({
               el.style.height = `${Math.min(el.scrollHeight, 120)}px`
             }}
           />
-
-          {/* Image upload button */}
-          <label
-            title="Upload an image"
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.03)',
-              color: 'rgba(255,255,255,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              flexShrink: 0,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
-                e.currentTarget.style.color = '#D4AF37'
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-              e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-              <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
-              <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              disabled={loading}
-              onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (!file) return
-                setInput(input ? `${input}\n[Uploaded: ${file.name}]` : `[Uploaded: ${file.name}] Describe what to build from this image`)
-                e.target.value = ''
-              }}
-            />
-          </label>
-
-          {/* Voice button */}
-          {speechSupported && (
-            <button
-              onClick={toggleSpeech}
-              title={listening ? 'Stop listening' : 'Voice input'}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 9,
-                border: `1px solid ${listening ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                background: listening ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
-                color: listening ? '#F87171' : 'rgba(255,255,255,0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'all 0.15s',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="4.5" y="1" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M2 7.5a5 5 0 0010 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                <path d="M7 12.5v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-              </svg>
-            </button>
-          )}
 
           {/* Send button */}
           <button
@@ -1980,9 +2285,41 @@ export function ChatPanel({
           </button>
           </div>
 
-          {/* Bottom row: model selector + hints + char count */}
+          {/* Bottom row: gear (model) + hints + char count */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 6 }}>
-            <ModelSelector selected={selectedModel} onChange={setSelectedModel} />
+            {/* Left: gear icon opens model selector inline */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                onClick={() => setModelSelectorOpen((v) => !v)}
+                title="Model settings"
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  border: modelSelectorOpen ? '1px solid rgba(212,175,55,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                  background: modelSelectorOpen ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                  color: modelSelectorOpen ? '#D4AF37' : 'rgba(255,255,255,0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 18 18" fill="none">
+                  <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+                  <path d="M9 2v2M9 14v2M2 9h2M14 9h2M4.2 4.2l1.4 1.4M12.4 12.4l1.4 1.4M4.2 13.8l1.4-1.4M12.4 5.6l1.4-1.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                </svg>
+              </button>
+              {modelSelectorOpen && (
+                <div style={{ animation: 'msgFadeUp 0.15s ease-out forwards' }}>
+                  <ModelSelector selected={selectedModel} onChange={(id) => { setSelectedModel(id); setModelSelectorOpen(false) }} />
+                </div>
+              )}
+            </div>
+
+            {/* Right: hints + char count */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {/* Estimated cost */}
               {input.trim().length > 20 && (
@@ -2020,7 +2357,7 @@ export function ChatPanel({
               )}
               {!showCharCount && !showSlashHint && (
                 <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.15)', fontFamily: 'Inter, sans-serif' }}>
-                  Enter to send · Ctrl+K to focus
+                  Enter to send
                 </span>
               )}
             </div>

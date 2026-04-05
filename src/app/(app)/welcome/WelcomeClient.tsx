@@ -1235,14 +1235,17 @@ export default function WelcomePage() {
           </div>
         </div>
 
-        {/* Skip link */}
+        {/* Skip link — visible and easy to tap */}
         {step < TOTAL_STEPS && (
           <div className="text-center mt-5">
             <button
               onClick={handleOpenEditor}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors group"
             >
-              Skip setup and go to editor
+              <svg className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Skip setup — go straight to the editor
             </button>
           </div>
         )}

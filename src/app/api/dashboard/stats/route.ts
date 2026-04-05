@@ -47,24 +47,29 @@ export async function GET() {
             },
           })
 
-          // Build activity per day (last 7 days)
-          const activity: number[] = []
-          for (let i = 6; i >= 0; i--) {
-            const dayStart = new Date()
-            dayStart.setDate(dayStart.getDate() - i)
-            dayStart.setHours(0, 0, 0, 0)
-            const dayEnd = new Date(dayStart)
-            dayEnd.setDate(dayEnd.getDate() + 1)
+          // Build activity per day (last 7 days) — single query, grouped in JS
+          const sevenDaysAgo = new Date()
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
+          sevenDaysAgo.setHours(0, 0, 0, 0)
 
-            const count = await db.tokenTransaction.count({
-              where: {
-                balanceId: tokenBalance.id,
-                type: 'SPEND',
-                createdAt: { gte: dayStart, lt: dayEnd },
-              },
-            })
-            activity.push(count)
+          const activityRows = await db.tokenTransaction.findMany({
+            where: {
+              balanceId: tokenBalance.id,
+              type: 'SPEND',
+              createdAt: { gte: sevenDaysAgo },
+            },
+            select: { createdAt: true },
+          })
+
+          // Group counts into a [day-0 .. day-6] array (oldest → newest)
+          const dayCounts = new Array<number>(7).fill(0)
+          for (const row of activityRows) {
+            const dayOffset = Math.floor(
+              (row.createdAt.getTime() - sevenDaysAgo.getTime()) / 86_400_000
+            )
+            if (dayOffset >= 0 && dayOffset < 7) dayCounts[dayOffset]++
           }
+          const activity = dayCounts
 
           // Count unique descriptions as rough project count
           const activeProjects = await db.tokenTransaction.groupBy({

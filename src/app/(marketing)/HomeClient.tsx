@@ -331,7 +331,7 @@ export default function HomeClient() {
               }}
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              The only Roblox AI that builds code, 3D assets, AND entire game systems
+              Scripts + 3D assets + terrain + UI + economy — all in one AI
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
               <span style={{ color: '#D4AF37' }}>Free to start</span>
             </div>
@@ -357,9 +357,9 @@ export default function HomeClient() {
               className="reveal reveal-delay-2 text-xl leading-relaxed max-w-2xl mx-auto mb-12"
               style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
             >
-              Generate code, 3D assets, and entire game systems —
+              Voice a prompt. Get terrain, 3D models, scripts, UI, and economy —
               <br className="hidden sm:block" />
-              synced directly to Roblox Studio.
+              all synced live to Roblox Studio. Not just scripts. Everything.
             </p>
 
             {/* CTA row */}
@@ -378,7 +378,7 @@ export default function HomeClient() {
                 <IconArrow size={15} />
               </Link>
               <Link
-                href="/#showcase"
+                href="#features"
                 className="cta-secondary inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-medium"
                 style={{
                   color: '#A1A1AA',
@@ -390,7 +390,7 @@ export default function HomeClient() {
                   <circle cx="12" cy="12" r="10" />
                   <polygon points="10 8 16 12 10 16 10 8" />
                 </svg>
-                Watch Demo
+                See what gets built
               </Link>
             </div>
 
@@ -437,9 +437,9 @@ export default function HomeClient() {
             <div className="flex flex-wrap items-center justify-center gap-x-16 gap-y-8 text-center">
               {[
                 { value: 5,     suffix: '',  label: 'AI models',            color: '#D4AF37'  },
-                { value: 150,   suffix: '+', label: 'Asset library',        color: '#60A5FA'  },
+                { value: 55,    suffix: '+', label: 'Specialized agents',   color: '#60A5FA'  },
                 { value: 50,    suffix: '+', label: 'Game templates',       color: '#7C3AED'  },
-                { value: 99,    suffix: '%', label: 'Uptime SLA',           color: '#10B981'  },
+                { value: 10,    suffix: 'min', label: 'Time to first map',  color: '#10B981'  },
               ].map(({ value, suffix, label, color }, i) => (
                 <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
                   <p
@@ -481,11 +481,11 @@ export default function HomeClient() {
                 className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
                 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
               >
-                We handle
-                <br />the hard stuff.
+                Not just scripts.
+                <br />The whole game.
               </h2>
               <p className="reveal reveal-delay-2 text-lg leading-relaxed" style={{ color: '#71717A' }}>
-                From first idea to published game — ForjeGames covers every layer, so you can focus on being creative.
+                Other tools stop at code generation. ForjeGames builds terrain, 3D models, UI, economy systems, and scripts — every layer, in one place.
               </p>
             </div>
 
@@ -499,6 +499,19 @@ export default function HomeClient() {
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
                   minHeight: 280,
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = 'translateY(-4px) scale(1.01)'
+                  el.style.boxShadow = '0 12px 40px rgba(212,175,55,0.12)'
+                  el.style.borderColor = 'rgba(212,175,55,0.2)'
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = ''
+                  el.style.boxShadow = ''
+                  el.style.borderColor = 'rgba(255,255,255,0.07)'
                 }}
               >
                 <div className="flex items-start gap-4 mb-5">
@@ -507,9 +520,9 @@ export default function HomeClient() {
                     <IconBrain size={22} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>AI Chat</h3>
+                    <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>AI Script Writer</h3>
                     <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
-                      Natural language to production Luau. Describe any mechanic — combat, economy, physics — and watch it generate live.
+                      Natural language to production Luau — context-aware, not generic snippets. Describe any mechanic and watch it generate live with your map structure already in mind.
                     </p>
                   </div>
                 </div>
@@ -556,15 +569,28 @@ export default function HomeClient() {
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
                   minHeight: 280,
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = 'translateY(-4px) scale(1.01)'
+                  el.style.boxShadow = '0 12px 40px rgba(96,165,250,0.1)'
+                  el.style.borderColor = 'rgba(96,165,250,0.2)'
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = ''
+                  el.style.boxShadow = ''
+                  el.style.borderColor = 'rgba(255,255,255,0.07)'
                 }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.12)', color: '#60A5FA' }}>
                   <IconSync size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Studio Sync</h3>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Live Studio Sync</h3>
                 <p className="text-sm leading-relaxed mb-6" style={{ color: '#71717A' }}>
-                  Real-time connection to Roblox Studio. Every change appears live in your place — no copy-paste, no waiting.
+                  Every generation — terrain, script, asset, UI — pushes directly into your open Roblox Studio place in real time. No copy-paste. No file imports. Just build.
                 </p>
                 <div className="mt-auto flex items-center gap-3 p-3 rounded-lg" style={{
                   background: 'rgba(96,165,250,0.05)', border: '1px solid rgba(96,165,250,0.1)',
@@ -589,18 +615,31 @@ export default function HomeClient() {
                   border: '1px solid rgba(124,58,237,0.14)',
                   minHeight: 260,
                   boxShadow: '0 0 32px rgba(124,58,237,0.06)',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = 'translateY(-4px) scale(1.01)'
+                  el.style.boxShadow = '0 12px 40px rgba(124,58,237,0.15)'
+                  el.style.borderColor = 'rgba(124,58,237,0.3)'
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = ''
+                  el.style.boxShadow = '0 0 32px rgba(124,58,237,0.06)'
+                  el.style.borderColor = 'rgba(124,58,237,0.14)'
                 }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', color: '#A78BFA' }}>
                   <IconSparkle size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Workspace Intelligence</h3>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Voice Builder</h3>
                 <p className="text-sm leading-relaxed" style={{ color: '#71717A' }}>
-                  The AI knows your entire map — scripts, parts, structure. Suggestions are always contextual, never generic.
+                  Speak your idea — the AI builds it. Terrain, scripts, and assets generated from a single voice command. No other Roblox tool does this.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {['Map-aware', 'Script-aware', 'No hallucinations'].map((tag) => (
+                  {['Voice input', 'Map-aware', 'Hands-free'].map((tag) => (
                     <span key={tag} className="text-[11px] px-2.5 py-1 rounded-full" style={{
                       background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.2)', color: '#A78BFA',
                     }}>{tag}</span>
@@ -608,22 +647,35 @@ export default function HomeClient() {
                 </div>
               </div>
 
-              {/* 3D Preview */}
+              {/* 3D Model Generation */}
               <div
                 className="reveal reveal-delay-3 bento-card rounded-2xl p-7 flex flex-col"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
                   minHeight: 260,
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = 'translateY(-4px) scale(1.01)'
+                  el.style.boxShadow = '0 12px 40px rgba(212,175,55,0.12)'
+                  el.style.borderColor = 'rgba(212,175,55,0.2)'
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget as HTMLDivElement
+                  el.style.transform = ''
+                  el.style.boxShadow = ''
+                  el.style.borderColor = 'rgba(255,255,255,0.07)'
                 }}
               >
                 <div className="feature-icon w-12 h-12 rounded-xl flex items-center justify-center mb-5"
                   style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.12)', color: '#D4AF37' }}>
                   <IconCube size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>3D Preview</h3>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>3D Model Generation</h3>
                 <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717A' }}>
-                  See your builds in the browser before they hit Studio. Interactive 3D viewer with PBR textures included.
+                  Text or image to a Roblox-ready 3D mesh with PBR textures — generated by AI and placed directly in your map. Unique assets, not recycled marketplace models.
                 </p>
                 <div className="mt-auto flex items-center justify-center rounded-xl" style={{
                   background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)', height: 72,
@@ -649,9 +701,9 @@ export default function HomeClient() {
                   style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.12)', color: '#10B981' }}>
                   <IconZap size={22} />
                 </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>Templates</h3>
+                <h3 className="text-lg font-bold mb-2" style={{ color: '#FAFAFA' }}>50+ Game Templates</h3>
                 <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717A' }}>
-                  50+ pre-built game templates — tycoons, simulators, RPGs, obby, shooters. Fully wired, ready to customize.
+                  Tycoons, simulators, RPGs, obby, shooters — fully wired with economy, UI, and scripts. Launch in minutes, not months.
                 </p>
                 <div className="mt-auto flex flex-wrap gap-2">
                   {['Tycoon', 'Simulator', 'RPG', 'Obby', '+46 more'].map((genre, i) => (
@@ -674,9 +726,9 @@ export default function HomeClient() {
                   <IconShield size={22} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Safe &amp; Professional</h3>
+                  <h3 className="text-lg font-bold mb-1" style={{ color: '#FAFAFA' }}>Built for Young Creators — Safe by Default</h3>
                   <p className="text-sm" style={{ color: '#71717A' }}>
-                    Production-ready Luau with server authority and anti-cheat built in. COPPA-compliant for young creators — parental consent, content filtering, and data protection included.
+                    COPPA-compliant with parental controls, content filtering, and zero data selling. Every generated script ships with server authority and anti-cheat — production-ready from day one.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-6 flex-shrink-0">
@@ -828,7 +880,7 @@ export default function HomeClient() {
               <span className="gradient-text text-shimmer">the next generation.</span>
             </h2>
             <p className="reveal reveal-delay-2 text-lg leading-relaxed mb-10 max-w-xl mx-auto" style={{ color: '#71717A' }}>
-              Your competitors are already shipping faster. ForjeGames cuts game dev time from months to days — and gives you moats they can&apos;t copy: custom 3D assets, multi-model AI, and a live Studio sync that just works.
+              Other tools generate scripts. ForjeGames generates entire games — terrain, 3D models, economy systems, UI, and code. Ship in days, not months. Your moat is built in.
             </p>
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link

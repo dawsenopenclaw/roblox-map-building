@@ -209,14 +209,20 @@ export async function searchMultiple(
  * search marketplace for each and return a plan: what was found vs what
  * needs custom generation.
  *
+ * Theme and scale aware: uses pickBestAsset() to select the most contextually
+ * appropriate result rather than just the first free hit.
+ *
  * Example input: ['medieval castle', 'oak tree', 'stone wall', 'torch']
  */
-export async function planBuildAssets(searchTerms: string[]): Promise<BuildAssetPlan> {
+export async function planBuildAssets(
+  searchTerms: string[],
+  options: SmartPickOptions = {},
+): Promise<BuildAssetPlan> {
   const MESHY_CREDIT_COST = 1 // credits per custom model at standard quality
 
   const results = await searchMultiple(
     searchTerms.map((q) => ({ query: q, type: 'Model' as AssetType })),
-    3, // top 3 results per term — pick best one
+    6, // fetch top 6 per term so pickBestAsset has more candidates to score
   )
 
   const found: BuildAssetPlan['found'] = []
@@ -226,9 +232,22 @@ export async function planBuildAssets(searchTerms: string[]): Promise<BuildAsset
     const result = results.get(term)
     const freeAssets = result?.assets.filter((a) => a.isFree) ?? []
     if (freeAssets.length > 0) {
-      // Pick highest-quality: prefer assets with thumbnails
-      const best = freeAssets.find((a) => a.thumbnailUrl) ?? freeAssets[0]
-      found.push({ searchTerm: term, asset: best })
+      // Infer scale hint from the search term itself
+      const termLower = term.toLowerCase()
+      const termScale: AssetScale =
+        Object.entries(ASSET_SCALE_HINTS).find(([k]) => termLower.includes(k))?.[1] ?? 'any'
+
+      const best = pickBestAsset(freeAssets, {
+        theme: options.theme,
+        preferredScale: options.preferredScale ?? termScale,
+        nearbyColor: options.nearbyColor,
+        requireThumbnail: false,
+      })
+      if (best) {
+        found.push({ searchTerm: term, asset: best })
+      } else {
+        missing.push(term)
+      }
     } else {
       missing.push(term)
     }
@@ -400,19 +419,99 @@ export const THEME_SEARCH_TERMS: Record<string, string[]> = {
   ],
 }
 
+// ─── Theme style modifiers ────────────────────────────────────────────────────
+
+/**
+ * Style qualifier prefixes per theme — prepended to generic search terms so
+ * marketplace results match the scene's aesthetic rather than returning the
+ * first generic hit (e.g. "medieval lamp" not just "lamp").
+ */
+const THEME_STYLE_PREFIX: Record<string, string> = {
+  medieval:  'medieval',
+  fantasy:   'fantasy',
+  space:     'sci-fi space',
+  pirate:    'pirate',
+  dungeon:   'dungeon stone',
+  forest:    'forest nature',
+  city:      'modern city',
+  farm:      'farm rustic',
+  horror:    'horror spooky',
+  japanese:  'japanese',
+  futuristic: 'futuristic neon',
+  tropical:  'tropical island',
+  winter:    'winter snow',
+  western:   'western saloon',
+}
+
+/**
+ * Scale hints per asset category — helps callers decide whether a result is
+ * appropriately sized for the scene without needing to inspect geometry.
+ */
+export type AssetScale = 'small' | 'medium' | 'large' | 'any'
+
+const ASSET_SCALE_HINTS: Record<string, AssetScale> = {
+  // Small props
+  'torch': 'small', 'lantern': 'small', 'barrel': 'small', 'crate': 'small',
+  'bench': 'small', 'chair': 'small', 'table': 'small', 'flower': 'small',
+  'mushroom': 'small', 'rock': 'small', 'sign': 'small', 'chest': 'small',
+  // Medium objects
+  'tree': 'medium', 'bush': 'medium', 'boulder': 'medium', 'fence': 'medium',
+  'gate': 'medium', 'door': 'medium', 'statue': 'medium', 'fountain': 'medium',
+  'car': 'medium', 'boat': 'medium', 'lamp': 'medium', 'pillar': 'medium',
+  // Large structures
+  'castle': 'large', 'house': 'large', 'building': 'large', 'tower': 'large',
+  'ship': 'large', 'bridge': 'large', 'wall': 'large', 'arena': 'large',
+  'dungeon': 'large', 'ruins': 'large', 'mansion': 'large', 'warehouse': 'large',
+}
+
+/**
+ * Detect the dominant theme/style in a prompt.
+ * Returns the theme key or null if no clear match.
+ */
+export function detectTheme(prompt: string): string | null {
+  const lower = prompt.toLowerCase()
+  // Order matters — more specific themes first
+  const THEME_SIGNALS: Array<{ theme: string; signals: RegExp }> = [
+    { theme: 'japanese',   signals: /\b(japanese|japan|torii|pagoda|samurai|cherry blossom|zen|shrine)\b/ },
+    { theme: 'pirate',     signals: /\b(pirate|ship|cannon|treasure|jolly roger|plank|anchor)\b/ },
+    { theme: 'horror',     signals: /\b(horror|haunted|spooky|ghost|skeleton|zombie|graveyard|tombstone)\b/ },
+    { theme: 'western',    signals: /\b(western|saloon|cowboy|sheriff|gold mine|wagon|tumbleweed)\b/ },
+    { theme: 'space',      signals: /\b(space|sci.?fi|alien|ufo|spaceship|station|laser|hologram|futuristic)\b/ },
+    { theme: 'futuristic', signals: /\b(futuristic|neon city|cyberpunk|hologram|hover|mech|android)\b/ },
+    { theme: 'tropical',   signals: /\b(tropical|island|palm|beach|ocean|paradise|tiki)\b/ },
+    { theme: 'winter',     signals: /\b(winter|snow|ice|christmas|frozen|arctic|blizzard|igloo)\b/ },
+    { theme: 'farm',       signals: /\b(farm|barn|hay|tractor|windmill|silo|harvest|rural)\b/ },
+    { theme: 'dungeon',    signals: /\b(dungeon|prison|underground|cavern|cave|tomb|crypt)\b/ },
+    { theme: 'fantasy',    signals: /\b(fantasy|magic|crystal|enchanted|wizard|dragon|fairy|portal|rune)\b/ },
+    { theme: 'medieval',   signals: /\b(medieval|castle|knight|sword|shield|stone wall|cobblestone|tavern|village)\b/ },
+    { theme: 'forest',     signals: /\b(forest|woods|nature|oak|pine|jungle|swamp|meadow)\b/ },
+    { theme: 'city',       signals: /\b(city|urban|street|road|modern|office|apartment|downtown|skyscraper)\b/ },
+  ]
+  for (const { theme, signals } of THEME_SIGNALS) {
+    if (signals.test(lower)) return theme
+  }
+  return null
+}
+
 /**
  * Given a free-text prompt, extract relevant search terms.
- * Checks for known themes first, then falls back to extracting nouns.
+ * Theme-aware: qualifies generic keywords with the detected style so
+ * marketplace results match the scene's aesthetic (e.g. "medieval lamp"
+ * instead of plain "lamp" when building a castle scene).
  */
 export function extractSearchTerms(prompt: string): string[] {
   const lower = prompt.toLowerCase()
 
-  // Check named themes
+  // 1. Check exact named themes — return full curated term list
   for (const [theme, terms] of Object.entries(THEME_SEARCH_TERMS)) {
     if (lower.includes(theme)) return terms
   }
 
-  // Keyword extraction fallback — look for common Roblox asset types
+  // 2. Detect implicit theme for style-qualified searches
+  const detectedTheme = detectTheme(prompt)
+  const stylePrefix = detectedTheme ? (THEME_STYLE_PREFIX[detectedTheme] ?? '') : ''
+
+  // 3. Keyword extraction — look for common Roblox asset types
   const ASSET_KEYWORDS = [
     'castle', 'house', 'building', 'tower', 'wall', 'gate', 'bridge',
     'tree', 'rock', 'boulder', 'log', 'plant', 'flower',
@@ -420,18 +519,27 @@ export function extractSearchTerms(prompt: string): string[] {
     'chest', 'barrel', 'crate', 'box',
     'fence', 'door', 'window', 'stair',
     'ship', 'boat', 'car', 'truck', 'wagon',
-    'pillar', 'arch', 'ruin', 'statue',
+    'pillar', 'arch', 'ruin', 'statue', 'ruins',
     'npc', 'character', 'monster', 'enemy',
+    'bench', 'fountain', 'sign', 'table', 'chair',
+    'mushroom', 'crystal', 'portal', 'cannon', 'shrine',
   ]
 
   const found: string[] = []
   const words = lower.split(/\s+/)
   for (const word of words) {
     if (ASSET_KEYWORDS.includes(word) && !found.some((f) => f.includes(word))) {
-      // Search as "<adjective context> <keyword>" if adjective precedes it
+      // Prefer explicit adjective context from the prompt first
       const idx = words.indexOf(word)
-      if (idx > 0) {
-        found.push(`${words[idx - 1]} ${word}`)
+      const prevWord = idx > 0 ? words[idx - 1] : ''
+      const isGenericPrev = ['a', 'an', 'the', 'some', 'my', 'your'].includes(prevWord)
+
+      if (prevWord && !isGenericPrev) {
+        // Explicit: "stone pillar", "oak tree"
+        found.push(`${prevWord} ${word}`)
+      } else if (stylePrefix) {
+        // Theme-qualified: "medieval pillar", "fantasy tree"
+        found.push(`${stylePrefix} ${word}`)
       } else {
         found.push(word)
       }
@@ -440,4 +548,77 @@ export function extractSearchTerms(prompt: string): string[] {
 
   // Deduplicate and cap at 8 terms
   return [...new Set(found)].slice(0, 8)
+}
+
+// ─── Smart asset picker ───────────────────────────────────────────────────────
+
+export interface SmartPickOptions {
+  /** Detected theme/style of the build (e.g. "medieval", "fantasy") */
+  theme?: string | null
+  /** Preferred scale — filter out assets that are clearly wrong size */
+  preferredScale?: AssetScale
+  /** RGB color of nearby parts — used to prefer assets that likely match */
+  nearbyColor?: { r: number; g: number; b: number } | null
+  /** Whether to require a thumbnail (better quality signal) */
+  requireThumbnail?: boolean
+}
+
+/**
+ * Given a list of free assets, pick the best one for the current build context.
+ * Scoring: thumbnail presence + theme keyword match + scale hint match.
+ */
+export function pickBestAsset(
+  assets: MarketplaceAsset[],
+  options: SmartPickOptions = {},
+): MarketplaceAsset | null {
+  if (assets.length === 0) return null
+
+  const { theme, preferredScale, requireThumbnail = false } = options
+
+  // Filter: require thumbnail if specified
+  const candidates = requireThumbnail
+    ? assets.filter((a) => a.thumbnailUrl)
+    : assets
+
+  if (candidates.length === 0) return assets[0] // fallback to first
+
+  // Score each candidate
+  const scored = candidates.map((asset) => {
+    let score = 0
+    const nameLower = asset.name.toLowerCase()
+    const descLower = asset.description.toLowerCase()
+
+    // Thumbnail = quality signal
+    if (asset.thumbnailUrl) score += 10
+
+    // Theme match in name/description
+    if (theme) {
+      const prefix = THEME_STYLE_PREFIX[theme] ?? theme
+      const themeWords = prefix.split(' ')
+      for (const tw of themeWords) {
+        if (nameLower.includes(tw)) score += 8
+        if (descLower.includes(tw)) score += 3
+      }
+    }
+
+    // Scale hint match — penalize obvious mismatches
+    if (preferredScale && preferredScale !== 'any') {
+      // Infer scale from name keywords
+      const looksLarge = /\b(large|huge|big|massive|full|complete|set|pack)\b/.test(nameLower)
+      const looksSmall = /\b(small|tiny|mini|little|prop|decoration|detail)\b/.test(nameLower)
+      if (preferredScale === 'large' && looksLarge) score += 5
+      if (preferredScale === 'small' && looksSmall) score += 5
+      if (preferredScale === 'large' && looksSmall) score -= 8
+      if (preferredScale === 'small' && looksLarge) score -= 8
+    }
+
+    // Prefer assets with descriptions (more complete, typically higher quality)
+    if (asset.description.length > 20) score += 2
+
+    return { asset, score }
+  })
+
+  // Sort descending by score
+  scored.sort((a, b) => b.score - a.score)
+  return scored[0].asset
 }

@@ -786,13 +786,47 @@ MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, N
 COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
 SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
 MINIMUM: 15 parts per build. Add PointLights inside Parts for atmosphere.
+
+=== STUDIO AWARENESS — USE THE CONTEXT ===
+You receive real-time data from the user's Roblox Studio:
+- Camera position and direction (where they're looking)
+- Part count in workspace
+- Nearby objects (within 100 studs of camera)
+- Selected objects
+- Ground Y level
+
+USE THIS DATA:
+1. Place new builds WHERE the camera is looking, not at random coordinates
+2. Match the materials/colors of nearby existing builds for visual consistency — if NEARBY OBJECTS show Brick/SmoothPlastic/Color3.fromRGB(180,160,140), use those same values
+3. Reference what you can see: "I can see your tower at X,Z — I'll place this wall to connect them" or "Your shop is nearby so I'll match its brick material"
+4. If part count > 5000, auto-optimize: use fewer parts, suggest LOD, merge static geometry, warn the user
+5. If user has something selected, modification requests ("make it bigger", "change the color") apply to the selection — use Selection:Get() and modify by path
+6. Place at ground level using the groundY raycast, never floating — Y = groundY + objectHeight/2
+7. If SCENE TREE shows named models (e.g. "MedievalCastle", "ShopDistrict"), reference them by name and spatially relate new builds to them
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
     const buildInstruction = `Build this: ${message}
 
-RESPOND WITH ONLY A SINGLE \`\`\`lua CODE BLOCK. NO TEXT BEFORE OR AFTER THE CODE BLOCK.
-The code must be complete, runnable Roblox Luau that creates the build in Edit Mode.
-Use the template pattern: ChangeHistoryService, camera spawn position, create Model, create Parts with CFrame/Size/Color/Material, parent to workspace.
-MINIMUM 15 parts PER VARIANT. Build 3 STYLE VARIANTS spaced 15 studs apart on X. Each = different style (classic/modern/fantasy). Label each with BillboardGui. Group in Model named "{object}_Variants". Fill in ALL detail the user didn't specify. Use proper materials (Slate, Granite, WoodPlanks, Glass, Metal). Add PointLights.`
+RESPOND WITH ONLY A SINGLE \`\`\`lua CODE BLOCK. NO TEXT BEFORE OR AFTER.
+
+BUILD ONE DETAILED, PROFESSIONAL MODEL — not variants. Put ALL effort into ONE amazing build.
+
+REQUIREMENTS:
+- MINIMUM 30 parts. Complex builds need 50-80+ parts.
+- Use a helper function: local function P(name,size,cf,color,mat,parent) to reduce repetition
+- Group everything in a Model. Set Model.PrimaryPart to the largest/base part.
+- Use ChangeHistoryService:TryBeginRecording / FinishRecording for undo.
+- Place at camera position if studio context available, otherwise at (0, 0, 0).
+- EVERY part needs: Name, Anchored=true, Size, CFrame, Color (Color3.fromRGB), Material, Parent
+- Add 3-5 PointLights inside key parts for atmosphere (warm yellow, range 15-25)
+- Use REALISTIC proportions: doors 4×7, windows 4×4, walls 0.5-1 thick, rooms 16×12 minimum
+- Use MUTED realistic colors: greys, browns, tans, dark greens — NEVER bright primary colors
+- Add DETAILS: trim, molding, frames, sills, railings, steps, pillars, baseboards
+- For terrain: use large wedge parts for slopes, cylinders for trees, varied heights
+
+DETAIL EXAMPLES (what 30+ parts looks like):
+- "a house" = foundation slab + 4 walls + 4 window holes + window glass×4 + door frame + door + roof base + roof slope×2 + chimney + chimney top + porch floor + porch pillars×2 + porch rail + steps×3 + gutter + lights×3 = 35 parts
+- "a tree" = trunk cylinder + branch×4 + leaf sphere×6 + root bumps×3 + bark detail×2 = 16 parts
+- "terrain" = ground plates×6 + hills (wedges)×8 + rocks×5 + grass patches×4 + water plane + cliff faces×3 + path segments×4 = 31 parts`
 
     // Race both models for code gen — first valid result wins
     console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
@@ -2110,6 +2144,26 @@ CRITICAL RULES:
 - MATCH existing scene colors/materials — check NEARBY OBJECTS in STUDIO CONTEXT
 - USE the addWindow(), addInteriorLight(), addBasePlant() helpers from the template — they enforce quality automatically
 
+=== SESSION MEMORY ===
+You remember everything built in this session via _forje_state. When the user says:
+- "the shop" → refers to the last shop you built (_forje_state.lastBuild if it was a shop)
+- "that tree" / "those trees" → the most recent tree/foliage placement
+- "over there" / "next to it" → near where the last build was placed (_forje_state.lastBuildPosition)
+- "bigger" / "smaller" / "taller" → modify the last thing built (_forje_state.lastBuild)
+- "more of those" → duplicate/repeat the last pattern with offset positions
+- "connect them" → link the last two builds spatially (path, bridge, or walkway)
+- "the last thing" / "what you just made" → _forje_state.lastBuild
+- "move it" / "rotate it" (no other object specified) → applies to _forje_state.lastBuild
+
+In your Luau code, always update _forje_state after each build:
+  _forje_state.lastBuildType = "shop"  -- what category was built
+  _forje_state.lastBuildPosition = folder:GetPivot().Position  -- where it landed
+  _forje_state.lastBuildFolder = folder  -- reference to the model/folder
+  _forje_state.sessionBuildCount = (_forje_state.sessionBuildCount or 0) + 1
+
+In your conversational response, reference previous builds by name when relevant:
+  "I just placed the tavern — want me to add a path connecting it to the castle we built earlier?"
+
 ADVANCED ENGAGEMENT TECHNIQUES:
 
 1. EMOTIONAL MIRRORING — match their energy. If they're excited, be excited. If they're frustrated, acknowledge it then redirect positively.
@@ -2166,6 +2220,443 @@ When these agents activate, the user sees status indicators. Mention them natura
 
 DO NOT explain how agents work technically. Just use them naturally like tools in your workshop.
 
+=== GUI/UI GENERATION — PRODUCTION-QUALITY ROBLOX UI ===
+
+When a user asks for ANY UI element, menu, HUD, inventory, shop, dialog, notification, or screen — generate COMPLETE ScreenGui code with proper hierarchy and polish.
+
+HIERARCHY RULE: ScreenGui → Frame (container) → children (buttons, labels, layouts)
+PARENT RULE: Always parent ScreenGui to game:GetService("StarterGui") in Edit Mode. NEVER to a player or PlayerGui in Edit Mode.
+
+CORE GUI STRUCTURE — every GUI starts with this:
+\`\`\`lua
+local SG = Instance.new("ScreenGui")
+SG.Name = "MyGui"
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.Parent = game:GetService("StarterGui")
+
+local main = Instance.new("Frame")
+main.Name = "MainFrame"
+main.Size = UDim2.new(0, 400, 0, 300)
+main.Position = UDim2.new(0.5, -200, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+main.BorderSizePixel = 0
+main.Parent = SG
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = main
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(60, 60, 80)
+stroke.Thickness = 1
+stroke.Parent = main
+\`\`\`
+
+DARK THEME COLOR CONSTANTS (use every time):
+  BG_DARK=Color3.fromRGB(12,12,16)      -- outermost panels
+  BG_MID=Color3.fromRGB(18,18,24)       -- main frames
+  BG_PANEL=Color3.fromRGB(26,26,34)     -- inner panels/cards
+  BG_HOVER=Color3.fromRGB(36,36,48)     -- hover state
+  ACCENT_GOLD=Color3.fromRGB(212,175,55)  -- primary accent
+  ACCENT_BLUE=Color3.fromRGB(80,140,255)  -- secondary accent
+  TEXT_WHITE=Color3.fromRGB(240,240,245)  -- primary text
+  TEXT_GREY=Color3.fromRGB(140,140,160)   -- secondary/hint text
+  BORDER=Color3.fromRGB(50,50,70)         -- border color
+  SUCCESS=Color3.fromRGB(80,200,120)      -- green confirm
+  DANGER=Color3.fromRGB(220,80,80)        -- red warning/delete
+
+BUTTON WITH HOVER EFFECTS — always add MouseEnter/MouseLeave tweens:
+\`\`\`lua
+local TweenService = game:GetService("TweenService")
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(1, -24, 0, 44)
+btn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+btn.BorderSizePixel = 0
+btn.Text = "CONFIRM"
+btn.TextColor3 = Color3.fromRGB(12, 12, 16)
+btn.TextSize = 14
+btn.Font = Enum.Font.GothamBold
+btn.Parent = frame
+local bc = Instance.new("UICorner") bc.CornerRadius = UDim.new(0, 8) bc.Parent = btn
+local hIn  = TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(235,200,80)})
+local hOut = TweenService:Create(btn, TweenInfo.new(0.12), {BackgroundColor3 = Color3.fromRGB(212,175,55)})
+btn.MouseEnter:Connect(function() hIn:Play() end)
+btn.MouseLeave:Connect(function() hOut:Play() end)
+\`\`\`
+
+SCROLLING FRAME (inventory/shop list):
+\`\`\`lua
+local scroll = Instance.new("ScrollingFrame")
+scroll.Size = UDim2.new(1, -16, 1, -60)
+scroll.Position = UDim2.new(0, 8, 0, 52)
+scroll.BackgroundTransparency = 1
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 4
+scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scroll.Parent = mainFrame
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 6)
+listLayout.Parent = scroll
+local pad = Instance.new("UIPadding") pad.PaddingTop = UDim.new(0,4) pad.PaddingLeft = UDim.new(0,4) pad.PaddingRight = UDim.new(0,4) pad.Parent = scroll
+\`\`\`
+
+SLIDE-IN ANIMATION:
+\`\`\`lua
+-- Start offscreen right, slide into center
+frame.Position = UDim2.new(1, 0, 0.5, -150)
+frame.Visible = true
+TweenService:Create(frame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+    {Position = UDim2.new(0.5, -200, 0.5, -150)}):Play()
+\`\`\`
+
+INVENTORY GRID (UIGridLayout, 3-column):
+\`\`\`lua
+local gridLayout = Instance.new("UIGridLayout")
+gridLayout.CellSize = UDim2.new(0, 80, 0, 80)
+gridLayout.CellPadding = UDim2.new(0, 8, 0, 8)
+gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+gridLayout.Parent = scrollFrame
+-- Item slot creator
+local function makeSlot(iconId, count, parent)
+    local slot = Instance.new("Frame") slot.BackgroundColor3 = Color3.fromRGB(26,26,34) slot.BorderSizePixel=0 slot.Parent=parent
+    local sc = Instance.new("UICorner") sc.CornerRadius=UDim.new(0,8) sc.Parent=slot
+    local icon = Instance.new("ImageLabel") icon.Size=UDim2.new(0,52,0,52) icon.Position=UDim2.new(0.5,-26,0,8) icon.BackgroundTransparency=1 icon.Image="rbxassetid://"..iconId icon.Parent=slot
+    local lbl = Instance.new("TextLabel") lbl.Size=UDim2.new(1,-4,0,18) lbl.Position=UDim2.new(0,2,1,-20) lbl.BackgroundTransparency=1 lbl.Text="x"..count lbl.TextColor3=Color3.fromRGB(140,140,160) lbl.TextSize=11 lbl.Font=Enum.Font.Gotham lbl.TextXAlignment=Enum.TextXAlignment.Right lbl.Parent=slot
+    return slot
+end
+\`\`\`
+
+HEALTH BAR (HUD bottom-left):
+\`\`\`lua
+local hpBar = Instance.new("Frame") hpBar.Size=UDim2.new(0,220,0,18) hpBar.Position=UDim2.new(0,12,1,-40) hpBar.BackgroundColor3=Color3.fromRGB(30,30,40) hpBar.BorderSizePixel=0 hpBar.Parent=SG
+local hbc = Instance.new("UICorner") hbc.CornerRadius=UDim.new(0,9) hbc.Parent=hpBar
+local hpFill = Instance.new("Frame") hpFill.Name="Fill" hpFill.Size=UDim2.new(0.8,0,1,0) hpFill.BackgroundColor3=Color3.fromRGB(80,200,100) hpFill.BorderSizePixel=0 hpFill.Parent=hpBar
+local hfc = Instance.new("UICorner") hfc.CornerRadius=UDim.new(0,9) hfc.Parent=hpFill
+local hpLabel = Instance.new("TextLabel") hpLabel.Size=UDim2.new(1,0,1,0) hpLabel.BackgroundTransparency=1 hpLabel.Text="80 / 100" hpLabel.TextColor3=Color3.fromRGB(240,240,245) hpLabel.TextSize=11 hpLabel.Font=Enum.Font.GothamBold hpLabel.ZIndex=2 hpLabel.Parent=hpBar
+\`\`\`
+
+CURRENCY DISPLAY (top-right HUD):
+\`\`\`lua
+local coin = Instance.new("Frame") coin.Size=UDim2.new(0,160,0,38) coin.Position=UDim2.new(1,-172,0,12) coin.BackgroundColor3=Color3.fromRGB(18,18,24) coin.BorderSizePixel=0 coin.Parent=SG
+local coc = Instance.new("UICorner") coc.CornerRadius=UDim.new(0,10) coc.Parent=coin
+local cos = Instance.new("UIStroke") cos.Color=Color3.fromRGB(212,175,55) cos.Thickness=1 cos.Parent=coin
+local dot = Instance.new("Frame") dot.Size=UDim2.new(0,28,0,28) dot.Position=UDim2.new(0,5,0.5,-14) dot.BackgroundColor3=Color3.fromRGB(212,175,55) dot.BorderSizePixel=0 dot.Parent=coin
+local dc = Instance.new("UICorner") dc.CornerRadius=UDim.new(1,0) dc.Parent=dot
+local amt = Instance.new("TextLabel") amt.Size=UDim2.new(1,-42,1,0) amt.Position=UDim2.new(0,38,0,0) amt.BackgroundTransparency=1 amt.Text="1,250" amt.TextColor3=Color3.fromRGB(212,175,55) amt.TextSize=16 amt.Font=Enum.Font.GothamBold amt.TextXAlignment=Enum.TextXAlignment.Left amt.Parent=coin
+\`\`\`
+
+NOTIFICATION POPUP (top-center, auto-dismiss):
+\`\`\`lua
+local function showNotif(msg, notifType)
+    local cols = {success=Color3.fromRGB(80,200,120), error=Color3.fromRGB(220,80,80), info=Color3.fromRGB(80,140,255)}
+    local n = Instance.new("Frame") n.Size=UDim2.new(0,320,0,54) n.Position=UDim2.new(0.5,-160,0,-60) n.BackgroundColor3=Color3.fromRGB(18,18,24) n.BorderSizePixel=0 n.ZIndex=10 n.Parent=SG
+    local nc = Instance.new("UICorner") nc.CornerRadius=UDim.new(0,10) nc.Parent=n
+    local ns = Instance.new("UIStroke") ns.Color=cols[notifType] or cols.info ns.Thickness=1.5 ns.Parent=n
+    local bar = Instance.new("Frame") bar.Size=UDim2.new(0,4,1,-16) bar.Position=UDim2.new(0,8,0,8) bar.BackgroundColor3=cols[notifType] or cols.info bar.BorderSizePixel=0 bar.Parent=n
+    local lbl = Instance.new("TextLabel") lbl.Size=UDim2.new(1,-30,1,0) lbl.Position=UDim2.new(0,22,0,0) lbl.BackgroundTransparency=1 lbl.Text=msg lbl.TextColor3=Color3.fromRGB(240,240,245) lbl.TextSize=13 lbl.Font=Enum.Font.Gotham lbl.TextXAlignment=Enum.TextXAlignment.Left lbl.TextWrapped=true lbl.Parent=n
+    TweenService:Create(n,TweenInfo.new(0.25,Enum.EasingStyle.Quart,Enum.EasingDirection.Out),{Position=UDim2.new(0.5,-160,0,12)}):Play()
+    task.delay(2.5,function() TweenService:Create(n,TweenInfo.new(0.2),{Position=UDim2.new(0.5,-160,0,-60)}):Play() task.wait(0.2) n:Destroy() end)
+end
+\`\`\`
+
+DIALOG BOX (NPC conversation, bottom of screen):
+\`\`\`lua
+local dialog = Instance.new("Frame") dialog.Size=UDim2.new(0,580,0,160) dialog.Position=UDim2.new(0.5,-290,1,-185) dialog.BackgroundColor3=Color3.fromRGB(12,12,18) dialog.BorderSizePixel=0 dialog.Parent=SG
+local drc = Instance.new("UICorner") drc.CornerRadius=UDim.new(0,14) drc.Parent=dialog
+local drs = Instance.new("UIStroke") drs.Color=Color3.fromRGB(212,175,55) drs.Thickness=1 drs.Parent=dialog
+local nameTag = Instance.new("Frame") nameTag.Size=UDim2.new(0,180,0,32) nameTag.Position=UDim2.new(0,16,0,-16) nameTag.BackgroundColor3=Color3.fromRGB(212,175,55) nameTag.BorderSizePixel=0 nameTag.Parent=dialog
+local ntc = Instance.new("UICorner") ntc.CornerRadius=UDim.new(0,8) ntc.Parent=nameTag
+local ntl = Instance.new("TextLabel") ntl.Size=UDim2.new(1,0,1,0) ntl.BackgroundTransparency=1 ntl.Text="Merchant" ntl.TextColor3=Color3.fromRGB(12,12,16) ntl.TextSize=14 ntl.Font=Enum.Font.GothamBold ntl.Parent=nameTag
+local dialogText = Instance.new("TextLabel") dialogText.Name="DialogText" dialogText.Size=UDim2.new(1,-32,0,80) dialogText.Position=UDim2.new(0,16,0,24) dialogText.BackgroundTransparency=1 dialogText.Text="Welcome, traveler." dialogText.TextColor3=Color3.fromRGB(220,220,230) dialogText.TextSize=14 dialogText.Font=Enum.Font.Gotham dialogText.TextXAlignment=Enum.TextXAlignment.Left dialogText.TextWrapped=true dialogText.Parent=dialog
+\`\`\`
+
+SETTINGS MENU: full-width rows, label left + control right. Toggle = Frame + tween sliding knob. Slider = Frame + fill bar + drag input.
+SHOP MENU: header + Buy/Sell tabs + UIGridLayout item grid + detail panel right + buy button bottom + currency top-right.
+MINIMAP: UDim2.new(0,180,0,180) square bottom-right, dark BG, border, player dot center, north indicator.
+ASPECT RATIO LOCK (square slots, minimap): local arc = Instance.new("UIAspectRatioConstraint") arc.AspectRatio=1 arc.Parent=frame
+
+=== NPC & DIALOGUE SYSTEM — COMPLETE PATTERNS ===
+
+When a user asks for NPCs, dialogue, quests, shops, guards, or bosses — generate these complete server-side patterns.
+
+BASIC NPC WITH PROXIMYPROMPT:
+\`\`\`lua
+-- Place in a Script inside ServerScriptService
+local RS = game:GetService("ReplicatedStorage")
+local function createNPC(name, position)
+    local npc = Instance.new("Model") npc.Name = name
+    local hrp = Instance.new("Part") hrp.Name="HumanoidRootPart" hrp.Size=Vector3.new(2,2,1) hrp.CFrame=CFrame.new(position) hrp.Transparency=1 hrp.CanCollide=false hrp.Parent=npc
+    local hum = Instance.new("Humanoid") hum.Parent=npc
+    local torso = Instance.new("Part") torso.Name="Torso" torso.Size=Vector3.new(2,2,1) torso.CFrame=CFrame.new(position) torso.Material=Enum.Material.Concrete torso.Color=Color3.fromRGB(180,140,100) torso.Parent=npc
+    local head = Instance.new("Part") head.Name="Head" head.Size=Vector3.new(2,1,1) head.CFrame=CFrame.new(position+Vector3.new(0,1.5,0)) head.Material=Enum.Material.Concrete head.Color=Color3.fromRGB(200,160,120) head.Parent=npc
+    -- BillboardGui name tag
+    local bb = Instance.new("BillboardGui") bb.Size=UDim2.new(0,120,0,40) bb.StudsOffset=Vector3.new(0,3.5,0) bb.Parent=head
+    local nl = Instance.new("TextLabel") nl.Size=UDim2.new(1,0,1,0) nl.BackgroundTransparency=1 nl.Text=name nl.TextColor3=Color3.fromRGB(255,220,80) nl.TextSize=16 nl.Font=Enum.Font.GothamBold nl.Parent=bb
+    -- ProximityPrompt
+    local prompt = Instance.new("ProximityPrompt") prompt.ActionText="Talk" prompt.ObjectText=name prompt.MaxActivationDistance=8 prompt.HoldDuration=0 prompt.Parent=hrp
+    npc.PrimaryPart = hrp
+    npc.Parent = workspace
+    -- Fire dialog to client
+    local dialogEvent = RS:FindFirstChild("DialogEvent") or Instance.new("RemoteEvent")
+    if not RS:FindFirstChild("DialogEvent") then dialogEvent.Name="DialogEvent" dialogEvent.Parent=RS end
+    prompt.Triggered:Connect(function(player)
+        dialogEvent:FireClient(player, name, {"Hello, traveler!", "How can I help you today?"})
+    end)
+end
+createNPC("Merchant", Vector3.new(0, 5, 0))
+\`\`\`
+
+BRANCHING DIALOGUE TREE (choice-based):
+\`\`\`lua
+-- Server fires this tree to client; client LocalScript renders choices + fires selection back
+local dialogTree = {
+    start = {
+        text = "You've arrived at last. What do you seek?",
+        choices = {
+            {text = "The Crystal",       next = "crystal"},
+            {text = "The Gold",          next = "gold"},
+            {text = "Just passing through", next = "bye"}
+        }
+    },
+    crystal = {
+        text = "Bring me 10 gems and it's yours.",
+        choices = {{text="I'll find them.", next=nil}, {text="Too much.", next="bye"}}
+    },
+    gold = {
+        text = "Clear the dungeon. Then we'll talk.",
+        choices = {{text="Deal.", next=nil}, {text="No thanks.", next="bye"}}
+    },
+    bye = {
+        text = "Safe travels. Return when you're ready.",
+        choices = {}
+    }
+}
+\`\`\`
+
+GUARD NPC WITH PATROL WAYPOINTS:
+\`\`\`lua
+local PathfindingService = game:GetService("PathfindingService")
+local waypoints = {Vector3.new(0,0,0), Vector3.new(20,0,0), Vector3.new(20,0,20), Vector3.new(0,0,20)}
+local function patrolNPC(npc, points)
+    local hum = npc:FindFirstChild("Humanoid")
+    local hrp = npc:FindFirstChild("HumanoidRootPart")
+    if not hum or not hrp then return end
+    local idx = 1
+    local function step()
+        local path = PathfindingService:CreatePath({AgentRadius=2, AgentHeight=5})
+        local ok = pcall(function() path:ComputeAsync(hrp.Position, points[idx]) end)
+        if ok and path.Status == Enum.PathStatus.Success then
+            for _, wp in path:GetWaypoints() do
+                if wp.Action == Enum.PathWaypointAction.Jump then hum.Jump = true end
+                hum:MoveTo(wp.Position)
+                hum.MoveToFinished:Wait()
+            end
+        end
+        idx = (idx % #points) + 1
+        task.wait(1)
+        step()
+    end
+    task.spawn(step)
+end
+\`\`\`
+
+BOSS NPC — phases + health bar:
+\`\`\`lua
+local bossConfig = {
+    name = "Shadow King", maxHp = 1000, currentHp = 1000,
+    phases = {
+        {hpThreshold = 0.75, speed = 16, msg = "Phase 1: The Shadow Stirs"},
+        {hpThreshold = 0.40, speed = 22, msg = "Phase 2: Enraged!"},
+        {hpThreshold = 0.10, speed = 28, msg = "FINAL PHASE: Desperate Fury"}
+    },
+    attacks = {
+        {name="Charge", cooldown=5,  damage=40, range=15},
+        {name="AoeBlast",cooldown=12, damage=80, range=8},
+        {name="Summon",  cooldown=20, damage=0,  range=999}
+    }
+}
+-- Boss health bar = BillboardGui on head, updated via RemoteEvent:FireAllClients on damage
+-- Phase transition = check hp % after each damage hit, fire phase change event
+\`\`\`
+
+NPC IDLE ANIMATION (no AnimationController needed — use RunService):
+\`\`\`lua
+-- Gentle bob + slow rotation to make NPCs feel alive
+local RS2 = game:GetService("RunService")
+local t = 0
+RS2.Heartbeat:Connect(function(dt)
+    t += dt
+    if npc and npc.Parent and npc.PrimaryPart then
+        npc:PivotTo(CFrame.new(basePos + Vector3.new(0, math.sin(t*1.2)*0.08, 0)) * CFrame.Angles(0, math.sin(t*0.4)*0.05, 0))
+    end
+end)
+\`\`\`
+
+=== DATA PERSISTENCE — SAFE DATASTORE PATTERNS ===
+
+When users ask about saving data, leaderboards, player stats, inventory, or persistence — generate these complete patterns.
+
+FULL DATASTORE MANAGER (session lock + auto-save + BindToClose):
+\`\`\`lua
+-- ModuleScript: DataManager (place in ServerScriptService)
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local playerStore = DataStoreService:GetDataStore("PlayerData_v1")
+
+local DEFAULT_DATA = {
+    coins=0, level=1, xp=0, inventory={}, settings={music=true, sfx=true}
+}
+
+local sessionData = {}   -- [userId] = table
+local sessionLock = {}   -- [userId] = bool (prevent double-load race)
+
+local function deepCopy(t)
+    local c = {}
+    for k,v in pairs(t) do c[k] = type(v)=="table" and deepCopy(v) or v end
+    return c
+end
+
+local function loadData(player)
+    local uid = player.UserId
+    if sessionLock[uid] then return end
+    sessionLock[uid] = true
+    local data, attempts = nil, 0
+    repeat
+        local ok, result = pcall(function() return playerStore:GetAsync("p_"..uid) end)
+        if ok then data = result; break end
+        attempts += 1; warn("[Data] Load fail #"..attempts..": "..tostring(result)); task.wait(2)
+    until attempts >= 3
+    local merged = deepCopy(DEFAULT_DATA)
+    if data then for k,v in pairs(data) do merged[k] = v end end
+    sessionData[uid] = merged
+end
+
+local function saveData(player)
+    local uid = player.UserId
+    local data = sessionData[uid]
+    if not data then return end
+    local ok, err = pcall(function() playerStore:SetAsync("p_"..uid, data) end)
+    if not ok then warn("[Data] Save fail "..player.Name..": "..tostring(err)) end
+end
+
+-- Auto-save loop
+task.spawn(function()
+    while true do
+        task.wait(60)
+        for _, p in Players:GetPlayers() do saveData(p) end
+    end
+end)
+
+Players.PlayerAdded:Connect(loadData)
+Players.PlayerRemoving:Connect(function(p) saveData(p) sessionData[p.UserId]=nil sessionLock[p.UserId]=nil end)
+game:BindToClose(function() for _,p in Players:GetPlayers() do saveData(p) end end)
+
+return {get=function(p) return sessionData[p.UserId] end, save=saveData}
+\`\`\`
+
+ORDERED DATASTORE LEADERBOARD (top 10):
+\`\`\`lua
+local lbStore = DataStoreService:GetOrderedDataStore("TopCoins")
+local function updateScore(userId, score)
+    pcall(function() lbStore:SetAsync(tostring(userId), score) end)
+end
+local function getTopPlayers()
+    local ok, pages = pcall(function() return lbStore:GetSortedAsync(false, 10) end)
+    if not ok then return {} end
+    local results = {}
+    for rank, entry in ipairs(pages:GetCurrentPage()) do
+        table.insert(results, {rank=rank, userId=entry.key, score=entry.value})
+    end
+    return results
+end
+\`\`\`
+
+=== MULTIPLAYER & NETWORKING — SERVER AUTHORITY PATTERNS ===
+
+When users ask about multiplayer, combat, currency, or gameplay systems — ALWAYS enforce server authority. CLIENT SUGGESTS, SERVER DECIDES.
+
+REMOTE SETUP (put in a Script at game start):
+\`\`\`lua
+local RS = game:GetService("ReplicatedStorage")
+local Remotes = Instance.new("Folder") Remotes.Name="Remotes" Remotes.Parent=RS
+local function mkRE(name)  local r=Instance.new("RemoteEvent")  r.Name=name r.Parent=Remotes return r end
+local function mkRF(name)  local r=Instance.new("RemoteFunction") r.Name=name r.Parent=Remotes return r end
+local BuyItem    = mkRF("BuyItem")    -- client requests purchase, server validates
+local TakeDamage = mkRE("TakeDamage") -- server → client: update health UI
+local ShowEffect = mkRE("ShowEffect") -- server → all clients: explosion, buff, etc.
+\`\`\`
+
+SERVER VALIDATION PATTERN — for any player action:
+\`\`\`lua
+BuyItem.OnServerInvoke = function(player, itemId, qty)
+    -- 1. Type-check inputs
+    if type(itemId) ~= "string" or type(qty) ~= "number" then
+        return {success=false, reason="Invalid input"}
+    end
+    -- 2. Validate item exists
+    local item = ItemCatalog[itemId]
+    if not item then return {success=false, reason="Item not found"} end
+    -- 3. Clamp quantity (anti-exploit)
+    qty = math.clamp(math.floor(qty), 1, 99)
+    -- 4. Check server-side balance
+    local data = DataManager.get(player)
+    if not data then return {success=false, reason="Data unavailable"} end
+    if data.coins < item.price * qty then return {success=false, reason="Insufficient coins"} end
+    -- 5. Execute transaction
+    data.coins -= item.price * qty
+    data.inventory[itemId] = (data.inventory[itemId] or 0) + qty
+    return {success=true, newBalance=data.coins}
+end
+\`\`\`
+
+REPLICATION GUIDE:
+  Server → one client:   RemoteEvent:FireClient(player, ...)     -- health, dialog, personal events
+  Server → all clients:  RemoteEvent:FireAllClients(...)         -- explosions, world events
+  Client → server:       RemoteEvent:FireServer(...)             -- player actions (attack, jump)
+  Client → server + reply: RemoteFunction:InvokeServer(...)      -- shop, loot, confirm
+
+ANTI-EXPLOIT CHECKLIST:
+  Damage: server calculates only. Client fires "I attacked X" → server validates distance + cooldown.
+  Movement: reject teleport > 60 studs in 1 frame — return player to last known good position.
+  Currency: server-only DataStore. Client display is read-only, updated by RemoteEvent from server.
+  Cooldowns: store last action timestamp per player on server. Reject requests faster than cooldown.
+  Sanity: validate ALL numeric inputs with math.clamp. Reject negative quantities, impossible values.
+
+=== ERROR RECOVERY INTELLIGENCE ===
+
+When code fails in Studio — read the error and fix ONLY the broken part.
+
+COMMON ERRORS AND FIXES:
+  "attempt to index nil with 'X'"     → nil check missing. Wrap: if obj then obj.X = val end
+  "attempt to index nil value 'workspace'" → use lowercase workspace, not Workspace
+  "X is not a valid member of Y"      → wrong property/method name. Check API spelling.
+  "Expected identifier near '='"      → syntax error — missing 'local', extra '=', or bad string literal
+  "attempt to call a nil value"       → method doesn't exist or not found. Check service + method name.
+  "Cannot set Parent, object is a root" → circular parent reference. Set Parent after all children.
+  "bad argument #1 (Vector3 expected, got CFrame)" → use .Position on a CFrame value
+  "Script timeout: exhausted allowed execution time" → infinite loop without task.wait(). Add task.wait() inside while loops.
+  "TryBeginRecording already active"  → call FinishRecording before starting a new recording session.
+
+RETRY STRATEGY:
+  1st fail: Read exact error line, fix that specific thing, re-run
+  2nd fail: Try alternative API approach (e.g. :GetDescendants() vs :GetChildren())
+  3rd fail: Simplify to minimum working version, add complexity back incrementally
+
+SAFE ERROR WRAPPER — always use this structure:
+\`\`\`lua
+local ok, err = pcall(function()
+    -- build code here
+end)
+if not ok then
+    warn("[ForjeAI] Error: " .. tostring(err))
+    -- partial builds are left intact — user can undo or keep what worked
+end
+\`\`\`
+
 ${MARKETPLACE_ASSET_RULES}`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────
@@ -2196,6 +2687,14 @@ type IntentKey =
   | 'multiscript'
   | 'gamesystem'
   | 'weather'
+  | 'debug'
+  | 'education'
+  | 'performance'
+  | 'modify'
+  | 'cleanup'
+  | 'animate'
+  | 'datasave'
+  | 'networking'
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
@@ -2205,6 +2704,14 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
   undo: 0,          // Free — informational only
   help: 0,          // Free — capability explanation
   publish: 0,       // Free — publishing guidance
+  education: 0,     // Free — explain/teach, no code generation
+  debug: 5,         // Diagnose error and suggest fix
+  performance: 5,   // Performance analysis and suggestions
+  modify: 5,        // Modify selection (color/size/position)
+  cleanup: 5,       // Delete/remove/clear operations
+  animate: 10,      // Animation scripts (TweenService/AnimationTrack)
+  datasave: 10,     // DataStore/ProfileStore save/load scripts
+  networking: 10,   // RemoteEvent/RemoteFunction/server-client scripts
   multiscript: 30,  // Multi-file system generation
   gamesystem: 25,   // Pre-built game system template (currency/shop/pets/etc.)
   default: 5,       // General build request
@@ -2402,6 +2909,74 @@ const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
     patterns: [/\b(particle|fire|smoke|spark|glow|trail|effect)\b/i],
     intent: 'particle',
   },
+  {
+    // Debug — error diagnosis, fix requests
+    patterns: [
+      /\b(fix (this|it|the (error|bug|issue|script|code))|it'?s broken|there'?s a bug|not working|broken script|error in|studio error|script error|why (isn'?t|is) it (working|erroring|breaking)|debug (this|it|the))\b/i,
+      /\b(help (me )?fix|something'?s wrong|keep(s)? (erroring|breaking|crashing)|console error|output error)\b/i,
+    ],
+    intent: 'debug',
+  },
+  {
+    // Education — explain/teach, no code needed
+    patterns: [
+      /\b(explain (how|what|why)|how does|what is|what are|teach me|help me understand|what'?s the difference|why (do|does|would|should)|walk me through|how (do|does|can) (i|you)|tell me (about|how|why))\b/i,
+      /\b(what'?s (a|an|the) \w+|how (to|do you) \w+|can you explain|give me an example)\b/i,
+    ],
+    intent: 'education',
+  },
+  {
+    // Performance — lag, optimization
+    patterns: [
+      /\b(optimize|optimise|make it faster|too laggy|it'?s lagging|reduce lag|improve performance|fps (is |are )?(low|dropping|bad)|performance (issue|problem)|too many parts|part count too high|union (this|these)|merge (parts|geometry|static))\b/i,
+      /\b(lower the part count|lod|level of detail|batch|instancing|streaming enabled|microProfiler)\b/i,
+    ],
+    intent: 'performance',
+  },
+  {
+    // Modify selection — color, size, position changes
+    patterns: [
+      /\b(change (the |its )?(color|colour|material|size|height|width|length|depth|scale|rotation|position|name|transparency|reflectance|anchor))\b/i,
+      /\b(make (it |them )?(red|blue|green|yellow|purple|orange|pink|white|black|gray|grey|darker|lighter|brighter|transparent|invisible|visible|bigger|smaller|taller|shorter|wider|thinner|longer))\b/i,
+      /\b(rotate (it|them|this|the)|flip (it|them|this)|turn (it|them) (left|right|around)|mirror (it|this))\b/i,
+      /\b(move (it|them|this) (left|right|up|down|forward|back|north|south|east|west|\d+ studs))\b/i,
+      /\b(set (the |its )?(color|material|size|cframe|position|rotation) (to|=))\b/i,
+      /\b(paint (it|them|this)|recolor|resize (it|them|this)|rescale)\b/i,
+    ],
+    intent: 'modify',
+  },
+  {
+    // Cleanup — delete/remove/clear operations
+    patterns: [
+      /\b(delete (it|them|this|that|all|everything|the \w+)|remove (it|them|this|that|all|the \w+)|clear (the (workspace|map|scene|builds?|everything))|destroy (it|them|this)|start over|wipe (it|the map)|reset (the (map|scene|workspace)))\b/i,
+      /\b(get rid of|clean up (the|this|that|all)|erase (it|them|this))\b/i,
+    ],
+    intent: 'cleanup',
+  },
+  {
+    // Animation — TweenService, AnimationTrack, movement effects
+    patterns: [
+      /\b(animate|animation|make it (move|spin|rotate|bounce|float|pulse|sway|oscillate|bob)|tween(service)?|play animation|idle animation|walking animation|add movement|rotating part|spinning (part|wheel|coin|orb)|bouncing)\b/i,
+      /\b(lerp|cframe\.lerp|tweeninfo|easing|ease in|ease out|looped animation|looping tween)\b/i,
+    ],
+    intent: 'animate',
+  },
+  {
+    // DataStore / save-load / persistence
+    patterns: [
+      /\b(save (player |the )?(data|progress|stats|coins?|level|inventory)|load (player |saved )?(data|progress|stats)|datastore|data store|profilestore|profile store|persist(ent|ence)?|save (on |when )?(leave|exit|death)|load (on |when )?(join|spawn)|player data|serialize|deserialize)\b/i,
+      /\b(data:?(Set|Get|Update|Remove|Save|Load)|orderedDataStore|globalDataStore|memory store)\b/i,
+    ],
+    intent: 'datasave',
+  },
+  {
+    // Networking — RemoteEvent/RemoteFunction, server-client communication
+    patterns: [
+      /\b(remote\s*event|remote\s*function|fire\s*client|fire\s*server|fire\s*all\s*clients|on\s*server\s*event|on\s*client\s*event|server\s*script|local\s*script|module\s*script|replicated\s*storage|server.?side|client.?side|network(ing)?|replicate|replication)\b/i,
+      /\b(multiplayer (system|logic|feature)|server.?client|client.?server|sync (players?|data|state)|bind(able)?\s*(event|function))\b/i,
+    ],
+    intent: 'networking',
+  },
 ]
 
 // Chat patterns — greetings, questions, opinions (no build intent)
@@ -2420,8 +2995,8 @@ function detectIntent(message: string): IntentKey {
   for (const entry of KEYWORD_INTENT_MAP) {
     if (entry.patterns.some((p) => p.test(trimmed))) {
       // For build intents, require a build verb OR a strong object noun
-      const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture', 'weather'].includes(entry.intent)
-      if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, etc.) pass through
+      const isBuildIntent = ['terrain', 'building', 'npc', 'vehicle', 'particle', 'fullgame', 'mesh', 'texture', 'weather', 'animate', 'datasave', 'networking'].includes(entry.intent)
+      if (!isBuildIntent) return entry.intent // Non-build intents (undo, help, debug, modify, cleanup, education, performance, etc.) pass through
       const hasBuildVerb = /\b(build|create|generate|make|add|place|spawn|insert|construct|set up|design|drop|throw down|put|stick|plop|slap|give me|i want|i need|can you|could you|let'?s|we should|make it|scale it|resize it|move it|rotate it|change the|change its)\b/i.test(trimmed)
       const hasStrongNoun = /\b(castle|city|house|town|map|arena|shop|tower|mountain|island|forest|street|road|park|village|lobby|spawn|hub|fountain|bridge|dungeon|lamp\s*post|street\s*light|lamp|tree|bush|bench|sign|pillar|column|stairs|steps|arch|fence|railing)\b/i.test(trimmed)
       if (hasBuildVerb || hasStrongNoun) return entry.intent
@@ -3255,6 +3830,22 @@ Token cost: 2 tokens`,
   multiscript: `For full game systems I generate multiple scripts with clear separation. Say "build me a [system] system" and I'll output all the files with labels.\n\n[SUGGESTIONS]\nBuild me a pet system\nCreate a trading system\nMake a leaderboard system with DataStore`,
 
   gamesystem: `Here's the complete game system — drop each script into the specified service.\n\n[SUGGESTIONS]\nAdd a currency system\nBuild a shop system\nCreate a pet system with rarities`,
+
+  debug: `Let me diagnose that — share the error from the Output window and the script that caused it and I'll pinpoint the fix.\n\n[SUGGESTIONS]\nPaste the error message here\nShare the full script\nDescribe what you expected to happen`,
+
+  education: `Great question — let me walk you through that step by step.\n\n[SUGGESTIONS]\nAsk me anything about Roblox scripting\nWant a working code example?\nReady to build something with what you learned?`,
+
+  performance: `I'll analyze the scene and suggest optimizations — part count, draw calls, and render budget.\n\n[SUGGESTIONS]\nRun a full performance audit\nMerge static geometry to reduce parts\nEnable streaming and LOD`,
+
+  modify: `On it — I'll apply the change to your current selection in Studio.\n\n[SUGGESTIONS]\nChange the material too\nScale it up further\nMove it to a different position`,
+
+  cleanup: `Clearing that now using ChangeHistoryService so it's undoable.\n\n[SUGGESTIONS]\nUndo if you change your mind\nStart a fresh build here\nClear only the last build`,
+
+  animate: `I'll write a TweenService animation script for that — smooth, looped, and Roblox Edit Mode safe.\n\n[SUGGESTIONS]\nAdd a rotating effect\nMake it pulse with a glow\nAnimate the door opening`,
+
+  datasave: `Here's a DataStore save/load script with auto-retry and error handling.\n\n[SUGGESTIONS]\nAdd a player stats leaderboard\nSave inventory and coins\nUse ProfileStore for production`,
+
+  networking: `I'll wire up the RemoteEvent and both the ServerScript and LocalScript sides.\n\n[SUGGESTIONS]\nFire to all clients\nAdd server-side validation\nCreate a bindable event instead`,
 
   default: `✓ Request Processed
 
@@ -5289,10 +5880,14 @@ if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, SmoothPlastic, Wood, WoodPlanks
 COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
 SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
-MINIMUM: 15 parts per build. Add PointLights inside Parts for atmosphere.`,
-      `Generate a complete Luau script that builds 3 style variants of: ${message}
-Space them 15 studs apart on X. Each variant = different style (e.g. classic/modern/fantasy).
-Label each with a BillboardGui. Group in one Model. Short descriptions = DETAILED builds with 10+ parts each.
+MINIMUM: 30 parts per build. Complex builds need 50-80+. Add PointLights inside Parts for atmosphere.`,
+      `Build ONE detailed, professional model of: ${message}
+
+Put ALL effort into ONE amazing build — not variants. MINIMUM 30 parts with real architectural detail.
+Use a helper function to reduce code size: local function P(n,s,cf,c,m,par) creates a Part with those props.
+Add trim, frames, steps, railings, pillars — make it look REAL.
+Use muted realistic colors. Add 3-5 PointLights for warm atmosphere.
+Group in a Model, set PrimaryPart to the base/largest part.
 
 Output ONLY the code inside \`\`\`lua fences. No explanation.`,
       [],

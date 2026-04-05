@@ -40,3 +40,6 @@ export type { EditorIntegrationsProps, UseBuildPhaseReturn } from './EditorInteg
 export { FeatureErrorBoundary } from './FeatureErrorBoundary'
 
 export { SkeletonCard, SkeletonList, SkeletonProgress, EmptyState, ErrorState } from './LoadingStates'
+
+export { ModelPreview } from './ModelPreview'
+export type { ModelPreviewProps } from './ModelPreview'

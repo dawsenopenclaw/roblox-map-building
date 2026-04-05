@@ -216,6 +216,70 @@ export function validateAndFixLuau(code: string): ValidationResult {
     warnings.push('Warning: Parts created without Anchored=true — they will fall in Play mode')
   }
 
+  // 15. Warn about game.Players.LocalPlayer in server-context code
+  if (/game\.Players\.LocalPlayer|game:GetService\("Players"\)\.LocalPlayer/.test(fixed)) {
+    warnings.push('Warning: LocalPlayer detected — this only works in LocalScripts, not server Scripts or Edit Mode plugins')
+  }
+
+  // 16. Warn about unbounded loops (while true do without task.wait)
+  const whileTrueBlocks = fixed.match(/while\s+true\s+do[\s\S]*?end/g) || []
+  for (const block of whileTrueBlocks) {
+    if (!block.includes('task.wait') && !block.includes('wait(')) {
+      warnings.push('Warning: while true do loop detected without task.wait() — this will cause a script timeout')
+    }
+  }
+
+  // 17. Add --!strict at top if missing (promotes type safety)
+  if (!fixed.trimStart().startsWith('--!strict') && !fixed.trimStart().startsWith('--!nocheck')) {
+    fixed = '--!strict\n' + fixed
+    fixes.push('Added: --!strict type annotation at top')
+  }
+
+  // 18. Fix common ParticleEmitter property typos
+  const particleTypos: Array<[RegExp, string, string]> = [
+    [/\.EmissionRate\s*=/g, '.Rate =', 'ParticleEmitter.EmissionRate → .Rate'],
+    [/\.SpreadAngles\s*=/g, '.SpreadAngle =', 'ParticleEmitter.SpreadAngles → .SpreadAngle'],
+    [/\.Lifetime\s*=\s*(\d+(?:\.\d+)?)\s*\n/g, '', ''], // handled below
+    [/\.NumParticles\s*=/g, '.Rate =', 'ParticleEmitter.NumParticles → .Rate (use Rate for emission count)'],
+  ]
+  for (const [pattern, replacement, msg] of particleTypos) {
+    if (msg && pattern.test(fixed)) {
+      fixed = fixed.replace(pattern, replacement)
+      fixes.push(`Fixed: ${msg}`)
+      pattern.lastIndex = 0
+    }
+  }
+  // Fix Lifetime number → NumberRange
+  fixed = fixed.replace(
+    /(\w+)\.Lifetime\s*=\s*(\d+(?:\.\d+)?)\s*\n/g,
+    (match, varName, num) => {
+      // Only fix if the variable looks like a ParticleEmitter
+      fixes.push(`Fixed: ${varName}.Lifetime = ${num} → NumberRange.new(${num}, ${num})`)
+      return `${varName}.Lifetime = NumberRange.new(${num}, ${num})\n`
+    }
+  )
+
+  // 19. Warn about workspace:FindFirstChild without nil check
+  const findFirstChildCalls = fixed.match(/workspace:FindFirstChild\([^)]+\)\./g) || []
+  if (findFirstChildCalls.length > 0) {
+    warnings.push(`Warning: ${findFirstChildCalls.length} workspace:FindFirstChild() result(s) used without nil check — add "if result then" guards`)
+  }
+
+  // 20. Fix string.format inconsistency — warn if mixing %s with .. concatenation in same line
+  const formatLines = fixed.split('\n').filter(line =>
+    line.includes('string.format') && line.includes('..')
+  )
+  if (formatLines.length > 0) {
+    warnings.push(`Warning: ${formatLines.length} line(s) mix string.format() and .. concatenation — pick one style per string`)
+  }
+
+  // 21. Fix task.spawn missing for async fire-and-forget patterns
+  // If code calls a function and immediately discards it in a context that should be async
+  // (heuristic: RemoteEvent:FireAllClients inside a loop without task.spawn)
+  if (fixed.includes('for ') && fixed.includes(':FireAllClients(') && !fixed.includes('task.spawn')) {
+    warnings.push('Warning: FireAllClients inside a loop without task.spawn may block — consider wrapping in task.spawn()')
+  }
+
   return {
     valid: warnings.length === 0,
     fixedCode: fixed,

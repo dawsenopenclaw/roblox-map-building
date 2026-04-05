@@ -36,7 +36,7 @@ const TIERS = [
     priceMonthly: 0,
     priceYearly: 0,
     yearlyTotal: 0,
-    tagline: 'Try the platform risk-free',
+    tagline: 'Build real games — no card needed',
     highlight: false,
     badge: null,
     cta: 'Get Started Free',
@@ -44,6 +44,9 @@ const TIERS = [
     features: [
       '1,000 tokens / month',
       '1 project',
+      'AI script generation',
+      'Basic terrain generation',
+      'Live Studio sync',
       'Basic templates',
       'Community support',
       'COPPA compliant',
@@ -56,7 +59,7 @@ const TIERS = [
     priceMonthly: 9.99,
     priceYearly: 7.99,
     yearlyTotal: ANNUAL_TOTALS.HOBBY,
-    tagline: 'For hobbyists leveling up',
+    tagline: 'For hobbyists leveling up fast',
     highlight: false,
     badge: null,
     cta: 'Start Free Trial',
@@ -66,6 +69,8 @@ const TIERS = [
       '5 projects',
       'Voice-to-game',
       'Image-to-map',
+      'Terrain generation',
+      '3D asset generation',
       'Email support',
     ],
   },
@@ -76,7 +81,7 @@ const TIERS = [
     priceMonthly: 24.99,
     priceYearly: 19.99,
     yearlyTotal: ANNUAL_TOTALS.CREATOR,
-    tagline: 'For serious creators',
+    tagline: 'For serious creators who ship',
     highlight: true,
     badge: 'Most Popular',
     cta: 'Start Free Trial',
@@ -84,6 +89,9 @@ const TIERS = [
     features: [
       '7,000 tokens / month',
       'Unlimited projects',
+      'Voice-to-game + image-to-map',
+      'Terrain & 3D asset generation',
+      'UI builder & economy design',
       'Marketplace access + selling',
       'Team collaboration (3 members)',
       'Game DNA scanner',
@@ -98,7 +106,7 @@ const TIERS = [
     priceMonthly: 49.99,
     priceYearly: 39.99,
     yearlyTotal: ANNUAL_TOTALS.STUDIO,
-    tagline: 'For agencies & studios',
+    tagline: 'For agencies & game studios',
     highlight: false,
     badge: null,
     cta: 'Start Free Trial',
@@ -106,7 +114,10 @@ const TIERS = [
     features: [
       '20,000 tokens / month',
       'Unlimited projects',
-      'Full API access',
+      'All Creator features',
+      'Full terrain & world generation',
+      'Bulk 3D asset generation',
+      'Full API access + SDKs',
       'White-label exports',
       'Team collaboration (50 members)',
       'Dedicated support',
@@ -146,6 +157,10 @@ const COMPARE_FEATURES = [
   { label: 'Basic templates',       free: true,        hobby: true,        creator: true,        studio: true,        custom: true         },
   { label: 'Voice-to-game',         free: false,       hobby: true,        creator: true,        studio: true,        custom: true         },
   { label: 'Image-to-map',          free: false,       hobby: true,        creator: true,        studio: true,        custom: true         },
+  { label: 'Terrain generation',    free: 'Basic',     hobby: true,        creator: true,        studio: 'Full world', custom: true        },
+  { label: '3D asset generation',   free: false,       hobby: true,        creator: true,        studio: 'Bulk',       custom: true        },
+  { label: 'UI builder',            free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
+  { label: 'Economy design AI',     free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
   { label: 'Marketplace access',    free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
   { label: 'Marketplace selling',   free: false,       hobby: false,       creator: true,        studio: true,        custom: true         },
   { label: 'Team members',          free: 'Solo',      hobby: 'Solo',      creator: '3',         studio: '50',        custom: 'Unlimited'  },
@@ -771,11 +786,23 @@ export default function PricingClient() {
             </span>
           </h1>
 
-          <p className="text-lg text-[#6B7699] mb-10 max-w-lg mx-auto leading-relaxed">
+          <p className="text-lg text-[#6B7699] mb-6 max-w-lg mx-auto leading-relaxed">
             Start free. No credit card required.
             <br />
             Upgrade when you&apos;re ready.
           </p>
+
+          {/* Competitor differentiation badge */}
+          <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 mb-10 text-sm font-medium"
+            style={{
+              background: 'rgba(212,175,55,0.07)',
+              border: '1px solid rgba(212,175,55,0.2)',
+              color: '#D4AF37',
+            }}
+          >
+            <Shield className="w-4 h-4 flex-shrink-0" />
+            The only Roblox AI that builds terrain, scripts, 3D assets, UI &amp; economy — not just code
+          </div>
 
           {/* Billing toggle */}
           <div className="inline-flex items-center bg-[#0A0F1E] border border-[#141C35] rounded-full p-1.5 gap-1">

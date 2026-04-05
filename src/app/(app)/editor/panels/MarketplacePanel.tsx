@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
-import { Store, Wand2 } from 'lucide-react'
+import { Store, Wand2, History } from 'lucide-react'
+import { ModelPreview } from '@/components/editor/ModelPreview'
 
 // ─── Shared types ──────────────────────────────────────────────────────────────
 
@@ -29,6 +30,29 @@ const CATEGORY_PARAM: Record<AssetCategory, string> = {
 }
 
 type GenerateTab = 'marketplace' | 'generate'
+
+// ─── My Assets types ───────────────────────────────────────────────────────────
+
+interface HistoryAsset {
+  id:           string
+  prompt:       string
+  type:         string
+  style:        string
+  status:       string
+  thumbnailUrl: string | null
+  meshUrl:      string | null
+  albedoUrl:    string | null
+  normalUrl:    string | null
+  roughnessUrl: string | null
+  metallicUrl:  string | null
+  polyCount:    number | null
+  qualityScore: number | null
+  tokensCost:   number
+  generationMs: number | null
+  errorMessage: string | null
+  createdAt:    string
+  updatedAt:    string
+}
 type GenerateQuality = 'draft' | 'standard' | 'premium'
 type GenerateAssetType = 'mesh' | 'texture'
 
@@ -227,22 +251,46 @@ function AssetSkeleton() {
   )
 }
 
-function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
-  const isLoading = asset.status === 'loading'
-  const isPending = asset.status === 'pending'
-  const isDemo    = asset.status === 'demo'
-  const isError   = asset.status === 'error'
-  const isWorking = isLoading || isPending
-  const [copied, setCopied] = useState(false)
-  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+// Progress label shown while Meshy is processing
+function pendingLabel(attempts: number): string {
+  if (attempts < 10) return 'Generating…'
+  if (attempts < 30) return 'Refining…'
+  return 'Finalising…'
+}
+
+function GeneratedAssetCard({
+  asset,
+  pollAttempts = 0,
+  studioConnected = false,
+}: {
+  asset: GeneratedAsset
+  pollAttempts?: number
+  studioConnected?: boolean
+}) {
+  const isLoading  = asset.status === 'loading'
+  const isPending  = asset.status === 'pending'
+  const isComplete = asset.status === 'complete'
+  const isDemo     = asset.status === 'demo'
+  const isError    = asset.status === 'error'
+  const isWorking  = isLoading || isPending
+
+  const [copied,        setCopied]        = useState(false)
+  const [sentToStudio,  setSentToStudio]  = useState(false)
+  const copyTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const studioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    return () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current) }
+    return () => {
+      if (copyTimerRef.current)   clearTimeout(copyTimerRef.current)
+      if (studioTimerRef.current) clearTimeout(studioTimerRef.current)
+    }
   }, [])
 
   const previewImg = asset.thumbnailUrl ?? asset.textures?.albedo ?? asset.textureUrl ?? null
 
-  function handleImportToStudio() {
+  const workingLabel = isPending ? pendingLabel(pollAttempts) : 'Generating…'
+
+  function handleCopyLuau() {
     if (!asset.luauCode) return
     navigator.clipboard.writeText(asset.luauCode).then(() => {
       setCopied(true)
@@ -251,21 +299,49 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
     }).catch(() => {})
   }
 
+  async function handleSendToStudio() {
+    if (!asset.luauCode) return
+    try {
+      await fetch('/api/studio/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'runLuau', code: asset.luauCode }),
+      })
+      setSentToStudio(true)
+      if (studioTimerRef.current) clearTimeout(studioTimerRef.current)
+      studioTimerRef.current = setTimeout(() => setSentToStudio(false), 2500)
+    } catch {
+      // Silently fail — Studio may not be open
+    }
+  }
+
   return (
     <div className="rounded-lg border border-white/8 bg-white/[0.03] p-2.5 space-y-2">
-      <div className="relative flex h-20 w-full items-center justify-center overflow-hidden rounded-md bg-white/5">
+      {/* Preview — 3D viewer when GLB is available, flat thumbnail otherwise */}
+      <div className="relative w-full overflow-hidden rounded-md bg-white/5" style={{ height: 80 }}>
         {isWorking && (
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 z-10">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D4AF37]/30 border-t-[#D4AF37]"/>
-            <span className="text-[9px] text-gray-500">{isPending ? 'Mesh generating…' : 'Generating…'}</span>
+            <span className="text-[9px] text-gray-500">{workingLabel}</span>
           </div>
         )}
-        {!isWorking && !isError && previewImg && (
+        {!isWorking && !isError && asset.meshUrl && (
+          <ModelPreview
+            glbUrl={asset.meshUrl}
+            thumbnailUrl={previewImg}
+            width="100%"
+            height={80}
+            autoRotate
+            showToggle
+            expandable
+          />
+        )}
+        {!isWorking && !isError && !asset.meshUrl && previewImg && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewImg} alt={asset.prompt} width={80} height={80} className="h-full w-full object-contain"/>
         )}
-        {!isWorking && !isError && !previewImg && (
-          <div className="flex flex-col items-center gap-1 text-gray-700">
+        {!isWorking && !isError && !asset.meshUrl && !previewImg && (
+          <div className="flex h-full flex-col items-center justify-center gap-1 text-gray-700">
             <svg className="w-7 h-7" viewBox="0 0 28 28" fill="none">
               <path d="M14 3L25 9V19L14 25L3 19V9L14 3Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
               <path d="M14 3V25M3 9L14 15M25 9L14 15" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.4"/>
@@ -273,28 +349,36 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
             <span className="text-[8px]">No preview</span>
           </div>
         )}
-        {isError && <span className="text-[10px] text-red-400">Failed</span>}
-        {isDemo && <span className="absolute right-1 top-1 rounded bg-[#D4AF37]/20 px-1 py-0.5 text-[8px] font-bold text-[#D4AF37]">DEMO</span>}
-        {asset.status === 'complete' && asset.meshUrl && <span className="absolute left-1 top-1 rounded bg-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400">GLB READY</span>}
-        {isPending && <span className="absolute left-1 top-1 rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400">PENDING</span>}
+        {isError && <span className="absolute inset-0 flex items-center justify-center text-[10px] text-red-400">Failed</span>}
+
+        {/* Status badges */}
+        {isDemo     && <span className="absolute right-1 top-1 rounded bg-[#D4AF37]/20 px-1 py-0.5 text-[8px] font-bold text-[#D4AF37] pointer-events-none">DEMO</span>}
+        {isComplete && asset.meshUrl && <span className="absolute left-1 top-1 rounded bg-emerald-500/20 px-1 py-0.5 text-[8px] font-bold text-emerald-400 pointer-events-none">3D</span>}
+        {isPending  && (
+          <span className="absolute left-1 top-1 rounded bg-blue-500/20 px-1 py-0.5 text-[8px] font-bold text-blue-400 pointer-events-none">
+            {workingLabel}
+          </span>
+        )}
       </div>
 
+      {/* Texture strip (when textures are present) */}
       {asset.textures && (
         <div className="flex gap-1">
           {[
-            { label: 'Albedo',  url: asset.textures.albedo },
-            { label: 'Normal',  url: asset.textures.normal },
-            { label: 'Rough',   url: asset.textures.roughness },
+            { label: 'Albedo', url: asset.textures.albedo },
+            { label: 'Normal', url: asset.textures.normal },
+            { label: 'Rough',  url: asset.textures.roughness },
           ].map(({ label, url }) => (
             <div key={label} className="flex-1 relative overflow-hidden rounded">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={label} width={32} height={32} className="w-full h-8 object-cover" />
+              <img src={url} alt={label} width={32} height={32} className="w-full h-8 object-cover"/>
               <span className="absolute bottom-0 left-0 right-0 text-center text-[7px] text-white/70 bg-black/60 py-0.5">{label}</span>
             </div>
           ))}
         </div>
       )}
 
+      {/* Metadata */}
       <div>
         <p className="truncate text-[11px] font-medium leading-tight text-gray-300" title={asset.prompt}>{asset.prompt}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -302,36 +386,52 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
           <span className="text-[9px] text-gray-700">·</span>
           <span className="text-[9px] capitalize text-gray-600">{asset.quality}</span>
           {asset.polygonCount != null && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.polygonCount.toLocaleString()} poly</span></>}
-          {asset.resolution && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.resolution}px</span></>}
+          {asset.resolution   != null && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.resolution}px</span></>}
           {(asset.costEstimateUsd ?? 0) > 0 && <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-emerald-600">${asset.costEstimateUsd!.toFixed(3)}</span></>}
         </div>
       </div>
 
+      {/* Action buttons — only shown when not working/errored */}
       {!isWorking && !isError && (
         <div className="space-y-1">
+          {/* Download row */}
           <div className="flex gap-1">
             {asset.meshUrl && (
-              <a href={asset.meshUrl} target="_blank" rel="noopener noreferrer"
-                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+              <a
+                href={asset.meshUrl}
+                download
+                rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+              >
                 GLB
               </a>
             )}
             {asset.fbxUrl && (
-              <a href={asset.fbxUrl} target="_blank" rel="noopener noreferrer"
-                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+              <a
+                href={asset.fbxUrl}
+                download
+                rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+              >
                 FBX
               </a>
             )}
             {(asset.textureUrl ?? asset.textures?.albedo) && (
-              <a href={asset.textureUrl ?? asset.textures?.albedo} target="_blank" rel="noopener noreferrer"
-                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+              <a
+                href={asset.textureUrl ?? asset.textures?.albedo}
+                download
+                rel="noopener noreferrer"
+                className="flex-1 rounded bg-white/5 px-2 py-1 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+              >
                 Texture
               </a>
             )}
           </div>
+
+          {/* Copy Luau button */}
           {asset.luauCode && (
             <button
-              onClick={handleImportToStudio}
+              onClick={handleCopyLuau}
               className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
               style={{
                 background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(212,175,55,0.1)',
@@ -342,10 +442,30 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
               {copied ? (
                 <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied!</>
               ) : (
-                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M5 1h4a1 1 0 011 1v4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>Copy MeshPart Luau &rarr; Import to Studio</>
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M5 1h4a1 1 0 011 1v4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>Copy Luau Code</>
               )}
             </button>
           )}
+
+          {/* Send to Studio button — only when Studio is connected */}
+          {studioConnected && asset.luauCode && (
+            <button
+              onClick={handleSendToStudio}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
+              style={{
+                background: sentToStudio ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${sentToStudio ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                color: sentToStudio ? '#4ADE80' : '#9CA3AF',
+              }}
+            >
+              {sentToStudio ? (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Sent to Studio!</>
+              ) : (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M1 6l4-4v2.5h6v3H5V10L1 6z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/></svg>Send to Studio</>
+              )}
+            </button>
+          )}
+
           {isDemo && !asset.meshUrl && !asset.textureUrl && (
             <p className="text-[9px] italic text-gray-700 text-center">Set MESHY_API_KEY + FAL_KEY for real assets</p>
           )}
@@ -355,13 +475,494 @@ function GeneratedAssetCard({ asset }: { asset: GeneratedAsset }) {
   )
 }
 
-function GenerateSubPanel() {
-  const [genPrompt, setGenPrompt]             = useState('')
+// ─── MyAssetsSubPanel ──────────────────────────────────────────────────────────
+
+function formatRelativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins  = Math.floor(diff / 60_000)
+  const hours = Math.floor(diff / 3_600_000)
+  const days  = Math.floor(diff / 86_400_000)
+  if (mins  <  1) return 'just now'
+  if (mins  < 60) return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
+
+function statusBadge(status: string): { label: string; color: string } {
+  switch (status) {
+    case 'ready':      return { label: 'Ready',      color: '#4ADE80' }
+    case 'queued':     return { label: 'Queued',     color: '#60A5FA' }
+    case 'generating': return { label: 'Generating', color: '#FBBF24' }
+    case 'optimizing': return { label: 'Optimizing', color: '#FBBF24' }
+    case 'uploading':  return { label: 'Uploading',  color: '#FBBF24' }
+    case 'failed':     return { label: 'Failed',     color: '#F87171' }
+    default:           return { label: status,       color: '#9CA3AF' }
+  }
+}
+
+function HistoryAssetCard({
+  asset,
+  studioConnected,
+  onGenerateSimilar,
+  onDelete,
+}: {
+  asset: HistoryAsset
+  studioConnected: boolean
+  onGenerateSimilar: (prompt: string) => void
+  onDelete: (id: string) => void
+}) {
+  const [expanded,     setExpanded]     = useState(false)
+  const [copied,       setCopied]       = useState(false)
+  const [sentToStudio, setSentToStudio] = useState(false)
+  const [deleting,     setDeleting]     = useState(false)
+  const copyTimer   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const studioTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (copyTimer.current)   clearTimeout(copyTimer.current)
+    if (studioTimer.current) clearTimeout(studioTimer.current)
+  }, [])
+
+  const isReady   = asset.status === 'ready'
+  const isWorking = ['queued', 'generating', 'optimizing', 'uploading'].includes(asset.status)
+  const isFailed  = asset.status === 'failed'
+  const badge     = statusBadge(asset.status)
+
+  const luauCode = asset.meshUrl
+    ? [
+        `-- ForjeAI: Re-use "${asset.prompt.slice(0, 60)}"`,
+        `-- Generated: ${new Date(asset.createdAt).toLocaleDateString()}`,
+        ``,
+        `local function insertAsset(position: Vector3)`,
+        `  local mesh = Instance.new("MeshPart")`,
+        `  mesh.Name = "ForjeAI_Asset"`,
+        `  mesh.MeshId = "rbxassetid://REPLACE_WITH_UPLOADED_ID"`,
+        `  mesh.Size = Vector3.new(1, 1, 1)`,
+        `  mesh.CFrame = CFrame.new(position)`,
+        `  mesh.Anchored = true`,
+        `  mesh.Material = Enum.Material.SmoothPlastic`,
+        `  mesh.Parent = workspace`,
+        `  return mesh`,
+        `end`,
+        ``,
+        `local placed = insertAsset(Vector3.new(0, 0, 0))`,
+        `print("Placed at", placed.Position)`,
+      ].join('\n')
+    : null
+
+  function handleCopyLuau() {
+    if (!luauCode) return
+    navigator.clipboard.writeText(luauCode).then(() => {
+      setCopied(true)
+      if (copyTimer.current) clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+
+  async function handleSendToStudio() {
+    if (!luauCode) return
+    try {
+      await fetch('/api/studio/execute', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ command: 'runLuau', code: luauCode }),
+      })
+      setSentToStudio(true)
+      if (studioTimer.current) clearTimeout(studioTimer.current)
+      studioTimer.current = setTimeout(() => setSentToStudio(false), 2500)
+    } catch {
+      // Studio may not be open — fail silently
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/ai/generations?id=${encodeURIComponent(asset.id)}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) onDelete(asset.id)
+    } catch {
+      // ignore
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-white/8 bg-white/[0.03] overflow-hidden transition-colors hover:border-white/[0.15]">
+      {/* Card header — always visible */}
+      <button
+        className="w-full flex items-center gap-2.5 p-2.5 text-left"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {/* Thumbnail */}
+        <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-white/5 flex items-center justify-center">
+          {asset.thumbnailUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={asset.thumbnailUrl} alt={asset.prompt} width={48} height={48} className="h-full w-full object-cover" />
+          ) : isWorking ? (
+            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#D4AF37]/30 border-t-[#D4AF37]" />
+          ) : (
+            <svg className="w-5 h-5 text-gray-700" viewBox="0 0 20 20" fill="none">
+              <path d="M10 2L18 6.5V13.5L10 18L2 13.5V6.5L10 2Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+              <path d="M10 2V18M2 6.5L10 11M18 6.5L10 11" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.4"/>
+            </svg>
+          )}
+        </div>
+
+        {/* Meta */}
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-[11px] font-medium text-gray-300 leading-tight" title={asset.prompt}>
+            {asset.prompt}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span
+              className="rounded px-1 py-0.5 text-[8px] font-bold"
+              style={{ background: badge.color + '22', color: badge.color }}
+            >
+              {badge.label}
+            </span>
+            <span className="text-[9px] text-gray-600 capitalize">{asset.type}</span>
+            {asset.polyCount != null && (
+              <><span className="text-[9px] text-gray-700">·</span><span className="text-[9px] text-gray-600">{asset.polyCount.toLocaleString()}p</span></>
+            )}
+            <span className="ml-auto text-[9px] text-gray-700">{formatRelativeDate(asset.createdAt)}</span>
+          </div>
+        </div>
+
+        {/* Chevron */}
+        <svg
+          className={['w-3 h-3 flex-shrink-0 text-gray-600 transition-transform', expanded ? 'rotate-180' : ''].join(' ')}
+          viewBox="0 0 12 12" fill="none"
+        >
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+
+      {/* Expanded detail pane */}
+      {expanded && (
+        <div className="border-t border-white/8 p-2.5 space-y-2">
+          {isFailed && asset.errorMessage && (
+            <p className="text-[9px] text-red-400/80 rounded bg-red-400/10 border border-red-400/20 px-2 py-1">
+              {asset.errorMessage}
+            </p>
+          )}
+
+          {/* Download buttons */}
+          {isReady && (
+            <div className="flex gap-1">
+              {asset.meshUrl && (
+                <a href={asset.meshUrl} download rel="noopener noreferrer"
+                  className="flex-1 rounded bg-white/5 px-2 py-1.5 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                  Download GLB
+                </a>
+              )}
+              {asset.albedoUrl && (
+                <a href={asset.albedoUrl} download rel="noopener noreferrer"
+                  className="flex-1 rounded bg-white/5 px-2 py-1.5 text-center text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors">
+                  Albedo
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Copy Luau */}
+          {isReady && luauCode && (
+            <button
+              onClick={handleCopyLuau}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
+              style={{
+                background: copied ? 'rgba(74,222,128,0.12)' : 'rgba(212,175,55,0.08)',
+                border:     `1px solid ${copied ? 'rgba(74,222,128,0.3)' : 'rgba(212,175,55,0.2)'}`,
+                color:      copied ? '#4ADE80' : '#D4AF37',
+              }}
+            >
+              {copied ? (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Copied!</>
+              ) : (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="1"/><path d="M5 1h4a1 1 0 011 1v4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/></svg>Copy Luau Code</>
+              )}
+            </button>
+          )}
+
+          {/* Send to Studio */}
+          {isReady && studioConnected && luauCode && (
+            <button
+              onClick={handleSendToStudio}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition-all"
+              style={{
+                background: sentToStudio ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.04)',
+                border:     `1px solid ${sentToStudio ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                color:      sentToStudio ? '#4ADE80' : '#9CA3AF',
+              }}
+            >
+              {sentToStudio ? (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>Sent to Studio!</>
+              ) : (
+                <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M1 6l4-4v2.5h6v3H5V10L1 6z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" fill="none"/></svg>Send to Studio</>
+              )}
+            </button>
+          )}
+
+          {/* Generate Similar + Delete row */}
+          <div className="flex gap-1">
+            <button
+              onClick={() => onGenerateSimilar(asset.prompt)}
+              className="flex-1 rounded bg-white/5 px-2 py-1.5 text-[9px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+            >
+              Generate Similar
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="rounded bg-red-500/10 px-2 py-1.5 text-[9px] font-semibold text-red-400/70 hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-40"
+            >
+              {deleting ? '...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MyAssetsSubPanel({
+  refreshSignal,
+  onGenerateSimilar,
+}: {
+  refreshSignal: number
+  onGenerateSimilar: (prompt: string) => void
+}) {
+  const [assets,          setAssets]          = useState<HistoryAsset[]>([])
+  const [total,           setTotal]           = useState(0)
+  const [loading,         setLoading]         = useState(true)
+  const [loadingMore,     setLoadingMore]     = useState(false)
+  const [error,           setError]           = useState<string | null>(null)
+  const [studioConnected, setStudioConnected] = useState(false)
+  const LIMIT = 20
+
+  const fetchPage = useCallback(async (offset: number, replace: boolean) => {
+    if (offset === 0) setLoading(true); else setLoadingMore(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/ai/generations?limit=${LIMIT}&offset=${offset}`)
+      if (!res.ok) throw new Error(`API ${res.status}`)
+      const data = (await res.json()) as { total: number; generations: HistoryAsset[] }
+      setTotal(data.total)
+      setAssets((prev) => replace ? data.generations : [...prev, ...data.generations])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load')
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [])
+
+  // Initial load + re-fetch whenever a new generation completes
+  useEffect(() => { fetchPage(0, true) }, [fetchPage, refreshSignal])
+
+  // Studio connection check
+  useEffect(() => {
+    fetch('/api/studio/status')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { connected?: boolean } | null) => { if (d?.connected) setStudioConnected(true) })
+      .catch(() => {})
+  }, [])
+
+  function handleDelete(id: string) {
+    setAssets((prev) => prev.filter((a) => a.id !== id))
+    setTotal((n) => Math.max(0, n - 1))
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="animate-pulse rounded-lg border border-white/8 bg-white/[0.03] p-2.5 flex items-center gap-2.5">
+            <div className="h-12 w-12 flex-shrink-0 rounded-md bg-white/[0.08]" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-3/4 rounded bg-white/[0.08]" />
+              <div className="h-2 w-1/2 rounded bg-white/5" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 p-8 text-center">
+        <p className="text-xs text-red-400/80">{error}</p>
+        <button onClick={() => fetchPage(0, true)} className="text-[10px] text-[#D4AF37] hover:underline">
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  if (assets.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 p-10 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/5">
+          <History size={20} className="text-gray-600" />
+        </div>
+        <div>
+          <p className="text-xs font-medium text-gray-500">No generations yet</p>
+          <p className="mt-0.5 text-[10px] text-gray-700">Try the Generate tab to create your first 3D asset.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <div className="space-y-1.5 p-3">
+          {assets.map((asset) => (
+            <HistoryAssetCard
+              key={asset.id}
+              asset={asset}
+              studioConnected={studioConnected}
+              onGenerateSimilar={onGenerateSimilar}
+              onDelete={handleDelete}
+            />
+          ))}
+
+          {assets.length < total && (
+            <button
+              onClick={() => fetchPage(assets.length, false)}
+              disabled={loadingMore}
+              className="w-full rounded-lg border border-white/10 bg-white/5 py-2 text-[10px] font-semibold text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-40"
+            >
+              {loadingMore ? 'Loading...' : `Load more (${total - assets.length} remaining)`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const MAX_POLL_ATTEMPTS = 60 // 60 × 4s = 4 minutes
+
+type MeshApiResponse = {
+  meshUrl?: string | null
+  fbxUrl?: string | null
+  thumbnailUrl?: string | null
+  videoUrl?: string | null
+  polygonCount?: number | null
+  textures?: { albedo: string; normal: string; roughness: string } | null
+  luauCode?: string | null
+  costEstimateUsd?: number
+  status: string
+  taskId?: string | null
+  progress?: number | null
+}
+
+function GenerateSubPanel({
+  initialPrompt,
+  onGenerationComplete,
+}: {
+  initialPrompt?: string
+  onGenerationComplete?: () => void
+}) {
+  const [genPrompt, setGenPrompt]             = useState(initialPrompt ?? '')
   const [genQuality, setGenQuality]           = useState<GenerateQuality>('standard')
   const [genType, setGenType]                 = useState<GenerateAssetType>('mesh')
   const [isGenerating, setIsGenerating]       = useState(false)
   const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([])
   const [genError, setGenError]               = useState<string | null>(null)
+  const [studioConnected, setStudioConnected] = useState(false)
+  // Live poll-attempt counts exposed to cards for progress labels
+  const [pollAttemptMap, setPollAttemptMap]   = useState<Record<string, number>>({})
+
+  // Map of assetId → intervalId for in-flight polls
+  const pollingRefs  = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map())
+  const pollCounts   = useRef<Map<string, number>>(new Map())
+
+  // Detect Studio connection on mount (fire-and-forget)
+  useEffect(() => {
+    fetch('/api/studio/status')
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { connected?: boolean } | null) => { if (d?.connected) setStudioConnected(true) })
+      .catch(() => {})
+  }, [])
+
+  // Clean up all polling intervals on unmount
+  useEffect(() => {
+    return () => {
+      pollingRefs.current.forEach((intervalId) => clearInterval(intervalId))
+      pollingRefs.current.clear()
+      pollCounts.current.clear()
+    }
+  }, [])
+
+  function stopPolling(id: string) {
+    const intervalId = pollingRefs.current.get(id)
+    if (intervalId !== undefined) {
+      clearInterval(intervalId)
+      pollingRefs.current.delete(id)
+    }
+    pollCounts.current.delete(id)
+  }
+
+  function startPolling(id: string, taskId: string) {
+    pollCounts.current.set(id, 0)
+
+    const intervalId = setInterval(async () => {
+      const attempts = (pollCounts.current.get(id) ?? 0) + 1
+      pollCounts.current.set(id, attempts)
+      setPollAttemptMap((prev) => ({ ...prev, [id]: attempts }))
+
+      if (attempts > MAX_POLL_ATTEMPTS) {
+        stopPolling(id)
+        setGeneratedAssets((prev) => prev.map((a) =>
+          a.id !== id ? a : { ...a, status: 'error' as const }
+        ))
+        setGenError('Generation timed out (4 min). Try again or use Draft quality.')
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/ai/mesh?taskId=${encodeURIComponent(taskId)}`)
+        if (!res.ok) return // transient error — keep polling
+
+        const data = (await res.json()) as MeshApiResponse
+
+        if (data.status === 'complete') {
+          stopPolling(id)
+          setGeneratedAssets((prev) => prev.map((a) =>
+            a.id !== id ? a : {
+              ...a,
+              status: 'complete' as const,
+              meshUrl: data.meshUrl ?? a.meshUrl,
+              fbxUrl: data.fbxUrl ?? a.fbxUrl,
+              thumbnailUrl: data.thumbnailUrl ?? a.thumbnailUrl,
+              videoUrl: data.videoUrl ?? a.videoUrl,
+              polygonCount: data.polygonCount ?? a.polygonCount,
+              textures: data.textures ?? a.textures,
+              luauCode: data.luauCode ?? a.luauCode,
+              costEstimateUsd: data.costEstimateUsd ?? a.costEstimateUsd,
+            }
+          ))
+          onGenerationComplete?.()
+        } else if (data.status === 'failed' || data.status === 'error') {
+          stopPolling(id)
+          setGeneratedAssets((prev) => prev.map((a) =>
+            a.id !== id ? a : { ...a, status: 'error' as const }
+          ))
+          setGenError('Meshy generation failed. Try a different prompt or quality level.')
+        }
+        // Still pending/in_progress — pollAttemptMap already updated above; card re-renders with new label
+      } catch {
+        // Network error — keep polling, don't abort
+      }
+    }, 4000)
+
+    pollingRefs.current.set(id, intervalId)
+  }
 
   async function handleGenerate() {
     if (!genPrompt.trim() || isGenerating) return
@@ -380,18 +981,7 @@ function GenerateSubPanel() {
           body: JSON.stringify({ prompt: genPrompt.trim(), quality: genQuality, withTextures: true }),
         })
         if (!res.ok) throw new Error(`API error ${res.status}`)
-        const data = (await res.json()) as {
-          meshUrl?: string | null
-          fbxUrl?: string | null
-          thumbnailUrl?: string | null
-          videoUrl?: string | null
-          polygonCount?: number | null
-          textures?: { albedo: string; normal: string; roughness: string } | null
-          luauCode?: string | null
-          costEstimateUsd?: number
-          status: string
-          taskId?: string | null
-        }
+        const data = (await res.json()) as MeshApiResponse
 
         const nextStatus: GeneratedAsset['status'] =
           data.status === 'demo' ? 'demo' :
@@ -411,6 +1001,15 @@ function GenerateSubPanel() {
           costEstimateUsd: data.costEstimateUsd,
           taskId: data.taskId,
         }))
+
+        // Start polling if Meshy is still generating
+        if (nextStatus === 'pending' && data.taskId) {
+          startPolling(id, data.taskId)
+        }
+        // Instant complete or demo — signal My Assets to refresh
+        if (nextStatus === 'complete' || nextStatus === 'demo') {
+          onGenerationComplete?.()
+        }
       } else {
         const res = await fetch('/api/ai/texture', {
           method: 'POST',
@@ -442,6 +1041,9 @@ function GenerateSubPanel() {
           luauCode: data.luauCode,
           costEstimateUsd: data.costEstimateUsd,
         }))
+        if (nextStatus === 'complete' || nextStatus === 'demo') {
+          onGenerationComplete?.()
+        }
       }
       setGenPrompt('')
     } catch (err) {
@@ -488,7 +1090,14 @@ function GenerateSubPanel() {
       {generatedAssets.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-wider text-gray-600">Generated</p>
-          {generatedAssets.map((asset) => <GeneratedAssetCard key={asset.id} asset={asset} />)}
+          {generatedAssets.map((asset) => (
+            <GeneratedAssetCard
+              key={asset.id}
+              asset={asset}
+              pollAttempts={pollAttemptMap[asset.id] ?? 0}
+              studioConnected={studioConnected}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -863,19 +1472,78 @@ function GenerateTab() {
 
 // ─── Public export ─────────────────────────────────────────────────────────────
 
-type AssetTab = 'roblox' | 'generate' | 'community'
+type AssetTab = 'roblox' | 'generate' | 'community' | 'myassets'
 
 export interface MarketplacePanelProps {
   onInsertAsset?: (luau: string, name: string) => void
 }
 
 export default function MarketplacePanel({ onInsertAsset }: MarketplacePanelProps) {
-  const [activeTab, setActiveTab] = useState<AssetTab>('community')
+  const [activeTab,      setActiveTab]      = useState<AssetTab>('community')
+  // Incremented each time a generation completes — causes MyAssetsSubPanel to re-fetch
+  const [genRefresh,     setGenRefresh]     = useState(0)
+  // Pre-fill the Generate tab prompt when user clicks "Generate Similar"
+  const [similarPrompt,  setSimilarPrompt]  = useState('')
+  // Total count for the My Assets badge — fetched once on mount and after each completion
+  const [myAssetsTotal,  setMyAssetsTotal]  = useState<number | null>(null)
 
-  const tabs: { id: AssetTab; label: string }[] = [
+  // Fetch total count for the badge (lightweight — just the count field)
+  const refreshTotal = useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai/generations?limit=1&offset=0')
+      if (res.ok) {
+        const data = (await res.json()) as { total: number }
+        setMyAssetsTotal(data.total)
+      }
+    } catch {
+      // Non-critical — badge just stays hidden
+    }
+  }, [])
+
+  useEffect(() => { refreshTotal() }, [refreshTotal])
+
+  function handleGenerationComplete() {
+    setGenRefresh((n) => n + 1)
+    refreshTotal()
+  }
+
+  function handleGenerateSimilar(prompt: string) {
+    setSimilarPrompt(prompt)
+    setActiveTab('generate')
+  }
+
+  // When switching away from generate tab, clear the pre-filled prompt so it
+  // doesn't persist unexpectedly next time the user manually opens Generate
+  useEffect(() => {
+    if (activeTab !== 'generate') setSimilarPrompt('')
+  }, [activeTab])
+
+  const tabs: { id: AssetTab; label: React.ReactNode }[] = [
     { id: 'community', label: 'Community' },
     { id: 'roblox',    label: 'Roblox'    },
-    { id: 'generate',  label: 'Generate'  },
+    {
+      id: 'generate',
+      label: (
+        <span className="flex items-center justify-center gap-1">
+          <Wand2 size={10} strokeWidth={2.5} aria-hidden="true" />
+          Generate
+        </span>
+      ),
+    },
+    {
+      id: 'myassets',
+      label: (
+        <span className="flex items-center justify-center gap-1">
+          <History size={10} strokeWidth={2.5} aria-hidden="true" />
+          My Assets
+          {myAssetsTotal != null && myAssetsTotal > 0 && (
+            <span className="rounded-full bg-[#D4AF37]/20 px-1 py-px text-[8px] font-bold text-[#D4AF37] leading-none">
+              {myAssetsTotal > 99 ? '99+' : myAssetsTotal}
+            </span>
+          )}
+        </span>
+      ),
+    },
   ]
 
   return (
@@ -900,8 +1568,20 @@ export default function MarketplacePanel({ onInsertAsset }: MarketplacePanelProp
       </div>
       <div className="flex-1 overflow-hidden">
         {activeTab === 'roblox'    && <RobloxMarketplacePanel />}
-        {activeTab === 'generate'  && <GenerateTab />}
+        {activeTab === 'generate'  && (
+          <GenerateSubPanel
+            key={similarPrompt}
+            initialPrompt={similarPrompt}
+            onGenerationComplete={handleGenerationComplete}
+          />
+        )}
         {activeTab === 'community' && <CommunityTab onInsertAsset={onInsertAsset} />}
+        {activeTab === 'myassets'  && (
+          <MyAssetsSubPanel
+            refreshSignal={genRefresh}
+            onGenerateSimilar={handleGenerateSimilar}
+          />
+        )}
       </div>
     </div>
   )

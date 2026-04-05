@@ -21,6 +21,7 @@ import { THEMES } from '@/lib/themes'
 import SettingsPanel from './panels/SettingsPanel'
 import { FirstRunExperience } from '@/components/editor/FirstRunExperience'
 import { SuggestedPrompts } from '@/components/editor/SuggestedPrompts'
+import { AssetGenerator } from '@/components/editor/AssetGenerator'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,15 @@ function IconPreview() {
       <path d="M6 15h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <path d="M9 13v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <circle cx="9" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.2"/>
+    </svg>
+  )
+}
+
+function IconGenerate() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M9 2L10.8 6.2L15 8l-4.2 1.8L9 14l-1.8-4.2L3 8l4.2-1.8L9 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+      <path d="M14 13l1 2M15 13l-1 2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -1771,7 +1781,10 @@ function EditorInner() {
   const [mobileTab, setMobileTab] = useState<'chat' | 'studio'>('chat')
   const [viewportExpanded, setViewportExpanded] = useState(false)
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null)
-  const [chatHeight, setChatHeight] = useState(CHAT_DEFAULT_HEIGHT)
+  const [chatHeight, setChatHeight] = useState<number>(() => {
+    if (typeof window === 'undefined') return CHAT_DEFAULT_HEIGHT
+    return loadChatHeight()
+  })
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [cinematicChatCollapsed, setCinematicChatCollapsed] = useState(false)
@@ -1781,6 +1794,9 @@ function EditorInner() {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('fg_first_run_skipped') === 'true'
   })
+  // studioWizardOpen — true only when user explicitly clicks "Connect Studio" in top bar.
+  // On first visit (no hasConnectedBefore flag) the wizard is never auto-shown.
+  const [studioWizardOpen, setStudioWizardOpen] = useState(false)
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -1799,11 +1815,6 @@ function EditorInner() {
   useEffect(() => {
     try { localStorage.setItem('fg_editor_layout', editorLayout) } catch { /* ignore */ }
   }, [editorLayout])
-
-  // Load persisted chat height
-  useEffect(() => {
-    setChatHeight(loadChatHeight())
-  }, [])
 
   // Onboarding overlay
   const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay()
@@ -1871,12 +1882,42 @@ function EditorInner() {
     studioContext: studio.studioContext,
   })
 
+  // Auto-skip Studio wizard on first visit (no prior connection).
+  // Sets fg_first_run_skipped so the wizard never auto-shows again.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hasConnectedBefore = localStorage.getItem('fg_has_connected_before') === 'true'
+    if (!hasConnectedBefore && !studio.isConnected) {
+      try { localStorage.setItem('fg_first_run_skipped', 'true') } catch { /* ignore */ }
+      setFirstRunSkipped(true)
+    }
+  // Only run once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // When Studio actually connects, record that the user has connected before
+  useEffect(() => {
+    if (studio.isConnected) {
+      try { localStorage.setItem('fg_has_connected_before', 'true') } catch { /* ignore */ }
+      setStudioWizardOpen(false)
+    }
+  }, [studio.isConnected])
+
   // First-run skip handler — persists to localStorage
   const handleSkipFirstRun = useCallback(() => {
     try { localStorage.setItem('fg_first_run_skipped', 'true') } catch { /* ignore */ }
     setFirstRunSkipped(true)
+    setStudioWizardOpen(false)
     studio.confirmConnected()
   }, [studio])
+
+  // Send generated asset Luau to Studio
+  const handleAssetSendToStudio = useCallback(
+    (luauCode: string, assetPrompt: string) => {
+      void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
+    },
+    [handleBuildComplete, studio.sessionId],
+  )
 
   // Build-error action handlers
   const handleRetry = useCallback(() => {
@@ -2009,7 +2050,7 @@ function EditorInner() {
           placeName={studio.placeName}
           totalTokens={chat.totalTokens}
           onNewChat={() => window.location.reload()}
-          onConnect={() => studio.generateCode()}
+          onConnect={() => { setStudioWizardOpen(true); studio.generateCode() }}
           onShowShortcuts={() => setShortcutsOpen(true)}
           editorLayout={editorLayout}
           onLayoutChange={setEditorLayout}
@@ -2045,6 +2086,7 @@ function EditorInner() {
               onBuildDifferently={handleBuildDifferently}
               onDismiss={handleDismissError}
               onEditAndResend={chat.editAndResend}
+              onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
               compact={false}
             />
           </div>
@@ -2124,6 +2166,7 @@ function EditorInner() {
                     onBuildDifferently={handleBuildDifferently}
                     onDismiss={handleDismissError}
                     onEditAndResend={chat.editAndResend}
+                    onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
                     compact={true}
                   />
                 </div>
@@ -2157,8 +2200,8 @@ function EditorInner() {
                     className={mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}
                     style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden' }}
                   >
-                    {/* First-run experience: shown when not connected and user hasn't skipped */}
-                    {!studio.isConnected && !firstRunSkipped ? (
+                    {/* Studio wizard — only shown when user explicitly clicks "Connect Studio" */}
+                    {!studio.isConnected && studioWizardOpen ? (
                       <div style={{ flex: 1, background: 'rgba(6,10,20,0.5)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', position: 'relative' }}>
                         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto' }}>
@@ -2242,6 +2285,7 @@ function EditorInner() {
                       onBuildDifferently={handleBuildDifferently}
                       onDismiss={handleDismissError}
                       onEditAndResend={chat.editAndResend}
+                      onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
                       compact={viewportExpanded}
                     />
                   </div>
@@ -2267,6 +2311,7 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
+                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
                         compact={false}
                       />
                     </div>
@@ -2313,6 +2358,7 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
+                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
                         compact={false}
                       />
                     </div>
@@ -2355,6 +2401,7 @@ function EditorInner() {
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
                         {sidebarPanel === 'marketplace' && 'Marketplace'}
+                        {sidebarPanel === 'generate' && 'Generate Asset'}
                         {sidebarPanel === 'settings' && 'Settings'}
                         {sidebarPanel === 'history' && 'Build History'}
                         {sidebarPanel === 'context' && 'AI Context'}
@@ -2368,7 +2415,12 @@ function EditorInner() {
                         </svg>
                       </button>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+                    <div style={{ flex: 1, overflowY: sidebarPanel === 'generate' ? 'hidden' : 'auto', padding: sidebarPanel === 'generate' ? 0 : 16 }}>
+                      {sidebarPanel === 'generate' && (
+                        <AssetGenerator
+                          onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                        />
+                      )}
                       {sidebarPanel === 'marketplace' && (
                         <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
                           <p style={{ margin: '0 0 12px' }}>Browse community templates and assets.</p>
@@ -2466,6 +2518,8 @@ function EditorInner() {
                   borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
                   <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
                     active={sidebarPanel === 'marketplace'} onClick={() => toggleSidebar('marketplace')} />
+                  <SidebarButton icon={<IconGenerate />} label="Generate Asset"
+                    active={sidebarPanel === 'generate'} onClick={() => toggleSidebar('generate')} />
                   <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
                     active={sidebarPanel === 'history'} onClick={() => toggleSidebar('history')} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"
@@ -2496,6 +2550,8 @@ function EditorInner() {
                   borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
                   <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('marketplace') }} />
+                  <SidebarButton icon={<IconGenerate />} label="Generate Asset"
+                    active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('generate') }} />
                   <SidebarButton icon={<IconHistory />} label="Build History" shortcut="⌘H"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('history') }} />
                   <SidebarButton icon={<IconSettings />} label="Settings" shortcut="⌘,"

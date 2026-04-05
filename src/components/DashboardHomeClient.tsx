@@ -593,6 +593,87 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── New-User Hero ────────────────────────────────────────────────────────────
+
+const CAPABILITIES = [
+  { icon: '🏔️', label: 'Terrain generation',  desc: 'Mountains, rivers, caves from a single prompt' },
+  { icon: '⚙️', label: 'Luau scripts',         desc: 'Game logic, combat, data stores — fully wired up' },
+  { icon: '🧊', label: '3D models',             desc: 'Buildings, props, vehicles placed into your map' },
+  { icon: '🖥️', label: 'UI screens',            desc: 'Health bars, shops, leaderboards — styled and working' },
+]
+
+function NewUserHero({ firstName, tokenBalance, subscription }: { firstName: string; tokenBalance: number; subscription: string }) {
+  return (
+    <div
+      className="rounded-2xl border overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #0f0c00 0%, #111111 55%, #0a0a0a 100%)',
+        borderColor: `${GOLD}22`,
+        boxShadow: `0 0 60px ${GOLD}08`,
+      }}
+    >
+      {/* Top accent line */}
+      <div className="h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${GOLD}70, transparent)` }} />
+
+      <div className="p-7 sm:p-9">
+        {/* Greeting */}
+        <div className="mb-7">
+          <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+            Welcome,{' '}
+            <span style={{ color: GOLD }}>{firstName}</span>
+          </h1>
+          <p className="text-gray-400 text-sm mt-2 leading-relaxed max-w-lg">
+            ForjeAI turns plain descriptions into fully built Roblox game worlds — terrain,
+            scripts, models and UI — in seconds. Your{' '}
+            <span className="text-white font-semibold">{tokenBalance.toLocaleString()} tokens</span>
+            {' '}are loaded and ready.
+          </p>
+        </div>
+
+        {/* Capability tiles */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+          {CAPABILITIES.map(({ icon, label, desc }) => (
+            <div
+              key={label}
+              className="rounded-xl p-3.5 flex flex-col gap-2"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              <span className="text-2xl select-none">{icon}</span>
+              <p className="text-xs font-semibold text-white leading-tight">{label}</p>
+              <p className="text-[11px] text-gray-500 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Primary CTA row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/editor"
+            className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            style={{ background: GOLD, boxShadow: `0 0 24px ${GOLD}40` }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Start Building
+          </Link>
+          {subscription === 'FREE' && (
+            <Link
+              href="/billing"
+              className="text-xs font-semibold px-4 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors"
+            >
+              View plans
+            </Link>
+          )}
+          <span className="text-[11px] text-gray-600 ml-1">No code needed — just describe what you want.</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export function DashboardHomeClient({ firstName, subscription, tokenBalance, lifetimeSpent, initialPrompt }: Props) {
   useKeyframesOnce()
 
@@ -606,16 +687,18 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
     setCurrentDate(formatDate())
   }, [])
 
-  // First-visit token balance toast
+  // First-visit welcome toast (only once, only after data is ready)
   useEffect(() => {
     const key = 'fj_dashboard_visited'
     if (typeof window !== 'undefined' && !localStorage.getItem(key)) {
       localStorage.setItem(key, '1')
       const balance = tokenData?.balance ?? tokenBalance
-      const timer = setTimeout(() => {
-        showToast({ variant: 'warning', title: `Your token balance: ${balance.toLocaleString()}`, description: 'Head to the Editor to start building with your tokens.', duration: 5000 })
-      }, 800)
-      return () => clearTimeout(timer)
+      if (balance > 0) {
+        const timer = setTimeout(() => {
+          showToast({ variant: 'success', title: `${balance.toLocaleString()} tokens ready`, description: 'Describe your game and ForjeAI will build it.', duration: 4000 })
+        }, 600)
+        return () => clearTimeout(timer)
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -632,11 +715,26 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
 
   const tierLabel = subscription === 'FREE' ? 'Free' : subscription === 'PRO' ? 'Pro' : subscription
 
+  // A user is "new" when stats have loaded and they have zero lifetime builds
+  const statsLoaded = statsData !== undefined
+  const isNewUser = statsLoaded && buildsThisWeek === 0 && liveSpent === 0 && recentBuilds.length === 0
+
   return (
     <div className="text-white">
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
-        {/* ── Welcome Header ─────────────────────────────────────────────── */}
+        {/* ── New-user hero — shown instead of the normal header for first-timers ── */}
+        {isNewUser ? (
+          <div
+            className="fj-animate"
+            style={{ animation: 'fj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0ms both' }}
+          >
+            <NewUserHero firstName={firstName} tokenBalance={liveBalance} subscription={subscription} />
+          </div>
+        ) : (
+        <>
+
+        {/* ── Returning-user welcome header ────────────────────────────── */}
         <div
           className="fj-animate flex items-start justify-between gap-4 flex-wrap"
           style={{ animation: 'fj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0ms both' }}
@@ -839,6 +937,8 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   )

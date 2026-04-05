@@ -705,9 +705,23 @@ function BillingTab() {
                 Active
               </span>
             </div>
-            <p className="text-gray-300 text-sm">5,000 tokens/month · Full AI · Priority builds</p>
+            <p className="text-gray-300 text-sm">
+              {billingData?.tokenLimit
+                ? `${billingData.tokenLimit.toLocaleString()} tokens/month`
+                : 'Loading plan details…'}
+              {billingData?.tier && billingData.tier !== 'FREE' ? ' · Full AI · Priority builds' : billingData?.tier === 'FREE' ? ' · Basic AI access' : ''}
+            </p>
             <p className="text-gray-400 text-xs mt-1.5">
-              <span className="text-white font-semibold">$29/mo</span> · Renews April 28, 2026
+              {billingData?.monthlyPrice ? (
+                <>
+                  <span className="text-white font-semibold">
+                    {billingData.monthlyPrice}{billingData.monthlyPrice !== 'Free' ? '/mo' : ''}
+                  </span>
+                  {billingData.renewDate && (
+                    <> · {billingData.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} {billingData.renewDate}</>
+                  )}
+                </>
+              ) : null}
             </p>
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
@@ -808,35 +822,14 @@ function BillingTab() {
       {/* Payment History */}
       <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payment History</p>
-        <div className="overflow-x-auto -mx-6 px-6">
-          <table className="w-full text-sm min-w-[400px]">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left text-xs text-gray-400 font-medium pb-3">Date</th>
-                <th className="text-left text-xs text-gray-400 font-medium pb-3">Description</th>
-                <th className="text-right text-xs text-gray-400 font-medium pb-3">Amount</th>
-                <th className="text-right text-xs text-gray-400 font-medium pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {[
-                { id: '1', date: 'Mar 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-                { id: '2', date: 'Feb 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-                { id: '3', date: 'Jan 28, 2026', description: 'Pro Plan — Monthly', amount: '$29.00', status: 'Paid' },
-              ].map((row) => (
-                <tr key={row.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3.5 text-gray-300 text-xs whitespace-nowrap">{row.date}</td>
-                  <td className="py-3.5 text-white pr-4">{row.description}</td>
-                  <td className="py-3.5 text-white text-right tabular-nums font-medium">{row.amount}</td>
-                  <td className="py-3.5 text-right">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-green-500/10 text-green-400 border-green-500/20">
-                      {row.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="py-4 text-center">
+          <p className="text-gray-500 text-sm mb-2">Full payment history is available on the billing page.</p>
+          <Link
+            href="/billing"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#D4AF37] hover:text-[#E6A519] transition-colors"
+          >
+            View invoices →
+          </Link>
         </div>
       </div>
     </div>

@@ -293,6 +293,29 @@ export default function TokensClient() {
         {planLimit === 0 && !balanceLoading && (
           <div className="h-3 rounded-full bg-white/[0.06]" />
         )}
+
+        {/* Zero-balance CTA nudge */}
+        {!balanceLoading && balance === 0 && (
+          <div className="mt-5 flex items-center justify-between gap-4 flex-wrap p-4 rounded-xl"
+            style={{ background: `${GOLD}08`, border: `1px solid ${GOLD}20` }}>
+            <div>
+              <p className="text-sm font-semibold text-white">Ready to build?</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Get tokens and start generating your first Roblox map.</p>
+            </div>
+            <a
+              href="#buy"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: GOLD, boxShadow: `0 0 14px ${GOLD}40` }}
+              onClick={(e) => {
+                e.preventDefault()
+                document.getElementById('buy-tokens')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
+              <IconZap className="w-3.5 h-3.5" />
+              Get Tokens
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Transaction History */}
@@ -350,7 +373,7 @@ export default function TokensClient() {
       </div>
 
       {/* Buy More Tokens */}
-      <div>
+      <div id="buy-tokens">
         <h2 className="text-sm font-bold text-white mb-4">Buy More Tokens</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {TOKEN_PACKS.map((pack) => {

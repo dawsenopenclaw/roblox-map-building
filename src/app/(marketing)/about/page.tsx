@@ -59,7 +59,7 @@ const VALUES = [
     ),
     title: 'Speed by default',
     body:
-      'Every second you spend fighting tooling is a second you could spend creating. We remove friction so ideas ship in minutes, not months.',
+      'A great idea loses momentum every hour it sits unbuilt. ForjeGames removes the technical delay — terrain, scripts, and assets in minutes, not months.',
   },
   {
     icon: (
@@ -70,9 +70,9 @@ const VALUES = [
         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     ),
-    title: 'Creator-first',
+    title: 'Creator-first, always',
     body:
-      'We build for the 13-year-old with a great idea and no engineering background. If it requires a tutorial to use, we shipped the wrong thing.',
+      'We build for the 13-year-old with a great game idea and zero Luau knowledge. If it needs a tutorial to get started, we shipped the wrong thing.',
   },
   {
     icon: (
@@ -80,9 +80,9 @@ const VALUES = [
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
       </svg>
     ),
-    title: 'Ship fast, improve often',
+    title: 'The whole game, not half',
     body:
-      'We run a tight feedback loop with our community. Real builders use ForjeGames daily — their sessions tell us what to fix next.',
+      'Scripts alone don\'t make a game. We build every layer — terrain, 3D assets, UI, economy, and code — so creators never hit a wall mid-project.',
   },
 ]
 
@@ -149,14 +149,14 @@ export default function AboutPage() {
             className="reveal mb-6 font-bold tracking-tight"
             style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
           >
-            Make game development{' '}
-            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              accessible to everyone
+            Your idea deserves to{' '}
+            <span style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              exist in Roblox
             </span>
           </h1>
           <p className="reveal mx-auto max-w-xl text-base leading-relaxed" style={{ color: '#71717A' }}>
-            ForjeGames gives any creator — beginner or veteran — the same AI toolkit that top studios
-            use. You describe what you want. We build it.
+            ForjeGames removes every technical wall between your idea and a published Roblox game.
+            Terrain, 3D models, scripts, UI, economy — built by AI, synced to Studio, ready to play.
           </p>
         </div>
       </section>
@@ -202,9 +202,15 @@ export default function AboutPage() {
             script, not having hours to learn Studio, not being able to afford a team.
           </p>
           <p>
+            The frustration was personal. Great game ideas were dying because the creator didn&apos;t
+            know Luau. Imaginative worlds never shipped because terrain took too long to build by hand.
+            The tools that existed either generated snippets with no context, or required a full
+            engineering background to operate. None of them built the whole game.
+          </p>
+          <p>
             The insight was simple: the best Roblox games are built by people who understand what
-            players want, not necessarily by people who can write Luau. If AI could handle the
-            technical layer — terrain generation, scripting, asset sourcing, lighting — then the
+            players want — not necessarily by people who can write Luau. If AI could handle the full
+            technical layer — terrain generation, 3D modeling, scripting, UI, economy — then the
             creator&apos;s job becomes purely creative.
           </p>
           <p>
@@ -213,7 +219,8 @@ export default function AboutPage() {
           </p>
           <p>
             Today, ForjeGames ships with 55 AI agents, voice input, image-to-map, 3D generation, a
-            Studio Plugin, and a marketplace browser — all in a single editor. And we&apos;re just
+            Studio Plugin, UI builder, economy designer, and a marketplace browser — all in a single
+            editor. We&apos;re the only platform that covers every layer. And we&apos;re just
             getting started.
           </p>
         </div>
@@ -321,41 +328,37 @@ export default function AboutPage() {
               Our AI team
             </h2>
             <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed" style={{ color: '#71717A' }}>
-              ForjeGames is built autonomously by a suite of specialized AI agents — from
-              architecture to shipping. One founder, 55 agents.
+              ForjeGames is built by one founder and 55 specialized AI agents — each handling a
+              different layer of game creation, from terrain to texture to economy.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { role: 'Terrain Architect', model: 'Claude Sonnet', specialty: 'Procedural map generation' },
-              { role: 'Script Engineer', model: 'Claude Sonnet', specialty: 'Luau scripting & game systems' },
-              { role: 'Economy Designer', model: 'Claude Sonnet', specialty: 'Monetization & token balancing' },
-              { role: 'Asset Scout', model: 'Claude Haiku', specialty: 'Marketplace research' },
-              { role: '3D Generator', model: 'Meshy AI', specialty: 'Text-to-3D mesh creation' },
-              { role: 'Texture Artist', model: 'Fal.ai Flux', specialty: 'PBR texture synthesis' },
+              { role: 'Terrain Architect',  model: 'Claude Sonnet', specialty: 'Procedural world & map generation',  initials: 'TA', color: '#10B981', bg: 'rgba(16,185,129,0.15)'   },
+              { role: 'Script Engineer',    model: 'Claude Sonnet', specialty: 'Luau scripting & game systems',       initials: 'SE', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)'  },
+              { role: 'Economy Designer',   model: 'Claude Sonnet', specialty: 'Monetization & balance tuning',       initials: 'ED', color: '#D4AF37', bg: 'rgba(212,175,55,0.15)'  },
+              { role: 'UI Builder',         model: 'Claude Sonnet', specialty: 'ScreenGuis, menus & HUD design',      initials: 'UB', color: '#F472B6', bg: 'rgba(244,114,182,0.15)' },
+              { role: '3D Generator',       model: 'Meshy AI',      specialty: 'Text & image to 3D mesh creation',   initials: '3D', color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
+              { role: 'Texture Artist',     model: 'Fal.ai Flux',   specialty: 'PBR texture & material synthesis',   initials: 'TX', color: '#FB923C', bg: 'rgba(251,146,60,0.15)'  },
             ].map((member) => (
               <div
                 key={member.role}
-                className="reveal flex items-start gap-3 rounded-xl p-4"
+                className="reveal flex items-start gap-3 rounded-xl p-4 transition-all duration-200 hover:-translate-y-1"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
                   border: '1px solid rgba(255,255,255,0.07)',
                 }}
               >
-                {/* Avatar placeholder */}
                 <div
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                  style={{
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
-                    color: '#09090b',
-                  }}
+                  style={{ background: member.bg, color: member.color }}
                 >
-                  AI
+                  {member.initials}
                 </div>
                 <div>
                   <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>{member.role}</p>
-                  <p className="text-xs" style={{ color: '#D4AF37' }}>{member.model}</p>
+                  <p className="text-xs" style={{ color: member.color }}>{member.model}</p>
                   <p className="mt-0.5 text-xs" style={{ color: '#52525B' }}>{member.specialty}</p>
                 </div>
               </div>
@@ -415,10 +418,10 @@ export default function AboutPage() {
             className="mb-4 font-bold tracking-tight"
             style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', lineHeight: 1.1, color: '#FAFAFA' }}
           >
-            Ready to build your first game?
+            Your game idea is waiting.
           </h2>
           <p className="mb-8 text-base" style={{ color: '#71717A' }}>
-            Start free. No credit card required. First map in 10 minutes.
+            Start free. No credit card. No code required. First map in 10 minutes.
           </p>
           <a
             href="/sign-up"

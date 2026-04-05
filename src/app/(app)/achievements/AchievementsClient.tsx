@@ -203,9 +203,9 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
       className="relative rounded-2xl border p-4 flex flex-col gap-3 transition-all duration-200"
       style={{
         background: unlocked ? '#141414' : '#0D0D0D',
-        borderColor: unlocked ? `${catColor}30` : 'rgba(255,255,255,0.05)',
-        boxShadow: unlocked ? `0 0 16px ${catColor}08` : 'none',
-        opacity: unlocked ? 1 : 0.7,
+        borderColor: unlocked ? `${catColor}35` : `${GOLD}20`,
+        boxShadow: unlocked ? `0 0 18px ${catColor}10` : `0 0 0 1px ${GOLD}10`,
+        opacity: unlocked ? 1 : 0.8,
       }}
     >
       {/* Lock overlay */}
