@@ -23,6 +23,7 @@ import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
+import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 
@@ -311,6 +312,34 @@ GAME SYSTEM GENERATION — WHEN USER ASKS FOR MECHANICS:
   - Player scripts → StarterPlayerScripts
   - Character scripts → StarterCharacterScripts
 
+MULTI-FILE BUILDS — REQUIRED FOR COMPLEX SYSTEMS:
+  For tycoons, RPGs, obbies, or any build that needs client + server + shared code,
+  split output into MULTIPLE fenced code blocks. Add a location header as the FIRST
+  LINE of each block so the system knows where to put it:
+
+  \`\`\`lua
+  -- [ServerScriptService/MainGameLoop]
+  -- server code here
+  \`\`\`
+
+  \`\`\`lua
+  -- [StarterPlayerScripts/PlayerUI]
+  -- client code here
+  \`\`\`
+
+  \`\`\`lua
+  -- [ReplicatedStorage/SharedModules]
+  -- shared module code here
+  \`\`\`
+
+  Supported location prefixes:
+    ServerScriptService, StarterPlayerScripts, StarterCharacterScripts,
+    StarterGui, ReplicatedStorage, ReplicatedFirst, ServerStorage, Workspace
+
+  Each block is queued separately and inserted into the correct service automatically.
+  Single-file builds (simple props, terrain, single scripts) do NOT need a header —
+  they default to ServerScriptService as before.
+
 ` + ASSET_REFERENCE_TABLE + `
 `
 
@@ -331,6 +360,116 @@ function extractLuauCode(text: string | null | undefined): string | null {
   return blocks.reduce((a, b) => (a.length >= b.length ? a : b))
 }
 
+// Parsed representation of a single script destined for a specific Roblox service.
+interface LuauScript {
+  name: string
+  location: string
+  code: string
+}
+
+// Regex patterns that recognise location header comments.
+// Supports two formats:
+//   -- [ServerScriptService/MainGameLoop]
+//   -- Location: StarterPlayerScripts/PlayerUI
+const LOCATION_BRACKET_RE = /^--\s*\[([^\]]+)\]/
+const LOCATION_PREFIX_RE  = /^--\s*[Ll]ocation\s*:\s*(.+)/
+
+const VALID_SERVICES = new Set([
+  'ServerScriptService',
+  'StarterPlayerScripts',
+  'StarterCharacterScripts',
+  'StarterGui',
+  'ReplicatedStorage',
+  'ReplicatedFirst',
+  'ServerStorage',
+  'Workspace',
+])
+
+/** Parse a location string like "ServerScriptService/MainGameLoop" into { location, name }. */
+function parseLocation(raw: string): { location: string; name: string } {
+  const parts = raw.trim().split('/')
+  const service = parts[0]?.trim() ?? 'ServerScriptService'
+  const name    = parts[1]?.trim() ?? 'Script'
+  const location = VALID_SERVICES.has(service) ? service : 'ServerScriptService'
+  return { location, name }
+}
+
+/**
+ * Extract ALL fenced Luau code blocks from an AI response, each annotated with the
+ * target Roblox service derived from an optional location header comment.
+ *
+ * Returns an array of { name, location, code }.  When only one block is found (or no
+ * block carries a location header), falls back to a single-element array so callers
+ * don't need a special code path.
+ */
+function extractMultipleLuauScripts(text: string | null | undefined): LuauScript[] {
+  if (!text) return []
+
+  const scripts: LuauScript[] = []
+  const re = /```(?:lua|luau)?\s*\r?\n?([\s\S]*?)```/g
+  let m: RegExpExecArray | null
+
+  while ((m = re.exec(text)) !== null) {
+    const raw = m[1]?.trim()
+    if (!raw) continue
+
+    // Look for a location header on the very first non-empty line of the block.
+    const firstLine = raw.split('\n')[0]?.trim() ?? ''
+    let location = 'ServerScriptService'
+    let name     = 'Script'
+    let code     = raw
+
+    const bracketMatch = LOCATION_BRACKET_RE.exec(firstLine)
+    const prefixMatch  = LOCATION_PREFIX_RE.exec(firstLine)
+
+    if (bracketMatch?.[1]) {
+      const parsed = parseLocation(bracketMatch[1])
+      location = parsed.location
+      name     = parsed.name
+      // Strip the header comment from the code so it doesn't confuse the executor
+      code = raw.split('\n').slice(1).join('\n').trim()
+    } else if (prefixMatch?.[1]) {
+      const parsed = parseLocation(prefixMatch[1])
+      location = parsed.location
+      name     = parsed.name
+      code = raw.split('\n').slice(1).join('\n').trim()
+    }
+
+    if (code) scripts.push({ name, location, code })
+  }
+
+  return scripts
+}
+
+/**
+ * Send multiple scripts to Studio with a short delay between each so the plugin
+ * queue doesn't receive a burst it can't handle.  Returns true if every script
+ * was queued successfully.
+ */
+async function sendMultipleScriptsToStudio(
+  sessionId: string | null,
+  scripts: LuauScript[],
+): Promise<boolean> {
+  if (!sessionId || scripts.length === 0) return false
+  if (scripts.length === 1) {
+    return sendCodeToStudio(sessionId, scripts[0]!.code)
+  }
+
+  let allOk = true
+  for (let i = 0; i < scripts.length; i++) {
+    const script = scripts[i]!
+    // Prepend a small comment so the executor / logs can identify the script.
+    const annotated = `-- [${script.location}/${script.name}]\n${script.code}`
+    const ok = await sendCodeToStudio(sessionId, annotated)
+    if (!ok) allOk = false
+    // Brief pause between scripts to avoid overwhelming the plugin's sync queue.
+    if (i < scripts.length - 1) {
+      await new Promise<void>(resolve => setTimeout(resolve, 300))
+    }
+  }
+  return allOk
+}
+
 // Strip code blocks from response — user only sees friendly text
 function stripCodeBlocks(text: string | null | undefined): string {
   if (!text) return ''
@@ -342,17 +481,43 @@ function stripCodeBlocks(text: string | null | undefined): string {
     .trim()
 }
 
-// Extract [SUGGESTIONS] from response and return them separately
+// Extract [SUGGESTIONS] from response and return them separately.
+// Always appends one random "Surprise me" creative suggestion as the last pill.
+const SURPRISE_SUGGESTIONS = [
+  '* Add a secret room',
+  '* Make it rain',
+  '* Add particle effects',
+  '* Create an easter egg',
+  '* Add a hidden passage',
+  '* Make the floor glow',
+  '* Add a treasure chest',
+  '* Build a hidden rooftop',
+  '* Add a mysterious portal',
+  '* Place a giant mirror',
+  '* Create a trap door',
+  '* Add ambient fireflies',
+  '* Build a tiny hidden garden',
+  '* Add a spinning chandelier',
+  '* Hide a message in the walls',
+  '* Add a secret underground room',
+  '* Make a breakable wall',
+  '* Add glowing runes on the floor',
+  '* Create a floating island above',
+  '* Add a mysterious locked chest',
+]
+
 function extractSuggestions(text: string | null | undefined): { message: string; suggestions: string[] } {
   if (!text) return { message: '', suggestions: [] }
   const parts = text.split('[SUGGESTIONS]')
   if (parts.length < 2) return { message: text.trim(), suggestions: [] }
   const message = parts[0].trim()
-  const suggestions = parts[1]
+  const contextual = parts[1]
     .split('\n')
     .map(s => s.trim())
     .filter(s => s.length > 0 && s.length < 100)
-    .slice(0, 4)
+    .slice(0, 3)
+  const surprise = SURPRISE_SUGGESTIONS[Math.floor(Math.random() * SURPRISE_SUGGESTIONS.length)]
+  const suggestions = [...contextual, surprise]
   return { message, suggestions }
 }
 
@@ -520,6 +685,29 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
     }
 
+    // Store edition: cannot use loadstring() — translate Luau to structured commands
+    const isStoreEdition = session.pluginVersion.endsWith('-store')
+    if (isStoreEdition) {
+      const { commands, hasUntranslatableCode, warnings } = luauToStructuredCommands(code)
+      if (warnings.length > 0) {
+        console.log('[sendCodeToStudio] Translation warnings:', warnings)
+      }
+      if (hasUntranslatableCode) {
+        console.warn('[sendCodeToStudio] Luau contains untranslatable constructs — store plugin will receive partial commands only')
+      }
+      if (commands.length === 0) {
+        console.warn('[sendCodeToStudio] Translation produced zero commands, skipping queue')
+        return false
+      }
+      const result = await queueCommand(sessionId, {
+        type: 'structured_commands',
+        data: { commands },
+      })
+      console.log('[sendCodeToStudio] structured_commands result:', JSON.stringify(result))
+      return result.ok
+    }
+
+    // Direct-download / self-hosted plugin: send raw Luau via loadstring()
     // Validate and auto-fix common AI mistakes before sending
     const { fixedCode, fixes } = validateAndFixLuau(code)
     if (fixes.length > 0) {
@@ -568,7 +756,13 @@ VOICE: Professional, warm, confident. Like a creative director at a top studio w
 
 After your main response, add:
 [SUGGESTIONS]
-(3 specific actionable next steps that move the project forward, one per line)`
+(3 specific, contextual next steps — one per line. Make them directly relevant to what was just built:
+- After a building: "Add furniture inside", "Add interior lighting", "Add a garden outside"
+- After terrain: "Add trees and rocks", "Add a river nearby", "Build a cabin here"
+- After a script: "Add a leaderboard", "Add sound effects", "Test with NPCs"
+- After UI: "Add animations to the UI", "Add a settings menu", "Connect to DataStore"
+- After lighting: "Add fog for atmosphere", "Add shadows to buildings", "Try a sunset color palette"
+Keep each suggestion under 50 characters. Specific beats generic every time.)`
 
 const CODE_GENERATION_PROMPT = `You are a Roblox Luau code generator. Output ONLY a single \`\`\`lua code block. No explanation, no text before or after.
 
@@ -784,6 +978,13 @@ async function callGemini(
 }
 
 // Groq API call helper (free tier)
+// Groq model cascade — if one hits rate limit, try the next
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',                      // Best quality, 100K TPD free
+  'meta-llama/llama-4-scout-17b-16e-instruct',    // Llama 4, separate quota
+  'llama-3.1-8b-instant',                          // Fast fallback, separate quota
+]
+
 async function callGroq(
   systemPrompt: string,
   userMessage: string,
@@ -792,37 +993,58 @@ async function callGroq(
 ): Promise<string | null> {
   const groqKey = process.env.GROQ_API_KEY
   if (!groqKey) return null
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: maxTokens,
-        temperature: 0.2,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...history.map((h) => ({ role: h.role, content: h.content })),
-          { role: 'user', content: userMessage },
-        ],
-      }),
-    })
-    if (!res.ok) {
-      console.error('[callGroq] HTTP', res.status, await res.text().catch(() => ''))
-      return null
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.map((h) => ({ role: h.role, content: h.content })),
+    { role: 'user', content: userMessage },
+  ]
+
+  // Try each model — if one is rate limited, try the next
+  for (const model of GROQ_MODELS) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${groqKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          temperature: 0.2,
+          messages,
+        }),
+      })
+
+      if (res.status === 429) {
+        console.warn(`[callGroq] ${model} rate limited, trying next model...`)
+        continue // Try next model
+      }
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '')
+        // Decommissioned model — skip silently
+        if (errText.includes('decommissioned')) continue
+        console.error(`[callGroq] ${model} HTTP ${res.status}:`, errText.slice(0, 200))
+        continue
+      }
+
+      type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
+      const data = await res.json() as GroqRes
+      const text = data.choices?.[0]?.message?.content ?? null
+      if (text) {
+        console.log(`[callGroq] ${model} responded (${text.length} chars)`)
+        return text
+      }
+      console.warn(`[callGroq] ${model} empty response`)
+    } catch (e) {
+      console.error(`[callGroq] ${model} error:`, (e as Error).message)
     }
-    type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
-    const data = await res.json() as GroqRes
-    const text = data.choices?.[0]?.message?.content ?? null
-    if (!text) console.error('[callGroq] Empty response:', JSON.stringify(data).slice(0, 200))
-    return text
-  } catch (e) {
-    console.error('[callGroq] Error:', (e as Error).message)
-    return null
   }
+
+  console.error('[callGroq] All models exhausted')
+  return null
 }
 
 // Race helper — runs multiple promises, returns the first non-null result
@@ -873,7 +1095,7 @@ async function freeModelTwoPass(
   suggestions: string[]
   model: string
 } | null> {
-  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace', 'default'].includes(intent)
+  const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
 
   // Pass 1: Race both models in parallel — use whichever responds first
   const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
@@ -1008,7 +1230,21 @@ USE THIS DATA:
 6. Place at ground level using the groundY raycast, never floating — Y = groundY + objectHeight/2
 7. If SCENE TREE shows named models (e.g. "MedievalCastle", "ShopDistrict"), reference them by name and spatially relate new builds to them
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
-    const buildInstruction = `Build: ${message}
+    // For short continuation phrases ("place it", "do it", "yes build it"), inject
+    // the last assistant message from history so the model knows WHAT to build.
+    const isContinuationPhrase = /^(yes[,!]?\s*)?(do it|build it|place it|go ahead|let'?s go|let'?s do it|make it|just do it|execute it|run it|put it in|send it|deploy it|yes please|yep|yeah do it|ok do it|okay build it|go for it|place it in studio|send to studio|build it in studio)\s*[!.]*$/i.test(message.trim())
+    const lastAssistantMsg = history.slice().reverse().find(h => h.role === 'assistant')?.content ?? ''
+    const continuationContext = isContinuationPhrase && lastAssistantMsg
+      ? `\n\nCONTEXT — The user previously asked about this and you described it. Now BUILD IT:\n${lastAssistantMsg.slice(0, 600)}`
+      : ''
+
+    // For fullgame intent, force a single executable world-building Luau script
+    // (NOT a multi-file game design — that can't be executed in Studio directly)
+    const fullgameOverride = intent === 'fullgame'
+      ? `\n\nIMPORTANT: Output ONE single executable Luau script that builds the game WORLD in Studio (terrain, spawn area, key buildings, atmosphere). Do NOT output multiple files or game system code — just the buildable environment that sets the scene. Keep it to 40-80 Parts so it executes instantly.`
+      : ''
+
+    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}
 
 OUTPUT ONLY a \`\`\`lua code block. Use the REQUIRED PATTERN (P() helper, vc(), sp placement).
 
@@ -1118,7 +1354,13 @@ Keep responses 80-200 words. End with forward momentum — a choice, suggestion,
 
 After your response, add:
 [SUGGESTIONS]
-(2-3 specific actionable next steps, one per line)
+(2-3 specific, contextual next steps — one per line, directly relevant to what was just built or discussed:
+- After a building: "Add furniture inside", "Add interior lighting", "Add a garden outside"
+- After terrain: "Add trees and rocks", "Add a river nearby", "Build a cabin here"
+- After a script: "Add a leaderboard", "Add sound effects", "Test with NPCs"
+- After UI: "Add animations to the UI", "Add a settings menu", "Connect to DataStore"
+- After lighting: "Add fog for atmosphere", "Add shadows to buildings", "Try a sunset palette"
+Keep each suggestion under 50 characters. Never repeat the thing just built.)
 
 ` + MARKETPLACE_ASSET_RULES
 
@@ -3907,6 +4149,16 @@ const INTENT_TOKEN_COST: Record<IntentKey, number> = {
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
   {
+    // Build continuation/confirmation — user says "do it", "place it", "yes build it", "go ahead"
+    // These must be caught BEFORE the fullgame/building patterns so they reach code gen.
+    // The history context will tell the model what was previously discussed to build.
+    patterns: [
+      /^(yes[,!]?\s*)?(do it|build it|place it|go ahead|let'?s go|let'?s do it|make it|just do it|execute it|run it|put it in|send it|deploy it|yes please|yep|yeah do it|ok do it|ok build it|okay build it|go for it|sounds good[,!]?\s*(build it|do it|let'?s go)?)\s*[!.]*$/i,
+      /^(place it in studio|send to studio|build it in studio|execute in studio|run in studio|put it in studio)\s*[!.]*$/i,
+    ],
+    intent: 'building',
+  },
+  {
     // Full game generation — checked before generic "build/create" patterns
     patterns: [
       /\b(make a tycoon|create (?:an? )?obby|build (?:a )?simulator|make (?:a )?game|create (?:a )?game|generate (?:a )?game|make (?:a )?rpg)\b/i,
@@ -6549,7 +6801,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const isBuildingIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh',
         'script', 'debug', 'datasave', 'networking', 'gamesystem', 'multiscript',
         'vehicle', 'particle', 'weather', 'ui', 'animate', 'combat', 'quest',
-        'performance', 'cleanup'].includes(intent)
+        'performance', 'cleanup', 'default'].includes(intent)
       const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
       const systemPrompt = isBuildingIntent
@@ -6799,15 +7051,20 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
 
-      // Auto-execute any Luau code in Studio, strip it from response
-      const luau = extractLuauCode(responseText)
+      // Auto-execute any Luau code in Studio, strip it from response.
+      // Multi-file builds (multiple fenced blocks with location headers) are queued
+      // individually so each script lands in the correct Roblox service.
+      const luauScripts = extractMultipleLuauScripts(responseText)
+      const luau = luauScripts.length > 0
+        ? luauScripts.reduce((a, b) => (a.code.length >= b.code.length ? a : b)).code
+        : null
       let executedInStudio = false
-      if (luau && sessionId) {
-        executedInStudio = await sendCodeToStudio(sessionId, luau)
+      if (luauScripts.length > 0 && sessionId) {
+        executedInStudio = await sendMultipleScriptsToStudio(sessionId, luauScripts)
       }
-      const stripped = luau ? stripCodeBlocks(responseText) : responseText
+      const stripped = luauScripts.length > 0 ? stripCodeBlocks(responseText) : responseText
       const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
-      const hasCode = luau !== null
+      const hasCode = luauScripts.length > 0
 
       // Compute multi-step build plan metadata if applicable
       const buildPlanForResponse: BuildPlan | undefined = (() => {
