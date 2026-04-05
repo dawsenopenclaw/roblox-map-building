@@ -9,7 +9,7 @@ import { AppLoadingFallback } from '@/components/AppLoadingFallback'
 
 // Routes inside the (app) group that are publicly accessible without auth.
 // The middleware already marks these public — the layout must not override that.
-const PUBLIC_APP_PATHS = new Set(['/editor', '/welcome'])
+const PUBLIC_APP_PATHS = new Set(['/editor', '/welcome', '/templates'])
 
 function isPublicAppPath(pathname: string): boolean {
   // Exact match or prefix match (e.g. /editor?foo=bar handled by exact match on pathname)
