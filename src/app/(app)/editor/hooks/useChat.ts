@@ -141,7 +141,16 @@ export const MODELS: ModelOption[] = [
 
 const GUEST_TOKEN_LIMIT = 100 // guests get 100 free tokens before signup required
 
-const BUILD_KEYWORDS = ['build', 'generate 3d', 'create mesh', 'make a 3d', 'generate mesh', '3d model', 'mesh:']
+const BUILD_KEYWORDS = [
+  'build', 'create', 'make', 'generate', 'design', 'place', 'add', 'put',
+  'spawn', 'set up', 'construct', 'craft', 'model', 'terrain', 'map',
+  'house', 'castle', 'city', 'town', 'village', 'forest', 'mountain',
+  'island', 'cave', 'bridge', 'tower', 'shop', 'cafe', 'lab', 'hub',
+  'arena', 'dungeon', 'temple', 'park', 'garden', 'road', 'street',
+  'tree', 'rock', 'lamp', 'bench', 'fence', 'wall', 'door', 'window',
+  'console', 'machine', 'vehicle', 'boat', 'car', 'sword', 'weapon',
+  'furniture', 'table', 'chair', 'bed', 'shelf', 'counter',
+]
 
 function uid() {
   return Math.random().toString(36).slice(2, 9)
@@ -467,13 +476,15 @@ export function useChat(options: UseChatOptions = {}) {
           status: string
         }
 
+        // Auto-generate 3D mesh in parallel for ANY build request
+        // Meshy gets the full prompt (trimmed to 200 chars) for best results
         const meshPromise: Promise<MeshAPIResponse | null> = isBuildMeshIntent
           ? fetch('/api/ai/mesh', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                prompt: trimmed.replace(/^(build|generate|create|make)\s+(a\s+)?(3d\s+)?(mesh\s*[:：]?\s*)?/i, '').trim().slice(0, 200),
-                quality: 'standard',
+                prompt: trimmed.slice(0, 200),
+                quality: 'draft',
                 withTextures: true,
               }),
             })
