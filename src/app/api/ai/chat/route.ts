@@ -981,29 +981,13 @@ USE THIS DATA:
 6. Place at ground level using the groundY raycast, never floating — Y = groundY + objectHeight/2
 7. If SCENE TREE shows named models (e.g. "MedievalCastle", "ShopDistrict"), reference them by name and spatially relate new builds to them
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
-    const buildInstruction = `Build this: ${message}
+    const buildInstruction = `Build: ${message}
 
-RESPOND WITH ONLY A SINGLE \`\`\`lua CODE BLOCK. NO TEXT BEFORE OR AFTER.
-
-BUILD ONE DETAILED, PROFESSIONAL MODEL — not variants. Put ALL effort into ONE amazing build.
-
-REQUIREMENTS:
-- MINIMUM 30 parts. Complex builds need 50-80+ parts.
-- Use a helper function: local function P(name,size,cf,color,mat,parent) to reduce repetition
-- Group everything in a Model. Set Model.PrimaryPart to the largest/base part.
-- Use ChangeHistoryService:TryBeginRecording / FinishRecording for undo.
-- Place at camera position if studio context available, otherwise at (0, 0, 0).
-- EVERY part needs: Name, Anchored=true, Size, CFrame, Color (Color3.fromRGB), Material, Parent
-- Add 3-5 PointLights inside key parts for atmosphere (warm yellow, range 15-25)
-- Use REALISTIC proportions: doors 4×7, windows 4×4, walls 0.5-1 thick, rooms 16×12 minimum
-- Use MUTED realistic colors: greys, browns, tans, dark greens — NEVER bright primary colors
-- Add DETAILS: trim, molding, frames, sills, railings, steps, pillars, baseboards
-- For terrain: use large wedge parts for slopes, cylinders for trees, varied heights
-
-DETAIL EXAMPLES (what 30+ parts looks like):
-- "a house" = foundation slab + 4 walls + 4 window holes + window glass×4 + door frame + door + roof base + roof slope×2 + chimney + chimney top + porch floor + porch pillars×2 + porch rail + steps×3 + gutter + lights×3 = 35 parts
-- "a tree" = trunk cylinder + branch×4 + leaf sphere×6 + root bumps×3 + bark detail×2 = 16 parts
-- "terrain" = ground plates×6 + hills (wedges)×8 + rocks×5 + grass patches×4 + water plane + cliff faces×3 + path segments×4 = 31 parts`
+ONLY output a \`\`\`lua code block. Use the REQUIRED PATTERN from the system prompt.
+Use P() helper and vc() color variation. Position relative to sp.
+20-40 parts. Muted colors. Real proportions. 2-3 PointLights.
+Decompose into real components — walls, frames, trim, railings, steps.
+Set m.PrimaryPart to the base part.`
 
     // Race both models for code gen — first valid result wins
     console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
@@ -7022,15 +7006,12 @@ MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, N
 COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
 SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
 MINIMUM: 30 parts per build. Complex builds need 50-80+. Add PointLights inside Parts for atmosphere.`,
-      `Build ONE detailed, professional model of: ${message}
+      `Build: ${message}
 
-Put ALL effort into ONE amazing build — not variants. MINIMUM 30 parts with real architectural detail.
-Use a helper function to reduce code size: local function P(n,s,cf,c,m,par) creates a Part with those props.
-Add trim, frames, steps, railings, pillars — make it look REAL.
-Use muted realistic colors. Add 3-5 PointLights for warm atmosphere.
-Group in a Model, set PrimaryPart to the base/largest part.
-
-Output ONLY the code inside \`\`\`lua fences. No explanation.`,
+ONLY output a \`\`\`lua code block. Use the REQUIRED PATTERN from the system prompt.
+Use P() helper. Position relative to sp (camera). 20-40 parts. Muted colors.
+Real proportions. 2-3 PointLights. Decompose into real components.
+Set m.PrimaryPart to the base part. No explanation.`,
       [],
       8192,
     )
