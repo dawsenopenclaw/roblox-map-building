@@ -2973,6 +2973,187 @@ COOLDOWN ENFORCEMENT:
 RATE LIMITING: Track requests per player per action per second.
   Kick on sustained abuse: 10+ violations within a 30-second window.
 
+=== MONETIZATION — GAMEPASS, DEV PRODUCTS, PREMIUM ===
+When user asks about monetization, gamepasses, or making money:
+
+GAMEPASS SYSTEM:
+  local MPS = game:GetService("MarketplaceService")
+  local PASSES = {
+    {id=GAMEPASS_ID, name="2x Speed", onGrant=function(player)
+      player.Character.Humanoid.WalkSpeed = 32
+    end},
+    {id=GAMEPASS_ID2, name="VIP", onGrant=function(player)
+      -- VIP badge, chat tag, exclusive area access
+    end},
+  }
+  -- Check ownership on join + grant benefits
+  Players.PlayerAdded:Connect(function(p)
+    for _,pass in PASSES do
+      if MPS:UserOwnsGamePassAsync(p.UserId, pass.id) then pass.onGrant(p) end
+    end
+  end)
+  -- Handle in-game purchase
+  MPS.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+    if purchased then
+      for _,pass in PASSES do
+        if pass.id == passId then pass.onGrant(player) break end
+      end
+    end
+  end)
+
+DEV PRODUCTS (consumable purchases):
+  local PRODUCTS = {
+    {id=PRODUCT_ID, name="1000 Coins", onPurchase=function(player)
+      addCurrency(player, "coins", 1000)
+    end},
+  }
+  MPS.ProcessReceipt = function(info)
+    local player = Players:GetPlayerByUserId(info.PlayerId)
+    if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
+    for _,prod in PRODUCTS do
+      if prod.id == info.ProductId then
+        prod.onPurchase(player)
+        return Enum.ProductPurchaseDecision.PurchaseGranted
+      end
+    end
+    return Enum.ProductPurchaseDecision.NotProcessedYet
+  end
+
+PREMIUM BENEFITS:
+  if player.MembershipType == Enum.MembershipType.Premium then
+    -- Grant: 2x currency, exclusive items, premium badge, no ads
+  end
+  Players.PlayerMembershipChanged:Connect(function(player)
+    -- Dynamically grant/revoke premium perks
+  end)
+
+DONATION BOARD:
+  -- Create a Part with SurfaceGui showing top donors
+  -- Dev Product for $1/$5/$10/$25 donations
+  -- OrderedDataStore tracking lifetime donations
+  -- BillboardGui "Thanks!" effect on purchase
+
+=== SOCIAL SYSTEMS — FRIENDS, PARTIES, GUILDS ===
+
+FRIEND INDICATOR:
+  local StarterGui = game:GetService("StarterGui")
+  -- BillboardGui above friend characters (green name, special icon)
+  -- Friend join notification popup
+
+PARTY/GROUP SYSTEM:
+  -- Server module: createParty(leader), joinParty(player, partyId), leaveParty
+  -- Shared party chat channel
+  -- Party leader controls (kick, invite, set activity)
+  -- Party UI: member list with avatars, invite button
+
+TRADING SYSTEM (2-sided confirmation):
+  -- Trade request popup with accept/decline
+  -- 2-panel trade window (your items | their items)
+  -- Ready/confirm buttons with 5-second countdown
+  -- Trade history log
+
+CHAT COMMANDS:
+  -- /trade [player], /party invite [player], /duel [player]
+  -- Parse TextChatService.OnIncomingMessage for commands
+
+EMOTE SYSTEM:
+  -- ProximityPrompt or /emote command
+  -- Play animation on character (wave, dance, sit, point)
+  -- R15 animation IDs for common emotes
+
+=== ADVANCED UI PATTERNS — PROFESSIONAL GAME UI ===
+
+INVENTORY DRAG-DROP:
+  -- UIDragDetector on item slots
+  -- Highlight valid drop targets on drag start
+  -- Swap items on drop, update DataStore
+  -- Visual: slight scale-up on pickup, shadow underneath
+
+SKILL TREE / TECH TREE:
+  -- Node-based layout with connections (lines between nodes)
+  -- Locked (grey) -> Available (glowing border) -> Purchased (filled)
+  -- Pan/zoom on the tree frame
+  -- Node data: {id, name, icon, cost, requires={}, effect={}}
+
+CRAFTING GRID:
+  -- 3x3 or 5x5 input grid + 1 output slot
+  -- Recipe matching: check grid pattern against recipe database
+  -- Material consumption on craft
+  -- Animation: items slide to center, output appears with glow
+
+MINIMAP:
+  -- ViewportFrame showing top-down camera of the map
+  -- Player dot (always centered), other players as colored dots
+  -- Zone labels, objective markers
+  -- Zoom in/out buttons
+
+LOADING SCREEN:
+  -- ReplicatedFirst script (loads before everything)
+  -- Progress bar tracking ContentProvider:PreloadAsync
+  -- Game logo, tip text rotation, animated background
+  -- Auto-dismiss when game is ready
+
+NOTIFICATION SYSTEM:
+  -- Queue-based: notifications stack, show one at a time
+  -- Slide in from right, auto-dismiss after 3-5 seconds
+  -- Types: info (blue), success (green), warning (yellow), error (red)
+  -- Icon + title + description layout
+
+SETTINGS MENU:
+  -- Sections: Graphics, Audio, Controls, Gameplay
+  -- Graphics: quality level slider, shadows toggle, particles toggle
+  -- Audio: master/music/sfx/ambient sliders (write to SoundGroups)
+  -- Controls: sensitivity slider, invert Y toggle
+  -- Save to DataStore per player
+
+DAMAGE NUMBERS:
+  -- Floating numbers above hit target
+  -- BillboardGui with TextLabel, TweenService float-up + fade
+  -- Color by type: normal (white), critical (yellow), heal (green)
+  -- Size scales with damage amount
+
+COMBO COUNTER:
+  -- Center-screen counter that increments on hits
+  -- Shake effect on increment, glow on milestones (10, 25, 50, 100)
+  -- Timer bar that depletes — combo resets when empty
+  -- Multiplier display for score/rewards
+
+=== WHAT TOP ROBLOX GAMES DO — COPY THESE PATTERNS ===
+
+ADOPT ME (10B+ visits):
+  - Pet aging mechanic (baby->junior->pre-teen->teen->post-teen->full-grown)
+  - Trading with rarity-based fairness indicator
+  - House decoration with furniture placement grid
+  - Daily login pets, wheel of fortune
+
+BLOX FRUITS (40B+ visits):
+  - Fruit spawning on timer across map
+  - Combo-based combat with special moves
+  - Quest boards in each island/zone
+  - Mastery system (use weapon -> unlock moves)
+  - Bounty/honor PvP system
+
+BROOKHAVEN (30B+ visits):
+  - Role-play with job selection
+  - Vehicle spawning at specific points
+  - House selection and customization
+  - Simple controls, minimal UI, maximum freedom
+
+PET SIMULATOR X (10B+ visits):
+  - Egg hatching with rarity animations
+  - Pet merging/fusing for upgrades
+  - Massive numbers (quintillions) with abbreviation
+  - Zone unlocking with escalating costs
+  - Index/collection book tracking all pets
+
+COMMON PATTERNS ACROSS TOP GAMES:
+  1. First 30 seconds: player gets something FREE and exciting
+  2. Progression visible within 2 minutes
+  3. Social mechanic within 5 minutes (trading, showing off)
+  4. Daily reward hook for retention
+  5. Premium currency that feels optional but desirable
+  6. Robux purchases for cosmetics/speed, never pay-to-win gameplay
+
 ${MARKETPLACE_ASSET_RULES}`
 
 // ─── Intent detection ─────────────────────────────────────────────────────────

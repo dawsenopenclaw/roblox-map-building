@@ -3457,6 +3457,2149 @@ print("[ObbyClient] HUD ready")
 `,
 }
 
+// ─── 14. Gamepass System ─────────────────────────────────────────────────────
+
+const GAMEPASS_SERVER: GameSystemFile = {
+  filename: 'GamepassServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- GamepassServer (ServerScript → ServerScriptService)
+-- Checks gamepass ownership on join and handles ProcessReceipt for dev products.
+
+local Players            = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local DataStoreService   = game:GetService("DataStoreService")
+
+-- ── Config — replace IDs with your actual gamepass/product IDs ───────────────
+local GAMEPASS_IDS = {
+	SPEED_BOOST   = 0000001,  -- 2x Speed gamepass ID
+	VIP           = 0000002,  -- VIP gamepass ID
+	EXTRA_STORAGE = 0000003,  -- Extra Storage gamepass ID
+	AUTO_COLLECT  = 0000004,  -- Auto-Collect gamepass ID
+}
+
+local DEV_PRODUCT_IDS = {
+	COINS_100  = 0000010,  -- 100 coins product ID
+	COINS_500  = 0000011,  -- 500 coins product ID
+	COINS_1000 = 0000012,  -- 1000 coins product ID
+}
+
+local PRODUCT_COIN_AMOUNTS: {[number]: number} = {
+	[DEV_PRODUCT_IDS.COINS_100]  = 100,
+	[DEV_PRODUCT_IDS.COINS_500]  = 500,
+	[DEV_PRODUCT_IDS.COINS_1000] = 1000,
+}
+
+-- ── RemoteEvents ──────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name = "GamepassRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local PromptGamepass    = Instance.new("RemoteEvent"); PromptGamepass.Name    = "PromptGamepass";    PromptGamepass.Parent    = Remotes
+local PromptDevProduct  = Instance.new("RemoteEvent"); PromptDevProduct.Name  = "PromptDevProduct";  PromptDevProduct.Parent  = Remotes
+local BenefitsUpdated   = Instance.new("RemoteEvent"); BenefitsUpdated.Name   = "BenefitsUpdated";   BenefitsUpdated.Parent   = Remotes
+
+-- ── Active benefits per player ────────────────────────────────────────────────
+type Benefits = {
+	speedBoost:    boolean,
+	vip:           boolean,
+	extraStorage:  boolean,
+	autoCollect:   boolean,
+}
+
+local playerBenefits: {[number]: Benefits} = {}
+
+local function defaultBenefits(): Benefits
+	return { speedBoost = false, vip = false, extraStorage = false, autoCollect = false }
+end
+
+-- ── Check all gamepasses for a player ────────────────────────────────────────
+local function checkGamepasses(player: Player)
+	local uid = player.UserId
+	local b = defaultBenefits()
+
+	-- Each check is pcalled — MarketplaceService can throttle
+	local ok1, owns1 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, uid, GAMEPASS_IDS.SPEED_BOOST)
+	if ok1 and owns1 then b.speedBoost = true end
+
+	local ok2, owns2 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, uid, GAMEPASS_IDS.VIP)
+	if ok2 and owns2 then b.vip = true end
+
+	local ok3, owns3 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, uid, GAMEPASS_IDS.EXTRA_STORAGE)
+	if ok3 and owns3 then b.extraStorage = true end
+
+	local ok4, owns4 = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, uid, GAMEPASS_IDS.AUTO_COLLECT)
+	if ok4 and owns4 then b.autoCollect = true end
+
+	playerBenefits[uid] = b
+	applyBenefits(player, b)
+	BenefitsUpdated:FireClient(player, b)
+end
+
+-- ── Apply benefits to character ───────────────────────────────────────────────
+function applyBenefits(player: Player, b: Benefits)
+	local char = player.Character
+	if not char then return end
+	local humanoid = char:FindFirstChildOfClass("Humanoid") :: Humanoid?
+	if not humanoid then return end
+
+	-- 2x Speed
+	humanoid.WalkSpeed = b.speedBoost and 32 or 16
+
+	-- VIP badge / title (example: add a BillboardGui overhead)
+	local existingBadge = char:FindFirstChild("VIPBadge")
+	if b.vip and not existingBadge then
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "VIPBadge"
+		bb.Size = UDim2.new(0, 80, 0, 24)
+		bb.StudsOffset = Vector3.new(0, 3, 0)
+		bb.AlwaysOnTop = false
+		bb.Parent = char:FindFirstChild("Head") or char
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(1, 0, 1, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = "⭐ VIP"
+		lbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+		lbl.TextScaled = true
+		lbl.Font = Enum.Font.GothamBold
+		lbl.Parent = bb
+	elseif not b.vip and existingBadge then
+		existingBadge:Destroy()
+	end
+end
+
+-- ── Player lifecycle ─────────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	-- Check on join (task.delay allows the character to settle)
+	task.delay(1, function()
+		if player.Parent then
+			checkGamepasses(player)
+		end
+	end)
+
+	-- Re-apply on respawn
+	player.CharacterAdded:Connect(function(_char: Model)
+		task.delay(0.5, function()
+			local b = playerBenefits[player.UserId]
+			if b then applyBenefits(player, b) end
+		end)
+	end)
+end)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	playerBenefits[player.UserId] = nil
+end)
+
+-- ── Client-requested prompts ─────────────────────────────────────────────────
+PromptGamepass.OnServerEvent:Connect(function(player: Player, passKey: unknown)
+	if type(passKey) ~= "string" then return end
+	local id = GAMEPASS_IDS[passKey]
+	if not id then return end
+	MarketplaceService:PromptGamePassPurchase(player, id)
+end)
+
+PromptDevProduct.OnServerEvent:Connect(function(player: Player, productKey: unknown)
+	if type(productKey) ~= "string" then return end
+	local id = DEV_PRODUCT_IDS[productKey]
+	if not id then return end
+	MarketplaceService:PromptProductPurchase(player, id)
+end)
+
+-- ── Gamepass purchased callback ───────────────────────────────────────────────
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(
+	player: Player,
+	passId: number,
+	wasPurchased: boolean
+)
+	if not wasPurchased then return end
+	-- Re-check all passes so benefits are applied immediately
+	checkGamepasses(player)
+end)
+
+-- ── ProcessReceipt — REQUIRED for dev products ───────────────────────────────
+-- This MUST return Enum.ProductPurchaseDecision.PurchaseGranted or NotProcessedYet
+local PurchaseReceiptDS = DataStoreService:GetDataStore("PurchaseReceipts_V1")
+
+MarketplaceService.ProcessReceipt = function(receiptInfo: {
+	PlayerId:       number,
+	ProductId:      number,
+	PurchaseId:     string,
+	PlaceIdWherePurchased: number,
+}): Enum.ProductPurchaseDecision
+
+	-- Idempotency check — never grant the same purchase twice
+	local receiptKey = "receipt_" .. receiptInfo.PurchaseId
+	local alreadyProcessed: boolean = false
+	local ok, result = pcall(function()
+		alreadyProcessed = PurchaseReceiptDS:GetAsync(receiptKey) == true
+	end)
+	if not ok then
+		warn("[Gamepass] Receipt DS read failed:", result)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	if alreadyProcessed then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+	if not player then
+		-- Player left; retry later
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Grant coins
+	local coinAmount = PRODUCT_COIN_AMOUNTS[receiptInfo.ProductId]
+	if coinAmount then
+		local ls = player:FindFirstChild("leaderstats")
+		if ls then
+			local coins = ls:FindFirstChild("Coins") :: IntValue?
+			if coins then coins.Value += coinAmount end
+		end
+	else
+		warn("[Gamepass] Unknown ProductId:", receiptInfo.ProductId)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	-- Mark as processed
+	local saveOk, saveErr = pcall(PurchaseReceiptDS.SetAsync, PurchaseReceiptDS, receiptKey, true)
+	if not saveOk then
+		warn("[Gamepass] Receipt save failed:", saveErr)
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
+-- ── Public API for other server scripts ──────────────────────────────────────
+local function hasBenefit(player: Player, benefit: string): boolean
+	local b = playerBenefits[player.UserId]
+	if not b then return false end
+	return (b :: {[string]: boolean})[benefit] == true
+end
+
+return { hasBenefit = hasBenefit, GAMEPASS_IDS = GAMEPASS_IDS, DEV_PRODUCT_IDS = DEV_PRODUCT_IDS }
+`,
+}
+
+const GAMEPASS_CLIENT: GameSystemFile = {
+  filename: 'GamepassClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- GamepassClient (LocalScript → StarterPlayerScripts)
+-- Purchase prompt buttons + benefit status display.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes        = ReplicatedStorage:WaitForChild("GamepassRemotes")
+local PromptGamepass = Remotes:WaitForChild("PromptGamepass")   :: RemoteEvent
+local BenefitsUpdated = Remotes:WaitForChild("BenefitsUpdated") :: RemoteEvent
+
+-- ── Gamepass shop data ────────────────────────────────────────────────────────
+type PassInfo = { key: string, label: string, description: string, price: string }
+local PASSES: {PassInfo} = {
+	{ key = "SPEED_BOOST",   label = "2x Speed",       description = "Double your walk speed permanently!", price = "50 R$" },
+	{ key = "VIP",           label = "VIP",             description = "VIP badge, exclusive areas + perks!", price = "100 R$" },
+	{ key = "EXTRA_STORAGE", label = "Extra Storage",   description = "Double your inventory capacity!",      price = "75 R$" },
+	{ key = "AUTO_COLLECT",  label = "Auto-Collect",    description = "Automatically collect nearby items!",  price = "150 R$" },
+}
+
+-- ── Build the shop GUI ────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "GamepassShopGui"
+screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Enabled = false
+screen.Parent = playerGui
+
+-- Dimmer background
+local dimmer = Instance.new("Frame")
+dimmer.Size = UDim2.new(1, 0, 1, 0)
+dimmer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+dimmer.BackgroundTransparency = 0.5
+dimmer.Parent = screen
+
+-- Main panel
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 500, 0, 420)
+panel.Position = UDim2.new(0.5, -250, 0.5, -210)
+panel.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+panel.Parent = screen
+
+local panelCorner = Instance.new("UICorner"); panelCorner.CornerRadius = UDim.new(0, 16); panelCorner.Parent = panel
+local panelStroke = Instance.new("UIStroke"); panelStroke.Color = Color3.fromRGB(212, 175, 55); panelStroke.Thickness = 2; panelStroke.Parent = panel
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 0, 50)
+titleLabel.Position = UDim2.new(0, 10, 0, 10)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "⭐  GAMEPASS SHOP"
+titleLabel.TextSize = 24
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+titleLabel.Parent = panel
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 36, 0, 36)
+closeBtn.Position = UDim2.new(1, -46, 0, 7)
+closeBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+closeBtn.Text = "✕"
+closeBtn.TextSize = 18
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Parent = panel
+Instance.new("UICorner").Parent = closeBtn
+
+local listFrame = Instance.new("Frame")
+listFrame.Size = UDim2.new(1, -20, 1, -80)
+listFrame.Position = UDim2.new(0, 10, 0, 65)
+listFrame.BackgroundTransparency = 1
+listFrame.Parent = panel
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = listFrame
+
+-- ── owned status tracking ─────────────────────────────────────────────────────
+local ownedStatus: {[string]: boolean} = {}
+local passButtons: {[string]: TextButton} = {}
+
+-- ── Create a pass row ─────────────────────────────────────────────────────────
+for i, passInfo in PASSES do
+	local row = Instance.new("Frame")
+	row.Name = passInfo.key
+	row.Size = UDim2.new(1, 0, 0, 72)
+	row.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+	row.LayoutOrder = i
+	row.Parent = listFrame
+	Instance.new("UICorner").Parent = row
+
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(0.55, 0, 0, 28)
+	nameLbl.Position = UDim2.new(0, 12, 0, 8)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = passInfo.label
+	nameLbl.TextSize = 16
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+	nameLbl.Parent = row
+
+	local descLbl = Instance.new("TextLabel")
+	descLbl.Size = UDim2.new(0.55, 0, 0, 24)
+	descLbl.Position = UDim2.new(0, 12, 0, 38)
+	descLbl.BackgroundTransparency = 1
+	descLbl.Text = passInfo.description
+	descLbl.TextSize = 12
+	descLbl.Font = Enum.Font.Gotham
+	descLbl.TextColor3 = Color3.fromRGB(180, 180, 180)
+	descLbl.TextXAlignment = Enum.TextXAlignment.Left
+	descLbl.Parent = row
+
+	local buyBtn = Instance.new("TextButton")
+	buyBtn.Name = "BuyButton"
+	buyBtn.Size = UDim2.new(0, 110, 0, 40)
+	buyBtn.Position = UDim2.new(1, -122, 0.5, -20)
+	buyBtn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+	buyBtn.Text = passInfo.price
+	buyBtn.TextSize = 14
+	buyBtn.Font = Enum.Font.GothamBold
+	buyBtn.TextColor3 = Color3.fromRGB(15, 15, 22)
+	buyBtn.Parent = row
+	Instance.new("UICorner").Parent = buyBtn
+
+	passButtons[passInfo.key] = buyBtn
+
+	local capturedKey = passInfo.key
+	buyBtn.MouseButton1Click:Connect(function()
+		if ownedStatus[capturedKey] then return end
+		PromptGamepass:FireServer(capturedKey)
+	end)
+end
+
+-- ── Update owned states ───────────────────────────────────────────────────────
+local function refreshOwnedUI(benefits: {[string]: boolean})
+	local keyMap: {[string]: string} = {
+		speedBoost   = "SPEED_BOOST",
+		vip          = "VIP",
+		extraStorage = "EXTRA_STORAGE",
+		autoCollect  = "AUTO_COLLECT",
+	}
+	for benefitKey, passKey in keyMap do
+		local owned = benefits[benefitKey] == true
+		ownedStatus[passKey] = owned
+		local btn = passButtons[passKey]
+		if btn then
+			if owned then
+				btn.Text = "OWNED ✓"
+				btn.BackgroundColor3 = Color3.fromRGB(50, 160, 80)
+				btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+				btn.Active = false
+			else
+				btn.Text = "BUY"
+				btn.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+				btn.TextColor3 = Color3.fromRGB(15, 15, 22)
+				btn.Active = true
+			end
+		end
+	end
+end
+
+BenefitsUpdated.OnClientEvent:Connect(refreshOwnedUI)
+
+-- ── Open / close ──────────────────────────────────────────────────────────────
+closeBtn.MouseButton1Click:Connect(function()
+	screen.Enabled = false
+end)
+
+-- ── Hotkey "G" to open shop ───────────────────────────────────────────────────
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+	if gameProcessed then return end
+	if input.KeyCode == Enum.KeyCode.G then
+		screen.Enabled = not screen.Enabled
+	end
+end)
+
+-- ── Shop open button in top-right ─────────────────────────────────────────────
+local shopBtn = Instance.new("ScreenGui")
+shopBtn.Name = "GamepassOpenBtn"
+shopBtn.ResetOnSpawn = false
+shopBtn.Parent = playerGui
+
+local openBtnFrame = Instance.new("TextButton")
+openBtnFrame.Size = UDim2.new(0, 120, 0, 38)
+openBtnFrame.Position = UDim2.new(1, -130, 0, 70)
+openBtnFrame.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+openBtnFrame.Text = "⭐ Shop"
+openBtnFrame.TextSize = 15
+openBtnFrame.Font = Enum.Font.GothamBold
+openBtnFrame.TextColor3 = Color3.fromRGB(15, 15, 22)
+openBtnFrame.Parent = shopBtn
+Instance.new("UICorner").Parent = openBtnFrame
+
+openBtnFrame.MouseButton1Click:Connect(function()
+	screen.Enabled = true
+end)
+
+print("[GamepassClient] Shop ready — press G to open")
+`,
+}
+
+// ─── 15. Teleport / Lobby System ────────────────────────────────────────────
+
+const TELEPORT_SERVER: GameSystemFile = {
+  filename: 'TeleportServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- TeleportServer (ServerScript → ServerScriptService)
+-- TeleportService: lobby→game, solo teleport, party teleport, error retry.
+
+local Players          = game:GetService("Players")
+local TeleportService  = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService = game:GetService("DataStoreService")
+
+-- ── Config — set your actual place IDs ───────────────────────────────────────
+local PLACE_IDS = {
+	LOBBY = 0000100,   -- Main lobby place ID
+	GAME_1 = 0000101,  -- Game / map 1
+	GAME_2 = 0000102,  -- Game / map 2
+	MINIGAME = 0000103,
+}
+
+local MAX_PARTY_SIZE  = 10
+local RETRY_ATTEMPTS  = 3
+local RETRY_DELAY     = 2  -- seconds between retries
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name = "TeleportRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local TeleportPlayer  = Instance.new("RemoteEvent"); TeleportPlayer.Name  = "TeleportPlayer";  TeleportPlayer.Parent  = Remotes
+local TeleportParty   = Instance.new("RemoteEvent"); TeleportParty.Name   = "TeleportParty";   TeleportParty.Parent   = Remotes
+local TeleportStatus  = Instance.new("RemoteEvent"); TeleportStatus.Name  = "TeleportStatus";  TeleportStatus.Parent  = Remotes
+local GetPlaceList    = Instance.new("RemoteFunction"); GetPlaceList.Name = "GetPlaceList";    GetPlaceList.Parent    = Remotes
+
+-- ── Active parties: leader userId → {member UserIds} ─────────────────────────
+local parties: {[number]: {number}} = {}
+
+-- ── Safe teleport with retry ──────────────────────────────────────────────────
+local function teleportWithRetry(playerList: {Player}, placeId: number, teleportData: {[string]: unknown}?)
+	local options = TeleportService:SetTeleportGui(Instance.new("ScreenGui"))  -- blank loading screen override
+	-- Build TeleportOptions
+	local opts = Instance.new("TeleportOptions")
+	if teleportData then
+		opts:SetTeleportData(teleportData)
+	end
+
+	local attempt = 0
+	local success = false
+	repeat
+		attempt += 1
+		local ok, err = pcall(function()
+			if #playerList == 1 then
+				TeleportService:TeleportAsync(placeId, playerList, opts)
+			else
+				TeleportService:TeleportAsync(placeId, playerList, opts)
+			end
+		end)
+		if ok then
+			success = true
+		else
+			warn("[Teleport] Attempt", attempt, "failed:", err)
+			if attempt < RETRY_ATTEMPTS then
+				task.wait(RETRY_DELAY)
+			end
+		end
+	until success or attempt >= RETRY_ATTEMPTS
+
+	if not success then
+		-- Notify players of failure
+		for _, p in playerList do
+			TeleportStatus:FireClient(p, "error", "Teleport failed after " .. RETRY_ATTEMPTS .. " attempts. Please try again.")
+		end
+	end
+end
+
+-- ── Solo teleport ─────────────────────────────────────────────────────────────
+TeleportPlayer.OnServerEvent:Connect(function(player: Player, placeKey: unknown, extraData: unknown)
+	if type(placeKey) ~= "string" then return end
+	local placeId = PLACE_IDS[placeKey]
+	if not placeId then
+		warn("[Teleport] Unknown place key:", placeKey)
+		return
+	end
+
+	TeleportStatus:FireClient(player, "loading", "Teleporting to " .. placeKey .. "...")
+	local data: {[string]: unknown} = { fromPlaceKey = placeKey, userId = player.UserId }
+	if type(extraData) == "table" then
+		for k, v in extraData :: {[string]: unknown} do
+			data[k] = v
+		end
+	end
+
+	task.spawn(teleportWithRetry, {player}, placeId, data)
+end)
+
+-- ── Party teleport ────────────────────────────────────────────────────────────
+TeleportParty.OnServerEvent:Connect(function(leader: Player, placeKey: unknown)
+	if type(placeKey) ~= "string" then return end
+	local placeId = PLACE_IDS[placeKey]
+	if not placeId then return end
+
+	local memberIds = parties[leader.UserId] or {leader.UserId}
+	local playerList: {Player} = {}
+
+	for _, uid in memberIds do
+		local p = Players:GetPlayerByUserId(uid)
+		if p and #playerList < MAX_PARTY_SIZE then
+			table.insert(playerList, p)
+		end
+	end
+
+	if #playerList == 0 then return end
+
+	-- Notify all party members
+	for _, p in playerList do
+		TeleportStatus:FireClient(p, "loading", "Party teleporting! Staying together...")
+	end
+
+	task.spawn(teleportWithRetry, playerList, placeId, {
+		isParty = true,
+		leaderId = leader.UserId,
+		partySize = #playerList,
+	})
+end)
+
+-- ── Party management ──────────────────────────────────────────────────────────
+-- Other server scripts can call these to manage parties
+local function createParty(leader: Player): boolean
+	if parties[leader.UserId] then return false end
+	parties[leader.UserId] = {leader.UserId}
+	return true
+end
+
+local function joinParty(leader: Player, member: Player): boolean
+	local party = parties[leader.UserId]
+	if not party then return false end
+	if #party >= MAX_PARTY_SIZE then return false end
+	-- Prevent duplicates
+	for _, uid in party do
+		if uid == member.UserId then return false end
+	end
+	table.insert(party, member.UserId)
+	return true
+end
+
+local function disbandParty(leader: Player)
+	parties[leader.UserId] = nil
+end
+
+-- Cleanup on leave
+Players.PlayerRemoving:Connect(function(player: Player)
+	disbandParty(player)
+	-- Remove from any parties the player was in
+	for leaderId, party in parties do
+		for i, uid in party do
+			if uid == player.UserId then
+				table.remove(party, i)
+				break
+			end
+		end
+	end
+end)
+
+-- ── GetPlaceList — client can query available destinations ────────────────────
+GetPlaceList.OnServerInvoke = function(_player: Player): {[string]: number}
+	return PLACE_IDS
+end
+
+print("[TeleportServer] Ready — " .. #(function()
+	local t = {}
+	for k in PLACE_IDS do table.insert(t, k) end
+	return t
+end)() .. " places configured")
+
+return { createParty = createParty, joinParty = joinParty, disbandParty = disbandParty }
+`,
+}
+
+const TELEPORT_CLIENT: GameSystemFile = {
+  filename: 'TeleportClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- TeleportClient (LocalScript → StarterPlayerScripts)
+-- Loading screen overlay, status messages, and teleport trigger buttons.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes       = ReplicatedStorage:WaitForChild("TeleportRemotes")
+local TeleportPlayer = Remotes:WaitForChild("TeleportPlayer") :: RemoteEvent
+local TeleportParty  = Remotes:WaitForChild("TeleportParty")  :: RemoteEvent
+local TeleportStatus = Remotes:WaitForChild("TeleportStatus") :: RemoteEvent
+local GetPlaceList   = Remotes:WaitForChild("GetPlaceList")   :: RemoteFunction
+
+-- ── Loading screen ────────────────────────────────────────────────────────────
+local loadingGui = Instance.new("ScreenGui")
+loadingGui.Name = "TeleportLoadingGui"
+loadingGui.ResetOnSpawn = false
+loadingGui.DisplayOrder = 100
+loadingGui.Enabled = false
+loadingGui.Parent = playerGui
+
+local overlay = Instance.new("Frame")
+overlay.Size = UDim2.new(1, 0, 1, 0)
+overlay.BackgroundColor3 = Color3.fromRGB(8, 8, 14)
+overlay.BackgroundTransparency = 0
+overlay.Parent = loadingGui
+
+-- Spinner ring (rotates via tween)
+local spinnerOuter = Instance.new("Frame")
+spinnerOuter.Size = UDim2.new(0, 80, 0, 80)
+spinnerOuter.Position = UDim2.new(0.5, -40, 0.45, -40)
+spinnerOuter.BackgroundTransparency = 1
+spinnerOuter.Parent = overlay
+
+local spinnerArc = Instance.new("UIStroke")  -- not a real spinner; use ImageLabel with rotation in production
+local spinnerLabel = Instance.new("TextLabel")
+spinnerLabel.Size = UDim2.new(0, 80, 0, 80)
+spinnerLabel.BackgroundTransparency = 1
+spinnerLabel.Text = "↻"
+spinnerLabel.TextSize = 64
+spinnerLabel.Font = Enum.Font.GothamBold
+spinnerLabel.TextColor3 = Color3.fromRGB(212, 175, 55)
+spinnerLabel.Parent = spinnerOuter
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0.6, 0, 0, 40)
+statusLabel.Position = UDim2.new(0.2, 0, 0.6, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Teleporting..."
+statusLabel.TextSize = 20
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+statusLabel.Parent = overlay
+
+local errorLabel = Instance.new("TextLabel")
+errorLabel.Size = UDim2.new(0.6, 0, 0, 32)
+errorLabel.Position = UDim2.new(0.2, 0, 0.68, 0)
+errorLabel.BackgroundTransparency = 1
+errorLabel.Text = ""
+errorLabel.TextSize = 14
+errorLabel.Font = Enum.Font.Gotham
+errorLabel.TextColor3 = Color3.fromRGB(220, 80, 80)
+errorLabel.Visible = false
+errorLabel.Parent = overlay
+
+-- Spinner rotation loop
+local spinTween: Tween? = nil
+local function startSpinner()
+	spinnerLabel.Rotation = 0
+	spinTween = TweenService:Create(spinnerLabel,
+		TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1),
+		{ Rotation = 360 }
+	)
+	spinTween:Play()
+end
+local function stopSpinner()
+	if spinTween then spinTween:Cancel(); spinTween = nil end
+end
+
+-- ── Status handler ────────────────────────────────────────────────────────────
+TeleportStatus.OnClientEvent:Connect(function(statusType: string, message: string)
+	if statusType == "loading" then
+		statusLabel.Text = message
+		errorLabel.Visible = false
+		loadingGui.Enabled = true
+		startSpinner()
+	elseif statusType == "error" then
+		stopSpinner()
+		statusLabel.Text = "Teleport Failed"
+		errorLabel.Text = message
+		errorLabel.Visible = true
+		-- Auto-hide after 4 seconds
+		task.delay(4, function()
+			loadingGui.Enabled = false
+		end)
+	elseif statusType == "success" then
+		stopSpinner()
+		statusLabel.Text = "Arriving..."
+		task.delay(1, function()
+			loadingGui.Enabled = false
+		end)
+	end
+end)
+
+-- ── Server select UI ──────────────────────────────────────────────────────────
+local serverGui = Instance.new("ScreenGui")
+serverGui.Name = "ServerSelectGui"
+serverGui.ResetOnSpawn = false
+serverGui.Enabled = false
+serverGui.Parent = playerGui
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 340, 0, 320)
+panel.Position = UDim2.new(0.5, -170, 0.5, -160)
+panel.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
+panel.Parent = serverGui
+Instance.new("UICorner").Parent = panel
+local stroke = Instance.new("UIStroke"); stroke.Color = Color3.fromRGB(212, 175, 55); stroke.Thickness = 2; stroke.Parent = panel
+
+local titleLbl = Instance.new("TextLabel")
+titleLbl.Size = UDim2.new(1, -20, 0, 44)
+titleLbl.Position = UDim2.new(0, 10, 0, 6)
+titleLbl.BackgroundTransparency = 1
+titleLbl.Text = "SELECT DESTINATION"
+titleLbl.TextSize = 20
+titleLbl.Font = Enum.Font.GothamBold
+titleLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+titleLbl.Parent = panel
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 32, 0, 32)
+closeBtn.Position = UDim2.new(1, -40, 0, 6)
+closeBtn.BackgroundColor3 = Color3.fromRGB(160, 50, 50)
+closeBtn.Text = "✕"; closeBtn.Font = Enum.Font.GothamBold; closeBtn.TextSize = 16
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Parent = panel
+Instance.new("UICorner").Parent = closeBtn
+closeBtn.MouseButton1Click:Connect(function() serverGui.Enabled = false end)
+
+local listFrame = Instance.new("Frame")
+listFrame.Size = UDim2.new(1, -20, 1, -60)
+listFrame.Position = UDim2.new(0, 10, 0, 54)
+listFrame.BackgroundTransparency = 1
+listFrame.Parent = panel
+Instance.new("UIListLayout").Parent = listFrame
+
+-- Populate destinations
+task.spawn(function()
+	local ok, placeList = pcall(GetPlaceList.InvokeServer, GetPlaceList)
+	if not ok or type(placeList) ~= "table" then return end
+
+	for placeKey, _placeId in placeList :: {[string]: number} do
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(1, 0, 0, 44)
+		btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+		btn.Text = "▶  " .. placeKey
+		btn.TextSize = 15
+		btn.Font = Enum.Font.GothamBold
+		btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+		btn.Parent = listFrame
+		Instance.new("UICorner").Parent = btn
+
+		local capturedKey = placeKey
+		btn.MouseButton1Click:Connect(function()
+			serverGui.Enabled = false
+			TeleportPlayer:FireServer(capturedKey)
+		end)
+	end
+end)
+
+-- ── Hotkey "T" to open server select ─────────────────────────────────────────
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input: InputObject, gp: boolean)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.T then
+		serverGui.Enabled = not serverGui.Enabled
+	end
+end)
+
+print("[TeleportClient] Ready — press T to open server select")
+`,
+}
+
+// ─── 16. Notification / Popup System ────────────────────────────────────────
+
+const NOTIFICATIONS_CLIENT: GameSystemFile = {
+  filename: 'NotificationsClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- NotificationsClient (LocalScript → StarterPlayerScripts)
+-- Queue-based slide-in toast notifications. Types: info, success, warning, error.
+-- Also handles achievement unlock popups.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- ── Wait for server-side remotes ──────────────────────────────────────────────
+local Remotes: Folder? = nil
+local ShowNotification: RemoteEvent? = nil
+local ShowAchievement:  RemoteEvent? = nil
+
+task.spawn(function()
+	-- Remotes may come from NotificationServer or be created here
+	local folder = ReplicatedStorage:WaitForChild("NotificationRemotes", 10)
+	if not folder then return end
+	Remotes            = folder :: Folder
+	ShowNotification   = folder:WaitForChild("ShowNotification") :: RemoteEvent
+	ShowAchievement    = folder:WaitForChild("ShowAchievement")  :: RemoteEvent
+
+	if ShowNotification then
+		ShowNotification.OnClientEvent:Connect(function(notifType: string, title: string, message: string, duration: number?)
+			queueNotification(notifType, title, message, duration or 4)
+		end)
+	end
+
+	if ShowAchievement then
+		ShowAchievement.OnClientEvent:Connect(function(achievementName: string, description: string, icon: string?)
+			showAchievementPopup(achievementName, description, icon)
+		end)
+	end
+end)
+
+-- ── Notification style config ─────────────────────────────────────────────────
+type NotifStyle = { bg: Color3, accent: Color3, icon: string }
+local STYLES: {[string]: NotifStyle} = {
+	info    = { bg = Color3.fromRGB(25, 35, 60),   accent = Color3.fromRGB(80, 140, 255),  icon = "ℹ" },
+	success = { bg = Color3.fromRGB(20, 45, 30),   accent = Color3.fromRGB(70, 200, 100),  icon = "✓" },
+	warning = { bg = Color3.fromRGB(50, 40, 10),   accent = Color3.fromRGB(255, 190, 40),  icon = "⚠" },
+	error   = { bg = Color3.fromRGB(50, 15, 15),   accent = Color3.fromRGB(220, 70, 70),   icon = "✕" },
+}
+
+-- ── Notification container ────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "NotificationGui"
+screen.ResetOnSpawn = false
+screen.DisplayOrder = 50
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+local container = Instance.new("Frame")
+container.Name = "NotificationContainer"
+container.Size = UDim2.new(0, 320, 1, -20)
+container.Position = UDim2.new(1, -330, 0, 10)
+container.BackgroundTransparency = 1
+container.Parent = screen
+
+local layout = Instance.new("UIListLayout")
+layout.Padding = UDim.new(0, 8)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+layout.FillDirection = Enum.FillDirection.Vertical
+layout.Parent = container
+
+-- ── Queue system ──────────────────────────────────────────────────────────────
+local notifQueue: {{type: string, title: string, message: string, duration: number}} = {}
+local isProcessing = false
+local notifCount = 0
+
+local function processQueue()
+	if isProcessing or #notifQueue == 0 then return end
+	isProcessing = true
+
+	while #notifQueue > 0 do
+		local notif = table.remove(notifQueue, 1)
+		local style = STYLES[notif.type] or STYLES.info
+
+		notifCount += 1
+		local order = notifCount
+
+		-- Build notification frame
+		local frame = Instance.new("Frame")
+		frame.Name = "Notif_" .. order
+		frame.Size = UDim2.new(1, 0, 0, 72)
+		frame.BackgroundColor3 = style.bg
+		frame.BackgroundTransparency = 0.08
+		frame.LayoutOrder = order
+		-- Start off-screen to the right
+		frame.Position = UDim2.new(1, 20, 0, 0)
+		frame.Parent = container
+		Instance.new("UICorner").Parent = frame
+
+		-- Accent left bar
+		local accentBar = Instance.new("Frame")
+		accentBar.Size = UDim2.new(0, 4, 1, 0)
+		accentBar.BackgroundColor3 = style.accent
+		accentBar.BorderSizePixel = 0
+		accentBar.Parent = frame
+		Instance.new("UICorner").Parent = accentBar
+
+		-- Icon
+		local iconLbl = Instance.new("TextLabel")
+		iconLbl.Size = UDim2.new(0, 36, 1, 0)
+		iconLbl.Position = UDim2.new(0, 10, 0, 0)
+		iconLbl.BackgroundTransparency = 1
+		iconLbl.Text = style.icon
+		iconLbl.TextSize = 24
+		iconLbl.Font = Enum.Font.GothamBold
+		iconLbl.TextColor3 = style.accent
+		iconLbl.Parent = frame
+
+		-- Title
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Size = UDim2.new(1, -60, 0, 28)
+		titleLbl.Position = UDim2.new(0, 50, 0, 8)
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Text = notif.title
+		titleLbl.TextSize = 15
+		titleLbl.Font = Enum.Font.GothamBold
+		titleLbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+		titleLbl.Parent = frame
+
+		-- Message
+		local msgLbl = Instance.new("TextLabel")
+		msgLbl.Size = UDim2.new(1, -60, 0, 24)
+		msgLbl.Position = UDim2.new(0, 50, 0, 36)
+		msgLbl.BackgroundTransparency = 1
+		msgLbl.Text = notif.message
+		msgLbl.TextSize = 12
+		msgLbl.Font = Enum.Font.Gotham
+		msgLbl.TextColor3 = Color3.fromRGB(190, 190, 190)
+		msgLbl.TextXAlignment = Enum.TextXAlignment.Left
+		msgLbl.Parent = frame
+
+		-- Progress bar (shrinks over duration)
+		local progressBg = Instance.new("Frame")
+		progressBg.Size = UDim2.new(1, -8, 0, 3)
+		progressBg.Position = UDim2.new(0, 4, 1, -5)
+		progressBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		progressBg.Parent = frame
+		Instance.new("UICorner").Parent = progressBg
+
+		local progressBar = Instance.new("Frame")
+		progressBar.Size = UDim2.new(1, 0, 1, 0)
+		progressBar.BackgroundColor3 = style.accent
+		progressBar.Parent = progressBg
+		Instance.new("UICorner").Parent = progressBar
+
+		-- Slide in
+		TweenService:Create(frame,
+			TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Position = UDim2.new(0, 0, 0, 0) }
+		):Play()
+
+		-- Progress bar drain
+		TweenService:Create(progressBar,
+			TweenInfo.new(notif.duration, Enum.EasingStyle.Linear),
+			{ Size = UDim2.new(0, 0, 1, 0) }
+		):Play()
+
+		-- Wait, then slide out
+		task.wait(notif.duration)
+
+		local slideOut = TweenService:Create(frame,
+			TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{ Position = UDim2.new(1, 20, 0, 0) }
+		)
+		slideOut:Play()
+		slideOut.Completed:Wait()
+		frame:Destroy()
+	end
+
+	isProcessing = false
+end
+
+function queueNotification(notifType: string, title: string, message: string, duration: number)
+	table.insert(notifQueue, { type = notifType, title = title, message = message, duration = duration })
+	task.spawn(processQueue)
+end
+
+-- ── Achievement popup ─────────────────────────────────────────────────────────
+function showAchievementPopup(achievementName: string, description: string, icon: string?)
+	local popup = Instance.new("Frame")
+	popup.Size = UDim2.new(0, 360, 0, 110)
+	popup.Position = UDim2.new(0.5, -180, 1, 20)  -- off-screen below
+	popup.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+	popup.Parent = screen
+	Instance.new("UICorner").Parent = popup
+
+	local goldStroke = Instance.new("UIStroke")
+	goldStroke.Color = Color3.fromRGB(212, 175, 55)
+	goldStroke.Thickness = 2
+	goldStroke.Parent = popup
+
+	-- Gold shimmer bar on top
+	local shimmer = Instance.new("Frame")
+	shimmer.Size = UDim2.new(1, 0, 0, 4)
+	shimmer.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+	shimmer.Parent = popup
+
+	local iconLbl = Instance.new("TextLabel")
+	iconLbl.Size = UDim2.new(0, 70, 1, 0)
+	iconLbl.BackgroundTransparency = 1
+	iconLbl.Text = icon or "🏆"
+	iconLbl.TextSize = 44
+	iconLbl.Font = Enum.Font.GothamBold
+	iconLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+	iconLbl.Parent = popup
+
+	local headerLbl = Instance.new("TextLabel")
+	headerLbl.Size = UDim2.new(1, -80, 0, 26)
+	headerLbl.Position = UDim2.new(0, 75, 0, 12)
+	headerLbl.BackgroundTransparency = 1
+	headerLbl.Text = "ACHIEVEMENT UNLOCKED"
+	headerLbl.TextSize = 11
+	headerLbl.Font = Enum.Font.GothamBold
+	headerLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+	headerLbl.TextXAlignment = Enum.TextXAlignment.Left
+	headerLbl.Parent = popup
+
+	local nameLbl = Instance.new("TextLabel")
+	nameLbl.Size = UDim2.new(1, -80, 0, 30)
+	nameLbl.Position = UDim2.new(0, 75, 0, 36)
+	nameLbl.BackgroundTransparency = 1
+	nameLbl.Text = achievementName
+	nameLbl.TextSize = 20
+	nameLbl.Font = Enum.Font.GothamBold
+	nameLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+	nameLbl.Parent = popup
+
+	local descLbl = Instance.new("TextLabel")
+	descLbl.Size = UDim2.new(1, -80, 0, 22)
+	descLbl.Position = UDim2.new(0, 75, 0, 70)
+	descLbl.BackgroundTransparency = 1
+	descLbl.Text = description
+	descLbl.TextSize = 13
+	descLbl.Font = Enum.Font.Gotham
+	descLbl.TextColor3 = Color3.fromRGB(190, 190, 190)
+	descLbl.TextXAlignment = Enum.TextXAlignment.Left
+	descLbl.Parent = popup
+
+	-- Slide up from bottom
+	TweenService:Create(popup,
+		TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(0.5, -180, 1, -130) }
+	):Play()
+
+	task.wait(4)
+
+	local slideDown = TweenService:Create(popup,
+		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(0.5, -180, 1, 20) }
+	)
+	slideDown:Play()
+	slideDown.Completed:Wait()
+	popup:Destroy()
+end
+
+-- ── Self-test: show a sample on load (remove in production) ───────────────────
+task.delay(2, function()
+	queueNotification("success", "Welcome!", "Connected to the server.", 4)
+end)
+
+print("[NotificationsClient] Ready")
+`,
+}
+
+const NOTIFICATIONS_SERVER: GameSystemFile = {
+  filename: 'NotificationsServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- NotificationsServer (ServerScript → ServerScriptService)
+-- Exposes RemoteEvents so server scripts can push notifications to clients.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name = "NotificationRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local ShowNotification = Instance.new("RemoteEvent"); ShowNotification.Name = "ShowNotification"; ShowNotification.Parent = Remotes
+local ShowAchievement  = Instance.new("RemoteEvent"); ShowAchievement.Name  = "ShowAchievement";  ShowAchievement.Parent  = Remotes
+
+-- ── Public API for other server scripts ──────────────────────────────────────
+
+-- notifType: "info" | "success" | "warning" | "error"
+local function notifyPlayer(player: Player, notifType: string, title: string, message: string, duration: number?)
+	ShowNotification:FireClient(player, notifType, title, message, duration or 4)
+end
+
+local function notifyAll(notifType: string, title: string, message: string, duration: number?)
+	ShowNotification:FireAllClients(notifType, title, message, duration or 4)
+end
+
+local function notifyAchievement(player: Player, achievementName: string, description: string, icon: string?)
+	ShowAchievement:FireClient(player, achievementName, description, icon)
+end
+
+-- ── Example: notify when player joins ────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	task.delay(3, function()
+		if player.Parent then
+			notifyPlayer(player, "info", "Welcome, " .. player.Name .. "!", "Enjoy your time on the server.", 5)
+		end
+	end)
+end)
+
+print("[NotificationsServer] Ready")
+
+return {
+	notifyPlayer     = notifyPlayer,
+	notifyAll        = notifyAll,
+	notifyAchievement = notifyAchievement,
+}
+`,
+}
+
+// ─── 17. Voting / Poll System ────────────────────────────────────────────────
+
+const VOTING_SERVER: GameSystemFile = {
+  filename: 'VotingServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- VotingServer (ServerScript → ServerScriptService)
+-- Map/mode voting with countdown timer, live vote tallies, and winner broadcast.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+local VOTE_DURATION   = 30   -- seconds for the voting window
+local MIN_VOTES_NEEDED = 1   -- minimum votes before a winner is valid (set higher in production)
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name = "VotingRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local StartVote    = Instance.new("RemoteEvent"); StartVote.Name    = "StartVote";    StartVote.Parent    = Remotes
+local CastVote     = Instance.new("RemoteEvent"); CastVote.Name     = "CastVote";     CastVote.Parent     = Remotes
+local UpdateTally  = Instance.new("RemoteEvent"); UpdateTally.Name  = "UpdateTally";  UpdateTally.Parent  = Remotes
+local VoteResult   = Instance.new("RemoteEvent"); VoteResult.Name   = "VoteResult";   VoteResult.Parent   = Remotes
+local GetVoteState = Instance.new("RemoteFunction"); GetVoteState.Name = "GetVoteState"; GetVoteState.Parent = Remotes
+
+-- ── State ─────────────────────────────────────────────────────────────────────
+type VoteOption = { id: string, label: string, description: string }
+type VoteSession = {
+	options:    {VoteOption},
+	tally:      {[string]: number},
+	playerVotes:{[number]: string},   -- userId → option id
+	endTime:    number,
+	active:     boolean,
+}
+
+local currentSession: VoteSession? = nil
+
+-- ── Start a vote session ─────────────────────────────────────────────────────
+local function startVote(options: {VoteOption}, duration: number?)
+	if currentSession and currentSession.active then
+		warn("[Voting] Vote already in progress")
+		return
+	end
+
+	local voteDuration = duration or VOTE_DURATION
+	local tally: {[string]: number} = {}
+	for _, opt in options do
+		tally[opt.id] = 0
+	end
+
+	currentSession = {
+		options     = options,
+		tally       = tally,
+		playerVotes = {},
+		endTime     = os.time() + voteDuration,
+		active      = true,
+	}
+
+	-- Broadcast to all clients
+	StartVote:FireAllClients(options, voteDuration)
+
+	-- Countdown and tally updates
+	task.spawn(function()
+		local endTime = os.time() + voteDuration
+		while os.time() < endTime do
+			task.wait(1)
+			if currentSession and currentSession.active then
+				local timeLeft = math.max(0, endTime - os.time())
+				UpdateTally:FireAllClients(currentSession.tally, timeLeft)
+			end
+		end
+
+		if not currentSession then return end
+		currentSession.active = false
+
+		-- Determine winner (most votes, random tiebreak)
+		local winner: string? = nil
+		local highestVotes = -1
+		local tied: {string} = {}
+
+		for optId, count in currentSession.tally do
+			if count > highestVotes then
+				highestVotes = count
+				winner = optId
+				tied = {optId}
+			elseif count == highestVotes then
+				table.insert(tied, optId)
+			end
+		end
+
+		-- Tiebreak
+		if #tied > 1 then
+			winner = tied[math.random(1, #tied)]
+		end
+
+		-- Find winner label
+		local winnerLabel = winner or "None"
+		for _, opt in currentSession.options do
+			if opt.id == winner then
+				winnerLabel = opt.label
+				break
+			end
+		end
+
+		-- Announce
+		VoteResult:FireAllClients(winner, winnerLabel, currentSession.tally, highestVotes)
+		currentSession = nil
+	end)
+end
+
+-- ── Cast vote ─────────────────────────────────────────────────────────────────
+CastVote.OnServerEvent:Connect(function(player: Player, optionId: unknown)
+	if type(optionId) ~= "string" then return end
+	if not currentSession or not currentSession.active then return end
+
+	-- Already voted?
+	if currentSession.playerVotes[player.UserId] then return end
+
+	-- Valid option?
+	local valid = false
+	for _, opt in currentSession.options do
+		if opt.id == optionId then valid = true; break end
+	end
+	if not valid then return end
+
+	-- Remove previous vote (shouldn't exist, but safety)
+	currentSession.playerVotes[player.UserId] = optionId
+	currentSession.tally[optionId] = (currentSession.tally[optionId] or 0) + 1
+
+	-- Push updated tally instantly
+	local timeLeft = math.max(0, currentSession.endTime - os.time())
+	UpdateTally:FireAllClients(currentSession.tally, timeLeft)
+end)
+
+-- ── GetVoteState ──────────────────────────────────────────────────────────────
+GetVoteState.OnServerInvoke = function(player: Player): (boolean, VoteSession?)
+	if currentSession and currentSession.active then
+		return true, currentSession
+	end
+	return false, nil
+end
+
+-- ── Example: auto-start a map vote every 5 minutes ───────────────────────────
+task.spawn(function()
+	while true do
+		task.wait(300)  -- 5 minutes
+		startVote({
+			{ id = "map_city",    label = "City Center",    description = "Urban street battles" },
+			{ id = "map_forest",  label = "Dark Forest",    description = "Dense cover and fog"  },
+			{ id = "map_volcano", label = "Volcano Island", description = "Lava and high ground" },
+		}, VOTE_DURATION)
+	end
+end)
+
+print("[VotingServer] Ready — " .. VOTE_DURATION .. "s vote window")
+
+return { startVote = startVote }
+`,
+}
+
+const VOTING_CLIENT: GameSystemFile = {
+  filename: 'VotingClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- VotingClient (LocalScript → StarterPlayerScripts)
+-- Shows vote options with live tallies, countdown, and winner announcement.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes     = ReplicatedStorage:WaitForChild("VotingRemotes")
+local StartVote   = Remotes:WaitForChild("StartVote")   :: RemoteEvent
+local CastVote    = Remotes:WaitForChild("CastVote")    :: RemoteEvent
+local UpdateTally = Remotes:WaitForChild("UpdateTally") :: RemoteEvent
+local VoteResult  = Remotes:WaitForChild("VoteResult")  :: RemoteEvent
+
+-- ── Build the voting GUI ──────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "VotingGui"
+screen.ResetOnSpawn = false
+screen.Enabled = false
+screen.Parent = playerGui
+
+local panel = Instance.new("Frame")
+panel.Size = UDim2.new(0, 380, 0, 480)
+panel.Position = UDim2.new(0.5, -190, 0.5, -240)
+panel.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+panel.Parent = screen
+Instance.new("UICorner").Parent = panel
+local pStroke = Instance.new("UIStroke"); pStroke.Color = Color3.fromRGB(212, 175, 55); pStroke.Thickness = 2; pStroke.Parent = panel
+
+local headerLbl = Instance.new("TextLabel")
+headerLbl.Size = UDim2.new(1, -20, 0, 44)
+headerLbl.Position = UDim2.new(0, 10, 0, 8)
+headerLbl.BackgroundTransparency = 1
+headerLbl.Text = "VOTE FOR NEXT MAP"
+headerLbl.TextSize = 22
+headerLbl.Font = Enum.Font.GothamBold
+headerLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+headerLbl.Parent = panel
+
+local timerLbl = Instance.new("TextLabel")
+timerLbl.Size = UDim2.new(0, 80, 0, 36)
+timerLbl.Position = UDim2.new(1, -90, 0, 12)
+timerLbl.BackgroundTransparency = 1
+timerLbl.Text = "30s"
+timerLbl.TextSize = 22
+timerLbl.Font = Enum.Font.GothamBold
+timerLbl.TextColor3 = Color3.fromRGB(240, 120, 60)
+timerLbl.Parent = panel
+
+local optionsFrame = Instance.new("Frame")
+optionsFrame.Size = UDim2.new(1, -20, 1, -120)
+optionsFrame.Position = UDim2.new(0, 10, 0, 64)
+optionsFrame.BackgroundTransparency = 1
+optionsFrame.Parent = panel
+
+local optLayout = Instance.new("UIListLayout")
+optLayout.Padding = UDim.new(0, 10)
+optLayout.SortOrder = Enum.SortOrder.LayoutOrder
+optLayout.Parent = optionsFrame
+
+local myVote: string? = nil
+local optionButtons: {[string]: {frame: Frame, bar: Frame, pct: TextLabel, btn: TextButton}} = {}
+
+-- ── Start vote — build option rows ────────────────────────────────────────────
+StartVote.OnClientEvent:Connect(function(options: {{id: string, label: string, description: string}}, duration: number)
+	-- Reset
+	myVote = nil
+	for _, child in optionsFrame:GetChildren() do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	optionButtons = {}
+
+	for i, opt in options do
+		local row = Instance.new("Frame")
+		row.Name = opt.id
+		row.Size = UDim2.new(1, 0, 0, 90)
+		row.BackgroundColor3 = Color3.fromRGB(22, 22, 35)
+		row.LayoutOrder = i
+		row.Parent = optionsFrame
+		Instance.new("UICorner").Parent = row
+
+		local optStroke = Instance.new("UIStroke"); optStroke.Color = Color3.fromRGB(60, 60, 90); optStroke.Thickness = 1.5; optStroke.Parent = row
+
+		local voteBtn = Instance.new("TextButton")
+		voteBtn.Size = UDim2.new(1, 0, 1, 0)
+		voteBtn.BackgroundTransparency = 1
+		voteBtn.Text = ""
+		voteBtn.Parent = row
+
+		local nameLbl = Instance.new("TextLabel")
+		nameLbl.Size = UDim2.new(0.7, 0, 0, 28)
+		nameLbl.Position = UDim2.new(0, 12, 0, 8)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text = opt.label
+		nameLbl.TextSize = 16
+		nameLbl.Font = Enum.Font.GothamBold
+		nameLbl.TextColor3 = Color3.fromRGB(230, 230, 230)
+		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+		nameLbl.Parent = row
+
+		local descLbl = Instance.new("TextLabel")
+		descLbl.Size = UDim2.new(0.7, 0, 0, 20)
+		descLbl.Position = UDim2.new(0, 12, 0, 36)
+		descLbl.BackgroundTransparency = 1
+		descLbl.Text = opt.description
+		descLbl.TextSize = 12
+		descLbl.Font = Enum.Font.Gotham
+		descLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+		descLbl.TextXAlignment = Enum.TextXAlignment.Left
+		descLbl.Parent = row
+
+		-- Vote bar background
+		local barBg = Instance.new("Frame")
+		barBg.Size = UDim2.new(1, -24, 0, 8)
+		barBg.Position = UDim2.new(0, 12, 1, -18)
+		barBg.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+		barBg.Parent = row
+		Instance.new("UICorner").Parent = barBg
+
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.new(0, 0, 1, 0)
+		bar.BackgroundColor3 = Color3.fromRGB(212, 175, 55)
+		bar.Parent = barBg
+		Instance.new("UICorner").Parent = bar
+
+		local pctLbl = Instance.new("TextLabel")
+		pctLbl.Size = UDim2.new(0, 60, 0, 28)
+		pctLbl.Position = UDim2.new(1, -70, 0, 8)
+		pctLbl.BackgroundTransparency = 1
+		pctLbl.Text = "0%"
+		pctLbl.TextSize = 14
+		pctLbl.Font = Enum.Font.GothamBold
+		pctLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+		pctLbl.Parent = row
+
+		optionButtons[opt.id] = { frame = row, bar = bar, pct = pctLbl, btn = voteBtn }
+
+		local capturedId = opt.id
+		voteBtn.MouseButton1Click:Connect(function()
+			if myVote then return end
+			myVote = capturedId
+			CastVote:FireServer(capturedId)
+			-- Highlight selected
+			row.BackgroundColor3 = Color3.fromRGB(30, 50, 30)
+			optStroke.Color = Color3.fromRGB(70, 200, 100)
+		end)
+	end
+
+	timerLbl.Text = tostring(math.floor(duration)) .. "s"
+	screen.Enabled = true
+end)
+
+-- ── Update tally ──────────────────────────────────────────────────────────────
+UpdateTally.OnClientEvent:Connect(function(tally: {[string]: number}, timeLeft: number)
+	timerLbl.Text = tostring(math.floor(timeLeft)) .. "s"
+	if timeLeft <= 10 then
+		timerLbl.TextColor3 = Color3.fromRGB(220, 60, 60)
+	end
+
+	-- Calculate total votes
+	local total = 0
+	for _, count in tally do total += count end
+
+	for optId, widgets in optionButtons do
+		local count = tally[optId] or 0
+		local pct = total > 0 and (count / total) or 0
+		TweenService:Create(widgets.bar,
+			TweenInfo.new(0.4, Enum.EasingStyle.Quad),
+			{ Size = UDim2.new(pct, 0, 1, 0) }
+		):Play()
+		widgets.pct.Text = tostring(math.round(pct * 100)) .. "%"
+	end
+end)
+
+-- ── Vote result ───────────────────────────────────────────────────────────────
+VoteResult.OnClientEvent:Connect(function(winnerId: string, winnerLabel: string, _tally: {[string]: number}, _highestVotes: number)
+	-- Hide vote panel, show result banner
+	screen.Enabled = false
+
+	local resultGui = Instance.new("ScreenGui")
+	resultGui.Name = "VoteResultGui"
+	resultGui.ResetOnSpawn = false
+	resultGui.Parent = playerGui
+
+	local banner = Instance.new("Frame")
+	banner.Size = UDim2.new(0, 440, 0, 100)
+	banner.Position = UDim2.new(0.5, -220, 0, -120)
+	banner.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+	banner.Parent = resultGui
+	Instance.new("UICorner").Parent = banner
+	local bStroke = Instance.new("UIStroke"); bStroke.Color = Color3.fromRGB(212, 175, 55); bStroke.Thickness = 2; bStroke.Parent = banner
+
+	local resultLbl = Instance.new("TextLabel")
+	resultLbl.Size = UDim2.new(1, -20, 0.5, 0)
+	resultLbl.Position = UDim2.new(0, 10, 0, 8)
+	resultLbl.BackgroundTransparency = 1
+	resultLbl.Text = "VOTE WINNER"
+	resultLbl.TextSize = 13
+	resultLbl.Font = Enum.Font.GothamBold
+	resultLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+	resultLbl.Parent = banner
+
+	local mapLbl = Instance.new("TextLabel")
+	mapLbl.Size = UDim2.new(1, -20, 0.5, 0)
+	mapLbl.Position = UDim2.new(0, 10, 0.5, 0)
+	mapLbl.BackgroundTransparency = 1
+	mapLbl.Text = "▶  " .. winnerLabel
+	mapLbl.TextSize = 26
+	mapLbl.Font = Enum.Font.GothamBold
+	mapLbl.TextColor3 = Color3.fromRGB(240, 240, 240)
+	mapLbl.Parent = banner
+
+	-- Slide in
+	TweenService:Create(banner,
+		TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(0.5, -220, 0, 20) }
+	):Play()
+
+	task.wait(4)
+
+	local slideOut = TweenService:Create(banner,
+		TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(0.5, -220, 0, -120) }
+	)
+	slideOut:Play()
+	slideOut.Completed:Wait()
+	resultGui:Destroy()
+end)
+
+print("[VotingClient] Ready")
+`,
+}
+
+// ─── 18. Round / Match System ────────────────────────────────────────────────
+
+const ROUNDS_SERVER: GameSystemFile = {
+  filename: 'RoundsServer',
+  scriptType: 'ServerScript',
+  parent: 'ServerScriptService',
+  code: `--!strict
+-- RoundsServer (ServerScript → ServerScriptService)
+-- Manages full round lifecycle: intermission → active → results.
+-- Tracks per-player scores, win conditions, spawning, and timers.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ── Config ────────────────────────────────────────────────────────────────────
+local INTERMISSION_TIME = 15   -- seconds between rounds
+local ROUND_TIME        = 120  -- max round duration (seconds)
+local MIN_PLAYERS       = 2    -- minimum players needed to start a round
+local KILL_WIN_SCORE    = 10   -- kills needed to trigger early win
+
+-- ── Remotes ───────────────────────────────────────────────────────────────────
+local Remotes = Instance.new("Folder")
+Remotes.Name = "RoundsRemotes"
+Remotes.Parent = ReplicatedStorage
+
+local RoundStateChange = Instance.new("RemoteEvent"); RoundStateChange.Name = "RoundStateChange"; RoundStateChange.Parent = Remotes
+local TimerUpdate      = Instance.new("RemoteEvent"); TimerUpdate.Name      = "TimerUpdate";      TimerUpdate.Parent      = Remotes
+local ScoreUpdate      = Instance.new("RemoteEvent"); ScoreUpdate.Name      = "ScoreUpdate";      ScoreUpdate.Parent      = Remotes
+local RoundResult      = Instance.new("RemoteEvent"); RoundResult.Name      = "RoundResult";      RoundResult.Parent      = Remotes
+local GetRoundState    = Instance.new("RemoteFunction"); GetRoundState.Name = "GetRoundState";    GetRoundState.Parent    = Remotes
+
+-- ── State types ───────────────────────────────────────────────────────────────
+type RoundState = "intermission" | "active" | "results" | "waiting"
+type PlayerScore = { kills: number, deaths: number, points: number }
+
+local roundState: RoundState    = "waiting"
+local roundNumber: number       = 0
+local scores:      {[number]: PlayerScore} = {}  -- userId → score
+local roundStartTime: number    = 0
+local activeRound = false  -- guard flag
+
+-- ── Spawn point helpers ───────────────────────────────────────────────────────
+-- Place BaseParts named "SpawnPoint1", "SpawnPoint2", … inside Workspace/RoundSpawns
+local SPAWN_FOLDER = "RoundSpawns"
+
+local function getSpawnPoints(): {BasePart}
+	local folder = workspace:FindFirstChild(SPAWN_FOLDER)
+	if not folder then return {} end
+	local pts: {BasePart} = {}
+	for _, child in folder:GetChildren() do
+		if child:IsA("BasePart") then
+			table.insert(pts, child :: BasePart)
+		end
+	end
+	return pts
+end
+
+local usedSpawns: {[number]: boolean} = {}
+
+local function getSpawnCFrame(): CFrame
+	local pts = getSpawnPoints()
+	if #pts == 0 then
+		return CFrame.new(0, 10, 0)
+	end
+	-- Try to find an unused spawn
+	for _, pt in pts do
+		if not usedSpawns[pt:GetDebugId()] then
+			usedSpawns[pt:GetDebugId()] = true
+			return pt.CFrame + Vector3.new(0, 5, 0)
+		end
+	end
+	-- All used: pick random
+	local pt = pts[math.random(1, #pts)]
+	return pt.CFrame + Vector3.new(0, 5, 0)
+end
+
+local function spawnPlayer(player: Player)
+	local char = player.Character
+	if not char then return end
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if root then
+		root.CFrame = getSpawnCFrame()
+	end
+end
+
+-- ── Score helpers ─────────────────────────────────────────────────────────────
+local function getOrCreateScore(player: Player): PlayerScore
+	local uid = player.UserId
+	if not scores[uid] then
+		scores[uid] = { kills = 0, deaths = 0, points = 0 }
+	end
+	return scores[uid]
+end
+
+local function broadcastScores()
+	local payload: {{name: string, kills: number, deaths: number, points: number}} = {}
+	for uid, sc in scores do
+		local p = Players:GetPlayerByUserId(uid)
+		if p then
+			table.insert(payload, { name = p.Name, kills = sc.kills, deaths = sc.deaths, points = sc.points })
+		end
+	end
+	table.sort(payload, function(a, b) return a.points > b.points end)
+	ScoreUpdate:FireAllClients(payload)
+end
+
+-- ── Check win condition ───────────────────────────────────────────────────────
+local function checkWinCondition(): (boolean, Player?)
+	for uid, sc in scores do
+		if sc.kills >= KILL_WIN_SCORE then
+			local winner = Players:GetPlayerByUserId(uid)
+			if winner then return true, winner end
+		end
+	end
+	return false, nil
+end
+
+-- ── Round phases ──────────────────────────────────────────────────────────────
+local function endRound(reason: string, winner: Player?)
+	activeRound = false
+	roundState = "results"
+
+	-- Build results table
+	local results: {{name: string, kills: number, deaths: number, points: number}} = {}
+	for uid, sc in scores do
+		local p = Players:GetPlayerByUserId(uid)
+		if p then
+			table.insert(results, { name = p.Name, kills = sc.kills, deaths = sc.deaths, points = sc.points })
+		end
+	end
+	table.sort(results, function(a, b) return a.points > b.points end)
+
+	RoundStateChange:FireAllClients("results", roundNumber)
+	RoundResult:FireAllClients(reason, winner and winner.Name or nil, results)
+
+	-- Award coins to winner
+	if winner then
+		local ls = winner:FindFirstChild("leaderstats")
+		if ls then
+			local coins = ls:FindFirstChild("Coins") :: IntValue?
+			if coins then coins.Value += 50 end
+		end
+	end
+end
+
+local function startRound()
+	roundNumber += 1
+	roundState = "active"
+	activeRound = true
+	scores = {}
+	usedSpawns = {}
+
+	-- Spawn all players
+	for _, player in Players:GetPlayers() do
+		getOrCreateScore(player)
+		player:LoadCharacter()
+		task.delay(0.5, function()
+			if player.Parent then spawnPlayer(player) end
+		end)
+	end
+
+	roundStartTime = os.time()
+	RoundStateChange:FireAllClients("active", roundNumber, ROUND_TIME)
+	broadcastScores()
+
+	-- Round timer
+	task.spawn(function()
+		local endTime = os.time() + ROUND_TIME
+		while activeRound and os.time() < endTime do
+			task.wait(1)
+			local timeLeft = math.max(0, endTime - os.time())
+			TimerUpdate:FireAllClients(timeLeft)
+
+			-- Check win condition every second
+			local won, winner = checkWinCondition()
+			if won then
+				endRound("kill_limit", winner)
+				return
+			end
+		end
+		if activeRound then
+			endRound("time_up", nil)
+		end
+	end)
+end
+
+local function runIntermission()
+	roundState = "intermission"
+	RoundStateChange:FireAllClients("intermission", roundNumber, INTERMISSION_TIME)
+
+	task.spawn(function()
+		local endTime = os.time() + INTERMISSION_TIME
+		while os.time() < endTime do
+			task.wait(1)
+			local timeLeft = math.max(0, endTime - os.time())
+			TimerUpdate:FireAllClients(timeLeft)
+		end
+
+		local activePlayers = #Players:GetPlayers()
+		if activePlayers >= MIN_PLAYERS then
+			startRound()
+		else
+			roundState = "waiting"
+			RoundStateChange:FireAllClients("waiting", roundNumber)
+		end
+	end)
+end
+
+-- ── Player death tracking ─────────────────────────────────────────────────────
+Players.PlayerAdded:Connect(function(player: Player)
+	player.CharacterAdded:Connect(function(character: Model)
+		local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
+		if not humanoid then return end
+
+		humanoid.Died:Connect(function()
+			if roundState ~= "active" then return end
+
+			-- Award death to this player
+			local deadScore = getOrCreateScore(player)
+			deadScore.deaths += 1
+
+			-- Detect killer via humanoid tag (assumes weapons set a "killer" attribute on humanoid)
+			local killerValue = humanoid:FindFirstChild("killer") :: ObjectValue?
+			if killerValue and killerValue.Value then
+				local killerChar = killerValue.Value
+				local killerPlayer = Players:GetPlayerFromCharacter(killerChar :: Model)
+				if killerPlayer and killerPlayer ~= player then
+					local kScore = getOrCreateScore(killerPlayer)
+					kScore.kills  += 1
+					kScore.points += 10
+				end
+			end
+
+			broadcastScores()
+
+			-- Respawn during round
+			task.delay(5, function()
+				if player.Parent and roundState == "active" then
+					player:LoadCharacter()
+					task.delay(0.5, function()
+						if player.Parent then spawnPlayer(player) end
+					end)
+				end
+			end)
+		end)
+	end)
+end)
+
+-- ── Player count check — start intermission when enough players join ──────────
+local function checkPlayerCount()
+	if roundState == "waiting" and #Players:GetPlayers() >= MIN_PLAYERS then
+		runIntermission()
+	end
+end
+
+Players.PlayerAdded:Connect(checkPlayerCount)
+
+Players.PlayerRemoving:Connect(function(player: Player)
+	scores[player.UserId] = nil
+	-- End round if not enough players
+	if roundState == "active" and #Players:GetPlayers() - 1 < MIN_PLAYERS then
+		endRound("not_enough_players", nil)
+	end
+end)
+
+-- ── GetRoundState ──────────────────────────────────────────────────────────────
+GetRoundState.OnServerInvoke = function(_player: Player): (RoundState, number)
+	return roundState, roundNumber
+end
+
+-- ── Kick off the system ────────────────────────────────────────────────────────
+checkPlayerCount()
+
+print("[RoundsServer] Ready — " .. ROUND_TIME .. "s rounds, " .. MIN_PLAYERS .. " min players")
+
+return { startRound = startRound, endRound = endRound, runIntermission = runIntermission }
+`,
+}
+
+const ROUNDS_CLIENT: GameSystemFile = {
+  filename: 'RoundsClient',
+  scriptType: 'LocalScript',
+  parent: 'StarterPlayerScripts',
+  code: `--!strict
+-- RoundsClient (LocalScript → StarterPlayerScripts)
+-- HUD: round state banner, countdown timer, scoreboard, results screen.
+
+local Players           = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService      = game:GetService("TweenService")
+
+local player    = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local Remotes        = ReplicatedStorage:WaitForChild("RoundsRemotes")
+local RoundStateChange = Remotes:WaitForChild("RoundStateChange") :: RemoteEvent
+local TimerUpdate    = Remotes:WaitForChild("TimerUpdate")    :: RemoteEvent
+local ScoreUpdate    = Remotes:WaitForChild("ScoreUpdate")    :: RemoteEvent
+local RoundResult    = Remotes:WaitForChild("RoundResult")    :: RemoteEvent
+
+-- ── Main HUD screen ───────────────────────────────────────────────────────────
+local screen = Instance.new("ScreenGui")
+screen.Name = "RoundsGui"
+screen.ResetOnSpawn = false
+screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screen.Parent = playerGui
+
+-- Round state banner (top center)
+local stateBanner = Instance.new("Frame")
+stateBanner.Size = UDim2.new(0, 300, 0, 48)
+stateBanner.Position = UDim2.new(0.5, -150, 0, 12)
+stateBanner.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+stateBanner.BackgroundTransparency = 0.1
+stateBanner.Parent = screen
+Instance.new("UICorner").Parent = stateBanner
+local bannerStroke = Instance.new("UIStroke"); bannerStroke.Color = Color3.fromRGB(212, 175, 55); bannerStroke.Thickness = 2; bannerStroke.Parent = stateBanner
+
+local stateLbl = Instance.new("TextLabel")
+stateLbl.Size = UDim2.new(0.6, 0, 1, 0)
+stateLbl.Position = UDim2.new(0, 12, 0, 0)
+stateLbl.BackgroundTransparency = 1
+stateLbl.Text = "WAITING"
+stateLbl.TextSize = 16
+stateLbl.Font = Enum.Font.GothamBold
+stateLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+stateLbl.TextXAlignment = Enum.TextXAlignment.Left
+stateLbl.Parent = stateBanner
+
+local timerLbl = Instance.new("TextLabel")
+timerLbl.Size = UDim2.new(0.38, 0, 1, 0)
+timerLbl.Position = UDim2.new(0.62, 0, 0, 0)
+timerLbl.BackgroundTransparency = 1
+timerLbl.Text = "--:--"
+timerLbl.TextSize = 22
+timerLbl.Font = Enum.Font.GothamBold
+timerLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+timerLbl.TextXAlignment = Enum.TextXAlignment.Right
+timerLbl.Parent = stateBanner
+
+-- Round number label
+local roundLbl = Instance.new("TextLabel")
+roundLbl.Size = UDim2.new(0, 200, 0, 28)
+roundLbl.Position = UDim2.new(0.5, -100, 0, 64)
+roundLbl.BackgroundTransparency = 1
+roundLbl.Text = ""
+roundLbl.TextSize = 14
+roundLbl.Font = Enum.Font.Gotham
+roundLbl.TextColor3 = Color3.fromRGB(160, 160, 160)
+roundLbl.Parent = screen
+
+-- ── Live scoreboard (right side) ─────────────────────────────────────────────
+local scoreboardFrame = Instance.new("Frame")
+scoreboardFrame.Size = UDim2.new(0, 200, 0, 280)
+scoreboardFrame.Position = UDim2.new(1, -210, 0.5, -140)
+scoreboardFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 18)
+scoreboardFrame.BackgroundTransparency = 0.1
+scoreboardFrame.Visible = false
+scoreboardFrame.Parent = screen
+Instance.new("UICorner").Parent = scoreboardFrame
+local sbStroke = Instance.new("UIStroke"); sbStroke.Color = Color3.fromRGB(70, 70, 100); sbStroke.Thickness = 1.5; sbStroke.Parent = scoreboardFrame
+
+local sbTitle = Instance.new("TextLabel")
+sbTitle.Size = UDim2.new(1, 0, 0, 32)
+sbTitle.BackgroundTransparency = 1
+sbTitle.Text = "SCOREBOARD"
+sbTitle.TextSize = 13
+sbTitle.Font = Enum.Font.GothamBold
+sbTitle.TextColor3 = Color3.fromRGB(212, 175, 55)
+sbTitle.Parent = scoreboardFrame
+
+local sbList = Instance.new("Frame")
+sbList.Size = UDim2.new(1, -10, 1, -40)
+sbList.Position = UDim2.new(0, 5, 0, 36)
+sbList.BackgroundTransparency = 1
+sbList.Parent = scoreboardFrame
+Instance.new("UIListLayout").Parent = sbList
+
+-- ── Timer update ──────────────────────────────────────────────────────────────
+local function formatTime(secs: number): string
+	local m = math.floor(secs / 60)
+	local s = math.floor(secs % 60)
+	return string.format("%d:%02d", m, s)
+end
+
+TimerUpdate.OnClientEvent:Connect(function(timeLeft: number)
+	timerLbl.Text = formatTime(timeLeft)
+	if timeLeft <= 10 then
+		timerLbl.TextColor3 = Color3.fromRGB(220, 60, 60)
+	else
+		timerLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+	end
+end)
+
+-- ── Round state change ────────────────────────────────────────────────────────
+local STATE_LABELS: {[string]: string} = {
+	waiting      = "WAITING FOR PLAYERS",
+	intermission = "INTERMISSION",
+	active       = "ROUND IN PROGRESS",
+	results      = "ROUND OVER",
+}
+
+RoundStateChange.OnClientEvent:Connect(function(state: string, rNumber: number, _duration: number?)
+	stateLbl.Text = STATE_LABELS[state] or state:upper()
+	roundLbl.Text = state ~= "waiting" and ("Round " .. tostring(rNumber)) or ""
+	scoreboardFrame.Visible = (state == "active")
+
+	if state == "intermission" then
+		timerLbl.TextColor3 = Color3.fromRGB(80, 180, 255)
+		stateLbl.TextColor3 = Color3.fromRGB(80, 180, 255)
+		bannerStroke.Color  = Color3.fromRGB(80, 180, 255)
+	elseif state == "active" then
+		timerLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+		stateLbl.TextColor3 = Color3.fromRGB(70, 200, 100)
+		bannerStroke.Color  = Color3.fromRGB(70, 200, 100)
+	else
+		timerLbl.Text = "--:--"
+		timerLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+		stateLbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+		bannerStroke.Color  = Color3.fromRGB(212, 175, 55)
+	end
+end)
+
+-- ── Score update ──────────────────────────────────────────────────────────────
+ScoreUpdate.OnClientEvent:Connect(function(scoreList: {{name: string, kills: number, deaths: number, points: number}})
+	for _, child in sbList:GetChildren() do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+
+	for rank, entry in scoreList do
+		if rank > 8 then break end  -- max 8 rows
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 28)
+		row.BackgroundColor3 = entry.name == player.Name
+			and Color3.fromRGB(30, 50, 30)
+			or  Color3.fromRGB(20, 20, 32)
+		row.LayoutOrder = rank
+		row.Parent = sbList
+		Instance.new("UICorner").Parent = row
+
+		local rankLbl = Instance.new("TextLabel")
+		rankLbl.Size = UDim2.new(0, 22, 1, 0)
+		rankLbl.BackgroundTransparency = 1
+		rankLbl.Text = tostring(rank)
+		rankLbl.TextSize = 12
+		rankLbl.Font = Enum.Font.GothamBold
+		rankLbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+		rankLbl.Parent = row
+
+		local nameLbl = Instance.new("TextLabel")
+		nameLbl.Size = UDim2.new(0.55, 0, 1, 0)
+		nameLbl.Position = UDim2.new(0, 24, 0, 0)
+		nameLbl.BackgroundTransparency = 1
+		nameLbl.Text = entry.name
+		nameLbl.TextSize = 12
+		nameLbl.Font = Enum.Font.Gotham
+		nameLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+		nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+		nameLbl.Parent = row
+
+		local killsLbl = Instance.new("TextLabel")
+		killsLbl.Size = UDim2.new(0, 42, 1, 0)
+		killsLbl.Position = UDim2.new(1, -44, 0, 0)
+		killsLbl.BackgroundTransparency = 1
+		killsLbl.Text = tostring(entry.kills) .. "K"
+		killsLbl.TextSize = 12
+		killsLbl.Font = Enum.Font.GothamBold
+		killsLbl.TextColor3 = Color3.fromRGB(70, 200, 100)
+		killsLbl.Parent = row
+	end
+end)
+
+-- ── Results screen ────────────────────────────────────────────────────────────
+RoundResult.OnClientEvent:Connect(function(
+	reason: string,
+	winnerName: string?,
+	results: {{name: string, kills: number, deaths: number, points: number}}
+)
+	local resultGui = Instance.new("ScreenGui")
+	resultGui.Name = "RoundResultGui"
+	resultGui.ResetOnSpawn = false
+	resultGui.DisplayOrder = 10
+	resultGui.Parent = playerGui
+
+	local overlay = Instance.new("Frame")
+	overlay.Size = UDim2.new(1, 0, 1, 0)
+	overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	overlay.BackgroundTransparency = 0.5
+	overlay.Parent = resultGui
+
+	local panel = Instance.new("Frame")
+	panel.Size = UDim2.new(0, 480, 0, 420)
+	panel.Position = UDim2.new(0.5, -240, 0.5, -210)
+	panel.BackgroundColor3 = Color3.fromRGB(12, 12, 20)
+	panel.Parent = resultGui
+	Instance.new("UICorner").Parent = panel
+	local pStroke = Instance.new("UIStroke"); pStroke.Color = Color3.fromRGB(212, 175, 55); pStroke.Thickness = 2; pStroke.Parent = panel
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -20, 0, 50)
+	title.Position = UDim2.new(0, 10, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = "ROUND OVER"
+	title.TextSize = 28
+	title.Font = Enum.Font.GothamBold
+	title.TextColor3 = Color3.fromRGB(212, 175, 55)
+	title.Parent = panel
+
+	local winnerLbl = Instance.new("TextLabel")
+	winnerLbl.Size = UDim2.new(1, -20, 0, 36)
+	winnerLbl.Position = UDim2.new(0, 10, 0, 60)
+	winnerLbl.BackgroundTransparency = 1
+	winnerLbl.Text = winnerName and ("Winner: " .. winnerName) or "No winner — " .. reason
+	winnerLbl.TextSize = 18
+	winnerLbl.Font = Enum.Font.GothamBold
+	winnerLbl.TextColor3 = winnerName and Color3.fromRGB(70, 220, 100) or Color3.fromRGB(180, 180, 180)
+	winnerLbl.Parent = panel
+
+	-- Results list
+	local listFrame = Instance.new("Frame")
+	listFrame.Size = UDim2.new(1, -30, 1, -160)
+	listFrame.Position = UDim2.new(0, 15, 0, 110)
+	listFrame.BackgroundTransparency = 1
+	listFrame.Parent = panel
+	Instance.new("UIListLayout").Parent = listFrame
+
+	-- Header row
+	local header = Instance.new("Frame")
+	header.Size = UDim2.new(1, 0, 0, 28)
+	header.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+	header.Parent = listFrame
+	Instance.new("UICorner").Parent = header
+
+	for i, col in { {text = "#",      w = 0.08}, {text = "Player", w = 0.5}, {text = "Kills", w = 0.2}, {text = "Deaths", w = 0.22} } do
+		local lbl = Instance.new("TextLabel")
+		local xPos = (i == 1) and 0 or ({ 0.08, 0.58, 0.78 })[i - 1]
+		lbl.Size = UDim2.new(col.w, 0, 1, 0)
+		lbl.Position = UDim2.new(xPos, 4, 0, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = col.text
+		lbl.TextSize = 13
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextColor3 = Color3.fromRGB(212, 175, 55)
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Parent = header
+	end
+
+	for rank, entry in results do
+		if rank > 6 then break end
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, 36)
+		row.BackgroundColor3 = entry.name == player.Name
+			and Color3.fromRGB(30, 50, 30)
+			or  Color3.fromRGB(18, 18, 28)
+		row.LayoutOrder = rank + 1
+		row.Parent = listFrame
+		Instance.new("UICorner").Parent = row
+
+		for i, data in {
+			{text = tostring(rank),         xPos = 0,    w = 0.08},
+			{text = entry.name,             xPos = 0.08, w = 0.50},
+			{text = tostring(entry.kills),  xPos = 0.58, w = 0.20},
+			{text = tostring(entry.deaths), xPos = 0.78, w = 0.22},
+		} do
+			local lbl = Instance.new("TextLabel")
+			lbl.Size = UDim2.new(data.w, 0, 1, 0)
+			lbl.Position = UDim2.new(data.xPos, 4, 0, 0)
+			lbl.BackgroundTransparency = 1
+			lbl.Text = data.text
+			lbl.TextSize = 14
+			lbl.Font = i == 2 and Enum.Font.GothamBold or Enum.Font.Gotham
+			lbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+			lbl.TextXAlignment = Enum.TextXAlignment.Left
+			lbl.Parent = row
+		end
+	end
+
+	-- Auto-dismiss after 8 seconds
+	task.delay(8, function()
+		local fadeOut = TweenService:Create(overlay,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+			{ BackgroundTransparency = 1 }
+		)
+		TweenService:Create(panel,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad),
+			{ BackgroundTransparency = 1 }
+		):Play()
+		fadeOut:Play()
+		fadeOut.Completed:Wait()
+		resultGui:Destroy()
+	end)
+end)
+
+print("[RoundsClient] HUD ready")
+`,
+}
+
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const GAME_SYSTEMS: Record<string, GameSystem> = {
@@ -3525,6 +5668,31 @@ export const GAME_SYSTEMS: Record<string, GameSystem> = {
     description: 'Checkpoint obby with kill bricks, moving platforms, stage timer, and completion screen',
     files: [OBBY_SERVER, OBBY_CLIENT],
   },
+  gamepass: {
+    id: 'gamepass',
+    description: 'MarketplaceService gamepass ownership checks, dev product ProcessReceipt, and purchase prompt UI',
+    files: [GAMEPASS_SERVER, GAMEPASS_CLIENT],
+  },
+  teleport: {
+    id: 'teleport',
+    description: 'TeleportService with lobby→game, solo + party teleport, loading screen, and retry logic',
+    files: [TELEPORT_SERVER, TELEPORT_CLIENT],
+  },
+  notifications: {
+    id: 'notifications',
+    description: 'Queue-based slide-in toast notifications (info/success/warning/error) with achievement popups',
+    files: [NOTIFICATIONS_SERVER, NOTIFICATIONS_CLIENT],
+  },
+  voting: {
+    id: 'voting',
+    description: 'Map/mode voting with live vote tallies, countdown timer, and winner announcement',
+    files: [VOTING_SERVER, VOTING_CLIENT],
+  },
+  rounds: {
+    id: 'rounds',
+    description: 'Full round lifecycle — intermission → active → results, with timer, scoreboard, and win conditions',
+    files: [ROUNDS_SERVER, ROUNDS_CLIENT],
+  },
 }
 
 // ─── Intent detection helper ─────────────────────────────────────────────────
@@ -3582,6 +5750,26 @@ const SYSTEM_PATTERNS: Array<{ patterns: RegExp[]; systemId: string }> = [
   {
     patterns: [/\b(obby|obstacle course|checkpoints?|kill bricks?|moving platforms?|parkour|obby system|stages?)\b/i],
     systemId: 'obby',
+  },
+  {
+    patterns: [/\b(gamepass|game ?pass|dev ?product|robux|purchase system|marketplace purchase|prompt purchase|gamepass system|vip pass|speed pass)\b/i],
+    systemId: 'gamepass',
+  },
+  {
+    patterns: [/\b(teleport|lobby system|server hop|place teleport|teleport system|multi.?place|teleport service|party teleport|loading screen teleport)\b/i],
+    systemId: 'teleport',
+  },
+  {
+    patterns: [/\b(notification|popup|toast|alert system|slide.?in notif|notif system|achievement popup|push notif)\b/i],
+    systemId: 'notifications',
+  },
+  {
+    patterns: [/\b(voting system|map vote|poll system|vote system|vote for map|player voting|mode vote|vote countdown)\b/i],
+    systemId: 'voting',
+  },
+  {
+    patterns: [/\b(round system|match system|intermission|game loop|round.?based|round manager|match manager|round timer|kill limit|round results?)\b/i],
+    systemId: 'rounds',
   },
 ]
 
