@@ -109,12 +109,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       )}
       <style>{`
         @keyframes toastIn {
-          from { opacity: 0; transform: translateX(20px) scale(0.95); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
+          from { opacity: 0; transform: translateY(12px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);    }
         }
         @keyframes toastOut {
-          from { opacity: 1; transform: translateX(0) scale(1); }
-          to { opacity: 0; transform: translateX(20px) scale(0.95); }
+          from { opacity: 1; transform: translateY(0)    scale(1);    }
+          to   { opacity: 0; transform: translateY(8px)  scale(0.97); }
         }
       `}</style>
     </ToastCtx.Provider>

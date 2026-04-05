@@ -98,10 +98,12 @@ const COST_MESH: Record<Quality, number> = {
 const COST_TEXTURE = 0.08  // Fal PBR texture set
 
 // Professional quality-specific polygon targets — tuned for Roblox
+// Higher poly counts = more geometric detail = better looking models.
+// Roblox can handle 20K+ polys per MeshPart with LOD enabled.
 const POLY_TARGETS: Record<Quality, number> = {
-  draft:    6000,   // raised from 3000 — minimum for recognizable geometry
-  standard: 10000,  // good for Roblox real-time
-  premium:  20000,  // high detail, LOD-friendly
+  draft:    8000,   // enough for recognizable silhouette + basic surface detail
+  standard: 15000,  // good detail — window frames, door handles, panel seams visible
+  premium:  25000,  // high detail — individual shingles, rivets, fabric wrinkles
 }
 
 // ── Category detection ────────────────────────────────────────────────────────
@@ -182,27 +184,66 @@ function detectAssetCategory(prompt: string): AssetCategory {
 }
 
 // ── Prompt templates ──────────────────────────────────────────────────────────
+// Enhanced with category-specific detail directives that produce stunning 3D assets
+// instead of basic geometric shapes.
 
 const PROMPT_TEMPLATES: Record<AssetCategory, string> = {
   character:
-    '{prompt}, 3D character model, clean topology, T-pose ready for rigging, quad-dominant mesh, uniform UVs, game-ready, Roblox proportions, PBR textures, 4K detail',
+    '{prompt}, highly detailed 3D character model, defined facial features, clothing wrinkles and folds, ' +
+    'clean T-pose ready for rigging, quad-dominant mesh, proper edge loops at joints, ' +
+    'game-ready Roblox proportions, PBR textures with skin detail, 4K resolution',
   building:
-    '{prompt}, 3D architectural model, clean geometry, proper UV unwrap, modular design, real-world scale, PBR materials, game-optimized LOD-friendly mesh',
+    '{prompt}, highly detailed 3D architectural model, visible brick or stone wall texture, ' +
+    'window frames with glass panes, door with frame and handle, roof with shingles or tiles, ' +
+    'foundation detail, proper floor heights, clean sharp geometry, PBR materials, game-optimized',
   weapon:
-    '{prompt}, 3D weapon model, hard-surface modeling, beveled edges, clean normals, centered pivot, proper UV islands, metallic PBR, game-ready topology',
+    '{prompt}, highly detailed 3D weapon model, polished blade with fuller groove, ' +
+    'leather-wrapped grip with visible binding, ornate guard with filigree detail, ' +
+    'metal pommel, hard-surface beveled edges, metallic PBR finish, game-ready topology',
   vehicle:
-    '{prompt}, 3D vehicle model, clean hard-surface, proper wheel pivots, separated body panels, aerodynamic form, PBR car paint material, game-ready',
+    '{prompt}, highly detailed 3D vehicle model, smooth body panels with door seams, ' +
+    'round wheels with tire tread and hubcaps, headlights and taillights, windshield and windows, ' +
+    'mirrors, bumpers, exhaust, proper automotive proportions, PBR car paint material, game-ready',
   prop:
-    '{prompt}, 3D game prop, clean mesh, optimized triangle count, proper UV mapping, PBR textures, suitable for real-time rendering, Roblox compatible',
+    '{prompt}, highly detailed 3D game prop, defined edges and surface detail, wear and patina, ' +
+    'functional-looking parts, proper UV mapping, PBR textures with roughness variation, ' +
+    'real-world proportions, optimized triangle count, Roblox compatible',
   furniture:
-    '{prompt}, 3D furniture model, clean geometry, real-world proportions, wood/fabric PBR materials, game-ready mesh, optimized for Roblox',
+    '{prompt}, highly detailed 3D furniture model, realistic wood grain or fabric texture, ' +
+    'visible joinery and hardware, cushion form detail, proper legs and supports, ' +
+    'beveled edges, real-world proportions, PBR materials, game-ready mesh',
   environment:
-    '{prompt}, 3D environment piece, tileable edges where applicable, clean LOD mesh, PBR terrain materials, optimized for streaming',
+    '{prompt}, highly detailed 3D environment piece, organic natural shapes, bark texture, ' +
+    'leaf clusters with depth, moss and weathering, realistic rock surfaces with cracks, ' +
+    'proper base, LOD-friendly silhouette, PBR terrain materials',
   default:
-    '{prompt}, high quality 3D model, clean topology, proper UV unwrap, PBR materials, game-ready, optimized for real-time rendering, Roblox compatible',
+    '{prompt}, highly detailed 3D model, clean topology, defined edges, surface detail, ' +
+    'proper UV unwrap, PBR materials with roughness and normal maps, game-ready, ' +
+    'optimized for real-time rendering, Roblox compatible',
 }
 
+// Category-specific negative prompts for better Meshy results
 // Truncated to fit Meshy's 200-char negative_prompt limit
+const NEGATIVE_PROMPTS: Record<AssetCategory, string> = {
+  building:
+    'floating parts, holes in walls, missing roof, blurry textures, disconnected geometry, non-manifold, stretched UVs, deformed, ugly, NSFW',
+  vehicle:
+    'square wheels, floating parts, missing windows, disconnected panels, blurry, distorted proportions, non-manifold, ugly, NSFW, watermark',
+  character:
+    'extra limbs, fused fingers, deformed face, floating parts, blurry, distorted proportions, non-manifold geometry, ugly, NSFW, watermark',
+  weapon:
+    'bent blade, floating parts, wrong proportions, blurry textures, non-manifold geometry, stretched UVs, deformed, ugly, NSFW, watermark',
+  furniture:
+    'floating legs, disconnected parts, wrong proportions, blurry textures, non-manifold, stretched UVs, deformed, ugly, NSFW, watermark',
+  environment:
+    'floating parts, disconnected mesh, artificial look, blurry textures, non-manifold, inverted normals, stretched UVs, ugly, NSFW, watermark',
+  prop:
+    'floating parts, disconnected mesh, blurry textures, non-manifold geometry, inverted normals, stretched UVs, deformed, ugly, NSFW, watermark',
+  default:
+    'low quality, blurry, distorted, floating parts, disconnected mesh, overlapping faces, non-manifold, inverted normals, stretched UVs, NSFW, watermark, deformed',
+}
+
+// Fallback default negative prompt
 const NEGATIVE_PROMPT =
   'low quality, blurry, distorted, floating parts, disconnected mesh, overlapping faces, non-manifold geometry, inverted normals, stretched UVs, NSFW, watermark, text, deformed, ugly'
 
@@ -231,25 +272,111 @@ const STYLE_MODIFIERS: Record<string, string> = {
 const MESHY_PROMPT_MAX_CHARS     = 500
 const MESHY_NEG_PROMPT_MAX_CHARS = 200
 
-function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
-  const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
-  let result = template.replace('{prompt}', rawPrompt)
+/**
+ * Rich expansion templates for common single-word or very short prompts.
+ * When a user types just "house" they get a detailed description, not a gray box.
+ */
+const PROMPT_EXPANSIONS: Record<string, string> = {
+  // Buildings
+  house:     'modern two-story suburban house with pitched shingled roof, front porch with columns, chimney, bay windows with frames, front door with handle, white siding with blue trim, stone foundation',
+  castle:    'medieval stone castle with tall keep tower, crenellated battlements, round corner turrets, arched gate entrance with portcullis, flag on top, arrow slit windows, moss on walls',
+  tower:     'tall stone watchtower with crenellated top, arched windows on each level, iron torch brackets, heavy wooden door at base, spiral staircase visible through windows',
+  shop:      'charming retail storefront with large display window, striped canvas awning, wooden door with brass bell, hanging wooden sign, brick facade, flower boxes under windows',
+  cabin:     'rustic log cabin with stone chimney, covered front porch with rocking chair, stacked firewood pile, pitched roof with moss, warm amber window glow',
+  barn:      'large red barn with white X-trim doors, sliding double doors, hay loft opening, gambrel roof, copper weathervane, wooden post fencing',
 
-  // Detect and append style modifier
+  // Vehicles
+  car:       'sleek modern sports sedan, aerodynamic curved body, chrome alloy wheel rims, LED headlights and red taillights, tinted windows, dual chrome exhaust pipes, sport bumper',
+  truck:     'heavy-duty pickup truck, raised suspension, large chrome grille, truck bed with liner, roll bar with lights, oversized mud tires with aggressive tread',
+  boat:      'classic wooden speedboat, polished mahogany hull, chrome fittings and cleats, leather captain seats, curved windshield, outboard motor with propeller',
+  plane:     'single-engine propeller airplane, streamlined silver fuselage, riveted panels, fixed landing gear, cockpit with instruments visible, wing struts, painted tail number',
+  spaceship: 'sleek sci-fi starfighter, angular armored hull plates with panel lines, glowing blue engine nacelles, tinted cockpit canopy, weapon hardpoints on wings, landing struts',
+
+  // Characters
+  knight:    'medieval plate armor knight in heroic pose, full helm with visor slit, ornate shoulder pauldrons, breastplate with lion heraldry, metal gauntlets, sword sheath at hip, flowing cape',
+  wizard:    'wise wizard with long flowing star-covered robe and pointed hat, ornate wooden staff with glowing crystal tip, leather belt with potion vials, long white beard',
+  robot:     'humanoid combat robot with polished chrome body, glowing blue visor eyes, articulated hydraulic joints, chest panel with status lights, shoulder antenna, thick armored limbs',
+  dragon:    'fearsome western dragon with scaled body, large leather wings spread wide, horned head with sharp teeth, long spiked tail, powerful clawed legs, smoke curling from nostrils',
+  zombie:    'shambling undead zombie with torn bloodstained clothing, exposed ribcage, grey-green decayed skin, one arm reaching forward, glowing green eyes, matted hair',
+
+  // Weapons
+  sword:     'ornate fantasy longsword, polished steel blade with central fuller groove and etched runes, leather-wrapped grip with brass wire binding, ornate golden crossguard with ruby inset, round metal pommel',
+  axe:       'fearsome double-headed battle axe, curved steel blades with etched Norse runes, thick oak haft wrapped in leather strips, spiked iron pommel cap, blood groove details',
+  bow:       'elegant elven recurve longbow, carved wooden limbs with leaf and vine motif, leather-wrapped grip, silver-tipped arrow rest, ornate gold nock tips, bowstring taut',
+  staff:     'wizard battle staff, ancient gnarled dark wood shaft, glowing purple amethyst crystal sphere at top held by twisted wooden branches, mystic rune carvings along length',
+  shield:    'round Viking war shield, reinforced wooden planks with iron rim band, central iron boss dome, leather arm straps, painted red and black heraldic design, battle dents',
+
+  // Furniture
+  chair:     'elegant carved wooden dining chair, ornate lattice-pattern backrest, turned legs with claw feet, upholstered red velvet seat cushion, curved armrests with scroll detail',
+  table:     'solid oak farmhouse dining table, thick butcher-block plank top with live edge, heavy turned pedestal legs with stretcher bars, warm honey finish, visible wood grain knots',
+  bed:       'luxurious four-poster king bed, carved wooden posts with finials, tall upholstered headboard with diamond tufting, thick white mattress with layered bedding, decorative pillows',
+  sofa:      'modern tufted sectional sofa, deep cushions with piped edges, button-tufted back, tapered walnut legs, accent throw pillows, soft grey linen upholstery',
+  desk:      'executive wooden desk, large leather-inlay work surface, three drawers with antique brass handles, carved cabriole legs, matching leather desk chair',
+
+  // Props
+  chest:     'ornate pirate treasure chest, dark aged wood body with hammered iron bands and corner brackets, domed lid with lock hasp, gold coins and jewels spilling out',
+  barrel:    'weathered wine barrel, curved oak staves with three hammered iron hoops, bung hole with cork plug, rope carry handle, aged patina and wine stains',
+  fountain:  'ornate Renaissance three-tiered stone fountain, carved fish-head water spouts, water cascading down each level, moss and vine detail, wide circular pool base, copper patina',
+  lantern:   'antique oil lantern, polished brass octagonal frame, clear glass panels, cotton wick holder inside, ornate ring handle on top, warm amber glow, soot marks',
+
+  // Environment
+  tree:      'majestic ancient oak tree, thick gnarled trunk with deep bark texture, massive spreading canopy of dense green leaves, exposed root system at mossy base, bird nest in branch fork',
+  rock:      'large weathered granite boulder, layered sedimentary surface with deep cracks and yellow lichen patches, green moss on north face, smaller stones scattered at eroded base',
+  mushroom:  'giant fantasy mushroom, thick spotted red cap with white polka dots, pale ribbed gill underside, stout white stalk with ring, smaller mushrooms at base, bioluminescent glow',
+}
+
+function buildMeshyPrompt(rawPrompt: string, category: AssetCategory): string {
+  // Clean common command prefixes from user input
+  const cleaned = rawPrompt
+    .replace(/^(build|create|make|generate|design|craft|add|place|spawn)\s+(me\s+)?(a\s+|an\s+|the\s+)?/i, '')
+    .trim()
+
+  // Check for rich expansion of simple prompts
+  const cleanedLower = cleaned.toLowerCase().replace(/[^a-z\s]/g, '').trim()
+  const expansion = PROMPT_EXPANSIONS[cleanedLower]
+
+  let basePrompt: string
+  if (expansion) {
+    // Use rich expansion for short prompts — this is the key quality upgrade
+    basePrompt = expansion
+  } else if (cleaned.split(/\s+/).length <= 3) {
+    // Short prompt with no template — use the category template with the cleaned input
+    const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
+    basePrompt = template.replace('{prompt}', cleaned)
+  } else {
+    // User already provided detail — use template to add quality modifiers
+    const template = PROMPT_TEMPLATES[category] ?? PROMPT_TEMPLATES.default
+    basePrompt = template.replace('{prompt}', cleaned)
+  }
+
+  // Detect and append style modifier from user's original prompt
   const lower = rawPrompt.toLowerCase()
   for (const [key, modifier] of Object.entries(STYLE_MODIFIERS)) {
     if (lower.includes(key)) {
-      result += modifier
+      basePrompt += modifier
       break
     }
   }
 
   // Hard-truncate to Meshy's limit — truncate at a word boundary where possible
-  if (result.length > MESHY_PROMPT_MAX_CHARS) {
-    result = result.slice(0, MESHY_PROMPT_MAX_CHARS).replace(/[,\s]+$/, '')
+  if (basePrompt.length > MESHY_PROMPT_MAX_CHARS) {
+    basePrompt = basePrompt.slice(0, MESHY_PROMPT_MAX_CHARS).replace(/[,\s]+$/, '')
   }
 
-  return result
+  return basePrompt
+}
+
+/**
+ * Get the category-specific negative prompt for Meshy.
+ * Falls back to generic negative prompt if category not found.
+ */
+function getNegativePrompt(category: AssetCategory): string {
+  const neg = NEGATIVE_PROMPTS[category] ?? NEGATIVE_PROMPT
+  // Enforce Meshy's 200-char limit
+  if (neg.length > MESHY_NEG_PROMPT_MAX_CHARS) {
+    return neg.slice(0, MESHY_NEG_PROMPT_MAX_CHARS).replace(/,?\s*[^,]*$/, '')
+  }
+  return neg
 }
 
 // ── Collision fidelity per category ──────────────────────────────────────────
@@ -295,7 +422,7 @@ async function createMeshyTask(
   const body: Record<string, unknown> = {
     mode: 'preview',
     prompt: builtPrompt,
-    negative_prompt: NEGATIVE_PROMPT,
+    negative_prompt: getNegativePrompt(resolvedCategory),
     art_style: 'realistic',
     topology: 'quad',
     target_polycount: POLY_TARGETS[quality],
@@ -337,8 +464,9 @@ async function createMeshyRefineTask(
     mode: 'refine',
     preview_task_id: previewTaskId,
     enable_pbr: true,
-    // texture_richness controls how detailed the PBR texture bake is
-    texture_richness: quality === 'draft' ? 'medium' : quality === 'standard' ? 'high' : 'ultra',
+    // texture_richness controls how detailed the PBR texture bake is.
+    // 'high' minimum for any refine — 'medium' produces blurry, low-detail textures.
+    texture_richness: quality === 'draft' ? 'high' : 'ultra',
   }
 
   const res = await fetch(`${MESHY_BASE}/v3/text-to-3d`, {

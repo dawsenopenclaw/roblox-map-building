@@ -1,18 +1,25 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 
 const RESEND_COOLDOWN = 60 // seconds
+const REDIRECT_DELAY = 4000 // ms before auto-redirect on success
 
 function MailIcon({ animated }: { animated: boolean }) {
   return (
     <div className="relative mx-auto mb-7 w-20 h-20">
       {animated && (
         <>
-          <span className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping" style={{ animationDuration: '2s' }} />
-          <span className="absolute inset-2 rounded-full bg-[#10B981]/5 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+          <span
+            className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping"
+            style={{ animationDuration: '2s' }}
+          />
+          <span
+            className="absolute inset-2 rounded-full bg-[#10B981]/5 animate-ping"
+            style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}
+          />
         </>
       )}
       <div className="relative w-20 h-20 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
@@ -33,23 +40,70 @@ function MailIcon({ animated }: { animated: boolean }) {
   )
 }
 
+function CheckIcon() {
+  return (
+    <div className="relative mx-auto mb-7 w-20 h-20">
+      <div
+        className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping"
+        style={{ animationDuration: '3s' }}
+      />
+      <div className="relative w-20 h-20 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
+        <svg
+          className="w-9 h-9 text-[#10B981]"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+
   const email = searchParams.get('email') ?? null
+  const verified = searchParams.get('verified') === '1'
 
   const [cooldown, setCooldown] = useState(0)
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [animating, setAnimating] = useState(true)
+  const [countdown, setCountdown] = useState(Math.round(REDIRECT_DELAY / 1000))
 
-  // Stop icon animation after initial entrance
+  // Stop icon animation after initial entrance (waiting state)
   useEffect(() => {
+    if (verified) return
     const t = setTimeout(() => setAnimating(false), 4000)
     return () => clearTimeout(t)
-  }, [])
+  }, [verified])
 
-  // Cooldown ticker
+  // Auto-redirect after verification success
+  useEffect(() => {
+    if (!verified) return
+
+    const redirectTimer = setTimeout(() => {
+      router.push('/dashboard')
+    }, REDIRECT_DELAY)
+
+    const countdownInterval = setInterval(() => {
+      setCountdown((c) => Math.max(0, c - 1))
+    }, 1000)
+
+    return () => {
+      clearTimeout(redirectTimer)
+      clearInterval(countdownInterval)
+    }
+  }, [verified, router])
+
+  // Cooldown ticker (resend)
   useEffect(() => {
     if (cooldown <= 0) return
     const id = setInterval(() => {
@@ -87,6 +141,58 @@ function VerifyEmailContent() {
     }
   }
 
+  // ── Verified success state ──────────────────────────────────────────────────
+  if (verified) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
+          <div className="w-[500px] h-[500px] rounded-full bg-[#10B981]/8 blur-[120px]" />
+        </div>
+
+        <div className="relative max-w-md w-full text-center">
+          <div className="bg-white/[0.025] border border-white/[0.07] rounded-2xl p-10 shadow-2xl backdrop-blur-sm">
+            <CheckIcon />
+
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Email Verified</h1>
+            <p className="text-gray-400 text-sm leading-relaxed mb-2">
+              Your email address has been confirmed.
+            </p>
+            <p className="text-gray-600 text-xs mb-8">
+              Redirecting to your dashboard in {countdown}s...
+            </p>
+
+            {/* Progress bar */}
+            <div className="h-0.5 w-full bg-white/[0.06] rounded-full mb-8 overflow-hidden">
+              <div
+                className="h-full bg-[#10B981] rounded-full transition-all"
+                style={{
+                  width: `${((Math.round(REDIRECT_DELAY / 1000) - countdown) / Math.round(REDIRECT_DELAY / 1000)) * 100}%`,
+                  transitionDuration: '1000ms',
+                }}
+              />
+            </div>
+
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#10B981]/20 hover:shadow-[#10B981]/30 hover:-translate-y-0.5"
+              style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+            >
+              Go to Dashboard now
+            </Link>
+          </div>
+
+          <p className="mt-6 text-xs text-gray-500">
+            <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">
+              ForjeGames
+            </Link>
+            {' '}— AI-powered Roblox game builder
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Waiting / check-your-email state ───────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
       {/* Radial glow */}
@@ -141,8 +247,19 @@ function VerifyEmailContent() {
             {sending ? (
               <>
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z"
+                  />
                 </svg>
                 Sending...
               </>
@@ -165,7 +282,9 @@ function VerifyEmailContent() {
 
         {/* Branding */}
         <p className="mt-6 text-xs text-gray-500">
-          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">ForjeGames</Link>
+          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">
+            ForjeGames
+          </Link>
           {' '}— AI-powered Roblox game builder
         </p>
       </div>

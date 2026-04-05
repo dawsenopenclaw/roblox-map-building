@@ -1284,6 +1284,13 @@ body {
   border:                1px solid rgba(31, 41, 55, 0.8);
   border-radius:         12px;
   box-shadow:            0 4px 24px rgba(0, 0, 0, 0.4);
+  transition:            border-color 200ms cubic-bezier(0.16,1,0.3,1),
+                         box-shadow   200ms cubic-bezier(0.16,1,0.3,1),
+                         transform    200ms cubic-bezier(0.16,1,0.3,1);
+}
+.card-glass:hover {
+  border-color: rgba(212,175,55,0.20);
+  box-shadow:   0 0 20px rgba(212,175,55,0.08), 0 8px 32px rgba(0,0,0,0.5);
 }
 
 /* Premium gold-bordered glass card */
@@ -1294,6 +1301,12 @@ body {
   border:                1px solid rgba(212, 175, 55, 0.25);
   border-radius:         12px;
   box-shadow:            0 4px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(212, 175, 55, 0.05) inset;
+  transition:            border-color 200ms cubic-bezier(0.16,1,0.3,1),
+                         box-shadow   200ms cubic-bezier(0.16,1,0.3,1);
+}
+.card-glass-gold:hover {
+  border-color: rgba(212,175,55,0.40);
+  box-shadow:   0 0 24px rgba(212,175,55,0.12), 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08) inset;
 }
 
 /* Lightweight frosted utility — use where backdrop-filter is acceptable */
@@ -1363,10 +1376,35 @@ body {
   border-radius:   8px;
   border:          none;
   cursor:          pointer;
-  transition:      background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  transition:      background 0.15s ease, box-shadow 0.15s ease, transform 0.15s cubic-bezier(0.16,1,0.3,1);
 }
-.btn-primary:hover  { background: var(--gold-light); box-shadow: 0 0 16px var(--gold-glow); transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); }
+.btn-primary:hover  { background: var(--gold-light); box-shadow: 0 0 24px rgba(212,175,55,0.45), 0 0 48px rgba(212,175,55,0.15); transform: translateY(-1px); }
+.btn-primary:active { transform: scale(0.97) translateY(0); transition-duration: 0.08s; }
+
+/* ─── Gold CTA press + glow pulse — apply to "Start Building", "Get Tokens" etc. ── */
+
+/* Press-down scale for any gold CTA — pairs with existing hover states */
+.btn-gold-press {
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-gold-press:active {
+  transform: scale(0.97) !important;
+  transition-duration: 80ms;
+}
+
+/* Ambient gold glow pulse — subtle breathing light on primary actions */
+@keyframes gold-glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(212,175,55,0.20), 0 0 24px rgba(212,175,55,0.08); }
+  50%       { box-shadow: 0 0 20px rgba(212,175,55,0.35), 0 0 40px rgba(212,175,55,0.15); }
+}
+.btn-gold-glow {
+  animation: gold-glow-pulse 2.4s ease-in-out infinite;
+}
+/* Pause pulse while the button is being pressed — avoids visual conflict */
+.btn-gold-glow:active {
+  animation: none;
+}
 
 /* Ghost button */
 .btn-ghost {

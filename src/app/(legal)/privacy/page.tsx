@@ -566,8 +566,7 @@ export default function PrivacyPage() {
             <span className="text-[#FAFAFA] font-medium">Owner:</span> Dawsen Porter
           </p>
           <p className="text-[#71717A]">
-            <span className="text-[#FAFAFA] font-medium">Registered address:</span> [Your Business
-            Address] (GDPR Art. 13 — update before launch)
+            <span className="text-[#FAFAFA] font-medium">Registered address:</span> United States
           </p>
           <p className="text-[#71717A]">
             <span className="text-[#FAFAFA] font-medium">Privacy inquiries:</span>{' '}

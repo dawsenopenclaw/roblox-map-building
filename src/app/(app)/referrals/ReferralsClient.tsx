@@ -198,15 +198,15 @@ export default function ReferralsClient() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         {STAT_CARDS.map((stat) => (
-          <div key={stat.label} className="bg-[#141414] border border-white/10 rounded-xl p-5">
+          <div key={stat.label} className="bg-[#0d0d14] border border-white/10 rounded-xl p-5 hover:border-white/20 transition-colors duration-200">
             <div className="flex items-center gap-2 mb-3">
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: `${stat.color}15`, color: stat.color, border: `1px solid ${stat.color}20` }}
+                style={{ background: `${stat.color}15`, color: stat.color, border: `1px solid ${stat.color}25` }}
               >
                 {stat.icon}
               </div>
-              <p className="text-gray-400 text-xs">{stat.label}</p>
+              <p className="text-gray-400 text-xs uppercase tracking-wide">{stat.label}</p>
             </div>
             <p className="text-white text-2xl font-bold tabular-nums">{stat.value}</p>
             <p className="text-gray-500 text-xs mt-1">{stat.sub}</p>
@@ -240,7 +240,7 @@ export default function ReferralsClient() {
       </div>
 
       {/* Share section */}
-      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 mb-6">
+      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6 mb-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referral Link</p>
 
         {/* Shareable link */}
@@ -307,7 +307,7 @@ export default function ReferralsClient() {
       </div>
 
       {/* Referrals table */}
-      <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
+      <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Your Referrals</p>
 
         {!dataLoading && referrals.length === 0 ? (

@@ -96,9 +96,9 @@ const VARIANT_SOUND: Partial<Record<ToastVariant, 'success' | 'error' | 'info'>>
 
 const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: string }> = {
   success: {
-    border: 'border-emerald-500/40',
+    border: 'border-[#D4AF37]/40',
     icon: '✓',
-    bg: 'bg-emerald-500/10',
+    bg: 'bg-[#D4AF37]/10',
   },
   error: {
     border: 'border-red-500/40',
@@ -128,7 +128,7 @@ const VARIANT_STYLES: Record<ToastVariant, { border: string; icon: string; bg: s
 }
 
 const ICON_COLOR: Record<ToastVariant, string> = {
-  success:     'text-emerald-400',
+  success:     'text-[#D4AF37]',
   error:       'text-red-400',
   info:        'text-blue-400',
   warning:     'text-[#D4AF37]',
@@ -137,7 +137,7 @@ const ICON_COLOR: Record<ToastVariant, string> = {
 }
 
 const PROGRESS_COLOR: Record<ToastVariant, string> = {
-  success:     'bg-emerald-500',
+  success:     'bg-[#D4AF37]',
   error:       'bg-red-500',
   info:        'bg-blue-500',
   warning:     'bg-[#D4AF37]',

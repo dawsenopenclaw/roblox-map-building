@@ -5,11 +5,13 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 type Status = 'loading' | 'success' | 'invalid' | 'error'
+type ResubStatus = 'idle' | 'loading' | 'success' | 'error'
 
 function UnsubscribeContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<Status>(token ? 'loading' : 'invalid')
+  const [resubStatus, setResubStatus] = useState<ResubStatus>('idle')
 
   useEffect(() => {
     if (!token) {
@@ -34,22 +36,38 @@ function UnsubscribeContent() {
       .catch(() => setStatus('error'))
   }, [token])
 
+  async function handleResubscribe() {
+    if (!token || resubStatus === 'loading' || resubStatus === 'success') return
+    setResubStatus('loading')
+
+    try {
+      const res = await fetch('/api/email/resubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
+      setResubStatus(res.ok ? 'success' : 'error')
+    } catch {
+      setResubStatus('error')
+    }
+  }
+
+  const glowColor =
+    status === 'success'
+      ? 'rgba(16,185,129,0.07)'
+      : status === 'error'
+        ? 'rgba(248,113,113,0.07)'
+        : status === 'invalid'
+          ? 'rgba(251,191,36,0.07)'
+          : 'rgba(16,185,129,0.05)'
+
   return (
     <div className="min-h-screen bg-[#050810] flex items-center justify-center p-4 overflow-hidden">
       {/* Radial glow — color shifts by status */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
         <div
           className="w-[500px] h-[500px] rounded-full blur-[120px]"
-          style={{
-            background:
-              status === 'success'
-                ? 'rgba(16,185,129,0.07)'
-                : status === 'error'
-                ? 'rgba(248,113,113,0.07)'
-                : status === 'invalid'
-                ? 'rgba(251,191,36,0.07)'
-                : 'rgba(16,185,129,0.05)',
-          }}
+          style={{ background: glowColor }}
         />
       </div>
 
@@ -71,7 +89,10 @@ function UnsubscribeContent() {
           {status === 'success' && (
             <>
               <div className="mx-auto mb-7 relative w-20 h-20">
-                <div className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping" style={{ animationDuration: '3s' }} />
+                <div
+                  className="absolute inset-0 rounded-full bg-[#10B981]/10 animate-ping"
+                  style={{ animationDuration: '3s' }}
+                />
                 <div className="relative w-20 h-20 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
                   <svg
                     className="w-9 h-9 text-[#10B981]"
@@ -86,13 +107,15 @@ function UnsubscribeContent() {
                   </svg>
                 </div>
               </div>
+
               <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Unsubscribed</h1>
               <p className="text-gray-400 text-sm leading-relaxed mb-2">
-                You have been unsubscribed from ForjeGames marketing emails.
+                You have been removed from ForjeGames marketing emails.
               </p>
               <p className="text-gray-600 text-xs mb-8">
                 You will still receive important account and billing notifications.
               </p>
+
               <Link
                 href="/"
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-black font-bold text-sm transition-all shadow-lg shadow-[#10B981]/20 hover:shadow-[#10B981]/30 hover:-translate-y-0.5"
@@ -100,16 +123,48 @@ function UnsubscribeContent() {
               >
                 Return to ForjeGames
               </Link>
-              <p className="text-xs text-gray-600 mt-5">
-                Changed your mind?{' '}
-                <a href="mailto:privacy@forjegames.com" className="text-[#D4AF37] hover:underline">
-                  Resubscribe via email
-                </a>
-              </p>
+
+              {/* Re-subscribe section */}
+              <div className="mt-7 pt-6 border-t border-white/[0.07]">
+                {resubStatus === 'idle' && (
+                  <p className="text-xs text-gray-600">
+                    Changed your mind?{' '}
+                    <button
+                      onClick={handleResubscribe}
+                      className="text-[#D4AF37] hover:underline font-medium"
+                    >
+                      Re-subscribe to emails
+                    </button>
+                  </p>
+                )}
+                {resubStatus === 'loading' && (
+                  <p className="text-xs text-gray-500 flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 rounded-full border border-gray-500 border-t-transparent animate-spin" />
+                    Re-subscribing...
+                  </p>
+                )}
+                {resubStatus === 'success' && (
+                  <div className="bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] text-xs rounded-xl px-4 py-2.5">
+                    You are back on the list. Welcome back.
+                  </div>
+                )}
+                {resubStatus === 'error' && (
+                  <p className="text-xs text-gray-500">
+                    Could not re-subscribe.{' '}
+                    <a
+                      href="mailto:privacy@forjegames.com"
+                      className="text-[#D4AF37] hover:underline"
+                    >
+                      Contact us
+                    </a>{' '}
+                    and we will sort it out.
+                  </p>
+                )}
+              </div>
             </>
           )}
 
-          {/* Invalid */}
+          {/* Invalid / expired link */}
           {status === 'invalid' && (
             <>
               <div className="mx-auto mb-7 w-20 h-20 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
@@ -129,7 +184,10 @@ function UnsubscribeContent() {
               <p className="text-gray-400 text-sm leading-relaxed mb-8">
                 This unsubscribe link is missing, expired, or has already been used. To manage your
                 email preferences, contact{' '}
-                <a href="mailto:privacy@forjegames.com" className="text-[#D4AF37] hover:underline">
+                <a
+                  href="mailto:privacy@forjegames.com"
+                  className="text-[#D4AF37] hover:underline"
+                >
                   privacy@forjegames.com
                 </a>
                 .
@@ -143,7 +201,7 @@ function UnsubscribeContent() {
             </>
           )}
 
-          {/* Error */}
+          {/* Server error */}
           {status === 'error' && (
             <>
               <div className="mx-auto mb-7 w-20 h-20 rounded-full bg-[#f87171]/10 border border-[#f87171]/20 flex items-center justify-center">
@@ -162,7 +220,10 @@ function UnsubscribeContent() {
               <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Request Failed</h1>
               <p className="text-gray-400 text-sm leading-relaxed mb-8">
                 We could not process your unsubscribe request. Please try again or contact{' '}
-                <a href="mailto:privacy@forjegames.com" className="text-[#D4AF37] hover:underline">
+                <a
+                  href="mailto:privacy@forjegames.com"
+                  className="text-[#D4AF37] hover:underline"
+                >
                   privacy@forjegames.com
                 </a>
                 .
@@ -181,7 +242,9 @@ function UnsubscribeContent() {
 
         {/* Branding */}
         <p className="mt-6 text-xs text-gray-500">
-          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">ForjeGames</Link>
+          <Link href="/" className="hover:text-[#D4AF37] transition-colors font-medium">
+            ForjeGames
+          </Link>
           {' '}— AI-powered Roblox game builder
         </p>
       </div>

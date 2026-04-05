@@ -804,8 +804,9 @@ function TemplateCard({
     <Link
       href={`/marketplace/${template.id}`}
       className="
-        group flex flex-col bg-[#141414] border border-white/8 rounded-xl overflow-hidden
-        hover:border-amber-500/25 hover:shadow-[0_0_30px_rgba(245,158,11,0.06)]
+        group flex flex-col bg-[#0d0d14] border border-white/8 rounded-xl overflow-hidden
+        hover:border-[#D4AF37]/40 hover:shadow-[0_0_30px_rgba(212,175,55,0.12)]
+        hover:scale-[1.02] hover:-translate-y-0.5
         transition-all duration-200 cursor-pointer no-underline
       "
     >
@@ -924,7 +925,7 @@ function TemplateCard({
 
 function SkeletonCard() {
   return (
-    <div className="flex flex-col bg-[#141414] border border-white/5 rounded-xl overflow-hidden animate-pulse">
+    <div className="flex flex-col bg-[#0d0d14] border border-white/5 rounded-xl overflow-hidden animate-pulse">
       <div className="aspect-video bg-white/5" />
       <div className="p-4 flex flex-col gap-3">
         <div className="h-2.5 w-16 bg-white/8 rounded" />
@@ -963,35 +964,62 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 // ─── EmptyState ───────────────────────────────────────────────────────────────
 
 function EmptyState({ query, onClear }: { query: string; onClear: () => void }) {
+  const isFiltered = !!query
+
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/8 flex items-center justify-center">
-        <Search className="w-7 h-7 text-white/20" />
+      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isFiltered ? 'bg-white/5 border border-white/8' : 'bg-[#D4AF37]/10 border border-[#D4AF37]/20'}`}>
+        {isFiltered
+          ? <Search className="w-7 h-7 text-white/20" />
+          : <Upload className="w-7 h-7 text-[#D4AF37]/70" />
+        }
       </div>
       <div>
-        <p className="text-white/80 font-semibold text-lg">No templates found</p>
-        {query ? (
-          <p className="text-white/35 text-sm mt-2">
-            No results for &ldquo;{query}&rdquo;. Try different keywords or remove filters.
-          </p>
+        {isFiltered ? (
+          <>
+            <p className="text-white/80 font-semibold text-lg">No templates found</p>
+            <p className="text-white/35 text-sm mt-2">
+              No results for &ldquo;{query}&rdquo;. Try different keywords or remove filters.
+            </p>
+          </>
         ) : (
-          <p className="text-white/35 text-sm mt-2">
-            Try adjusting your category or price filters.
-          </p>
+          <>
+            <p className="text-white font-bold text-lg">Be the first to publish a template</p>
+            <p className="text-white/40 text-sm mt-2 max-w-xs mx-auto">
+              Share your Roblox scripts, maps, and game templates with the community and earn 70% of every sale.
+            </p>
+          </>
         )}
       </div>
-      <button
-        type="button"
-        onClick={onClear}
-        className="
-          px-5 py-2.5 rounded-xl font-semibold text-sm
-          bg-gradient-to-r from-amber-500 to-yellow-400 text-black
-          hover:from-amber-400 hover:to-yellow-300
-          transition-all duration-200
-        "
-      >
-        Clear filters
-      </button>
+      {isFiltered ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="
+            px-5 py-2.5 rounded-xl font-semibold text-sm
+            bg-gradient-to-r from-amber-500 to-yellow-400 text-black
+            hover:from-amber-400 hover:to-yellow-300
+            transition-all duration-200
+          "
+        >
+          Clear filters
+        </button>
+      ) : (
+        <a
+          href="/marketplace/submit"
+          className="
+            inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm
+            bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] text-black
+            hover:from-[#c49b2f] hover:to-[#b38a28]
+            shadow-[0_0_20px_rgba(212,175,55,0.2)]
+            hover:shadow-[0_0_30px_rgba(212,175,55,0.4)]
+            transition-all duration-200
+          "
+        >
+          <Upload className="w-4 h-4" />
+          Publish Your First Template
+        </a>
+      )}
     </div>
   )
 }

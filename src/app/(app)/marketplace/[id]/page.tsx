@@ -732,7 +732,7 @@ function TemplateDetail({
           </div>
 
           {/* Description */}
-          <div className="bg-[#141414] border border-white/10 rounded-xl p-5">
+          <div className="bg-[#0d0d14] border border-white/10 rounded-xl p-5">
             <h2 className="text-lg font-semibold text-white mb-3">Description</h2>
             <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{template.description}</p>
           </div>
@@ -760,9 +760,12 @@ function TemplateDetail({
             )}
 
             {template.reviews.length === 0 ? (
-              <div className="bg-[#141414] border border-white/8 rounded-xl p-8 text-center">
-                <p className="text-white/50 text-sm">No reviews yet.</p>
-                <p className="text-white/25 text-xs mt-1">Purchase this template to leave the first review.</p>
+              <div className="bg-[#0d0d14] border border-white/8 rounded-xl p-10 text-center">
+                <div className="w-12 h-12 rounded-xl bg-[#D4AF37]/8 border border-[#D4AF37]/15 flex items-center justify-center mx-auto mb-3">
+                  <StarDisplay rating={0} />
+                </div>
+                <p className="text-white/60 text-sm font-medium">No reviews yet</p>
+                <p className="text-white/25 text-xs mt-1.5 max-w-xs mx-auto">Be the first to purchase and leave a review — your feedback helps the community.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -770,7 +773,7 @@ function TemplateDetail({
                   const name = review.reviewer.displayName || review.reviewer.username || 'Anonymous'
                   const initial = name[0]?.toUpperCase() ?? '?'
                   return (
-                    <div key={review.id} className="bg-[#141414] border border-white/8 rounded-xl p-5">
+                    <div key={review.id} className="bg-[#0d0d14] border border-white/8 rounded-xl p-5">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
@@ -845,7 +848,7 @@ function TemplateDetail({
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Purchase card */}
-          <div className="bg-[#141414] border border-[#D4AF37]/20 rounded-2xl p-6 sticky top-6 shadow-[0_0_40px_rgba(212,175,55,0.05)]">
+          <div className="bg-[#0d0d14] border border-[#D4AF37]/20 rounded-2xl p-6 sticky top-6 shadow-[0_0_40px_rgba(212,175,55,0.05)]">
             {/* Price display */}
             <div className="mb-5">
               {isFree ? (
@@ -923,7 +926,7 @@ function TemplateDetail({
           </div>
 
           {/* Creator card */}
-          <div className="bg-[#141414] border border-white/8 rounded-2xl p-5">
+          <div className="bg-[#0d0d14] border border-white/8 rounded-2xl p-5">
             <h3 className="text-xs text-white/30 uppercase tracking-widest font-semibold mb-4">Created by</h3>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center flex-shrink-0">
@@ -959,7 +962,7 @@ function TemplateDetail({
 
           {/* Tags */}
           {template.tags.length > 0 && (
-            <div className="bg-[#141414] border border-white/8 rounded-2xl p-5">
+            <div className="bg-[#0d0d14] border border-white/8 rounded-2xl p-5">
               <h3 className="text-xs text-white/30 uppercase tracking-widest font-semibold mb-3">Tags</h3>
               <div className="flex flex-wrap gap-1.5">
                 {template.tags.map(tag => (
@@ -1021,7 +1024,7 @@ function MiniTemplateCard({ template }: { template: DemoTemplate }) {
   return (
     <Link
       href={`/marketplace/${template.id}`}
-      className="group block bg-[#141414] border border-white/8 rounded-xl overflow-hidden hover:border-[#D4AF37]/25 hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] transition-all duration-200"
+      className="group block bg-[#0d0d14] border border-white/8 rounded-xl overflow-hidden hover:border-[#D4AF37]/25 hover:shadow-[0_0_20px_rgba(212,175,55,0.06)] transition-all duration-200"
     >
       <div className={`aspect-video bg-gradient-to-br ${grad} flex items-center justify-center`}>
         <div className="opacity-40 group-hover:opacity-60 transition-opacity">

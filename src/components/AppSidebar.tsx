@@ -125,8 +125,8 @@ function NavItem({
       aria-current={active ? 'page' : undefined}
       className={`group relative flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
         active
-          ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20'
-          : 'text-gray-300 hover:text-white hover:bg-white/5 border border-transparent'
+          ? 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 shadow-[0_0_12px_rgba(212,175,55,0.08)]'
+          : 'text-gray-300 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.06] hover:translate-x-[2px] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] border border-transparent'
       }`}
     >
       {active && (

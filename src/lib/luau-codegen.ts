@@ -467,3 +467,110 @@ export function generateBuild(objects: SceneObject[]): string {
 export function asExecutePayload(code: string): Record<string, unknown> {
   return { code }
 }
+
+// ---------------------------------------------------------------------------
+// Detailed build templates — high-quality multi-part models
+// ---------------------------------------------------------------------------
+
+/** Material constants used by the detailed build helpers */
+const MATERIALS = {
+  smoothPlastic: 'Enum.Material.SmoothPlastic',
+  brick: 'Enum.Material.Brick',
+  wood: 'Enum.Material.Wood',
+  woodPlanks: 'Enum.Material.WoodPlanks',
+  concrete: 'Enum.Material.Concrete',
+  glass: 'Enum.Material.Glass',
+  metal: 'Enum.Material.Metal',
+  slate: 'Enum.Material.Slate',
+  neon: 'Enum.Material.Neon',
+  granite: 'Enum.Material.Granite',
+  grass: 'Enum.Material.Grass',
+  cobblestone: 'Enum.Material.Cobblestone',
+} as const
+
+/**
+ * Generates a complete, detailed Luau build script with the P() helper pattern,
+ * color variation, camera-relative placement, ChangeHistoryService, and proper
+ * Model grouping. This produces STUNNING multi-part models.
+ *
+ * @param buildName   Display name for the model
+ * @param partLines   Array of Luau lines that create parts using P() helper
+ *
+ * @example
+ *   generateDetailedBuild('Modern House', [
+ *     'local base = P("Foundation", CFrame.new(sp+V3(0,0.25,0)), V3(22,0.5,16), M.Concrete, C3(140,135,130))',
+ *     '-- ... more parts ...',
+ *   ])
+ */
+export function generateDetailedBuild(
+  buildName: string,
+  partLines: string[],
+): string {
+  const safeName = escapeLuauString(buildName)
+  const body = partLines.join('\n  ')
+
+  return `--!strict
+-- ForjeAI Detailed Build: ${safeName}
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local CollectionService = game:GetService("CollectionService")
+local Selection = game:GetService("Selection")
+
+local rid = ChangeHistoryService:TryBeginRecording("ForjeAI: ${safeName}")
+
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
+local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+local groundY = groundRay and groundRay.Position.Y or 0
+sp = Vector3.new(sp.X, groundY, sp.Z)
+
+local m = Instance.new("Model")
+m.Name = "${safeName}"
+
+-- Part helper: creates an anchored Part with all properties set
+local function P(name: string, cf: CFrame, size: Vector3, mat: Enum.Material, col: Color3): Part
+  local p = Instance.new("Part")
+  p.Name = name
+  p.Anchored = true
+  p.CFrame = cf
+  p.Size = size
+  p.Material = mat
+  p.Color = col
+  p.Parent = m
+  return p
+end
+
+-- Color variation helper for natural look
+local function vc(base: Color3, variance: number?): Color3
+  local h, s, v = Color3.toHSV(base)
+  return Color3.fromHSV(h, s, math.clamp(v + (math.random() - 0.5) * (variance or 0.1), 0, 1))
+end
+
+-- Shorthand aliases
+local V3 = Vector3.new
+local CF = CFrame.new
+
+local ok, err = pcall(function()
+  ${body}
+end)
+
+m.Parent = workspace
+CollectionService:AddTag(m, "ForjeAI")
+Selection:Set({m})
+
+if rid then
+  ChangeHistoryService:FinishRecording(
+    rid,
+    ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel
+  )
+end
+
+if not ok then warn("[ForjeAI] Build error: " .. tostring(err)) end
+print("[ForjeAI] Built '${safeName}' with " .. tostring(#m:GetChildren()) .. " parts")
+`
+}
+
+/**
+ * Quick reference of material enum strings for use in build templates.
+ * Exported so other modules can reference them without typos.
+ */
+export { MATERIALS as LUAU_MATERIALS }

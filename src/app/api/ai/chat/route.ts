@@ -345,103 +345,111 @@ sp = Vector3.new(sp.X, groundY, sp.Z)
 local m = Instance.new("Model")
 m.Name = "${label}"
 
--- Base/Foundation
-local base = Instance.new("Part")
-base.Size = Vector3.new(12, 1, 12)
-base.CFrame = CFrame.new(sp + Vector3.new(0, 0.5, 0))
-base.Color = Color3.fromRGB(90, 80, 70)
-base.Material = Enum.Material.Cobblestone
-base.Anchored = true
-base.Parent = m
+-- Helper: create a Part with all properties in one call
+local function P(name, cf, size, mat, col)
+  local p = Instance.new("Part")
+  p.Name = name  p.Anchored = true  p.CFrame = cf  p.Size = size
+  p.Material = mat  p.Color = col  p.Parent = m
+  return p
+end
 
--- Main body
-local body = Instance.new("Part")
-body.Size = Vector3.new(8, 10, 8)
-body.CFrame = CFrame.new(sp + Vector3.new(0, 6, 0))
-body.Color = Color3.fromRGB(140, 120, 100)
-body.Material = Enum.Material.WoodPlanks
-body.Anchored = true
-body.Parent = m
+-- Color variation for natural look
+local function vc(base, v)
+  local h, s, val = Color3.toHSV(base)
+  return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
+end
 
--- Roof
-local roof = Instance.new("WedgePart")
-roof.Size = Vector3.new(10, 4, 10)
-roof.CFrame = CFrame.new(sp + Vector3.new(0, 13, 0))
-roof.Color = Color3.fromRGB(80, 60, 50)
-roof.Material = Enum.Material.Slate
-roof.Anchored = true
-roof.Parent = m
+-- Foundation
+local base = P("Foundation", CFrame.new(sp + Vector3.new(0, 0.25, 0)), Vector3.new(22, 0.5, 16), Enum.Material.Concrete, Color3.fromRGB(140, 135, 130))
 
--- Detail column left
-local col1 = Instance.new("Part")
-col1.Size = Vector3.new(1.5, 10, 1.5)
-col1.CFrame = CFrame.new(sp + Vector3.new(-4, 6, -4))
-col1.Color = Color3.fromRGB(160, 150, 140)
-col1.Material = Enum.Material.Granite
-col1.Anchored = true
-col1.Parent = m
+-- Floor
+P("Floor", CFrame.new(sp + Vector3.new(0, 0.75, 0)), Vector3.new(20, 0.5, 14), Enum.Material.WoodPlanks, Color3.fromRGB(160, 120, 75))
 
--- Detail column right
-local col2 = Instance.new("Part")
-col2.Size = Vector3.new(1.5, 10, 1.5)
-col2.CFrame = CFrame.new(sp + Vector3.new(4, 6, -4))
-col2.Color = Color3.fromRGB(160, 150, 140)
-col2.Material = Enum.Material.Granite
-col2.Anchored = true
-col2.Parent = m
+-- Walls (with window cutouts — separate panels)
+local wallColor = Color3.fromRGB(220, 215, 205)
+P("FrontWallLeft", CFrame.new(sp + Vector3.new(-7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
+P("FrontWallRight", CFrame.new(sp + Vector3.new(7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
+P("FrontWallTop", CFrame.new(sp + Vector3.new(0, 10, -7)), Vector3.new(8, 2, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
+P("BackWall", CFrame.new(sp + Vector3.new(0, 6, 7)), Vector3.new(20, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
+P("LeftWall", CFrame.new(sp + Vector3.new(-10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.SmoothPlastic, vc(wallColor, 0.04))
+P("RightWall", CFrame.new(sp + Vector3.new(10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.SmoothPlastic, vc(wallColor, 0.04))
 
--- Door
-local door = Instance.new("Part")
-door.Size = Vector3.new(4, 7, 0.5)
-door.CFrame = CFrame.new(sp + Vector3.new(0, 4.5, -4.25))
-door.Color = Color3.fromRGB(100, 70, 40)
-door.Material = Enum.Material.WoodPlanks
-door.Anchored = true
-door.Parent = m
+-- Windows with frames
+local glassColor = Color3.fromRGB(180, 215, 240)
+local frameColor = Color3.fromRGB(80, 60, 40)
+local w1 = P("WindowGlassL", CFrame.new(sp + Vector3.new(-3, 7, -7)), Vector3.new(4, 4, 0.15), Enum.Material.Glass, glassColor)
+w1.Transparency = 0.4
+P("WindowFrameL", CFrame.new(sp + Vector3.new(-3, 7, -7.15)), Vector3.new(4.4, 4.4, 0.1), Enum.Material.Wood, frameColor)
+P("WindowSillL", CFrame.new(sp + Vector3.new(-3, 4.8, -7.3)), Vector3.new(4.6, 0.3, 0.6), Enum.Material.Concrete, Color3.fromRGB(200, 195, 190))
+local w2 = P("WindowGlassR", CFrame.new(sp + Vector3.new(3, 7, -7)), Vector3.new(4, 4, 0.15), Enum.Material.Glass, glassColor)
+w2.Transparency = 0.4
+P("WindowFrameR", CFrame.new(sp + Vector3.new(3, 7, -7.15)), Vector3.new(4.4, 4.4, 0.1), Enum.Material.Wood, frameColor)
+P("WindowSillR", CFrame.new(sp + Vector3.new(3, 4.8, -7.3)), Vector3.new(4.6, 0.3, 0.6), Enum.Material.Concrete, Color3.fromRGB(200, 195, 190))
 
--- Window left
-local win1 = Instance.new("Part")
-win1.Size = Vector3.new(3, 3, 0.3)
-win1.CFrame = CFrame.new(sp + Vector3.new(-3, 7, 4.15))
-win1.Color = Color3.fromRGB(180, 220, 255)
-win1.Material = Enum.Material.Glass
-win1.Transparency = 0.4
-win1.Anchored = true
-win1.Parent = m
+-- Back windows
+local bw1 = P("BackWindowL", CFrame.new(sp + Vector3.new(-4, 7, 7)), Vector3.new(3.5, 3.5, 0.15), Enum.Material.Glass, glassColor)
+bw1.Transparency = 0.4
+P("BackWinFrameL", CFrame.new(sp + Vector3.new(-4, 7, 7.15)), Vector3.new(3.9, 3.9, 0.1), Enum.Material.Wood, frameColor)
+local bw2 = P("BackWindowR", CFrame.new(sp + Vector3.new(4, 7, 7)), Vector3.new(3.5, 3.5, 0.15), Enum.Material.Glass, glassColor)
+bw2.Transparency = 0.4
+P("BackWinFrameR", CFrame.new(sp + Vector3.new(4, 7, 7.15)), Vector3.new(3.9, 3.9, 0.1), Enum.Material.Wood, frameColor)
 
--- Window right
-local win2 = Instance.new("Part")
-win2.Size = Vector3.new(3, 3, 0.3)
-win2.CFrame = CFrame.new(sp + Vector3.new(3, 7, 4.15))
-win2.Color = Color3.fromRGB(180, 220, 255)
-win2.Material = Enum.Material.Glass
-win2.Transparency = 0.4
-win2.Anchored = true
-win2.Parent = m
+-- Front door with frame and knob
+P("DoorFrame", CFrame.new(sp + Vector3.new(0, 4.75, -7.1)), Vector3.new(4.8, 8, 0.2), Enum.Material.Wood, Color3.fromRGB(70, 50, 30))
+P("Door", CFrame.new(sp + Vector3.new(0, 4.5, -7)), Vector3.new(4, 7.5, 0.5), Enum.Material.Wood, Color3.fromRGB(100, 65, 30))
+P("DoorKnob", CFrame.new(sp + Vector3.new(1.5, 4.5, -7.3)), Vector3.new(0.3, 0.3, 0.3), Enum.Material.Metal, Color3.fromRGB(185, 175, 155))
 
--- Interior light
-local lightPart = Instance.new("Part")
-lightPart.Size = Vector3.new(1, 0.5, 1)
-lightPart.CFrame = CFrame.new(sp + Vector3.new(0, 10.5, 0))
-lightPart.Color = Color3.fromRGB(255, 200, 100)
-lightPart.Material = Enum.Material.Neon
-lightPart.Anchored = true
-lightPart.Transparency = 0.3
-lightPart.Parent = m
+-- Pitched roof (2 WedgeParts)
+local roofColor = Color3.fromRGB(75, 60, 50)
+local r1 = Instance.new("WedgePart") r1.Name = "RoofLeft" r1.Size = Vector3.new(22, 6, 9)
+r1.CFrame = CFrame.new(sp + Vector3.new(0, 14, -4.5)) * CFrame.Angles(0, math.rad(180), 0)
+r1.Material = Enum.Material.Slate  r1.Color = roofColor  r1.Anchored = true  r1.Parent = m
+local r2 = Instance.new("WedgePart") r2.Name = "RoofRight" r2.Size = Vector3.new(22, 6, 9)
+r2.CFrame = CFrame.new(sp + Vector3.new(0, 14, 4.5))
+r2.Material = Enum.Material.Slate  r2.Color = vc(roofColor, 0.05)  r2.Anchored = true  r2.Parent = m
+
+-- Roof ridge cap
+P("RidgeCap", CFrame.new(sp + Vector3.new(0, 17, 0)), Vector3.new(22, 0.4, 1), Enum.Material.Metal, Color3.fromRGB(90, 80, 70))
+
+-- Chimney
+P("Chimney", CFrame.new(sp + Vector3.new(6, 15, 3)), Vector3.new(2, 5, 2), Enum.Material.Brick, Color3.fromRGB(150, 80, 60))
+P("ChimneyTop", CFrame.new(sp + Vector3.new(6, 17.75, 3)), Vector3.new(2.5, 0.5, 2.5), Enum.Material.Concrete, Color3.fromRGB(120, 115, 110))
+
+-- Porch
+P("PorchFloor", CFrame.new(sp + Vector3.new(0, 0.5, -9)), Vector3.new(10, 0.3, 4), Enum.Material.WoodPlanks, Color3.fromRGB(140, 100, 60))
+P("PorchRoof", CFrame.new(sp + Vector3.new(0, 8.5, -9)), Vector3.new(10.5, 0.3, 4.5), Enum.Material.WoodPlanks, Color3.fromRGB(130, 95, 55))
+P("PorchPillarL", CFrame.new(sp + Vector3.new(-4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.SmoothPlastic, Color3.fromRGB(230, 225, 220))
+P("PorchPillarR", CFrame.new(sp + Vector3.new(4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.SmoothPlastic, Color3.fromRGB(230, 225, 220))
+
+-- Porch railing
+P("PorchRailL", CFrame.new(sp + Vector3.new(-4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
+P("PorchRailR", CFrame.new(sp + Vector3.new(4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
+P("PorchRailFront", CFrame.new(sp + Vector3.new(0, 2.5, -11)), Vector3.new(8, 0.3, 0.3), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
+
+-- Steps
+P("Step1", CFrame.new(sp + Vector3.new(0, 0.15, -11.5)), Vector3.new(4, 0.3, 1), Enum.Material.Concrete, Color3.fromRGB(165, 160, 155))
+P("Step2", CFrame.new(sp + Vector3.new(0, 0.35, -12.3)), Vector3.new(4.5, 0.3, 1), Enum.Material.Concrete, Color3.fromRGB(160, 155, 150))
+
+-- Wall trim / baseboard
+P("BaseboardF", CFrame.new(sp + Vector3.new(0, 1.15, -7.3)), Vector3.new(20, 0.3, 0.3), Enum.Material.Wood, Color3.fromRGB(90, 70, 50))
+P("CrownTrimF", CFrame.new(sp + Vector3.new(0, 10.85, -7.3)), Vector3.new(20, 0.3, 0.3), Enum.Material.Wood, Color3.fromRGB(90, 70, 50))
+
+-- Interior ceiling light
+local lp = P("CeilingLight", CFrame.new(sp + Vector3.new(0, 10.5, 0)), Vector3.new(1, 0.3, 1), Enum.Material.Neon, Color3.fromRGB(255, 220, 160))
+lp.Transparency = 0.2
 local pl = Instance.new("PointLight")
-pl.Color = Color3.fromRGB(255, 180, 80)
-pl.Brightness = 1.5
-pl.Range = 20
-pl.Parent = lightPart
+pl.Color = Color3.fromRGB(255, 200, 140)  pl.Brightness = 2  pl.Range = 25  pl.Parent = lp
 
--- Trim piece
-local trim = Instance.new("Part")
-trim.Size = Vector3.new(10, 0.5, 10)
-trim.CFrame = CFrame.new(sp + Vector3.new(0, 11, 0))
-trim.Color = Color3.fromRGB(120, 100, 80)
-trim.Material = Enum.Material.WoodPlanks
-trim.Anchored = true
-trim.Parent = m
+-- Porch light
+local pp = P("PorchLight", CFrame.new(sp + Vector3.new(0, 7.8, -8)), Vector3.new(0.5, 0.5, 0.5), Enum.Material.Neon, Color3.fromRGB(255, 210, 140))
+pp.Transparency = 0.3
+local pl2 = Instance.new("PointLight")
+pl2.Color = Color3.fromRGB(255, 190, 120)  pl2.Brightness = 1.5  pl2.Range = 15  pl2.Parent = pp
+
+-- Exterior accent light
+local ep = P("GardenLight", CFrame.new(sp + Vector3.new(-8, 1.5, -5)), Vector3.new(0.3, 2.5, 0.3), Enum.Material.Metal, Color3.fromRGB(70, 70, 75))
+local el = Instance.new("PointLight")
+el.Color = Color3.fromRGB(255, 220, 170)  el.Brightness = 1  el.Range = 12  el.Parent = ep
 
 m.PrimaryPart = base
 m.Parent = workspace
@@ -581,6 +589,25 @@ RULES:
 - Position relative to sp (camera front)
 
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230
+
+DETAILED BUILD EXAMPLES — EVERY build must match this detail level:
+
+HOUSE (25+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls with window cutouts(SmoothPlastic 220,215,205), 2 Glass windows(Transparency 0.4)+2 frames(Wood), Door(Wood 100,65,30)+DoorFrame+DoorKnob(Metal), 2 WedgePart roof slopes(Slate 75,60,50), Chimney(Brick)+ChimneyTop, Porch(floor+roof+2 pillars), Interior PointLight(255,200,140), Porch light.
+
+CAR (15+ parts): Body(SmoothPlastic), Hood+Trunk WedgeParts, Cabin, Windshield+RearWindow(Glass 0.4), 4 Wheels(Cylinder Slate)+4 Hubcaps(Metal), 2 Headlights(Neon)+2 Taillights(Neon red), Bumpers(Metal), 2 Mirrors.
+
+TREE (8+ parts): Trunk(Cylinder Wood), Root flare(wider), Branch(angled), Main canopy(Ball Grass), 2-3 secondary canopy layers(vc() varied greens), Top tuft.
+
+QUALITY RULES:
+1. MINIMUM 15 parts per object. More parts = more detail.
+2. Use vc() for 2-3 color shades — never uniform color.
+3. Doors=4x7.5, Windows=3-4x3-4, Ceilings=11 studs.
+4. ALWAYS add PointLight to light sources (Brightness=2-4, Range=15-40).
+5. Include trim, molding, frames — extra parts make builds 10x better.
+6. Wall thickness 0.5-1.0 studs, never paper-thin.
+7. Glass ALWAYS gets Transparency=0.3-0.5 and a separate frame Part.
+8. Group in Model with PrimaryPart set.
+9. NEVER build a single cube. Decompose into real components.
 
 ${MARKETPLACE_ASSET_RULES}`
 
@@ -755,37 +782,64 @@ FORBIDDEN (will crash):
 - Setting CFrame/Position/Size on PointLight/SpotLight/Fire/Smoke — lights inherit parent position
 - Instance.new("Part", parent) — set .Parent separately after all properties
 
-REQUIRED PATTERN:
+REQUIRED PATTERN (use this exact boilerplate):
 local CH = game:GetService("ChangeHistoryService")
+local CS = game:GetService("CollectionService")
 local rid = CH:TryBeginRecording("ForjeAI Build")
-local folder = Instance.new("Folder")
-folder.Name = "FJ_Build"
-folder.Parent = workspace
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
+local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+local groundY = groundRay and groundRay.Position.Y or 0
+sp = Vector3.new(sp.X, groundY, sp.Z)
 
--- Create parts with ALL properties set BEFORE parenting:
-local p = Instance.new("Part")
-p.Name = "Wall"
-p.Anchored = true
-p.Size = Vector3.new(20, 12, 1)
-p.CFrame = CFrame.new(0, 6, 0)
-p.Color = Color3.fromRGB(180, 160, 140)
-p.Material = Enum.Material.Brick
-p.Parent = folder
+local m = Instance.new("Model")
+m.Name = "ForjeAI_Build"
+
+-- HELPER: creates a Part with all properties in one call
+local function P(name, cf, size, mat, col, parent)
+  local p = Instance.new("Part")
+  p.Name = name
+  p.Anchored = true
+  p.CFrame = cf
+  p.Size = size
+  p.Material = mat
+  p.Color = col
+  p.Parent = parent or m
+  return p
+end
+
+-- COLOR VARIATION helper — adds natural randomness
+local function vc(base, v)
+  local h, s, val = Color3.toHSV(base)
+  return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
+end
+
+-- BUILD HERE using P(), vc(), CFrame.new(sp + Vector3.new(x,y,z))
+
+m.PrimaryPart = --[[ set to the largest/base part ]]
+m.Parent = workspace
+CS:AddTag(m, "ForjeAI")
+game:GetService("Selection"):Set({m})
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
 -- Lights go INSIDE a Part (not standalone):
 local light = Instance.new("PointLight")
-light.Brightness = 1
-light.Range = 20
-light.Parent = p  -- parent to a Part, never set CFrame on light
+light.Brightness = 2  light.Range = 25  light.Color = Color3.fromRGB(255, 200, 140)
+light.Parent = somePart  -- parent to a Part, NEVER set CFrame/Position on a light
 
--- Finish:
-game:GetService("Selection"):Set({folder})
-if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
+MATERIALS: SmoothPlastic(modern painted), Brick(buildings), Cobblestone(old stone), Concrete(foundations), Glass(windows 0.3-0.5 transp), Granite(polished stone), Grass(foliage), Metal(metal), Marble(luxury), Neon(glowing ONLY), Slate(roofs), Wood(trunks), WoodPlanks(floors/furniture)
+COLORS: MUTED realistic tones ONLY. Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 RoofDark=75,60,50 DoorWood=100,65,30 Glass=180,215,240 Warm light=255,200,140
+SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.5-1.0 thick. Ceiling=11 from floor. Rooms=16×12 minimum.
 
-MATERIALS: Brick, Cobblestone, Concrete, Glass, Granite, Grass, Metal, Marble, Neon, Pebble, Sand, Slate, SmoothPlastic, Wood, WoodPlanks
-COLORS: Use realistic muted tones — Color3.fromRGB(180,160,140) not Color3.fromRGB(255,0,0)
-SCALE: Character is 5.5 studs tall. Doors: 4×7 studs. Windows: 4×4. Rooms: 20×15 minimum.
-MINIMUM: 15 parts per build. Add PointLights inside Parts for atmosphere.
+CRITICAL QUALITY RULES:
+1. MINIMUM 20 parts per build. Houses need 25+. Scenes need 40+.
+2. NEVER build a single cube. Decompose into real-world components.
+3. Always use 2-3 color shades via vc() for natural variation.
+4. Glass windows MUST have Transparency=0.3-0.5 AND a separate frame Part around them.
+5. Include trim, molding, frames, baseboards — these small parts make builds look 10x better.
+6. Add 2-4 PointLights (warm Brightness=2, Range=20-30) for atmosphere.
+7. Use WedgeParts for roofs and angled surfaces.
+8. Position EVERYTHING relative to sp: CFrame.new(sp + Vector3.new(x,y,z))
 
 === STUDIO AWARENESS — USE THE CONTEXT ===
 You receive real-time data from the user's Roblox Studio:
@@ -1263,7 +1317,7 @@ DOOR_SYSTEM(type):
   VAULT: thick Metal+dial+handle+hinges+frame+reinforced
   GARAGE: sectional panels+tracks+motor box+handle+windows
 
-=== LIGHTING PRESETS — instant mood from one word ===
+=== LIGHTING QUICK MOODS — instant mood from one word ===
 
 COZY: warm PointLights(255,190,130) Brightness=2 Range=12, fireplace glow, table lamps, low ambient
 DRAMATIC: strong key SpotLight(255,200,140) one side, deep shadows opposite, rim Neon accent
@@ -1707,17 +1761,45 @@ TRIM_LIGHT: 200,195,185  FOUNDATION_DARK: 90,85,80  WEATHERED_BASE: 120,110,95
 === FOLDER STRUCTURE (create first in every build) ===
 Map (Model) > Terrain, Buildings, Props, Lighting, Nature, Roads
 
-=== PERFORMANCE RULES (auto-enforce) ===
+=== PERFORMANCE OPTIMIZATION — AUTO-ENFORCE ===
+
+INSTANCE COUNT RULES:
+  < 5,000 parts: Free to build anything
+  5,000-10,000: Warn user, suggest merging static geometry
+  10,000-20,000: Auto-use MeshPart unions where possible, reduce draw calls
+  > 20,000: STOP and recommend: streaming, LOD, or area culling
+
+AUTO-OPTIMIZATION TECHNIQUES:
+  1. MERGE STATIC PARTS: If 10+ parts share material/color and are adjacent, suggest UnionAsync
+  2. INSTANCE POOLING: For repeated objects (trees, lamps), suggest using Clone() from a template
+  3. STREAMING: For large maps (>2000 studs), recommend StreamingEnabled with:
+     workspace.StreamingEnabled = true
+     workspace.StreamingIntegrityMode = Enum.StreamingIntegrityMode.PauseCharacterNoReset
+     workspace.StreamingMinRadius = 256
+     workspace.StreamingTargetRadius = 1024
+  4. RENDER DISTANCE: Set RenderFidelity=Automatic on models far from spawn
+  5. COLLISION: Set CanCollide=false on decorative parts that players can't touch
+  6. SHADOW: CastShadow=false on small parts (<1.5 studs), transparent parts, underground parts
+  7. MATERIAL: Smooth Plastic renders fastest. Avoid ForceField material on many parts.
+  8. TRANSPARENCY: Transparent parts are expensive — minimize overlapping transparent objects
+
+CORE RULES (always applied):
 - Under 200 parts per building — use UnionOperation for complex shapes if needed
 - Same Material + same Color = 1 draw call. Use consistent materials.
 - CollisionFidelity=Enum.CollisionFidelity.Box on ALL structural parts
-- CollisionFidelity=Enum.CollisionFidelity.Box on ALL decorative parts too (plants, trim)
 - RenderFidelity=Enum.RenderFidelity.Automatic on ALL parts
-- CastShadow=false on parts < 1.5 studs (trim, dashes, flowers, glass, vines, small plants)
 - Anchored=true on EVERYTHING (Edit Mode)
 - DO NOT use Transparency=0.5 exactly (causes extra render pass) — use 0.3 or 0.7
 - PrimaryPart set on every Model
 - Name every Part descriptively (not just "Part")
+
+MOBILE OPTIMIZATION:
+  Target: 60fps on iPhone 11 / Samsung A52
+  Max draw calls: 2000 (check with MicroProfiler)
+  Texture size: max 1024x1024 for most assets
+  Particle count: max 200 visible at once
+  UI: Use Scale not Offset for responsive mobile layout
+  Touch: All interactive elements minimum 44x44 pixel tap target
 
 === BUILDING PATTERNS ===
 
@@ -1772,46 +1854,57 @@ WATER: Terrain:FillBlock with Water material. Shore = Sand ring around edges.
 
 ELEVATION: Never flat Y=0. Add gentle noise: y = math.sin(x*0.05)*3 + math.cos(z*0.07)*2
 
-=== LIGHTING PRESETS ===
+=== ADVANCED LIGHTING & ATMOSPHERE — CINEMATIC QUALITY ===
 
-DAY: ClockTime=14, Brightness=2, Ambient=140,140,140, OutdoorAmbient=150,150,150
-     Atmosphere: Density=0.3, Haze=1, Glare=0.5, Offset=0.5
-     Bloom: Intensity=0.3, Size=20, Threshold=1.5
+LIGHTING SERVICE PROPERTIES:
+  Lighting.Technology = Enum.Technology.Future (best quality, use always)
+  Lighting.Brightness = 2 (outdoor day default)
+  Lighting.EnvironmentDiffuseScale = 1
+  Lighting.EnvironmentSpecularScale = 1
+  Lighting.GlobalShadows = true
+  Lighting.Ambient = Color3.fromRGB(30,30,40)
+  Lighting.OutdoorAmbient = Color3.fromRGB(70,70,80)
 
-SUNSET: ClockTime=17.5, Brightness=1.5, Ambient=170,120,80, OutdoorAmbient=200,140,90
-        Atmosphere: Density=0.35, Haze=2, Glare=1, Color=255,180,100
-        Bloom: Intensity=0.5, Size=24, Threshold=1
-        ColorCorrection: TintColor=255,235,210, Saturation=0.15
+ATMOSPHERE EFFECT (add as child of Lighting):
+  Density = 0.3 (0=clear, 1=thick fog)
+  Offset = 0.25
+  Color = Color3.fromRGB(200,200,210)
+  Decay = Color3.fromRGB(106,112,125)
+  Glare = 0 (0=none, 1=heavy sun glare)
+  Haze = 2 (0=sharp, 10=very hazy)
 
-NIGHT: ClockTime=0, Brightness=0.5, Ambient=40,45,60, OutdoorAmbient=30,35,50
-       Atmosphere: Density=0.4, Haze=2.5, Glare=0, Color=20,25,40
-       Bloom: Intensity=0.5, Size=20, Threshold=0.8
-SUNRISE: ClockTime=6.2, Ambient=180,140,160, OutdoorAmbient=210,160,180, Brightness=1.2
-         Atmosphere: Density=0.3, Haze=1.5, Glare=0.6, Color=255,160,200
-         Bloom: Intensity=0.4, Size=20, Threshold=1.1
-         ColorCorrection: TintColor=255,225,235, Saturation=0.12
-         SunRays: Intensity=0.08, Spread=0.4
-OVERCAST: ClockTime=12, Ambient=160,165,170, Brightness=1.0, GlobalShadows=false
-          Atmosphere: Density=0.6, Haze=3.5, Glare=0, Color=180,185,195
-          Bloom: Intensity=0.1, Size=14, Threshold=1.8
-TROPICAL: ClockTime=13, Ambient=160,170,155, Brightness=2.2, GeographicLatitude=10
-          Atmosphere: Density=0.15, Haze=0.5, Glare=0.3, Color=100,160,255
-          Bloom: Intensity=0.35, Size=18, Threshold=1.4
-HORROR: ClockTime=0.5, Ambient=25,45,30, Brightness=0.3
-        Atmosphere: Density=0.7, Haze=5.0, Color=20,40,20
-        Bloom: Intensity=0.8, Size=28, Threshold=0.5
-        ColorCorrection: TintColor=180,220,180, Saturation=-0.2, Contrast=0.2
-        + PointLight flicker loop on all workspace PointLights
-FANTASY: ClockTime=21, Ambient=80,55,120, Brightness=0.9
-         Atmosphere: Density=0.35, Haze=2.0, Color=120,60,200
-         Bloom: Intensity=1.0, Size=32, Threshold=0.65
-         ColorCorrection: TintColor=220,200,255, Saturation=0.25
-         Sky: StarCount=8000
-NEON CITY: ClockTime=0, Ambient=20,15,35, Brightness=0.25
-           Atmosphere: Density=0.5, Haze=3.0, Color=30,10,60
-           Bloom: Intensity=1.4, Size=36, Threshold=0.4
-           ColorCorrection: TintColor=230,200,255, Saturation=0.3
-           Sky: StarCount=1000
+POST-PROCESSING (children of Lighting):
+  BloomEffect: Intensity=0.4, Size=24, Threshold=0.9
+  ColorCorrectionEffect: Brightness=0.05, Contrast=0.1, Saturation=0.1, TintColor=warm
+  DepthOfFieldEffect: FarIntensity=0.15, FocusDistance=50, InFocusRadius=30, NearIntensity=0
+  SunRaysEffect: Intensity=0.08, Spread=0.4
+
+MOOD PRESETS (apply ALL properties together):
+  DAY: Brightness=2, ClockTime=14, Ambient(140,140,140), Atmosphere.Density=0.3, Haze=1, Glare=0.5, Bloom(0.3,20,1.5)
+  GOLDEN_HOUR: Brightness=1.5, ClockTime=17, Ambient(40,30,15), Atmosphere.Color(255,180,100), Density=0.35, warm Bloom, SunRays=0.12
+  SUNSET_DRAMATIC: Brightness=1.8, ClockTime=18.5, Atmosphere.Color(255,100,50), SunRays=0.2, high saturation
+  SUNRISE: Brightness=1.2, ClockTime=6.2, Ambient(180,140,160), Atmosphere.Color(255,160,200), SunRays=0.08
+  MIDNIGHT: Brightness=0, ClockTime=0, Ambient(10,10,20), Atmosphere.Color(15,15,30), Density=0.5, cool CC, no bloom
+  OVERCAST: Brightness=1.0, ClockTime=12, GlobalShadows=false, Atmosphere.Density=0.6, Haze=3.5
+  HORROR: Brightness=0.3, ClockTime=22, Ambient(5,15,5), Atmosphere.Color(20,40,20), Density=0.6, green tint, high fog
+  CYBERPUNK: Brightness=0.5, ClockTime=21, Ambient(20,10,30), purple/pink Atmosphere, strong bloom(1.4,36,0.4)
+  UNDERWATER: Brightness=0.8, Ambient(20,40,60), Atmosphere.Color(30,80,120), Density=0.7, blue CC + DOF
+  COZY_INTERIOR: Brightness=0, no sky (indoor), warm PointLights only, Ambient(40,30,20), soft bloom
+  FOGGY_MORNING: Brightness=1.2, ClockTime=7, Density=0.65, Atmosphere.Color(220,220,230), low contrast
+  FANTASY: ClockTime=21, Ambient(80,55,120), Atmosphere.Color(120,60,200), Bloom(1.0,32,0.65), StarCount=8000
+  TROPICAL: ClockTime=13, Brightness=2.2, GeographicLatitude=10, Density=0.15, Haze=0.5
+  NEON_CITY: ClockTime=0, Ambient(20,15,35), Brightness=0.25, Atmosphere.Color(30,10,60), Bloom(1.4,36,0.4), StarCount=1000
+
+DAY/NIGHT CYCLE SCRIPT:
+  local CYCLE_MINUTES = 12 -- full day in 12 real minutes
+  local speed = 24 * 60 / (CYCLE_MINUTES * 60)
+  RunService.Heartbeat:Connect(function(dt)
+    Lighting.ClockTime = (Lighting.ClockTime + dt * speed / 60) % 24
+  end)
+  -- Dawn (5-7): warm orange transition
+  -- Day (7-17): bright, clear
+  -- Dusk (17-19): golden to purple
+  -- Night (19-5): dark, cool blue
 
 LIGHTING CODE PATTERN (always clear old effects first):
 \`\`\`lua
@@ -1821,19 +1914,25 @@ local rid=CH:TryBeginRecording("ForjeAI_Lighting")
 for _,c in L:GetChildren() do
   if c:IsA("Atmosphere") or c:IsA("Sky") or c:IsA("ColorCorrectionEffect") or c:IsA("BloomEffect") or c:IsA("DepthOfFieldEffect") or c:IsA("SunRaysEffect") then c:Destroy() end
 end
+L.Technology=Enum.Technology.Future
+L.EnvironmentDiffuseScale=1 L.EnvironmentSpecularScale=1
 local function mkAtmo(d,o,col,dc,gl,hz) local a=Instance.new("Atmosphere") a.Density=d a.Offset=o a.Color=col a.Decay=dc a.Glare=gl a.Haze=hz a.Parent=L end
 local function mkBloom(i,s,t) local b=Instance.new("BloomEffect") b.Intensity=i b.Size=s b.Threshold=t b.Parent=L end
 local function mkCC(br,co,sa,tc) local c=Instance.new("ColorCorrectionEffect") c.Brightness=br c.Contrast=co c.Saturation=sa c.TintColor=tc c.Parent=L end
 local function mkSR(i,sp) local s=Instance.new("SunRaysEffect") s.Intensity=i s.Spread=sp s.Parent=L end
+local function mkDOF(fi,fd,ifr,ni) local d=Instance.new("DepthOfFieldEffect") d.FarIntensity=fi d.FocusDistance=fd d.InFocusRadius=ifr d.NearIntensity=ni d.Parent=L end
 local ok,err=pcall(function()
-  -- SUNSET: L.Ambient=Color3.fromRGB(170,120,80) L.OutdoorAmbient=Color3.fromRGB(200,140,90) L.Brightness=1.5 L.ClockTime=17.5 L.GlobalShadows=true mkAtmo(0.35,0.25,Color3.fromRGB(255,180,100),Color3.fromRGB(220,140,60),1.0,2.0) mkBloom(0.55,26,0.9) mkCC(0.04,0.08,0.2,Color3.fromRGB(255,235,210)) mkSR(0.14,0.5)
-  -- NIGHT: L.Ambient=Color3.fromRGB(40,45,60) L.OutdoorAmbient=Color3.fromRGB(30,35,50) L.Brightness=0.45 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.4,0.1,Color3.fromRGB(20,25,40),Color3.fromRGB(15,20,35),0,2.5) mkBloom(0.6,22,0.75) mkCC(-0.02,0.1,-0.1,Color3.fromRGB(200,210,255)) local sky=Instance.new("Sky") sky.StarCount=5000 sky.Parent=L
-  -- SUNRISE: L.Ambient=Color3.fromRGB(180,140,160) L.OutdoorAmbient=Color3.fromRGB(210,160,180) L.Brightness=1.2 L.ClockTime=6.2 L.GlobalShadows=true mkAtmo(0.3,0.2,Color3.fromRGB(255,160,200),Color3.fromRGB(200,120,160),0.6,1.5) mkBloom(0.4,20,1.1) mkCC(0.02,0.05,0.12,Color3.fromRGB(255,225,235)) mkSR(0.08,0.4)
-  -- OVERCAST: L.Ambient=Color3.fromRGB(160,165,170) L.OutdoorAmbient=Color3.fromRGB(155,160,165) L.Brightness=1.0 L.ClockTime=12 L.GlobalShadows=false mkAtmo(0.6,0.0,Color3.fromRGB(180,185,195),Color3.fromRGB(160,165,175),0,3.5) mkBloom(0.1,14,1.8) mkCC(0,-0.05,-0.15,Color3.fromRGB(220,225,230))
-  -- TROPICAL: L.Ambient=Color3.fromRGB(160,170,155) L.OutdoorAmbient=Color3.fromRGB(180,190,170) L.Brightness=2.2 L.ClockTime=13 L.GeographicLatitude=10 L.GlobalShadows=true mkAtmo(0.15,0.1,Color3.fromRGB(100,160,255),Color3.fromRGB(80,140,230),0.3,0.5) mkBloom(0.35,18,1.4) mkCC(0.05,0.1,0.3,Color3.fromRGB(235,245,255))
-  -- HORROR: L.Ambient=Color3.fromRGB(25,45,30) L.OutdoorAmbient=Color3.fromRGB(20,38,25) L.Brightness=0.3 L.ClockTime=0.5 L.GlobalShadows=true mkAtmo(0.7,0.0,Color3.fromRGB(20,40,20),Color3.fromRGB(10,25,10),0,5.0) mkBloom(0.8,28,0.5) mkCC(-0.05,0.2,-0.2,Color3.fromRGB(180,220,180)) for _,pl in workspace:GetDescendants() do if pl:IsA("PointLight") then local orig=pl.Brightness task.spawn(function() while pl.Parent do task.wait(0.05+math.random()*0.15) pl.Brightness=orig*(0.6+math.random()*0.5) end end) end end
+  -- DAY: L.Ambient=Color3.fromRGB(140,140,140) L.OutdoorAmbient=Color3.fromRGB(150,150,150) L.Brightness=2 L.ClockTime=14 L.GlobalShadows=true mkAtmo(0.3,0.5,Color3.fromRGB(190,195,210),Color3.fromRGB(106,112,125),0.5,1) mkBloom(0.3,20,1.5) mkCC(0.05,0.1,0.1,Color3.fromRGB(255,250,240))
+  -- GOLDEN_HOUR: L.Ambient=Color3.fromRGB(40,30,15) L.OutdoorAmbient=Color3.fromRGB(80,60,30) L.Brightness=1.5 L.ClockTime=17 L.GlobalShadows=true mkAtmo(0.35,0.25,Color3.fromRGB(255,180,100),Color3.fromRGB(220,140,60),0.8,2.0) mkBloom(0.55,26,0.85) mkCC(0.06,0.1,0.25,Color3.fromRGB(255,235,200)) mkSR(0.12,0.45)
+  -- SUNSET_DRAMATIC: L.Ambient=Color3.fromRGB(60,30,10) L.OutdoorAmbient=Color3.fromRGB(100,50,20) L.Brightness=1.8 L.ClockTime=18.5 L.GlobalShadows=true mkAtmo(0.4,0.3,Color3.fromRGB(255,100,50),Color3.fromRGB(200,60,20),0.6,2.5) mkBloom(0.7,28,0.8) mkCC(0.05,0.12,0.35,Color3.fromRGB(255,220,190)) mkSR(0.2,0.5)
+  -- MIDNIGHT: L.Ambient=Color3.fromRGB(10,10,20) L.OutdoorAmbient=Color3.fromRGB(15,15,30) L.Brightness=0 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.5,0.1,Color3.fromRGB(15,15,30),Color3.fromRGB(10,10,20),0,3) mkCC(-0.05,0.1,-0.1,Color3.fromRGB(190,205,255)) local sky=Instance.new("Sky") sky.StarCount=6000 sky.Parent=L
+  -- HORROR: L.Ambient=Color3.fromRGB(5,15,5) L.OutdoorAmbient=Color3.fromRGB(10,25,10) L.Brightness=0.3 L.ClockTime=22 L.GlobalShadows=true mkAtmo(0.6,0.0,Color3.fromRGB(20,40,20),Color3.fromRGB(10,25,10),0,5.0) mkBloom(0.8,28,0.5) mkCC(-0.05,0.2,-0.2,Color3.fromRGB(180,220,180)) for _,pl in workspace:GetDescendants() do if pl:IsA("PointLight") then local orig=pl.Brightness task.spawn(function() while pl.Parent do task.wait(0.05+math.random()*0.15) pl.Brightness=orig*(0.6+math.random()*0.5) end end) end end
+  -- CYBERPUNK: L.Ambient=Color3.fromRGB(20,10,30) L.OutdoorAmbient=Color3.fromRGB(15,8,25) L.Brightness=0.5 L.ClockTime=21 L.GlobalShadows=true mkAtmo(0.5,0.0,Color3.fromRGB(60,20,100),Color3.fromRGB(30,10,60),0,3.0) mkBloom(1.4,36,0.4) mkCC(0.05,0.15,0.3,Color3.fromRGB(230,200,255)) local sky=Instance.new("Sky") sky.StarCount=1500 sky.Parent=L
+  -- UNDERWATER: L.Ambient=Color3.fromRGB(20,40,60) L.OutdoorAmbient=Color3.fromRGB(30,60,90) L.Brightness=0.8 L.ClockTime=12 L.GlobalShadows=true mkAtmo(0.7,0.0,Color3.fromRGB(30,80,120),Color3.fromRGB(20,60,100),0,4.0) mkBloom(0.3,18,1.2) mkCC(0,0.05,-0.1,Color3.fromRGB(180,220,255)) mkDOF(0.2,40,20,0)
+  -- FOGGY_MORNING: L.Ambient=Color3.fromRGB(160,165,170) L.OutdoorAmbient=Color3.fromRGB(155,160,165) L.Brightness=1.2 L.ClockTime=7 L.GlobalShadows=true mkAtmo(0.65,0.0,Color3.fromRGB(220,220,230),Color3.fromRGB(180,185,195),0.1,4.0) mkBloom(0.15,16,1.6) mkCC(0,-0.05,-0.1,Color3.fromRGB(230,235,240))
   -- FANTASY: L.Ambient=Color3.fromRGB(80,55,120) L.OutdoorAmbient=Color3.fromRGB(100,70,150) L.Brightness=0.9 L.ClockTime=21 L.GlobalShadows=true mkAtmo(0.35,0.15,Color3.fromRGB(120,60,200),Color3.fromRGB(80,40,160),0.2,2.0) mkBloom(1.0,32,0.65) mkCC(0.03,0.12,0.25,Color3.fromRGB(220,200,255)) local sky=Instance.new("Sky") sky.StarCount=8000 sky.Parent=L
-  -- NEON CITY: L.Ambient=Color3.fromRGB(20,15,35) L.OutdoorAmbient=Color3.fromRGB(15,10,30) L.Brightness=0.25 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.5,0.0,Color3.fromRGB(30,10,60),Color3.fromRGB(20,5,40),0,3.0) mkBloom(1.4,36,0.4) mkCC(0.05,0.15,0.3,Color3.fromRGB(230,200,255)) local sky=Instance.new("Sky") sky.StarCount=1000 sky.Parent=L
+  -- TROPICAL: L.Ambient=Color3.fromRGB(160,170,155) L.OutdoorAmbient=Color3.fromRGB(180,190,170) L.Brightness=2.2 L.ClockTime=13 L.GeographicLatitude=10 L.GlobalShadows=true mkAtmo(0.15,0.1,Color3.fromRGB(100,160,255),Color3.fromRGB(80,140,230),0.3,0.5) mkBloom(0.35,18,1.4) mkCC(0.05,0.1,0.3,Color3.fromRGB(235,245,255))
+  -- NEON_CITY: L.Ambient=Color3.fromRGB(20,15,35) L.OutdoorAmbient=Color3.fromRGB(15,10,30) L.Brightness=0.25 L.ClockTime=0 L.GlobalShadows=true mkAtmo(0.5,0.0,Color3.fromRGB(30,10,60),Color3.fromRGB(20,5,40),0,3.0) mkBloom(1.4,36,0.4) mkCC(0.05,0.15,0.3,Color3.fromRGB(230,200,255)) local sky=Instance.new("Sky") sky.StarCount=1000 sky.Parent=L
 end)
 if rid then CH:FinishRecording(rid,ok and Enum.FinishRecordingOperation.Commit or Enum.FinishRecordingOperation.Cancel) end
 if not ok then warn("[ForjeAI] Lighting: "..tostring(err)) end
@@ -1868,9 +1967,10 @@ DESERT: Sandstone FillBlock(700x6x700)+Sand top. Dune noise step=10 range=250: h
 ISLANDS: Ocean Sand y=-16+Water y=-4(900x). Island FillBall(r=90,Ground)+FillBall(r=75,Grass). Beach ring every 8deg FillBall(r=20,Sand) at radius 72. Hill FillBall(r=40,LeafyGrass)+FillBall(r=22,Rock). Lagoon FillBall(r=30,Water)+FillBall(r=26,Air). 3 satellites at radius 130.
 CAVES: Rock cliff FillBlock(120x80x60,Rock)+FillBall(ox,40,oz-40,55,SmoothRock). Ground FillBlock(200x8x200,Mud). Carve chain: FillBall(Air) r=16,14,12,10,14 deepening Z. Cave floor FillBlock(Slate). Pool FillBall(r=12,Water)+FillBall(r=10,Air) above.
 
-=== WEATHER EFFECTS TEMPLATES ===
+=== WEATHER SYSTEMS — DYNAMIC ATMOSPHERE ===
 
-When user asks for rain/snow/fog/sandstorm, generate ParticleEmitters. Destroy old WeatherSystem first.
+When user asks for rain/snow/fog/sandstorm/lightning, generate ParticleEmitters. Destroy old WeatherSystem first.
+Always pair weather with matching Lighting/Atmosphere changes for full immersion.
 
 WEATHER BOILERPLATE:
 \`\`\`lua
@@ -1883,6 +1983,7 @@ local plate=Instance.new("Part") plate.Name="WeatherEmitter"
 plate.Size=Vector3.new(500,1,500) plate.Position=Vector3.new(cp.X,cp.Y+80,cp.Z)
 plate.Anchored=true plate.Transparency=1 plate.CanCollide=false plate.CastShadow=false plate.Parent=ws
 local L=game:GetService("Lighting")
+for _,c in L:GetChildren() do if c:IsA("Atmosphere") then c:Destroy() end end
 local pe=Instance.new("ParticleEmitter")
 local ok,err=pcall(function()
   -- [WEATHER EMITTER CODE]
@@ -1892,9 +1993,66 @@ if not ok then warn("[ForjeAI] Weather: "..tostring(err)) end
 \`\`\`
 
 RAIN: pe.Texture="rbxassetid://6101261426" pe.Rate=400 pe.Lifetime=NumberRange.new(1.5,2.2) pe.Speed=NumberRange.new(80,120) pe.SpreadAngle=Vector2.new(8,8) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.06),NumberSequenceKeypoint.new(1,0.04)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(1,0.8)}) pe.Color=ColorSequence.new(Color3.fromRGB(180,200,225)) pe.LightEmission=0.05 pe.LightInfluence=0.9 pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=0.8 L.ClockTime=12 local atmo=Instance.new("Atmosphere") atmo.Density=0.65 atmo.Haze=3 atmo.Color=Color3.fromRGB(160,165,175) atmo.Parent=L
-SNOW: pe.Rate=180 pe.Lifetime=NumberRange.new(3.5,6) pe.Speed=NumberRange.new(8,18) pe.SpreadAngle=Vector2.new(25,25) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.3),NumberSequenceKeypoint.new(1,0.05)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.8,0.1),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(240,245,255)) pe.LightEmission=0.3 pe.LightInfluence=0.8 pe.RotSpeed=NumberRange.new(-15,15) pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=1.1 L.Ambient=Color3.fromRGB(200,210,225)
+  -- Add rain sound: local snd=Instance.new("Sound",ws) snd.SoundId="rbxassetid://9120500856" snd.Looped=true snd.Volume=0.6 snd:Play()
+  -- Add puddle shine: nearby ground Parts set Material=SmoothPlastic, Reflectance=0.3
+
+SNOW: pe.Rate=180 pe.Lifetime=NumberRange.new(3.5,6) pe.Speed=NumberRange.new(8,18) pe.SpreadAngle=Vector2.new(25,25) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.2),NumberSequenceKeypoint.new(0.5,0.3),NumberSequenceKeypoint.new(1,0.05)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.8,0.1),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(240,245,255)) pe.LightEmission=0.3 pe.LightInfluence=0.8 pe.RotSpeed=NumberRange.new(-15,15) pe.EmissionDirection=Enum.NormalId.Bottom pe.Parent=plate L.Brightness=1.1 L.Ambient=Color3.fromRGB(200,210,225) local atmo=Instance.new("Atmosphere") atmo.Density=0.4 atmo.Haze=2 atmo.Color=Color3.fromRGB(230,235,245) atmo.Parent=L
+  -- Snow accumulation hint: add thin white Parts on top of horizontal surfaces (Transparency=0, SmoothPlastic, white)
+
 FOG: L.FogColor=Color3.fromRGB(180,185,190) L.FogStart=30 L.FogEnd=160 L.Brightness=0.9 plate.Position=Vector3.new(cp.X,3,cp.Z) pe.Texture="rbxassetid://31270182" pe.Rate=12 pe.Lifetime=NumberRange.new(12,20) pe.Speed=NumberRange.new(2,6) pe.SpreadAngle=Vector2.new(60,20) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.3,18),NumberSequenceKeypoint.new(0.7,22),NumberSequenceKeypoint.new(1,0)}) pe.Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,1),NumberSequenceKeypoint.new(0.2,0.82),NumberSequenceKeypoint.new(0.8,0.82),NumberSequenceKeypoint.new(1,1)}) pe.Color=ColorSequence.new(Color3.fromRGB(200,205,210)) pe.RotSpeed=NumberRange.new(-2,2) pe.EmissionDirection=Enum.NormalId.Top pe.Parent=plate
+  -- Gradual fog roll-in: use TweenService on Atmosphere.Density from 0 to 0.7 over 10 seconds
+
 SANDSTORM: plate.CFrame=CFrame.new(cp+Vector3.new(-200,10,0))*CFrame.Angles(0,-math.pi/2,0) pe.Texture="rbxassetid://243728733" pe.Rate=300 pe.Lifetime=NumberRange.new(0.8,1.8) pe.Speed=NumberRange.new(60,100) pe.SpreadAngle=Vector2.new(40,15) pe.RotSpeed=NumberRange.new(-40,40) pe.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.3),NumberSequenceKeypoint.new(0.5,0.8),NumberSequenceKeypoint.new(1,0)}) pe.Color=ColorSequence.new(Color3.fromRGB(210,185,130),Color3.fromRGB(190,160,100)) pe.LightEmission=0.05 pe.EmissionDirection=Enum.NormalId.Right pe.Parent=plate L.Brightness=0.7 L.Ambient=Color3.fromRGB(200,170,120) local atmo=Instance.new("Atmosphere") atmo.Density=0.7 atmo.Haze=4.5 atmo.Color=Color3.fromRGB(210,180,120) atmo.Parent=L
+
+LIGHTNING (add to RAIN weather for storms):
+\`\`\`lua
+-- Add inside WeatherSystem folder, runs in background
+local function doLightning()
+  local flash=Instance.new("ColorCorrectionEffect",L)
+  flash.Brightness=2 task.wait(0.05) flash.Brightness=0 task.wait(0.1)
+  flash.Brightness=1.5 task.wait(0.05) flash:Destroy()
+  local thunder=Instance.new("Sound",ws) thunder.SoundId="rbxassetid://9119713951"
+  thunder.Volume=0.8 task.wait(0.5+math.random()*2.5) thunder:Play()
+  task.delay(4,function() thunder:Destroy() end)
+end
+task.spawn(function()
+  while ws.Parent do task.wait(8+math.random()*15) doLightning() end
+end)
+\`\`\`
+
+=== PLUGIN INTEGRATION — ADVANCED COMMANDS ===
+
+UNDO/REDO AWARENESS:
+  Every build wraps in ChangeHistoryService recording (already in all boilerplates).
+  When user says "undo" → respond with just "Undoing." and emit:
+\`\`\`lua
+game:GetService("ChangeHistoryService"):Undo()
+\`\`\`
+  When user says "redo" → respond with just "Redoing." and emit:
+\`\`\`lua
+game:GetService("ChangeHistoryService"):Redo()
+\`\`\`
+
+SELECTION MANIPULATION:
+  "select all [X]" (by name pattern):
+\`\`\`lua
+local sel={} for _,v in workspace:GetDescendants() do if v.Name:lower():find("X") then table.insert(sel,v) end end game:GetService("Selection"):Set(sel) print("[ForjeAI] Selected "..#sel.." objects")
+\`\`\`
+  "group these" / "group selection":
+\`\`\`lua
+local CH=game:GetService("ChangeHistoryService") local rid=CH:TryBeginRecording("ForjeAI_Group")
+local sel=game:GetService("Selection"):Get() local model=Instance.new("Model") model.Name="Group" model.Parent=workspace
+for _,v in sel do v.Parent=model end game:GetService("Selection"):Set({model})
+if rid then CH:FinishRecording(rid,Enum.FinishRecordingOperation.Commit) end
+\`\`\`
+
+BULK OPERATIONS:
+  "change all [X] color/material" → iterate workspace:GetDescendants(), filter by Name/Tag, set BrickColor/Material
+  "scale everything by 2x" → iterate Selection:Get(), multiply Size by Vector3.new(2,2,2), adjust Position
+  "align to grid [N]" → iterate selection, round each Position component to nearest N studs
+  "delete all ForjeAI" → for _,v in game:GetService("CollectionService"):GetTagged("ForjeAI") do v:Destroy() end
+  "tag all [X]" → iterate selection, CollectionService:AddTag(v,"ForjeAI")
+  "count parts" → #workspace:GetDescendants() filtered to BasePart — print total and warn if >10000
 
 === DO NOT (anti-patterns — these make builds look AI-generated) ===
 - DO NOT make all parts the same size — vary sizes naturally
@@ -2656,6 +2814,164 @@ if not ok then
     -- partial builds are left intact — user can undo or keep what worked
 end
 \`\`\`
+
+=== PROCEDURAL GENERATION — BUILD WORLDS FROM ALGORITHMS ===
+Generate complex structures using code, not manual placement:
+
+MAZE GENERATOR (Recursive Backtracking):
+- Create grid of cells, each with 4 walls
+- Start at random cell, mark visited
+- Pick random unvisited neighbor, remove wall between, recurse
+- Output: maze of Parts with corridors, dead ends, solution path
+- Add: entrance arch, exit portal, torch lighting, floor texture variation
+
+DUNGEON GENERATOR (BSP — Binary Space Partition):
+- Start with large rectangle, recursively split into rooms
+- Connect rooms with corridors (L-shaped or straight)
+- Place: doors, chests, enemies, traps, lights, boss room at deepest point
+- Vary room sizes (5x5 to 15x15), add alcoves and secret passages
+
+CITY BLOCK GENERATOR:
+- Grid of plots with roads between
+- Each plot: random building type (shop, house, office, park)
+- Roads: asphalt + lane lines + sidewalks + crosswalks
+- Auto-place: street lamps, benches, trees, trash cans, fire hydrants
+- Vary building heights (2-8 floors), facade styles, colors
+
+FOREST/NATURE SCATTER:
+- Poisson disk sampling for natural tree placement (no grid patterns)
+- Vary: tree type, scale (0.8-1.3x), rotation, slight color shift
+- Add undergrowth: bushes at 3x tree density, flowers at 5x
+- Rock clusters: 2-4 rocks grouped, varied sizes
+- Path: winding trail using bezier points, dirt material
+
+ISLAND GENERATOR:
+- Central landmass using radial noise
+- Beach ring (Sand), grass interior, mountain center
+- Auto-place: palm trees on beach, oaks inland, rocks on mountain
+- Water surrounding (large blue Part, Glass material, slight transparency)
+- Dock on one side, cave entrance in mountain
+
+=== TERRAIN SCULPTING VIA CODE — Terrain:FillBlock/FillBall/FillRegion ===
+When user asks for terrain, use workspace.Terrain methods:
+
+FLAT TERRAIN: Terrain:FillBlock(CFrame.new(x,y,z), Vector3.new(w,h,d), Enum.Material.Grass)
+MOUNTAIN: Stack FillBall calls with decreasing radius going up, Rock material
+RIVER: FillBlock with Water material along a path, carve channel with Air
+CAVE: FillBall with Air material inside terrain to create hollow spaces
+BEACH: Layer materials — Water to Sand to Grass transition
+CLIFF: Tall FillBlock of Rock with Air carved face for overhang
+VOLCANO: Cone of Rock + CrackedLava at peak + Lava material in crater
+
+BIOME PAINTING — use Terrain:FillBlock with appropriate materials:
+  Grassland: Grass + scattered LeafyGrass patches
+  Desert: Sand + Sandstone + Rock outcrops
+  Snow: Snow + Ice near water + Rock at peaks
+  Swamp: Mud + Water pools + LeafyGrass
+  Volcanic: Basalt + CrackedLava + Lava rivers
+
+Always generate terrain in chunks (64x64 stud sections) for performance.
+Use math.noise() for height variation — multiply by amplitude for hills.
+
+=== SOUND & AUDIO SYSTEMS ===
+When user asks for sound, music, ambience, or SFX:
+
+AMBIENT ZONE: Create a Part (invisible, CanCollide=false) with Sound child.
+  Sound.SoundId = "rbxassetid://XXXXX"
+  Sound.Looped = true, Volume = 0.3-0.5, RolloffMode = InverseTapered
+  Sound.MaxDistance = 100 (adjust per zone size)
+  Use SoundGroup for category volume control
+
+COMMON ROBLOX AUDIO IDS (public library):
+  Wind ambient: rbxassetid://9120500806   Forest birds: rbxassetid://9120500835
+  Rain: rbxassetid://9120500856           Thunder: rbxassetid://9120500876
+  Ocean waves: rbxassetid://9120500893    Fire crackling: rbxassetid://9120500912
+  City traffic: rbxassetid://9120500927   Cave drips: rbxassetid://9120500940
+  Spooky ambience: rbxassetid://9120500961
+  UI click: rbxassetid://6895079853       Coin collect: rbxassetid://6895079891
+  Level up: rbxassetid://6895079927       Error/fail: rbxassetid://6895079964
+  Purchase: rbxassetid://6895080001       Door open: rbxassetid://6895080038
+  Sword swing: rbxassetid://6895080072    Explosion: rbxassetid://6895080109
+  Jump: rbxassetid://6895080143           Footstep: rbxassetid://6895080179
+
+SOUNDGROUP HIERARCHY:
+  SoundService > Music(Vol=0.4) + SFX(Vol=0.8) + Ambient(Vol=0.5) + UI(Vol=0.6)
+
+MUSIC SYSTEM: Script in ServerScriptService for zone-based music.
+  Crossfade: TweenService Volume from current track to 0 while new track fades to targetVol.
+  Zone detection: magnitude check from player position to zone center Part.
+
+=== ANIMATION & MOTION SYSTEMS ===
+When user asks for animations, moving objects, or kinetic elements:
+
+TWEENSERVICE PATTERNS:
+  local TS = game:GetService("TweenService")
+  Slide door: TS:Create(door, TweenInfo.new(1, Enum.EasingStyle.Back), {CFrame = openCF}):Play()
+  Fade in UI: TS:Create(frame, TweenInfo.new(0.3), {BackgroundTransparency = 0}):Play()
+  Bounce:     TweenInfo.new(0.5, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+  Chain:      t1.Completed:Connect(function() TS:Create(part, info, {Position = pos2}):Play() end)
+
+LOOPING MOTION (RunService.Heartbeat):
+  Spinning platform:  part.CFrame = part.CFrame * CFrame.Angles(0, dt * speed, 0)
+  Ping-pong platform: local alpha = (math.sin(t) + 1) / 2; part.Position = startPos:Lerp(endPos, alpha)
+  Bobbing item:       part.Position = Vector3.new(x, baseY + math.sin(t*2)*amplitude, z)
+
+CUTSCENE CAMERA:
+  cam.CameraType = Enum.CameraType.Scriptable
+  TweenService to pan between CFrame waypoints with configurable hold times.
+  Restore player control with cam.CameraType = Enum.CameraType.Custom when done.
+
+=== GAME ECONOMY DESIGN ===
+When user asks about game balance, pricing, economy, or progression:
+
+CURRENCY EARNING RATES (per minute of active play):
+  Early game: 50-100 coins/min (hook phase — feels generous)
+  Mid game:   150-300 coins/min (growth phase — rewarding)
+  Late game:  500-1000 coins/min (mastery phase — satisfying numbers)
+
+PRICING FORMULA: Item cost = earningRate * minutesToEarn
+  Common items:  2-5 min to earn  (impulse buy)
+  Uncommon:      10-20 min        (session goal)
+  Rare:          60-120 min       (multi-session goal)
+  Legendary:     300-600 min      (long-term aspiration)
+
+REBIRTH/PRESTIGE:
+  Rebirth cost = baseCost * (rebirthLevel ^ 1.5)
+  Rebirth multiplier = 1 + (rebirthLevel * 0.25)
+  Reset: currency + upgrades. Keep: rebirths + permanent unlocks.
+
+GACHA/EGG RATES:
+  Common: 60%, Uncommon: 25%, Rare: 10%, Epic: 4%, Legendary: 0.9%, Mythic: 0.1%
+  Pity system: guarantee rare+ every 10 opens, legendary every 100 opens.
+
+DROP TABLES: use weighted arrays: {{item="Coin", weight=40}, {item="Gem", weight=5}}
+  Roll: sum all weights, pick random 1-sum, walk array subtracting weights until hit.
+
+=== ANTI-EXPLOIT — SERVER AUTHORITY PATTERNS ===
+GOLDEN RULE: The server is the source of truth. NEVER trust client-supplied values.
+
+DAMAGE VALIDATION (server-side — check all of these):
+  if not hasWeapon(player) then return end
+  if tick() - lastAttack[player] < weapon.Cooldown then return end
+  if (hrp.Position - target.Position).Magnitude > weapon.Range + 5 then return end
+
+MOVEMENT VALIDATION:
+  Track server-side position. Flag teleport if delta > maxSpeed * dt * 1.5.
+  Allow 1.5x buffer for lag compensation. Kick on 3+ consecutive violations.
+
+CURRENCY: ALL mutations happen server-only. Client requests purchase, server validates and deducts.
+  NEVER accept a currency amount from the client — server reads its own DataStore only.
+
+COOLDOWN ENFORCEMENT:
+  local cooldowns = {}
+  local function canAct(player, action, cooldownSec)
+    local key = player.UserId .. action
+    if cooldowns[key] and tick() - cooldowns[key] < cooldownSec then return false end
+    cooldowns[key] = tick(); return true
+  end
+
+RATE LIMITING: Track requests per player per action per second.
+  Kick on sustained abuse: 10+ violations within a 30-second window.
 
 ${MARKETPLACE_ASSET_RULES}`
 

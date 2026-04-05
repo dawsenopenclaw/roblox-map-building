@@ -56,7 +56,7 @@ function SuspendedContent() {
                 strokeLinejoin="round"
               >
                 <circle cx="12" cy="12" r="10" />
-                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                <path d="M4.93 4.93L19.07 19.07" />
               </svg>
             </div>
           </div>

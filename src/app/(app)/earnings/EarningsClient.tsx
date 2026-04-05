@@ -170,25 +170,27 @@ export default function EarningsClient() {
 
       {/* ── No data yet — empty state ── */}
       {!data && !hasError && (
-        <div className="bg-[#141414] border border-white/10 rounded-2xl p-12 text-center">
-          <ShoppingBag size={36} className="text-gray-700 mx-auto mb-4" />
-          <p className="text-white font-semibold text-base mb-1">No earnings yet</p>
+        <div className="bg-[#0d0d14] border border-[#D4AF37]/15 rounded-2xl p-12 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center mx-auto mb-4">
+            <ShoppingBag size={24} className="text-[#D4AF37]/70" />
+          </div>
+          <p className="text-white font-bold text-base mb-1">No earnings yet</p>
           <p className="text-gray-400 text-sm max-w-xs mx-auto mb-6">
-            Start selling templates on the marketplace to earn revenue.
+            Start earning by publishing templates to the marketplace and keep 70% of every sale.
           </p>
           <Link
-            href="/marketplace"
-            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A618] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
+            href="/marketplace/submit"
+            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A618] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors shadow-[0_0_20px_rgba(212,175,55,0.2)]"
           >
             <ShoppingBag size={13} />
-            Go to Marketplace
+            Publish Your First Template
           </Link>
         </div>
       )}
 
       {/* ── Stripe Connect CTA / full dashboard — only when data is available ── */}
       {data && !data.connected && (
-        <div className="bg-[#141414] border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
+        <div className="bg-[#0d0d14] border border-[#D4AF37]/30 rounded-2xl p-8 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#D4AF37]/10 mb-4">
             <Zap size={24} className="text-[#D4AF37]" />
           </div>
@@ -248,7 +250,7 @@ export default function EarningsClient() {
           {/* ── Stat cards ── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {/* Total Earned — gold highlight */}
-            <div className="bg-[#141414] border border-[#D4AF37]/25 rounded-2xl p-5 col-span-2 sm:col-span-1">
+            <div className="bg-[#0d0d14] border border-[#D4AF37]/25 rounded-2xl p-5 col-span-2 sm:col-span-1">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign size={14} className="text-[#D4AF37]" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Total Earned</p>
@@ -260,7 +262,7 @@ export default function EarningsClient() {
             </div>
 
             {/* Pending Payout */}
-            <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Clock size={14} className="text-blue-400" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Pending</p>
@@ -272,7 +274,7 @@ export default function EarningsClient() {
             </div>
 
             {/* Sales count */}
-            <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <ShoppingBag size={14} className="text-purple-400" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Sales (30d)</p>
@@ -287,7 +289,7 @@ export default function EarningsClient() {
             </div>
 
             {/* Last Payout */}
-            <div className="bg-[#141414] border border-white/10 rounded-2xl p-5">
+            <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp size={14} className="text-green-400" />
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Last Payout</p>
@@ -306,7 +308,7 @@ export default function EarningsClient() {
           </div>
 
           {/* ── Revenue Chart ── */}
-          <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6">
             <div className="mb-6">
               <h2 className="text-white font-semibold text-base">Revenue — Last 6 Months</h2>
               <p className="text-gray-500 text-xs mt-0.5">Your 70% creator share per month</p>
@@ -327,7 +329,7 @@ export default function EarningsClient() {
             const rows = Object.values(byTemplate).sort((a, b) => b.revenueCents - a.revenueCents)
             const topRevenue = rows[0]?.revenueCents ?? 1
             return (
-              <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
+              <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <BarChart2 size={15} className="text-[#D4AF37]" />
                   <h2 className="text-white font-semibold text-base">Revenue by Template</h2>
@@ -384,7 +386,7 @@ export default function EarningsClient() {
           </div>
 
           {/* ── Transaction History ── */}
-          <div className="bg-[#141414] border border-white/10 rounded-2xl p-6">
+          <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-6">
             <h2 className="text-white font-semibold text-base mb-5">
               Transaction History{' '}
               <span className="text-gray-500 font-normal text-xs ml-1">(30 days)</span>
@@ -465,7 +467,7 @@ export default function EarningsClient() {
           </div>
 
           {/* ── Payout schedule ── */}
-          <div className="bg-[#141414] border border-white/10 rounded-2xl p-5 flex items-start gap-3">
+          <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-5 flex items-start gap-3">
             <TrendingUp size={15} className="text-green-400 mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-white font-medium text-sm">Payouts on the 1st and 15th</p>
@@ -482,7 +484,7 @@ export default function EarningsClient() {
           </div>
 
           {/* ── Submit template CTA ── */}
-          <div className="bg-[#141414] border border-white/10 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="bg-[#0d0d14] border border-white/10 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-white font-semibold text-sm">Publish more templates</p>
               <p className="text-gray-400 text-xs mt-0.5">
