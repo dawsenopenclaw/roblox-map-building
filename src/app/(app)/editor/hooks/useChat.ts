@@ -387,21 +387,15 @@ export function useChat(options: UseChatOptions = {}) {
 
         const [chatRes, meshData] = await Promise.all([chatPromise, meshPromise])
 
-        // Token exhaustion
+        // Token exhaustion — any 402 means tokens are depleted
         if (chatRes.status === 402) {
-          try {
-            const errData = await chatRes.json() as { error?: string }
-            if (errData.error === 'insufficient_tokens') {
-              setMessagesSync((prev) => [
-                ...prev.filter((m) => m.id !== statusMsgId),
-                { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
-              ])
-              setLoading(false)
-              return
-            }
-          } catch {
-            // Response body wasn't valid JSON — fall through to generic error
-          }
+          setMessagesSync((prev) => [
+            ...prev.filter((m) => m.id !== statusMsgId),
+            { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
+          ])
+          setLoading(false)
+          setStreaming(false)
+          return
         }
 
         if (!chatRes.ok) throw new Error(`API error ${chatRes.status}`)
@@ -457,6 +451,27 @@ export function useChat(options: UseChatOptions = {}) {
 
           const tokensUsed = meta.tokensUsed ?? estimateTokens(trimmed)
           setTotalTokens((prev) => prev + tokensUsed)
+
+          // Handle API error in meta (e.g. rate limit, AI failure)
+          if ((meta as Record<string, unknown>).error) {
+            const apiError = (meta as Record<string, unknown>).error as string
+            console.warn('[ForjeAI] API error in stream meta:', apiError)
+            setMessagesSync((prev) => {
+              const filtered = prev.filter((m) => m.id !== assistantMsgId && m.id !== statusMsgId)
+              return [
+                ...filtered,
+                {
+                  id: uid(),
+                  role: 'assistant' as const,
+                  content: apiError,
+                  timestamp: new Date(),
+                  model: selectedModel,
+                },
+              ]
+            })
+            setLoading(false)
+            return
+          }
 
           if (meta.suggestions && meta.suggestions.length > 0) {
             setSuggestions(meta.suggestions)
