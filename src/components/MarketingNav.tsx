@@ -96,31 +96,23 @@ function MarketingNav() {
           ))}
         </nav>
 
-        {/* Desktop CTA — right */}
-        <div className="hidden md:flex items-center flex-shrink-0">
-          {isLoaded && isSignedIn ? (
+        {/* Desktop CTA — right. Fixed width prevents layout shift while Clerk loads. */}
+        <div className="hidden md:flex items-center flex-shrink-0 w-[138px] justify-end">
+          {isLoaded ? (
             <Link
               href="/editor"
               className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black"
               style={{
                 background: '#D4AF37',
-                boxShadow: '0 0 16px rgba(212,175,55,0.35)',
+                boxShadow: `0 0 16px rgba(212,175,55,${isSignedIn ? '0.35' : '0.30'})`,
               }}
             >
-              Open Editor
+              {isSignedIn ? 'Open Editor' : 'Start Building'}
             </Link>
-          ) : isLoaded ? (
-            <Link
-              href="/editor"
-              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black"
-              style={{
-                background: '#D4AF37',
-                boxShadow: '0 0 16px rgba(212,175,55,0.30)',
-              }}
-            >
-              Start Building
-            </Link>
-          ) : null}
+          ) : (
+            /* Skeleton placeholder — same dimensions as the button, invisible */
+            <div className="w-[130px] h-[36px] rounded-lg bg-transparent" aria-hidden="true" />
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -165,25 +157,18 @@ function MarketingNav() {
               </Link>
             ))}
             <div className="border-t border-white/[0.06] mt-2 pt-3">
-              {isLoaded && isSignedIn ? (
+              {isLoaded ? (
                 <Link
                   href="/editor"
                   onClick={() => setMenuOpen(false)}
                   className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all text-black"
                   style={{ background: '#D4AF37' }}
                 >
-                  Open Editor
+                  {isSignedIn ? 'Open Editor' : 'Start Building'}
                 </Link>
-              ) : isLoaded ? (
-                <Link
-                  href="/editor"
-                  onClick={() => setMenuOpen(false)}
-                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all text-black"
-                  style={{ background: '#D4AF37' }}
-                >
-                  Start Building
-                </Link>
-              ) : null}
+              ) : (
+                <div className="h-[46px] rounded-lg bg-transparent" aria-hidden="true" />
+              )}
             </div>
           </div>
         </div>

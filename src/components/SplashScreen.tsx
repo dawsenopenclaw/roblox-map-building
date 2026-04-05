@@ -9,16 +9,16 @@ const LETTERS = TARGET_TEXT.split('')
 
 // Phase timing (ms from animation start)
 // Total duration: ~1500ms (first visit) — returning users skip via sessionStorage
-const PHASE1_END        = 150    // void w/ ember
-const PHASE2_START      = 150    // scan line + letter burn-in
-const PHASE2_END        = 550    // all letters revealed
-const PHASE3_START      = 550    // holographic pulse
-const PHASE3_END        = 800
-const PHASE4_START      = 800    // progress forge
-const PHASE4_END        = 1200
-const PHASE5_START      = 1200   // ignition exit
-const PHASE5_QUENCH     = 1280   // white flash done
-const EXIT_COMPLETE     = 1500   // total exit duration
+const PHASE1_END        = 120    // void w/ ember
+const PHASE2_START      = 120    // scan line + letter burn-in
+const PHASE2_END        = 480    // all letters revealed
+const PHASE3_START      = 480    // holographic pulse
+const PHASE3_END        = 700
+const PHASE4_START      = 700    // progress forge
+const PHASE4_END        = 1050
+const PHASE5_START      = 1050   // ignition exit
+const PHASE5_QUENCH     = 1110   // white flash done
+const EXIT_COMPLETE     = 1280   // total exit duration
 
 const STAGE_LABELS = [
   { threshold: 0,   label: 'Heating the forge...' },
@@ -335,7 +335,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
 
     // Phase 5: white quench flash
     setQuench(true)
-    safeTimeout(() => setQuench(false), 120)
+    safeTimeout(() => setQuench(false), 80)
 
     // Shatter — two rAF frames ensure CSS transition detects the state change
     safeTimeout(() => {
@@ -479,7 +479,8 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           position: 'fixed',
           inset: 0,
           zIndex: 0,
-          transition: 'opacity 500ms ease',
+          transition: 'opacity 350ms cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'opacity',
         }}
       >
         {children}

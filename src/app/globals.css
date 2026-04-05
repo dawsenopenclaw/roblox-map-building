@@ -11,19 +11,6 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ─── Gold text selection ───────────────────────────────────────────────────── */
-::selection {
-  background: rgba(212, 175, 55, 0.28);
-  color: #FAFAFA;
-}
-
-/* ─── Focus-visible: gold ring instead of browser default ──────────────────── */
-:focus-visible {
-  outline: 2px solid rgba(212, 175, 55, 0.7);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 /* ─── Reduced motion: kill all animations / transitions ────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -1027,15 +1014,16 @@ body {
 /* ─── Text selection ─────────────────────────────────────────────────────────── */
 
 ::selection {
-  background: rgba(212,175,55,0.3);
+  background: rgba(212,175,55,0.28);
   color: #FAFAFA;
 }
 
 /* ─── Focus-visible ring (global base override) ──────────────────────────────── */
 
 :focus-visible {
-  outline: 2px solid #D4AF37;
+  outline: 2px solid rgba(212,175,55,0.7);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* ─── Glass card ─────────────────────────────────────────────────────────────── */
@@ -1161,6 +1149,20 @@ body {
 .stagger-children > *:nth-child(8)  { animation-delay: 350ms; }
 .stagger-children > *:nth-child(9)  { animation-delay: 400ms; }
 .stagger-children > *:nth-child(10) { animation-delay: 450ms; }
+
+/* ─── Chat input focus glow ──────────────────────────────────────────────────── */
+
+@keyframes chat-focus-glow {
+  from { box-shadow: 0 0 0 1px rgba(212,175,55,0.0), 0 0 0px rgba(212,175,55,0.0); }
+  to   { box-shadow: 0 0 0 1px rgba(212,175,55,0.35), 0 0 16px rgba(212,175,55,0.12); }
+}
+
+.chat-input-focus:focus,
+.chat-input-focus:focus-within {
+  outline: none;
+  animation: chat-focus-glow 0.2s ease-out forwards;
+  border-color: rgba(212,175,55,0.4) !important;
+}
 
 /* ─── Link underline upgrade — gold gradient, 1px, offset ───────────────────── */
 /* Overrides the base .link-underline::after defined above                        */

@@ -60,9 +60,9 @@ const AppChrome = memo(function AppChrome({
   return (
     <>
       {/* ── Standard layout: top nav + left sidebar + padded main ── */}
-      <div className="min-h-screen bg-[#050810] flex">
+      <div className="min-h-screen bg-[#050810] flex" style={{ isolation: 'isolate' }}>
         <AppSidebar isOpen={sidebarOpen} onClose={onSidebarClose} />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0" style={{ willChange: 'auto' }}>
           <AppTopNav
             onMenuOpen={onSidebarOpen}
             onCommandPalette={onPaletteOpen}
@@ -78,7 +78,9 @@ const AppChrome = memo(function AppChrome({
           />
           <Spotlight className="flex-1 overflow-hidden" opacity={0.04} radius={500}>
             <main id="main-content" className="h-full p-4 sm:p-6 overflow-auto" tabIndex={-1}>
-              {children}
+              <div className="page-fade-in h-full">
+                {children}
+              </div>
             </main>
           </Spotlight>
         </div>

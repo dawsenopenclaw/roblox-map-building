@@ -200,6 +200,150 @@ const PULSE_STYLE = `
   }
 `
 
+// ─── Guest signup prompt card ────────────────────────────────────────────────
+
+const SIGNUP_FADE_STYLE = `
+  @keyframes signupFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`
+
+const GUEST_TOKEN_LIMIT = 100
+
+function SignupPromptCard() {
+  const [tokensUsed, setTokensUsed] = useState(GUEST_TOKEN_LIMIT)
+
+  useEffect(() => {
+    const stored = Number(localStorage.getItem('fg_guest_tokens') ?? GUEST_TOKEN_LIMIT)
+    setTokensUsed(Math.min(stored, GUEST_TOKEN_LIMIT))
+  }, [])
+
+  const pct = Math.round((tokensUsed / GUEST_TOKEN_LIMIT) * 100)
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-start', margin: '8px 0' }}>
+      <style>{SIGNUP_FADE_STYLE}</style>
+      <div
+        style={{
+          animation: 'signupFadeIn 0.35s ease-out both',
+          padding: '20px 22px',
+          borderRadius: 16,
+          background: 'linear-gradient(145deg, rgba(212,175,55,0.07) 0%, rgba(212,175,55,0.03) 100%)',
+          border: '1px solid rgba(212,175,55,0.35)',
+          boxShadow: '0 0 0 1px rgba(212,175,55,0.08) inset, 0 8px 32px rgba(0,0,0,0.35)',
+          maxWidth: 380,
+          width: '100%',
+          fontFamily: 'Inter, sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}
+      >
+        {/* Token usage line */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'rgba(212,175,55,0.15)',
+            border: '1px solid rgba(212,175,55,0.3)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="#D4AF37" strokeWidth="1.4"/>
+              <path d="M5 7h4M7 5v4" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: '#D4AF37', letterSpacing: '-0.01em' }}>
+            You used {tokensUsed} free tokens!
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        <div>
+          <div style={{
+            height: 6, borderRadius: 99,
+            background: 'rgba(255,255,255,0.07)',
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${pct}%`,
+              borderRadius: 99,
+              background: 'linear-gradient(90deg, #D4AF37 0%, #FFB81C 100%)',
+              transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontVariantNumeric: 'tabular-nums' }}>
+              {tokensUsed}/{GUEST_TOKEN_LIMIT} tokens
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>Free limit</span>
+          </div>
+        </div>
+
+        {/* Value prop */}
+        <div style={{
+          padding: '10px 14px',
+          borderRadius: 10,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.55 }}>
+            Sign up free to get{' '}
+            <span style={{ color: '#D4AF37', fontWeight: 600 }}>1,000 tokens/month</span>
+            {' '}— enough to build entire Roblox worlds.
+          </p>
+        </div>
+
+        {/* CTA buttons */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a
+            href="/sign-up"
+            style={{
+              flex: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '9px 16px',
+              borderRadius: 9,
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFB81C 100%)',
+              color: '#050810',
+              fontWeight: 700,
+              fontSize: 13,
+              textDecoration: 'none',
+              letterSpacing: '-0.01em',
+              boxShadow: '0 2px 12px rgba(212,175,55,0.3)',
+              transition: 'opacity 0.15s',
+            }}
+          >
+            Sign Up Free
+          </a>
+          <a
+            href="/sign-in"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '9px 16px',
+              borderRadius: 9,
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.13)',
+              color: 'rgba(255,255,255,0.6)',
+              fontWeight: 500,
+              fontSize: 13,
+              textDecoration: 'none',
+              transition: 'border-color 0.15s, color 0.15s',
+            }}
+          >
+            Sign In
+          </a>
+        </div>
+
+        {/* No credit card */}
+        <p style={{ margin: 0, textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+          No credit card required
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function MessageBubble({
   msg,
   onRetry,
@@ -488,48 +632,7 @@ function MessageBubble({
   }
 
   if (isSignup) {
-    return (
-      <div
-        style={{
-          padding: '16px 20px',
-          borderRadius: 14,
-          background: 'rgba(99,102,241,0.08)',
-          border: '1px solid rgba(99,102,241,0.25)',
-          fontSize: 13,
-          color: 'rgba(255,255,255,0.85)',
-          fontFamily: 'Inter, sans-serif',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10,
-        }}
-      >
-        <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#818CF8' }}>
-          Free messages used up
-        </p>
-        <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-          {msg.content || 'Sign up for a free account to keep building. No credit card required.'}
-        </p>
-        <a
-          href="/sign-up"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '8px 20px',
-            borderRadius: 8,
-            background: '#6366F1',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            textDecoration: 'none',
-            width: 'fit-content',
-          }}
-        >
-          Create Free Account
-        </a>
-      </div>
-    )
+    return <SignupPromptCard />
   }
 
   if (isSystem) {

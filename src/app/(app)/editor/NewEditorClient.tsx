@@ -1292,6 +1292,16 @@ function TopBar({
 }) {
   const { user } = useUser()
   const [newChatHovered, setNewChatHovered] = useState(false)
+  const [guestTokensUsed, setGuestTokensUsed] = useState(0)
+
+  // Read guest token usage from localStorage; re-sync whenever a new message arrives
+  // (totalTokens increments after each AI response, so it acts as a dependency proxy)
+  useEffect(() => {
+    if (!user) {
+      const stored = Number(localStorage.getItem('fg_guest_tokens') ?? '0')
+      setGuestTokensUsed(stored)
+    }
+  }, [user, totalTokens])
 
   return (
     <div
@@ -1406,7 +1416,22 @@ function TopBar({
             <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           </svg>
         </button>
-        {totalTokens > 0 && (
+        {!user && guestTokensUsed > 0 && (
+          <div title={`${guestTokensUsed}/100 free tokens used`} style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px',
+            borderRadius: 20, background: 'rgba(212,175,55,0.10)', border: '1px solid rgba(212,175,55,0.28)',
+          }}>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+              <circle cx="5" cy="5" r="4" stroke="#D4AF37" strokeWidth="1.2"/>
+              <path d="M3.5 5h3M5 3.5v3" stroke="#D4AF37" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <span style={{ fontSize: 10, color: '#D4AF37', fontVariantNumeric: 'tabular-nums',
+              fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+              {Math.max(0, 100 - guestTokensUsed)}/100 free
+            </span>
+          </div>
+        )}
+        {user && totalTokens > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px',
             borderRadius: 20, background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.22)' }}>
             <svg width="9" height="9" viewBox="0 0 10 10" fill="none">

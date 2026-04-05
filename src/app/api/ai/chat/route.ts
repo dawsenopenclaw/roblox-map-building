@@ -1336,21 +1336,94 @@ CONVEYOR: move Parts along X/Z via CFrame offset per frame
 ELEVATOR: TweenService between floor Y positions on button press
 DRAWBRIDGE: TweenService rotation from up to down
 
-=== PARTICLE-LIKE EFFECTS FROM PARTS (no ParticleEmitter needed) ===
-Create visual effects using small Parts + scripts:
+=== REAL VFX — USE ACTUAL ROBLOX VFX INSTANCES, NOT FAKE PART HACKS ===
+NEVER create "particle-like effects from Parts". ALWAYS use proper Roblox VFX instances:
 
-FIRE: 5-8 small Parts (0.3x0.3x0.3), Neon material, orange/yellow/red colors, random position jitter + upward drift + Transparency fade. Script: spawn parts, tween up+fade, destroy, repeat.
-SMOKE: 4-6 grey Parts (0.5-1 stud), Concrete, Transparency 0.5→1.0, drift upward + expand size + random X/Z wobble.
-SPARKLE: 8-12 tiny Parts (0.1x0.1x0.1), Neon white/gold, random positions in sphere, flash Transparency 0→1→0.
-WATERFALL_SPLASH: small white Parts at base, random velocity outward+up, short life, Glass material.
-DUST_MOTES: tiny Parts (0.05) floating slowly, warm color, Neon, Transparency 0.6, gentle random drift.
-MAGIC_CIRCLE: ring of small Neon Parts on ground, rotating, pulsing brightness, colored per element.
-RAIN_DROPS: thin vertical Parts falling from sky height, Glass material, destroy on ground contact.
-SNOW: small white Parts (0.1-0.2) drifting down with gentle X wobble, Concrete white.
-LEAVES_FALLING: small WedgeParts in brown/orange/green, tumbling rotation, slow fall.
-EMBER_FLOAT: tiny Neon orange dots rising from fire, random paths, fade out.
-LIGHTNING_FLASH: brief white Part flash + PointLight spike + camera shake.
-BUBBLE: Glass spheres rising from water, expanding slightly, pop (destroy) at surface.
+PARTICLEEMITTER (attach to any Part or Attachment):
+  local pe = Instance.new("ParticleEmitter")
+  pe.Rate = 50                                    -- particles per second
+  pe.Lifetime = NumberRange.new(1, 2)              -- seconds alive
+  pe.Speed = NumberRange.new(5, 10)                -- studs/second
+  pe.SpreadAngle = Vector2.new(15, 15)            -- cone spread degrees
+  pe.Size = NumberSequence.new({                   -- size over lifetime
+    NumberSequenceKeypoint.new(0, 0.5),
+    NumberSequenceKeypoint.new(0.5, 2),
+    NumberSequenceKeypoint.new(1, 0),
+  })
+  pe.Transparency = NumberSequence.new({           -- fade over lifetime
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(0.8, 0.5),
+    NumberSequenceKeypoint.new(1, 1),
+  })
+  pe.Color = ColorSequence.new({                   -- color over lifetime
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 170, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 30, 10)),
+  })
+  pe.LightEmission = 0.8                          -- 0=none, 1=full additive glow
+  pe.LightInfluence = 0                           -- 0=ignore scene lighting (glows in dark)
+  pe.EmissionDirection = Enum.NormalId.Top
+  pe.Drag = 2                                      -- air resistance
+  pe.RotSpeed = NumberRange.new(-30, 30)           -- tumble
+  pe.Parent = hostPart
+
+BEAM (laser, lightning, tether — connects two Attachments):
+  local a0 = Instance.new("Attachment", part1)
+  local a1 = Instance.new("Attachment", part2)
+  local beam = Instance.new("Beam")
+  beam.Attachment0 = a0; beam.Attachment1 = a1
+  beam.Color = ColorSequence.new(Color3.fromRGB(100, 200, 255))
+  beam.Width0 = 0.5; beam.Width1 = 0.2
+  beam.LightEmission = 1; beam.FaceCamera = true
+  beam.Segments = 10; beam.CurveSize0 = 2; beam.CurveSize1 = -2  -- wavy beam
+  beam.TextureSpeed = 1; beam.Transparency = NumberSequence.new(0, 0.5)
+  beam.Parent = part1
+  Use for: laser beams, electricity, tethers, magic connections, bridges of light
+
+TRAIL (motion trail behind moving objects):
+  local a0 = Instance.new("Attachment", part); a0.Position = Vector3.new(0, 0.5, 0)
+  local a1 = Instance.new("Attachment", part); a1.Position = Vector3.new(0, -0.5, 0)
+  local trail = Instance.new("Trail")
+  trail.Attachment0 = a0; trail.Attachment1 = a1
+  trail.Lifetime = 0.5; trail.FaceCamera = true
+  trail.Color = ColorSequence.new(Color3.fromRGB(255, 200, 50))
+  trail.Transparency = NumberSequence.new(0, 1)
+  trail.LightEmission = 0.6; trail.MinLength = 0.1
+  trail.WidthScale = NumberSequence.new(1, 0)  -- taper to point
+  trail.Parent = part
+  Use for: sword slash, moving projectiles, running characters, flying objects, speed boost
+
+HIGHLIGHT (outline glow on any Instance):
+  local hl = Instance.new("Highlight")
+  hl.FillColor = Color3.fromRGB(255, 215, 0)
+  hl.FillTransparency = 0.7; hl.OutlineColor = Color3.fromRGB(255, 255, 100)
+  hl.OutlineTransparency = 0; hl.DepthMode = Enum.HighlightDepthMode.Occluded
+  hl.Parent = targetModel
+  Use for: item pickup glow, interactable highlight, enemy outline, selected object
+
+POINTLIGHT + SPOTLIGHT (real light sources):
+  PointLight: omnidirectional. Brightness=2, Range=20, Shadows=true. Put inside lamp/torch/crystal.
+  SpotLight: directional cone. Brightness=3, Range=30, Angle=45. Flashlights, stage lights, searchlights.
+  SurfaceLight: flat panel light. Brightness=1.5, Range=12. Screens, neon signs, display cases.
+  Always pair lights with emissive parts (Neon material) for visual source.
+
+ATMOSPHERE EFFECTS (children of Lighting service):
+  Atmosphere: Density, Color, Decay, Glare, Haze — fog/haze/distance fade
+  BloomEffect: Intensity, Size, Threshold — glow bleeding from bright areas
+  BlurEffect: Size — depth/motion blur
+  ColorCorrectionEffect: Brightness, Contrast, Saturation, TintColor — color grading
+  DepthOfFieldEffect: FarIntensity, FocusDistance, InFocusRadius, NearIntensity — cinematic focus
+  SunRaysEffect: Intensity, Spread — volumetric god rays from sun
+
+SOUND (real audio, not fake):
+  local sound = Instance.new("Sound")
+  sound.SoundId = "rbxassetid://XXXXX"
+  sound.Volume = 0.5; sound.Looped = true
+  sound.RolloffMode = Enum.RolloffMode.InverseTapered
+  sound.RolloffMaxDistance = 50  -- 3D spatial falloff
+  sound.Parent = hostPart  -- spatial audio from this Part's position
+  sound:Play()
+
+QUALITY RULE: NEVER fake effects with Parts. One real ParticleEmitter looks 1000x better than 50 jittering cubes. One real Beam looks better than 100 thin stretched Parts. Use the REAL Roblox VFX system.
 
 === BIOME/ZONE GENERATION — full terrain themes ===
 When user asks for a biome, generate complete themed area (200x200 minimum):
