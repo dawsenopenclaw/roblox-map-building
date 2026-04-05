@@ -94,6 +94,17 @@ function IconGenerate() {
   )
 }
 
+function IconBuildHistory() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5 7h8M5 10h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      <circle cx="13" cy="12.5" r="2.5" fill="rgba(212,175,55,0)" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M13 11.5v1.5l1 0.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 function IconMaximize() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -1642,6 +1653,291 @@ function ResizeHandle({
   )
 }
 
+// ─── Build History (localStorage) ────────────────────────────────────────────
+
+const LS_BUILD_HISTORY_KEY = 'fg_build_history_v1'
+const MAX_BUILD_HISTORY = 50
+
+export interface BuildHistoryEntry {
+  id: string
+  timestamp: number
+  prompt: string
+  code: string
+  model: string
+  success: boolean
+}
+
+function loadBuildHistory(): BuildHistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(LS_BUILD_HISTORY_KEY)
+    if (!raw) return []
+    return JSON.parse(raw) as BuildHistoryEntry[]
+  } catch {
+    return []
+  }
+}
+
+function saveBuildHistory(entries: BuildHistoryEntry[]): void {
+  try {
+    localStorage.setItem(LS_BUILD_HISTORY_KEY, JSON.stringify(entries))
+  } catch { /* ignore quota errors */ }
+}
+
+function useBuildHistory() {
+  const [entries, setEntries] = useState<BuildHistoryEntry[]>(() => {
+    if (typeof window === 'undefined') return []
+    return loadBuildHistory()
+  })
+
+  const addEntry = useCallback((entry: Omit<BuildHistoryEntry, 'id'>) => {
+    setEntries((prev) => {
+      const next: BuildHistoryEntry[] = [
+        { ...entry, id: Math.random().toString(36).slice(2, 9) },
+        ...prev,
+      ].slice(0, MAX_BUILD_HISTORY)
+      saveBuildHistory(next)
+      return next
+    })
+  }, [])
+
+  const clearAll = useCallback(() => {
+    setEntries([])
+    try { localStorage.removeItem(LS_BUILD_HISTORY_KEY) } catch { /* ignore */ }
+  }, [])
+
+  return { entries, addEntry, clearAll }
+}
+
+// ─── Build History Panel (sidebar) ───────────────────────────────────────────
+
+function BuildHistorySidebarPanel({
+  entries,
+  onRerun,
+  onClear,
+}: {
+  entries: BuildHistoryEntry[]
+  onRerun: (entry: BuildHistoryEntry) => void
+  onClear: () => void
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  function handleCopy(entry: BuildHistoryEntry) {
+    navigator.clipboard.writeText(entry.code).then(() => {
+      setCopied(entry.id)
+      setTimeout(() => setCopied(null), 1800)
+    }).catch(() => { /* ignore */ })
+  }
+
+  if (entries.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        padding: '48px 16px', gap: 10, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.35 }}>
+          <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+          <path d="M7 9h10M7 12h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          <circle cx="17" cy="16" r="3" fill="rgba(0,0,0,0)" stroke="currentColor" strokeWidth="1.3"/>
+          <path d="M17 14.8v1.5l1 0.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>Your builds will appear here.</p>
+        <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.12)' }}>Start chatting to generate Luau code.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      {/* Header count + clear */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 0 12px', marginBottom: 2 }}>
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontWeight: 500 }}>
+          {entries.length} build{entries.length !== 1 ? 's' : ''} saved
+        </span>
+        <button
+          onClick={onClear}
+          style={{ background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 10, color: 'rgba(239,68,68,0.5)', padding: '2px 4px',
+            borderRadius: 4, transition: 'color 0.15s' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(239,68,68,0.8)' }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'rgba(239,68,68,0.5)' }}
+        >
+          Clear all
+        </button>
+      </div>
+
+      {entries.map((entry, i) => {
+        const isOpen = expanded === entry.id
+        const codePreview = entry.code.split('\n').slice(0, 2).join('\n')
+        const timeStr = (() => {
+          const diff = Date.now() - entry.timestamp
+          if (diff < 60_000) return 'just now'
+          if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
+          if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
+          return new Date(entry.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        })()
+
+        return (
+          <div
+            key={entry.id}
+            style={{
+              borderRadius: 10,
+              border: isOpen
+                ? '1px solid rgba(212,175,55,0.25)'
+                : '1px solid rgba(255,255,255,0.05)',
+              background: isOpen ? 'rgba(212,175,55,0.04)' : 'rgba(255,255,255,0.02)',
+              marginBottom: 6,
+              overflow: 'hidden',
+              transition: 'border-color 0.15s, background 0.15s',
+            }}
+          >
+            {/* Row header */}
+            <button
+              onClick={() => setExpanded(isOpen ? null : entry.id)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {/* Index bubble */}
+              <div style={{
+                flexShrink: 0, width: 20, height: 20, borderRadius: '50%',
+                background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
+              }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: '#D4AF37' }}>
+                  {entries.length - i}
+                </span>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.75)',
+                  fontWeight: 500, lineHeight: 1.4,
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                }}>
+                  {entry.prompt.replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '').replace(/^\[FORJE_STEP:\d+\/\d+\]\s*/, '')}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{timeStr}</span>
+                  <span style={{
+                    fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                    background: entry.success ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                    color: entry.success ? 'rgba(16,185,129,0.8)' : 'rgba(239,68,68,0.7)',
+                    border: `1px solid ${entry.success ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                  }}>
+                    {entry.success ? 'Sent' : 'Draft'}
+                  </span>
+                  {entry.model && (
+                    <span style={{
+                      fontSize: 9, padding: '1px 5px', borderRadius: 4,
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      color: 'rgba(255,255,255,0.25)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}>
+                      {entry.model}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Chevron */}
+              <svg
+                width="12" height="12" viewBox="0 0 12 12" fill="none"
+                style={{
+                  flexShrink: 0, marginTop: 4,
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                  color: 'rgba(255,255,255,0.2)',
+                }}
+              >
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
+            {/* Expanded: code preview + actions */}
+            {isOpen && (
+              <div style={{ padding: '0 12px 12px' }}>
+                {/* Code preview */}
+                <div style={{
+                  borderRadius: 8, background: 'rgba(0,0,0,0.35)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: '10px 12px', marginBottom: 10, overflow: 'hidden',
+                }}>
+                  <pre style={{
+                    margin: 0, fontSize: 10.5,
+                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                    color: 'rgba(255,255,255,0.55)', lineHeight: 1.6,
+                    whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                    maxHeight: 120, overflow: 'hidden',
+                  }}>
+                    {codePreview}
+                    {entry.code.split('\n').length > 2 && (
+                      <span style={{ color: 'rgba(212,175,55,0.4)' }}>
+                        {'\n'}…{entry.code.split('\n').length - 2} more lines
+                      </span>
+                    )}
+                  </pre>
+                </div>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => onRerun(entry)}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      padding: '6px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                      background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
+                      color: '#10B981', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.18)' }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.1)' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                      <path d="M2 6a4 4 0 014-4 4 4 0 014 4M10 2l2 2-2 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Re-run
+                  </button>
+                  <button
+                    onClick={() => handleCopy(entry)}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      padding: '6px 10px', borderRadius: 7, cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                      background: copied === entry.id ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: copied === entry.id ? '1px solid rgba(212,175,55,0.35)' : '1px solid rgba(255,255,255,0.08)',
+                      color: copied === entry.id ? '#D4AF37' : 'rgba(255,255,255,0.5)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {copied === entry.id ? (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <rect x="4" y="4" width="6" height="7" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                          <path d="M2 8V2h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Build History Item ──────────────────────────────────────────────────────
 
 function BuildHistoryItem({
@@ -2138,6 +2434,9 @@ function EditorInner() {
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
+  // Build history — persisted to localStorage
+  const buildHistory = useBuildHistory()
+
   // Layout state — persisted to localStorage
   const [editorLayout, setEditorLayout] = useState<EditorLayout>(() => {
     if (typeof window === 'undefined') return 'minimal'
@@ -2204,12 +2503,20 @@ function EditorInner() {
         }
         studio.addActivity('Build sent to Studio — check your viewport!')
         toast('Build executed in Studio', 'success')
+        buildHistory.addEntry({
+          timestamp: Date.now(),
+          prompt,
+          code: luauCode,
+          model: 'studio',
+          success: true,
+        })
       } catch {
         studio.addActivity('Studio execution failed — check your connection.')
         toast('Studio execution failed', 'error')
       }
     },
-    [studio, toast],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [studio, toast, buildHistory.addEntry],
   )
 
   // Chat
@@ -2219,6 +2526,32 @@ function EditorInner() {
     studioConnected: studio.isConnected,
     studioContext: studio.studioContext,
   })
+
+  // Save build history entry for every new AI message that contains Luau code.
+  // Covers the case where Studio isn't connected (entry.success = false / "Draft").
+  const lastKnownCodeMsgId = useRef<string | null>(null)
+  useEffect(() => {
+    const lastCodeMsg = [...chat.messages].reverse().find(
+      (m) => m.role === 'assistant' && m.luauCode && m.luauCode.trim().length > 0,
+    )
+    if (!lastCodeMsg || lastCodeMsg.id === lastKnownCodeMsgId.current) return
+    lastKnownCodeMsgId.current = lastCodeMsg.id
+    // Find the user prompt that preceded this assistant message
+    const msgIndex = chat.messages.findIndex((m) => m.id === lastCodeMsg.id)
+    const userMsg = msgIndex > 0
+      ? [...chat.messages].slice(0, msgIndex).reverse().find((m) => m.role === 'user')
+      : undefined
+    buildHistory.addEntry({
+      timestamp: lastCodeMsg.timestamp instanceof Date
+        ? lastCodeMsg.timestamp.getTime()
+        : Date.now(),
+      prompt: userMsg?.content ?? '',
+      code: lastCodeMsg.luauCode!,
+      model: lastCodeMsg.model ?? chat.selectedModel,
+      success: false, // will be upgraded to true in handleBuildComplete on Studio send
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat.messages])
 
   // Auto-skip Studio wizard on first visit (no prior connection).
   // Sets fg_first_run_skipped so the wizard never auto-shows again.
@@ -2540,7 +2873,7 @@ function EditorInner() {
                 <>
                   <div
                     className={mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}
-                    style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden' }}
+                    style={{ flex: 1, minHeight: 0, flexDirection: 'column', borderRadius: 12, overflow: 'hidden' }}
                   >
                     {/* Studio wizard — only shown when user explicitly clicks "Connect Studio" */}
                     {!studio.isConnected && studioWizardOpen ? (
@@ -2591,7 +2924,6 @@ function EditorInner() {
                       height: effectiveChatHeight,
                       minHeight: CHAT_MIN_HEIGHT,
                       maxHeight: viewportExpanded ? 56 : CHAT_MAX_HEIGHT,
-                      display: 'flex',
                       flexDirection: 'column',
                       transition: 'height 0.25s ease-out',
                       padding: '4px 0 0',

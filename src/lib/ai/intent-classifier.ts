@@ -31,6 +31,7 @@ export type Intent =
   | 'marketplace'
   | 'team'
   | 'optimization'
+  | 'fullgame'
   | 'general'
 
 export interface ClassificationResult {

@@ -118,4 +118,19 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { withSentryConfig } = require('@sentry/nextjs')
+
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Upload source maps in CI/production only; skip in local dev to keep builds fast
+  silent: true,
+  widenClientFileUpload: true,
+  // Automatically instrument Next.js data fetching methods and API routes
+  autoInstrumentServerFunctions: true,
+  // Tree-shake Sentry debug code from production bundles
+  disableLogger: true,
+  // Avoid requiring SENTRY_AUTH_TOKEN during local dev (source map upload is optional)
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+})

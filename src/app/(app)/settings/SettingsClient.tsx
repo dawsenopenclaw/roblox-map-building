@@ -1218,12 +1218,22 @@ function ConnectedTab() {
     window.location.href = platform === 'roblox' ? '/api/auth/roblox' : '/api/auth/github'
   }
 
-  const handleDisconnect = (platform: PlatformKey) => {
+  const handleDisconnect = async (platform: PlatformKey) => {
+    // Optimistic UI update
     setConnections((c) => ({
       ...c,
       [platform]: { connected: false, username: null, connectedAt: null },
     }))
     show({ variant: 'info', title: `${platform === 'roblox' ? 'Roblox' : 'GitHub'} disconnected` })
+    try {
+      await fetch('/api/settings/connections', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform }),
+      })
+    } catch {
+      // Non-fatal — optimistic update already applied
+    }
   }
 
   const items: {

@@ -154,8 +154,9 @@ function MarketingNav() {
                 key={link.href}
                 href={link.href}
                 onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : () => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
+                <link.Icon size={14} aria-hidden="true" />
                 {link.label}
               </Link>
             ))}

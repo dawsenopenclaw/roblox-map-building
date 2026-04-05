@@ -360,7 +360,7 @@ export default function HomeClient() {
                 height: 1.4em;
                 overflow: hidden;
                 vertical-align: bottom;
-                min-width: 260px;
+                min-width: min(260px, 80vw);
               }
               .forje-tag-rotate span {
                 display: block;

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSession, getSession, getSessionByToken } from '@/lib/studio-session'
 import { studioConnectSchema, parseBody } from '@/lib/validations'
 import { trackConnect } from '@/lib/studio-analytics'
+import * as Sentry from '@sentry/nextjs'
 
 interface ConnectBody {
   /** Auth token — must match STUDIO_PLUGIN_SECRET env var */
@@ -50,6 +51,15 @@ export async function OPTIONS() {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleConnect(req)
+  } catch (err) {
+    Sentry.captureException(err, { tags: { route: 'studio/connect' } })
+    return NextResponse.json({ error: 'internal' }, { status: 500, headers: CORS_HEADERS })
+  }
+}
+
+async function handleConnect(req: NextRequest) {
   const parsedBody = await parseBody(req, studioConnectSchema)
   if (!parsedBody.ok) {
     return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
@@ -64,8 +74,8 @@ export async function POST(req: NextRequest) {
   // SECURITY: If no STUDIO_PLUGIN_SECRET is set, we MUST still validate the token
   // is either a valid JWT or matches a known session. Never accept arbitrary tokens.
   if (!secret) {
-    // No static secret configured — token MUST be a valid JWT shape (header.payload.signature)
-    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
+    // No static secret configured — token MUST be a valid JWT shape (payload.signature)
+    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
     if (!isJwtShape) {
       return NextResponse.json(
         { error: 'invalid_token', message: 'Token must be a valid JWT from the pairing flow' },
@@ -107,9 +117,8 @@ export async function POST(req: NextRequest) {
 
     if (!existingSession) {
       // Check whether the token looks like a valid JWT before rejecting.
-      // If it's a JWT (two dots), the session simply doesn't exist yet on this
-      // Lambda — recreate it. If it's not a JWT and not the static secret, reject.
-      const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
+      // Our custom JWT is payload.signature (one dot), not standard 3-part JWT.
+      const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
       if (!isJwtShape) {
         return NextResponse.json(
           { error: 'invalid_token' },

@@ -891,7 +891,9 @@ async function freeModelTwoPass(
   if (isBuildIntent) {
     // Use a SHORT focused prompt for Pass 2 — the full CODE_GENERATION_PROMPT is 2900+ lines
     // which overwhelms free models. This compact version gets reliable code output.
-    const codePrompt = `You are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. No other text.
+    // MARKETPLACE_ASSET_RULES is prepended so the free model uses real asset IDs instead
+    // of building trees/lamps/benches from primitive Parts.
+    const codePrompt = MARKETPLACE_ASSET_RULES + `\n\nYou are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. No other text.
 
 ENVIRONMENT: Roblox Studio Edit Mode plugin. No Players, no LocalPlayer, no Character, no runtime events.
 
@@ -1069,7 +1071,9 @@ Keep responses 80-200 words. End with forward momentum — a choice, suggestion,
 
 After your response, add:
 [SUGGESTIONS]
-(2-3 specific actionable next steps, one per line)`
+(2-3 specific actionable next steps, one per line)
+
+` + MARKETPLACE_ASSET_RULES
 
 const FORJEAI_SYSTEM_PROMPT = `You are Forje — a senior Roblox game developer and the user's creative partner. You're the experienced dev friend sitting right next to them, building together late at night, hyped about their game. When starting a new conversation, introduce yourself as: "I'm Forje, your AI game builder. What are we building today?"
 
@@ -6493,9 +6497,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         { role: 'user', content: message },
       ]
 
-      // Build-intent detection: only include the massive object library for build requests.
-      // Chat/conversation gets just the core personality prompt (~2K tokens vs ~25K).
-      const isBuildingIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh'].includes(intent)
+      // Build-intent detection: include the full object library + marketplace rules for any
+      // intent that generates Luau code. Chat/conversation gets the lighter core prompt.
+      const isBuildingIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh',
+        'script', 'debug', 'datasave', 'networking', 'gamesystem', 'multiscript',
+        'vehicle', 'particle', 'weather', 'ui', 'animate', 'combat', 'quest',
+        'performance', 'cleanup'].includes(intent)
       const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
       const systemPrompt = isBuildingIntent

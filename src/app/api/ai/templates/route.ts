@@ -24,7 +24,7 @@ import { classifyIntent, type Intent } from '@/lib/ai/intent-classifier'
 const VALID_INTENTS = new Set<Intent>([
   'terrain', 'building', 'npc', 'script', 'ui', 'audio', 'lighting',
   'economy', 'quest', 'combat', 'vehicle', 'particle', 'mesh', 'texture',
-  'animation', 'analytics', 'marketplace', 'team', 'optimization', 'general',
+  'animation', 'analytics', 'marketplace', 'team', 'optimization', 'fullgame', 'general',
 ])
 
 function isValidIntent(s: string): s is Intent {

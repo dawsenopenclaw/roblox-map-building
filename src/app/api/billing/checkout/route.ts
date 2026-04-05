@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
+import * as Sentry from '@sentry/nextjs'
 
 const schema = z.union([
   z.object({
@@ -111,6 +112,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: 'Invalid checkout type' }, { status: 400 })
   } catch (err) {
+    Sentry.captureException(err, { tags: { route: 'billing/checkout' } })
     console.error('[billing/checkout] Unhandled error', err)
     return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
   }

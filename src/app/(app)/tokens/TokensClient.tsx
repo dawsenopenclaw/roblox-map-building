@@ -124,8 +124,11 @@ function PurchaseButton({ pack }: { pack: typeof TOKEN_PACKS[number] }) {
 
 // ─── Transaction Row ──────────────────────────────────────────────────────────
 
+// DB enum values: PURCHASE, SPEND, REFUND, BONUS, ROLLOVER, SUBSCRIPTION_GRANT, EXPIRY
+const CREDIT_TYPES = new Set(['PURCHASE', 'BONUS', 'ROLLOVER', 'SUBSCRIPTION_GRANT', 'REFUND'])
+
 function TransactionRow({ tx, isLast }: { tx: ApiTransaction; isLast: boolean }) {
-  const isCredit = tx.type === 'CREDIT'
+  const isCredit = CREDIT_TYPES.has(tx.type)
   const date = new Date(tx.createdAt).toLocaleDateString('en-CA') // YYYY-MM-DD
 
   return (

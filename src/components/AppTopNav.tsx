@@ -184,7 +184,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       </Link>
 
       {/* Token balance + upgrade CTA */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
         <div
           className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2"
           role="status"
@@ -230,8 +230,6 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       </button>
 
       {/* Profile handled by global ProfileButton in root layout */}
-      {/* Spacer to keep right padding consistent */}
-      <div className="w-10 flex-shrink-0" />
     </header>
   )
 }

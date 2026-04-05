@@ -47,6 +47,18 @@ export async function POST(req: NextRequest) {
         // but should not trigger token grants or donations unless money actually changed hands.
         const isPaid = session.payment_status === 'paid'
 
+        // Subscription checkout completed — log it so missing webhook events are visible.
+        // Tier activation is handled by customer.subscription.created/updated which Stripe
+        // fires after this. If that event is missing from the Stripe webhook config, the
+        // subscription row will never be updated and the user will stay on FREE.
+        if (session.mode === 'subscription') {
+          console.info('[stripe-webhook] Subscription checkout completed', {
+            sessionId: session.id,
+            userId,
+            subscriptionId: session.subscription,
+          })
+        }
+
         // Token pack purchase — idempotent via sessionId in metadata check
         if (isPaid && session.metadata?.type === 'token_pack' && session.metadata.tokenPackSlug) {
           const pack = getTokenPackBySlug(session.metadata.tokenPackSlug)
@@ -541,25 +553,13 @@ export async function POST(req: NextRequest) {
         break
       }
 
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent
-        const userId = paymentIntent.metadata?.userId
-        const tokenPackSlug = paymentIntent.metadata?.tokenPackSlug
-        if (!userId || !tokenPackSlug) break
-
-        const pack = getTokenPackBySlug(tokenPackSlug)
-        if (!pack) break
-
-        // Idempotency: check if tokens were already credited via checkout.session.completed
-        const alreadyCredited = await db.tokenTransaction.findFirst({
-          where: { metadata: { path: ['paymentIntentId'], equals: paymentIntent.id } },
-          select: { id: true },
-        })
-        if (!alreadyCredited) {
-          await earnTokens(userId, pack.tokens, 'PURCHASE', `Purchased ${pack.name}`, { paymentIntentId: paymentIntent.id })
-        }
-        break
-      }
+      // payment_intent.succeeded is NOT used for token pack crediting.
+      // Token pack metadata (userId, tokenPackSlug) lives on the checkout.session,
+      // not on the payment_intent — so this event never has the data needed to credit
+      // tokens. checkout.session.completed is the sole authoritative crediting event.
+      // Keeping this handler would silently no-op on every token purchase but could
+      // become a double-credit bug if payment_intent metadata were ever added.
+      // case 'payment_intent.succeeded': — intentionally omitted
 
       case 'customer.subscription.trial_will_end': {
         const sub = event.data.object as Stripe.Subscription
