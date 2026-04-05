@@ -138,7 +138,7 @@ export function Viewport({ forceDemo = false, onObjectClick: _onObjectClick, cla
             Install the ForjeGames plugin in Roblox Studio and your game will appear here in real-time.
           </p>
 
-          <div className="bg-white/4 border border-white/8 rounded-lg px-4 py-3 text-left text-xs space-y-1.5 w-full max-w-xs">
+          <div className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-3 text-left text-xs space-y-1.5 w-full max-w-xs">
             <p className="text-gray-300 font-medium mb-2">How to connect:</p>
             <p className="text-gray-400">
               <span className="text-[#D4AF37] font-mono mr-1.5">1.</span>

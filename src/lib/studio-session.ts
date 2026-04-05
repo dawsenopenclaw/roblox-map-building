@@ -88,6 +88,14 @@ export const COMMAND_QUEUE_MAX    = 50
 export const MIN_POLL_INTERVAL_MS = 800
 
 // ---------------------------------------------------------------------------
+// Startup warning — surfaces misconfiguration early in Vercel logs
+// ---------------------------------------------------------------------------
+
+if (!process.env.REDIS_URL) {
+  console.warn('[studio] REDIS_URL not set — sessions will not persist across Lambda instances')
+}
+
+// ---------------------------------------------------------------------------
 // In-memory L1 store — survives Next.js hot-reload via globalThis
 // ---------------------------------------------------------------------------
 
@@ -112,17 +120,24 @@ function getRedis() {
 }
 
 // Key namespaces
-const REDIS_SESSION_PREFIX = 'fj:studio:session:'
-const REDIS_CMD_PREFIX     = 'fj:studio:cmd:'
-const REDIS_TOKEN_PREFIX   = 'fj:studio:token:'
-const REDIS_PLACE_PREFIX   = 'fj:studio:place:'
+const REDIS_SESSION_PREFIX    = 'fj:studio:session:'
+const REDIS_CMD_PREFIX        = 'fj:studio:cmd:'
+const REDIS_TOKEN_PREFIX      = 'fj:studio:token:'
+const REDIS_PLACE_PREFIX      = 'fj:studio:place:'
+const REDIS_SCREENSHOT_PREFIX = 'fj:studio:screenshot:'
+const REDIS_BEFORE_SS_PREFIX  = 'fj:studio:before-screenshot:'
 
-function sessionKey(id: string)  { return `${REDIS_SESSION_PREFIX}${id}` }
-function cmdKey(id: string)      { return `${REDIS_CMD_PREFIX}${id}` }
-function tokenKey(tok: string)   { return `${REDIS_TOKEN_PREFIX}${tok}` }
-function placeKey(pid: string)   { return `${REDIS_PLACE_PREFIX}${pid}` }
+// Screenshots refresh every few seconds — 60 s TTL is plenty
+const SCREENSHOT_TTL_SECS = 60
 
-/** Serialize a session for Redis. Screenshots are excluded — too large. */
+function sessionKey(id: string)        { return `${REDIS_SESSION_PREFIX}${id}` }
+function cmdKey(id: string)            { return `${REDIS_CMD_PREFIX}${id}` }
+function tokenKey(tok: string)         { return `${REDIS_TOKEN_PREFIX}${tok}` }
+function placeKey(pid: string)         { return `${REDIS_PLACE_PREFIX}${pid}` }
+function screenshotKey(id: string)     { return `${REDIS_SCREENSHOT_PREFIX}${id}` }
+function beforeScreenshotKey(id: string) { return `${REDIS_BEFORE_SS_PREFIX}${id}` }
+
+/** Serialize a session for Redis. Screenshots are stored in separate keys. */
 function serialize(session: StudioSession): string {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { latestScreenshot: _ls, beforeScreenshot: _bs, commandQueue: _cq, ...rest } = session
@@ -133,12 +148,40 @@ function serialize(session: StudioSession): string {
 function deserialize(raw: string): StudioSession | null {
   try {
     const obj = JSON.parse(raw) as StudioSession
-    obj.latestScreenshot     = null   // never stored in Redis
+    // Screenshots are stored in dedicated Redis keys — hydrated separately
+    obj.latestScreenshot     = null
     obj.latestScreenshotAt ??= null
-    obj.beforeScreenshot     = null   // never stored in Redis
+    obj.beforeScreenshot     = null
     obj.beforeScreenshotAt ??= null
     obj.commandQueue       ??= []
     return obj
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Write a screenshot to its dedicated Redis key (fire-and-forget).
+ * Stored separately from the session blob so the main session key stays small.
+ */
+function redisPersistScreenshot(sessionId: string, base64Png: string, isBefore: boolean): void {
+  const r = getRedis()
+  if (!r) return
+  const key = isBefore ? beforeScreenshotKey(sessionId) : screenshotKey(sessionId)
+  Promise.resolve(
+    r.set(key, base64Png, 'EX', SCREENSHOT_TTL_SECS),
+  ).catch(() => { /* ignore */ })
+}
+
+/**
+ * Load a screenshot from Redis. Returns null on miss or error.
+ */
+async function redisLoadScreenshot(sessionId: string, isBefore: boolean): Promise<string | null> {
+  const r = getRedis()
+  if (!r) return null
+  const key = isBefore ? beforeScreenshotKey(sessionId) : screenshotKey(sessionId)
+  try {
+    return await r.get(key)
   } catch {
     return null
   }
@@ -224,6 +267,9 @@ function touchHeartbeat(session: StudioSession): void {
 /**
  * Look up a session. L1-first; falls back to Redis on miss.
  * Returns undefined when the session does not exist anywhere.
+ *
+ * Screenshots are always hydrated from Redis when not present in L1 so that
+ * Lambda instances that did not receive the POST can still serve the GET.
  */
 export async function getSession(
   sessionId: string,
@@ -234,6 +280,21 @@ export async function getSession(
   const mem = sessions.get(sessionId)
   if (mem) {
     if (Date.now() - mem.lastHeartbeat > SESSION_TTL_MS) mem.connected = false
+    // Hydrate screenshots from Redis if L1 is missing them (cross-Lambda case)
+    if (!mem.latestScreenshot) {
+      const redisShot = await redisLoadScreenshot(sessionId, false)
+      if (redisShot) {
+        mem.latestScreenshot   = redisShot
+        mem.latestScreenshotAt = mem.latestScreenshotAt ?? Date.now()
+      }
+    }
+    if (!mem.beforeScreenshot) {
+      const redisBefore = await redisLoadScreenshot(sessionId, true)
+      if (redisBefore) {
+        mem.beforeScreenshot   = redisBefore
+        mem.beforeScreenshotAt = mem.beforeScreenshotAt ?? Date.now()
+      }
+    }
     return mem
   }
 
@@ -244,6 +305,21 @@ export async function getSession(
   if (Date.now() - fromRedis.lastHeartbeat > SESSION_TTL_MS) {
     fromRedis.connected = false
   }
+
+  // Hydrate screenshots into the session loaded from Redis
+  const [redisShot, redisBefore] = await Promise.all([
+    redisLoadScreenshot(sessionId, false),
+    redisLoadScreenshot(sessionId, true),
+  ])
+  if (redisShot) {
+    fromRedis.latestScreenshot   = redisShot
+    fromRedis.latestScreenshotAt = fromRedis.latestScreenshotAt ?? Date.now()
+  }
+  if (redisBefore) {
+    fromRedis.beforeScreenshot   = redisBefore
+    fromRedis.beforeScreenshotAt = fromRedis.beforeScreenshotAt ?? Date.now()
+  }
+
   return fromRedis
 }
 
@@ -327,7 +403,8 @@ export async function touchSession(
 }
 
 /**
- * Store a screenshot for a session. Screenshots are kept in L1 only.
+ * Store a screenshot for a session.
+ * Written to L1 and to a dedicated Redis key so all Lambda instances can read it.
  */
 export async function storeScreenshot(
   sessionId: string,
@@ -339,7 +416,9 @@ export async function storeScreenshot(
   session.latestScreenshot   = base64Png
   session.latestScreenshotAt = Date.now()
   sessions.set(sessionId, session)
-  redisPersist(session)  // serializer strips the screenshot field
+  redisPersist(session)
+  // Also write to the dedicated screenshot key so other Lambda instances can read it
+  redisPersistScreenshot(sessionId, base64Png, false)
   return true
 }
 
@@ -358,6 +437,8 @@ export async function storeBeforeScreenshot(
   session.beforeScreenshotAt = Date.now()
   sessions.set(sessionId, session)
   redisPersist(session)
+  // Also write to the dedicated before-screenshot key
+  redisPersistScreenshot(sessionId, base64Png, true)
   return true
 }
 
@@ -473,9 +554,10 @@ export async function drainCommands(
         return commands
       }
 
-      // results[0] is the LRANGE result; results[1] is the DEL count
+      // results[0] is the LRANGE result tuple [err, value]; results[1] is the DEL count tuple
       const lrangeResult = results[0]
-      const rawEntries = Array.isArray(lrangeResult) ? lrangeResult[1] : []
+      const lrangeValue = Array.isArray(lrangeResult) ? lrangeResult[1] : null
+      const rawEntries = Array.isArray(lrangeValue) ? lrangeValue : []
       const commands = parseRedisCmds(rawEntries as string[])
 
       // Clear L1 queue — Redis list is now drained

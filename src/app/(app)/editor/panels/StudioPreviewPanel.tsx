@@ -128,7 +128,7 @@ function BeforeAfterSlider({
           style={{
             position: 'absolute',
             inset: 0,
-            width: containerRef.current?.clientWidth ?? 300,
+            width: '100%',
             height: '100%',
             objectFit: 'cover',
             pointerEvents: 'none',

@@ -49,6 +49,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       users: users.map((u) => ({
         ...u,
+        // `verified` is not a DB field — derive from subscription having been active
+        verified: u.subscription?.status === 'ACTIVE' && u.subscription?.tier !== 'FREE',
         createdAt: u.createdAt.toISOString(),
         updatedAt: u.updatedAt.toISOString(),
         deletedAt: u.deletedAt?.toISOString() ?? null,

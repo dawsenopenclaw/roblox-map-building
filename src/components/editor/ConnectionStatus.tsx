@@ -88,7 +88,7 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
       if (intervalRef.current) clearInterval(intervalRef.current)
       clearTimeout(timeout)
     }
-  }, [overrideState])
+  }, [overrideState, sessionId])
 
   // ---------------------------------------------------------------------------
   // Compact badge (used in toolbars)
@@ -106,7 +106,7 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
   // Full panel
   // ---------------------------------------------------------------------------
   return (
-    <div className={`bg-[#141414] border border-white/8 rounded-xl p-4 select-none ${className}`}>
+    <div className={`bg-[#141414] border border-white/[0.08] rounded-xl p-4 select-none ${className}`}>
       {/* Status row */}
       <div className="flex items-center gap-3 mb-3">
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_CLASSES[state]}`} />
@@ -152,7 +152,7 @@ export function ConnectionStatus({ compact = false, overrideState, sessionId, cl
 
       {/* Help panel */}
       {showHelp && state === 'disconnected' && (
-        <div className="mt-3 pt-3 border-t border-white/8 space-y-2.5">
+        <div className="mt-3 pt-3 border-t border-white/[0.08] space-y-2.5">
           <p className="text-xs font-medium text-gray-300">Setup instructions:</p>
           {[
             'Open Roblox Studio',

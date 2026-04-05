@@ -190,7 +190,7 @@ export default function DownloadClient() {
         </p>
 
         <a
-          href="/plugin/ForjeGames.rbxmx"
+          href="/api/studio/plugin"
           download="ForjeGames.rbxmx"
           className="inline-flex items-center gap-2.5 rounded-xl px-8 py-4 text-base font-bold transition-colors"
           style={{ background: '#D4AF37', color: '#000' }}
@@ -303,7 +303,7 @@ export default function DownloadClient() {
                 to your computer.
               </p>
               <a
-                href="/plugin/ForjeGames.rbxmx"
+                href="/api/studio/plugin"
                 download="ForjeGames.rbxmx"
                 className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
                 style={{

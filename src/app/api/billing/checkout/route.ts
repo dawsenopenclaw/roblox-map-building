@@ -60,9 +60,17 @@ export async function POST(req: NextRequest) {
     if (!customerId || customerId.startsWith('pending_')) {
       const customer = await createCustomer({ email: user.email, userId: user.id })
       customerId = customer.id
-      await db.subscription.update({
+      // Upsert guards against P2025 when the subscription row was never created
+      // (e.g. Clerk webhook delivery failure during sign-up).
+      await db.subscription.upsert({
         where: { userId: user.id },
-        data: { stripeCustomerId: customerId },
+        create: {
+          userId: user.id,
+          stripeCustomerId: customerId,
+          tier: 'FREE',
+          status: 'ACTIVE',
+        },
+        update: { stripeCustomerId: customerId },
       })
     }
 

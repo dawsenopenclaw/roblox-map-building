@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useId, useCallback } from 'react'
 import Link from 'next/link'
+import useSWR from 'swr'
 import {
   Check,
   X,
@@ -544,9 +545,122 @@ function ContactSalesSection() {
 // Main component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// SubscribeCta — handles checkout for paid tiers + current-plan state
+// ---------------------------------------------------------------------------
+
+type SubscribeCtaProps = {
+  tierKey: string
+  highlight: boolean
+  cta: string
+  ctaHref: string
+  annual: boolean
+  currentTier: string | null
+  onManageBilling: () => void
+}
+
+function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, onManageBilling }: SubscribeCtaProps) {
+  const [loading, setLoading] = useState(false)
+
+  const isCurrent = currentTier !== null && currentTier === tierKey
+  const isSubscribed = currentTier !== null && currentTier !== 'FREE'
+
+  const baseHighlight = `text-[#0A0810] hover:opacity-90 hover:scale-[1.02] shadow-[0_6px_32px_rgba(212,175,55,0.5)] active:scale-[0.99]`
+  const baseDefault = `border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04] hover:text-white active:scale-[0.99]`
+  const baseCurrent = `border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/5 active:scale-[0.99]`
+
+  const className = `block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 disabled:opacity-60 disabled:cursor-not-allowed ${
+    isCurrent ? baseCurrent : highlight ? baseHighlight : baseDefault
+  }`
+
+  const style = isCurrent
+    ? {}
+    : highlight
+    ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
+    : {}
+
+  // Free tier — plain link
+  if (tierKey === 'FREE') {
+    return (
+      <Link href={ctaHref} className={className} style={style}>
+        {isCurrent ? 'Current Plan' : cta}
+      </Link>
+    )
+  }
+
+  // Current paid tier — open billing portal
+  if (isCurrent) {
+    return (
+      <button className={className} style={style} onClick={onManageBilling}>
+        Manage Plan
+      </button>
+    )
+  }
+
+  // Other paid tiers — checkout
+  async function handleCheckout() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'subscription',
+          tier: tierKey,
+          yearly: annual,
+        }),
+      })
+      const data = await res.json() as { url?: string; demo?: boolean }
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      window.location.href = ctaHref
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Not yet subscribed and this tier needs auth — fall through to sign-up if demo
+  const label = loading ? 'Redirecting...' : isSubscribed ? 'Switch Plan' : cta
+
+  return (
+    <button
+      className={className}
+      style={style}
+      onClick={handleCheckout}
+      disabled={loading}
+    >
+      {label}
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function PricingClient() {
   const [annual, setAnnual]   = useState(false)
   const [openFaq, setOpenFaq] = useState<string | null>(null)
+
+  // Fetch current billing status to highlight active plan
+  const { data: billingStatus } = useSWR<{ tier: string } | null>(
+    '/api/billing/status',
+    (url: string) => fetch(url).then(r => r.ok ? r.json() as Promise<{ tier: string }> : null),
+    { revalidateOnFocus: false }
+  )
+  const currentTier: string | null = billingStatus?.tier ?? null
+
+  const openBillingPortal = useCallback(async () => {
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const data = await res.json() as { url: string }
+      if (data.url) window.location.href = data.url
+    } catch {
+      window.location.href = '/billing'
+    }
+  }, [])
 
   const handleCustomCta = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
@@ -875,21 +989,15 @@ export default function PricingClient() {
                       {tier.cta}
                     </a>
                   ) : (
-                    <Link
-                      href={tier.ctaHref}
-                      className={`block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 ${
-                        tier.highlight
-                          ? 'text-[#0A0810] hover:opacity-90 hover:scale-[1.02] shadow-[0_6px_32px_rgba(212,175,55,0.5)] active:scale-[0.99]'
-                          : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04] hover:text-white active:scale-[0.99]'
-                      }`}
-                      style={
-                        tier.highlight
-                          ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
-                          : {}
-                      }
-                    >
-                      {tier.cta}
-                    </Link>
+                    <SubscribeCta
+                      tierKey={tier.key}
+                      highlight={tier.highlight}
+                      cta={tier.cta}
+                      ctaHref={tier.ctaHref}
+                      annual={annual}
+                      currentTier={currentTier}
+                      onManageBilling={openBillingPortal}
+                    />
                   )}
 
                   {/* Trial / free / contact notice */}

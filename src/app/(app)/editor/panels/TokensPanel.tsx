@@ -46,7 +46,9 @@ export default function TokensPanel({ tokensUsed }: TokensPanelProps) {
 
   // Derive values — fall back to safe defaults while loading or on error
   const balance = data?.balance ?? 1000
-  const TOKEN_LIMIT = data?.lifetimeEarned ?? 1000
+  // Use balance as the denominator for the progress bar; lifetimeEarned is an
+  // all-time total and would make the bar near-zero for active users.
+  const TOKEN_LIMIT = Math.max(balance, 1000)
   const remaining = Math.max(0, balance - tokensUsed)
   const usedPct = Math.min(100, (tokensUsed / TOKEN_LIMIT) * 100)
 

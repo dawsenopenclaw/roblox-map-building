@@ -2,6 +2,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
+import {
+  Rocket,
+  Sparkles,
+  CreditCard,
+  BookOpen,
+  Shield,
+  Code2,
+  Gauge,
+  AlertTriangle,
+  Terminal,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,25 +37,26 @@ interface NavSection {
   id: SectionId
   label: string
   group?: string
+  icon: LucideIcon
 }
 
 // ─── Navigation structure ─────────────────────────────────────────────────────
 
 const NAV: NavSection[] = [
-  { id: 'quickstart', label: 'Quick Start', group: 'Overview' },
-  { id: 'features', label: 'Features', group: 'Overview' },
-  { id: 'pricing', label: 'Pricing', group: 'Overview' },
-  { id: 'getting-started', label: 'Getting Started', group: 'API Reference' },
-  { id: 'authentication', label: 'Authentication', group: 'API Reference' },
-  { id: 'endpoint-voice-to-game', label: 'POST /api/ai/voice-to-game', group: 'Endpoints' },
-  { id: 'endpoint-image-to-map', label: 'POST /api/ai/image-to-map', group: 'Endpoints' },
-  { id: 'endpoint-generate', label: 'POST /api/ai/generate', group: 'Endpoints' },
-  { id: 'endpoint-mesh', label: 'POST /api/ai/mesh', group: 'Endpoints' },
-  { id: 'endpoint-texture', label: 'POST /api/ai/texture', group: 'Endpoints' },
-  { id: 'endpoint-marketplace-search', label: 'GET /api/marketplace/search', group: 'Endpoints' },
-  { id: 'sdks', label: 'SDKs', group: 'API Reference' },
-  { id: 'rate-limits', label: 'Rate Limits', group: 'API Reference' },
-  { id: 'errors', label: 'Errors', group: 'API Reference' },
+  { id: 'quickstart',                  label: 'Quick Start',                   group: 'Overview',     icon: Rocket },
+  { id: 'features',                    label: 'Features',                      group: 'Overview',     icon: Sparkles },
+  { id: 'pricing',                     label: 'Pricing',                       group: 'Overview',     icon: CreditCard },
+  { id: 'getting-started',             label: 'Getting Started',               group: 'API Reference',icon: BookOpen },
+  { id: 'authentication',              label: 'Authentication',                group: 'API Reference',icon: Shield },
+  { id: 'endpoint-voice-to-game',      label: 'POST /api/ai/voice-to-game',    group: 'Endpoints',    icon: Terminal },
+  { id: 'endpoint-image-to-map',       label: 'POST /api/ai/image-to-map',     group: 'Endpoints',    icon: Terminal },
+  { id: 'endpoint-generate',           label: 'POST /api/ai/generate',         group: 'Endpoints',    icon: Terminal },
+  { id: 'endpoint-mesh',               label: 'POST /api/ai/mesh',             group: 'Endpoints',    icon: Terminal },
+  { id: 'endpoint-texture',            label: 'POST /api/ai/texture',          group: 'Endpoints',    icon: Terminal },
+  { id: 'endpoint-marketplace-search', label: 'GET /api/marketplace/search',   group: 'Endpoints',    icon: Terminal },
+  { id: 'sdks',                        label: 'SDKs',                          group: 'API Reference',icon: Code2 },
+  { id: 'rate-limits',                 label: 'Rate Limits',                   group: 'API Reference',icon: Gauge },
+  { id: 'errors',                      label: 'Errors',                        group: 'API Reference',icon: AlertTriangle },
 ]
 
 // ─── Lightweight syntax highlighter ──────────────────────────────────────────
@@ -1335,13 +1348,14 @@ function SidebarContent({
                 <li key={item.id}>
                   <button
                     onClick={() => onSelect(item.id)}
-                    className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors leading-snug font-mono ${
+                    className={`w-full text-left text-xs px-2 py-1.5 rounded-lg transition-colors leading-snug font-mono flex items-center gap-1.5 ${
                       isActive
                         ? 'text-[#D4AF37] bg-[#D4AF37]/8'
                         : 'hover:text-white hover:bg-[#1A2550]/50'
                     }`}
                     style={!isActive ? { color: '#8B95B0' } : undefined}
                   >
+                    <item.icon size={12} strokeWidth={1.8} className="flex-shrink-0" aria-hidden="true" />
                     {item.label}
                   </button>
                 </li>

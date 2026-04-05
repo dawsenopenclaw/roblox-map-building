@@ -19,6 +19,20 @@ export function ProfileButton() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { theme, themes, setTheme } = useTheme()
 
+  useEffect(() => {
+    const id = 'pb-drop-in-kf'
+    if (document.getElementById(id)) return
+    const style = document.createElement('style')
+    style.id = id
+    style.textContent = `
+      @keyframes pb-drop-in {
+        from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0)   scale(1);    }
+      }
+    `
+    document.head.appendChild(style)
+  }, [])
+
   // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -212,12 +226,6 @@ export function ProfileButton() {
         </div>
       )}
 
-      <style>{`
-        @keyframes pb-drop-in {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0)   scale(1);    }
-        }
-      `}</style>
     </div>
   )
 }

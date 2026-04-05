@@ -13,25 +13,52 @@ export async function GET() {
     try {
       const { db } = await import('@/lib/db')
 
-      const user = await db.user.findUnique({
-        where: { clerkId },
-        include: {
-          subscription: true,
-          tokenBalance: {
-            include: {
-              transactions: {
-                where: {
-                  type: 'SPEND',
-                  createdAt: {
-                    gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
+      const [user, marketplaceSearchCount, apiCallCount, buildsThisMonth] = await Promise.all([
+        db.user.findUnique({
+          where: { clerkId },
+          include: {
+            subscription: true,
+            tokenBalance: {
+              include: {
+                transactions: {
+                  where: {
+                    type: 'SPEND',
+                    createdAt: { gte: periodStart },
                   },
+                  select: { amount: true },
                 },
-                select: { amount: true },
               },
             },
           },
-        },
-      })
+        }),
+        // Marketplace searches: provider = 'marketplace' or operation contains 'search'
+        db.apiUsageRecord.count({
+          where: {
+            user: { clerkId },
+            createdAt: { gte: periodStart },
+            OR: [
+              { provider: 'marketplace' },
+              { operation: { contains: 'search', mode: 'insensitive' } },
+            ],
+          },
+        }),
+        // API calls: all records this month
+        db.apiUsageRecord.count({
+          where: {
+            user: { clerkId },
+            createdAt: { gte: periodStart },
+          },
+        }),
+        // Builds this month — Build.user relation has clerkId via nested filter
+        db.build.count({
+          where: {
+            user: { clerkId },
+            createdAt: { gte: periodStart },
+          },
+        }),
+      ])
 
       if (!user) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -59,8 +86,14 @@ export async function GET() {
         : null
 
       const priceMonthly = tierConfig.priceMonthly
+      // Format cents to dollars: strip unnecessary trailing zeros (e.g. 999 → "$9.99", 1000 → "$10")
+      const priceInDollars = priceMonthly / 100
       const monthlyPriceDisplay =
-        priceMonthly === 0 ? 'Free' : `$${(priceMonthly / 100).toFixed(0)}`
+        priceMonthly === 0
+          ? 'Free'
+          : Number.isInteger(priceInDollars)
+          ? `$${priceInDollars}`
+          : `$${priceInDollars.toFixed(2)}`
 
       return NextResponse.json({
         plan: tierConfig.name,
@@ -72,6 +105,9 @@ export async function GET() {
         renewDate,
         monthlyPrice: monthlyPriceDisplay,
         cancelAtPeriodEnd: user.subscription?.cancelAtPeriodEnd ?? false,
+        marketplaceSearches: marketplaceSearchCount,
+        apiCallsThisMonth: apiCallCount,
+        buildsThisMonth,
       })
     } catch (dbErr) {
       // DB not reachable at all (e.g. cold start, misconfigured) — return null so

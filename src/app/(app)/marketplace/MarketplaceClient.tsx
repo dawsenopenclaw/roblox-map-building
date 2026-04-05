@@ -18,7 +18,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  LayoutGrid,
+  Gamepad2,
+  Map,
+  Code2,
+  Building,
+  Users,
+  Music,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,14 +59,14 @@ interface Template {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CATEGORY_TABS: { value: CategoryTab; label: string; icon: string }[] = [
-  { value: 'all',           label: 'All',            icon: '✦' },
-  { value: 'GAME_TEMPLATE', label: 'Full Games',      icon: '◉' },
-  { value: 'MAP_TEMPLATE',  label: 'Terrain & Maps',  icon: '🗺' },
-  { value: 'SCRIPT',        label: 'Scripts',         icon: '⌨' },
-  { value: 'UI_KIT',        label: 'UI & Buildings',  icon: '◻' },
-  { value: 'ASSET',         label: 'NPCs & Models',   icon: '◈' },
-  { value: 'SOUND',         label: 'Audio',           icon: '♪' },
+const CATEGORY_TABS: { value: CategoryTab; label: string; icon: LucideIcon }[] = [
+  { value: 'all',           label: 'All',            icon: LayoutGrid },
+  { value: 'GAME_TEMPLATE', label: 'Full Games',      icon: Gamepad2 },
+  { value: 'MAP_TEMPLATE',  label: 'Terrain & Maps',  icon: Map },
+  { value: 'SCRIPT',        label: 'Scripts',         icon: Code2 },
+  { value: 'UI_KIT',        label: 'UI & Buildings',  icon: Building },
+  { value: 'ASSET',         label: 'NPCs & Models',   icon: Users },
+  { value: 'SOUND',         label: 'Audio',           icon: Music },
 ]
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -633,7 +641,7 @@ export default function MarketplacePage() {
                 }
               `}
             >
-              <span className="text-base leading-none" aria-hidden="true">{tab.icon}</span>
+              <tab.icon size={14} strokeWidth={2} aria-hidden="true" />
               {tab.label}
             </button>
           ))}

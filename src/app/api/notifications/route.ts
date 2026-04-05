@@ -26,10 +26,14 @@ const DB_TYPE_TO_UI: Record<string, NotificationType> = {
   TOKEN_DEPLETED: 'system',
   SALE: 'sale',
   REFERRAL_EARNED: 'sale',
+  TEMPLATE_PURCHASED: 'sale',
+  PAYOUT_COMPLETED: 'sale',
+  PAYOUT_FAILED: 'sale',
   TEAM_INVITE: 'team',
   ACHIEVEMENT_UNLOCKED: 'achievement',
   SYSTEM: 'system',
   WEEKLY_DIGEST: 'system',
+  REVIEW_RECEIVED: 'system',
 }
 
 // ─── Demo data (fallback for unauthenticated / demo mode) ────────────────────

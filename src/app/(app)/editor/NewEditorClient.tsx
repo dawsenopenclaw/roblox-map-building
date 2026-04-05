@@ -18,6 +18,9 @@ import { ToastProvider, useToast } from '@/components/editor/EditorToasts'
 import { ShortcutsHelp } from '@/components/editor/ShortcutsHelp'
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
 import { THEMES } from '@/lib/themes'
+import SettingsPanel from './panels/SettingsPanel'
+import { FirstRunExperience } from '@/components/editor/FirstRunExperience'
+import { SuggestedPrompts } from '@/components/editor/SuggestedPrompts'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -97,6 +100,37 @@ function IconMinimize() {
   )
 }
 
+function IconDropUser() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="7" cy="4.5" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M1.5 12.5c0-3 2-4.5 5.5-4.5s5.5 1.5 5.5 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function IconDropPalette() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
+      <circle cx="4.5" cy="6" r="1" fill="currentColor"/>
+      <circle cx="7" cy="4.5" r="1" fill="currentColor"/>
+      <circle cx="9.5" cy="6" r="1" fill="currentColor"/>
+      <path d="M7 11.5c1.5 0 2.5-.8 2.5-2s-1-1.5-2.5-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
+function IconDropCreditCard() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <rect x="1.5" y="3" width="11" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M1.5 6h11" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M4 9h2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 // ─── Shared styles ───────────────────────────────────────────────────────────
 
 const kbdStyle: React.CSSProperties = {
@@ -169,19 +203,20 @@ function EditorProfileDropdown({ user }: { user: { imageUrl?: string; firstName?
           </div>
           {/* Links */}
           {[
-            { href: '/settings', label: 'Profile & Settings' },
-            { href: '/settings?tab=appearance', label: 'Appearance' },
-            { href: '/billing', label: 'Billing' },
-          ].map((link) => (
+            { href: '/settings',              label: 'Profile & Settings', Icon: IconDropUser },
+            { href: '/settings?tab=appearance', label: 'Appearance',       Icon: IconDropPalette },
+            { href: '/billing',               label: 'Billing',            Icon: IconDropCreditCard },
+          ].map(({ href, label, Icon }) => (
             <a
-              key={link.href}
-              href={link.href}
+              key={href}
+              href={href}
               onClick={() => setOpen(false)}
-              style={{ display: 'block', padding: '8px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)', textDecoration: 'none', transition: 'background 0.1s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)', textDecoration: 'none', transition: 'background 0.1s' }}
               onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'white' }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)' }}
             >
-              {link.label}
+              <Icon />
+              {label}
             </a>
           ))}
           {/* Sign out */}
@@ -1726,6 +1761,11 @@ function EditorInner() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [cinematicChatCollapsed, setCinematicChatCollapsed] = useState(false)
   const [showMinimalPreview, setShowMinimalPreview] = useState(false)
+  // First-run: persisted skip so it doesn't re-appear after the user dismisses it
+  const [firstRunSkipped, setFirstRunSkipped] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('fg_first_run_skipped') === 'true'
+  })
   const chatPanelRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -1809,6 +1849,13 @@ function EditorInner() {
     studioConnected: studio.isConnected,
     studioContext: studio.studioContext,
   })
+
+  // First-run skip handler — persists to localStorage
+  const handleSkipFirstRun = useCallback(() => {
+    try { localStorage.setItem('fg_first_run_skipped', 'true') } catch { /* ignore */ }
+    setFirstRunSkipped(true)
+    studio.confirmConnected()
+  }, [studio])
 
   // Build-error action handlers
   const handleRetry = useCallback(() => {
@@ -1971,6 +2018,7 @@ function EditorInner() {
                 onRetry={handleRetry}
                 onBuildDifferently={handleBuildDifferently}
                 onDismiss={handleDismissError}
+                onEditAndResend={chat.editAndResend}
                 compact={false}
               />
             </div>
@@ -2066,6 +2114,7 @@ function EditorInner() {
                     onRetry={handleRetry}
                     onBuildDifferently={handleBuildDifferently}
                     onDismiss={handleDismissError}
+                    onEditAndResend={chat.editAndResend}
                     compact={true}
                   />
                 </div>
@@ -2099,23 +2148,40 @@ function EditorInner() {
                     className={mobileTab === 'chat' ? 'hidden md:flex' : 'flex'}
                     style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 12, overflow: 'hidden' }}
                   >
-                    <ViewportArea
-                      isConnected={studio.isConnected}
-                      screenshotUrl={studio.screenshotUrl}
-                      placeName={studio.placeName}
-                      connectFlow={studio.connectFlow}
-                      connectCode={studio.connectCode}
-                      connectTimer={studio.connectTimer}
-                      onGenerateCode={studio.generateCode}
-                      onConfirmConnected={studio.confirmConnected}
-                      onDisconnect={studio.disconnect}
-                      onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
-                      activity={studio.activity}
-                      commandsSent={studio.commandsSent}
-                      expanded={viewportExpanded}
-                      onToggleExpand={() => setViewportExpanded((v) => !v)}
-                      previewParts={previewParts}
-                    />
+                    {/* First-run experience: shown when not connected and user hasn't skipped */}
+                    {!studio.isConnected && !firstRunSkipped ? (
+                      <div style={{ flex: 1, background: 'rgba(6,10,20,0.5)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
+                        <div style={{ position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto' }}>
+                          <FirstRunExperience
+                            connectFlow={studio.connectFlow}
+                            connectCode={studio.connectCode}
+                            connectTimer={studio.connectTimer}
+                            onGenerateCode={studio.generateCode}
+                            onConfirmConnected={studio.confirmConnected}
+                            onSkip={handleSkipFirstRun}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <ViewportArea
+                        isConnected={studio.isConnected}
+                        screenshotUrl={studio.screenshotUrl}
+                        placeName={studio.placeName}
+                        connectFlow={studio.connectFlow}
+                        connectCode={studio.connectCode}
+                        connectTimer={studio.connectTimer}
+                        onGenerateCode={studio.generateCode}
+                        onConfirmConnected={studio.confirmConnected}
+                        onDisconnect={studio.disconnect}
+                        onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                        activity={studio.activity}
+                        commandsSent={studio.commandsSent}
+                        expanded={viewportExpanded}
+                        onToggleExpand={() => setViewportExpanded((v) => !v)}
+                        previewParts={previewParts}
+                      />
+                    )}
                   </div>
                   <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
                   {!viewportExpanded && (
@@ -2143,6 +2209,15 @@ function EditorInner() {
                         backdropFilter: 'blur(2px)', borderRadius: 12, zIndex: 15,
                         pointerEvents: 'none', transition: 'opacity 0.25s ease-out' }} />
                     )}
+                    {/* Suggested prompts — only shown when chat is empty and not compact */}
+                    {!viewportExpanded && chat.messages.length === 0 && (
+                      <div style={{ padding: '8px 12px 0', flexShrink: 0 }}>
+                        <SuggestedPrompts
+                          onSend={(prompt) => { void chat.sendMessage(prompt) }}
+                          hidden={chat.messages.length > 0}
+                        />
+                      </div>
+                    )}
                     <ChatPanel
                       messages={chat.messages}
                       input={chat.input}
@@ -2157,6 +2232,7 @@ function EditorInner() {
                       onRetry={handleRetry}
                       onBuildDifferently={handleBuildDifferently}
                       onDismiss={handleDismissError}
+                      onEditAndResend={chat.editAndResend}
                       compact={viewportExpanded}
                     />
                   </div>
@@ -2181,6 +2257,7 @@ function EditorInner() {
                         onRetry={handleRetry}
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
+                        onEditAndResend={chat.editAndResend}
                         compact={false}
                       />
                     </div>
@@ -2226,6 +2303,7 @@ function EditorInner() {
                         onRetry={handleRetry}
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
+                        onEditAndResend={chat.editAndResend}
                         compact={false}
                       />
                     </div>
@@ -2292,7 +2370,18 @@ function EditorInner() {
                         </div>
                       )}
                       {sidebarPanel === 'settings' && (
-                        <SettingsSidebarPanel />
+                        <SettingsPanel
+                          studioStatus={{
+                            connected: studio.isConnected,
+                            placeName: studio.placeName || undefined,
+                            placeId: studio.placeId ? Number(studio.placeId) : undefined,
+                            sessionId: studio.sessionId ?? undefined,
+                          }}
+                          totalTokens={0}
+                          tokensRemaining={null}
+                          onDisconnect={studio.disconnect}
+                          onRescanWorkspace={studio.isConnected ? studio.requestScreenshot : undefined}
+                        />
                       )}
                       {sidebarPanel === 'history' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

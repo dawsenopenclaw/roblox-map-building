@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles } from 'lucide-react'
+import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles, ExternalLink, Download } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +13,13 @@ type PaymentRow = {
   description: string
   amount: string
   status: 'Paid' | 'Pending' | 'Failed'
+  pdfUrl: string | null
+  hostedUrl: string | null
+}
+
+type InvoicesResponse = {
+  invoices: PaymentRow[]
+  demo: boolean
 }
 
 type UsageStat = {
@@ -34,6 +41,9 @@ type BillingStatus = {
   renewDate: string | null
   monthlyPrice: string
   cancelAtPeriodEnd: boolean
+  marketplaceSearches: number
+  apiCallsThisMonth: number
+  buildsThisMonth: number
 }
 
 // ─── Free plan defaults (shown when not subscribed or data unavailable) ───────
@@ -48,6 +58,9 @@ const FREE_DEFAULTS: BillingStatus = {
   renewDate: null,
   monthlyPrice: 'Free',
   cancelAtPeriodEnd: false,
+  marketplaceSearches: 0,
+  apiCallsThisMonth: 0,
+  buildsThisMonth: 0,
 }
 
 // ─── Tier config ──────────────────────────────────────────────────────────────
@@ -97,13 +110,18 @@ function getTierConfig(tier: string): TierConfig {
   }
 }
 
-// ─── Fetcher ──────────────────────────────────────────────────────────────────
+// ─── Fetchers ─────────────────────────────────────────────────────────────────
 
-async function fetcher(url: string): Promise<BillingStatus | null> {
+async function billingFetcher(url: string): Promise<BillingStatus | null> {
   const res = await fetch(url)
   if (!res.ok) return null
-  const data = await res.json() as BillingStatus | null
-  return data
+  return res.json() as Promise<BillingStatus | null>
+}
+
+async function invoicesFetcher(url: string): Promise<InvoicesResponse> {
+  const res = await fetch(url)
+  if (!res.ok) return { invoices: [], demo: false }
+  return res.json() as Promise<InvoicesResponse>
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -130,7 +148,7 @@ function SectionDivider() {
 }
 
 function UsageMeter({ stat }: { stat: UsageStat }) {
-  const pct = Math.min(100, Math.round((stat.used / stat.limit) * 100))
+  const pct = stat.limit > 0 ? Math.min(100, Math.round((stat.used / stat.limit) * 100)) : 0
   const isHigh = pct >= 80
   return (
     <div className="space-y-2">
@@ -168,7 +186,13 @@ function SkeletonBlock({ className }: { className?: string }) {
 export default function BillingClient() {
   const { data: rawBilling, isLoading } = useSWR<BillingStatus | null>(
     '/api/billing/status',
-    fetcher,
+    billingFetcher,
+    { revalidateOnFocus: false }
+  )
+
+  const { data: invoicesData, isLoading: invoicesLoading } = useSWR<InvoicesResponse>(
+    '/api/billing/invoices',
+    invoicesFetcher,
     { revalidateOnFocus: false }
   )
 
@@ -178,6 +202,8 @@ export default function BillingClient() {
   const tokenPct = Math.min(100, Math.round((billing.tokensUsed / billing.tokenLimit) * 100))
   const tokensRemaining = Math.max(0, billing.tokenLimit - billing.tokensUsed)
   const tierConfig = getTierConfig(billing.tier)
+
+  const payments: PaymentRow[] = invoicesData?.invoices ?? []
 
   const usageStats: UsageStat[] = [
     {
@@ -190,7 +216,7 @@ export default function BillingClient() {
     },
     {
       label: 'Marketplace Searches',
-      used: 0,
+      used: billing.marketplaceSearches ?? 0,
       limit: 500,
       icon: <Package size={14} />,
       color: '#60a5fa',
@@ -198,15 +224,13 @@ export default function BillingClient() {
     },
     {
       label: 'API Calls',
-      used: 0,
+      used: billing.apiCallsThisMonth ?? 0,
       limit: 10_000,
       icon: <Zap size={14} />,
       color: '#a78bfa',
       gradient: 'linear-gradient(90deg, #a78bfa 0%, #8b5cf6 100%)',
     },
   ]
-
-  const payments: PaymentRow[] = []
 
   const openBillingPortal = useCallback(async () => {
     try {
@@ -278,7 +302,8 @@ export default function BillingClient() {
                   <>
                     <div className="flex items-center gap-3 mb-3">
                       <span className="text-3xl font-bold text-white">{billing.plan}</span>
-                      <span className={`inline-flex items-center gap-1.5 ${tierConfig.badgeBg} border ${tierConfig.badgeBorder} text-[#D4AF37] text-xs font-bold px-3 py-1.5 rounded-full`}
+                      <span
+                        className={`inline-flex items-center gap-1.5 ${tierConfig.badgeBg} border ${tierConfig.badgeBorder} text-[#D4AF37] text-xs font-bold px-3 py-1.5 rounded-full`}
                         style={{ textShadow: '0 0 8px rgba(212,175,55,0.5)' }}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] inline-block animate-pulse" />
@@ -450,7 +475,7 @@ export default function BillingClient() {
             </div>
           </div>
 
-          {isLoading ? (
+          {invoicesLoading ? (
             <div className="space-y-4">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="flex justify-between gap-4">
@@ -466,33 +491,74 @@ export default function BillingClient() {
               <div className="w-10 h-10 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mx-auto mb-3">
                 <CreditCard size={18} className="text-gray-600" />
               </div>
-              <p className="text-gray-500 text-sm">No payment history yet.</p>
-              <button
-                onClick={openBillingPortal}
-                className="text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors mt-1.5"
-              >
-                View in Stripe →
-              </button>
+              <p className="text-gray-500 text-sm">
+                {invoicesData?.demo
+                  ? 'No payment history — subscribe to see invoices here.'
+                  : 'No payment history yet.'}
+              </p>
+              {!invoicesData?.demo && (
+                <button
+                  onClick={openBillingPortal}
+                  className="text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors mt-1.5"
+                >
+                  View in Stripe →
+                </button>
+              )}
+              {invoicesData?.demo && (
+                <Link
+                  href="/pricing"
+                  className="text-xs text-[#D4AF37]/70 hover:text-[#D4AF37] transition-colors mt-1.5 inline-block"
+                >
+                  View plans →
+                </Link>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full text-sm min-w-[400px]">
+              <table className="w-full text-sm min-w-[520px]">
                 <thead>
                   <tr className="border-b border-white/[0.06]">
                     <th className="text-left text-xs text-gray-600 font-medium pb-3">Date</th>
                     <th className="text-left text-xs text-gray-600 font-medium pb-3">Description</th>
                     <th className="text-right text-xs text-gray-600 font-medium pb-3">Amount</th>
                     <th className="text-right text-xs text-gray-600 font-medium pb-3">Status</th>
+                    <th className="text-right text-xs text-gray-600 font-medium pb-3">Links</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {payments.map(row => (
                     <tr key={row.id} className="group hover:bg-white/[0.02] transition-colors">
                       <td className="py-4 text-gray-500 text-xs whitespace-nowrap">{row.date}</td>
-                      <td className="py-4 text-white pr-4">{row.description}</td>
+                      <td className="py-4 text-white pr-4 max-w-[180px] truncate">{row.description}</td>
                       <td className="py-4 text-white text-right tabular-nums font-medium">{row.amount}</td>
                       <td className="py-4 text-right">
                         <StatusBadge status={row.status} />
+                      </td>
+                      <td className="py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {row.hostedUrl && (
+                            <a
+                              href={row.hostedUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-600 hover:text-[#D4AF37] transition-colors"
+                              title="View invoice"
+                            >
+                              <ExternalLink size={13} />
+                            </a>
+                          )}
+                          {row.pdfUrl && (
+                            <a
+                              href={row.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-600 hover:text-[#D4AF37] transition-colors"
+                              title="Download PDF"
+                            >
+                              <Download size={13} />
+                            </a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

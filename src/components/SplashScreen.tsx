@@ -461,7 +461,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
   // ── Guard renders ─────────────────────────────────────────────────────────
   // Before mount (SSR and first paint) render children directly so there is
   // no blank frame — the inline script in layout.tsx already set the dark bg.
-  if (!isMounted || splashState === 'pending') return null
+  if (!isMounted || splashState === 'pending') return <>{children}</>
   if (splashState === 'done') return <>{children}</>
 
   const isHolo = phase >= 2

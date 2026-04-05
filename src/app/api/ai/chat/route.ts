@@ -150,8 +150,8 @@ function buildAssetLuauSnippet(
     `local _a_${varName} = game:GetService("InsertService"):LoadAsset(${asset.id})`,
     `local ${varName} = _a_${varName}:FindFirstChildWhichIsA("Model") or _a_${varName}:GetChildren()[1]`,
     `if ${varName} then`,
-    `  if ${varName}:IsA("Model") and ${varName}.PrimaryPart then`,
-    `    ${varName}:SetPrimaryPartCFrame(CFrame.new(${position}))`,
+    `  if ${varName}:IsA("Model") then`,
+    `    ${varName}:PivotTo(CFrame.new(${position}))`,
     `  elseif ${varName}:IsA("BasePart") then`,
     `    ${varName}.Position = ${position}`,
     `  end`,
@@ -208,8 +208,8 @@ local function placeAsset(assetId, position, scale, folder)
     local a = IS:LoadAsset(assetId)
     local model = a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1]
     if not model then a:Destroy() return end
-    if model:IsA("Model") and model.PrimaryPart then
-      model:SetPrimaryPartCFrame(CFrame.new(position))
+    if model:IsA("Model") then
+      model:PivotTo(CFrame.new(position))
     elseif model:IsA("BasePart") then
       model.Position = position
     end
@@ -571,7 +571,7 @@ async function callGemini(
             })),
             { role: 'user', parts: [{ text: userMessage }] },
           ],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 },
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
         }),
       },
     )
@@ -609,7 +609,7 @@ async function callGroq(
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
         max_tokens: maxTokens,
-        temperature: 0.7,
+        temperature: 0.4,
         messages: [
           { role: 'system', content: systemPrompt },
           ...history.map((h) => ({ role: h.role, content: h.content })),
@@ -734,12 +734,13 @@ RULES:
   → Base detail: every post/pole gets a wider base plate or decorative footing
   → Edge highlight: thin lighter-colored Part along top edges of major surfaces
 - For props use InsertService:LoadAsset() with these IDs:
-  Trees: 5763950(Oak) 5763974(Pine) 2768898073(Palm)  Lamps: 6284583030(Iron) 3583066088(Modern)
-  Benches: 5902690736  Trash: 131961978  Hydrant: 6660038993  Barricade: 5902690736
-  Barrel: 2823778520  Fountain: 4418622526  Cars: 3583066088(Sedan) 6284583030(Truck)
-  Chairs: 5763974  Tables: 4934138742  Beds: 3583066088  Bookshelves: 5902690736
+  Trees: 5763950(Oak) 5763974(Pine) 2768898073(Palm) 3038459267(Cherry) 131961978(Birch)
+  Lamps: 135031212967724(Iron Street) 3583066088(Modern Street) 6660038993(Floor) 4934138742(Chandelier)
+  Benches: 5902690736(Wooden)  Trash: 129522007661406  Hydrant: 234171628  Barrel: 172270997(Wood)
+  Fountain: 74355704971397(Stone)  Cars: 8930669091(Sedan) 7658302807(Pickup Truck)
+  Chairs: 4824976957(Wooden)  Tables: 697456358(Dining)  Beds: 880178537(Double)  Bookshelves: 9914694425
   Helper: local IS=game:GetService("InsertService")
-  local function placeAsset(id,pos,folder) local a=IS:LoadAsset(id) local m=a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1] if m then if m:IsA("Model") and m.PrimaryPart then m:SetPrimaryPartCFrame(CFrame.new(pos)) elseif m:IsA("BasePart") then m.Position=pos end m.Parent=folder end a:Destroy() end
+  local function placeAsset(id,pos,folder) local a=IS:LoadAsset(id) local m=a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1] if m then if m:IsA("Model") then m:PivotTo(CFrame.new(pos)) elseif m:IsA("BasePart") then m.Position=pos end m.Parent=folder end a:Destroy() end
 - Build custom structures from Part primitives. Use marketplace assets for props/furniture/nature.
 ` + (cameraContext ? '\nSTUDIO CONTEXT:\n' + cameraContext : '')
     const buildInstruction = `Build this: ${message}
@@ -4522,10 +4523,15 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   if (customApiKey && customProvider === 'anthropic') {
     try {
       const customAnthropic = new Anthropic({ apiKey: customApiKey })
+      const isBuildIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh'].includes(intent)
+      const customMaxTokens = isBuildIntent ? 4096 : 1024
+      const customSystemPrompt = isBuildIntent
+        ? FORJEAI_SYSTEM_PROMPT + cameraContext + multiStepContext
+        : FORJEAI_CORE_PROMPT + cameraContext
       const aiResponse = await customAnthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
-        system: FORJEAI_SYSTEM_PROMPT,
+        max_tokens: customMaxTokens,
+        system: customSystemPrompt,
         messages: [
           ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
           { role: 'user', content: message },
@@ -4552,12 +4558,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   const anthropic = getAnthropicClient()
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
 
-  // Skip Claude entirely — go straight to free Gemini/Groq pipeline.
-  // The Anthropic API key has no credits, so every Claude call fails and
-  // then falls back to the free pipeline anyway — but the fallback path
-  // has a bug where the stream can produce empty responses.
-  // TODO: Re-enable when Anthropic credits are topped up.
-  const anthropicAvailable = false
+  // Re-enabled Claude path — use Claude when ANTHROPIC_API_KEY is set and valid.
+  // Falls back to free Gemini/Groq pipeline only when Claude is unavailable.
+  const anthropicAvailable = true
 
   if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).

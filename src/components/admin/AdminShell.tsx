@@ -15,6 +15,12 @@ import {
   X,
   Link2,
   Radio,
+  CreditCard,
+  Ticket,
+  Kanban,
+  Activity,
+  PieChart,
+  ArrowLeft,
 } from 'lucide-react'
 // Profile handled by global ProfileButton in root layout
 
@@ -26,11 +32,13 @@ interface AdminUser {
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/admin/dev-board', label: 'Dev Board', icon: BarChart3 },
-  { href: '/admin/metrics', label: 'Live Metrics', icon: BarChart3 },
+  { href: '/admin/dev-board', label: 'Dev Board', icon: Kanban },
+  { href: '/admin/metrics', label: 'Live Metrics', icon: Activity },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/billing', label: 'Billing', icon: CreditCard },
+  { href: '/admin/offers', label: 'Custom Offers', icon: Ticket },
   { href: '/admin/templates', label: 'Templates', icon: Layers },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/admin/analytics', label: 'Analytics', icon: PieChart },
   { href: '/admin/charity', label: 'Charity', icon: Heart },
   { href: '/admin/links', label: 'All Links', icon: Link2 },
   { href: '/admin/studio', label: 'Studio', icon: Radio },
@@ -133,6 +141,7 @@ export function AdminShell({
             href="/dashboard"
             className="mt-3 flex items-center gap-2 text-xs text-[#B0B0B0] hover:text-white transition-colors"
           >
+            <ArrowLeft size={13} strokeWidth={2} aria-hidden="true" />
             Back to app
           </Link>
         </div>

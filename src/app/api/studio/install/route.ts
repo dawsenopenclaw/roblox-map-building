@@ -304,7 +304,7 @@ function buildHtml(sessionId: string | null, connectionCode: string | null = nul
           <div class="step-desc">
             Download the <code style="color:#D4AF37;font-size:12px">ForjeGames.rbxmx</code> plugin file to your computer.
           </div>
-          <a href="/plugin/ForjeGames.rbxmx" download="ForjeGames.rbxmx" class="btn-download">
+          <a href="/api/studio/plugin" download="ForjeGames.rbxmx" class="btn-download">
             ↓ Download ForjeGames.rbxmx
           </a>
         </div>

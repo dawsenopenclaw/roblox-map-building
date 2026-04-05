@@ -1,17 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 
-const DEMO_TRANSACTIONS = [
-  { id: 'tx_d1', type: 'CREDIT', amount: 1000, description: 'Monthly token refresh — Pro plan', createdAt: new Date('2026-03-01').toISOString() },
-  { id: 'tx_d2', type: 'DEBIT',  amount:   45, description: 'Terrain generation (volcanic island)', createdAt: new Date('2026-03-05').toISOString() },
-  { id: 'tx_d3', type: 'DEBIT',  amount:   62, description: 'Building placement (medieval castle)', createdAt: new Date('2026-03-08').toISOString() },
-  { id: 'tx_d4', type: 'DEBIT',  amount:   38, description: 'NPC creation (Gareth the Smith)',      createdAt: new Date('2026-03-10').toISOString() },
-  { id: 'tx_d5', type: 'DEBIT',  amount:   52, description: 'Script generation (coin collection)',  createdAt: new Date('2026-03-14').toISOString() },
-  { id: 'tx_d6', type: 'DEBIT',  amount:   28, description: 'UI build (health bar HUD)',            createdAt: new Date('2026-03-17').toISOString() },
-  { id: 'tx_d7', type: 'DEBIT',  amount:   72, description: 'Combat system deployment',             createdAt: new Date('2026-03-21').toISOString() },
-  { id: 'tx_d8', type: 'DEBIT',  amount:   55, description: 'Economy system configuration',         createdAt: new Date('2026-03-25').toISOString() },
-]
-
 export async function GET() {
   try {
     const { userId: clerkId } = await auth()
@@ -69,11 +58,11 @@ export async function GET() {
       transactions: [],
       demo: true,
     })
-  } catch (error) {
+  } catch {
     // Last-resort fallback — always return something usable
     return NextResponse.json({
-      balance: 1000,
-      lifetimeEarned: 1000,
+      balance: 0,
+      lifetimeEarned: 0,
       lifetimeSpent: 0,
       transactions: [],
       demo: true,

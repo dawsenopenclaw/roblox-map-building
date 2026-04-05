@@ -183,7 +183,6 @@ export function NotificationPreferences() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          preferences: [],
           phone: phone.trim() || null,
         }),
       })

@@ -99,9 +99,9 @@ const COST_TEXTURE = 0.08  // Fal PBR texture set
 
 // Professional quality-specific polygon targets — tuned for Roblox
 const POLY_TARGETS: Record<Quality, number> = {
-  draft:    3000,   // fast preview
-  standard: 8000,   // good for Roblox real-time
-  premium:  15000,  // high detail, LOD-friendly
+  draft:    6000,   // raised from 3000 — minimum for recognizable geometry
+  standard: 10000,  // good for Roblox real-time
+  premium:  20000,  // high detail, LOD-friendly
 }
 
 // ── Category detection ────────────────────────────────────────────────────────
@@ -296,13 +296,11 @@ async function createMeshyTask(
     mode: 'preview',
     prompt: builtPrompt,
     negative_prompt: NEGATIVE_PROMPT,
-    art_style: quality === 'premium' ? 'pbr' : 'realistic',
+    art_style: 'realistic',
     topology: 'quad',
     target_polycount: POLY_TARGETS[quality],
-  }
-
-  if (quality !== 'draft') {
-    body.enable_pbr = quality === 'premium'
+    // Enable PBR for standard and premium — draft gets it too so preview has color
+    enable_pbr: quality !== 'draft',
   }
 
   const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
@@ -315,6 +313,44 @@ async function createMeshyTask(
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`Meshy task creation failed (${res.status}): ${err}`)
+  }
+
+  const data = (await res.json()) as { result: string }
+  return data.result
+}
+
+/**
+ * Creates a Meshy refine task from a completed preview task.
+ *
+ * This is the CRITICAL step that converts the low-detail gray preview mesh into
+ * a fully textured, detailed model. Skipping this is why users get "a single cube".
+ *
+ * Refine mode takes the preview task ID, re-runs generation at higher detail,
+ * and applies PBR textures. Returns the refine task ID.
+ */
+async function createMeshyRefineTask(
+  previewTaskId: string,
+  quality: Quality,
+  apiKey: string,
+): Promise<string> {
+  const body: Record<string, unknown> = {
+    mode: 'refine',
+    preview_task_id: previewTaskId,
+    enable_pbr: true,
+    // texture_richness controls how detailed the PBR texture bake is
+    texture_richness: quality === 'draft' ? 'medium' : quality === 'standard' ? 'high' : 'ultra',
+  }
+
+  const res = await fetch(`${MESHY_BASE}/v2/text-to-3d`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  })
+
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`Meshy refine task creation failed (${res.status}): ${err}`)
   }
 
   const data = (await res.json()) as { result: string }
@@ -786,7 +822,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let actualCostUsd = 0
 
   try {
-    // Start Meshy task — with one retry on failure
+    // Step 1: Start Meshy preview task — with one retry on failure
     let taskId: string
     try {
       taskId = await createMeshyTask(prompt, quality, meshyKey, category)
@@ -802,38 +838,58 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     actualCostUsd += COST_MESH[quality]
 
-    // Start Fal texture generation in parallel (non-blocking).
-    // Returns a tuple [textures, textureWasBilled] to avoid closure mutation races.
-    const texturePromise: Promise<[{ albedo: string; normal: string; roughness: string } | null, boolean]> =
-      withTextures && falKey
-        ? generateFalTextures(prompt, falKey).then((t) => [t, t !== null] as [typeof t, boolean])
-        : Promise.resolve([null, false] as [null, false])
+    // Step 2: Poll preview task until it completes (needed before we can refine)
+    const previewTask = await pollMeshyTask(taskId, meshyKey)
 
-    // Poll Meshy (up to ~2.5 minutes)
-    const task = await pollMeshyTask(taskId, meshyKey)
-
-    if (task.status === 'IN_PROGRESS') {
-      // Still running — return taskId for client-side polling
-      const [textures, textureBilled] = await texturePromise  // textures may already be ready
-      if (textureBilled) actualCostUsd += COST_TEXTURE
+    // If preview is still running, return pending — client will poll via GET
+    if (previewTask.status === 'IN_PROGRESS') {
       return NextResponse.json({
         meshUrl: null,
         fbxUrl: null,
         thumbnailUrl: null,
         videoUrl: null,
         polygonCount: null,
-        textures,
-        luauCode: generateMeshPartLuau({ prompt, meshUrl: null, textures, polygonCount: null, taskId, category }),
+        textures: null,
+        luauCode: generateMeshPartLuau({ prompt, meshUrl: null, textures: null, polygonCount: null, taskId, category }),
         costEstimateUsd,
         actualCostUsd,
         status: 'pending',
         category,
         taskId,
-        message: `3D model still generating. Poll GET /api/ai/mesh?taskId=${taskId}`,
+        message: `3D model preview still generating. Poll GET /api/ai/mesh?taskId=${taskId}`,
       })
     }
 
-    // Mesh succeeded — await textures
+    // Start Fal texture generation NOW in parallel with the refine step to save time.
+    // Returns a tuple [textures, textureWasBilled] to avoid closure mutation races.
+    const texturePromise: Promise<[{ albedo: string; normal: string; roughness: string } | null, boolean]> =
+      withTextures && falKey
+        ? generateFalTextures(prompt, falKey).then((t) => [t, t !== null] as [typeof t, boolean])
+        : Promise.resolve([null, false] as [null, false])
+
+    // Step 3: Start refine task — this is what produces the detailed textured mesh.
+    // Without this step users only get the low-quality preview (gray single-color blob).
+    // For 'draft' quality we skip refine to keep it fast, but still get preview colors.
+    let finalTask = previewTask
+    if (quality !== 'draft') {
+      try {
+        const refineTaskId = await createMeshyRefineTask(taskId, quality, meshyKey)
+        const refinedTask = await pollMeshyTask(refineTaskId, meshyKey, 50, 5_000)
+        // Only use refine result if it actually succeeded — fall back to preview on failure
+        if (refinedTask.status === 'SUCCEEDED') {
+          finalTask = refinedTask
+          taskId = refineTaskId
+        }
+      } catch (refineErr) {
+        console.warn('[mesh] Refine step failed, using preview result:', refineErr instanceof Error ? refineErr.message : String(refineErr))
+        // finalTask remains as previewTask — still a usable mesh
+      }
+    }
+
+    // Use the refined (or preview fallback) task result
+    const task = finalTask
+
+    // Await textures (were running in parallel with refine)
     const [textures, textureBilled] = await texturePromise
     if (textureBilled) actualCostUsd += COST_TEXTURE
 

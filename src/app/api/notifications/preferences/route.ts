@@ -15,7 +15,8 @@ import {
 const NOTIFICATION_TYPES = [
   'BUILD_COMPLETE', 'BUILD_FAILED', 'TOKEN_LOW', 'TOKEN_DEPLETED',
   'SALE', 'REFERRAL_EARNED', 'TEAM_INVITE', 'ACHIEVEMENT_UNLOCKED',
-  'SYSTEM', 'WEEKLY_DIGEST',
+  'SYSTEM', 'WEEKLY_DIGEST', 'TEMPLATE_PURCHASED', 'PAYOUT_COMPLETED',
+  'REVIEW_RECEIVED', 'PAYOUT_FAILED',
 ] as const
 
 const CHANNELS = ['EMAIL', 'SMS', 'PUSH', 'IN_APP'] as const
@@ -27,7 +28,8 @@ const updatePreferenceSchema = z.object({
 })
 
 const bulkUpdateSchema = z.object({
-  preferences: z.array(updatePreferenceSchema).min(1).max(100),
+  // min(0) so a phone-only save (empty preferences array) is valid
+  preferences: z.array(updatePreferenceSchema).min(0).max(100),
   phone: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Phone must be E.164 format (e.g. +15551234567)').nullish(),
 })
 

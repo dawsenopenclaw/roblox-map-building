@@ -114,6 +114,101 @@ export async function notifyAchievementUnlockedClient(userId: string, opts: {
   })
 }
 
+export async function notifyTeamInvite(userId: string, opts: {
+  teamName: string
+  inviterName: string
+  inviteToken: string
+}) {
+  return sendNotification({
+    userId,
+    type: 'TEAM_INVITE',
+    title: `Team invite: ${opts.teamName}`,
+    body: `${opts.inviterName} invited you to join "${opts.teamName}".`,
+    actionUrl: `/teams/invite?token=${opts.inviteToken}`,
+    metadata: opts,
+    priority: 'high',
+  })
+}
+
+export async function notifyTokenLow(userId: string, balance: number) {
+  return sendNotification({
+    userId,
+    type: 'TOKEN_LOW',
+    title: 'Token balance low',
+    body: `You have ${balance} tokens remaining. Top up to keep building.`,
+    actionUrl: '/tokens',
+    metadata: { balance },
+    priority: 'high',
+  })
+}
+
+export async function notifyTokenDepleted(userId: string) {
+  return sendNotification({
+    userId,
+    type: 'TOKEN_DEPLETED',
+    title: 'Tokens depleted',
+    body: 'You have run out of tokens. Purchase more to continue generating.',
+    actionUrl: '/tokens',
+    priority: 'critical',
+  })
+}
+
+export async function notifyReviewReceived(userId: string, opts: {
+  templateTitle: string
+  rating: number
+  reviewerName?: string
+}) {
+  const stars = '★'.repeat(opts.rating) + '☆'.repeat(5 - opts.rating)
+  return sendNotification({
+    userId,
+    type: 'REVIEW_RECEIVED',
+    title: `New review: ${stars}`,
+    body: `${opts.reviewerName ?? 'Someone'} left a ${opts.rating}-star review on "${opts.templateTitle}".`,
+    actionUrl: '/marketplace',
+    metadata: opts,
+    priority: 'medium',
+  })
+}
+
+export async function notifyPayoutCompleted(userId: string, amountCents: number) {
+  return sendNotification({
+    userId,
+    type: 'PAYOUT_COMPLETED',
+    title: 'Payout completed',
+    body: `$${(amountCents / 100).toFixed(2)} has been transferred to your connected bank account.`,
+    actionUrl: '/earnings',
+    metadata: { amountCents },
+    priority: 'high',
+  })
+}
+
+export async function notifyPayoutFailed(userId: string, amountCents: number) {
+  return sendNotification({
+    userId,
+    type: 'PAYOUT_FAILED',
+    title: 'Payout failed',
+    body: `A payout of $${(amountCents / 100).toFixed(2)} could not be processed. Check your connected account.`,
+    actionUrl: '/earnings',
+    metadata: { amountCents },
+    priority: 'critical',
+  })
+}
+
+export async function notifySystemAnnouncement(userId: string, opts: {
+  title: string
+  body: string
+  href?: string
+}) {
+  return sendNotification({
+    userId,
+    type: 'SYSTEM',
+    title: opts.title,
+    body: opts.body,
+    actionUrl: opts.href,
+    priority: 'medium',
+  })
+}
+
 // ─── Email dispatch ──────────────────────────────────────────────────────────
 
 async function dispatchEmail(opts: {
@@ -129,8 +224,19 @@ async function dispatchEmail(opts: {
   })
   if (!user?.email) return
 
-  const { sendBuildCompleteEmail, sendTokenLowEmail } = await import('./email')
+  const {
+    sendBuildCompleteEmail,
+    sendTokenLowEmail,
+    sendSaleNotificationEmail,
+  } = await import('./email')
   const meta = opts.metadata as Record<string, unknown> | undefined
+
+  // Guard: warn but don't crash when RESEND_API_KEY is a placeholder
+  const resendKey = process.env.RESEND_API_KEY ?? ''
+  if (!resendKey || resendKey === 'placeholder' || resendKey.length < 10) {
+    console.warn('[notifications-client] RESEND_API_KEY not configured — skipping email for', opts.type)
+    return
+  }
 
   switch (opts.type) {
     case 'BUILD_COMPLETE':
@@ -143,11 +249,25 @@ async function dispatchEmail(opts: {
       })
       break
     case 'TOKEN_LOW':
+    case 'TOKEN_DEPLETED':
       await sendTokenLowEmail({
         email: user.email,
         name: user.displayName || 'Creator',
         tokenCount: Number(meta?.balance ?? 0),
       })
+      break
+    case 'SALE':
+    case 'TEMPLATE_PURCHASED':
+      await sendSaleNotificationEmail({
+        email: user.email,
+        templateName: String(meta?.templateTitle ?? 'Template'),
+        saleAmount: Number(meta?.amountCents ?? 0) / 100,
+      })
+      break
+    // ACHIEVEMENT_UNLOCKED, TEAM_INVITE, REVIEW_RECEIVED, PAYOUT_COMPLETED,
+    // PAYOUT_FAILED, SYSTEM, WEEKLY_DIGEST, REFERRAL_EARNED:
+    // email templates for these types can be added here as they are built.
+    default:
       break
   }
 }

@@ -3,11 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
+import { Sparkles, Layout, CreditCard } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
-const NAV_LINKS = [
-  { href: '/#features', label: 'Features' },
-  { href: '/#showcase', label: 'Showcase' },
-  { href: '/pricing', label: 'Pricing' },
+const NAV_LINKS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: '/#features', label: 'Features', icon: Sparkles },
+  { href: '/#showcase', label: 'Showcase', icon: Layout },
+  { href: '/pricing', label: 'Pricing', icon: CreditCard },
 ]
 
 function MarketingNav() {
@@ -74,8 +76,9 @@ function MarketingNav() {
             <Link
               key={link.href}
               href={link.href}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] flex items-center gap-1.5"
             >
+              <link.icon size={14} strokeWidth={1.8} aria-hidden="true" />
               {link.label}
             </Link>
           ))}
@@ -145,8 +148,9 @@ function MarketingNav() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                className="px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2"
               >
+                <link.icon size={15} strokeWidth={1.8} aria-hidden="true" />
                 {link.label}
               </Link>
             ))}

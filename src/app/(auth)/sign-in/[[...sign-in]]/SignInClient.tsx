@@ -56,7 +56,7 @@ export default function SignInClient() {
         routing="path"
         path="/sign-in"
         signUpUrl="/sign-up"
-        afterSignInUrl="/editor"
+        fallbackRedirectUrl="/editor"
         appearance={clerkAppearance}
       />
 

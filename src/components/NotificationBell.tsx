@@ -262,7 +262,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
   useClickOutside(wrapRef, () => setOpen(false))
 
-  // Poll every 30 seconds
+  // Fetch full notification list (initial load + periodic fallback poll)
   const fetchNotifications = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications', { cache: 'no-store' })
@@ -274,10 +274,85 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
     }
   }, [])
 
+  // SSE stream: prepend new notifications in real-time
   useEffect(() => {
+    let es: EventSource | null = null
+    let pollInterval: ReturnType<typeof setInterval> | null = null
+    let closed = false
+
+    function startSSE() {
+      try {
+        es = new EventSource('/api/notifications/stream')
+
+        es.onmessage = (evt) => {
+          try {
+            const notif = JSON.parse(evt.data) as {
+              id: string
+              type: string
+              title: string
+              body: string
+              actionUrl?: string | null
+              createdAt: string
+            }
+            // Map DB type to UI type using the same mapping as the API route
+            const DB_TO_UI: Record<string, string> = {
+              BUILD_COMPLETE: 'build', BUILD_FAILED: 'build',
+              TOKEN_LOW: 'system', TOKEN_DEPLETED: 'system',
+              SALE: 'sale', REFERRAL_EARNED: 'sale',
+              TEMPLATE_PURCHASED: 'sale', PAYOUT_COMPLETED: 'sale', PAYOUT_FAILED: 'sale',
+              TEAM_INVITE: 'team',
+              ACHIEVEMENT_UNLOCKED: 'achievement',
+              SYSTEM: 'system', WEEKLY_DIGEST: 'system', REVIEW_RECEIVED: 'system',
+            }
+            const uiType = (DB_TO_UI[notif.type] ?? 'system') as import('@/app/api/notifications/route').NotificationType
+            setNotifications((prev) => {
+              // Deduplicate by id
+              if (prev.some((n) => n.id === notif.id)) return prev
+              return [{
+                id: notif.id,
+                type: uiType,
+                title: notif.title,
+                description: notif.body,
+                timestamp: notif.createdAt,
+                read: false,
+                href: notif.actionUrl ?? undefined,
+              }, ...prev]
+            })
+          } catch { /* malformed SSE payload — ignore */ }
+        }
+
+        es.onerror = () => {
+          // SSE failed (Redis unavailable or network error) — fall through to polling
+          es?.close()
+          es = null
+          if (!closed && !pollInterval) {
+            pollInterval = setInterval(fetchNotifications, 30_000)
+          }
+        }
+      } catch {
+        // EventSource not available (e.g. SSR guard) — use polling
+        if (!closed && !pollInterval) {
+          pollInterval = setInterval(fetchNotifications, 30_000)
+        }
+      }
+    }
+
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30_000)
-    return () => clearInterval(interval)
+    startSSE()
+
+    // Polling fallback if SSE never opens within 5s
+    const sseTimeout = setTimeout(() => {
+      if (!closed && !pollInterval && (!es || es.readyState === EventSource.CLOSED)) {
+        pollInterval = setInterval(fetchNotifications, 30_000)
+      }
+    }, 5_000)
+
+    return () => {
+      closed = true
+      clearTimeout(sseTimeout)
+      if (pollInterval) clearInterval(pollInterval)
+      es?.close()
+    }
   }, [fetchNotifications])
 
   const unreadCount = notifications.filter((n) => !n.read).length

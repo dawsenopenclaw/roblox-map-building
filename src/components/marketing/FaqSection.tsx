@@ -4,36 +4,24 @@ import { useState } from 'react'
 
 const FAQS = [
   {
-    q: 'How does ForjeGames connect to Roblox Studio?',
-    a: 'ForjeGames uses a lightweight Studio plugin that connects to our cloud API over a secure WebSocket. Once installed, every AI action you take in ForjeGames applies directly to your open place in Studio — no copy-pasting, no manual imports.',
+    q: 'Is ForjeGames right for me?',
+    a: 'If you want to build Roblox games faster — yes. Whether you have zero coding experience or you are a seasoned developer, ForjeGames works for you. Beginners get a full AI co-pilot that handles scripts, terrain, assets, and UI from plain English. Experienced devs get a powerful tool that generates production-ready Luau, syncs live to Studio, and handles the repetitive work so you can focus on the creative parts.',
   },
   {
-    q: 'Is this just for scripting?',
-    a: 'Not at all. ForjeGames handles Luau scripts, 3D model generation, terrain shaping, UI design, economy balancing, audio placement, lighting, and more. It\'s a complete AI game development studio — scripting is just one of many tools.',
+    q: 'How does the Studio sync work?',
+    a: 'Install the free ForjeGames plugin in Roblox Studio — takes under 60 seconds. Once connected, every action you take in the ForjeGames editor (generate a script, place an asset, reshape terrain) is applied directly to your open place in Studio over a secure WebSocket. No copy-pasting, no file exports, no manual imports. Changes appear live as they generate.',
   },
   {
-    q: 'Do I need to know how to code?',
-    a: 'No coding knowledge required. You describe what you want in plain English (or speak it using voice input), and ForjeGames generates everything. If you are a developer, you can review, edit, and extend every generated script.',
+    q: 'Does Roblox allow this?',
+    a: 'Yes. ForjeGames operates entirely within Roblox\'s Terms of Service. We use the official Roblox Open Cloud APIs and a standard Studio plugin — the same pathway used by tools like Rojo and many popular Studio plugins. We do not modify your game files externally or use any unauthorized automation. Everything we generate is standard Luau code that you own and control.',
   },
   {
-    q: 'Is it safe for young creators?',
-    a: 'Yes. ForjeGames is COPPA-compliant for creators under 13, includes content filtering on all AI outputs, and never collects or stores personal information beyond what is necessary for account operation. Parental consent flows are built in.',
-  },
-  {
-    q: 'What AI models power ForjeGames?',
-    a: 'ForjeGames routes tasks to the best model for the job — Claude 3.5 Sonnet for complex reasoning and scripting, GPT-4o for fast generation, Gemini for multimodal tasks like Image-to-Map, and Meshy for 3D asset creation. You can switch models mid-conversation.',
-  },
-  {
-    q: 'Can I use my existing game assets?',
-    a: 'Yes. You can import existing assets from your Roblox inventory, reference asset IDs from the marketplace, or upload your own files. ForjeGames integrates with your existing workspace — it never wipes what you have already built.',
-  },
-  {
-    q: 'How is this different from other AI tools?',
-    a: 'Most AI coding tools are generic — they generate code but have no idea what Roblox Studio is. ForjeGames is purpose-built for Roblox: it understands the Roblox API, Luau quirks, Studio\'s hierarchy, the marketplace, and game design principles. It builds games, not just code.',
+    q: 'How is this different from Lemonade or Roblox Assistant?',
+    a: 'Lemonade focuses on scripting and code generation. Roblox Assistant is a lightweight chatbot built into Studio. ForjeGames is the only platform that handles the full game stack: Luau scripts, custom 3D asset generation (text-to-3D via Meshy), terrain shaping, UI design, economy balancing, audio, and more. We also support multiple AI models (Claude, GPT-4o, Gemini) and let you switch mid-session — no other Roblox tool does this.',
   },
   {
     q: 'How much does it cost?',
-    a: 'ForjeGames starts free with 1,000 tokens — enough to build a small game. Paid plans start at $15/month for 50,000 tokens with priority processing and custom mesh generation. Enterprise and team plans are available. 10% of every payment goes to charity.',
+    a: 'ForjeGames is free to start — no credit card required. Your account comes with 1,000 tokens, enough to prototype a full game concept. Paid plans start at $25/month (Creator) for 7,000 tokens with 3D mesh generation and Image-to-Map. The Studio plan at $50/month adds team collaboration and API access. 10% of every paid subscription goes to charity.',
   },
 ]
 
@@ -74,7 +62,7 @@ export default function FaqSection() {
             FAQ
           </p>
           <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
-            Common questions.
+            Frequently Asked.
           </h2>
           <p className="text-lg" style={{ color: '#8B95B0' }}>
             Everything you need to know before you start building.

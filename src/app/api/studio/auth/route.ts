@@ -37,6 +37,11 @@ const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 // If it is missing each Lambda cold-start gets a different secret, so session
 // JWTs issued by one Lambda are rejected by every other Lambda.
 const SECRET: string = (() => {
+  // CLERK_SECRET_KEY is used as a fallback so that deployments which already
+  // have Clerk configured get a stable secret without requiring a separate env
+  // var. Coupling risk: if CLERK_SECRET_KEY is rotated, all existing Studio
+  // JWTs are immediately invalidated. Set STUDIO_AUTH_SECRET independently to
+  // decouple Studio token lifetime from Clerk key rotation.
   const s = process.env.STUDIO_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY
   if (!s) {
     const fallback = crypto.randomBytes(32).toString('hex')

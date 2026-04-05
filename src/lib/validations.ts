@@ -119,10 +119,12 @@ export const settingsSchema = z.object({
 /**
  * Only the subset of XPEventType values that are safe to receive directly from
  * a client. Server-internal types (ACHIEVEMENT, STREAK_BONUS, SALE,
- * TEMPLATE_PUBLISHED, REVIEW_GIVEN) are explicitly excluded.
+ * REFERRAL, PUBLISH, REVIEW_GIVEN, PURCHASE) are explicitly excluded.
+ * MARKETPLACE_BROWSE and COMMUNITY_SHARE were removed — they do not exist
+ * in the XPEventType enum and caused runtime 400 errors on every call.
  */
 export const earnXpSchema = z.object({
-  type: z.enum(['BUILD', 'DAILY_LOGIN', 'MARKETPLACE_BROWSE', 'COMMUNITY_SHARE']),
+  type: z.enum(['BUILD', 'DAILY_LOGIN']),
 })
 
 export const achievementUnlockSchema = z.object({
@@ -210,7 +212,49 @@ export const adminUserUpdateSchema = z.object({
   role: z.enum(['USER', 'ADMIN', 'CREATOR', 'MODERATOR']).optional(),
   tier: z.enum(['FREE', 'HOBBY', 'CREATOR', 'STUDIO']).optional(),
   banned: z.boolean().optional(),
+  verified: z.boolean().optional(),
   refundTokens: z.boolean().optional(),
+  // Gift tokens: any amount 1–999,999,999 with mandatory reason. Use unlimited flag for infinite.
+  giftTokens: z
+    .object({
+      amount: z.number().int().min(0).max(999_999_999),
+      reason: z.string().min(1, 'reason is required').max(500),
+      unlimited: z.boolean().optional(),
+    })
+    .optional(),
+  // Force-set subscription tier with a reason log
+  setTier: z
+    .object({
+      tier: z.enum(['FREE', 'HOBBY', 'CREATOR', 'STUDIO']),
+      reason: z.string().min(1, 'reason is required').max(500),
+    })
+    .optional(),
+  // Create a custom pricing offer for this user
+  customOffer: z
+    .object({
+      name: z.string().min(1, 'name is required').max(200),
+      priceCents: z.number().int().min(0).max(9_999_99),
+      tokenAmount: z.number().int().min(1).max(10_000_000),
+      description: z.string().max(1000).optional(),
+    })
+    .optional(),
+})
+
+export const adminGiftTokensSchema = z.object({
+  userId: z.string().min(1, 'userId is required'),
+  amount: z.number().int().min(0).max(999_999_999),
+  reason: z.string().min(1, 'reason is required').max(500),
+  type: z.enum(['GIFT', 'BONUS', 'COMPENSATION', 'PROMO']).default('GIFT'),
+  unlimited: z.boolean().optional(),
+})
+
+export const adminCustomOfferSchema = z.object({
+  name: z.string().min(1, 'name is required').max(200),
+  priceCents: z.number().int().min(0).max(9_999_99),
+  tokenAmount: z.number().int().min(1).max(10_000_000),
+  description: z.string().max(1000).optional(),
+  targetUserIds: z.array(z.string()).min(1, 'at least one target user required').max(100),
+  expiresInDays: z.number().int().min(1).max(365).default(30),
 })
 
 // ── Business ──────────────────────────────────────────────────────────────────
@@ -271,14 +315,16 @@ export const notificationPreferenceUpdateSchema = z.object({
   type: z.enum([
     'BUILD_COMPLETE', 'BUILD_FAILED', 'TOKEN_LOW', 'TOKEN_DEPLETED',
     'SALE', 'REFERRAL_EARNED', 'TEAM_INVITE', 'ACHIEVEMENT_UNLOCKED',
-    'SYSTEM', 'WEEKLY_DIGEST',
+    'SYSTEM', 'WEEKLY_DIGEST', 'TEMPLATE_PURCHASED', 'PAYOUT_COMPLETED',
+    'REVIEW_RECEIVED', 'PAYOUT_FAILED',
   ]),
   channel: z.enum(['EMAIL', 'SMS', 'PUSH', 'IN_APP']),
   enabled: z.boolean(),
 })
 
 export const notificationPreferencesBulkSchema = z.object({
-  preferences: z.array(notificationPreferenceUpdateSchema).min(1).max(100),
+  // min(0) so a phone-only save (empty preferences array) is valid
+  preferences: z.array(notificationPreferenceUpdateSchema).min(0).max(100),
   phone: z.string().regex(/^\+[1-9]\d{6,14}$/, 'Phone must be E.164 format').nullish(),
 })
 

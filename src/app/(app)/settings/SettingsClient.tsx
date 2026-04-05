@@ -38,7 +38,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = (url: string) => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -399,7 +399,8 @@ function ProfileTab() {
 
   // Hydrate everything from the API — schema has all these columns
   useEffect(() => {
-    fetch('/api/settings/profile')
+    const controller = new AbortController()
+    fetch('/api/settings/profile', { signal: controller.signal })
       .then((r) => r.json())
       .then((data: { profile?: ProfileData }) => {
         const p = data.profile
@@ -412,7 +413,8 @@ function ProfileTab() {
         if (p.githubHandle)  setGithub(p.githubHandle)
         if (p.avatarUrl)     setAvatarUrl(p.avatarUrl)
       })
-      .catch(() => {/* non-fatal */})
+      .catch((err) => { if ((err as Error).name !== 'AbortError') {/* non-fatal */} })
+    return () => controller.abort()
   }, [])
 
   const handleSave = async () => {
@@ -685,7 +687,8 @@ function BillingTab() {
   const plan = billingData?.tier ?? 'Free'
   const tokenBalance = tokenData?.balance ?? 0
   const tokenLimit = billingData?.tokenLimit ?? 1_000
-  const tokenPct = Math.min(100, Math.round((tokenBalance / tokenLimit) * 100))
+  const tokensUsed = tokenLimit - tokenBalance
+  const tokenPct = Math.min(100, Math.round((tokensUsed / tokenLimit) * 100))
 
   return (
     <div className="space-y-4">
@@ -716,7 +719,13 @@ function BillingTab() {
               Change Plan
             </Link>
             <button
-              onClick={() => window.open('/api/billing/portal', '_blank')}
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/billing/portal', { method: 'POST' })
+                  const data = await res.json() as { url?: string }
+                  if (data.url) window.location.href = data.url
+                } catch { window.location.href = '/billing' }
+              }}
               className="text-xs text-gray-300 hover:text-blue-400 text-center transition-colors"
             >
               Manage billing →
@@ -749,8 +758,8 @@ function BillingTab() {
           />
         </div>
         <div className="flex justify-between text-xs text-gray-500 mb-5">
-          <span>{(tokenLimit - tokenBalance).toLocaleString()} used</span>
-          <span>{tokenPct}%</span>
+          <span>{tokensUsed.toLocaleString()} used</span>
+          <span>{tokenPct}% used</span>
         </div>
 
         <Link
@@ -1216,20 +1225,28 @@ function AppearanceTab() {
     if (CATEGORY_META.some((c) => c.key === cat)) setActiveCategory(cat)
   }, [currentTheme.category])
 
-  // On mount: pull server preferences and apply them (cross-device sync)
+  // On mount: pull server preferences and apply them (cross-device sync).
+  // Read localStorage directly here — settings state may not have hydrated yet
+  // (useEditorSettings also hydrates in a useEffect, creating a race).
   useEffect(() => {
+    let localSettings: Record<string, unknown> = {}
+    try {
+      const raw = localStorage.getItem('fg_editor_settings')
+      if (raw) localSettings = JSON.parse(raw) as Record<string, unknown>
+    } catch { /* corrupt storage — treat as empty */ }
+
     fetch('/api/settings/preferences')
       .then((r) => r.json())
       .then((data: { preferences?: { theme?: string; fontSize?: string; accentColor?: string | null } }) => {
         const p = data.preferences
         if (!p) return
-        // Only apply server value if it differs from current localStorage value
-        // (localStorage wins for the device that just changed — server wins on new devices)
-        if (p.theme && p.theme !== settings.theme) update('theme', p.theme)
-        if (p.fontSize && p.fontSize !== settings.fontSize) {
+        // Server wins only if localStorage has no stored value for that key
+        // (localStorage is the source of truth for the current device)
+        if (p.theme && !localSettings.theme) update('theme', p.theme)
+        if (p.fontSize && !localSettings.fontSize) {
           update('fontSize', p.fontSize as 'small' | 'medium' | 'large')
         }
-        if ('accentColor' in p && p.accentColor !== accentColor) {
+        if ('accentColor' in p && !('accentColor' in localSettings)) {
           update('accentColor', p.accentColor ?? undefined)
         }
       })
@@ -1634,13 +1651,13 @@ function StudioTab() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-  { key: 'profile', label: 'Profile', icon: <User size={15} /> },
-  { key: 'billing', label: 'Billing', icon: <CreditCard size={15} /> },
-  { key: 'notifications', label: 'Notifications', icon: <Bell size={15} /> },
-  { key: 'appearance', label: 'Appearance', icon: <Palette size={15} /> },
-  { key: 'studio', label: 'Studio', icon: <Plug size={15} /> },
-  { key: 'api-keys', label: 'API Keys', icon: <Key size={15} /> },
-  { key: 'connected', label: 'Connected', icon: <Link2 size={15} /> },
+  { key: 'profile', label: 'Profile', icon: <User size={16} strokeWidth={1.8} /> },
+  { key: 'billing', label: 'Billing', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+  { key: 'notifications', label: 'Notifications', icon: <Bell size={16} strokeWidth={1.8} /> },
+  { key: 'appearance', label: 'Appearance', icon: <Palette size={16} strokeWidth={1.8} /> },
+  { key: 'studio', label: 'Studio', icon: <Plug size={16} strokeWidth={1.8} /> },
+  { key: 'api-keys', label: 'API Keys', icon: <Key size={16} strokeWidth={1.8} /> },
+  { key: 'connected', label: 'Connected', icon: <Link2 size={16} strokeWidth={1.8} /> },
 ]
 
 const VALID_TABS = TABS.map((t) => t.key)
@@ -1675,10 +1692,10 @@ export default function SettingsClient() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 border ${
+            className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 flex-shrink-0 border ${
               tab === t.key
-                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20'
-                : 'text-gray-300 hover:text-blue-400 hover:bg-white/5 border-transparent'
+                ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20 shadow-[0_0_12px_rgba(212,175,55,0.08)]'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border-transparent'
             }`}
           >
             {t.icon}

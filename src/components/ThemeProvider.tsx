@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
+import { useEditorSettings, FONT_SIZE_MAP } from '@/app/(app)/editor/hooks/useEditorSettings'
 import { getThemeById, THEMES, type Theme } from '@/lib/themes'
 
 const LIGHT_IDS = new Set(['light', 'paper'])
@@ -28,6 +28,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const isLight = LIGHT_IDS.has(settings.theme)
     root.style.setProperty('color-scheme', isLight ? 'light' : 'dark')
   }, [settings.theme, settings.accentColor])
+
+  // Apply font size as a CSS variable so components can consume --font-size-base
+  useEffect(() => {
+    const px = FONT_SIZE_MAP[settings.fontSize]
+    document.documentElement.style.setProperty('--font-size-base', `${px}px`)
+  }, [settings.fontSize])
 
   return <>{children}</>
 }

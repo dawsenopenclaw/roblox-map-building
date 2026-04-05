@@ -2,6 +2,7 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { db } from '@/lib/db'
+import { sendNotification } from '@/lib/notifications-client'
 
 // ─── Meshy webhook payload shapes ─────────────────────────────────────────────
 
@@ -161,18 +162,17 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // Notify the user their asset is ready
-        await db.notification.create({
-          data: {
-            userId: asset.userId,
-            type: 'BUILD_COMPLETE',
-            title: '3D Asset Ready',
-            body: `Your 3D model is ready${payload.poly_count ? ` (${payload.poly_count.toLocaleString()} polys)` : ''}. Open the editor to preview and use it.`,
-            actionUrl: '/editor',
-          },
+        // Notify the user their asset is ready (persists to DB + pushes via Redis SSE)
+        sendNotification({
+          userId: asset.userId,
+          type: 'BUILD_COMPLETE',
+          title: '3D Asset Ready',
+          body: `Your 3D model is ready${payload.poly_count ? ` (${payload.poly_count.toLocaleString()} polys)` : ''}. Open the editor to preview and use it.`,
+          actionUrl: '/editor',
+          metadata: { assetId: asset.id, polyCount: payload.poly_count },
         }).catch((notifErr) => {
           // Non-fatal — asset is ready regardless
-          console.warn('[meshy-webhook] Failed to create notification:', notifErr)
+          console.warn('[meshy-webhook] Failed to send notification:', notifErr)
         })
 
         // Log for future pipeline steps (optimization, CDN upload, Roblox registration)

@@ -1,7 +1,7 @@
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
-import { stripe, constructWebhookEvent } from '@/lib/stripe'
+import { getStripe, constructWebhookEvent } from '@/lib/stripe'
 import { db } from '@/lib/db'
 import { earnTokens, spendTokens } from '@/lib/tokens-server'
 import { processDonation } from '@/lib/charity'
@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
+
+  // At this point the signature verified, so the key must be set.
+  // Use getStripe() to get the instance without re-throwing at module load.
+  const stripe = getStripe()!
 
   try {
     switch (event.type) {

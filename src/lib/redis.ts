@@ -32,6 +32,17 @@ export function getRedis(): Redis | null {
   return _redis
 }
 
+// No-op pipeline stub — all command methods return the stub itself for chaining,
+// exec() resolves to an empty array so callers can destructure results safely.
+const noopPipeline: Record<string, unknown> = {}
+const pipelineChainable = new Proxy(noopPipeline, {
+  get: (_, prop) => {
+    if (prop === 'exec') return () => Promise.resolve([])
+    // Every other method (incr, expire, get, set, …) returns the stub for chaining
+    return () => pipelineChainable
+  },
+})
+
 // Proxy so existing `redis.get(...)` call-sites keep working unchanged.
 // Returns no-op functions when Redis is not configured (no REDIS_URL).
 export const redis = new Proxy({} as Redis, {
@@ -39,9 +50,17 @@ export const redis = new Proxy({} as Redis, {
     const r = getRedis()
     if (!r) {
       // Redis not configured — return no-op for method calls, undefined for props
-      return typeof prop === 'string' && ['get', 'set', 'del', 'expire', 'exists', 'incr', 'decr', 'hget', 'hset', 'keys', 'scan', 'pipeline', 'multi'].includes(prop)
-        ? () => Promise.resolve(null)
-        : undefined
+      if (typeof prop !== 'string') return undefined
+      // pipeline/multi need a chainable stub so callers can do .incr(k).exec()
+      if (prop === 'pipeline' || prop === 'multi') return () => pipelineChainable
+      if (['get', 'set', 'del', 'expire', 'ttl', 'exists', 'incr', 'decr',
+           'hget', 'hset', 'hdel', 'hgetall', 'keys', 'scan',
+           'lpush', 'rpush', 'lrange', 'llen',
+           'sadd', 'srem', 'smembers',
+           'zadd', 'zrange', 'zrem', 'zscore', 'zrank',
+           'publish', 'subscribe', 'unsubscribe', 'psubscribe', 'punsubscribe'].includes(prop))
+        return () => Promise.resolve(null)
+      return undefined
     }
     const val = (r as unknown as Record<string, unknown>)[prop as string]
     return typeof val === 'function' ? val.bind(r) : val

@@ -24,7 +24,7 @@ import { getRedis } from '@/lib/redis'
 
 // ── Defaults (used when Redis has no stored version yet) ─────────────────────
 const DEFAULTS = {
-  version:     '4.5.0',
+  version:     '4.4.0',
   minVersion:  '4.0.0',
   downloadUrl: '/api/studio/plugin',
   changelog:   'Auto-update pipeline, version manifest endpoint, force-update support for deprecated versions.',

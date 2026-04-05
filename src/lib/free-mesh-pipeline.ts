@@ -36,7 +36,9 @@ interface GradioFileData {
 // ---------------------------------------------------------------------------
 
 // Shap-E: text-to-3D, outputs GLB directly, no image step needed
+// Space may be at either path — we try both
 const SHAP_E_SPACE = 'https://hysts-Shap-E.hf.space'
+const SHAP_E_SPACE_ALT = 'https://hysts-shap-e.hf.space'
 
 // Backup image-to-3D spaces (need an image first)
 const IMAGE_TO_3D_SPACES = [
@@ -147,15 +149,33 @@ function extractGlbUrl(data: GradioFileData[], spaceUrl: string): string | null 
 // ---------------------------------------------------------------------------
 
 async function textTo3DShapE(prompt: string): Promise<string | null> {
-  const result = await callGradioQueue(SHAP_E_SPACE, 'text-to-3d', [
-    prompt,   // text prompt
-    0,        // seed (0 = random)
-    15,       // guidance_scale
-    64,       // num_inference_steps
-  ])
+  // Try primary space URL first; fall back to alt casing if it fails
+  // API name changed from 'text-to-3d' to 'generate' in newer versions of the space
+  // guidance_scale: 7.5 produces the best geometry (15 over-saturates and causes artifacts)
+  const GUIDANCE_SCALE = 7.5
+  const STEPS = 64
 
-  if (!result) return null
-  return extractGlbUrl(result, SHAP_E_SPACE)
+  // Try primary with 'generate' api name first (newer), then legacy 'text-to-3d'
+  for (const [spaceUrl, apiName] of [
+    [SHAP_E_SPACE, 'generate'],
+    [SHAP_E_SPACE, 'text-to-3d'],
+    [SHAP_E_SPACE_ALT, 'generate'],
+    [SHAP_E_SPACE_ALT, 'text-to-3d'],
+  ] as [string, string][]) {
+    const result = await callGradioQueue(spaceUrl, apiName, [
+      prompt,         // text prompt
+      0,              // seed (0 = random)
+      GUIDANCE_SCALE, // guidance_scale — 7.5 optimal, 15 causes artifacts
+      STEPS,          // num_inference_steps
+    ])
+
+    if (result) {
+      const url = extractGlbUrl(result, spaceUrl)
+      if (url) return url
+    }
+  }
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -193,8 +213,11 @@ function enhancePrompt(prompt: string): string {
     .replace(/\s+(for|in)\s+roblox$/i, '')
     .trim()
 
-  // Shap-E works best with simple, clear object descriptions
-  return cleaned || prompt
+  // Shap-E works best with a concise noun phrase — "a red sports car", "a wooden chair"
+  // Keep it under 40 chars for best results; do NOT append long style descriptions
+  const base = cleaned || prompt
+  const shortened = base.length > 60 ? base.slice(0, 60).replace(/[,\s]+$/, '') : base
+  return shortened
 }
 
 // ---------------------------------------------------------------------------

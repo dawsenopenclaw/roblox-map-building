@@ -171,11 +171,31 @@ export default function TestimonialsSection() {
           Creator Stories
         </p>
         <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
-          What creators are saying
+          Our Wall of Love
         </h2>
-        <p className="text-lg" style={{ color: '#8B95B0' }}>
-          Creators building faster with ForjeGames.
+        <p className="text-lg mb-5" style={{ color: '#8B95B0' }}>
+          Thousands of Roblox creators building faster with ForjeGames.
         </p>
+        {/* Trust count */}
+        <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full" style={{
+          background: 'rgba(212,175,55,0.06)',
+          border: '1px solid rgba(212,175,55,0.15)',
+        }}>
+          <div className="flex -space-x-1.5">
+            {['#FF6B6B','#4ECDC4','#A855F7','#F59E0B'].map((color, i) => (
+              <div key={i} className="w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold flex-shrink-0"
+                style={{ background: `${color}22`, borderColor: color, color }}>
+                {['PC','NB','SX','SP'][i]}
+              </div>
+            ))}
+          </div>
+          <span className="text-[13px] font-medium" style={{ color: '#D4AF37' }}>
+            2,000+ creators
+          </span>
+          <span className="text-[13px]" style={{ color: '#8B95B0' }}>
+            already building
+          </span>
+        </div>
       </div>
 
       {/* Row 1 — scrolls left */}

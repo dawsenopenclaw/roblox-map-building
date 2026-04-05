@@ -796,6 +796,24 @@ export function useChat(options: UseChatOptions = {}) {
     setMessagesSync((prev) => prev.filter((m) => m.id !== id))
   }, [setMessagesSync])
 
+  /**
+   * Edit a user message and re-send it.
+   * Removes the target message and every message after it, then calls sendMessage
+   * with the updated content so the AI responds fresh.
+   */
+  const editAndResend = useCallback(
+    (messageId: string, newContent: string) => {
+      const current = messagesRef.current
+      const idx = current.findIndex((m) => m.id === messageId)
+      if (idx === -1) return
+      // Keep only messages before the edited one
+      const trimmed = current.slice(0, idx)
+      setMessagesSync(() => trimmed)
+      void sendMessage(newContent)
+    },
+    [setMessagesSync, sendMessage],
+  )
+
   return {
     messages,
     input,
@@ -806,6 +824,7 @@ export function useChat(options: UseChatOptions = {}) {
     sendMessage,
     resetRetryCount,
     dismissMessage,
+    editAndResend,
     selectedModel,
     setSelectedModel,
     imageFile,

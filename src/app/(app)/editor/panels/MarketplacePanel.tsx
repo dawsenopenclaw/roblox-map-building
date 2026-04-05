@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import { Store, Wand2 } from 'lucide-react'
 
 // ─── Shared types ──────────────────────────────────────────────────────────────
 
@@ -570,7 +571,11 @@ function RobloxMarketplacePanel() {
               activeTab === tab ? 'border-b-2 border-[#D4AF37] text-[#D4AF37]' : 'text-gray-500 hover:text-gray-300',
             ].join(' ')}
           >
-            {tab === 'generate' ? '+ Generate' : 'Marketplace'}
+            <span className="flex items-center justify-center gap-1.5">
+              {tab === 'generate'
+                ? <><Wand2 size={12} strokeWidth={2} aria-hidden="true" />+ Generate</>
+                : <><Store size={12} strokeWidth={2} aria-hidden="true" />Marketplace</>}
+            </span>
           </button>
         ))}
       </div>

@@ -331,23 +331,25 @@ export default function HomeClient() {
               }}
             >
               <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              The only Roblox AI that builds terrain, scripts, AND 3D assets
+              The only Roblox AI that builds code, 3D assets, AND entire game systems
               <span style={{ color: 'rgba(255,255,255,0.15)' }}>·</span>
               <span style={{ color: '#D4AF37' }}>Free to start</span>
             </div>
 
-            {/* Headline */}
+            {/* Headline — word-by-word reveal */}
             <h1
-              className="reveal reveal-delay-1 font-bold tracking-tight mb-6"
+              className="font-bold tracking-tight mb-6"
               style={{
                 fontSize: 'clamp(2.8rem, 8vw, 5.5rem)',
                 lineHeight: 1.05,
                 letterSpacing: '-0.02em',
               }}
             >
-              Describe it.
+              <span className="hero-word hero-word-1">Build</span>{' '}
+              <span className="hero-word hero-word-2">Roblox</span>{' '}
+              <span className="hero-word hero-word-3">Games</span>
               <br />
-              <span className="gradient-text text-shimmer">Watch it build.</span>
+              <span className="hero-word hero-word-4 gradient-text text-shimmer">with AI.</span>
             </h1>
 
             {/* Subheadline */}
@@ -355,24 +357,24 @@ export default function HomeClient() {
               className="reveal reveal-delay-2 text-xl leading-relaxed max-w-2xl mx-auto mb-12"
               style={{ color: '#71717A', fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}
             >
-              Voice, image, or text — ForjeGames builds the terrain, assets,
+              Generate code, 3D assets, and entire game systems —
               <br className="hidden sm:block" />
-              scripts, and economy. Synced live to Roblox Studio.
+              synced directly to Roblox Studio.
             </p>
 
             {/* CTA row */}
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3 mb-5">
               <Link
-                href="/editor"
-                className="cta-primary inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
+                href="/sign-up"
+                className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 28px rgba(212,175,55,0.3), 0 4px 16px rgba(0,0,0,0.4)',
+                  boxShadow: '0 0 28px rgba(255,184,28,0.35), 0 4px 16px rgba(0,0,0,0.4)',
                   letterSpacing: '0.01em',
                 }}
               >
-                Open the Editor
+                Start Building Free
                 <IconArrow size={15} />
               </Link>
               <Link
@@ -384,11 +386,12 @@ export default function HomeClient() {
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                See what gets built
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <polygon points="10 8 16 12 10 16 10 8" />
+                </svg>
+                Watch Demo
               </Link>
-              <span className="hidden sm:block text-[11px] mt-2" style={{ color: '#3F3F46' }}>
-                No install. No setup. Just type what you want.
-              </span>
             </div>
 
             <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#71717A' }}>
@@ -478,11 +481,11 @@ export default function HomeClient() {
                 className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
                 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
               >
-                Every tool your
-                <br />game studio needs.
+                We handle
+                <br />the hard stuff.
               </h2>
               <p className="reveal reveal-delay-2 text-lg leading-relaxed" style={{ color: '#71717A' }}>
-                From a single sentence to a complete Roblox world. AI-powered at every step.
+                From first idea to published game — ForjeGames covers every layer, so you can focus on being creative.
               </p>
             </div>
 
@@ -793,6 +796,73 @@ export default function HomeClient() {
         <ComparisonSection />
 
         {/* ══════════════════════════════════════════════════════════════════
+            MID-PAGE CTA — Fast Prototyping
+        ══════════════════════════════════════════════════════════════════ */}
+        <section
+          className="relative py-24 px-6 overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #0A0E27, #070B1A)' }}
+        >
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: [
+                'radial-gradient(ellipse 70% 80% at 50% 50%, rgba(255,184,28,0.05) 0%, transparent 65%)',
+                'radial-gradient(ellipse 50% 40% at 15% 60%, rgba(124,58,237,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse 50% 40% at 85% 40%, rgba(99,102,241,0.04) 0%, transparent 60%)',
+              ].join(', '),
+            }} />
+            <div className="absolute inset-x-0 top-0" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,184,28,0.08) 30%, rgba(255,184,28,0.15) 50%, rgba(255,184,28,0.08) 70%, transparent)' }} />
+            <div className="absolute inset-x-0 bottom-0" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,184,28,0.06) 30%, rgba(255,184,28,0.10) 50%, rgba(255,184,28,0.06) 70%, transparent)' }} />
+          </div>
+
+          <div className="relative max-w-3xl mx-auto text-center">
+            <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-5" style={{ color: 'rgba(255,184,28,0.7)' }}>
+              For the next superstars
+            </p>
+            <h2
+              className="reveal reveal-delay-1 font-bold tracking-tight mb-6"
+              style={{ fontSize: 'clamp(2rem, 5vw, 3.75rem)', lineHeight: 1.08, letterSpacing: '-0.02em', color: '#FAFAFA' }}
+            >
+              Fast prototyping for
+              <br />
+              <span className="gradient-text text-shimmer">the next generation.</span>
+            </h2>
+            <p className="reveal reveal-delay-2 text-lg leading-relaxed mb-10 max-w-xl mx-auto" style={{ color: '#71717A' }}>
+              Your competitors are already shipping faster. ForjeGames cuts game dev time from months to days — and gives you moats they can&apos;t copy: custom 3D assets, multi-model AI, and a live Studio sync that just works.
+            </p>
+            <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/sign-up"
+                className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
+                style={{
+                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
+                  color: '#09090b',
+                  boxShadow: '0 0 40px rgba(255,184,28,0.35), 0 8px 24px rgba(0,0,0,0.4)',
+                  letterSpacing: '0.01em',
+                }}
+              >
+                Start Building Free
+                <IconArrow size={16} />
+              </Link>
+              <Link
+                href="/pricing"
+                className="cta-secondary inline-flex items-center gap-2 px-7 py-4 rounded-xl text-base font-medium"
+                style={{
+                  color: '#A1A1AA',
+                  border: '1px solid rgba(255,255,255,0.09)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                See pricing
+              </Link>
+            </div>
+            <p className="reveal reveal-delay-4 mt-6 text-[13px]" style={{ color: '#52525B' }}>
+              No credit card required &middot; 1,000 free tokens &middot; Cancel anytime
+            </p>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
             TESTIMONIALS
         ══════════════════════════════════════════════════════════════════ */}
         <TestimonialsSection />
@@ -981,16 +1051,16 @@ export default function HomeClient() {
 
             <div className="reveal reveal-delay-3 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                href="/editor"
+                href="/sign-up"
                 className="cta-primary cta-shimmer inline-flex items-center gap-2.5 px-8 py-4 rounded-xl text-base font-bold"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+                  background: 'linear-gradient(135deg, #FFB81C 0%, #D4AF37 100%)',
                   color: '#09090b',
-                  boxShadow: '0 0 48px rgba(212,175,55,0.4), 0 8px 32px rgba(0,0,0,0.5)',
+                  boxShadow: '0 0 48px rgba(255,184,28,0.4), 0 8px 32px rgba(0,0,0,0.5)',
                   letterSpacing: '0.01em',
                 }}
               >
-                Start building free
+                Start Building Free
                 <IconArrow size={16} />
               </Link>
               <Link

@@ -8,7 +8,7 @@ let _stripe: Stripe | null = null
 
 export function getStripe(): Stripe | null {
   if (_stripe) return _stripe
-  const key = process.env.STRIPE_SECRET_KEY
+  const key = serverEnv.STRIPE_SECRET_KEY
   if (!key) {
     console.warn('[stripe] STRIPE_SECRET_KEY is not set — billing features disabled')
     return null

@@ -7,7 +7,7 @@ import useSWR from 'swr'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const GOLD = '#D4AF37'
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) => fetch(url).then((r) => r.ok ? r.json() : null)
 
 const TOKEN_PACKS = [
   { slug: 'starter', name: 'Starter', tokens: 1_000,  price: '$10.00', pricePerK: '$10.00', badge: null,           popular: false },

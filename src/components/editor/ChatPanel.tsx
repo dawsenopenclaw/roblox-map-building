@@ -4,6 +4,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react'
 import { GlassPanel } from './GlassPanel'
 import type { ChatMessage, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
+import { McpToolCard, type McpToolResult } from './McpToolCard'
+import { McpToolbar } from './McpToolbar'
 
 // ─── Showcase example prompts (empty state) ───────────────────────────────────
 
@@ -202,14 +204,19 @@ function MessageBubble({
   onRetry,
   onBuildDifferently,
   onDismiss,
+  onEditAndResend,
 }: {
   msg: ChatMessage
   onRetry?: () => void
   onBuildDifferently?: () => void
   onDismiss?: (id: string) => void
+  onEditAndResend?: (id: string, newContent: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
   // Brief scan animation: start true for already-complete messages, or fires when streaming→complete
   const prevStreamingRef = useRef(msg.streaming)
   const [newFlash, setNewFlash] = useState(() => !msg.streaming)
@@ -418,16 +425,61 @@ function MessageBubble({
     return (
       <div
         style={{
-          padding: '12px 14px',
+          padding: '16px 20px',
           borderRadius: 14,
-          background: 'rgba(212,175,55,0.07)',
-          border: '1px solid rgba(212,175,55,0.2)',
+          background: 'rgba(212,175,55,0.08)',
+          border: '1px solid rgba(212,175,55,0.25)',
           fontSize: 13,
-          color: 'rgba(255,255,255,0.7)',
+          color: 'rgba(255,255,255,0.85)',
           fontFamily: 'Inter, sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
         }}
       >
-        {msg.content}
+        <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#D4AF37' }}>
+          You&apos;re out of tokens
+        </p>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+          {msg.content || 'Your AI token balance is empty. Get more tokens to keep building.'}
+        </p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+          <a
+            href="/tokens"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              borderRadius: 8,
+              background: '#D4AF37',
+              color: '#050810',
+              fontWeight: 600,
+              fontSize: 13,
+              textDecoration: 'none',
+            }}
+          >
+            Get Tokens
+          </a>
+          <a
+            href="/billing"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              borderRadius: 8,
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.7)',
+              fontWeight: 500,
+              fontSize: 13,
+              textDecoration: 'none',
+            }}
+          >
+            View Plans
+          </a>
+        </div>
       </div>
     )
   }
@@ -436,16 +488,43 @@ function MessageBubble({
     return (
       <div
         style={{
-          padding: '12px 14px',
+          padding: '16px 20px',
           borderRadius: 14,
-          background: 'rgba(99,102,241,0.07)',
-          border: '1px solid rgba(99,102,241,0.2)',
+          background: 'rgba(99,102,241,0.08)',
+          border: '1px solid rgba(99,102,241,0.25)',
           fontSize: 13,
-          color: 'rgba(255,255,255,0.7)',
+          color: 'rgba(255,255,255,0.85)',
           fontFamily: 'Inter, sans-serif',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
         }}
       >
-        {msg.content}
+        <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: '#818CF8' }}>
+          Free messages used up
+        </p>
+        <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+          {msg.content || 'Sign up for a free account to keep building. No credit card required.'}
+        </p>
+        <a
+          href="/sign-up"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px 20px',
+            borderRadius: 8,
+            background: '#6366F1',
+            color: '#fff',
+            fontWeight: 600,
+            fontSize: 13,
+            textDecoration: 'none',
+            width: 'fit-content',
+          }}
+        >
+          Create Free Account
+        </a>
       </div>
     )
   }
@@ -473,6 +552,40 @@ function MessageBubble({
     const displayContent = msg.content
       .replace(/^\[AUTO-RETRY attempt \d+\/\d+\]\s*/, '')
       .replace(/^\[FORJE_STEP:\d+\/\d+\]\s*/, '')
+
+    const handleEditStart = () => {
+      setEditValue(displayContent)
+      setEditing(true)
+      // Focus textarea on next tick after render
+      setTimeout(() => {
+        editTextareaRef.current?.focus()
+        editTextareaRef.current?.select()
+      }, 0)
+    }
+
+    const handleEditCancel = () => {
+      setEditing(false)
+      setEditValue('')
+    }
+
+    const handleEditSave = () => {
+      const trimmed = editValue.trim()
+      if (!trimmed || !onEditAndResend) return
+      setEditing(false)
+      setEditValue('')
+      onEditAndResend(msg.id, trimmed)
+    }
+
+    const handleEditKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault()
+        handleEditSave()
+      }
+      if (e.key === 'Escape') {
+        handleEditCancel()
+      }
+    }
+
     return (
       <div
         style={{
@@ -480,21 +593,148 @@ function MessageBubble({
           justifyContent: 'flex-end',
           animation: 'userBubbleIn 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards',
         }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        <div
-          style={{
-            maxWidth: '80%',
-            padding: '14px 18px',
-            borderRadius: '18px 18px 4px 18px',
-            background: 'rgba(212,175,55,0.06)',
-            border: '1px solid rgba(212,175,55,0.12)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-          }}
-        >
-          <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {displayContent}
-          </p>
+        <div style={{ maxWidth: '80%', position: 'relative' }}>
+          {/* Pencil edit button — appears on hover, only when not editing */}
+          {!editing && onEditAndResend && (
+            <button
+              onClick={handleEditStart}
+              title="Edit message"
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: -30,
+                width: 22,
+                height: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 6,
+                border: '1px solid rgba(212,175,55,0.2)',
+                background: 'rgba(212,175,55,0.08)',
+                color: 'rgba(212,175,55,0.7)',
+                cursor: 'pointer',
+                padding: 0,
+                opacity: hovered ? 1 : 0,
+                pointerEvents: hovered ? 'auto' : 'none',
+                transition: 'opacity 0.15s, background 0.15s, color 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.18)'
+                e.currentTarget.style.color = '#D4AF37'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
+                e.currentTarget.style.color = 'rgba(212,175,55,0.7)'
+              }}
+            >
+              {/* Pencil icon (inline SVG — no lucide-react import needed) */}
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          )}
+
+          {editing ? (
+            /* ── Edit mode ────────────────────────────────────────── */
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                transition: 'opacity 0.15s',
+              }}
+            >
+              <textarea
+                ref={editTextareaRef}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                rows={Math.max(2, editValue.split('\n').length)}
+                style={{
+                  width: '100%',
+                  minWidth: 260,
+                  padding: '12px 14px',
+                  borderRadius: '14px 14px 4px 14px',
+                  background: 'rgba(10,10,26,0.85)',
+                  border: '1.5px solid #D4AF37',
+                  color: 'white',
+                  fontSize: 14,
+                  fontFamily: 'Inter, sans-serif',
+                  lineHeight: 1.5,
+                  resize: 'none',
+                  outline: 'none',
+                  boxShadow: '0 0 16px rgba(212,175,55,0.12)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={handleEditCancel}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'transparent',
+                    color: 'rgba(255,255,255,0.45)',
+                    fontSize: 12,
+                    fontFamily: 'Inter, sans-serif',
+                    cursor: 'pointer',
+                    transition: 'color 0.15s, border-color 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.75)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.45)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  disabled={!editValue.trim()}
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: editValue.trim() ? '#D4AF37' : 'rgba(212,175,55,0.3)',
+                    color: editValue.trim() ? '#030712' : 'rgba(3,7,18,0.5)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'Inter, sans-serif',
+                    cursor: editValue.trim() ? 'pointer' : 'not-allowed',
+                    transition: 'background 0.15s, color 0.15s',
+                  }}
+                >
+                  Save &amp; Resend
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── Normal display mode ──────────────────────────────── */
+            <div
+              style={{
+                padding: '14px 18px',
+                borderRadius: '18px 18px 4px 18px',
+                background: 'rgba(212,175,55,0.06)',
+                border: '1px solid rgba(212,175,55,0.12)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {displayContent}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1240,6 +1480,173 @@ function ModelSelector({
   )
 }
 
+// ─── MCP Quick-Action Bar ─────────────────────────────────────────────────────
+
+const MCP_QUICK_ACTIONS = [
+  {
+    id: 'gen-3d',
+    label: 'Generate 3D Model',
+    prompt: 'Generate a 3D model of ',
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    ),
+    color: '#D4AF37',
+    bg: 'rgba(212,175,55,0.08)',
+    border: 'rgba(212,175,55,0.22)',
+  },
+  {
+    id: 'create-terrain',
+    label: 'Create Terrain',
+    prompt: 'Create terrain with ',
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m8 3 4 8 5-5 5 15H2L8 3z"/>
+      </svg>
+    ),
+    color: '#22C55E',
+    bg: 'rgba(34,197,94,0.08)',
+    border: 'rgba(34,197,94,0.22)',
+  },
+  {
+    id: 'plan-city',
+    label: 'Plan City',
+    prompt: 'Plan a city district with ',
+    icon: (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <path d="M3 9l9-7 9 7"/>
+        <path d="M9 22V12h6v10"/>
+      </svg>
+    ),
+    color: '#38BDF8',
+    bg: 'rgba(56,189,248,0.08)',
+    border: 'rgba(56,189,248,0.22)',
+  },
+] as const
+
+const MCP_QUICK_ACTION_STYLES = `
+  @keyframes mcpQaFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`
+
+function McpQuickActions({ onAction }: { onAction: (prompt: string) => void }) {
+  return (
+    <>
+      <style>{MCP_QUICK_ACTION_STYLES}</style>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          flexWrap: 'wrap',
+          padding: '6px 0 2px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.09em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.18)',
+            fontFamily: 'Inter, sans-serif',
+            marginRight: 2,
+            userSelect: 'none',
+            flexShrink: 0,
+          }}
+        >
+          Quick
+        </span>
+        {MCP_QUICK_ACTIONS.map((action, i) => (
+          <button
+            key={action.id}
+            onClick={() => onAction(action.prompt)}
+            title={`Start: "${action.prompt}..."`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 9px',
+              borderRadius: 7,
+              background: action.bg,
+              border: `1px solid ${action.border}`,
+              color: action.color,
+              fontSize: 11,
+              fontFamily: 'Inter, sans-serif',
+              fontWeight: 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease-out',
+              animation: `mcpQaFadeIn 0.22s ease-out ${i * 0.05}s both`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.82'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+              e.currentTarget.style.boxShadow = `0 4px 12px ${action.bg}`
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1'
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = 'none'
+            }}
+          >
+            {action.icon}
+            {action.label}
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+// ─── Active MCP tool indicator (shown while AI uses a tool mid-stream) ────────
+
+function McpToolIndicator({ toolName }: { toolName: string }) {
+  const label = toolName.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '3px 8px',
+        borderRadius: 6,
+        background: 'rgba(212,175,55,0.07)',
+        border: '1px solid rgba(212,175,55,0.22)',
+        marginTop: 5,
+      }}
+    >
+      <svg
+        width="11"
+        height="11"
+        viewBox="0 0 13 13"
+        fill="none"
+        style={{ animation: 'mcpSpin 0.9s linear infinite', flexShrink: 0 }}
+      >
+        <circle cx="6.5" cy="6.5" r="5.5" stroke="rgba(212,175,55,0.2)" strokeWidth="1.5"/>
+        <path d="M6.5 1A5.5 5.5 0 0 1 12 6.5" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+      <span
+        style={{
+          fontSize: 10,
+          fontFamily: 'Inter, sans-serif',
+          color: 'rgba(212,175,55,0.8)',
+          fontWeight: 500,
+        }}
+      >
+        Using {label}...
+      </span>
+      <style>{`@keyframes mcpSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }`}</style>
+    </div>
+  )
+}
+
 // ─── Main ChatPanel ───────────────────────────────────────────────────────────
 
 interface ChatPanelProps {
@@ -1261,6 +1668,12 @@ interface ChatPanelProps {
   onDismiss?: (id: string) => void
   /** When true, shows only the input bar (viewport expanded mode) */
   compact?: boolean
+  /** Active MCP tool name being used by the AI right now (shown as inline indicator) */
+  activeMcpTool?: string | null
+  /** MCP result card data to render inline in the chat feed */
+  mcpToolResult?: McpToolResult | null
+  /** Called when the user edits a user message and re-sends it */
+  onEditAndResend?: (id: string, newContent: string) => void
 }
 
 export function ChatPanel({
@@ -1278,6 +1691,9 @@ export function ChatPanel({
   onBuildDifferently,
   onDismiss,
   compact = false,
+  activeMcpTool = null,
+  mcpToolResult = null,
+  onEditAndResend,
 }: ChatPanelProps) {
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -1321,6 +1737,9 @@ export function ChatPanel({
       padding="none"
       style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
+      {/* MCP Toolbar — always visible at the top */}
+      {!compact && <McpToolbar />}
+
       {/* Messages area — hidden in compact mode */}
       <div
         style={{
@@ -1345,8 +1764,23 @@ export function ChatPanel({
               onRetry={onRetry}
               onBuildDifferently={onBuildDifferently}
               onDismiss={onDismiss}
+              onEditAndResend={onEditAndResend}
             />
           ))
+        )}
+
+        {/* MCP tool result card — appears after messages when a tool completes/fails */}
+        {mcpToolResult && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+            <McpToolCard tool={mcpToolResult} />
+          </div>
+        )}
+
+        {/* Active MCP tool indicator — shown mid-stream while AI calls a tool */}
+        {activeMcpTool && (
+          <div style={{ paddingLeft: 38 }}>
+            <McpToolIndicator toolName={activeMcpTool} />
+          </div>
         )}
         {/* Suggestion chips — clickable next actions */}
         {suggestions.length > 0 && !loading && (
@@ -1403,6 +1837,22 @@ export function ChatPanel({
           position: 'relative',
         }}
       >
+        {/* MCP quick-action buttons */}
+        {!compact && (
+          <McpQuickActions
+            onAction={(prompt) => {
+              setInput(prompt)
+              // Focus textarea so user can complete the prompt
+              setTimeout(() => {
+                const ta = document.querySelector<HTMLTextAreaElement>('textarea')
+                ta?.focus()
+                const len = prompt.length
+                ta?.setSelectionRange(len, len)
+              }, 30)
+            }}
+          />
+        )}
+
         {/* Tip of the day — dismissable, shown for first 10 sessions */}
         <TipOfTheDay />
 

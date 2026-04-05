@@ -172,6 +172,16 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true'
 const hasProductionClerkKeys = (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '').startsWith('pk_live_')
 const effectiveDemoMode = DEMO_MODE && !hasProductionClerkKeys
 
+// ─── DEMO_MODE production guard (module-level) ───────────────────────────────
+// This runs once at startup, not per-request, so it surfaces as a build/boot
+// error rather than being swallowed by the per-request try/catch.
+if (DEMO_MODE && process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_PROD !== 'true') {
+  throw new Error(
+    '[SECURITY] DEMO_MODE=true is not permitted in production. ' +
+    'Set DEMO_MODE=false or set ALLOW_DEMO_PROD=true to explicitly override.'
+  )
+}
+
 // ─── CORS configuration ───────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? '')
   .split(',')
@@ -207,14 +217,6 @@ function handleCorsPreFlight(request: NextRequest): NextResponse | null {
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 export default clerkMiddleware(async (auth, request) => {
-  // ── DEMO_MODE production guard ─────────────────────────────────────────────
-  if (process.env.DEMO_MODE === 'true' && process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_PROD !== 'true') {
-    throw new Error(
-      '[SECURITY] DEMO_MODE=true is not permitted in production. ' +
-      'Set DEMO_MODE=false or set ALLOW_DEMO_PROD=true to explicitly override.'
-    )
-  }
-
   try {
     // ── CORS preflight — must run before any redirect or auth check ────────────
     const preFlightResponse = handleCorsPreFlight(request)
@@ -329,7 +331,7 @@ export default clerkMiddleware(async (auth, request) => {
     //   b) claims.role === 'ADMIN' — set via Clerk JWT template if configured.
     // If neither signal is present, we redirect to /dashboard and let the layout
     // remain the authoritative DB-role check for users not in ADMIN_EMAILS.
-    if (userId && request.nextUrl.pathname.startsWith('/admin')) {
+    if (userId && (request.nextUrl.pathname.startsWith('/admin') || request.nextUrl.pathname.startsWith('/api/admin'))) {
       const sessionEmail = (claims?.email as string | undefined)
         ?? (claims?.primary_email_address as string | undefined)
         ?? (claims?.primaryEmail as string | undefined)
@@ -354,7 +356,11 @@ export default clerkMiddleware(async (auth, request) => {
     // Clerk JWT claims hadn't refreshed with the dateOfBirth metadata yet.
 
     // Pass-through: forward the injected x-pathname header to all Server Components.
-    return NextResponse.next({ request: { headers: requestHeaders } })
+    // Also attach CORS headers to the response so cross-origin API callers receive them.
+    const res = NextResponse.next({ request: { headers: requestHeaders } })
+    const corsHeaders = getCorsHeaders(request)
+    Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
+    return res
   } catch (err) {
     // ── Catch-all: middleware must never crash the app ─────────────────────────
     // Admin routes return 503 on transient failure — never silently pass through

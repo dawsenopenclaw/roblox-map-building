@@ -55,7 +55,7 @@ export default function SignUpClient() {
         routing="path"
         path="/sign-up"
         signInUrl="/sign-in"
-        afterSignUpUrl="/onboarding/age-gate"
+        fallbackRedirectUrl="/onboarding/age-gate"
         appearance={clerkAppearance}
       />
 
