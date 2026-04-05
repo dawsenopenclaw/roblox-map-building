@@ -1189,18 +1189,31 @@ function AppearanceTab() {
 
 // ─── Connected Accounts Tab ───────────────────────────────────────────────────
 
+type PlatformKey = 'roblox' | 'github'
+
+type ConnectionState = {
+  connected: boolean
+  username: string | null
+  connectedAt: string | null
+}
+
 function ConnectedTab() {
   const { show } = useToast()
 
-  const { data: connData } = useSWR<{
-    roblox: { connected: boolean; username: string | null; connectedAt: string | null }
-    github: { connected: boolean; username: string | null; connectedAt: string | null }
+  const { data: connData, mutate: revalidate } = useSWR<{
+    roblox: ConnectionState
+    github: ConnectionState
   }>('/api/settings/connections', fetcher, { revalidateOnFocus: false })
 
-  const [connections, setConnections] = useState({
-    roblox: { connected: false, username: null as string | null, connectedAt: null as string | null },
-    github: { connected: false, username: null as string | null, connectedAt: null as string | null },
+  const [connections, setConnections] = useState<Record<PlatformKey, ConnectionState>>({
+    roblox: { connected: false, username: null, connectedAt: null },
+    github: { connected: false, username: null, connectedAt: null },
   })
+
+  // Which platform's input form is open
+  const [inputOpen, setInputOpen] = useState<PlatformKey | null>(null)
+  const [inputValue, setInputValue] = useState('')
+  const [saving, setSaving] = useState(false)
 
   // Hydrate from API once loaded
   useEffect(() => {
@@ -1212,10 +1225,38 @@ function ConnectedTab() {
     }
   }, [connData])
 
-  type PlatformKey = keyof typeof connections
+  const handleOpenConnect = (platform: PlatformKey) => {
+    setInputOpen(platform)
+    setInputValue('')
+  }
 
-  const handleConnect = (platform: PlatformKey) => {
-    window.location.href = platform === 'roblox' ? '/api/auth/roblox' : '/api/auth/github'
+  const handleSaveConnect = async () => {
+    if (!inputOpen || !inputValue.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/settings/connections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: inputOpen, username: inputValue.trim() }),
+      })
+      if (!res.ok) {
+        const err = await res.json() as { error?: string }
+        show({ variant: 'error', title: err?.error ?? 'Failed to connect' })
+        return
+      }
+      setConnections((c) => ({
+        ...c,
+        [inputOpen]: { connected: true, username: inputValue.trim(), connectedAt: 'now' },
+      }))
+      show({ variant: 'success', title: `${inputOpen === 'roblox' ? 'Roblox' : 'GitHub'} connected` })
+      setInputOpen(null)
+      setInputValue('')
+      void revalidate()
+    } catch {
+      show({ variant: 'error', title: 'Network error — please try again.' })
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDisconnect = async (platform: PlatformKey) => {
@@ -1231,6 +1272,7 @@ function ConnectedTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ platform }),
       })
+      void revalidate()
     } catch {
       // Non-fatal — optimistic update already applied
     }
@@ -1240,6 +1282,7 @@ function ConnectedTab() {
     key: PlatformKey
     label: string
     description: string
+    placeholder: string
     icon: React.ReactNode
     iconBg: string
   }[] = [
@@ -1247,6 +1290,7 @@ function ConnectedTab() {
       key: 'roblox',
       label: 'Roblox',
       description: 'Publish maps, sync assets, and deploy directly to your games.',
+      placeholder: 'Your Roblox username',
       icon: (
         <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" aria-hidden="true">
           <path d="M5.04 3L3 18.96 18.96 21 21 5.04 5.04 3zm10.2 11.4l-4.56-.6-.6 4.56-2.52-.36.6-4.56-4.56-.6.36-2.52 4.56.6.6-4.56 2.52.36-.6 4.56 4.56.6-.36 2.52z" />
@@ -1258,6 +1302,7 @@ function ConnectedTab() {
       key: 'github',
       label: 'GitHub',
       description: 'Sync your projects with GitHub repositories for version control.',
+      placeholder: 'Your GitHub username',
       icon: <Github size={20} />,
       iconBg: 'bg-white/10 text-white',
     },
@@ -1267,16 +1312,17 @@ function ConnectedTab() {
     <div className="space-y-4">
       {items.map((item) => {
         const conn = connections[item.key]
+        const isOpen = inputOpen === item.key
         return (
           <div key={item.key} className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 flex-1 min-w-0">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.iconBg}`}
                 >
                   {item.icon}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-white font-semibold text-sm">{item.label}</p>
                     {conn.connected && (
@@ -1286,32 +1332,71 @@ function ConnectedTab() {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-300 text-xs">{item.description}</p>
+                  <p className="text-gray-400 text-xs">{item.description}</p>
                   {conn.connected && conn.username && (
                     <p className="text-gray-400 text-xs mt-1">
-                      @{conn.username} · Since {conn.connectedAt}
+                      @{conn.username}{conn.connectedAt && conn.connectedAt !== 'now' ? ` · Since ${conn.connectedAt}` : ''}
                     </p>
                   )}
                 </div>
               </div>
 
-              {conn.connected ? (
-                <button
-                  onClick={() => handleDisconnect(item.key)}
-                  className="text-xs border border-white/20 hover:border-red-500/30 hover:text-red-400 text-gray-300 px-3 py-2 rounded-xl transition-colors flex-shrink-0"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleConnect(item.key)}
-                  className="inline-flex items-center gap-1.5 text-xs bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-3 py-2 rounded-xl transition-colors flex-shrink-0"
-                >
-                  <Link2 size={12} />
-                  Connect
-                </button>
-              )}
+              <div className="flex-shrink-0">
+                {conn.connected ? (
+                  <button
+                    onClick={() => handleDisconnect(item.key)}
+                    className="text-xs border border-white/20 hover:border-red-500/30 hover:text-red-400 text-gray-300 px-3 py-2 rounded-xl transition-colors"
+                  >
+                    Disconnect
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleOpenConnect(item.key)}
+                    className="inline-flex items-center gap-1.5 text-xs bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-3 py-2 rounded-xl transition-colors"
+                  >
+                    <Link2 size={12} />
+                    Connect
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Username input form — shown when Connect is clicked */}
+            {isOpen && (
+              <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                <p className="text-xs text-gray-400 mb-2">
+                  Enter your {item.label} username to link your account:
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <AtSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void handleSaveConnect() }}
+                      placeholder={item.placeholder}
+                      maxLength={100}
+                      autoFocus
+                      className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                    />
+                  </div>
+                  <button
+                    onClick={() => void handleSaveConnect()}
+                    disabled={saving || !inputValue.trim()}
+                    className="px-4 py-2.5 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => { setInputOpen(null); setInputValue('') }}
+                    className="px-3 py-2.5 border border-white/10 text-gray-400 hover:text-white rounded-xl text-sm transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )
       })}

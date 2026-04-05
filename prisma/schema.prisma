@@ -66,6 +66,7 @@ model User {
   twitterHandle   String?
   discordHandle   String?
   githubHandle    String?
+  robloxHandle    String?
 
   // Phone (for SMS notifications)
   phone           String?

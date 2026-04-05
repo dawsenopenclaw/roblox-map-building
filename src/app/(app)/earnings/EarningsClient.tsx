@@ -143,16 +143,14 @@ export default function EarningsClient() {
           <h1 className="text-2xl sm:text-3xl font-bold text-white">Earnings</h1>
           <p className="text-gray-400 text-sm mt-1">Your marketplace revenue and payout history.</p>
         </div>
-        {/* Export CSV — endpoint not yet implemented; hidden until available */}
-        {false && (
-          <button
-            onClick={() => window.open('/api/earnings/export', '_blank')}
-            className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/25 text-gray-300 hover:text-blue-400 px-4 py-2.5 rounded-xl transition-colors"
-          >
-            <Download size={14} />
-            Export CSV
-          </button>
-        )}
+        <a
+          href="/api/earnings/export"
+          download
+          className="inline-flex items-center gap-2 text-sm border border-white/10 hover:border-white/25 text-gray-300 hover:text-[#D4AF37] px-4 py-2.5 rounded-xl transition-colors"
+        >
+          <Download size={14} />
+          Export CSV
+        </a>
       </div>
 
       {/* ── API error banner ── */}
