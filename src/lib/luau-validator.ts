@@ -128,9 +128,90 @@ export function validateAndFixLuau(code: string): ValidationResult {
     return '.Color ='
   })
 
-  // 8. Ensure all parts are Anchored in Edit Mode
-  // Check if there are Instance.new("Part") without Anchored = true
-  const partCreations = fixed.match(/Instance\.new\("(?:Part|WedgePart|CylinderPart|SpherePart)"\)/g)
+  // 8. Fix PointLight/SpotLight CFrame assignment — lights don't have CFrame, use Parent.CFrame
+  // AI often does: light.CFrame = CFrame.new(...) which fails
+  fixed = fixed.replace(
+    /(\w+)\.CFrame\s*=\s*(CFrame\.new\([^)]*\))\s*\n/g,
+    (match, varName, cframeExpr) => {
+      // Check if varName looks like a light (contains Light, light, lamp, etc.)
+      if (/[Ll]ight|[Ll]amp|[Gg]low|[Ss]pot|[Ss]urface/.test(varName)) {
+        fixes.push(`Fixed: Removed CFrame assignment on light "${varName}" (lights inherit parent position)`)
+        return '' // Remove the line — lights get position from their parent Part
+      }
+      return match
+    }
+  )
+
+  // 9. Fix Model:SetPrimaryPartCFrame() → Model:PivotTo()
+  // SetPrimaryPartCFrame is deprecated and fails without PrimaryPart
+  fixed = fixed.replace(
+    /(\w+):SetPrimaryPartCFrame\(([^)]+)\)/g,
+    (_, varName, args) => {
+      fixes.push(`Fixed: ${varName}:SetPrimaryPartCFrame() → ${varName}:PivotTo()`)
+      return `${varName}:PivotTo(${args})`
+    }
+  )
+
+  // 10. Fix .PrimaryPartCFrame = ... → :PivotTo(...)
+  fixed = fixed.replace(
+    /(\w+)\.PrimaryPartCFrame\s*=\s*([^\n]+)/g,
+    (_, varName, value) => {
+      fixes.push(`Fixed: ${varName}.PrimaryPartCFrame → ${varName}:PivotTo()`)
+      return `${varName}:PivotTo(${value.trim()})`
+    }
+  )
+
+  // 11. Ensure Model has PrimaryPart set before PivotTo (add if missing)
+  if (fixed.includes(':PivotTo(') && !fixed.includes('.PrimaryPart')) {
+    // Find Model variable names and add PrimaryPart assignment
+    const modelVars = fixed.match(/local\s+(\w+)\s*=\s*Instance\.new\("Model"\)/g)
+    if (modelVars) {
+      for (const decl of modelVars) {
+        const varMatch = decl.match(/local\s+(\w+)/)
+        if (varMatch) {
+          const vn = varMatch[1]
+          // Insert PrimaryPart assignment after parenting children
+          // We'll add it just before the PivotTo call for safety
+          fixed = fixed.replace(
+            new RegExp(`(${vn}:PivotTo\\()`, 'g'),
+            `if not ${vn}.PrimaryPart then for _,c in ${vn}:GetChildren() do if c:IsA("BasePart") then ${vn}.PrimaryPart=c break end end end\n$1`
+          )
+          fixes.push(`Added: PrimaryPart auto-set for Model "${vn}"`)
+        }
+      }
+    }
+  }
+
+  // 12. Fix Instance.new with nil className — catch empty or nil args
+  fixed = fixed.replace(/Instance\.new\(\s*\)/g, () => {
+    fixes.push('Fixed: Instance.new() with no args → Instance.new("Part")')
+    return 'Instance.new("Part")'
+  })
+
+  // 13. Fix CFrame on non-BasePart instances (PointLight, SpotLight, SurfaceLight, etc.)
+  // More aggressive version: any .CFrame= on a variable created as a Light
+  const lightVars = new Set<string>()
+  const lightCreatePattern = /local\s+(\w+)\s*=\s*Instance\.new\("(?:PointLight|SpotLight|SurfaceLight|Fire|Smoke|Sparkles|BillboardGui|Attachment)"\)/g
+  let lm
+  while ((lm = lightCreatePattern.exec(fixed)) !== null) {
+    lightVars.add(lm[1])
+  }
+  if (lightVars.size > 0) {
+    const lightVarPattern = new RegExp(
+      `(${[...lightVars].join('|')})\\.(?:CFrame|Position|Size)\\s*=\\s*[^\\n]+\\n?`,
+      'g'
+    )
+    const beforeLen = fixed.length
+    fixed = fixed.replace(lightVarPattern, (match, vn) => {
+      return '' // Remove invalid property assignments on non-BasePart instances
+    })
+    if (fixed.length !== beforeLen) {
+      fixes.push('Fixed: Removed CFrame/Position/Size on non-BasePart instances (lights, effects)')
+    }
+  }
+
+  // 14. Ensure all parts are Anchored in Edit Mode
+  const partCreations = fixed.match(/Instance\.new\("(?:Part|WedgePart|CylinderPart|SpherePart|MeshPart|UnionOperation)"\)/g)
   if (partCreations && partCreations.length > 0 && !fixed.includes('Anchored')) {
     warnings.push('Warning: Parts created without Anchored=true — they will fall in Play mode')
   }
