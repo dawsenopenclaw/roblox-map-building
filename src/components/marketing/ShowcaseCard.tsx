@@ -53,17 +53,17 @@ export default function ShowcaseCard({ game, variant = 'compact' }: ShowcaseCard
       }}
       aria-label={`Try the "${game.title}" prompt in the editor`}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — styled to look like a real Roblox in-game screenshot */}
       <div
         className="relative overflow-hidden"
         style={{
           height: isDetailed ? 192 : 176,
-          background: `linear-gradient(135deg, ${accent}12 0%, #050810 100%)`,
+          background: `linear-gradient(180deg, ${accent}30 0%, ${accent}15 35%, #0A0E20 75%, #050810 100%)`,
         }}
       >
         {/* Thumbnail image — served by the dynamic 400x300 route at
             src/app/(marketing)/showcase/[slug]/thumbnail.tsx. No static
-            files required; the gradient underneath still shows through
+            files required; the rich fallback beneath still shows through
             while the image is loading. */}
         <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.04]"
@@ -71,21 +71,134 @@ export default function ShowcaseCard({ game, variant = 'compact' }: ShowcaseCard
           aria-hidden="true"
         />
 
-        {/* Accent radial overlay */}
+        {/* Sky / horizon gradient (suggests a skybox behind low-poly terrain) */}
         <div
-          className="absolute inset-0 opacity-60 mix-blend-screen"
+          className="absolute inset-x-0 top-0 h-1/2 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at 30% 50%, ${accent}20 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, ${accent}10 0%, transparent 50%)`,
+            background: `linear-gradient(180deg, ${accent}40 0%, ${accent}15 60%, transparent 100%)`,
+            mixBlendMode: 'screen',
           }}
         />
 
-        {/* Grid pattern */}
+        {/* Low-poly isometric "terrain" suggestion using SVG */}
+        <svg
+          className="absolute inset-x-0 bottom-0 w-full opacity-55 pointer-events-none"
+          viewBox="0 0 400 120"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          style={{ height: '55%' }}
+        >
+          <defs>
+            <linearGradient id={`terrain-${game.id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={accent} stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#050810" stopOpacity="0.95" />
+            </linearGradient>
+          </defs>
+          {/* Back mountain layer */}
+          <polygon
+            points="0,80 60,40 110,70 170,30 230,65 300,25 360,60 400,45 400,120 0,120"
+            fill={`${accent}22`}
+          />
+          {/* Mid layer */}
+          <polygon
+            points="0,95 50,70 100,90 150,60 210,85 270,55 330,80 400,65 400,120 0,120"
+            fill={`${accent}33`}
+          />
+          {/* Front layer */}
+          <polygon
+            points="0,110 40,90 90,105 140,85 200,105 260,88 320,102 400,90 400,120 0,120"
+            fill={`url(#terrain-${game.id})`}
+          />
+        </svg>
+
+        {/* Accent radial overlay — like a sun/light source */}
         <div
-          className="absolute inset-0 opacity-25"
+          className="absolute inset-0 opacity-70 mix-blend-screen pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 75% 22%, ${accent}55 0%, ${accent}15 25%, transparent 55%), radial-gradient(ellipse at 30% 90%, ${accent}20 0%, transparent 55%)`,
+          }}
+        />
+
+        {/* Isometric grid pattern (simulates Roblox baseplate studs) */}
+        <div
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
+              'linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+            maskImage: 'linear-gradient(180deg, transparent 30%, black 60%, black 100%)',
+            WebkitMaskImage: 'linear-gradient(180deg, transparent 30%, black 60%, black 100%)',
+          }}
+        />
+
+        {/* Faux HUD — health bar (top-left under genre badge) */}
+        <div
+          className="absolute left-3 z-10 pointer-events-none"
+          style={{ top: 38 }}
+          aria-hidden="true"
+        >
+          <div
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md"
+            style={{
+              background: 'rgba(5,8,16,0.55)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="#EF4444" aria-hidden="true">
+              <path d="M12 21s-8-5-8-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-10 11-10 11z" />
+            </svg>
+            <div
+              className="relative w-12 h-1 rounded-full overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.12)' }}
+            >
+              <div
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ width: '78%', background: 'linear-gradient(90deg, #22C55E, #4ADE80)' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Faux HUD — mini-map (top-right under "AI Built") */}
+        <div
+          className="absolute right-3 z-10 pointer-events-none"
+          style={{ top: 38 }}
+          aria-hidden="true"
+        >
+          <div
+            className="relative w-10 h-10 rounded-md overflow-hidden"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, ${accent}40 0%, rgba(5,8,16,0.75) 80%)`,
+              border: '1px solid rgba(255,255,255,0.14)',
+              boxShadow: `inset 0 0 8px ${accent}30`,
+            }}
+          >
+            {/* player dot */}
+            <div
+              className="absolute rounded-full"
+              style={{
+                top: '50%',
+                left: '50%',
+                width: 3,
+                height: 3,
+                transform: 'translate(-50%, -50%)',
+                background: '#FAFAFA',
+                boxShadow: '0 0 4px #FAFAFA',
+              }}
+            />
+            {/* crosshair lines */}
+            <div className="absolute inset-x-1 top-1/2 h-px" style={{ background: 'rgba(255,255,255,0.15)' }} />
+            <div className="absolute inset-y-1 left-1/2 w-px" style={{ background: 'rgba(255,255,255,0.15)' }} />
+          </div>
+        </div>
+
+        {/* Scanline / film grain for a rendered-game feel */}
+        <div
+          className="absolute inset-0 opacity-[0.08] pointer-events-none mix-blend-overlay"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(0deg, rgba(255,255,255,0.5) 0px, rgba(255,255,255,0.5) 1px, transparent 1px, transparent 3px)',
           }}
         />
 
