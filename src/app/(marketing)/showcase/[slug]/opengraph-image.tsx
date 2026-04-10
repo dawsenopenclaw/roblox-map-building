@@ -1,9 +1,11 @@
 import { ImageResponse } from 'next/og'
 import { SHOWCASE_GAMES } from '@/lib/showcase-data'
 
-// Note: Next.js 15 disallows both `runtime = 'edge'` AND `generateStaticParams`
-// in the same file. Since we want pre-built static OG images for each showcase
-// game, we use the default Node.js runtime which supports static params.
+// Generated on-demand at request time instead of at build time. This avoids
+// a Satori prerender bug where certain nested flex layouts throw
+// "Expected <div> to have explicit display: flex" during `next build`,
+// even though the same layout renders correctly at runtime.
+export const dynamic = 'force-dynamic'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 
@@ -145,6 +147,5 @@ export default async function ShowcaseOGImage({
   )
 }
 
-export async function generateStaticParams() {
-  return SHOWCASE_GAMES.map((g) => ({ slug: g.id }))
-}
+// Intentionally no generateStaticParams — see `dynamic = 'force-dynamic'`
+// above. Images are rendered at request time and cached by Vercel's CDN.

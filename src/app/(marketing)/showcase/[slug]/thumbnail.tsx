@@ -1,9 +1,10 @@
 import { ImageResponse } from 'next/og'
 import { SHOWCASE_GAMES } from '@/lib/showcase-data'
 
-// Note: Next.js 15 disallows both `runtime = 'edge'` AND `generateStaticParams`
-// in the same file. Since we want pre-built static thumbnails for each showcase
-// game, we use the default Node.js runtime which supports static params.
+// Generated on-demand at request time instead of at build time. See the
+// matching opengraph-image.tsx for details — avoids a Satori prerender bug
+// where nested flex columns occasionally fail the build-time layout check.
+export const dynamic = 'force-dynamic'
 export const size = { width: 400, height: 300 }
 export const contentType = 'image/png'
 
@@ -126,6 +127,5 @@ export default async function ShowcaseThumbnail({
   )
 }
 
-export async function generateStaticParams() {
-  return SHOWCASE_GAMES.map((g) => ({ slug: g.id }))
-}
+// Intentionally no generateStaticParams — see `dynamic = 'force-dynamic'`
+// above. Thumbnails are rendered at request time and CDN-cached.
