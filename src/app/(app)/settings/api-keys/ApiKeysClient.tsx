@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Copy, Check, Plus, KeyRound } from 'lucide-react'
+import { Copy, Check, Plus, KeyRound, AlertTriangle, X } from 'lucide-react'
 
 type ApiKey = {
   id: string
@@ -251,6 +251,51 @@ export default function ApiKeysPage() {
         </div>
       )}
 
+      {/* Revoke confirmation modal */}
+      {deleteConfirm && (() => {
+        const target = keys.find((k) => k.id === deleteConfirm)
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#141414] border border-red-500/30 rounded-2xl p-6 w-full max-w-md shadow-[0_0_60px_rgba(239,68,68,0.1)]">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-11 h-11 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} className="text-red-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-white font-bold text-lg leading-tight">Revoke API Key?</h2>
+                  <p className="text-gray-400 text-sm mt-1">
+                    This will permanently disable{' '}
+                    <span className="text-white font-semibold">{target?.name ?? 'this key'}</span>.
+                    Any apps using it will stop working immediately. This cannot be undone.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="text-gray-500 hover:text-white transition-colors p-1 -mt-1 -mr-1"
+                  aria-label="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  className="px-4 py-2.5 rounded-lg border border-white/[0.08] hover:border-white/20 text-gray-300 hover:text-white text-sm font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteKey(deleteConfirm)}
+                  className="px-4 py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-colors shadow-[0_0_20px_rgba(239,68,68,0.25)]"
+                >
+                  Revoke Key
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Fetch error */}
       {fetchError && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 mb-4">
@@ -323,36 +368,30 @@ export default function ApiKeysPage() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-gray-600 text-xs mt-2">
-                    Created {new Date(key.createdAt).toLocaleDateString()}
-                    {key.lastUsedAt && ` · Last used ${new Date(key.lastUsedAt).toLocaleDateString()}`}
-                    {key.expiresAt && ` · Expires ${new Date(key.expiresAt).toLocaleDateString()}`}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mt-3">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-gray-600">Created</span>
+                      <span className="text-gray-300 font-medium">{new Date(key.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-gray-600">Last used</span>
+                      <span className="text-gray-300 font-medium">{key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Never'}</span>
+                    </span>
+                    {key.expiresAt && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-gray-600">Expires</span>
+                        <span className="text-amber-300/80 font-medium">{new Date(key.expiresAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {deleteConfirm === key.id ? (
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => deleteKey(key.id)}
-                      className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors font-semibold"
-                    >
-                      Confirm
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(null)}
-                      className="text-xs border border-white/[0.08] hover:border-white/20 text-gray-400 hover:text-white px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setDeleteConfirm(key.id)}
-                    className="text-xs border border-red-500/20 hover:border-red-500/50 text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                  >
-                    Revoke
-                  </button>
-                )}
+                <button
+                  onClick={() => setDeleteConfirm(key.id)}
+                  className="text-xs border border-red-500/20 hover:border-red-500/50 hover:bg-red-500/10 text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
+                >
+                  Revoke
+                </button>
               </div>
             </div>
           ))}

@@ -40,8 +40,10 @@ function ProgressBar({ currentStep }: { currentStep: number }) {
 // ─── Step 3: Profile Setup ───────────────────────────────────────────────────
 function ProfileStep({
   onNext,
+  onSkip,
 }: {
   onNext: (displayName: string) => void
+  onSkip: () => void
 }) {
   const { user } = useUser()
   const [displayName, setDisplayName] = useState(user?.firstName ?? '')
@@ -50,15 +52,17 @@ function ProfileStep({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = displayName.trim()
-    if (!trimmed) { setError('Please enter a display name.'); return }
     if (trimmed.length > 32) { setError('Max 32 characters.'); return }
-    onNext(trimmed)
+    // Allow empty — skip will use Clerk first name or "Builder"
+    onNext(trimmed || user?.firstName || 'Builder')
   }
 
   return (
     <>
       <h2 className="text-xl font-bold text-white mb-1">What should we call you?</h2>
-      <p className="text-gray-400 text-sm mb-6">This is how you appear to other builders.</p>
+      <p className="text-gray-400 text-sm mb-6">
+        Optional — we'll use your account name if you skip.
+      </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="displayName" className="block text-sm font-medium text-gray-300 mb-2">
@@ -70,8 +74,7 @@ function ProfileStep({
             maxLength={32}
             value={displayName}
             onChange={(e) => { setDisplayName(e.target.value); setError('') }}
-            placeholder="e.g. AwesomeBuilder99"
-            required
+            placeholder={user?.firstName ?? 'e.g. AwesomeBuilder99'}
             className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-gray-600"
           />
           {error && <p className="text-red-400 text-sm mt-1">{error}</p>}
@@ -81,6 +84,13 @@ function ProfileStep({
           className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors"
         >
           Continue
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="w-full text-gray-500 text-sm py-2 hover:text-gray-300 transition-colors"
+        >
+          Skip — use my account name
         </button>
       </form>
     </>
@@ -201,6 +211,7 @@ function FirstBuildStep({
 export default function OnboardingWizardPage() {
   const router = useRouter()
   const { track } = useAnalytics()
+  const { user } = useUser()
 
   // Steps 1 (age-gate) and 2 (parental-consent) already completed before this page.
   // This page handles steps 3, 4, 5.
@@ -267,7 +278,10 @@ export default function OnboardingWizardPage() {
           <ProgressBar currentStep={wizardStep} />
 
           {wizardStep === 3 && (
-            <ProfileStep onNext={handleProfileNext} />
+            <ProfileStep
+              onNext={handleProfileNext}
+              onSkip={() => handleProfileNext(user?.firstName ?? 'Builder')}
+            />
           )}
           {wizardStep === 4 && (
             <TemplateStep onNext={handleTemplateNext} onSkip={handleTemplateSkip} />

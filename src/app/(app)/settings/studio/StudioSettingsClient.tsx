@@ -497,6 +497,21 @@ function QualityDot({ connected, latencyMs }: { connected: boolean; latencyMs?: 
 
 // ─── Section 3: Connected Sessions ────────────────────────────────────────────
 
+function SessionIdCopy({ sessionId }: { sessionId: string }) {
+  const { copied, copy } = useCopy(sessionId)
+  const short = sessionId.length > 12 ? `${sessionId.slice(0, 6)}…${sessionId.slice(-4)}` : sessionId
+  return (
+    <button
+      onClick={() => copy()}
+      title={`Copy session ID: ${sessionId}`}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-mono text-[10px] bg-white/[0.04] hover:bg-[#D4AF37]/10 hover:text-[#D4AF37] text-gray-500 border border-white/[0.06] hover:border-[#D4AF37]/30 transition-colors"
+    >
+      <span>{short}</span>
+      {copied ? <Check size={9} className="text-green-400" /> : <Copy size={9} />}
+    </button>
+  )
+}
+
 function SessionsSection() {
   const [sessions, setSessions] = useState<StudioSession[]>([])
   const [latencyMap, setLatencyMap] = useState<Record<string, number>>({})
@@ -609,7 +624,8 @@ function SessionsSection() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-0.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                <SessionIdCopy sessionId={session.sessionId} />
                 <span className="text-[11px] text-gray-600 font-mono">
                   Place {session.placeId}
                 </span>
