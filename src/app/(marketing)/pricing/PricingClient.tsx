@@ -673,7 +673,8 @@ export default function PricingClient() {
   const [annual, setAnnual]     = useState(false)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  // Show only the 3 most popular tiers by default; user clicks to see all
+  // Plans are fully hidden until the user clicks "View our plans".
+  // Once revealed, all 5 tiers (Free, Starter, Creator, Studio, Custom) appear.
   const [showAllTiers, setShowAllTiers] = useState(false)
 
   const showError = useCallback((msg: string) => {
@@ -871,19 +872,45 @@ export default function PricingClient() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Tier Cards — show 3 most popular by default, "View all" to expand   */}
+        {/* Tier Cards — fully hidden until "View our plans" is clicked,       */}
+        {/* then all 5 tiers (Free, Starter, Creator, Studio, Custom) reveal.  */}
         {/* ------------------------------------------------------------------ */}
-        {(() => {
-          // Always show Free + Hobby + Creator (the most popular 3)
-          // Studio + any future tiers are revealed by clicking "View all plans"
-          const POPULAR_KEYS = ['FREE', 'STARTER', 'CREATOR']
-          const visibleTiers = showAllTiers
-            ? TIERS
-            : TIERS.filter((t) => POPULAR_KEYS.includes(t.key))
-          const hiddenCount = TIERS.length - visibleTiers.length
+        {/* Local keyframes for the smooth fade-in reveal */}
+        <style>{`
+          @keyframes pricingTiersFadeIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          .pricing-tiers-reveal {
+            animation: pricingTiersFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          }
+        `}</style>
+
+        {!showAllTiers && (
+          <div className="flex justify-center mb-24 mt-4">
+            <button
+              type="button"
+              onClick={() => setShowAllTiers(true)}
+              className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-bold transition-all duration-300 hover:-translate-y-0.5"
+              style={{
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                color: '#0A0810',
+                boxShadow: '0 10px 40px rgba(212,175,55,0.35), 0 0 0 1px rgba(212,175,55,0.4)',
+              }}
+            >
+              <span>View our plans</span>
+              <ChevronDown className="w-5 h-5 transition-transform duration-300 group-hover:translate-y-0.5" />
+            </button>
+          </div>
+        )}
+
+        {showAllTiers && (() => {
+          // All 5 tiers shown once revealed — the CustomPricingCalculator
+          // below counts as the 5th tier.
+          const visibleTiers = TIERS
           return (
         <>
-        <div className={`grid grid-cols-1 sm:grid-cols-2 ${showAllTiers ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-5 mb-6 items-start transition-all duration-300`}>
+        <div className="pricing-tiers-reveal grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 items-start transition-all duration-300">
           {visibleTiers.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon  = tier.icon
@@ -1071,33 +1098,35 @@ export default function PricingClient() {
           })}
         </div>
 
-        {/* "View all plans" toggle — frictionless reveal */}
-        <div className="flex justify-center mb-16">
+        {/* ------------------------------------------------------------------ */}
+        {/* Custom Pricing Calculator — the 5th tier ("build your own plan")   */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="pricing-tiers-reveal">
+          <CustomPricingCalculator />
+        </div>
+
+        {/* "Hide plans" toggle — collapses back to the single CTA button */}
+        <div className="pricing-tiers-reveal flex justify-center mb-16 mt-4">
           <button
             type="button"
-            onClick={() => setShowAllTiers(!showAllTiers)}
+            onClick={() => setShowAllTiers(false)}
             className="group flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
             style={{
-              background: showAllTiers ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${showAllTiers ? 'rgba(212,175,55,0.25)' : 'rgba(255,255,255,0.08)'}`,
-              color: showAllTiers ? '#D4AF37' : '#A1A1AA',
+              background: 'rgba(212,175,55,0.08)',
+              border: '1px solid rgba(212,175,55,0.25)',
+              color: '#D4AF37',
             }}
           >
-            <span>{showAllTiers ? 'Show fewer plans' : `View all plans${hiddenCount > 0 ? ` (+${hiddenCount} more)` : ''}`}</span>
+            <span>Hide plans</span>
             <ChevronDown
               className="w-4 h-4 transition-transform duration-300"
-              style={{ transform: showAllTiers ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              style={{ transform: 'rotate(180deg)' }}
             />
           </button>
         </div>
         </>
           )
         })()}
-
-        {/* ------------------------------------------------------------------ */}
-        {/* Custom Pricing Calculator — "build your own plan"                   */}
-        {/* ------------------------------------------------------------------ */}
-        <CustomPricingCalculator />
 
         {/* ------------------------------------------------------------------ */}
         {/* Pay with Robux                                                      */}
