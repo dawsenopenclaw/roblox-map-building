@@ -3,10 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider          = "postgresql"
   // Connection pool: max 10 connections, 20s timeout, prepared statements enabled
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
+  // Shadow DB used by `prisma migrate dev` to diff against schema. Must have
+  // the `vector` (pgvector) extension installed — our migration
+  // 20260406000000_add_pgvector_rag runs `CREATE EXTENSION vector`, which
+  // fails on a stock local Postgres. See docs/PGVECTOR_SHADOW_DB.md for setup.
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // ─── Auth / Identity ───────────────────────────────────────────────────────
@@ -61,24 +66,31 @@ model User {
   referralsMade    Referral[] @relation("ReferrerReferrals")
   referralReceived Referral[] @relation("ReferredReferrals")
 
+  // Roblox Identity (populated from Roblox OAuth on signup)
+  robloxUserId      String?   @unique // Roblox numeric user ID
+  robloxUsername    String? // Roblox username (can change)
+  robloxDisplayName String? // Roblox display name
+  robloxAvatarUrl   String? // Roblox avatar thumbnail URL
+  robloxVerifiedAt  DateTime? // When Roblox account was linked
+
   // Profile
-  bio             String?
-  twitterHandle   String?
-  discordHandle   String?
-  githubHandle    String?
-  robloxHandle    String?
+  bio           String?
+  twitterHandle String?
+  discordHandle String?
+  githubHandle  String?
+  robloxHandle  String?
 
   // Phone (for SMS notifications)
-  phone           String?
+  phone String?
 
   // UI Preferences — theme, font, accent (cross-device sync)
-  preferences     Json?
+  preferences Json?
 
   // Notifications & Earnings
   notifications           Notification[]
   notificationPreferences NotificationPreference[]
   creatorEarnings         CreatorEarning[]
-  buyerEarnings           CreatorEarning[] @relation("BuyerEarnings")
+  buyerEarnings           CreatorEarning[]         @relation("BuyerEarnings")
 
   // Generated Assets
   generatedAssets GeneratedAsset[]
@@ -103,6 +115,11 @@ model User {
   // Gifts
   giftsSent     Gift[] @relation("GiftsSent")
   giftsReceived Gift[] @relation("GiftsReceived")
+
+  // Beta program — gates editor access when BETA_REQUIRED=true
+  betaAccess          Boolean      @default(false)
+  betaInvitesCreated  BetaInvite[] @relation("BetaInvitesCreated")
+  betaInvitesRedeemed BetaInvite[] @relation("BetaInvitesRedeemed")
 
   @@index([deletedAt])
   @@index([parentConsentTokenExp])
@@ -246,6 +263,7 @@ model AuditLog {
   @@index([createdAt])
   @@index([resource, resourceId])
   @@index([resource, resourceId, createdAt])
+  @@index([userId, createdAt])
 }
 
 // ─── API Usage Tracking ────────────────────────────────────────────────────
@@ -343,6 +361,17 @@ model Template {
   purchases       TemplatePurchase[]
   creatorEarnings CreatorEarning[]
 
+  // Social / Gallery
+  likes      TemplateLike[]
+  favorites  TemplateFavorite[]
+  forks      TemplateFork[]     @relation("OriginalTemplate")
+  forkedFrom TemplateFork[]     @relation("ForkedTemplate")
+  likeCount  Int                @default(0)
+  forkCount  Int                @default(0)
+  viewCount  Int                @default(0)
+  trending   Float              @default(0) // Calculated trending score
+  featured   Boolean            @default(false)
+
   @@index([creatorId])
   @@index([category])
   @@index([status])
@@ -359,6 +388,52 @@ model Template {
   @@index([status, downloads])
   @@index([creatorId, createdAt])
   @@index([creatorId, status])
+  @@index([trending])
+  @@index([likeCount])
+  @@index([forkCount])
+  @@index([featured])
+}
+
+// ─── Social / Gallery ──────────────────────────────────────────────────────
+
+model TemplateLike {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  createdAt DateTime @default(now())
+
+  item Template @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([itemId])
+  @@index([userId])
+}
+
+model TemplateFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  itemId    String
+  createdAt DateTime @default(now())
+
+  item Template @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, itemId])
+  @@index([userId])
+}
+
+model TemplateFork {
+  id             String   @id @default(cuid())
+  userId         String
+  originalItemId String
+  forkedItemId   String
+  createdAt      DateTime @default(now())
+
+  originalItem Template @relation("OriginalTemplate", fields: [originalItemId], references: [id])
+  forkedItem   Template @relation("ForkedTemplate", fields: [forkedItemId], references: [id])
+
+  @@index([originalItemId])
+  @@index([userId])
+  @@index([forkedItemId])
 }
 
 model TemplateScreenshot {
@@ -1056,42 +1131,42 @@ enum TokenGrantJobStatus {
 // ─── Generated Assets (Meshy 3D pipeline) ────────────────────────────────────
 
 model GeneratedAsset {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt        String   @db.Text
-  type          String   // building, character, vehicle, etc.
-  style         String   // realistic, stylized, lowpoly, roblox
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt String @db.Text
+  type   String // building, character, vehicle, etc.
+  style  String // realistic, stylized, lowpoly, roblox
 
   // queued → generating → optimizing → uploading → ready | failed
-  status        String   @default("queued")
+  status String @default("queued")
 
   // Meshy
-  meshyTaskId   String?  @unique
-  meshUrl       String?
-  thumbnailUrl  String?
-  polyCount     Int?
+  meshyTaskId  String? @unique
+  meshUrl      String?
+  thumbnailUrl String?
+  polyCount    Int?
 
   // Textures
-  albedoUrl     String?
-  normalUrl     String?
-  roughnessUrl  String?
-  metallicUrl   String?
+  albedoUrl    String?
+  normalUrl    String?
+  roughnessUrl String?
+  metallicUrl  String?
 
   // Roblox
   robloxAssetId String?
 
   // Quality
-  qualityScore  Float?
-  fileSize      Int?
+  qualityScore Float?
+  fileSize     Int?
 
   // Metadata
-  tokensCost    Int      @default(0)
-  generationMs  Int?
-  errorMessage  String?
+  tokensCost   Int     @default(0)
+  generationMs Int?
+  errorMessage String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -1147,9 +1222,9 @@ model Gift {
   senderId        String
   sender          User      @relation("GiftsSent", fields: [senderId], references: [id])
   recipientEmail  String
-  giftType        String    // 'subscription' or 'tokens'
-  tier            String?   // for subscription gifts
-  tokenAmount     Int?      // for token gifts
+  giftType        String // 'subscription' or 'tokens'
+  tier            String? // for subscription gifts
+  tokenAmount     Int? // for token gifts
   message         String?
   status          String    @default("pending") // pending, redeemed, expired
   stripeSessionId String?   @unique
@@ -1165,4 +1240,76 @@ model Gift {
   @@index([redeemCode])
   @@index([status])
   @@index([expiresAt])
+}
+
+// ─── RAG Knowledge Base ──────────────────────────────────────────────────────
+// Vector-embedded Roblox documentation chunks for retrieval-augmented generation.
+// Embedding column (vector(768)) is managed via raw SQL — Prisma doesn't support pgvector natively.
+// Use db.$queryRawUnsafe() for vector similarity searches.
+
+model RobloxDocChunk {
+  id        String   @id @default(cuid())
+  category  String // e.g. "api", "luau", "service", "pattern", "devforum"
+  title     String // e.g. "Terrain:FillBlock", "DataStoreService best practices"
+  content   String // The actual documentation text
+  source    String   @default("") // URL or reference
+  tags      String[] @default([])
+  // embedding vector(768) — managed via raw SQL migration, not in Prisma schema
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([category, title])
+  @@index([category])
+}
+
+// ─── Chat Session Persistence ─────────────────────────────────────────────────
+// Cloud-synced chat sessions so conversations survive across devices / browsers.
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  userId    String
+  title     String        @default("New Chat")
+  aiMode    String        @default("build")
+  model     String        @default("claude-3-5-sonnet")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  messages  ChatMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // 'user' | 'assistant' | 'system'
+  content   String      @db.Text
+  metadata  Json? // tokens, model, etc.
+  timestamp DateTime    @default(now())
+
+  @@index([sessionId, timestamp])
+}
+
+// ─── Beta Program ──────────────────────────────────────────────────────────
+// Invite-only beta rollout. Admins generate codes in batches (cohorts), users
+// redeem them via /api/beta/invite, and access to /editor is gated by the
+// withBetaGuard helper when BETA_REQUIRED=true.
+
+model BetaInvite {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  createdById  String? // Admin who created it (null if system-generated)
+  createdBy    User?     @relation("BetaInvitesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  usedById     String? // User who redeemed it (first redeemer for single-use; null otherwise)
+  usedBy       User?     @relation("BetaInvitesRedeemed", fields: [usedById], references: [id], onDelete: SetNull)
+  usedAt       DateTime?
+  expiresAt    DateTime?
+  maxUses      Int       @default(1)
+  useCount     Int       @default(0)
+  bonusCredits Int       @default(0) // Bonus credits granted on redemption
+  cohort       String? // 'youtuber', 'roblox-dev', 'studio-team', etc.
+  createdAt    DateTime  @default(now())
+
+  @@index([code])
+  @@index([cohort])
 }
