@@ -16,16 +16,48 @@ import {
   Crown,
   Shield,
   AlertTriangle,
+  Mail,
 } from 'lucide-react'
+import CustomPricingCalculator from '@/components/pricing/CustomPricingCalculator'
+import RobuxPayment from '@/components/billing/RobuxPayment'
+
+// ---------------------------------------------------------------------------
+// Billing config — which price IDs are live
+// ---------------------------------------------------------------------------
+
+type BillingConfig = {
+  stripeConfigured: boolean
+  subscriptions: {
+    STARTER: { monthly: boolean; yearly: boolean }
+    CREATOR: { monthly: boolean; yearly: boolean }
+    STUDIO:  { monthly: boolean; yearly: boolean }
+  }
+  tokenPacks: {
+    starter: boolean
+    creator: boolean
+    pro: boolean
+  }
+}
+
+const EMPTY_CONFIG: BillingConfig = {
+  stripeConfigured: false,
+  subscriptions: {
+    STARTER: { monthly: false, yearly: false },
+    CREATOR: { monthly: false, yearly: false },
+    STUDIO:  { monthly: false, yearly: false },
+  },
+  tokenPacks: { starter: false, creator: false, pro: false },
+}
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 
+// Tier prices: $10–$200 fixed, $10–$1000 custom (1M tokens), enterprise above
 const ANNUAL_TOTALS = {
-  HOBBY:   95.90,
-  CREATOR: 239.90,
-  STUDIO:  479.90,
+  STARTER: 96.00,    // $8/mo annual = $96/year (saves $24)
+  CREATOR: 480.00,   // $40/mo annual = $480/year (saves $120)
+  STUDIO:  1920.00,  // $160/mo annual = $1920/year (saves $480)
 }
 
 const TIERS = [
@@ -36,7 +68,7 @@ const TIERS = [
     priceMonthly: 0,
     priceYearly: 0,
     yearlyTotal: 0,
-    tagline: 'Build real games — no card needed',
+    tagline: 'Try before you commit',
     highlight: false,
     badge: null,
     cta: 'Start Free',
@@ -53,19 +85,19 @@ const TIERS = [
     ],
   },
   {
-    key: 'HOBBY',
-    name: 'Hobby',
+    key: 'STARTER',
+    name: 'Starter',
     icon: Star,
-    priceMonthly: 9.99,
-    priceYearly: 7.99,
-    yearlyTotal: ANNUAL_TOTALS.HOBBY,
-    tagline: 'For hobbyists leveling up fast',
+    priceMonthly: 10,
+    priceYearly: 8,
+    yearlyTotal: ANNUAL_TOTALS.STARTER,
+    tagline: 'For hobbyists leveling up',
     highlight: false,
     badge: null,
-    cta: 'Get Hobby',
-    ctaHref: '/sign-up?plan=hobby',
+    cta: 'Get Starter',
+    ctaHref: '/sign-up?plan=starter',
     features: [
-      '2,000 tokens / month',
+      '5,000 tokens / month',
       '5 projects',
       'Voice-to-game',
       'Image-to-map',
@@ -78,8 +110,8 @@ const TIERS = [
     key: 'CREATOR',
     name: 'Creator',
     icon: Rocket,
-    priceMonthly: 24.99,
-    priceYearly: 19.99,
+    priceMonthly: 50,
+    priceYearly: 40,
     yearlyTotal: ANNUAL_TOTALS.CREATOR,
     tagline: 'For serious creators who ship',
     highlight: true,
@@ -87,7 +119,7 @@ const TIERS = [
     cta: 'Get Creator',
     ctaHref: '/sign-up?plan=creator',
     features: [
-      '7,000 tokens / month',
+      '30,000 tokens / month',
       'Unlimited projects',
       'Voice-to-game + image-to-map',
       'Terrain & 3D asset generation',
@@ -103,8 +135,8 @@ const TIERS = [
     key: 'STUDIO',
     name: 'Studio',
     icon: Building2,
-    priceMonthly: 49.99,
-    priceYearly: 39.99,
+    priceMonthly: 200,
+    priceYearly: 160,
     yearlyTotal: ANNUAL_TOTALS.STUDIO,
     tagline: 'For agencies & game studios',
     highlight: false,
@@ -112,7 +144,7 @@ const TIERS = [
     cta: 'Get Studio',
     ctaHref: '/sign-up?plan=studio',
     features: [
-      '20,000 tokens / month',
+      '150,000 tokens / month',
       'Unlimited projects',
       'All Creator features',
       'Full terrain & world generation',
@@ -129,15 +161,15 @@ const TIERS = [
 
 // Feature matrix for comparison table (4 tiers, 9 rows)
 const COMPARE_FEATURES = [
-  { label: 'Tokens / month',     free: '1,000',     hobby: '2,000',     creator: '7,000',    studio: '20,000'    },
-  { label: 'AI Models',          free: 'Basic',     hobby: 'Standard',  creator: 'Advanced', studio: 'Advanced'  },
-  { label: 'Voice Commands',     free: false,       hobby: true,        creator: true,       studio: true        },
-  { label: 'Image-to-Map',       free: false,       hobby: true,        creator: true,       studio: true        },
-  { label: 'Game DNA',           free: false,       hobby: false,       creator: true,       studio: true        },
-  { label: 'Marketplace',        free: false,       hobby: false,       creator: true,       studio: true        },
-  { label: 'Team Members',       free: 'Solo',      hobby: 'Solo',      creator: '3',        studio: '50'        },
-  { label: 'API Access',         free: false,       hobby: false,       creator: false,      studio: true        },
-  { label: 'Support Level',      free: 'Community', hobby: 'Email',     creator: 'Priority', studio: 'Dedicated' },
+  { label: 'Tokens / month',     free: '1,000',     starter: '5,000',     creator: '30,000',   studio: '150,000'   },
+  { label: 'AI Models',          free: 'Basic',     starter: 'Standard',  creator: 'Advanced', studio: 'Advanced'  },
+  { label: 'Voice Commands',     free: false,       starter: true,        creator: true,       studio: true        },
+  { label: 'Image-to-Map',       free: false,       starter: true,        creator: true,       studio: true        },
+  { label: 'Game DNA',           free: false,       starter: false,       creator: true,       studio: true        },
+  { label: 'Marketplace',        free: false,       starter: false,       creator: true,       studio: true        },
+  { label: 'Team Members',       free: 'Solo',      starter: 'Solo',      creator: '3',        studio: '50'        },
+  { label: 'API Access',         free: false,       starter: false,       creator: false,      studio: true        },
+  { label: 'Support Level',      free: 'Community', starter: 'Email',     creator: 'Priority', studio: 'Dedicated' },
 ]
 
 const TOKEN_PACKS = [
@@ -385,8 +417,10 @@ const PACK_SLUGS: Record<string, string> = {
 
 function TokenPacksSection({
   onError,
+  packConfig,
 }: {
   onError: (msg: string) => void
+  packConfig: BillingConfig['tokenPacks']
 }) {
   const [loadingPack, setLoadingPack] = useState<string | null>(null)
 
@@ -485,22 +519,34 @@ function TokenPacksSection({
                   {pack.tokens} tokens
                 </p>
 
-                <button
-                  onClick={() => void handleBuyPack(pack.name)}
-                  disabled={isLoading}
-                  className={`w-full text-center font-bold py-3 rounded-xl text-sm transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 ${
-                    isBestValue
-                      ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.4)]'
-                      : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
-                  }`}
-                  style={
-                    isBestValue
-                      ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
-                      : {}
-                  }
-                >
-                  {isLoading ? 'Redirecting...' : 'Buy Pack'}
-                </button>
+                {packConfig[PACK_SLUGS[pack.name] as keyof typeof packConfig] ? (
+                  <button
+                    onClick={() => void handleBuyPack(pack.name)}
+                    disabled={isLoading}
+                    className={`w-full text-center font-bold py-3 rounded-xl text-sm transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 ${
+                      isBestValue
+                        ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.4)]'
+                        : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
+                    }`}
+                    style={
+                      isBestValue
+                        ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
+                        : {}
+                    }
+                  >
+                    {isLoading ? 'Redirecting...' : 'Buy Pack'}
+                  </button>
+                ) : (
+                  <a
+                    href="mailto:hello@forjegames.com?subject=Token pack inquiry"
+                    className="w-full block text-center font-bold py-3 rounded-xl text-sm border border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-300 transition-all duration-200"
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <Mail className="w-3.5 h-3.5" />
+                      Contact us
+                    </span>
+                  </a>
+                )}
               </div>
             </div>
           )
@@ -525,11 +571,12 @@ type SubscribeCtaProps = {
   ctaHref: string
   annual: boolean
   currentTier: string | null
+  priceConfigured: boolean
   onManageBilling: () => void
   onError: (msg: string) => void
 }
 
-function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, onManageBilling, onError }: SubscribeCtaProps) {
+function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, priceConfigured, onManageBilling, onError }: SubscribeCtaProps) {
   const [loading, setLoading] = useState(false)
 
   const isCurrent = currentTier !== null && currentTier === tierKey
@@ -538,9 +585,10 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, o
   const baseHighlight = `text-[#0A0810] hover:opacity-90 hover:scale-[1.02] shadow-[0_6px_32px_rgba(212,175,55,0.5)] active:scale-[0.99]`
   const baseDefault = `border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04] hover:text-white active:scale-[0.99]`
   const baseCurrent = `border border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/5 active:scale-[0.99]`
+  const baseContactUs = `border border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-300 active:scale-[0.99]`
 
   const className = `block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 disabled:opacity-60 disabled:cursor-not-allowed ${
-    isCurrent ? baseCurrent : highlight ? baseHighlight : baseDefault
+    isCurrent ? baseCurrent : highlight ? `${baseHighlight} cta-shimmer` : baseDefault
   }`
 
   const style = isCurrent
@@ -549,7 +597,7 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, o
     ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
     : {}
 
-  // Free tier — plain link
+  // Free tier — plain link, always available
   if (tierKey === 'FREE') {
     return (
       <Link href={ctaHref} className={className} style={style}>
@@ -564,6 +612,21 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, o
       <button className={className} style={style} onClick={onManageBilling}>
         Manage Plan
       </button>
+    )
+  }
+
+  // Price not configured — show "Contact us" instead of broken checkout
+  if (!priceConfigured) {
+    return (
+      <a
+        href="mailto:hello@forjegames.com?subject=I want the ForjeGames plan"
+        className={`block text-center font-bold py-4 rounded-xl text-base transition-all duration-200 mb-2 ${baseContactUs}`}
+      >
+        <span className="flex items-center justify-center gap-2">
+          <Mail className="w-4 h-4" />
+          Contact us
+        </span>
+      </a>
     )
   }
 
@@ -610,6 +673,8 @@ export default function PricingClient() {
   const [annual, setAnnual]     = useState(false)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
+  // Show only the 3 most popular tiers by default; user clicks to see all
+  const [showAllTiers, setShowAllTiers] = useState(false)
 
   const showError = useCallback((msg: string) => {
     setToastMsg(msg)
@@ -622,6 +687,14 @@ export default function PricingClient() {
     { revalidateOnFocus: false }
   )
   const currentTier: string | null = billingStatus?.tier ?? null
+
+  // Fetch which price IDs are configured — drives adaptive CTA rendering
+  const { data: billingConfig } = useSWR<BillingConfig>(
+    '/api/billing/config',
+    (url: string) => fetch(url).then(r => r.ok ? r.json() as Promise<BillingConfig> : EMPTY_CONFIG),
+    { revalidateOnFocus: false }
+  )
+  const config = billingConfig ?? EMPTY_CONFIG
 
   const openBillingPortal = useCallback(async () => {
     try {
@@ -685,7 +758,7 @@ export default function PricingClient() {
       </div>
 
       <div
-        className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24"
+        className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24"
         style={{ zIndex: 1 }}
       >
 
@@ -700,7 +773,7 @@ export default function PricingClient() {
             </span>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-5">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight mb-5">
             <span
               style={{
                 background: 'linear-gradient(135deg, #FFFFFF 0%, #CBD2E8 100%)',
@@ -742,7 +815,7 @@ export default function PricingClient() {
 
           {/* Competitor differentiation */}
           <div className="flex flex-col items-center gap-2 mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium"
+            <div className="inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2 text-xs sm:text-sm font-medium text-center"
               style={{
                 background: 'rgba(212,175,55,0.07)',
                 border: '1px solid rgba(212,175,55,0.2)',
@@ -798,10 +871,20 @@ export default function PricingClient() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Tier Cards                                                          */}
+        {/* Tier Cards — show 3 most popular by default, "View all" to expand   */}
         {/* ------------------------------------------------------------------ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-16 items-start">
-          {TIERS.map((tier) => {
+        {(() => {
+          // Always show Free + Hobby + Creator (the most popular 3)
+          // Studio + any future tiers are revealed by clicking "View all plans"
+          const POPULAR_KEYS = ['FREE', 'STARTER', 'CREATOR']
+          const visibleTiers = showAllTiers
+            ? TIERS
+            : TIERS.filter((t) => POPULAR_KEYS.includes(t.key))
+          const hiddenCount = TIERS.length - visibleTiers.length
+          return (
+        <>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${showAllTiers ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-5 mb-6 items-start transition-all duration-300`}>
+          {visibleTiers.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon  = tier.icon
 
@@ -920,6 +1003,13 @@ export default function PricingClient() {
                     ctaHref={tier.ctaHref}
                     annual={annual}
                     currentTier={currentTier}
+                    priceConfigured={
+                      tier.key === 'FREE'
+                        ? true
+                        : annual
+                        ? config.subscriptions[tier.key as keyof typeof config.subscriptions]?.yearly ?? false
+                        : config.subscriptions[tier.key as keyof typeof config.subscriptions]?.monthly ?? false
+                    }
                     onManageBilling={openBillingPortal}
                     onError={showError}
                   />
@@ -979,6 +1069,52 @@ export default function PricingClient() {
               </div>
             )
           })}
+        </div>
+
+        {/* "View all plans" toggle — frictionless reveal */}
+        <div className="flex justify-center mb-16">
+          <button
+            type="button"
+            onClick={() => setShowAllTiers(!showAllTiers)}
+            className="group flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
+            style={{
+              background: showAllTiers ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${showAllTiers ? 'rgba(212,175,55,0.25)' : 'rgba(255,255,255,0.08)'}`,
+              color: showAllTiers ? '#D4AF37' : '#A1A1AA',
+            }}
+          >
+            <span>{showAllTiers ? 'Show fewer plans' : `View all plans${hiddenCount > 0 ? ` (+${hiddenCount} more)` : ''}`}</span>
+            <ChevronDown
+              className="w-4 h-4 transition-transform duration-300"
+              style={{ transform: showAllTiers ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            />
+          </button>
+        </div>
+        </>
+          )
+        })()}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Custom Pricing Calculator — "build your own plan"                   */}
+        {/* ------------------------------------------------------------------ */}
+        <CustomPricingCalculator />
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Pay with Robux                                                      */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="mb-24 mt-24">
+          <div className="text-center mb-10">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] mb-3" style={{ color: 'rgba(212,175,55,0.6)' }}>
+              Roblox Players
+            </p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+              Pay with <span className="gradient-text">Robux</span>
+            </h2>
+            <p className="text-[#6B7699] text-sm max-w-xl mx-auto">
+              No credit card? Use the Robux you already have. Buy credits inside our Roblox experience and they appear instantly in your ForjeGames account.
+            </p>
+          </div>
+          <RobuxPayment />
         </div>
 
         {/* ------------------------------------------------------------------ */}
@@ -1056,7 +1192,7 @@ export default function PricingClient() {
                       <CompareCell value={row.free} />
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <CompareCell value={row.hobby} />
+                      <CompareCell value={row.starter} />
                     </td>
                     <td
                       className="py-4 px-4 text-center"
@@ -1109,7 +1245,7 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Token Packs Section                                                 */}
         {/* ------------------------------------------------------------------ */}
-        <TokenPacksSection onError={showError} />
+        <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
 
         {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}

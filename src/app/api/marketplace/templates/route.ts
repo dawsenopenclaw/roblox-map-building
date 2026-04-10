@@ -293,7 +293,11 @@ export async function GET(req: NextRequest) {
         ? { priceCents: 'asc' }
         : sort === 'price-desc'
         ? { priceCents: 'desc' }
-        : { downloads: 'desc' } // trending
+        : sort === 'most-liked'
+        ? { likeCount: 'desc' }
+        : sort === 'most-forked'
+        ? { forkCount: 'desc' }
+        : { trending: 'desc' } // trending (uses calculated score column)
 
     const [templates, total] = await Promise.all([
       db.template.findMany({
@@ -314,12 +318,23 @@ export async function GET(req: NextRequest) {
           downloads: true,
           tags: true,
           createdAt: true,
+          likeCount: true,
+          forkCount: true,
+          viewCount: true,
           screenshots: {
             orderBy: { sortOrder: 'asc' },
             take: 1,
             select: { id: true, url: true, altText: true },
           },
           creator: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+          forkedFrom: {
+            take: 1,
+            select: {
+              originalItem: {
+                select: { id: true, title: true, slug: true },
+              },
+            },
+          },
           _count: { select: { reviews: true } },
         },
       }),

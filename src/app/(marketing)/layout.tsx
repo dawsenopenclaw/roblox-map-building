@@ -6,8 +6,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-[#050810] flex flex-col overflow-x-hidden">
       <MarketingNav />
 
-      {/* pt-16 offsets the fixed 64px navbar */}
-      <div className="flex-1 pt-16">
+      {/* pt-16 offsets the fixed 64px navbar. page-fade-in adds smooth entrance. */}
+      <div className="flex-1 pt-16 page-fade-in">
         {children}
       </div>
 

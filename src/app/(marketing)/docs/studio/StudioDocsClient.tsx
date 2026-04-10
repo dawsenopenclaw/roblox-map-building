@@ -249,7 +249,7 @@ function CodeBlock({
   const lines = code.split('\n')
 
   return (
-    <div className="relative my-4 overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
+    <div className="relative my-4 overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#050810' }}>
       {/* Header bar */}
       <div className="flex items-center justify-between border-b border-white/[0.07] bg-white/[0.025] px-4 py-2.5">
         <div className="flex items-center gap-2">

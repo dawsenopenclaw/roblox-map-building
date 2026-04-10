@@ -161,7 +161,7 @@ export default function GetStartedClient() {
   return (
     <div className="min-h-screen bg-[#050810] text-white">
       {/* Breadcrumb */}
-      <div className="border-b border-white/5 bg-[#0A0E27]/60 px-6 py-3 text-xs text-white/30">
+      <div className="border-b border-white/5 bg-[#050810]/60 px-6 py-3 text-xs text-white/30">
         <Link href="/docs" className="transition-colors hover:text-[#D4AF37]">Docs</Link>
         <span className="mx-2 text-white/15">/</span>
         <span className="text-white/60">Getting Started</span>
@@ -253,7 +253,7 @@ export default function GetStartedClient() {
 
                 {/* Code block */}
                 {step.code && (
-                  <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
+                  <div className="mb-6 overflow-hidden rounded-2xl border border-white/[0.07]" style={{ background: '#050810' }}>
                     <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2.5">
                       <span className="text-xs text-[#71717A]">{step.code.label}</span>
                       <span className="rounded-md border border-white/[0.07] bg-white/[0.025] px-2 py-0.5 font-mono text-[10px] text-[#52525B]">

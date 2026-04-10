@@ -63,20 +63,20 @@ export default function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   return (
-    <section className="py-20 px-6" style={{ background: '#0A0E27' }}>
+    <section className="py-16 sm:py-20 px-6" style={{ background: '#050810' }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-10 sm:mb-14">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#D4AF37' }}
+            style={{ color: 'var(--gold, #D4AF37)' }}
           >
             FAQ
           </p>
-          <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
+          <h2 className="font-bold tracking-tight mb-4" style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))', fontSize: 'clamp(1.75rem, 5vw, 2.25rem)' }}>
             Frequently Asked.
           </h2>
-          <p className="text-lg" style={{ color: '#8B95B0' }}>
+          <p className="text-base sm:text-lg" style={{ color: '#8B95B0' }}>
             Everything you need to know before you start building.
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function FaqSection() {
                 key={i}
                 className="rounded-xl overflow-hidden"
                 style={{
-                  background: isOpen ? '#14141A' : '#111113',
+                  background: isOpen ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.02)',
                   border: isOpen ? '1px solid rgba(212,175,55,0.22)' : '1px solid rgba(255,255,255,0.07)',
                   boxShadow: isOpen ? '0 0 24px rgba(212,175,55,0.05)' : 'none',
                   transition: 'background 200ms ease, border-color 200ms ease, box-shadow 200ms ease',
@@ -98,14 +98,14 @@ export default function FaqSection() {
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
-                  style={{ color: isOpen ? '#FFFFFF' : '#D0D4E4' }}
+                  className="w-full flex items-center justify-between gap-3 px-4 sm:px-6 py-4 text-left min-w-0"
+                  style={{ color: isOpen ? 'var(--text-primary, rgba(255,255,255,0.9))' : 'var(--text-secondary, rgba(255,255,255,0.6))' }}
                   aria-expanded={isOpen}
                   onMouseEnter={(e) => {
-                    if (!isOpen) (e.currentTarget as HTMLElement).style.color = '#FFFFFF'
+                    if (!isOpen) (e.currentTarget as HTMLElement).style.color = 'var(--text-primary, rgba(255,255,255,0.9))'
                   }}
                   onMouseLeave={(e) => {
-                    if (!isOpen) (e.currentTarget as HTMLElement).style.color = '#D0D4E4'
+                    if (!isOpen) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary, rgba(255,255,255,0.6))'
                   }}
                 >
                   <span className="text-sm font-medium leading-relaxed">{faq.q}</span>
@@ -128,7 +128,7 @@ export default function FaqSection() {
                   }}
                 >
                   <p
-                    className="px-6 pb-5 text-sm leading-relaxed"
+                    className="px-4 sm:px-6 pb-5 text-sm leading-relaxed"
                     style={{ color: '#8B95B0' }}
                   >
                     {faq.a}
@@ -145,7 +145,7 @@ export default function FaqSection() {
           <a
             href="mailto:support@forjegames.com"
             className="transition-colors duration-150"
-            style={{ color: '#D4AF37' }}
+            style={{ color: 'var(--gold, #D4AF37)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
           >
@@ -155,7 +155,7 @@ export default function FaqSection() {
           <a
             href="/editor"
             className="transition-colors duration-150"
-            style={{ color: '#D4AF37' }}
+            style={{ color: 'var(--gold, #D4AF37)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline' }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none' }}
           >

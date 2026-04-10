@@ -4,99 +4,167 @@ import { useState } from 'react'
 
 const TABS = [
   {
-    id: 'voice',
-    label: 'Voice Builder',
+    id: 'game',
+    label: 'Game',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-        <line x1="12" y1="19" x2="12" y2="22" />
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <line x1="7" y1="12" x2="11" y2="12" />
+        <line x1="9" y1="10" x2="9" y2="14" />
+        <circle cx="16" cy="11" r="0.5" />
+        <circle cx="18" cy="13" r="0.5" />
       </svg>
     ),
-    color: '#10B981',
-    description: 'Speak your game idea. AI translates voice to terrain, assets, and scripts — live.',
+    color: '#D4AF37',
+    description: 'Full playable Roblox games — built from a single prompt, live in Studio.',
     preview: {
-      label: 'VOICE BUILDER',
-      statusLabel: 'Listening...',
-      statusColor: '#10B981',
+      label: 'GAME BUILD',
+      statusLabel: 'Building...',
+      statusColor: '#D4AF37',
       lines: [
-        { text: '"Build a medieval castle with stone walls, moat, and a drawbridge"', isPrompt: true },
-        { text: '→ Generating terrain (320×320 studs)...', color: '#8B95B0' },
-        { text: '→ Placing CastleWall_Stone_v2 × 48', color: '#8B95B0' },
-        { text: '→ Filling moat terrain (Water material)', color: '#8B95B0' },
-        { text: '→ Scripting drawbridge mechanism', color: '#D4AF37' },
-        { text: '→ Lighting: torches + atmospheric fog', color: '#8B95B0' },
-        { text: '✓ Done — 4 scripts, 847 parts, 22s', color: '#10B981' },
+        { text: '"Build a tycoon where you mine gold and hire workers"', isPrompt: true },
+        { text: '→ Scaffolding map: mine shaft + base zone', color: '#8B95B0' },
+        { text: '→ Writing GoldOre.lua, Conveyor.lua, Hire.lua', color: '#8B95B0' },
+        { text: '→ Placing droppers × 6, upgrades × 12', color: '#8B95B0' },
+        { text: '→ Wiring economy (DataStore2 + leaderstats)', color: '#D4AF37' },
+        { text: '→ Spawning NPCs + shop UI', color: '#8B95B0' },
+        { text: '✓ Playable — 11 scripts, 1,240 parts, 38s', color: '#10B981' },
       ],
       rightPanel: [
-        { label: 'Mode', value: 'Voice' },
+        { label: 'Type', value: 'Tycoon' },
+        { label: 'Parts', value: '1.2k' },
+        { label: 'Scripts', value: '11' },
+        { label: 'Time', value: '38s' },
+      ],
+    },
+  },
+  {
+    id: 'map',
+    label: 'Map',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6" />
+        <line x1="9" y1="3" x2="9" y2="18" />
+        <line x1="15" y1="6" x2="15" y2="21" />
+      </svg>
+    ),
+    color: '#D4AF37',
+    description: 'Cities, castles, arenas — structured maps with props, lighting, and spawn logic.',
+    preview: {
+      label: 'MAP GENERATOR',
+      statusLabel: 'Generating...',
+      statusColor: '#D4AF37',
+      lines: [
+        { text: '"Build a medieval castle with stone walls, moat, drawbridge"', isPrompt: true },
+        { text: '→ Heightmap: 320×320 studs', color: '#8B95B0' },
+        { text: '→ Placing CastleWall_Stone × 48', color: '#8B95B0' },
+        { text: '→ Filling moat (Water material)', color: '#8B95B0' },
+        { text: '→ Drawbridge hinge + constraint', color: '#D4AF37' },
+        { text: '→ Torches, fog, skybox preset', color: '#8B95B0' },
+        { text: '✓ Done — 847 parts, 22s', color: '#10B981' },
+      ],
+      rightPanel: [
+        { label: 'Size', value: '320²' },
         { label: 'Parts', value: '847' },
-        { label: 'Scripts', value: '4' },
+        { label: 'Props', value: '63' },
         { label: 'Time', value: '22s' },
       ],
     },
   },
   {
-    id: 'image',
-    label: 'Image to Map',
+    id: 'ui',
+    label: 'UI',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="9" cy="9" r="2" />
-        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="9" y1="21" x2="9" y2="9" />
       </svg>
     ),
-    color: '#60A5FA',
-    description: 'Upload any photo or sketch. AI reads it and generates a matching Roblox map.',
+    color: '#D4AF37',
+    description: 'Shop menus, HUDs, inventory screens — generated ScreenGuis, production-ready.',
     preview: {
-      label: 'IMAGE TO MAP',
-      statusLabel: 'Analyzing image...',
-      statusColor: '#60A5FA',
+      label: 'UI BUILDER',
+      statusLabel: 'Designing...',
+      statusColor: '#D4AF37',
       lines: [
-        { text: '[image: city_sketch.jpg uploaded]', isPrompt: true },
-        { text: '→ Claude Vision: detecting 7 zones', color: '#8B95B0' },
-        { text: '→ Depth Pro: generating heightmap', color: '#8B95B0' },
-        { text: '→ Placing buildings (downtown zone)', color: '#8B95B0' },
-        { text: '→ Road network (23 segments)', color: '#60A5FA' },
-        { text: '→ Parks + vegetation (3 biome zones)', color: '#8B95B0' },
-        { text: '✓ Map matched 87% to source image', color: '#10B981' },
+        { text: '"Make a shop UI with 3 tabs: weapons, pets, coins"', isPrompt: true },
+        { text: '→ ScreenGui: ShopMain (Roblox UIGradient)', color: '#8B95B0' },
+        { text: '→ TabBar: Weapons / Pets / Coins', color: '#8B95B0' },
+        { text: '→ ScrollingFrame × 3 (UIListLayout)', color: '#8B95B0' },
+        { text: '→ BuyButton.lua wired to RemoteEvent', color: '#D4AF37' },
+        { text: '→ Hover states + sound effects', color: '#8B95B0' },
+        { text: '✓ Shop UI ready — 3 tabs, 24 items', color: '#10B981' },
       ],
       rightPanel: [
-        { label: 'Mode', value: 'Image' },
-        { label: 'Zones', value: '7' },
-        { label: 'Roads', value: '23' },
-        { label: 'Match', value: '87%' },
+        { label: 'Frames', value: '18' },
+        { label: 'Buttons', value: '24' },
+        { label: 'Scripts', value: '3' },
+        { label: 'Time', value: '14s' },
       ],
     },
   },
   {
-    id: 'chat',
-    label: 'Chat Agent',
+    id: 'terrain',
+    label: 'Terrain',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <path d="M3 20l5-8 4 5 3-4 6 7" />
+        <path d="M3 20h18" />
       </svg>
     ),
     color: '#D4AF37',
-    description: 'Chat naturally. ForjeGames understands context and builds iteratively with you.',
+    description: 'Sculpt mountains, rivers, biomes — voxel terrain written directly into Studio.',
     preview: {
-      label: 'CHAT AGENT',
-      statusLabel: 'Claude 3.5 Sonnet',
+      label: 'TERRAIN GENERATOR',
+      statusLabel: 'Sculpting...',
       statusColor: '#D4AF37',
       lines: [
-        { text: 'You: add neon signs to the shops', isPrompt: true },
-        { text: 'ForjeGames: Added 12 neon SurfaceGui signs', color: '#8B95B0' },
-        { text: 'You: make the lighting more atmospheric', isPrompt: true },
-        { text: 'ForjeGames: Updated Atmosphere + added PointLights', color: '#8B95B0' },
-        { text: 'You: balance the economy — coins per kill?', isPrompt: true },
-        { text: 'ForjeGames: Analyzing session data... suggested: 15 coins', color: '#D4AF37' },
-        { text: '✓ Economy script updated + playtested', color: '#10B981' },
+        { text: '"Snowy mountain valley with a frozen river"', isPrompt: true },
+        { text: '→ Noise pass: ridges + valleys', color: '#8B95B0' },
+        { text: '→ Materials: Snow, Rock, Ice', color: '#8B95B0' },
+        { text: '→ Carving river channel (Ice)', color: '#8B95B0' },
+        { text: '→ Scattering pine trees × 240', color: '#D4AF37' },
+        { text: '→ Atmosphere: snow particles + fog', color: '#8B95B0' },
+        { text: '✓ Done — 2.1M voxels, 18s', color: '#10B981' },
       ],
       rightPanel: [
-        { label: 'Model', value: 'Sonnet' },
-        { label: 'Turns', value: '14' },
-        { label: 'Edits', value: '31' },
-        { label: 'FPS', value: '60' },
+        { label: 'Voxels', value: '2.1M' },
+        { label: 'Biome', value: 'Snow' },
+        { label: 'Trees', value: '240' },
+        { label: 'Time', value: '18s' },
+      ],
+    },
+  },
+  {
+    id: 'scripts',
+    label: 'Scripts',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="16 18 22 12 16 6" />
+        <polyline points="8 6 2 12 8 18" />
+      </svg>
+    ),
+    color: '#D4AF37',
+    description: 'Production Luau — server-authoritative, anti-cheat ready, context-aware.',
+    preview: {
+      label: 'SCRIPT WRITER',
+      statusLabel: 'Compiling...',
+      statusColor: '#D4AF37',
+      lines: [
+        { text: '"Add a coin magnet power-up — 5s duration, 20 studs"', isPrompt: true },
+        { text: '→ CoinMagnet.lua (ServerScriptService)', color: '#8B95B0' },
+        { text: '→ RemoteEvent: PickupMagnet', color: '#8B95B0' },
+        { text: '→ Tween + Region3 scan for coins', color: '#8B95B0' },
+        { text: '→ Glow VFX (Attachment + ParticleEmitter)', color: '#D4AF37' },
+        { text: '→ Sanity check: anti-exploit added', color: '#8B95B0' },
+        { text: '✓ Script live — 84 lines, 0 errors', color: '#10B981' },
+      ],
+      rightPanel: [
+        { label: 'Lang', value: 'Luau' },
+        { label: 'Lines', value: '84' },
+        { label: 'Errors', value: '0' },
+        { label: 'Time', value: '6s' },
       ],
     },
   },
@@ -287,7 +355,7 @@ export default function HeroScreenshotTabs() {
               {tab.preview.rightPanel.map((s) => (
                 <div key={s.label}>
                   <p className="text-[10px] mb-0.5" style={{ color: '#8B95B0' }}>{s.label}</p>
-                  <p className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>{s.value}</p>
+                  <p className="text-sm font-semibold" style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))' }}>{s.value}</p>
                 </div>
               ))}
             </div>

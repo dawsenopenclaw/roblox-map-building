@@ -1,86 +1,111 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import {
+  Rocket,
+  Sparkles,
+  PackageOpen,
+  Mic,
+  Image as ImageIcon,
+  ShoppingBag,
+  CreditCard,
+  Code,
+  Wrench,
+} from 'lucide-react'
 import { createMetadata } from '@/lib/metadata'
+import DocsLayout from '@/components/docs/DocsLayout'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Documentation',
+  title: 'Documentation — API Reference, Guides & Studio Plugin Docs',
   description:
-    'Everything you need to build Roblox games with ForjeGames AI. Guides, API reference, Studio plugin docs, and more.',
+    'ForjeGames documentation: getting started guides, full API reference, Roblox Studio plugin setup, voice-to-game tutorials, and image-to-map walkthroughs. Build your first AI Roblox game in under 10 minutes.',
   path: '/docs',
   keywords: [
-    'ForjeGames docs',
-    'Roblox AI documentation',
-    'getting started Roblox AI',
+    'ForjeGames documentation',
+    'Roblox AI builder docs',
+    'AI Roblox game builder guide',
     'ForjeGames API reference',
-    'Studio plugin docs',
+    'Roblox Studio AI plugin setup',
+    'voice to game tutorial',
+    'image to map Roblox tutorial',
+    'ForjeGames getting started',
   ],
 })
 
-interface DocCard {
+interface FeatureCard {
   href: string
-  icon: string
+  icon: typeof Rocket
   title: string
   description: string
   badge?: string
 }
 
-const DOC_CARDS: DocCard[] = [
+const FEATURED: FeatureCard[] = [
   {
     href: '/docs/getting-started',
-    icon: '▶',
+    icon: Rocket,
     title: 'Getting Started',
-    description: 'Create your account, open the editor, and ship your first AI-built Roblox game in under 10 minutes.',
+    description:
+      'Create an account, open the editor, and ship your first AI-built Roblox game in five minutes.',
     badge: 'Start here',
   },
   {
-    href: '/docs/studio',
-    icon: '⬡',
+    href: '/docs/ai-modes',
+    icon: Sparkles,
+    title: 'AI Modes',
+    description:
+      'Nine specialised modes — Build, Think, Plan, Image, Script, Terrain, 3D, Debug, Ideas — each tuned for a different stage of development.',
+  },
+  {
+    href: '/docs/studio-plugin',
+    icon: PackageOpen,
     title: 'Studio Plugin',
-    description: 'Install the ForjeGames plugin for Roblox Studio. Sync AI output directly into your place file.',
+    description:
+      'Install the ForjeGames plugin for Roblox Studio and push AI output straight into your place file.',
+  },
+  {
+    href: '/docs/voice-input',
+    icon: Mic,
+    title: 'Voice Input',
+    description: 'Hold the mic, describe the change, watch the editor build it. Hands-free development.',
+    badge: 'New',
+  },
+  {
+    href: '/docs/image-to-map',
+    icon: ImageIcon,
+    title: 'Image to Map',
+    description:
+      'Upload a sketch or screenshot — Claude Vision and Depth Pro turn it into a playable 3D map.',
+    badge: 'New',
+  },
+  {
+    href: '/docs/marketplace',
+    icon: ShoppingBag,
+    title: 'Marketplace',
+    description: 'Buy remixable templates from other creators, or publish your own and earn credits on every sale.',
+  },
+  {
+    href: '/docs/pricing-credits',
+    icon: CreditCard,
+    title: 'Pricing & Credits',
+    description: 'Understand how credits are consumed, which models cost what, and how plans refill each month.',
   },
   {
     href: '/docs/api',
-    icon: '⌥',
-    title: 'API Reference',
-    description: 'Full REST API docs — all endpoints, auth, rate limits, request/response shapes, and code examples.',
+    icon: Code,
+    title: 'REST API',
+    description: 'Full HTTP reference: auth, generate endpoints, streaming, rate limits, and code samples.',
   },
   {
-    href: '/docs/getting-started#editor',
-    icon: '◈',
-    title: 'Editor Guide',
-    description: 'Master the split-pane editor: chat panel, live 3D preview, script output, and keyboard shortcuts.',
+    href: '/docs/sdk',
+    icon: Code,
+    title: 'TypeScript & Python SDKs',
+    description: 'Typed client libraries with streaming helpers so you can embed ForjeGames in your own tools.',
   },
   {
-    href: '/docs/getting-started#voice',
-    icon: '◎',
-    title: 'Voice Commands',
-    description: 'Speak your game into existence. Trigger any AI action hands-free with natural language voice input.',
-    badge: 'New',
-  },
-  {
-    href: '/docs/getting-started#image-to-map',
-    icon: '◻',
-    title: 'Image to Map',
-    description: 'Upload a sketch or photo. Claude Vision + Depth Pro convert it into a fully built Roblox map.',
-    badge: 'New',
-  },
-  {
-    href: '/docs/getting-started#3d-gen',
-    icon: '◆',
-    title: '3D Generation',
-    description: 'Generate custom meshes with Meshy AI. Describe any prop, structure, or character — get a 3D asset.',
-  },
-  {
-    href: '/docs/getting-started#marketplace',
-    icon: '◉',
-    title: 'Marketplace',
-    description: 'Browse and insert 500K+ verified Roblox marketplace assets directly from the ForjeGames editor.',
-  },
-  {
-    href: '/pricing',
-    icon: '◇',
-    title: 'Billing & Plans',
-    description: 'Understand tokens, plan limits, and how to manage your subscription or API usage.',
+    href: '/docs/troubleshooting',
+    icon: Wrench,
+    title: 'Troubleshooting',
+    description: 'Fixes for the most common issues: plugin connection errors, failing voice input, stuck generations.',
   },
 ]
 
@@ -92,48 +117,27 @@ const techArticleJsonLd = {
     'Everything you need to build Roblox games with ForjeGames AI. Guides, API reference, Studio plugin docs, and more.',
   url: 'https://forjegames.com/docs',
   datePublished: '2026-03-29',
-  dateModified: '2026-03-29',
-  author: {
-    '@type': 'Organization',
-    name: 'ForjeGames LLC',
-    url: 'https://forjegames.com',
-  },
+  dateModified: '2026-04-09',
+  author: { '@type': 'Organization', name: 'ForjeGames LLC', url: 'https://forjegames.com' },
   publisher: {
     '@type': 'Organization',
     name: 'ForjeGames LLC',
-    logo: {
-      '@type': 'ImageObject',
-      url: 'https://forjegames.com/logo.png',
-    },
+    logo: { '@type': 'ImageObject', url: 'https://forjegames.com/logo.png' },
   },
   inLanguage: 'en-US',
-  isPartOf: {
-    '@type': 'WebSite',
-    name: 'ForjeGames',
-    url: 'https://forjegames.com',
-  },
+  isPartOf: { '@type': 'WebSite', name: 'ForjeGames', url: 'https://forjegames.com' },
 }
 
 const breadcrumbJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    {
-      '@type': 'ListItem',
-      position: 1,
-      name: 'Home',
-      item: 'https://forjegames.com',
-    },
-    {
-      '@type': 'ListItem',
-      position: 2,
-      name: 'Docs',
-      item: 'https://forjegames.com/docs',
-    },
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://forjegames.com' },
+    { '@type': 'ListItem', position: 2, name: 'Docs', item: 'https://forjegames.com/docs' },
   ],
 }
 
-export default function DocsHubPage() {
+export default function DocsHomePage() {
   return (
     <>
       <script
@@ -144,74 +148,58 @@ export default function DocsHubPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Hero */}
-      <section className="border-b border-white/5 px-6 py-20 text-center">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[#D4AF37]">
-          Documentation
-        </p>
-        <h1 className="mx-auto mb-5 max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
-          Build faster with ForjeGames
-        </h1>
-        <p className="mx-auto max-w-xl text-base text-white/50">
-          Guides, references, and tutorials for the AI-powered Roblox development platform.
-          Start with Getting Started or jump straight to the API reference.
+      <DocsLayout
+        eyebrow="Documentation"
+        title="Build faster with ForjeGames"
+        description="Guides, references, and tutorials for the AI-powered Roblox development platform. Start with Getting Started or jump straight to the API reference."
+        hideToc
+      >
+        <p>
+          ForjeGames is the fastest way to build a Roblox game. You describe the game in
+          natural language — or a sketch, or a voice memo — and our AI pipeline generates
+          the map, assets, scripts, and UI. This documentation covers everything from a
+          five-minute quickstart to the full REST API.
         </p>
 
-        {/* Search bar — visual only */}
-        <div className="mx-auto mt-8 flex max-w-md items-center gap-3 rounded-xl border border-white/10 bg-[#141414] px-4 py-3">
-          <span className="text-white/30">⌕</span>
-          <span className="flex-1 text-sm text-white/25 text-left">Search docs...</span>
-          <kbd className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/30">⌘ K</kbd>
+        <h2 id="featured">Featured guides</h2>
+        <div className="not-prose mt-6 grid gap-4 sm:grid-cols-2">
+          {FEATURED.map((card) => {
+            const Icon = card.icon
+            return (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="group relative flex flex-col gap-3 rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-all duration-200 hover:border-[#D4AF37]/30 hover:bg-white/[0.04]"
+              >
+                {card.badge && (
+                  <span className="absolute right-4 top-4 rounded-full bg-[#D4AF37]/10 px-2.5 py-0.5 text-[10px] font-semibold text-[#D4AF37]">
+                    {card.badge}
+                  </span>
+                )}
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#D4AF37]/10 text-[#D4AF37]">
+                  <Icon size={16} aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="mb-1 text-[15px] font-semibold text-white group-hover:text-[#D4AF37]">
+                    {card.title}
+                  </h3>
+                  <p className="text-[13px] leading-relaxed text-white/50">
+                    {card.description}
+                  </p>
+                </div>
+              </Link>
+            )
+          })}
         </div>
-      </section>
 
-      {/* Card grid */}
-      <section className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {DOC_CARDS.map((card) => (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="group relative flex flex-col gap-3 rounded-2xl border border-white/5 bg-[#141414] p-6 transition-all duration-200 hover:border-[#D4AF37]/30 hover:bg-[#1a1a1a]"
-            >
-              {card.badge && (
-                <span className="absolute right-4 top-4 rounded-full bg-[#D4AF37]/10 px-2.5 py-0.5 text-[10px] font-semibold text-[#D4AF37]">
-                  {card.badge}
-                </span>
-              )}
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D4AF37]/10 text-lg text-[#D4AF37]">
-                {card.icon}
-              </div>
-              <div>
-                <h2 className="mb-1 text-base font-semibold text-white group-hover:text-[#D4AF37] transition-colors">
-                  {card.title}
-                </h2>
-                <p className="text-sm leading-relaxed text-white/45">{card.description}</p>
-              </div>
-              <div className="mt-auto pt-2 text-xs font-medium text-[#D4AF37]/60 group-hover:text-[#D4AF37] transition-colors">
-                Read →
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Help strip */}
-      <section className="border-t border-white/5 px-6 py-12 text-center">
-        <p className="text-sm text-white/35">
-          Can&apos;t find what you&apos;re looking for?{' '}
-          <a href="mailto:support@forjegames.com" className="text-[#D4AF37] hover:underline">
-            Contact support
-          </a>{' '}
-          or join the{' '}
-          <a href="https://discord.gg/forjegames" className="text-[#D4AF37] hover:underline">
-            Discord community
-          </a>
-          .
+        <h2 id="need-help">Need help?</h2>
+        <p>
+          Can&apos;t find what you&apos;re looking for? Email{' '}
+          <a href="mailto:support@forjegames.com">support@forjegames.com</a> or join the{' '}
+          <a href="https://discord.gg/forjegames">Discord community</a>. We read every
+          message.
         </p>
-      </section>
-    </div>
+      </DocsLayout>
     </>
   )
 }

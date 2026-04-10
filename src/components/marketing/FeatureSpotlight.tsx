@@ -111,10 +111,11 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
       </div>
 
       {/* Lines */}
-      <div className="p-5 font-mono text-[13px] leading-7 space-y-0.5">
+      <div className="p-4 sm:p-5 font-mono text-[11px] sm:text-[13px] leading-6 sm:leading-7 space-y-0.5 overflow-x-auto">
         {lines.map((line, i) => (
           <div
             key={i}
+            className="whitespace-nowrap"
             style={{ color: line.highlight ? '#FFFFFF' : (line.color ?? '#8B95B0') }}
           >
             {line.text}
@@ -134,7 +135,7 @@ function FeatureMockup({ lines, label, color }: { lines: MockupLine[]; label: st
 export default function FeatureSpotlight() {
   return (
     <section
-      className="py-16 px-6"
+      className="py-12 sm:py-16 px-6"
       style={{
         background: '#080C22',
         position: 'relative',
@@ -174,32 +175,32 @@ export default function FeatureSpotlight() {
         <div className="text-center mb-12">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#D4AF37' }}
+            style={{ color: 'var(--gold, #D4AF37)' }}
           >
             How It Works
           </p>
           <h2
-            className="text-4xl font-bold tracking-tight mb-4"
-            style={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}
+            className="font-bold tracking-tight mb-4"
+            style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))', letterSpacing: '-0.02em', fontSize: 'clamp(1.75rem, 5vw, 2.25rem)' }}
           >
             Built for every layer of your game.
           </h2>
-          <p className="text-lg max-w-md mx-auto" style={{ color: '#8B95B0' }}>
+          <p className="text-base sm:text-lg max-w-md mx-auto" style={{ color: '#8B95B0' }}>
             From first idea to published game — ForjeGames covers the full stack.
           </p>
         </div>
 
         {/* Feature rows */}
-        <div className="flex flex-col gap-14">
+        <div className="flex flex-col gap-10 sm:gap-14">
           {FEATURES.map((feature) => (
             <div
               key={feature.id}
-              className={`grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center ${
+              className={`grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center ${
                 feature.flip ? 'lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1' : ''
               }`}
             >
               {/* Text side */}
-              <div>
+              <div className="min-w-0">
                 {/* Tag pill */}
                 <span
                   className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"
@@ -225,8 +226,8 @@ export default function FeatureSpotlight() {
                 </span>
 
                 <h3
-                  className="text-3xl font-bold tracking-tight mb-4"
-                  style={{ color: '#FFFFFF', letterSpacing: '-0.015em' }}
+                  className="font-bold tracking-tight mb-4"
+                  style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))', letterSpacing: '-0.015em', fontSize: 'clamp(1.5rem, 4vw, 1.875rem)' }}
                 >
                   {feature.headline}
                 </h3>

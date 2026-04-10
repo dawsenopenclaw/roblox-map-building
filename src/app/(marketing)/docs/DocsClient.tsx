@@ -183,7 +183,7 @@ function ParamTable({ params }: { params: Param[] }) {
     <div className="overflow-x-auto rounded-xl border border-[#1A2550]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
+          <tr className="border-b border-[#1A2550]" style={{ background: '#050810' }}>
             <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider w-40" style={{ color: '#8B95B0' }}>
               Parameter
             </th>
@@ -1198,7 +1198,7 @@ result = fg.ai.generate(
               <div className="overflow-x-auto rounded-xl border border-[#1A2550] mb-7">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
+                    <tr className="border-b border-[#1A2550]" style={{ background: '#050810' }}>
                       {['Plan', 'Req / min', 'Req / day', 'AI calls / day', 'Concurrent'].map((h) => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B95B0' }}>
                           {h}
@@ -1279,7 +1279,7 @@ result = fg.ai.generate(
               <div className="overflow-x-auto rounded-xl border border-[#1A2550]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1A2550]" style={{ background: '#0A0E27' }}>
+                    <tr className="border-b border-[#1A2550]" style={{ background: '#050810' }}>
                       {['Status', 'Error Code', 'Description'].map((h) => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8B95B0' }}>
                           {h}

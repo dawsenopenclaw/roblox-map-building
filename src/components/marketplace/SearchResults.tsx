@@ -77,7 +77,7 @@ export function SearchResults({
           <RefreshCw className="w-5 h-5 text-red-400" />
         </div>
         <div>
-          <p className="text-white/70 font-medium">Something went wrong</p>
+          <p className="text-white/70 font-medium">Search failed</p>
           <p className="text-white/40 text-sm mt-1">{error}</p>
         </div>
         {onRetry && (

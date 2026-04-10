@@ -271,7 +271,7 @@ function CopyButton({ text }: { text: string }) {
 
 function CodePane({ code, lang }: { code: string; lang: string }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#0A0E27' }}>
+    <div className="overflow-hidden rounded-xl border border-white/[0.07]" style={{ background: '#050810' }}>
       <div className="flex items-center justify-between border-b border-white/[0.07] px-4 py-2">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-[#52525B]">{lang}</span>
         <CopyButton text={code} />
@@ -295,7 +295,7 @@ export default function ApiReferencePage() {
   return (
     <div className="min-h-screen bg-[#050810] text-[#FAFAFA]">
       {/* Breadcrumb */}
-      <div className="border-b border-white/[0.07] bg-[#0A0E27]/60 px-6 py-3 text-xs text-[#52525B]">
+      <div className="border-b border-white/[0.07] bg-[#050810]/60 px-6 py-3 text-xs text-[#52525B]">
         <Link href="/docs" className="transition-colors hover:text-[#D4AF37]">Docs</Link>
         <span className="mx-2 text-white/15">/</span>
         <span className="text-[#71717A]">API Reference</span>
