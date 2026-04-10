@@ -27,10 +27,10 @@ export default function EditorError({
     >
       <div style={{ textAlign: 'center', maxWidth: 420, padding: 32 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-          Something went wrong
+          Editor crashed
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, marginBottom: 24 }}>
-          The editor ran into an issue. This is usually temporary.
+          The editor hit an unexpected error. Your work is saved — click &quot;Try again&quot; to reload it.
         </p>
         <button
           onClick={reset}

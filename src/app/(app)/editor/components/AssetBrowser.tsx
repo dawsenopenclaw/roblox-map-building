@@ -781,7 +781,7 @@ export function AssetBrowser({
                 transition: 'all 0.15s',
               }}
             >
-              {isSearching ? 'Loading...' : 'Load more'}
+              {isSearching ? 'Loading more…' : 'Load more'}
             </button>
           )}
         </div>

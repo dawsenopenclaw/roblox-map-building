@@ -836,7 +836,7 @@ function MyAssetsSubPanel({
               disabled={loadingMore}
               className="w-full rounded-lg border border-white/10 bg-white/5 py-2 text-[10px] font-semibold text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-40"
             >
-              {loadingMore ? 'Loading...' : `Load more (${total - assets.length} remaining)`}
+              {loadingMore ? 'Loading more…' : `Load more (${total - assets.length} remaining)`}
             </button>
           )}
         </div>

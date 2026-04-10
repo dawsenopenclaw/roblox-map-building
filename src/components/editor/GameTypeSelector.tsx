@@ -478,12 +478,12 @@ export function GameTypeSelector({ onBuildStart, onDismiss }: GameTypeSelectorPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       })
-      if (!res.ok) throw new Error('Failed to generate plan')
+      if (!res.ok) throw new Error("Couldn't generate a plan — AI may be busy. Try again in a moment.")
       const data = (await res.json()) as BuildPlan
       setPlan(data)
       setStep('plan')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(e instanceof Error ? e.message : 'Request failed — check your connection and try again.')
     } finally {
       setLoading(false)
     }
@@ -499,11 +499,11 @@ export function GameTypeSelector({ onBuildStart, onDismiss }: GameTypeSelectorPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId: plan.planId, config }),
       })
-      if (!res.ok) throw new Error('Failed to start build')
+      if (!res.ok) throw new Error("Couldn't start the build. Check your token balance and try again.")
       const data = (await res.json()) as { buildId: string }
       onBuildStart?.(data.buildId)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(e instanceof Error ? e.message : 'Request failed — check your connection and try again.')
       setLoading(false)
     }
   }, [plan, config, onBuildStart])

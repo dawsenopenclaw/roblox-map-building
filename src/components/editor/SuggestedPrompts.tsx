@@ -19,18 +19,17 @@ const PROMPT_CARDS: PromptCard[] = [
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
         <rect x="3" y="8" width="12" height="8" rx="2" stroke="currentColor" strokeWidth="1.4"/>
-        <path d="M6 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M6 8V5.5a3 3 0 016 0V8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
         <rect x="1" y="3" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
         <rect x="14" y="3" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-        <path d="M6 2h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       </svg>
     ),
-    title: 'Build a medieval castle',
-    description: 'Stone towers, portcullis & moat',
-    prompt: 'Build a medieval castle with stone towers, iron portcullis, and a water moat with drawbridge',
-    accentColor: '#C084FC',
-    accentBg: 'rgba(192,132,252,0.07)',
-    accentBorder: 'rgba(192,132,252,0.2)',
+    title: 'Build me a modern house',
+    description: 'Open plan interior & garden',
+    prompt: 'Build me a modern house with an open-plan living room, kitchen, two bedrooms, a garden with a fence, and a driveway',
+    accentColor: '#D4AF37',
+    accentBg: 'rgba(212,175,55,0.07)',
+    accentBorder: 'rgba(212,175,55,0.22)',
   },
   {
     icon: (
@@ -41,28 +40,58 @@ const PROMPT_CARDS: PromptCard[] = [
         <path d="M6 12h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
       </svg>
     ),
-    title: 'Create a shop with UI',
-    description: 'NPC vendor with buy menu',
-    prompt: 'Create a shop building with an NPC vendor, shop GUI with items to buy, and working purchase buttons',
-    accentColor: '#D4AF37',
-    accentBg: 'rgba(212,175,55,0.07)',
-    accentBorder: 'rgba(212,175,55,0.22)',
+    title: 'Create a tycoon factory',
+    description: 'Conveyor, droppers & cash pad',
+    prompt: 'Create a factory tycoon starter kit with a conveyor belt, droppers, upgraders, and a cash collector pad',
+    accentColor: '#F97316',
+    accentBg: 'rgba(249,115,22,0.07)',
+    accentBorder: 'rgba(249,115,22,0.2)',
   },
   {
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-        <path d="M2 14c2-4 4-7 5-7s2 3 3 3 2-2 3-2 2 2 3 2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="4" cy="7" r="2" stroke="currentColor" strokeWidth="1.3"/>
-        <path d="M9 5c0-1 .5-2 1.5-2S12 4 12 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-        <path d="M3 16h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+        <rect x="3" y="8" width="12" height="8" rx="2" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M6 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <rect x="1" y="3" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+        <rect x="14" y="3" width="3" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
       </svg>
     ),
-    title: 'Generate a forest biome',
-    description: 'Trees, river & terrain',
-    prompt: 'Generate a forest biome with tall trees, a winding river, mossy rocks, and rolling terrain',
+    title: 'Make a medieval castle',
+    description: 'Stone towers, moat & drawbridge',
+    prompt: 'Build a medieval castle with stone towers, iron portcullis, and a water moat with drawbridge',
+    accentColor: '#C084FC',
+    accentBg: 'rgba(192,132,252,0.07)',
+    accentBorder: 'rgba(192,132,252,0.2)',
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <circle cx="9" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M4 16c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <path d="M9 2v1.5M14.5 4.5l-1 1M16 9h-1.5M14.5 13.5l-1-1M3.5 4.5l1 1M2 9h1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    ),
+    title: 'Design an obby stage',
+    description: 'Platforms, traps & checkpoints',
+    prompt: 'Design a challenging obby stage with moving platforms, lava traps, spinning barriers, jump pads, and checkpoint flags',
     accentColor: '#4ADE80',
     accentBg: 'rgba(74,222,128,0.07)',
     accentBorder: 'rgba(74,222,128,0.2)',
+  },
+  {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <ellipse cx="9" cy="9" rx="7" ry="4.5" stroke="currentColor" strokeWidth="1.4"/>
+        <circle cx="9" cy="9" r="2" stroke="currentColor" strokeWidth="1.3"/>
+        <path d="M9 4.5V2M9 16v-2.5M14.5 6.5l-1.5 1M5 10.5l-1.5 1M14.5 11.5l-1.5-1M5 7.5l-1.5-1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+    ),
+    title: 'Generate a sci-fi space station',
+    description: 'Docking bays & control rooms',
+    prompt: 'Build a futuristic space station with docking bays, glass corridors, a command bridge, airlock doors, and starfield windows',
+    accentColor: '#06B6D4',
+    accentBg: 'rgba(6,182,212,0.07)',
+    accentBorder: 'rgba(6,182,212,0.2)',
   },
 ]
 

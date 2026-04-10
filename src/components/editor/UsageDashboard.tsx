@@ -166,7 +166,7 @@ export function UsageDashboard({ onUpgradeClick, compact = false }: UsageDashboa
       const json = await res.json() as UsageData
       setData(json)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load usage')
+      setError(err instanceof Error ? err.message : "Couldn't load usage stats. Check your connection and try again.")
     } finally {
       setLoading(false)
     }

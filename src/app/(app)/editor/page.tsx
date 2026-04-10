@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import NewEditorClient from './NewEditorClient'
+import { withBetaGuard } from '@/lib/beta-guard'
 
 export const metadata: Metadata = {
   title: 'Editor — ForjeGames',
@@ -7,6 +8,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function EditorPage() {
+export default async function EditorPage() {
+  // When BETA_REQUIRED=true, bounce non-beta users to the invite page.
+  // No-op in the default (public) deployment.
+  await withBetaGuard()
   return <NewEditorClient />
 }
