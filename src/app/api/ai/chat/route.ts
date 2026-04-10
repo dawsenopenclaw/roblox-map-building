@@ -26,6 +26,7 @@ import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
+import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 
 // ─── Curated Roblox Marketplace Asset Database ───────────────────────────────
 // Asset IDs sourced from the Roblox public catalog free-model section.
@@ -1045,6 +1046,195 @@ async function callGroq(
 
   console.error('[callGroq] All models exhausted')
   return null
+}
+
+// OpenAI API call helper (server-side, reads OPENAI_API_KEY from env)
+const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'o1-preview'] as const
+type OpenAIModelId = (typeof OPENAI_MODELS)[number]
+
+function isOpenAIModel(model: string): model is OpenAIModelId {
+  return (OPENAI_MODELS as readonly string[]).includes(model)
+}
+
+async function callOpenAI(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number = 2048,
+  model: OpenAIModelId = 'gpt-4o',
+): Promise<{ text: string; tokensUsed: number } | null> {
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (!openaiKey) return null
+
+  try {
+    // o1-preview uses a different message format — no system message, uses max_completion_tokens
+    const isO1 = model === 'o1-preview'
+    const messages = isO1
+      ? [
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: 'user', content: systemPrompt + '\n\n' + userMessage },
+        ]
+      : [
+          { role: 'system', content: systemPrompt },
+          ...history.map((h) => ({ role: h.role, content: h.content })),
+          { role: 'user', content: userMessage },
+        ]
+
+    const bodyPayload: Record<string, unknown> = {
+      model,
+      messages,
+    }
+    if (isO1) {
+      bodyPayload.max_completion_tokens = maxTokens
+    } else {
+      bodyPayload.max_tokens = maxTokens
+      bodyPayload.temperature = 0.2
+    }
+
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`,
+      },
+      body: JSON.stringify(bodyPayload),
+    })
+
+    if (res.status === 429) {
+      console.warn(`[callOpenAI] ${model} rate limited`)
+      return null
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error(`[callOpenAI] ${model} HTTP ${res.status}:`, errText.slice(0, 200))
+      return null
+    }
+
+    type OpenAIRes = {
+      choices?: Array<{ message?: { content?: string } }>
+      usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+    }
+    const data = await res.json() as OpenAIRes
+    const text = data.choices?.[0]?.message?.content ?? null
+    if (text) {
+      const tokensUsed = data.usage?.total_tokens ?? Math.ceil(text.length / 4)
+      console.log(`[callOpenAI] ${model} responded (${text.length} chars, ${tokensUsed} tokens)`)
+      return { text, tokensUsed }
+    }
+    console.warn(`[callOpenAI] ${model} empty response`)
+    return null
+  } catch (e) {
+    console.error(`[callOpenAI] ${model} error:`, (e as Error).message)
+    return null
+  }
+}
+
+// OpenAI streaming call — pipes SSE chunks to a writer
+async function streamOpenAI(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number,
+  model: OpenAIModelId,
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  enc: TextEncoder,
+): Promise<{ fullText: string; tokensUsed: number }> {
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (!openaiKey) throw new Error('OPENAI_API_KEY not configured')
+
+  const isO1 = model === 'o1-preview'
+  const messages = isO1
+    ? [
+        ...history.map((h) => ({ role: h.role, content: h.content })),
+        { role: 'user', content: systemPrompt + '\n\n' + userMessage },
+      ]
+    : [
+        { role: 'system', content: systemPrompt },
+        ...history.map((h) => ({ role: h.role, content: h.content })),
+        { role: 'user', content: userMessage },
+      ]
+
+  const bodyPayload: Record<string, unknown> = {
+    model,
+    messages,
+    stream: true,
+  }
+  if (isO1) {
+    bodyPayload.max_completion_tokens = maxTokens
+    // o1-preview doesn't support streaming as of early 2025 — fall back to non-streaming
+    bodyPayload.stream = false
+  } else {
+    bodyPayload.max_tokens = maxTokens
+    bodyPayload.temperature = 0.2
+  }
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${openaiKey}`,
+    },
+    body: JSON.stringify(bodyPayload),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '')
+    throw new Error(`OpenAI API error ${res.status}: ${errText.slice(0, 200)}`)
+  }
+
+  // o1-preview: non-streaming response
+  if (isO1) {
+    type OpenAIRes = {
+      choices?: Array<{ message?: { content?: string } }>
+      usage?: { total_tokens?: number }
+    }
+    const data = await res.json() as OpenAIRes
+    const text = data.choices?.[0]?.message?.content ?? ''
+    const tokensUsed = data.usage?.total_tokens ?? Math.ceil(text.length / 4)
+    await writer.write(enc.encode(text))
+    return { fullText: text, tokensUsed }
+  }
+
+  // Streaming SSE response for gpt-4o / gpt-4o-mini
+  let fullText = ''
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response body from OpenAI')
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed === 'data: [DONE]') continue
+      if (!trimmed.startsWith('data: ')) continue
+
+      try {
+        const json = JSON.parse(trimmed.slice(6)) as {
+          choices?: Array<{ delta?: { content?: string } }>
+        }
+        const chunk = json.choices?.[0]?.delta?.content
+        if (chunk) {
+          fullText += chunk
+          await writer.write(enc.encode(chunk))
+        }
+      } catch {
+        // Malformed SSE line — skip
+      }
+    }
+  }
+
+  // Estimate tokens for streaming (OpenAI doesn't include usage in stream chunks by default)
+  const tokensUsed = Math.ceil(fullText.length / 4)
+  return { fullText, tokensUsed }
 }
 
 // Race helper — runs multiple promises, returns the first non-null result
@@ -6094,6 +6284,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const wantsStream = parsed.data.stream === true
 
+  // Selected model from the frontend model selector (e.g. 'gpt-4o', 'gpt-4o-mini', 'o1-preview')
+  const requestedModel = ((parsed.data as Record<string, unknown>).model as string | undefined) ?? ''
+
+  // AI Mode — determines how the prompt is processed and what system prompt modifiers to inject
+  const aiMode = ((parsed.data as Record<string, unknown>).aiMode as string | undefined) || 'build'
+  const wantsEnhance = ((parsed.data as Record<string, unknown>).enhance as boolean | undefined) === true || aiMode === 'plan'
+  const AI_MODE_PREFIXES: Record<string, string> = {
+    think: '\n\n[THINKING_MODE] Think step-by-step. Show your reasoning process in detail before giving the final answer. Consider multiple approaches, evaluate trade-offs, and pick the best one. Wrap your reasoning in <thinking>...</thinking> tags, then provide the final answer.',
+    plan: '\n\n[PLAN_MODE] Before writing ANY code, create a detailed numbered build plan. List every Part, Model, Script, and Service that will be needed. Include sizes, positions, and colors. Present this as a clear checklist. DO NOT write code yet — wait for the user to approve the plan first.',
+    script: '\n\n[SCRIPT_MODE] Focus ONLY on generating clean, optimized, production-ready Luau code. Use proper Roblox API patterns, type annotations where helpful, and modular architecture. Include brief comments explaining complex logic. No map building — pure scripting.',
+    image: '\n\n[IMAGE_MODE] The user wants to generate a visual asset (icon, thumbnail, GFX). Describe what the image should look like in detail, including art style, color palette, composition, and Roblox-appropriate aesthetics.',
+    terrain: '\n\n[TERRAIN_MODE] Focus on terrain generation. Use Terrain:FillRegion(), Terrain:FillBall(), Terrain:FillCylinder(), and related APIs. Paint materials (Grass, Sand, Rock, Snow, Water, etc.), sculpt heights, and create natural biomes.',
+    debug: '\n\n[DEBUG_MODE] The user needs help debugging. First, analyze the code or error description thoroughly. Identify the root cause. Then provide a fixed version with clear explanations of what was wrong and why the fix works. Use <thinking>...</thinking> tags to show your analysis.',
+    idea: '\n\n[IDEA_MODE] Brainstorm 3 viral Roblox game concepts. For EACH idea include:\n1) **Hook** — what draws players in within 5 seconds\n2) **Core Loop** — the main gameplay cycle that keeps players engaged\n3) **Monetization** — GamePass, DevProduct, and Premium strategies\n4) **Unique Twist** — what makes this different from existing games\n5) **Technical Scope** — estimated complexity and key systems needed',
+    mesh: '\n\n[MESH_MODE] Generate a 3D model/mesh asset for the user. Describe the asset in detail for 3D generation.',
+  }
+  const modePrefix = AI_MODE_PREFIXES[aiMode] || ''
+
   // Merge history sources: `messages` is the frontend alias, `history` is legacy.
   // Accept up to the last 20 turns from whichever field the client sends.
   const rawHistory: HistoryMessage[] = (
@@ -6751,6 +6959,178 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     }
   }
 
+  // ── Server-side OpenAI path (gpt-4o / gpt-4o-mini / o1-preview) ────────────
+  // When the user selects an OpenAI model from the dropdown and OPENAI_API_KEY
+  // is configured on the server, route through our hosted key — no BYOK needed.
+  if (isOpenAIModel(requestedModel) && process.env.OPENAI_API_KEY) {
+    const tokenCostOai = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
+
+    // Balance check
+    if (!isDemo && !isAdmin && authedUserId && tokenCostOai > 0) {
+      try {
+        const bal = await getTokenBalance(authedUserId)
+        const currentBalance = bal?.balance ?? 0
+        if (currentBalance < tokenCostOai) {
+          return NextResponse.json(
+            { error: 'insufficient_tokens', balance: currentBalance, required: tokenCostOai },
+            { status: 402 },
+          )
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : 'Token error'
+        console.warn('[chat] DB unavailable for balance check (OpenAI path):', errMsg)
+      }
+    }
+
+    try {
+      const isBuildingIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh',
+        'script', 'debug', 'datasave', 'networking', 'gamesystem', 'multiscript',
+        'vehicle', 'particle', 'weather', 'ui', 'animate', 'combat', 'quest',
+        'performance', 'cleanup', 'default'].includes(intent)
+      const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
+      const gameKnowledge = buildGameKnowledgePrompt(recentContext)
+
+      let enhancedPlanContext = ''
+      if (wantsEnhance && isBuildingIntent) {
+        try {
+          const plan = await enhancePrompt(message, recentContext.slice(0, 1000))
+          enhancedPlanContext = '\n\n' + formatEnhancedPlanContext(plan)
+        } catch {
+          // Non-fatal
+        }
+      }
+
+      const systemPrompt = (isBuildingIntent
+        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix
+
+      const maxTokens =
+        intent === 'chat' || intent === 'conversation'
+          ? 512
+          : intent === 'fullgame'
+            ? 8192
+            : intent === 'building' || intent === 'terrain'
+              ? 4096
+              : 2048
+
+      const oaiHistory = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
+
+      // ── STREAMING PATH (OpenAI) ──────────────────────────────────────────────
+      if (wantsStream) {
+        const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+        const writer = writable.getWriter()
+        const enc = new TextEncoder()
+
+        void (async () => {
+          try {
+            const { fullText, tokensUsed } = await streamOpenAI(
+              systemPrompt,
+              message,
+              oaiHistory,
+              maxTokens,
+              requestedModel,
+              writer,
+              enc,
+            )
+
+            // Deduct tokens
+            if (!isDemo && !isAdmin && authedUserId && tokenCostOai > 0) {
+              try {
+                await spendTokens(authedUserId, tokenCostOai, `AI ${intent} request (OpenAI)`, { prompt: message.slice(0, 100), intent })
+              } catch (spendErr) {
+                console.warn('[chat] Token deduction failed after OpenAI stream:', spendErr instanceof Error ? spendErr.message : spendErr)
+              }
+            }
+
+            const luau = extractLuauCode(fullText)
+            let executedInStudio = false
+            if (luau && sessionId) {
+              executedInStudio = await sendCodeToStudio(sessionId, luau)
+            }
+            const stripped = luau ? stripCodeBlocks(fullText) : fullText
+            const { suggestions } = extractSuggestions(stripped)
+            const hasCode = luau !== null
+
+            const metaChunk =
+              '\x00' +
+              JSON.stringify({
+                __meta: true,
+                suggestions,
+                intent,
+                hasCode,
+                tokensUsed,
+                executedInStudio,
+                model: requestedModel,
+              })
+            await writer.write(enc.encode(metaChunk))
+          } catch (streamErr) {
+            const errMsg = streamErr instanceof Error ? streamErr.message : 'OpenAI streaming error'
+            console.error('[chat] OpenAI stream error:', errMsg)
+            try {
+              await writer.write(
+                enc.encode('\x00' + JSON.stringify({ __meta: true, error: errMsg })),
+              )
+            } catch {
+              // writer already closed
+            }
+          } finally {
+            try {
+              await writer.close()
+            } catch {
+              // already closed
+            }
+          }
+        })()
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Transfer-Encoding': 'chunked',
+            'X-Accel-Buffering': 'no',
+            'Cache-Control': 'no-cache, no-transform',
+          },
+        }) as unknown as NextResponse
+      }
+
+      // ── NON-STREAMING PATH (OpenAI) ───────────────────────────────────────────
+      const result = await callOpenAI(systemPrompt, message, oaiHistory, maxTokens, requestedModel)
+      if (result) {
+        // Deduct tokens
+        if (!isDemo && !isAdmin && authedUserId && tokenCostOai > 0) {
+          try {
+            await spendTokens(authedUserId, tokenCostOai, `AI ${intent} request (OpenAI)`, { prompt: message.slice(0, 100), intent })
+          } catch (spendErr) {
+            console.warn('[chat] Token deduction failed after OpenAI response:', spendErr instanceof Error ? spendErr.message : spendErr)
+          }
+        }
+
+        const luauScripts = extractMultipleLuauScripts(result.text)
+        let executedInStudio = false
+        if (luauScripts.length > 0 && sessionId) {
+          executedInStudio = await sendMultipleScriptsToStudio(sessionId, luauScripts)
+        }
+        const stripped = luauScripts.length > 0 ? stripCodeBlocks(result.text) : result.text
+        const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
+        const hasCode = luauScripts.length > 0
+
+        return NextResponse.json({
+          message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : result.text),
+          tokensUsed: result.tokensUsed,
+          intent,
+          hasCode,
+          model: requestedModel,
+          executedInStudio,
+          suggestions,
+        })
+      }
+      // If callOpenAI returned null, fall through to Anthropic / free models
+      console.warn('[chat] OpenAI call returned null, falling through to Anthropic path')
+    } catch (err) {
+      console.error('[chat] OpenAI path error:', err instanceof Error ? err.message : String(err))
+      // Fall through to Anthropic / free models
+    }
+  }
+
   // ── Real Claude API path ──────────────────────────────────────────────────
   const anthropic = getAnthropicClient()
   const tokenCost = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
@@ -6804,9 +7184,25 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         'performance', 'cleanup', 'default'].includes(intent)
       const recentContext = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
       const gameKnowledge = buildGameKnowledgePrompt(recentContext)
-      const systemPrompt = isBuildingIntent
-        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext
-        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext
+
+      // ── FREE prompt enhancement (Groq/Llama pre-processing) ────────────────
+      // When enhance:true or aiMode='plan', run the cheap Groq planner first.
+      // This gives the main AI a structured build plan to follow, dramatically
+      // improving output quality. Does NOT cost credits.
+      let enhancedPlanContext = ''
+      if (wantsEnhance && isBuildingIntent) {
+        try {
+          const plan = await enhancePrompt(message, recentContext.slice(0, 1000))
+          enhancedPlanContext = '\n\n' + formatEnhancedPlanContext(plan)
+        } catch (enhErr) {
+          // Non-fatal: if Groq fails, continue without enhancement
+          console.warn('[chat] Prompt enhancement failed (non-fatal):', enhErr instanceof Error ? enhErr.message : enhErr)
+        }
+      }
+
+      const systemPrompt = (isBuildingIntent
+        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix
 
       // ── STREAMING PATH ───────────────────────────────────────────────────────────
       // When the frontend sends stream:true, pipe text chunks in real time.

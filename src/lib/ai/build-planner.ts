@@ -125,7 +125,7 @@ const PLANNER_SYSTEM_PROMPT = `You are an expert Roblox game architect and produ
 
 ROBLOX GAME DESIGN RULES:
 - Character scale: 5 studs tall. All structures scale from this baseline.
-- Door: 4w × 7h studs. Ceiling height: 12 studs min. Wall thickness: 1-2 studs.
+- Door: 4w × 7h studs. Ceiling height: 12 studs min. Wall thickness: 0.5-1 studs.
 - Materials: Cobblestone (castle), WoodPlanks (floors), Slate (roofs), Glass (windows), Metal (gates/fences), Neon (signage/effects), SmoothPlastic (modern), Granite (paths).
 - Always Anchor static parts. Add PointLights to torches (Brightness=1.5, Range=16).
 - Wrap all Studio mutations in ChangeHistoryService for undo support.
@@ -134,16 +134,45 @@ ROBLOX GAME DESIGN RULES:
 - Economy systems must be server-authoritative — never trust clients.
 - UI goes in StarterGui with ScreenGui.ResetOnSpawn = false.
 
+CRITICAL — TASK PROMPT DETAIL RULES:
+When writing the "prompt" field for each task, you MUST include SPECIFIC architectural details. NEVER write vague prompts like "build a house" or "create a shop". Instead, specify:
+
+For BUILDING tasks, the prompt MUST include:
+- Exact dimensions (e.g., "24 studs wide, 20 studs deep, 2 floors")
+- Style (e.g., "medieval stone", "modern glass", "victorian brick")
+- Specific Color3.fromRGB values for walls, trim, and roof
+- Required features: foundation, recessed windows with frames, door with frame, roof type (pitched/flat with parapet), corner trim, floor ledges between stories, interior floors, PointLights in windows
+- Position: CFrame offset from origin so buildings don't overlap
+
+For PROP tasks, the prompt MUST include:
+- What the prop looks like (multiple Parts, not a single box)
+- Dimensions in studs
+- Material and Color3.fromRGB values
+- Position relative to the building it belongs to
+- Example: "A wooden market stall: 8x3x6 stud frame using WoodPlanks (Color3.fromRGB(139,90,43)), with a sloped canvas roof using Fabric (Color3.fromRGB(180,30,30)), counter slab in front, 2 support posts"
+
+For TERRAIN tasks, the prompt MUST include:
+- Map size in studs (e.g., "256x256")
+- Multiple terrain layers: ground material, hills (positions + heights), paths/roads, water features, rock formations
+- Biome type and specific materials to use
+
+For NPC tasks, the prompt MUST describe:
+- Visual appearance (body colors, clothing colors, accessories)
+- Behavior type (patrol, idle, dialog, combat)
+- Position in the world
+
 TASK DECOMPOSITION RULES:
 1. terrain tasks always go in wave 0 (they have no dependencies)
 2. lighting tasks go in wave 0 (no dependencies, just Lighting service config)
 3. building tasks depend on terrain (wave 1+)
-4. prop tasks depend on at least one building task (wave 2+)
+4. prop tasks depend on at least one building task (wave 2+) — ALWAYS create separate prop tasks for interior furniture if a building has interiors
 5. npc tasks depend on prop tasks being placed (wave 3+)
 6. economy/script tasks can often run in parallel with building tasks (wave 1+)
 7. ui tasks depend on economy/script (wave 2+)
 8. audio tasks can run in wave 1 (no spatial dependencies)
 9. Never create circular dependencies
+10. For building tasks, set templateParams to include: style, withInterior (true for any building players enter), withWallDetail (always true), roomsPerFloor (2-4 for houses, 1 for shops, 0 for simple structures)
+11. ALWAYS create at least one separate "prop" task per building for its interior furniture (tables, chairs, shelves, beds, etc.) — do NOT try to cram furniture into the building task
 
 GAME TYPE BLUEPRINTS:
 
@@ -245,7 +274,7 @@ export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> 
         content: `Generate a complete build plan for this Roblox game idea:\n\n"${userPrompt.slice(0, 1000)}"`,
       },
     ],
-    { maxTokens: 6000, temperature: 0.7, jsonMode: true },
+    { maxTokens: 6000, temperature: 0.3, jsonMode: true, useRAG: true, ragCategories: ['pattern', 'building', 'service'] },
   )
 
   // Strip any accidental markdown fences free models might add

@@ -12,6 +12,7 @@
 import 'server-only'
 import Anthropic from '@anthropic-ai/sdk'
 import { callAI } from './provider'
+import { analyzeLuau, autoFixLuau } from './static-analysis'
 import { redis } from '@/lib/redis'
 import { queueCommand } from '@/lib/studio-session'
 import { startMeshPipeline } from '@/lib/pipeline/mesh-pipeline'
@@ -29,6 +30,7 @@ import {
   spawnSystem,
   obbyCheckpoints,
   petFollowSystem,
+  professionalBuilding,
 } from './luau-templates'
 
 // ── Lazy Anthropic client (kept for optional custom-key path only) ────────────
@@ -104,23 +106,194 @@ async function readProgress(buildId: string): Promise<BuildProgress | null> {
 // ── Task type system prompt fragments ────────────────────────────────────────
 
 const TASK_SYSTEM_PROMPTS: Record<BuildTaskType, string> = {
-  terrain: `You are a Roblox terrain generation expert. Generate complete, runnable Luau code that uses workspace.Terrain API to create terrain. Use Terrain:FillBlock, Terrain:FillBall, Terrain:WriteVoxels, and Terrain:FillWedge. Always wrap in ChangeHistoryService. Include Lighting and Atmosphere setup if relevant to the terrain type. Output ONLY the Luau code, no explanation.`,
+  terrain: `You are a Roblox terrain generation expert. Generate complete, runnable Luau code using workspace.Terrain API.
 
-  building: `You are a Roblox Studio building expert. Generate complete Luau code that constructs a detailed building using Parts, WedgeParts, UnionOperations, and SpecialMeshes. Group all parts in a named Model. Use correct materials (WoodPlanks, Cobblestone, Slate, SmoothPlastic etc), real Color3.fromRGB values, proper scale (5-stud characters, 12-stud ceilings, 4x7 doors). Anchor ALL parts. Add PointLights to light sources. Wrap in ChangeHistoryService. Output ONLY the Luau code.`,
+REQUIRED TERRAIN LAYERS (build ALL of these, not just one flat fill):
+1. BASE GROUND: Terrain:FillBlock for the main ground plane. Use Grass, Sand, or Snow depending on biome.
+2. ELEVATION: Add hills using multiple Terrain:FillBall calls at varying heights (Y = 5-30 studs). Use 3-8 hills minimum for natural terrain.
+3. PATHS/ROADS: Carve flat paths using Terrain:FillBlock with Concrete, Asphalt, or Cobblestone at ground level. Width: 8-12 studs for roads, 4-6 for paths.
+4. WATER: If appropriate, add water bodies using Terrain:FillBlock with Enum.Material.Water. Set Y below ground level for natural look.
+5. ROCK FORMATIONS: Add Terrain:FillBall with Rock or Slate material for boulders and cliffs. Vary sizes (8-20 stud radius).
+6. EDGE BLENDING: Add transition zones between materials (e.g., Mud between Grass and Water).
 
-  prop: `You are a Roblox prop placement expert. Generate Luau code that creates and positions decorative props and objects. Use proper materials, colors, and scale. Group props in named Models. Anchor static props. Add appropriate lighting to interactive props. Output ONLY the Luau code.`,
+SCALE REFERENCE: Character = 5 studs tall. A "small area" = 128x128 studs. A "medium map" = 256x256. "Large" = 512x512.
+Always wrap in ChangeHistoryService. Include Lighting and Atmosphere setup matching the biome. Output ONLY the Luau code, no explanation.`,
 
-  npc: `You are a Roblox NPC creation expert. Generate complete Luau code that creates NPC characters with R6/R15 rigs OR simple geometric humanoids, adds AI pathfinding or idle animations, configures Humanoid health/walkspeed, adds dialog proximity detectors, and sets up any combat behaviors. Output ONLY the Luau code.`,
+  building: `You are a Roblox Studio architecture expert. Generate Luau code that constructs a DETAILED, realistic building — NOT a flat box with walls.
+
+MANDATORY STRUCTURAL ELEMENTS (you MUST include ALL of these):
+1. FOUNDATION: A slightly wider concrete/stone base (1-2 studs tall) extending 0.5-1 studs beyond walls. Every building sits on a foundation.
+2. WALLS: 4 walls per floor using Parts. Wall thickness: 0.5-1 stud. Height per floor: 12 studs (to fit 5-stud characters with headroom).
+3. FLOOR SLABS: Horizontal Part between each floor. Thickness: 0.5 studs. Slightly wider than walls for a ledge effect.
+4. WINDOWS: Recessed glass panes (Transparency 0.5, Material Glass) with frames. Minimum 2 windows per wall per floor. Recess windows 0.3-0.5 studs into the wall. Add a window header (0.25 studs) and sill (0.2 studs, extends 0.3 studs outward).
+5. DOOR: Front entrance — 4 stud wide x 7 stud tall opening. Include door frame (trim color) and door panel (WoodPlanks). ONE door minimum.
+6. ROOF: NOT just a flat top. Use either:
+   - Pitched roof: Two WedgeParts angled to form a peak, with 1-stud overhang past walls
+   - Flat roof with parapet: 1.5-stud wall around the edge, slightly darker than main walls
+7. CORNER DETAILS: Pilaster strips (0.5-0.8 stud wide vertical trim) at each corner, slightly different color than walls.
+8. INTERIOR FLOOR: A Part inside at each floor level. Use WoodPlanks or Marble material.
+9. LIGHTING: PointLight inside windows (Brightness 1, Range 12-16) for warm interior glow.
+
+LOW-POLY WALL DETAIL (REQUIRED — this is what makes builds look real, not blocky):
+10. BRICK/PANEL LINES: Add thin Parts (0.05 stud thick) on wall surfaces to simulate brick coursing or siding:
+    - Horizontal mortar lines every ~1 stud up the wall (Size: wallWidth x 0.05 x 0.05, positioned 0.03 studs proud of wall surface)
+    - Vertical lines in a staggered brick pattern (every other row offset by half a brick width)
+    - For wooden buildings, use vertical board lines instead of brick pattern
+11. WAINSCOTING: Lower 1/3 of each wall gets a slightly raised panel (0.08 studs thick) using WoodPlanks or SmoothPlastic in the trim color. Add a thin chair rail strip (0.12x0.12 stud) at the top of the wainscoting.
+12. CROWN MOLDING: Thin trim strip (0.2x0.12 stud) running along the top of interior walls where wall meets ceiling.
+13. BASEBOARDS: Thin trim strip (0.3x0.15 stud) running along the bottom of interior walls.
+14. KEYSTONE: A decorative block (1.0x0.6x0.3) centered above the door frame.
+15. SIGN/PLAQUE: A thin Part with SurfaceGui and TextLabel showing the building name, mounted above the door.
+
+INTERIOR ROOMS (when the building has rooms):
+16. DIVIDING WALLS: Interior walls (0.3 studs thick, slightly shorter than ceiling height) that split the floor into rooms. Leave doorway gaps (3.5 studs wide) in dividing walls. Each room should have its own floor material if types differ (e.g., kitchen = Marble, bedroom = WoodPlanks).
+17. INTERIOR WALL DETAIL: Interior dividing walls also get baseboards and crown molding.
+
+COLOR RULES: Use Color3.fromRGB with SPECIFIC values, not white/gray. Every building needs at minimum:
+- Wall color (the main body)
+- Trim color (darker shade of wall color, for frames/corners/ledges/brick lines)
+- Roof color (distinct from walls)
+- Accent color (doors, shutters, signs)
+- Interior wall color (lighter/warmer than exterior)
+
+SCALE: Doors 4x7 studs. Windows 2x2 studs. Ceiling height 12 studs. Wall thickness 0.5-1 stud. Character is 5 studs tall.
+
+Group ALL parts in a named Model with organized Folders (Walls, Roof, Details, Lights, WallTexture, Interior). Anchor ALL parts. Wrap in ChangeHistoryService. Output ONLY the Luau code.`,
+
+  prop: `You are a Roblox prop and environmental detail expert. Generate Luau code that creates DETAILED, recognizable props — NOT just colored boxes.
+
+PROP CONSTRUCTION RULES:
+1. Every prop is a Model containing MULTIPLE Parts arranged to form a recognizable shape.
+2. A "table" is NOT one flat Part. It's a top slab + 4 leg Parts. A "chair" has a seat + backrest + 4 legs.
+3. A "tree" is a brown cylinder trunk (2x6x2 studs) + 2-3 green sphere-shaped Parts (use SpecialMesh with MeshType Sphere) for the canopy at different heights.
+4. A "lamp post" is a tall cylinder (1x12x1) + a horizontal arm Part + a sphere/cylinder light head + PointLight.
+5. A "fence" is repeated post Parts (1x3x1) connected by rail Parts (0.3x0.3xSpan).
+6. A "barrel" is a cylinder Part with SpecialMesh (MeshType Cylinder).
+7. A "crate" is a Part with WoodPlanks material + darker trim Parts as bands.
+8. A "bench" is a seat slab + backrest slab (angled slightly) + 2 side supports.
+9. A "rock" is 2-3 Parts at slight random angles with Slate or Granite material, scaled irregularly (not perfect cubes).
+10. A "sign" is a thin Part with SurfaceGui containing a TextLabel.
+
+DETAIL MINIMUMS:
+- Small props (barrel, crate, pot): minimum 3 Parts
+- Medium props (bench, table, lamp): minimum 5 Parts
+- Large props (tree, fountain, vehicle): minimum 8 Parts
+- Interior furniture (bed, desk, shelf): minimum 6 Parts
+
+LOW-POLY DETAIL TECHNIQUES (use these to make props look detailed, not blocky):
+- Use SpecialMesh with MeshType Sphere/Cylinder/Wedge on Parts to get rounded shapes without high poly count
+- Add thin trim Parts (0.1-0.2 studs) as edge details on furniture (table edge rim, shelf lip, drawer handles)
+- Use Color3 variation: slightly different shade per sub-part (e.g., table top vs legs) to add visual depth
+- Add SurfaceGui with TextLabel for signs, labels, book spines, screen displays
+- Use Transparency (0.3-0.5) on glass/crystal/water props
+- Add PointLight to lanterns, candles, screens, glowing objects
+- Rotate Parts slightly with CFrame.Angles for organic-looking arrangements (not everything perfectly aligned)
+
+INTERIOR FURNITURE EXAMPLES:
+- BED: Headboard (WoodPlanks) + mattress (Fabric, slight color) + pillow (small white ball Part) + blanket (thin draped Part)
+- SHELF: Back panel + 3-4 horizontal shelf slabs + side panels + small box/book Parts on shelves
+- DESK: Top slab + 4 legs + drawer face Part (with small handle cylinder) + lamp prop on top
+- KITCHEN COUNTER: Base cabinet (door front Parts) + countertop (Marble) + backsplash strip + sink basin (Part with dark interior)
+- CHAIR: Seat + backrest (angled 5-10 degrees back) + 4 legs + optional armrests
+
+Apply correct materials and specific Color3.fromRGB values. Group in named Models. Anchor static props. Output ONLY the Luau code.`,
+
+  npc: `You are a Roblox NPC creation expert. Generate complete Luau code that creates NPC characters.
+
+NPC CONSTRUCTION (you MUST include):
+1. BODY: Build an R6-style rig using Parts: Head (sphere mesh, 1.2x1.2x1.2), Torso (2x2x1), Left/Right Arms (1x2x1), Left/Right Legs (1x2x1). Use specific skin Color3 and clothing Color3 values.
+2. FACE: Add a Decal to the Head front face with a face texture, or use SurfaceGui with emoji/text.
+3. HUMANOID: Insert a Humanoid with DisplayName, Health, WalkSpeed, and a configured NameTag.
+4. BEHAVIOR: Include at least ONE of: PathfindingService patrol between waypoints, idle animation (Animator + Animation), or ProximityPrompt dialog trigger.
+5. ACCESSORIES: At least one visual detail — a hat (Part on head), weapon (Part in hand), or cape (Part behind torso).
+6. COLLISION: Set HumanoidRootPart, use proper welds (WeldConstraint) between body parts.
+
+Output ONLY the Luau code.`,
 
   script: `You are a Roblox Luau scripting expert. Generate a complete, production-quality game system script. Follow best practices: server-authoritative, pcall error handling, DataStore persistence, proper service access via GetService(), RemoteEvent/RemoteFunction for client-server communication. Output ONLY the Luau code, no markdown.`,
 
-  ui: `You are a Roblox GUI expert. Generate Luau code that creates ScreenGui elements via Instance.new(). Use proper UDim2 sizing, Color3 values matching the game theme (gold accents: Color3.fromRGB(212,175,55), dark backgrounds: Color3.fromRGB(20,20,30)). Add UICorner (CornerRadius = UDim.new(0,8)), UIStroke, UIGradient for polish. Add TweenService animations for show/hide. Parent to StarterGui or the specified location. Output ONLY the Luau code.`,
+  ui: `You are a Roblox GUI expert. Generate Luau code that creates ScreenGui elements via Instance.new().
+
+UI CONSTRUCTION RULES:
+1. HIERARCHY: ScreenGui → Frame (main container) → child elements. Set ScreenGui.ResetOnSpawn = false.
+2. MAIN FRAME: Use BackgroundColor3 with specific dark color (e.g., Color3.fromRGB(20,20,30)), add UICorner (CornerRadius 8px), UIStroke (Color: accent color, Thickness: 1-2).
+3. HEADER: Top section with title TextLabel (Font: GothamBold, TextSize: 22-28, TextColor3: white or gold).
+4. BUTTONS: Each button gets UICorner, UIStroke, hover color change via MouseEnter/MouseLeave. Size: UDim2.new(0, 180, 0, 45) minimum for clickability.
+5. LAYOUT: Use UIListLayout or UIGridLayout for automatic spacing. Padding: UDim.new(0, 8-12).
+6. ANIMATIONS: TweenService for show/hide. Slide in from edge or scale from 0 to 1. Duration: 0.3-0.5 seconds, EasingStyle: Quint, EasingDirection: Out.
+7. CLOSE BUTTON: Top-right "X" button that tweens the GUI closed.
+8. COLORS: Use a consistent palette. Gold accents: Color3.fromRGB(212,175,55). Dark backgrounds: Color3.fromRGB(20,20,30). Success green: Color3.fromRGB(0,180,80). Error red: Color3.fromRGB(220,50,50).
+
+Parent to StarterGui. Output ONLY the Luau code.`,
 
   economy: `You are a Roblox economy system expert. Generate a complete, server-authoritative economy script. Never trust client values. Use DataStore for persistence. Include currency tracking, shop system, and leaderstat sync. Output ONLY the Luau code.`,
 
-  lighting: `You are a Roblox lighting and atmosphere expert. Generate Luau code that configures game:GetService("Lighting") properties: Ambient, OutdoorAmbient, Brightness, ShadowSoftness, FogEnd, FogColor, ClockTime, GeographicLatitude. Add Atmosphere (Density, Offset, Color, Decay, Glare, Haze), Bloom (Intensity, Size, Threshold), ColorCorrection (Brightness, Contrast, Saturation, TintColor). Output ONLY the Luau code, no explanation.`,
+  lighting: `You are a Roblox lighting and atmosphere expert. Generate Luau code that configures game:GetService("Lighting").
+
+REQUIRED SETTINGS (set ALL of these, not just a few):
+1. Lighting: Ambient, OutdoorAmbient, Brightness, ShadowSoftness, ClockTime, GeographicLatitude, FogEnd, FogColor, EnvironmentDiffuseScale, EnvironmentSpecularScale
+2. Atmosphere instance: Density (0.3-0.5), Offset (0-0.5), Color, Decay, Glare, Haze
+3. Bloom instance: Intensity (0.3-0.8), Size (24-40), Threshold (0.8-1.2)
+4. ColorCorrection instance: Brightness, Contrast, Saturation, TintColor
+5. SunRaysEffect: Intensity (0.05-0.15), Spread (0.5-1)
+
+Match all values to the game's mood/theme. Output ONLY the Luau code, no explanation.`,
 
   audio: `You are a Roblox audio/sound expert. Generate Luau code that inserts Sound objects into appropriate locations (SoundService for music, workspace Parts for spatial audio). Configure Volume, PlaybackSpeed, RollOffMaxDistance, RollOffMinDistance. Use real Roblox sound asset IDs where appropriate (e.g. 9125402735 for ambient wind). Add SoundGroup management. Output ONLY the Luau code.`,
+}
+
+// ── Luau validation — catches broken output before it hits Studio ────────────
+
+interface LuauValidation {
+  valid: boolean
+  errors: string[]
+}
+
+function validateLuau(code: string): LuauValidation {
+  const errors: string[] = []
+
+  // Must contain actual code, not just comments
+  const codeLines = code.split('\n').filter(l => l.trim() && !l.trim().startsWith('--'))
+  if (codeLines.length < 3) {
+    errors.push('Code is too short — fewer than 3 non-comment lines')
+  }
+
+  // Check balanced blocks (if/then/end, do/end, function/end)
+  const openers = (code.match(/\b(function|if|do|for|while)\b/g) || []).length
+  const ends = (code.match(/\bend\b/g) || []).length
+  if (Math.abs(openers - ends) > 1) {
+    errors.push(`Unbalanced blocks: ${openers} openers vs ${ends} 'end' statements`)
+  }
+
+  // Check for JavaScript/Python leaking in (common LLM mistake)
+  if (/\bconst\s+\w+\s*=/.test(code)) errors.push('Contains JavaScript "const" — not valid Luau')
+  if (/\blet\s+\w+\s*=/.test(code)) errors.push('Contains JavaScript "let" — not valid Luau')
+  if (/\bvar\s+\w+\s*=/.test(code)) errors.push('Contains JavaScript "var" — not valid Luau')
+  if (/\bdef\s+\w+\s*\(/.test(code)) errors.push('Contains Python "def" — not valid Luau')
+  if (/\bimport\s+/.test(code)) errors.push('Contains "import" statement — not valid Luau')
+  if (/\bconsole\.log\b/.test(code)) errors.push('Contains "console.log" — use print() in Luau')
+  if (/===/.test(code)) errors.push('Contains "===" — Luau uses "=="')
+  if (/!==/.test(code)) errors.push('Contains "!==" — Luau uses "~="')
+  if (/!=/.test(code) && !/~=/.test(code)) errors.push('Contains "!=" — Luau uses "~="')
+
+  // Must use game:GetService() not game.ServiceName for services
+  const directServiceAccess = code.match(/game\.(Workspace|Lighting|ReplicatedStorage|ServerScriptService|StarterGui|Players|SoundService)\b/g)
+  if (directServiceAccess && directServiceAccess.length > 0) {
+    errors.push(`Use game:GetService() instead of direct access: ${directServiceAccess[0]}`)
+  }
+
+  // Check for deprecated Roblox APIs
+  if (/\bwait\s*\(/.test(code) && !/task\.wait/.test(code)) {
+    errors.push('Uses deprecated wait() — use task.wait()')
+  }
+  if (/\bspawn\s*\(/.test(code) && !/task\.spawn/.test(code)) {
+    errors.push('Uses deprecated spawn() — use task.spawn()')
+  }
+  if (/\bdelay\s*\(/.test(code) && !/task\.delay/.test(code)) {
+    errors.push('Uses deprecated delay() — use task.delay()')
+  }
+
+  return { valid: errors.length === 0, errors }
 }
 
 // ── Luau code generator for a single task ────────────────────────────────────
@@ -208,23 +381,95 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
         questRewardAmount: params['questRewardAmount'] as number | undefined,
       })
     }
+    if (templateName === 'professional_building') {
+      return professionalBuilding({
+        name: (params['name'] as string) ?? task.name,
+        type: (params['buildingType'] as 'shop' | 'house' | 'office' | 'warehouse' | 'apartment' | 'restaurant' | 'bank') ?? 'house',
+        floors: (params['floors'] as number) ?? 1,
+        width: (params['width'] as number) ?? 20,
+        depth: (params['depth'] as number) ?? 16,
+        style: (params['style'] as 'modern' | 'victorian' | 'industrial' | 'medieval' | 'futuristic') ?? 'modern',
+        withInterior: (params['withInterior'] as boolean) ?? true,
+        withLighting: (params['withLighting'] as boolean) ?? true,
+        withVegetation: (params['withVegetation'] as boolean) ?? true,
+        roomsPerFloor: (params['roomsPerFloor'] as number) ?? 0,
+        withWallDetail: (params['withWallDetail'] as boolean) ?? true,
+      })
+    }
   }
 
   // Fall through to AI generation — Gemini primary, Groq fallback
-  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type]
+  const systemPrompt = TASK_SYSTEM_PROMPTS[task.type] +
+    `\n\nCRITICAL RULES:
+- Output ONLY valid Luau code. No JavaScript, no Python, no TypeScript.
+- Use game:GetService("ServiceName") not game.ServiceName
+- Use task.wait() not wait(), task.spawn() not spawn(), task.delay() not delay()
+- Use ~= for not-equal, not != or !==
+- Use == for equality, not ===
+- Every if needs then/end, every function needs end, every for/while needs do/end
+- Use local for variable declarations
+- Wrap DataStore calls in pcall()
+- Do NOT include markdown fences or explanations — raw Luau only`
 
-  const text = await callAI(
-    systemPrompt,
-    [{ role: 'user', content: task.prompt }],
-    { maxTokens: 3000, temperature: 0.7 },
-  )
+  const MAX_RETRIES = 2
+  let lastCode = ''
+  let lastErrors: string[] = []
 
-  // Strip any accidental markdown fences, then prepend brand watermark
-  const cleaned = text
-    .replace(/^```(?:lua|luau)?\n?/m, '')
-    .replace(/\n?```$/m, '')
-    .trim()
-  return `-- Generated by Forje AI (forjegames.com)\n${cleaned}`
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const messages: { role: 'user' | 'assistant'; content: string }[] = []
+
+    if (attempt === 0) {
+      messages.push({ role: 'user', content: task.prompt })
+    } else {
+      // Retry with error feedback
+      messages.push({ role: 'user', content: task.prompt })
+      messages.push({ role: 'assistant', content: lastCode })
+      messages.push({
+        role: 'user',
+        content: `The code above has these errors — fix them and output the COMPLETE corrected Luau code:\n${lastErrors.map(e => `- ${e}`).join('\n')}`,
+      })
+    }
+
+    const text = await callAI(systemPrompt, messages, {
+      maxTokens: 4096,
+      codeMode: true,
+      useRAG: true,
+      ragCategories: [task.type, 'api', 'luau', 'building', 'pattern'],
+    })
+
+    // Strip any accidental markdown fences
+    const cleaned = text
+      .replace(/^```(?:lua|luau)?\n?/m, '')
+      .replace(/\n?```$/m, '')
+      .trim()
+
+    // Layer 1: Static analysis auto-fix (instant, no AI cost)
+    // Catches deprecated APIs, JS/Python syntax, direct service access — and fixes them
+    const staticResult = analyzeLuau(cleaned)
+    const autoFixed = staticResult.fixedCode ?? cleaned
+
+    if (staticResult.issues.length > 0) {
+      const errorCount = staticResult.issues.filter(i => i.severity === 'error').length
+      const warnCount = staticResult.issues.filter(i => i.severity === 'warning').length
+      console.log(`[build-executor] Task ${task.id} static analysis: ${errorCount} errors, ${warnCount} warnings auto-fixed (score: ${staticResult.score}/100)`)
+    }
+
+    // Layer 2: Structural validation (balanced blocks, remaining unfixable issues)
+    const validation = validateLuau(autoFixed)
+    if (validation.valid || attempt === MAX_RETRIES) {
+      if (!validation.valid) {
+        console.warn(`[build-executor] Task ${task.id} has validation warnings after ${MAX_RETRIES} retries:`, validation.errors)
+      }
+      return `-- Generated by Forje AI (forjegames.com)\n${autoFixed}`
+    }
+
+    console.log(`[build-executor] Task ${task.id} attempt ${attempt + 1} failed validation:`, validation.errors)
+    lastCode = autoFixed
+    lastErrors = validation.errors
+  }
+
+  // Unreachable but TypeScript needs it
+  return `-- Generated by Forje AI (forjegames.com)\n${lastCode}`
 }
 
 // ── Studio command push ───────────────────────────────────────────────────────

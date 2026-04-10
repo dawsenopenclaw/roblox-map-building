@@ -31,7 +31,7 @@ import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { meshGenerateSchema, parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
-import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { aiMeshRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import {
   downloadAndUpload,
   downloadAndUploadTexture,
@@ -942,9 +942,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
 
-    // Rate limit: 20 AI requests per minute per user
+    // Rate limit: 3 mesh requests per minute per user (expensive generation)
     try {
-      const rl = await aiRateLimit(userId)
+      const rl = await aiMeshRateLimit(userId)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait before generating another mesh.' },

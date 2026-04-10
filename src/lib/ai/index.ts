@@ -39,6 +39,17 @@ export {
   type AgentQualityStats,
 } from './response-quality'
 
+// Prompt enhancer (Groq/Llama pre-processing)
+export {
+  enhancePrompt,
+  formatEnhancedPlanContext,
+  type EnhancedPrompt,
+  type EnhancedPromptStep,
+  type EnhancedPromptAsset,
+  type PromptIntent,
+  type Complexity,
+} from './prompt-enhancer'
+
 // Template generator
 export {
   suggestTemplates,
@@ -55,3 +66,13 @@ export {
   type ExpectedOutputShape,
   type TemplateCluster,
 } from './template-generator'
+
+// Agentic self-healing loop
+export {
+  runAgenticLoop,
+  type AgenticStep,
+  type AgenticPhase,
+  type AgenticStatus,
+  type AgenticLoopResult,
+  type AgenticLoopOptions,
+} from './agentic-loop'

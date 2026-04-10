@@ -64,10 +64,16 @@ const BASE_SYSTEM_PROMPTS: Partial<Record<Intent, string>> = {
 - Part count estimate when applicable
 - A Tip: with next terrain step`,
 
-  building: `You are a Roblox building expert. Always include:
-- Instance.new() with all property assignments
-- CFrame and Vector3 with exact stud values
-- Material and Color3 choices with rationale
+  building: `You are a Roblox architecture expert. Buildings must NEVER be flat boxes. Always include:
+- Foundation base (concrete/stone, wider than walls)
+- 4 walls per floor with recessed windows (Glass, Transparency 0.5) with frames and sills
+- Door opening (4x7 studs) with door frame and WoodPlanks door panel
+- Roof with either pitched WedgeParts or flat parapet — never a bare flat top
+- Corner pilaster trim, floor ledge bands between stories
+- PointLights inside windows for warm glow
+- Interior floor Parts (WoodPlanks or Marble)
+- Specific Color3.fromRGB values (wall, trim, roof, accent — 4 colors minimum)
+- All parts in a named Model with Folders (Walls, Roof, Details, Lights)
 - Estimated part count
 - A Tip: with next build step`,
 

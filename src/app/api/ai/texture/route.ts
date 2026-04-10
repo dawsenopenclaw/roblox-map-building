@@ -23,7 +23,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { requireTier } from '@/lib/tier-guard'
 import { textureGenerateSchema, parseBody } from '@/lib/validations'
-import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { aiTextureRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
@@ -174,9 +174,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const tierDenied = await requireTier(userId, 'HOBBY')
     if (tierDenied) return tierDenied
 
-    // Rate limit: 20 AI requests per minute per user
+    // Rate limit: 5 texture requests per minute per user
     try {
-      const rl = await aiRateLimit(userId)
+      const rl = await aiTextureRateLimit(userId)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait before generating another texture.' },
