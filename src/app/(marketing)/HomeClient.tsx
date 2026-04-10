@@ -5,6 +5,7 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useAuth } from '@clerk/nextjs'
 // Below-the-fold marketing sections are code-split so they don't bloat the
 // initial landing-page JS chunk served to the browser. SSR is kept on
 // (default) so the rendered HTML still contains the FAQ / comparison /
@@ -330,6 +331,11 @@ function HeroPromptInput() {
   const [typedPlaceholder, setTypedPlaceholder] = useState('')
   const [focused, setFocused] = useState(false)
   const router = useRouter()
+  // Signed-in state drives the destination: authed users go straight to the
+  // editor, guests are routed through sign-up first (they land on /welcome
+  // after sign-up, then the welcome flow forwards them to /editor with the
+  // preserved prompt query string).
+  const { isSignedIn } = useAuth()
 
   // Animated typing placeholder — only when input is empty + not focused
   useEffect(() => {
@@ -364,12 +370,22 @@ function HeroPromptInput() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = prompt.trim()
-    if (!trimmed) {
-      router.push('/editor')
+    // Build the editor target — optionally with the prompt query string that
+    // useChat auto-fires when the editor mounts.
+    const editorTarget = trimmed
+      ? `/editor?prompt=${encodeURIComponent(trimmed)}`
+      : '/editor'
+
+    if (isSignedIn) {
+      router.push(editorTarget)
       return
     }
-    // Pass the prompt to the editor via query string — useChat auto-fires it
-    router.push(`/editor?prompt=${encodeURIComponent(trimmed)}`)
+
+    // Guest: force account creation first. Clerk sends the user to /welcome
+    // after sign-up (see signUpFallbackRedirectUrl in layout.tsx), and the
+    // welcome flow finishes with router.push('/editor') which will carry the
+    // prompt through via the redirect_url we set here.
+    router.push(`/sign-up?redirect_url=${encodeURIComponent(editorTarget)}`)
   }
 
   return (
@@ -484,9 +500,9 @@ function RotatingHeroText() {
     <h1
       className="font-bold tracking-tight"
       style={{
-        fontSize: 'clamp(3rem, 9vw, 6rem)',
+        fontSize: 'clamp(3.5rem, 11vw, 8rem)',
         lineHeight: 1.04,
-        letterSpacing: '-0.03em',
+        letterSpacing: '-0.04em',
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'baseline',

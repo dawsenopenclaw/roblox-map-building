@@ -364,13 +364,20 @@ export default clerkMiddleware(async (auth, request) => {
       if (request.nextUrl.pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
-      const signInUrl = new URL('/sign-in', request.url)
-      // Validate redirect_url to prevent open redirect (must be a relative path)
-      const redirectPath = request.nextUrl.pathname
+      // Editor requires an account before the user can chat with the AI —
+      // send visitors to /sign-up (not /sign-in) so the default is to create
+      // an account. Clerk's sign-up form links to sign-in for returning users.
+      // After sign-up, Clerk routes to /welcome (see signUpFallbackRedirectUrl
+      // in src/app/layout.tsx), then the welcome flow routes to /editor.
+      const isEditorRoute = request.nextUrl.pathname.startsWith('/editor')
+      const authUrl = new URL(isEditorRoute ? '/sign-up' : '/sign-in', request.url)
+      // Preserve the original path + query (e.g. ?prompt=...) so the hero
+      // prompt is still in the URL after the welcome flow redirects to /editor.
+      const redirectPath = request.nextUrl.pathname + request.nextUrl.search
       if (redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
-        signInUrl.searchParams.set('redirect_url', redirectPath)
+        authUrl.searchParams.set('redirect_url', redirectPath)
       }
-      return NextResponse.redirect(signInUrl)
+      return NextResponse.redirect(authUrl)
     }
 
     // ── 3. Admin route guard ───────────────────────────────────────────────────
