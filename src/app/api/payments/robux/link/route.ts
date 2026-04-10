@@ -33,9 +33,24 @@ const linkSchema = z.object({
 
 import { createHmac } from 'crypto'
 
+// Resolve the webhook secret at request time, not module load time. Throwing
+// at module load breaks `next build` because the build-time page-data
+// collector loads every route file in a plain Node context where the env
+// var may not be present. Lazy check keeps the same production safety
+// (unlinkable routes if the env var is missing) without blocking the build.
+function getRobuxSecret(): string {
+  const secret = process.env.ROBUX_WEBHOOK_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ROBUX_WEBHOOK_SECRET is required in production')
+    }
+    return 'dev-secret-DO-NOT-USE-IN-PROD'
+  }
+  return secret
+}
+
 function deriveVerificationCode(robloxUserId: number): string {
-  const secret = process.env.ROBUX_WEBHOOK_SECRET ?? 'dev-secret'
-  const hmac = createHmac('sha256', secret)
+  const hmac = createHmac('sha256', getRobuxSecret())
     .update(`link:${robloxUserId}`)
     .digest('hex')
   return hmac.substring(0, 6).toUpperCase()
