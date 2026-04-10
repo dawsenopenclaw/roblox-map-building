@@ -4,7 +4,7 @@
 
   Auth flow: user enters 6-char code from forjegames.com/editor
   Sync loop: polls /api/studio/sync every 2-5s, applies server changes
-  execute_luau: handled inside Sync.lua via loadstring + pcall
+  execute_luau: handled inside Sync.lua via structured commands (no loadstring)
 --]]
 
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
@@ -473,23 +473,54 @@ local function init()
 
     if btns[1] then -- Generate Terrain
       btns[1].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("GenerateTerrain") end
-        if Sync then Sync.queueChange("generate_terrain", { placeId = game.PlaceId }) end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "generate_terrain",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("GenerateTerrain") end
       end)
     end
 
     if btns[2] then -- Generate City
       btns[2].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("GenerateCity") end
-        if Sync then Sync.queueChange("generate_city", { placeId = game.PlaceId }) end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "generate_city",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("GenerateCity") end
       end)
     end
 
     if btns[3] then -- Insert Asset
       btns[3].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("InsertAsset") end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "insert_asset",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("InsertAsset") end
       end)
     end
