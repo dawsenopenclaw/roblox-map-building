@@ -254,7 +254,8 @@ function handleCorsPreFlight(request: NextRequest): NextResponse | null {
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
-export default clerkMiddleware(async (auth, request) => {
+export default clerkMiddleware(async (auth, req) => {
+  const request = req as NextRequest
   try {
     // ── CORS preflight — must run before any redirect or auth check ────────────
     const preFlightResponse = handleCorsPreFlight(request)
