@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
-    "dev:web": "next dev --turbo",
+    "dev:web": "next dev",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:full": "node scripts/start-dev.js",
     "predev": "node scripts/check-deps.js",
