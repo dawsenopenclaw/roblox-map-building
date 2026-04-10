@@ -65,8 +65,8 @@ export default function ErrorPage({
       iconBg="bg-red-500/10"
       iconBorder="border-red-500/20"
       accentColor="#F87171"
-      heading="Something went wrong"
-      body="An unexpected error occurred. We've been automatically notified and are looking into it. Your data is safe."
+      heading="Page crashed — your data is safe"
+      body="This page hit an unexpected error. We've been notified automatically. Your projects and tokens are untouched — try reloading."
       digest={error.digest}
       reset={reset}
       primaryLabel="Try again"

@@ -569,12 +569,53 @@ export async function GET(req: NextRequest) {
             color: '#FFFFFF',
             fontWeight: 600,
             textAlign: 'center',
-            marginBottom: 48,
+            marginBottom: 32,
             maxWidth: 900,
             lineHeight: 1.3,
           }}
         >
-          AI-Powered Roblox Development
+          The #1 AI Roblox Game Builder
+        </div>
+
+        {/* Sub-tagline */}
+        <div
+          style={{
+            fontSize: 20,
+            color: GRAY,
+            fontWeight: 400,
+            textAlign: 'center',
+            marginBottom: 48,
+            maxWidth: 800,
+            lineHeight: 1.5,
+          }}
+        >
+          Voice · Image · Text → Terrain, Scripts & 3D Assets → Roblox Studio
+        </div>
+
+        {/* Badge row */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 48 }}>
+          <div style={{
+            background: `${GOLD}18`,
+            border: `1px solid ${GOLD}40`,
+            borderRadius: 10,
+            padding: '8px 22px',
+            color: GOLD,
+            fontSize: 18,
+            fontWeight: 700,
+          }}>
+            Build 10x Faster
+          </div>
+          <div style={{
+            background: 'rgba(52,211,153,0.12)',
+            border: '1px solid rgba(52,211,153,0.3)',
+            borderRadius: 10,
+            padding: '8px 22px',
+            color: '#34D399',
+            fontSize: 18,
+            fontWeight: 700,
+          }}>
+            Free to Start
+          </div>
         </div>
 
         {/* Gold accent bar at bottom */}

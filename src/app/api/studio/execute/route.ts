@@ -20,6 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { z } from 'zod'
+import * as Sentry from '@sentry/nextjs'
 import {
   queueCommand,
   getSessionSync,
@@ -279,6 +280,7 @@ export async function POST(req: NextRequest) {
       { status: 200, headers: CORS_HEADERS },
     )
   } catch (e) {
+    Sentry.captureException(e, { tags: { route: 'studio/execute' } })
     console.error('[studio/execute] Queue error:', (e as Error).message)
     return NextResponse.json(
       { ok: false, error: 'queue_error', message: 'Failed to enqueue command' },

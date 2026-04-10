@@ -26,8 +26,8 @@ function ErrorContent() {
   const searchParams = useSearchParams()
   const reason = searchParams.get('reason') || 'unknown'
   const msg = ERROR_MESSAGES[reason] ?? {
-    title: 'Something went wrong',
-    description: 'An unexpected error occurred. Please try again or contact support.',
+    title: 'Unexpected error',
+    description: 'Something went wrong on our end. Try going back or contact support@forjegames.com if it keeps happening.',
   }
 
   return (

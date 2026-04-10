@@ -213,10 +213,13 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
 
   return (
     <div
-      className="group relative rounded-xl overflow-hidden transition-all duration-200 hover:scale-[1.015] hover:shadow-2xl"
+      className="group relative rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-2xl"
       style={{
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(10, 14, 32, 0.6)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
       }}
     >
       {/* Thumbnail */}
@@ -232,7 +235,7 @@ function ProjectCard({ project, onDelete }: ProjectCardProps) {
             <span
               className="text-sm font-semibold px-4 py-2 rounded-lg"
               style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
                 color: '#09090b',
                 boxShadow: '0 0 16px rgba(212,175,55,0.4)',
               }}
@@ -423,7 +426,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
         href="/editor"
         className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
         style={{
-          background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
           color: '#09090b',
           boxShadow: '0 0 28px rgba(212,175,55,0.4)',
         }}
@@ -618,7 +621,7 @@ export function ProjectsClient() {
           href="/editor"
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
           style={{
-            background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
+            background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
             color: '#09090b',
             boxShadow: '0 0 16px rgba(212,175,55,0.3)',
           }}

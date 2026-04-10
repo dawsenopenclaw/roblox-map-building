@@ -1,39 +1,121 @@
 /**
- * Rate limiting via Redis sliding-window counters.
+ * Rate limiting via @upstash/ratelimit (sliding-window) with an in-memory
+ * fallback when Redis is unavailable.
  *
- * NOTE: @upstash/ratelimit is NOT in package.json — this module implements
- * the same sliding-window semantics directly over ioredis (which is already
- * a project dependency). If you later add @upstash/ratelimit you can swap
- * the implementation behind the same exported helpers without touching callers.
+ * Uses @upstash/redis REST client (HTTP-based) so it works on serverless /
+ * edge runtimes without TCP sockets. Falls back to per-instance in-memory
+ * counters when the Upstash env vars are not set or Redis is unreachable.
  *
- * Install reminder (if you switch to the Upstash SDK):
- *   npm install @upstash/ratelimit @upstash/redis
+ * Required env vars:
+ *   UPSTASH_REDIS_REST_URL   — e.g. https://tough-cicada-90991.upstash.io
+ *   UPSTASH_REDIS_REST_TOKEN — Upstash REST token
  */
 
-import { getRedis } from './redis'
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
+// ---------------------------------------------------------------------------
+// Upstash Redis client (REST / HTTP)
+// ---------------------------------------------------------------------------
+
+const upstashConfigured = !!(
+  process.env.UPSTASH_REDIS_REST_URL &&
+  process.env.UPSTASH_REDIS_REST_TOKEN
+)
+
+const redis = upstashConfigured
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null
+
+// ---------------------------------------------------------------------------
+// Upstash rate limiters — one per resource tier
+// ---------------------------------------------------------------------------
+
+function createLimiter(requests: number, window: string, prefix: string): Ratelimit | null {
+  if (!redis) return null
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(requests, window as Parameters<typeof Ratelimit.slidingWindow>[1]),
+    prefix,
+  })
+}
+
+/** AI chat: 20 requests per minute per user. */
+const aiChatLimiter = createLimiter(20, '1 m', 'ratelimit:ai:chat')
+
+/** AI image generation: 5 per minute. */
+const aiImageLimiter = createLimiter(5, '1 m', 'ratelimit:ai:image')
+
+/** AI mesh generation: 3 per minute (expensive). */
+const aiMeshLimiter = createLimiter(3, '1 m', 'ratelimit:ai:mesh')
+
+/** AI texture generation: 5 per minute. */
+const aiTextureLimiter = createLimiter(5, '1 m', 'ratelimit:ai:texture')
+
+/** Prompt enhancement: 30 per minute. */
+const aiEnhanceLimiter = createLimiter(30, '1 m', 'ratelimit:ai:enhance')
+
+/** General API: 100 per minute. */
+const apiLimiter = createLimiter(100, '1 m', 'ratelimit:api')
+
+/** Studio sync polling: 120 per minute (2/sec). */
+const studioSyncLimiter = createLimiter(120, '1 m', 'ratelimit:studio')
+
+/** Billing routes: 10 per minute. */
+const billingLimiter = createLimiter(10, '1 m', 'ratelimit:billing')
+
+/** Parental consent: 3 per hour per IP. */
+const parentalConsentLimiter = createLimiter(3, '1 h', 'ratelimit:parental')
+
+/** Marketplace read: 30 per minute. */
+const marketplaceReadLimiter = createLimiter(30, '1 m', 'ratelimit:mkt:read')
+
+/** Marketplace write: 10 per minute. */
+const marketplaceWriteLimiter = createLimiter(10, '1 m', 'ratelimit:mkt:write')
+
+/** Studio execute: 30 per minute. */
+const studioExecuteLimiter = createLimiter(30, '1 m', 'ratelimit:studio:exec')
+
+/**
+ * Exported map of all named limiters — handy when you want to reference them
+ * by key rather than importing individual functions.
+ */
+export const rateLimits = {
+  aiChat: aiChatLimiter,
+  aiImage: aiImageLimiter,
+  aiMesh: aiMeshLimiter,
+  aiTexture: aiTextureLimiter,
+  aiEnhance: aiEnhanceLimiter,
+  api: apiLimiter,
+  studioSync: studioSyncLimiter,
+  billing: billingLimiter,
+  parentalConsent: parentalConsentLimiter,
+  marketplaceRead: marketplaceReadLimiter,
+  marketplaceWrite: marketplaceWriteLimiter,
+  studioExecute: studioExecuteLimiter,
+}
 
 // ---------------------------------------------------------------------------
 // In-memory fallback rate limiter
 // ---------------------------------------------------------------------------
 
 /**
- * Per-instance in-memory fallback used when Redis is unavailable.
+ * Per-instance in-memory fallback used when Upstash is unavailable.
  *
- * Tradeoff: this is not global — each Lambda/Node instance tracks its own
- * counters. The fallback limit is intentionally 2× the Redis limit to account
- * for load being spread across multiple instances. It won't stop a perfectly
- * distributed flood, but it prevents a single instance from being hammered
- * (e.g. AI generation hammered during a Redis outage, burning real money).
+ * The fallback limit is intentionally 2x the Redis limit to account for load
+ * being spread across multiple serverless instances.
  */
 const memoryCounters = new Map<string, { count: number; resetAt: number }>()
 
 // Prune expired buckets every 5 minutes to prevent unbounded Map growth.
-// Each bucket key encodes its window, so we only need to check resetAt.
 setInterval(() => {
   const now = Date.now()
-  for (const [key, entry] of memoryCounters) {
+  memoryCounters.forEach((entry, key) => {
     if (entry.resetAt <= now) memoryCounters.delete(key)
-  }
+  })
 }, 5 * 60 * 1000).unref()
 
 function checkMemoryLimit(
@@ -45,7 +127,6 @@ function checkMemoryLimit(
   const bucket = Math.floor(now / 1000 / windowSec)
   const key = `${identifier}:${windowSec}:${bucket}`
   const resetAt = (bucket + 1) * windowSec * 1000
-  // 2× limit since this is per-instance, not global
   const fallbackLimit = limit * 2
 
   const entry = memoryCounters.get(key)
@@ -64,7 +145,7 @@ function checkMemoryLimit(
 }
 
 // ---------------------------------------------------------------------------
-// Core sliding-window implementation
+// Shared result type
 // ---------------------------------------------------------------------------
 
 export interface RateLimitResult {
@@ -78,142 +159,124 @@ export interface RateLimitResult {
   resetAt: number
 }
 
+// ---------------------------------------------------------------------------
+// Core check — uses Upstash if available, memory fallback otherwise
+// ---------------------------------------------------------------------------
+
 /**
- * Sliding-window rate limit check using Redis INCR + EXPIRE.
- *
- * The key is scoped per `identifier` (userId or IP) and per `windowSec`
- * bucket — requests that arrive in the same second share a bucket,
- * giving a true sliding window across multiple calls.
- *
- * @param identifier - Unique key (userId, IP address, etc.)
- * @param limit       - Maximum requests allowed in the window
- * @param windowSec   - Window duration in seconds
+ * Check a rate limit for `identifier` using the given Upstash limiter.
+ * Returns a normalized RateLimitResult.
  */
-async function checkLimit(
+export async function checkRateLimit(
+  limiter: Ratelimit | null,
   identifier: string,
-  limit: number,
-  windowSec: number,
+  fallbackLimit = 20,
+  fallbackWindowSec = 60,
 ): Promise<RateLimitResult> {
-  const redisInstance = getRedis()
-  const resetAt = (Math.floor(Date.now() / 1000 / windowSec) + 1) * windowSec * 1000
-
-  // Redis unavailable — fall back to per-instance in-memory limiter rather than
-  // failing open unconditionally. Sentry will surface the outage separately.
-  if (!redisInstance) {
-    return checkMemoryLimit(identifier, limit, windowSec)
+  if (!limiter) {
+    return checkMemoryLimit(identifier, fallbackLimit, fallbackWindowSec)
   }
 
-  // Bucket by window so we get a coarse sliding window
-  const bucket = Math.floor(Date.now() / 1000 / windowSec)
-  const key = `rl:${identifier}:${windowSec}:${bucket}`
-
-  let count: number
   try {
-    // Atomic increment + set TTL on first write
-    const pipeline = redisInstance.pipeline()
-    pipeline.incr(key)
-    pipeline.expire(key, windowSec * 2) // 2× TTL so the previous bucket lingers for overlap
-    const results = await pipeline.exec()
-    count = (results?.[0]?.[1] as number) ?? 1
+    const result = await limiter.limit(identifier)
+    return {
+      allowed: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      resetAt: result.reset,
+    }
   } catch {
-    // Redis error mid-request — fall back to in-memory limiter rather than failing open
-    console.warn('[rate-limit] Redis pipeline error — using memory fallback for', identifier)
-    return checkMemoryLimit(identifier, limit, windowSec)
-  }
-
-  return {
-    allowed: count <= limit,
-    limit,
-    remaining: Math.max(0, limit - count),
-    resetAt,
+    // Upstash unreachable — fall back to in-memory limiter
+    console.warn('[rate-limit] Upstash error — using memory fallback for', identifier)
+    return checkMemoryLimit(identifier, fallbackLimit, fallbackWindowSec)
   }
 }
 
+/**
+ * Build a 429 Response object with standard rate-limit headers.
+ */
+export function rateLimitResponse(result: RateLimitResult): Response {
+  return new Response(
+    JSON.stringify({ error: 'Rate limit exceeded. Please slow down.' }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': result.limit.toString(),
+        'X-RateLimit-Remaining': result.remaining.toString(),
+        'X-RateLimit-Reset': Math.ceil(result.resetAt / 1000).toString(),
+        'Retry-After': Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000)).toString(),
+      },
+    },
+  )
+}
+
 // ---------------------------------------------------------------------------
-// Tier helpers
+// Tier helpers — backward-compatible with existing callers
 // ---------------------------------------------------------------------------
 
-/**
- * AI routes — 20 requests per minute per user.
- *
- * @param userId - Clerk user ID or session ID
- */
+/** AI routes — 20 requests per minute per user (generic, used by chat). */
 export async function aiRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(`ai:${userId}`, 20, 60)
+  return checkRateLimit(aiChatLimiter, userId, 20, 60)
 }
 
-/**
- * Billing routes — 10 requests per minute per user.
- *
- * @param userId - Clerk user ID or session ID
- */
+/** AI mesh — 3 requests per minute per user. */
+export async function aiMeshRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(aiMeshLimiter, userId, 3, 60)
+}
+
+/** AI texture — 5 requests per minute per user. */
+export async function aiTextureRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(aiTextureLimiter, userId, 5, 60)
+}
+
+/** AI image — 5 requests per minute per user. */
+export async function aiImageRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(aiImageLimiter, userId, 5, 60)
+}
+
+/** AI prompt enhancement — 30 requests per minute. */
+export async function aiEnhanceRateLimit(userId: string): Promise<RateLimitResult> {
+  return checkRateLimit(aiEnhanceLimiter, userId, 30, 60)
+}
+
+/** Billing routes — 10 requests per minute per user. */
 export async function billingRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(`billing:${userId}`, 10, 60)
+  return checkRateLimit(billingLimiter, userId, 10, 60)
 }
 
-/**
- * Parental consent routes — 3 requests per hour per IP.
- * Low limit because this endpoint handles COPPA consent flows.
- *
- * @param ip - Client IP address (e.g. from x-forwarded-for)
- */
+/** Parental consent — 3 requests per hour per IP. */
 export async function parentalConsentRateLimit(ip: string): Promise<RateLimitResult> {
-  return checkLimit(`parental:${ip}`, 3, 3600)
+  return checkRateLimit(parentalConsentLimiter, ip, 3, 3600)
 }
 
-/**
- * General API routes — 60 requests per minute per user.
- *
- * @param userId - Clerk user ID or session ID
- */
+/** General API routes — 100 requests per minute per user. */
 export async function generalRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(`general:${userId}`, 60, 60)
+  return checkRateLimit(apiLimiter, userId, 100, 60)
 }
 
-/**
- * Marketplace read routes (browse/list) — 30 requests per minute per identifier.
- * Identifier should be userId when authenticated, IP address otherwise.
- *
- * @param identifier - Clerk user ID or client IP address
- */
+/** Marketplace read — 30 requests per minute. */
 export async function marketplaceReadRateLimit(identifier: string): Promise<RateLimitResult> {
-  return checkLimit(`mkt_read:${identifier}`, 30, 60)
+  return checkRateLimit(marketplaceReadLimiter, identifier, 30, 60)
 }
 
-/**
- * Marketplace write routes (purchase, review, submit) — 10 requests per minute per user.
- * Lower limit because these routes mutate financial or user-generated data.
- *
- * @param userId - Clerk user ID
- */
+/** Marketplace write — 10 requests per minute per user. */
 export async function marketplaceWriteRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(`mkt_write:${userId}`, 10, 60)
+  return checkRateLimit(marketplaceWriteLimiter, userId, 10, 60)
 }
 
-/**
- * Studio sync endpoint — 120 requests per 60 seconds per session.
- * Allows burst up to 2 req/s while blocking runaway polls or reconnect storms.
- * The sync route already enforces an 800ms MIN_POLL_INTERVAL_MS inside
- * drainCommands; this layer is a coarse guard at the HTTP boundary.
- *
- * @param sessionId - Studio session ID
- */
+/** Studio sync — 120 requests per minute per session. */
 export async function studioSyncRateLimit(sessionId: string): Promise<RateLimitResult> {
-  return checkLimit(`studio_sync:${sessionId}`, 120, 60)
+  return checkRateLimit(studioSyncLimiter, sessionId, 120, 60)
 }
 
-/**
- * Studio execute endpoint — 30 commands per 60 seconds per user.
- * Prevents script-injection floods while still allowing 1 command every 2 s comfortably.
- *
- * @param userId - Clerk user ID or session ID when unauthenticated
- */
+/** Studio execute — 30 commands per minute per user. */
 export async function studioExecuteRateLimit(userId: string): Promise<RateLimitResult> {
-  return checkLimit(`studio_exec:${userId}`, 30, 60)
+  return checkRateLimit(studioExecuteLimiter, userId, 30, 60)
 }
 
 // ---------------------------------------------------------------------------
-// Response helper
+// Response header helper — backward-compatible with existing callers
 // ---------------------------------------------------------------------------
 
 /**
@@ -225,6 +288,6 @@ export function rateLimitHeaders(result: RateLimitResult): Record<string, string
     'X-RateLimit-Limit': String(result.limit),
     'X-RateLimit-Remaining': String(result.remaining),
     'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
-    ...(result.allowed ? {} : { 'Retry-After': String(Math.ceil((result.resetAt - Date.now()) / 1000)) }),
+    ...(result.allowed ? {} : { 'Retry-After': String(Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000))) }),
   }
 }

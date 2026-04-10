@@ -14,6 +14,7 @@ import { useCallback, useContext } from 'react'
 import { AnalyticsContext } from '@/components/AnalyticsProvider'
 import { captureClientEvent } from '@/lib/analytics-client'
 import type { AnalyticsEvent, UserContext } from '@/lib/analytics-client'
+import { safePostHog } from '@/lib/posthog-safe'
 
 export interface UseAnalyticsReturn {
   /**
@@ -46,10 +47,9 @@ export function useAnalytics(): UseAnalyticsReturn {
   )
 
   const identify = useCallback((userId: string, properties?: Record<string, unknown>) => {
-    if (typeof window === 'undefined') return
-    import('posthog-js').then(({ default: posthog }) => {
-      posthog.identify(userId, properties)
-    }).catch(() => {/* silent */})
+    // safePostHog.identify enforces the age-verified + consent gates; it is a
+    // no-op for any user who hasn't passed the age gate (COPPA defence).
+    safePostHog.identify(userId, properties)
   }, [])
 
   return {

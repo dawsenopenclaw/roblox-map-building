@@ -29,6 +29,7 @@ type CheckStatus = 'ok' | 'degraded' | 'error' | 'unconfigured'
 interface HealthChecks {
   database: CheckStatus
   redis: CheckStatus
+  stripe: CheckStatus
   meshy: CheckStatus
   fal: CheckStatus
   mcp_asset_alchemist: CheckStatus
@@ -146,6 +147,22 @@ async function checkFal(): Promise<CheckStatus> {
   }
 }
 
+async function checkStripe(): Promise<CheckStatus> {
+  if (!process.env.STRIPE_SECRET_KEY) return 'unconfigured'
+  try {
+    // Lightweight read-only call — no charge created, just confirms API reachability
+    const res = await fetchWithTimeout('https://api.stripe.com/v1/balance', 2000, {
+      Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
+    })
+    // 200 = ok, 401 = wrong key but API is up (unconfigured), 5xx = degraded
+    if (res.status === 200) return 'ok'
+    if (res.status === 401) return 'unconfigured'
+    return 'degraded'
+  } catch {
+    return 'error'
+  }
+}
+
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
 /**
@@ -177,10 +194,11 @@ export async function GET(req: NextRequest) {
   const MCP_CITY_URL    = process.env.MCP_CITY_ARCHITECT_URL  ?? 'http://localhost:3003'
   const MCP_TERRAIN_URL = process.env.MCP_TERRAIN_FORGE_URL   ?? 'http://localhost:3004'
 
-  const [database, redis, meshy, fal, mcp_asset_alchemist, mcp_city_architect, mcp_terrain_forge] =
+  const [database, redis, stripe, meshy, fal, mcp_asset_alchemist, mcp_city_architect, mcp_terrain_forge] =
     await Promise.all([
       checkDatabase(),
       checkRedis(),
+      checkStripe(),
       checkMeshy(),
       checkFal(),
       checkMcp(MCP_ASSET_URL),
@@ -191,6 +209,7 @@ export async function GET(req: NextRequest) {
   const checks: HealthChecks = {
     database,
     redis,
+    stripe,
     meshy,
     fal,
     mcp_asset_alchemist,

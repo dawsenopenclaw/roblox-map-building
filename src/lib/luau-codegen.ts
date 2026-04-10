@@ -1,7 +1,8 @@
 /**
  * Luau Code Generation — converts web editor property changes into executable
  * Luau snippets that are queued as `execute_luau` commands and run by the
- * Studio plugin via loadstring().
+ * Studio plugin (direct-download edition via loadstring, store edition via
+ * structured commands translated by luauToStructuredCommands).
  *
  * All generated code:
  *  - Wraps mutations in ChangeHistoryService waypoints (Studio undo support)

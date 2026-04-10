@@ -2604,6 +2604,25 @@ function EditorInner() {
     prevConnected.current = studio.isConnected
   }, [studio.isConnected, studio.placeName, toast])
 
+  // One-time "What's New" announcement for the ForjeGames 2.0 release.
+  // Shown once per user, gated by a localStorage flag so returning users
+  // never see it again after dismissal.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const FLAG = 'forje_seen_whats_new_2026_04'
+    try {
+      if (localStorage.getItem(FLAG) === 'true') return
+    } catch {
+      return
+    }
+    // Delay slightly so the toast does not collide with editor hydration.
+    const t = setTimeout(() => {
+      toast('✨ 28 new features available! See them at /whats-new', 'info', 8000)
+      try { localStorage.setItem(FLAG, 'true') } catch { /* ignore quota */ }
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [toast])
+
   // Execute Luau in Studio after AI build
   const handleBuildComplete = useCallback(
     async (luauCode: string, prompt: string, sessionId: string | null) => {

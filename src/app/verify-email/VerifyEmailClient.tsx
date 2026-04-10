@@ -135,7 +135,7 @@ function VerifyEmailContent() {
       setAnimating(true)
       setTimeout(() => setAnimating(false), 4000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
+      setError(err instanceof Error ? err.message : "Couldn't send the verification email. Check your connection and try again.")
     } finally {
       setSending(false)
     }

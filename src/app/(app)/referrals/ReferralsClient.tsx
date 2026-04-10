@@ -102,10 +102,15 @@ export default function ReferralsClient() {
   const [discordCopied, setDiscordCopied] = useState(false)
 
   // Referral code is fetched from the server — never derived client-side.
-  const referralCode = stats?.referralCode ?? '...'
-  const referralLink = stats?.referralCode
-    ? `https://forjegames.com/sign-up?ref=${stats.referralCode}`
-    : 'https://forjegames.com/sign-up?ref=...'
+  // null means the DB is unavailable; undefined means still loading.
+  const referralCode = stats?.referralCode ?? null
+  const referralCodeDisplay = dataLoading ? '...' : (referralCode ?? 'Not available yet')
+  const referralLink = referralCode
+    ? `https://forjegames.com/sign-up?ref=${referralCode}`
+    : null
+  const referralLinkDisplay = dataLoading
+    ? 'https://forjegames.com/sign-up?ref=...'
+    : (referralLink ?? 'Your referral link will appear here once your account is set up.')
 
   useEffect(() => {
     if (!isLoaded) return
@@ -128,6 +133,7 @@ export default function ReferralsClient() {
   }, [isLoaded])
 
   const copyLink = async () => {
+    if (!referralLink) return
     try {
       await navigator.clipboard.writeText(referralLink)
       setLinkCopied(true)
@@ -136,6 +142,7 @@ export default function ReferralsClient() {
   }
 
   const copyCode = async () => {
+    if (!referralCode) return
     try {
       await navigator.clipboard.writeText(referralCode)
       setCodeCopied(true)
@@ -144,6 +151,7 @@ export default function ReferralsClient() {
   }
 
   const shareTwitter = () => {
+    if (!referralLink) return
     const text = encodeURIComponent(
       `Building Roblox maps with AI on @ForjeGames — sign up free!\n\nUse my link and we both get 500 bonus tokens: ${referralLink}`
     )
@@ -151,6 +159,7 @@ export default function ReferralsClient() {
   }
 
   const shareDiscord = async () => {
+    if (!referralLink) return
     const msg =
       `Hey! I've been using ForjeGames to build Roblox maps with AI.\n` +
       `Sign up free with my link and we BOTH get 500 bonus tokens: ${referralLink}`
@@ -215,6 +224,17 @@ export default function ReferralsClient() {
         ))}
       </div>
 
+      {/* Reward callout */}
+      <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 mb-4 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-green-500/15 border border-green-500/25 flex items-center justify-center flex-shrink-0">
+          <IconGift className="w-4 h-4 text-green-400" />
+        </div>
+        <div>
+          <p className="text-green-400 text-sm font-semibold">Both you and your friend get 50 bonus credits</p>
+          <p className="text-gray-400 text-xs mt-0.5">Credits are awarded instantly when your friend signs up using your referral link or code.</p>
+        </div>
+      </div>
+
       {/* How it works */}
       <div className="bg-[#D4AF37]/5 border border-[#D4AF37]/20 rounded-xl p-5 mb-6">
         <p className="text-[#D4AF37] font-semibold text-sm mb-4 flex items-center gap-2">
@@ -249,11 +269,12 @@ export default function ReferralsClient() {
           <label className="block text-xs text-gray-500 mb-1.5">Shareable Link</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-gray-300 text-sm font-mono truncate">
-              {referralLink}
+              {referralLinkDisplay}
             </div>
             <button
               onClick={() => void copyLink()}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              disabled={!referralLink}
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {linkCopied
                 ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
@@ -268,11 +289,12 @@ export default function ReferralsClient() {
           <label className="block text-xs text-gray-500 mb-1.5">Referral Code</label>
           <div className="flex items-center gap-2">
             <div className="flex-1 bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 font-mono text-[#D4AF37] text-sm font-bold tracking-widest">
-              {referralCode}
+              {referralCodeDisplay}
             </div>
             <button
               onClick={() => void copyCode()}
-              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0"
+              disabled={!referralCode}
+              className="inline-flex items-center gap-1.5 text-sm border border-white/10 hover:border-[#D4AF37]/40 text-gray-300 hover:text-[#D4AF37] px-3 py-3 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {codeCopied
                 ? <IconCheck className="w-3.5 h-3.5 text-green-400" />
@@ -286,14 +308,16 @@ export default function ReferralsClient() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={shareTwitter}
-            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/70 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-4 py-2.5 rounded-xl transition-colors font-medium"
+            disabled={!referralLink}
+            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/70 text-[#1d9bf0] hover:bg-[#1d9bf0]/10 px-4 py-2.5 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <IconX />
             Share on X
           </button>
           <button
             onClick={() => void shareDiscord()}
-            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#5865f2]/30 hover:border-[#5865f2]/70 text-[#5865f2] hover:bg-[#5865f2]/10 px-4 py-2.5 rounded-xl transition-colors font-medium"
+            disabled={!referralLink}
+            className="inline-flex items-center gap-2 text-sm bg-transparent border border-[#5865f2]/30 hover:border-[#5865f2]/70 text-[#5865f2] hover:bg-[#5865f2]/10 px-4 py-2.5 rounded-xl transition-colors font-medium disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <IconDiscord />
             Copy for Discord

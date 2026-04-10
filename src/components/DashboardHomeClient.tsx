@@ -212,33 +212,37 @@ function StatCard({
   royalAccent?: boolean
 }) {
   const accentColor = primary ? GOLD : royalAccent ? ROYAL : null
+  const baseBorder = primary ? `${GOLD}30` : royalAccent ? `${ROYAL}30` : 'rgba(255,255,255,0.06)'
+  const baseInset = 'inset 0 1px 0 rgba(255,255,255,0.04)'
   return (
     <div
-      className="group rounded-2xl border p-5 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl relative overflow-hidden"
+      className="group rounded-xl border p-6 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 relative overflow-hidden"
       style={{
         background: primary
-          ? `linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)`
+          ? `linear-gradient(135deg, rgba(26,20,0,0.72) 0%, rgba(10,14,32,0.62) 100%)`
           : royalAccent
-          ? `linear-gradient(135deg, #130d1f 0%, #111111 60%, #0d0d0d 100%)`
-          : 'linear-gradient(135deg, #161616 0%, #111111 100%)',
-        borderColor: primary ? `${GOLD}30` : royalAccent ? `${ROYAL}30` : 'rgba(255,255,255,0.08)',
-        boxShadow: primary || royalAccent ? `0 0 0 0 ${accentColor}00` : undefined,
+          ? `linear-gradient(135deg, rgba(19,13,31,0.72) 0%, rgba(10,14,32,0.62) 100%)`
+          : 'rgba(10,14,32,0.6)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderColor: baseBorder,
+        boxShadow: baseInset,
       }}
       onMouseEnter={(e) => {
-        if (primary || royalAccent) {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px ${accentColor}18`
-        }
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = `${GOLD}55`
+        el.style.boxShadow = `${baseInset}, 0 8px 32px ${(accentColor ?? GOLD)}22`
       }}
       onMouseLeave={(e) => {
-        if (primary || royalAccent) {
-          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 0 ${accentColor}00`
-        }
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = baseBorder
+        el.style.boxShadow = baseInset
       }}
     >
       {/* Accent strip on primary/royal cards */}
       {(primary || royalAccent) && (
         <div
-          className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+          className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
           style={{ background: `linear-gradient(90deg, ${accentColor}00, ${accentColor}80, ${accentColor}00)` }}
         />
       )}
@@ -300,8 +304,13 @@ function ActivityChart({ activityVals }: { activityVals: number[] }) {
         </span>
       </div>
       <div
-        className="rounded-2xl border border-white/[0.08] p-5"
-        style={{ background: '#111111' }}
+        className="rounded-xl border border-white/[0.06] p-6"
+        style={{
+          background: 'rgba(10,14,32,0.6)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        }}
       >
         <div className="flex items-end gap-2 h-28">
           {activityVals.map((v, i) => {
@@ -364,15 +373,20 @@ function RecentBuilds({ builds }: { builds: RecentBuild[] }) {
         <h2 className="text-sm font-bold text-white">Recent Builds</h2>
         <Link
           href="/editor"
-          className="text-[11px] font-semibold transition-colors"
+          className="text-[11px] font-semibold transition-all hover:opacity-80 hover:translate-x-0.5 inline-block"
           style={{ color: GOLD }}
         >
           New Build →
         </Link>
       </div>
       <div
-        className="rounded-2xl border border-white/[0.08] overflow-hidden"
-        style={{ background: '#111111' }}
+        className="rounded-xl border border-white/[0.06] overflow-hidden transition-colors duration-200 hover:border-[#D4AF37]/30"
+        style={{
+          background: 'rgba(10,14,32,0.6)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        }}
       >
         {builds.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
@@ -388,7 +402,7 @@ function RecentBuilds({ builds }: { builds: RecentBuild[] }) {
             </p>
             <Link
               href="/editor"
-              className="text-xs font-bold px-5 py-2.5 rounded-xl text-black transition-all hover:opacity-90 hover:scale-[1.02]"
+              className="text-xs font-bold px-5 py-2.5 rounded-lg text-black transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_0_24px_rgba(212,175,55,0.45)]"
               style={{ background: GOLD, boxShadow: `0 0 16px ${GOLD}30` }}
             >
               Open Editor
@@ -498,18 +512,31 @@ function QuickActions() {
             <Link
               key={a.href + a.title}
               href={a.href}
-              className="group rounded-2xl border p-4 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg relative overflow-hidden"
+              className="group rounded-xl border p-6 flex flex-col gap-2 transition-all duration-200 hover:-translate-y-0.5 relative overflow-hidden"
               style={{
                 background: isGold
-                  ? `linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)`
-                  : '#111111',
-                borderColor: isGold ? `${GOLD}35` : 'rgba(255,255,255,0.08)',
+                  ? `linear-gradient(135deg, rgba(26,20,0,0.72) 0%, rgba(10,14,32,0.62) 100%)`
+                  : 'rgba(10,14,32,0.6)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                borderColor: isGold ? `${GOLD}35` : 'rgba(255,255,255,0.06)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement
+                el.style.borderColor = `${GOLD}55`
+                el.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px ${GOLD}1f`
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement
+                el.style.borderColor = isGold ? `${GOLD}35` : 'rgba(255,255,255,0.06)'
+                el.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.04)'
               }}
             >
               {/* Top accent line for gold card */}
               {isGold && (
                 <div
-                  className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
+                  className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
                   style={{ background: `linear-gradient(90deg, ${GOLD}00, ${GOLD}80, ${GOLD}00)` }}
                 />
               )}
@@ -529,7 +556,7 @@ function QuickActions() {
               <div>
                 <p
                   className="text-sm font-semibold transition-colors"
-                  style={{ color: isGold ? GOLD : 'white' }}
+                  style={{ color: isGold ? GOLD : 'var(--text-primary, rgba(255,255,255,0.9))' }}
                 >
                   {a.title}
                 </p>
@@ -602,8 +629,13 @@ function AchievementProgress({ achievements }: { achievements: Achievement[] }) 
           return (
             <div
               key={a.id}
-              className="rounded-2xl border border-white/[0.08] p-4"
-              style={{ background: '#111111' }}
+              className="rounded-xl border border-white/[0.06] p-6 transition-colors duration-200 hover:border-[#D4AF37]/30"
+              style={{
+                background: 'rgba(10,14,32,0.6)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+              }}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div
@@ -687,10 +719,19 @@ function TokenBalanceWidget({
 
   return (
     <div
-      className="rounded-2xl border p-5 flex flex-col gap-4 relative overflow-hidden"
+      className="rounded-2xl border p-8 flex flex-col gap-4 relative overflow-hidden transition-all duration-200 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(135deg, #1a1400 0%, #111111 60%, #0d0d0d 100%)',
+        background: 'linear-gradient(135deg, rgba(26,20,0,0.78) 0%, rgba(10,14,32,0.62) 100%)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderColor: `${GOLD}30`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px ${GOLD}12`,
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = `${GOLD}55`
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = `${GOLD}30`
       }}
     >
       <div className="absolute top-0 left-0 right-0 h-[2px] rounded-t-2xl"
@@ -777,8 +818,13 @@ function UsageThisMonth({ billing }: { billing: BillingStatus | null | undefined
       </div>
 
       <div
-        className="rounded-2xl border border-white/[0.08] p-5 space-y-4"
-        style={{ background: '#111111' }}
+        className="rounded-xl border border-white/[0.06] p-6 space-y-4 transition-colors duration-200 hover:border-[#D4AF37]/30"
+        style={{
+          background: 'rgba(10,14,32,0.6)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        }}
       >
         {/* Stacked token bar */}
         <div>
@@ -859,15 +905,20 @@ function RecentProjects({ builds }: { builds: RecentBuild[] }) {
         <h2 className="text-sm font-bold text-white">Recent Projects</h2>
         <Link
           href="/editor"
-          className="text-[11px] font-semibold transition-colors"
+          className="text-[11px] font-semibold transition-all hover:opacity-80 hover:translate-x-0.5 inline-block"
           style={{ color: GOLD }}
         >
           New Project →
         </Link>
       </div>
       <div
-        className="rounded-2xl border border-white/[0.08] overflow-hidden"
-        style={{ background: '#111111' }}
+        className="rounded-xl border border-white/[0.06] overflow-hidden transition-colors duration-200 hover:border-[#D4AF37]/30"
+        style={{
+          background: 'rgba(10,14,32,0.6)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        }}
       >
         {projects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
@@ -883,7 +934,7 @@ function RecentProjects({ builds }: { builds: RecentBuild[] }) {
             </p>
             <Link
               href="/editor"
-              className="text-xs font-bold px-4 py-2 rounded-xl text-black transition-all hover:opacity-90"
+              className="text-xs font-bold px-4 py-2 rounded-lg text-black transition-all hover:opacity-90 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)]"
               style={{ background: GOLD }}
             >
               Start Building
@@ -970,15 +1021,17 @@ function NewUserHero({ firstName, tokenBalance, subscription }: { firstName: str
     <div
       className="rounded-2xl border overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, #0f0c00 0%, #111111 55%, #0a0a0a 100%)',
+        background: 'linear-gradient(135deg, rgba(15,12,0,0.78) 0%, rgba(10,14,32,0.62) 100%)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderColor: `${GOLD}22`,
-        boxShadow: `0 0 60px ${GOLD}08`,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 0 60px ${GOLD}08`,
       }}
     >
       {/* Top accent line */}
       <div className="h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${GOLD}70, transparent)` }} />
 
-      <div className="p-7 sm:p-9">
+      <div className="p-8">
         {/* Greeting */}
         <div className="mb-7">
           <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
@@ -1012,7 +1065,7 @@ function NewUserHero({ firstName, tokenBalance, subscription }: { firstName: str
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/editor"
-            className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+            className="flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-black transition-all hover:opacity-95 hover:scale-[1.02] active:scale-[0.98] hover:shadow-[0_0_32px_rgba(212,175,55,0.55)]"
             style={{ background: GOLD, boxShadow: `0 0 24px ${GOLD}40` }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1023,7 +1076,7 @@ function NewUserHero({ firstName, tokenBalance, subscription }: { firstName: str
           {subscription === 'FREE' && (
             <Link
               href="/billing"
-              className="text-xs font-semibold px-4 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors"
+              className="text-xs font-semibold px-4 py-3 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/[0.04] transition-all"
             >
               View plans
             </Link>
@@ -1127,7 +1180,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             <PlanBadge tier={activeTier} />
             <Link
               href="/editor"
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90 hover:scale-[1.02]"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-black transition-all hover:opacity-95 hover:scale-[1.02] hover:shadow-[0_0_28px_rgba(212,175,55,0.5)]"
               style={{ background: GOLD, boxShadow: `0 0 20px ${GOLD}35` }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1158,7 +1211,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
             </div>
             <Link
               href={`/editor?prompt=${encodeURIComponent(initialPrompt)}`}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-black transition-all hover:opacity-95 hover:scale-[1.02] hover:shadow-[0_0_24px_rgba(212,175,55,0.45)]"
               style={{ background: GOLD }}
             >
               Start Building
@@ -1287,8 +1340,14 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
               <div className="fj-animate" style={staggerStyle(4, 450)}>
                 <section>
                   <div
-                    className="rounded-2xl border p-5"
-                    style={{ background: '#111111', borderColor: `${GOLD}25` }}
+                    className="rounded-xl border p-6 transition-colors duration-200 hover:border-[#D4AF37]/50"
+                    style={{
+                      background: 'rgba(10,14,32,0.6)',
+                      backdropFilter: 'blur(14px)',
+                      WebkitBackdropFilter: 'blur(14px)',
+                      borderColor: `${GOLD}25`,
+                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+                    }}
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span style={{ color: GOLD }}>⚡</span>
@@ -1299,7 +1358,7 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
                     </p>
                     <Link
                       href="/billing"
-                      className="block text-center w-full py-2.5 rounded-xl text-sm font-bold text-black transition-all hover:opacity-90"
+                      className="block text-center w-full py-2.5 rounded-lg text-sm font-bold text-black transition-all hover:opacity-95 hover:scale-[1.02] hover:shadow-[0_0_24px_rgba(212,175,55,0.45)]"
                       style={{ background: GOLD }}
                     >
                       View Plans

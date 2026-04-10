@@ -2,6 +2,28 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+import { locales, defaultLocale } from './i18n/config'
+import { i18nMiddleware } from './middleware-i18n'
+
+// ─── i18n composition ─────────────────────────────────────────────────────────
+// Non-default locale prefixes that, when present as the first path segment,
+// mean the request is targeting a translated marketing route. The i18n
+// middleware rewrites these into the `[locale]` App Router segment so
+// next-intl can resolve messages on the server.
+//
+// We intentionally EXCLUDE the default locale ('en') because `localePrefix:
+// 'as-needed'` means English routes are served from un-prefixed paths — the
+// existing (marketing) route group already handles them. This keeps the
+// critical Clerk auth / age-gate logic below untouched for the common case.
+const NON_DEFAULT_LOCALE_PREFIXES = new Set(
+  locales.filter((l) => l !== defaultLocale),
+)
+
+function hasNonDefaultLocalePrefix(pathname: string): boolean {
+  const firstSegment = pathname.split('/')[1] ?? ''
+  return NON_DEFAULT_LOCALE_PREFIXES.has(firstSegment as (typeof locales)[number])
+}
+
 // ─── Embargoed countries per OFAC/BIS ────────────────────────────────────────
 // Sources: 31 C.F.R. Parts 500-599 (OFAC), 15 C.F.R. Part 746 (BIS)
 const EMBARGOED_COUNTRIES = new Set([
@@ -34,8 +56,11 @@ const isPublicRoute = createRouteMatcher([
   // Landing + marketing
   '/',
   '/pricing',
-  // Editor — guest mode with limited functionality (auth adds save/sync features)
-  '/editor(.*)',
+  // Editor is NOT public — account creation is required before chatting with
+  // the AI. Unauthenticated visitors who hit /editor are redirected to
+  // /sign-up?redirect_url=/editor (see the auth routing block below). The
+  // welcome flow then runs post-signup before they land in the editor.
+  // Exception: DEMO_MODE bypasses all auth (handled earlier in the pipeline).
   // Game templates marketplace — public so visitors can browse before signing up
   '/templates(.*)',
   '/docs(.*)',
@@ -122,6 +147,14 @@ const isAgeGateExempt = createRouteMatcher([
 ])
 
 const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
+
+// Routes that are public (no auth required) but still require age gate completion
+// for authenticated users. Without this, a signed-in user who hasn't completed
+// the age gate could navigate directly to these routes and bypass COPPA controls.
+// Note: /editor used to be here but is now fully auth-gated (account required).
+const isPublicButRequiresAgeGate = createRouteMatcher([
+  '/templates(.*)',
+])
 
 // Routes that bypass geo-blocking (the blocked page itself must be accessible,
 // as must static assets and system pages that can appear during a redirect chain)
@@ -227,6 +260,21 @@ export default clerkMiddleware(async (auth, request) => {
     const preFlightResponse = handleCorsPreFlight(request)
     if (preFlightResponse) return preFlightResponse
 
+    // ── i18n: locale-prefixed marketing routes ────────────────────────────────
+    // Requests like /es/pricing or /fr/docs are translated marketing pages.
+    // Hand them to the next-intl middleware which rewrites them onto the
+    // [locale] App Router segment. We bypass Clerk for these paths because all
+    // marketing routes are public anyway (see isPublicRoute above) — running
+    // auth on top of the i18n rewrite complicates response composition and
+    // isn't needed for content routes.
+    //
+    // TODO: if we later need auth-gated translated routes (e.g. /es/editor),
+    // compose the two middlewares by running i18n first, reading its
+    // rewritten URL, and then invoking the Clerk pipeline on that target.
+    if (hasNonDefaultLocalePrefix(request.nextUrl.pathname)) {
+      return i18nMiddleware(request)
+    }
+
     // ── Studio API bypass — Studio plugin has no cookies/session. Skip Clerk
     //    entirely so Roblox Studio HTTP requests always reach the route handler.
     //    Each studio route handles its own token-based auth internally. ───────────
@@ -307,7 +355,7 @@ export default clerkMiddleware(async (auth, request) => {
     }
 
     // Don't redirect signed-in users away from auth pages — the Clerk
-    // components handle their own redirects via afterSignInUrl/afterSignUpUrl.
+    // components handle their own redirects via fallbackRedirectUrl/signUpFallbackRedirectUrl.
 
     // Protect non-public routes — isPublicRoute is the single source of truth.
     // All routes listed in the public matcher are accessible without auth.
@@ -338,9 +386,31 @@ export default clerkMiddleware(async (auth, request) => {
     // is not admin, because the Clerk JWT template may not include email/role
     // claims, causing false negatives that would lock the site owner out.
 
-    // Age-gate removed from middleware — handled in the welcome wizard onboarding
-    // flow instead. Keeping it in middleware caused infinite redirect loops when
-    // Clerk JWT claims hadn't refreshed with the dateOfBirth metadata yet.
+    // ── 4. Age-gate enforcement (server-side, COPPA compliance) ─────────────
+    // Redirect authenticated users who haven't completed the age gate to the
+    // age-gate page. Uses Clerk publicMetadata.dateOfBirth from the JWT claims.
+    // Routes exempt from this check (onboarding, auth, API, utility pages) are
+    // listed in isAgeGateExempt. Some public routes (e.g. /editor) also require
+    // the age gate for authenticated users — see isPublicButRequiresAgeGate.
+    const requiresAgeGate = !isAgeGateExempt(request) && (!isPublicRoute(request) || isPublicButRequiresAgeGate(request))
+    if (userId && requiresAgeGate) {
+      // Clerk v5+ exposes publicMetadata in session claims. The exact path
+      // depends on the JWT template: it may be claims.publicMetadata or
+      // claims.metadata.public. Check both for robustness.
+      const claimsObj = claims as Record<string, unknown> | null
+      const publicMeta =
+        (claimsObj?.publicMetadata as Record<string, unknown> | undefined) ??
+        ((claimsObj?.metadata as Record<string, unknown> | undefined)?.public as Record<string, unknown> | undefined)
+      const dateOfBirth = publicMeta?.dateOfBirth
+      if (!dateOfBirth) {
+        // User hasn't completed the age gate — redirect to it.
+        // Note: if the JWT template doesn't include publicMetadata, this
+        // redirect fires. The age-gate page is idempotent (redirects to
+        // /editor if dateOfBirth is already set on the Clerk user object).
+        const ageGateUrl = new URL('/onboarding/age-gate', request.url)
+        return NextResponse.redirect(ageGateUrl)
+      }
+    }
 
     // Pass-through: forward the injected x-pathname header to all Server Components.
     // Also attach CORS headers to the response so cross-origin API callers receive them.
@@ -379,6 +449,6 @@ export const config = {
      * the middleware so the CORS preflight handler runs, but isPublicRoute() exempts
      * them from Clerk auth so Stripe/Clerk can always fire.
      */
-    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3)$).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3|json|webmanifest)$).*)',
   ],
 }

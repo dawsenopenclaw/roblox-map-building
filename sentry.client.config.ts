@@ -10,4 +10,20 @@ Sentry.init({
   integrations: [
     Sentry.replayIntegration({ maskAllText: false, blockAllMedia: false }),
   ],
+
+  // Strip IP address (COPPA / GDPR). User ID and plan tier are attached
+  // per-request by calling Sentry.setUser() inside authenticated layouts.
+  beforeSend(event) {
+    if (event.user) {
+      delete event.user.ip_address
+    }
+    return event
+  },
+
+  initialScope: {
+    tags: {
+      app: 'forjegames',
+      runtime: 'browser',
+    },
+  },
 })

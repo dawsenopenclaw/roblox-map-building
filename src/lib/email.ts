@@ -15,12 +15,54 @@ import {
   PaymentActionRequiredEmail,
 } from './email-templates'
 
+// ─── Email configuration guard ────────────────────────────────────────────────
+
+const PLACEHOLDER_PATTERNS = [
+  'placeholder',
+  're_placeholder',
+  'add_real_key',
+  'your_key_here',
+  'xxxxx',
+]
+
+function isEmailConfigured(): boolean {
+  const key = serverEnv.RESEND_API_KEY
+  if (!key || key.trim() === '') return false
+  const lower = key.toLowerCase()
+  return !PLACEHOLDER_PATTERNS.some((p) => lower.includes(p))
+}
+
+export type EmailResult =
+  | { success: true; id?: string }
+  | { success: false; reason: 'email_not_configured' | 'send_failed'; error?: unknown }
+
 let _resend: Resend | null = null
 function getResend(): Resend {
   if (!_resend) {
     _resend = new Resend(serverEnv.RESEND_API_KEY || '')
   }
   return _resend
+}
+
+/**
+ * Guard wrapper — call before every Resend send().
+ * Returns `{ success: false, reason: 'email_not_configured' }` instead of
+ * crashing when RESEND_API_KEY is missing or still a placeholder value.
+ */
+function guardedSend(fn: () => Promise<unknown>): Promise<EmailResult> {
+  if (!isEmailConfigured()) {
+    console.warn(
+      '[email] RESEND_API_KEY is not configured — skipping email send. ' +
+        'Set RESEND_API_KEY in your .env.local to enable email delivery.'
+    )
+    return Promise.resolve({ success: false, reason: 'email_not_configured' })
+  }
+  return fn()
+    .then(() => ({ success: true }) as EmailResult)
+    .catch((error: unknown) => {
+      console.error('[email] Send failed:', error)
+      return { success: false, reason: 'send_failed', error } as EmailResult
+    })
 }
 
 const FROM = 'ForjeGames <noreply@forjegames.com>'
@@ -36,25 +78,18 @@ export async function sendParentalConsentEmail({
   parentEmail: string
   childName: string
   token: string
-}) {
+}): Promise<EmailResult> {
   const approveUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=approve`
   const denyUrl = `${appUrl}/api/onboarding/parental-consent/verify?token=${token}&action=deny`
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: parentEmail,
       subject: `Parental consent required for ${childName}'s ForjeGames account`,
-      react: ParentalConsentEmail({
-        childName,
-        parentEmail,
-        approveUrl,
-        denyUrl,
-      }),
+      react: ParentalConsentEmail({ childName, parentEmail, approveUrl, denyUrl }),
     })
-  } catch (err) {
-    console.error('[email] sendParentalConsentEmail failed:', err)
-  }
+  )
 }
 
 // ─── Welcome ──────────────────────────────────────────────────────────────────
@@ -65,17 +100,15 @@ export async function sendWelcomeEmail({
 }: {
   email: string
   name: string
-}) {
-  try {
-    return await getResend().emails.send({
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Welcome to ForjeGames, ${name}! Here are 1,000 free tokens`,
       react: WelcomeEmail({ name }),
     })
-  } catch (err) {
-    console.error('[email] sendWelcomeEmail failed:', err)
-  }
+  )
 }
 
 // ─── Build Complete ───────────────────────────────────────────────────────────
@@ -92,17 +125,15 @@ export async function sendBuildCompleteEmail({
   buildName: string
   buildId: string
   thumbnailUrl?: string
-}) {
-  try {
-    return await getResend().emails.send({
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Your ${buildType} "${buildName}" is ready!`,
       react: BuildCompleteEmail({ buildType, buildName, buildId, thumbnailUrl }),
     })
-  } catch (err) {
-    console.error('[email] sendBuildCompleteEmail failed:', err)
-  }
+  )
 }
 
 // ─── Token Low ────────────────────────────────────────────────────────────────
@@ -115,10 +146,10 @@ export async function sendTokenLowEmail({
   email: string
   name: string
   tokenCount: number
-}) {
+}): Promise<EmailResult> {
   const isVeryLow = tokenCount <= 5
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: isVeryLow
@@ -126,9 +157,7 @@ export async function sendTokenLowEmail({
         : `You have ${tokenCount} tokens remaining on ForjeGames`,
       react: TokenLowEmail({ name, tokenCount }),
     })
-  } catch (err) {
-    console.error('[email] sendTokenLowEmail failed:', err)
-  }
+  )
 }
 
 // ─── Sale Notification ────────────────────────────────────────────────────────
@@ -147,7 +176,7 @@ export async function sendSaleNotificationEmail({
   platformFee?: number
   monthlyTotal?: number
   salesThisMonth?: number
-}) {
+}): Promise<EmailResult> {
   const fee = platformFee ?? saleAmount * 0.1
   const net = saleAmount - fee
   const formatted = new Intl.NumberFormat('en-US', {
@@ -155,8 +184,8 @@ export async function sendSaleNotificationEmail({
     currency: 'USD',
   }).format(net)
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `${formatted} earned from "${templateName}"`,
@@ -168,9 +197,7 @@ export async function sendSaleNotificationEmail({
         salesThisMonth,
       }),
     })
-  } catch (err) {
-    console.error('[email] sendSaleNotificationEmail failed:', err)
-  }
+  )
 }
 
 // ─── Weekly Digest ────────────────────────────────────────────────────────────
@@ -193,9 +220,9 @@ export async function sendWeeklyDigestEmail({
   streakDays: number
   trendingTemplates?: Array<{ name: string; category: string; sales: number; thumbnailUrl?: string }>
   communityHighlight?: string
-}) {
-  try {
-    return await getResend().emails.send({
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Your ForjeGames weekly digest — ${buildsThisWeek} builds this week`,
@@ -209,9 +236,7 @@ export async function sendWeeklyDigestEmail({
         communityHighlight,
       }),
     })
-  } catch (err) {
-    console.error('[email] sendWeeklyDigestEmail failed:', err)
-  }
+  )
 }
 
 // ─── Charity Update ───────────────────────────────────────────────────────────
@@ -238,14 +263,14 @@ export async function sendCharityUpdateEmail({
   communityContributors: number
   buildsThisMonth: number
   impactStats?: Array<{ label: string; value: string }>
-}) {
+}): Promise<EmailResult> {
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
   }).format(totalDonatedThisMonth)
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Together we've donated ${formatted} this month — your charity update`,
@@ -261,9 +286,7 @@ export async function sendCharityUpdateEmail({
         impactStats,
       }),
     })
-  } catch (err) {
-    console.error('[email] sendCharityUpdateEmail failed:', err)
-  }
+  )
 }
 
 // ─── Dunning (payment failed) ─────────────────────────────────────────────────
@@ -280,22 +303,20 @@ export async function sendDunningEmail({
   invoiceUrl?: string
   amountDueCents: number
   nextAttemptAt?: Date
-}) {
+}): Promise<EmailResult> {
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
   }).format(amountDueCents / 100)
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Payment failed — update your billing to keep ForjeGames active`,
       react: DunningEmail({ name, amountDue: formatted, invoiceUrl, nextAttemptAt }),
     })
-  } catch (err) {
-    console.error('[email] sendDunningEmail failed:', err)
-  }
+  )
 }
 
 // ─── Trial ending ──────────────────────────────────────────────────────────────
@@ -310,21 +331,19 @@ export async function sendTrialEndingEmail({
   name: string
   trialEndDate?: Date
   upgradeUrl: string
-}) {
+}): Promise<EmailResult> {
   const daysLeft = trialEndDate
     ? Math.max(0, Math.ceil((trialEndDate.getTime() - Date.now()) / 86_400_000))
     : 3
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Your free trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — upgrade to keep building`,
       react: TrialEndingEmail({ name, daysLeft, trialEndDate, upgradeUrl }),
     })
-  } catch (err) {
-    console.error('[email] sendTrialEndingEmail failed:', err)
-  }
+  )
 }
 
 // ─── Payment action required (SCA / 3D Secure) ────────────────────────────────
@@ -339,22 +358,20 @@ export async function sendPaymentActionRequiredEmail({
   name: string
   paymentUrl?: string
   amountDueCents: number
-}) {
+}): Promise<EmailResult> {
   const formatted = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
   }).format(amountDueCents / 100)
 
-  try {
-    return await getResend().emails.send({
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `Action required: complete your ${formatted} ForjeGames payment`,
       react: PaymentActionRequiredEmail({ name, amountDue: formatted, paymentUrl }),
     })
-  } catch (err) {
-    console.error('[email] sendPaymentActionRequiredEmail failed:', err)
-  }
+  )
 }
 
 // ─── Re-engagement ────────────────────────────────────────────────────────────
@@ -369,15 +386,13 @@ export async function sendReEngagementEmail({
   name: string
   daysInactive: number
   bonusTokens?: number
-}) {
-  try {
-    return await getResend().emails.send({
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
       from: FROM,
       to: email,
       subject: `We miss you, ${name} — come back and get ${bonusTokens} free tokens`,
       react: ReEngagementEmail({ name, daysInactive, bonusTokens }),
     })
-  } catch (err) {
-    console.error('[email] sendReEngagementEmail failed:', err)
-  }
+  )
 }

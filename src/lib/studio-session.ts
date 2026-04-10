@@ -27,8 +27,22 @@ export type ChangeType =
   | 'delete_model'
   | 'update_property'
   | 'execute_luau'
+  | 'structured_commands'
   | 'insert_asset'
   | 'scan_workspace'
+  // Studio Bridge commands
+  | 'get_hierarchy'
+  | 'get_properties'
+  | 'set_property'
+  | 'create_instance'
+  | 'delete_instance'
+  | 'get_scripts'
+  | 'start_playtest'
+  | 'stop_playtest'
+  | 'capture_screenshot'
+  | 'simulate_input'
+  | 'get_output'
+  | 'get_selection'
 
 export interface PendingCommand {
   id:        string

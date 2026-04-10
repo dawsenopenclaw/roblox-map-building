@@ -4,10 +4,10 @@ import { BASE_URL } from '@/lib/metadata'
 export default function sitemap(): MetadataRoute.Sitemap {
   // Strategic lastModified dates for SEO freshness signals
   const dates = {
-    homepage: new Date('2026-03-30'),
-    recent: new Date('2026-03-29'),
-    pricing: new Date('2026-03-28'),
-    docs: new Date('2026-03-25'),
+    homepage: new Date('2026-04-04'),
+    recent: new Date('2026-04-04'),
+    pricing: new Date('2026-04-04'),
+    docs: new Date('2026-04-04'),
     legal: new Date('2026-01-15'),
   }
 

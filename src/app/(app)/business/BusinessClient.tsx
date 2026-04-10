@@ -374,16 +374,37 @@ function TeamTab({ team }: { team: TeamData }) {
   const [showInvite, setShowInvite] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<TeamRole>('DEVELOPER')
+  const [inviting, setInviting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
 
   const handleInvite = async () => {
-    if (!inviteEmail.includes('@')) return
-    await fetch('/api/business/team', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email: inviteEmail, role: inviteRole }),
-    })
-    setShowInvite(false)
-    setInviteEmail('')
+    if (!inviteEmail.includes('@')) {
+      setInviteError('Enter a valid email address.')
+      return
+    }
+    setInviting(true)
+    setInviteError(null)
+    try {
+      const res = await fetch('/api/business/team', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      })
+      const data = await res.json().catch(() => ({})) as { error?: string; demo?: boolean }
+      if (!res.ok && !data.demo) {
+        setInviteError(data.error ?? `Failed to send invite (${res.status})`)
+        return
+      }
+      setInviteSuccess(`Invite sent to ${inviteEmail}`)
+      setShowInvite(false)
+      setInviteEmail('')
+      setTimeout(() => setInviteSuccess(null), 4000)
+    } catch {
+      setInviteError('Network error — please try again.')
+    } finally {
+      setInviting(false)
+    }
   }
 
   return (
@@ -394,7 +415,7 @@ function TeamTab({ team }: { team: TeamData }) {
           <p className="text-sm text-gray-400">{team.seats.used} of {team.seats.max} seats used</p>
         </div>
         <button
-          onClick={() => setShowInvite(true)}
+          onClick={() => { setShowInvite(true); setInviteError(null) }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-[#0a0a0a] transition-all hover:brightness-110"
           style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
         >
@@ -402,6 +423,13 @@ function TeamTab({ team }: { team: TeamData }) {
           Invite Member
         </button>
       </div>
+
+      {/* Invite success toast */}
+      {inviteSuccess && (
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3 text-green-400 text-sm">
+          {inviteSuccess}
+        </div>
+      )}
 
       {/* Invite panel */}
       {showInvite && (
@@ -425,16 +453,23 @@ function TeamTab({ team }: { team: TeamData }) {
               ))}
             </select>
           </div>
+          {inviteError && (
+            <p className="text-red-400 text-xs">{inviteError}</p>
+          )}
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setShowInvite(false)} className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white transition-colors">
+            <button
+              onClick={() => { setShowInvite(false); setInviteError(null) }}
+              className="px-4 py-2 rounded-xl text-sm text-gray-400 hover:text-white transition-colors"
+            >
               Cancel
             </button>
             <button
               onClick={handleInvite}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-[#0a0a0a]"
+              disabled={inviting}
+              className="px-4 py-2 rounded-xl text-sm font-bold text-[#0a0a0a] disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
             >
-              Send Invite
+              {inviting ? 'Sending...' : 'Send Invite'}
             </button>
           </div>
         </div>

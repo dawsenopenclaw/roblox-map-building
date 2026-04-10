@@ -19,7 +19,7 @@ export default function LegalError({
     <main className="flex-1 flex items-center justify-center p-8">
       <div className="max-w-md w-full text-center">
         <h2 className="text-xl font-bold text-white mb-3">Couldn't load this page</h2>
-        <p className="text-gray-300 text-sm mb-5">Something went wrong loading this legal document.</p>
+        <p className="text-gray-300 text-sm mb-5">Couldn&apos;t fetch this document. Check your connection and try again.</p>
         {error.digest && (
           <p className="text-gray-500 text-xs font-mono mb-4">ID: {error.digest}</p>
         )}

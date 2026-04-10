@@ -1,12 +1,14 @@
 ﻿/**
  * Centralized analytics module for ForjeGames.
  *
- * - Client-side: wraps posthog-js (singleton already initialised in PostHogProvider)
+ * - Client-side: routes through safePostHog (COPPA age-gate + consent enforced)
  * - Server-side: wraps posthog-node via getPostHogClient()
  * - All event names are typed — no raw strings at call sites
  * - Auto-attaches $app: 'ForjeGames' to every event
  * - Batching handled automatically by the PostHog SDKs (flushAt / autocapture)
  */
+
+import { safePostHog } from './posthog-safe'
 
 // ─── Event catalogue ─────────────────────────────────────────────────────────
 
@@ -14,9 +16,16 @@ export type AnalyticsEvent =
   // Auth / signup
   | 'signup_started'
   | 'signup_completed'
+  | 'user.signed_up'           // alias used in webhook / server-side handlers
   // Onboarding
   | 'onboarding_step_completed'
   | 'onboarding_skipped'
+  // Studio
+  | 'user.connected_studio'    // first successful Studio plugin connection
+  | 'user.downloaded_plugin'   // plugin installer downloaded
+  // AI generation
+  | 'user.first_build'         // first successful AI map/code generation
+  | 'user.generated_3d'        // Meshy / Fal 3D mesh generated
   // Voice build
   | 'voice_build_started'
   | 'voice_build_completed'
@@ -29,10 +38,12 @@ export type AnalyticsEvent =
   | 'template_purchased'
   | 'template_submitted'
   // Subscriptions
+  | 'user.subscribed'          // first subscription checkout completed
   | 'subscription_upgraded'
   | 'subscription_downgraded'
   | 'subscription_cancelled'
   // Tokens
+  | 'user.purchased_tokens'    // token pack checkout completed
   | 'token_purchased'
   | 'token_spent'
   // Game DNA
@@ -59,8 +70,13 @@ export type AnalyticsEvent =
 export interface EventProperties {
   signup_started: Record<string, never>
   signup_completed: { method?: string }
+  'user.signed_up': { method?: string; tier?: string }
   onboarding_step_completed: { step: string; stepIndex?: number }
   onboarding_skipped: { atStep?: string }
+  'user.connected_studio': { pluginVersion?: string; placeId?: string }
+  'user.downloaded_plugin': { version?: string; platform?: string }
+  'user.first_build': { promptLength?: number; tokensUsed?: number; durationMs?: number }
+  'user.generated_3d': { provider: 'meshy' | 'fal'; prompt?: string; durationMs?: number }
   voice_build_started: { inputType: 'voice' | 'text'; prompt?: string }
   voice_build_completed: {
     durationMs?: number
@@ -78,9 +94,11 @@ export interface EventProperties {
     isFree: boolean
   }
   template_submitted: { templateTitle?: string; category?: string }
+  'user.subscribed': { tier: string; billingInterval: 'month' | 'year'; priceCents?: number }
   subscription_upgraded: { fromTier: string; toTier: string; billingInterval?: string }
   subscription_downgraded: { fromTier: string; toTier: string }
   subscription_cancelled: { tier: string; reason?: string }
+  'user.purchased_tokens': { packSlug: string; tokenCount?: number; priceCents?: number }
   token_purchased: { packSlug: string; tokenCount?: number; priceCents?: number }
   token_spent: { amount: number; feature?: string }
   game_dna_scanned: { gameId?: string }
@@ -130,17 +148,14 @@ export function captureClientEvent<E extends AnalyticsEvent>(
   userContext?: UserContext
 ): void {
   if (typeof window === 'undefined') return
-  try {
-    // Dynamic import keeps posthog-js out of server bundles
-    import('posthog-js').then(({ default: posthog }) => {
-      posthog.capture(event, {
-        ...baseProps(userContext),
-        ...(properties as Record<string, unknown>),
-      })
-    })
-  } catch {
-    // Never throw — analytics must not break product flows
-  }
+  // Short-circuit on known under-13 context (defence-in-depth).
+  if (userContext?.isUnder13 === true) return
+  // safePostHog enforces age-gate + cookie-consent + lazy init. It silently
+  // no-ops until BOTH gates are satisfied and never throws.
+  safePostHog.capture(event as string, {
+    ...baseProps(userContext),
+    ...(properties as Record<string, unknown>),
+  })
 }
 
 // ─── Server-side capture (posthog-node) ──────────────────────────────────────
@@ -155,6 +170,8 @@ export async function captureServerEvent<E extends AnalyticsEvent>(
   properties?: EventProperties[E],
   userContext?: UserContext
 ): Promise<void> {
+  // COPPA: never track under-13 users server-side either
+  if (userContext?.isUnder13 === true) return
   try {
     const { getPostHogClient } = await import('./posthog')
     const client = getPostHogClient()

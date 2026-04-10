@@ -3,15 +3,29 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy } from 'lucide-react'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-const NAV_LINKS: { href: string; label: string; scroll: boolean; Icon: LucideIcon }[] = [
+import { LanguageSwitcher } from './LanguageSwitcher'
+
+interface NavLink {
+  href: string
+  label: string
+  scroll: boolean
+  Icon: LucideIcon
+  /** Optional pulsing "New" badge next to the label. */
+  badge?: 'New'
+}
+
+const NAV_LINKS: NavLink[] = [
   { href: '#features',  label: 'Features',  scroll: true,  Icon: Sparkles     },
   { href: '#showcase',  label: 'Showcase',  scroll: true,  Icon: Layout       },
   { href: '#pricing',   label: 'Pricing',   scroll: true,  Icon: CreditCard   },
+  { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New' },
+  { href: '/docs',      label: 'Docs',      scroll: false, Icon: BookOpen     },
   { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
   { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy     },
+  { href: '/status',    label: 'Status',    scroll: false, Icon: Activity     },
 ]
 
 function MarketingNav() {
@@ -65,12 +79,12 @@ function MarketingNav() {
       className={[
         'fixed top-0 inset-x-0 z-50 transition-all duration-300',
         scrolled
-          ? 'bg-[#050810]/90 backdrop-blur-md border-b border-white/[0.06]'
+          ? 'bg-[#050810]/85 backdrop-blur-xl border-b border-white/[0.06]'
           : 'bg-transparent',
       ].join(' ')}
       style={scrolled ? { boxShadow: '0 1px 0 rgba(255,255,255,0.03)' } : undefined}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-4">
 
         {/* Logo — left */}
         <Link
@@ -92,23 +106,36 @@ function MarketingNav() {
               key={link.href}
               href={link.href}
               onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="relative inline-flex items-center gap-1.5 px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
             >
               <link.Icon size={14} aria-hidden="true" />
               {link.label}
+              {link.badge && (
+                <span
+                  className="ml-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider fg-nav-pulse"
+                  style={{
+                    background: 'rgba(212,175,55,0.18)',
+                    color: '#D4AF37',
+                    border: '1px solid rgba(212,175,55,0.4)',
+                  }}
+                >
+                  {link.badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
 
-        {/* Desktop CTA — right. Fixed width prevents layout shift while Clerk loads. */}
-        <div className="hidden md:flex items-center flex-shrink-0 w-[138px] justify-end">
+        {/* Desktop CTA — right. Language switcher + editor CTA. */}
+        <div className="hidden md:flex items-center flex-shrink-0 gap-3 justify-end">
+          <LanguageSwitcher compact />
           {isLoaded ? (
             <Link
               href="/editor"
-              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black"
+              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
               style={{
-                background: '#D4AF37',
-                boxShadow: `0 0 16px rgba(212,175,55,${isSignedIn ? '0.35' : '0.30'})`,
+                background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                boxShadow: `0 0 20px rgba(212,175,55,0.35)`,
               }}
             >
               {isSignedIn ? 'Open Editor' : 'Start Building'}
@@ -123,7 +150,7 @@ function MarketingNav() {
         <div className="md:hidden flex items-center">
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+            className="p-2.5 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-white/5 min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
@@ -145,11 +172,16 @@ function MarketingNav() {
       {menuOpen && (
         <div
           id="mobile-menu"
-          className="md:hidden bg-[#050810]/95 backdrop-blur-md border-b border-white/[0.06]"
+          className="md:hidden border-b border-white/[0.06]"
+          style={{
+            background: 'rgba(5,8,16,0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
           role="navigation"
           aria-label="Mobile navigation"
         >
-          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-1">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
@@ -158,16 +190,32 @@ function MarketingNav() {
                 className="inline-flex items-center gap-2 px-3 py-3 text-sm text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
               >
                 <link.Icon size={14} aria-hidden="true" />
-                {link.label}
+                <span>{link.label}</span>
+                {link.badge && (
+                  <span
+                    className="ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider fg-nav-pulse"
+                    style={{
+                      background: 'rgba(212,175,55,0.18)',
+                      color: '#D4AF37',
+                      border: '1px solid rgba(212,175,55,0.4)',
+                    }}
+                  >
+                    {link.badge}
+                  </span>
+                )}
               </Link>
             ))}
-            <div className="border-t border-white/[0.06] mt-2 pt-3">
+            <div className="border-t border-white/[0.06] mt-2 pt-3 flex flex-col gap-3">
+              <LanguageSwitcher />
               {isLoaded ? (
                 <Link
                   href="/editor"
                   onClick={() => setMenuOpen(false)}
-                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all text-black"
-                  style={{ background: '#D4AF37' }}
+                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
+                  style={{
+                    background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                    boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+                  }}
                 >
                   {isSignedIn ? 'Open Editor' : 'Start Building'}
                 </Link>
@@ -178,6 +226,20 @@ function MarketingNav() {
           </div>
         </div>
       )}
+
+      {/* Pulsing "New" badge animation */}
+      <style jsx global>{`
+        @keyframes fgNavPulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.55); }
+          50%      { box-shadow: 0 0 0 4px rgba(212,175,55,0); }
+        }
+        .fg-nav-pulse {
+          animation: fgNavPulse 2s ease-in-out infinite;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .fg-nav-pulse { animation: none; }
+        }
+      `}</style>
     </header>
   )
 }

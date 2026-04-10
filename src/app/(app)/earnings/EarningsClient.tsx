@@ -88,6 +88,33 @@ export default function EarningsClient() {
 
   const [onboarding, setOnboarding] = useState(false)
   const [connectError, setConnectError] = useState<string | null>(null)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExportCSV() {
+    setExportError(null)
+    setExporting(true)
+    try {
+      const res = await fetch('/api/earnings/export')
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string }
+        setExportError(json.error ?? `Export failed (${res.status})`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const filename = `forjegames-earnings-${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      setExportError('Network error — please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const hasError = !!error && !raw
 
