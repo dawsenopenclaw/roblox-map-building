@@ -106,7 +106,20 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   typescript: {
-    ignoreBuildErrors: false,
+    // Skip tsc during `next build` for the same reason ESLint is skipped
+    // below: the full-project type check OOMs on 8GB workers (verified both
+    // locally and on Vercel — the last Ready production deploy was 1 day ago
+    // and every build since the mega-session merges has been hung in the
+    // "Checking validity of types" phase for 20+ minutes before timing out).
+    //
+    // We run targeted typechecks via `tsconfig.spotcheck.json` per PR — see
+    // session_handoff_apr10_late2.md under "Known quirks discovered this
+    // session". CI's `npm run typecheck` still runs the full check, but in a
+    // larger runner where OOM is less of a concern.
+    //
+    // TO RE-ENABLE: split src/ into multiple tsconfig.json projects with
+    // references so the type graph fits in memory, then flip back to false.
+    ignoreBuildErrors: true,
   },
   eslint: {
     // Skip lint during `next build` — Next runs lint as a separate phase that
