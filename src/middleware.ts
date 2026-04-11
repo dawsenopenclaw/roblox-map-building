@@ -102,6 +102,23 @@ const isPublicRoute = createRouteMatcher([
   '/api/onboarding/(.*)',
   // Webhooks — Stripe, Clerk, etc. must always reach these endpoints
   '/api/webhooks/(.*)',
+  // Billing — these routes are reachable without a Clerk session so
+  // unauthed visitors on the /pricing + home page can:
+  //   - Read /api/billing/config to know which Stripe prices are live
+  //     (the response is public-safe — boolean flags only, no priceIds)
+  //   - POST /api/billing/checkout / custom-plan / robux / token-pack to
+  //     get a structured { error:'Authentication required', redirect:'/sign-in' }
+  //     response from the handler itself, which the client then follows.
+  //     Without this bypass, Clerk's default middleware returns
+  //     {"error":"Unauthorized"} with no redirect hint and the Buy
+  //     buttons silently fail on every prod visitor who isn't signed in.
+  //   - GET /api/billing/status for pricing-card active-plan highlighting.
+  // The handlers themselves still require auth for any destructive
+  // operation — making the ROUTES public just lets unauthed clients
+  // receive a useful error shape instead of a middleware 401.
+  '/api/billing/(.*)',
+  // Templates marketplace list — public so home + /templates can browse.
+  '/api/templates/(.*)',
   // Studio plugin + auth — must be public so:
   // 1. Plugin can be downloaded without auth
   // 2. Connection codes can be generated from guest editor

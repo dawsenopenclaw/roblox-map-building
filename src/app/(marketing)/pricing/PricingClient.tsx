@@ -254,8 +254,24 @@ async function postCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
     return { ok: false, error: 'Unexpected server response.' }
   }
 
-  if (res.status === 401 && typeof data.redirect === 'string') {
-    return { ok: false, error: 'Sign in to continue.', redirect: data.redirect as string }
+  // Handler returns { error: 'Authentication required', redirect: '/sign-in' }
+  // for unauthed users. Preserve the pricing page as the post-sign-in
+  // destination so the visitor lands back here and can click Buy again
+  // in one click instead of having to re-navigate from the dashboard.
+  //
+  // Also: the route may return 200 OR 401 with the redirect — accept both.
+  // Status 200 happens when the middleware lets the request through and
+  // the handler short-circuits with the redirect; status 401 happens when
+  // the middleware catches it first. Treating both identically is
+  // forward-compatible.
+  if (typeof data.redirect === 'string') {
+    const returnTo =
+      typeof window !== 'undefined'
+        ? window.location.pathname + window.location.search + window.location.hash
+        : '/pricing'
+    const sep = data.redirect.includes('?') ? '&' : '?'
+    const redirectWithReturn = `${data.redirect}${sep}redirect_url=${encodeURIComponent(returnTo)}`
+    return { ok: false, error: 'Sign in to continue.', redirect: redirectWithReturn }
   }
   if (!res.ok) {
     const msg = typeof data.error === 'string' ? data.error : 'Checkout failed.'

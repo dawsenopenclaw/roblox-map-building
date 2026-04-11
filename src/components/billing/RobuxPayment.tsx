@@ -134,6 +134,16 @@ export default function RobuxPayment() {
 
       const data = await res.json()
 
+      // Unauthed users get redirected to sign-in with /pricing as the
+      // post-auth return URL — one click later they're back ready to buy.
+      // Handler returns { error: 'Authentication required', redirect: '/sign-in' }.
+      if (typeof data?.redirect === 'string') {
+        const returnTo = '/pricing#robux'
+        const sep = data.redirect.includes('?') ? '&' : '?'
+        window.location.href = `${data.redirect}${sep}redirect_url=${encodeURIComponent(returnTo)}`
+        return
+      }
+
       if (!res.ok) {
         setError(data.error ?? 'Failed to initiate payment')
         setLoading(false)

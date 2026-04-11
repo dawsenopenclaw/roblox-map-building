@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket } from 'lucide-react'
+import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, Settings, LayoutDashboard } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 import { LanguageSwitcher } from './LanguageSwitcher'
@@ -139,23 +139,81 @@ function MarketingNav() {
           ))}
         </nav>
 
-        {/* Desktop CTA — right. Language switcher + editor CTA. */}
+        {/* Desktop CTA — right. Language switcher + auth controls.
+             The unauthed buttons are the SSR/loading default so the
+             server-rendered HTML has real text for marketing visitors
+             (LCP win + no button flash). Once Clerk's client session
+             hydrates (isLoaded && isSignedIn), we swap to the authed
+             view with UserButton + "Open Editor". Signed-in users see
+             a ~100ms flash of "Sign in" → their avatar on first load,
+             which is the right tradeoff since the vast majority of
+             home-page traffic is logged out. */}
         <div className="hidden md:flex items-center flex-shrink-0 gap-3 justify-end">
           <LanguageSwitcher compact />
-          {isLoaded ? (
-            <Link
-              href="/editor"
-              className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
-              style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
-                boxShadow: `0 0 20px rgba(212,175,55,0.35)`,
-              }}
-            >
-              {isSignedIn ? 'Open Editor' : 'Start Building'}
-            </Link>
-          ) : (
-            /* Skeleton placeholder — same dimensions as the button, invisible */
-            <div className="w-[130px] h-[36px] rounded-lg bg-transparent" aria-hidden="true" />
+          {!(isLoaded && isSignedIn) && (
+            <>
+              <SignInButton mode="modal">
+                <button
+                  type="button"
+                  className="text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-150 text-zinc-300 hover:text-white hover:bg-white/5"
+                >
+                  Sign in
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button
+                  type="button"
+                  className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
+                  style={{
+                    background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                    boxShadow: '0 0 20px rgba(212,175,55,0.35)',
+                  }}
+                >
+                  Start Building
+                </button>
+              </SignUpButton>
+            </>
+          )}
+          {isLoaded && isSignedIn && (
+            <>
+              <Link
+                href="/editor"
+                className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                  boxShadow: '0 0 20px rgba(212,175,55,0.35)',
+                }}
+              >
+                Open Editor
+              </Link>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'w-9 h-9 ring-1 ring-white/10 hover:ring-[#D4AF37]/40 transition-all',
+                  },
+                }}
+                userProfileMode="navigation"
+                userProfileUrl="/settings"
+                afterSignOutUrl="/"
+              >
+                {/* Clerk lets us add extra menu items. These are the two
+                    routes regular users actually need; the admin dashboard
+                    is intentionally NOT listed here and is only reachable
+                    via a direct URL + middleware admin check. */}
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="Dashboard"
+                    labelIcon={<LayoutDashboard size={14} />}
+                    href="/dashboard"
+                  />
+                  <UserButton.Link
+                    label="Settings"
+                    labelIcon={<Settings size={14} />}
+                    href="/settings"
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+            </>
           )}
         </div>
 
@@ -220,20 +278,62 @@ function MarketingNav() {
             ))}
             <div className="border-t border-white/[0.06] mt-2 pt-3 flex flex-col gap-3">
               <LanguageSwitcher />
-              {isLoaded ? (
-                <Link
-                  href="/editor"
-                  onClick={() => setMenuOpen(false)}
-                  className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
-                  style={{
-                    background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
-                    boxShadow: '0 0 20px rgba(212,175,55,0.25)',
-                  }}
-                >
-                  {isSignedIn ? 'Open Editor' : 'Start Building'}
-                </Link>
-              ) : (
-                <div className="h-[46px] rounded-lg bg-transparent" aria-hidden="true" />
+              {!(isLoaded && isSignedIn) && (
+                <>
+                  <SignInButton mode="modal">
+                    <button
+                      type="button"
+                      onClick={() => setMenuOpen(false)}
+                      className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all duration-150 text-zinc-300 hover:text-white border border-white/10 hover:bg-white/5 w-full"
+                    >
+                      Sign in
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button
+                      type="button"
+                      onClick={() => setMenuOpen(false)}
+                      className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97] w-full"
+                      style={{
+                        background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                        boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+                      }}
+                    >
+                      Start Building
+                    </button>
+                  </SignUpButton>
+                </>
+              )}
+              {isLoaded && isSignedIn && (
+                <>
+                  <Link
+                    href="/editor"
+                    onClick={() => setMenuOpen(false)}
+                    className="block text-center text-sm font-semibold px-4 py-3 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
+                    style={{
+                      background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                      boxShadow: '0 0 20px rgba(212,175,55,0.25)',
+                    }}
+                  >
+                    Open Editor
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg border border-white/10 text-zinc-300 hover:text-white hover:bg-white/5"
+                  >
+                    <LayoutDashboard size={14} />
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setMenuOpen(false)}
+                    className="inline-flex items-center justify-center gap-2 text-sm font-medium px-4 py-3 rounded-lg border border-white/10 text-zinc-300 hover:text-white hover:bg-white/5"
+                  >
+                    <Settings size={14} />
+                    Settings
+                  </Link>
+                </>
               )}
             </div>
           </div>

@@ -158,8 +158,11 @@ export default function CustomPricingCalculator() {
       // Response shape { priceUSD, breakdown, mock: false } with no
       // checkoutUrl means the server knows the price but couldn't start
       // a real checkout — almost always because the user is signed out.
-      // Send them to sign-up with enough params to resume after auth.
-      window.location.href = `/sign-up?plan=custom&tokens=${tokens}&next=/pricing%23custom-plan`
+      // Send them to sign-up with enough params to resume after auth,
+      // and preserve /pricing as the return URL so one click after
+      // sign-up drops them right back on this calculator.
+      const returnTo = '/pricing#custom-plan'
+      window.location.href = `/sign-up?plan=custom&tokens=${tokens}&redirect_url=${encodeURIComponent(returnTo)}`
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
