@@ -17,7 +17,8 @@
  *
  * Required env vars:
  *   FAL_KEY                    — FAL API key (also used by the mesh pipeline)
- *   ROBLOX_OPEN_CLOUD_API_KEY  — Open Cloud key with Asset:Write scope
+ *   ROBLOX_OPEN_CLOUD_KEY      — Open Cloud key with Asset:Write scope
+ *     (also accepts legacy ROBLOX_OPEN_CLOUD_API_KEY for backwards compat)
  *   ROBLOX_CREATOR_ID          — Roblox user or group id to own the asset
  *   ROBLOX_CREATOR_TYPE        — "User" | "Group" (defaults to "User")
  */
@@ -145,8 +146,15 @@ function requireFalKey(): string {
 }
 
 function requireRobloxAuth(): { apiKey: string; creatorId: string; creatorType: 'User' | 'Group' } {
-  const apiKey = process.env.ROBLOX_OPEN_CLOUD_API_KEY
-  if (!apiKey) throw new Error('ROBLOX_OPEN_CLOUD_API_KEY is not configured')
+  // Canonical env var is ROBLOX_OPEN_CLOUD_KEY (see .env.example and
+  // mesh-pipeline.ts). We keep ROBLOX_OPEN_CLOUD_API_KEY as a fallback for
+  // one release so already-deployed environments keep working while ops
+  // migrate their secrets.
+  // TODO: drop fallback in next release once env is fully migrated
+  const apiKey =
+    process.env.ROBLOX_OPEN_CLOUD_KEY ??
+    process.env.ROBLOX_OPEN_CLOUD_API_KEY
+  if (!apiKey) throw new Error('ROBLOX_OPEN_CLOUD_KEY is not configured')
   const creatorId = process.env.ROBLOX_CREATOR_ID
   if (!creatorId) throw new Error('ROBLOX_CREATOR_ID is not configured')
   const creatorType = ((process.env.ROBLOX_CREATOR_TYPE as 'User' | 'Group' | undefined) ?? 'User')

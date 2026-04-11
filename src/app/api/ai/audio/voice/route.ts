@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { z } from 'zod'
 import { requireTier } from '@/lib/tier-guard'
 import { parseBody } from '@/lib/validations'
@@ -47,8 +47,9 @@ const voiceSchema = z.object({
 })
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authResult = await getDbUserOrUnauthorized()
+  if ('response' in authResult) return authResult.response
+  const { user, clerkId: userId } = authResult
 
   const tierDenied = await requireTier(userId, 'FREE')
   if (tierDenied) return tierDenied
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const text = body.text.trim()
 
   try {
-    await spendTokens(userId, VOICE_CREDIT_COST, 'ai.audio.voice', {
+    await spendTokens(user.id, VOICE_CREDIT_COST, 'ai.audio.voice', {
       text: text.slice(0, 120),
       voice: body.voice ?? 'Adam',
     })

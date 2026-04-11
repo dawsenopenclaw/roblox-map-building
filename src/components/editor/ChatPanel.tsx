@@ -28,6 +28,20 @@ import { PlaytestIndicator } from './PlaytestIndicator'
 import { ManualBuildPanel } from './ManualBuildPanel'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
+// ─── Empty-state rotating headline (matches marketing site) ───────────────────
+// Cycled by EmptyState every 2.4s. Intentionally a different word set than the
+// marketing hero so editor users see a curated, action-oriented vocabulary.
+
+const EDITOR_ROTATING_WORDS = [
+  'Game',
+  'Map',
+  'World',
+  'Obby',
+  'Tycoon',
+  'Sim',
+  'Quest',
+] as const
+
 // ─── Showcase example prompts (empty state) ───────────────────────────────────
 
 const SHOWCASE_EXAMPLES = [
@@ -1981,6 +1995,17 @@ function ShowcaseCard({
 // ─── Empty state / showcase ────────────────────────────────────────────────────
 
 function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void }) {
+  // Cycle the rotating word in the heading every 2.4s — matches the marketing
+  // site's hero. We re-key the rotating span on every change so the CSS
+  // @keyframe `forge-word-roll-in` (defined in globals.css) re-fires.
+  const [rotIndex, setRotIndex] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setRotIndex(i => (i + 1) % EDITOR_ROTATING_WORDS.length), 2400)
+    return () => clearInterval(t)
+  }, [])
+  const currentWord = EDITOR_ROTATING_WORDS[rotIndex]
+  const longestWord = EDITOR_ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
+
   return (
     <div
       style={{
@@ -2015,12 +2040,78 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         </svg>
       </div>
 
-      {/* Heading */}
+      {/* Heading — matches marketing site rotating "Forge your X" pattern */}
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#fafafa', letterSpacing: '-0.02em' }}>
-          What do you want to build?
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 30,
+            fontWeight: 700,
+            color: '#fafafa',
+            letterSpacing: '-0.02em',
+            display: 'inline-flex',
+            alignItems: 'baseline',
+            gap: '0.3em',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            // 3D context for the rotating word's wheel transform
+            perspective: '600px',
+            perspectiveOrigin: '50% 50%',
+          }}
+        >
+          <span>Forge your</span>
+          <span
+            aria-live="polite"
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+              minWidth: `${longestWord.length}ch`,
+              height: '1.15em',
+              verticalAlign: 'baseline',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <span aria-hidden="true" style={{ visibility: 'hidden', display: 'inline-block' }}>
+              {longestWord}
+            </span>
+            <span
+              key={`leaving-${rotIndex}`}
+              aria-hidden="true"
+              className="forge-word forge-word-leaving"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                transformOrigin: '50% 50% -0.55em',
+                backfaceVisibility: 'hidden',
+                willChange: 'transform, opacity',
+              }}
+            >
+              {EDITOR_ROTATING_WORDS[(rotIndex - 1 + EDITOR_ROTATING_WORDS.length) % EDITOR_ROTATING_WORDS.length]}
+            </span>
+            <span
+              key={`active-${rotIndex}`}
+              className="forge-word forge-word-entering"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                transformOrigin: '50% 50% -0.55em',
+                backfaceVisibility: 'hidden',
+                willChange: 'transform, opacity',
+              }}
+            >
+              {currentWord}
+            </span>
+          </span>
         </h2>
-        <p style={{ margin: '8px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
+        <p style={{ margin: '10px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
           Describe anything — or pick a starting point below
         </p>
       </div>

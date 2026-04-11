@@ -23,7 +23,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { z } from 'zod'
 import { requireTier } from '@/lib/tier-guard'
 import { parseBody } from '@/lib/validations'
@@ -51,8 +51,9 @@ const musicSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // Auth
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authResult = await getDbUserOrUnauthorized()
+  if ('response' in authResult) return authResult.response
+  const { user, clerkId: userId } = authResult
 
   const tierDenied = await requireTier(userId, 'FREE')
   if (tierDenied) return tierDenied
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Credits: charge up front — if generation fails we log it but don't auto-refund
   // (matches the mesh pipeline's behaviour). Users retry expensive jobs rarely.
   try {
-    await spendTokens(userId, MUSIC_CREDIT_COST, 'ai.audio.music', {
+    await spendTokens(user.id, MUSIC_CREDIT_COST, 'ai.audio.music', {
       prompt: prompt.slice(0, 120),
       durationSeconds: body.durationSeconds ?? 30,
     })

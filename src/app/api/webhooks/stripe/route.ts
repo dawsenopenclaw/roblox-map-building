@@ -17,6 +17,7 @@ import {
   sendPaymentActionRequiredEmail,
 } from '@/lib/email'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
+import { Prisma } from '@prisma/client'
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -35,6 +36,48 @@ export async function POST(req: NextRequest) {
   // At this point the signature verified, so the key must be set.
   // Use getStripe() to get the instance without re-throwing at module load.
   const stripe = getStripe()!
+
+  // Event-level idempotency gate — prevents TOCTOU races from concurrent
+  // deliveries of the same Stripe event. We open a Serializable transaction,
+  // check for a prior STRIPE_WEBHOOK_PROCESSED audit entry for this event.id,
+  // and immediately insert the marker row. Any concurrent delivery will either
+  // see the row on its check (and short-circuit) or fail the transaction with
+  // a serialization conflict (Postgres error code 40001), which we map to
+  // "already processed" and return 200 so Stripe does not retry.
+  try {
+    const firstDelivery = await db.$transaction(
+      async (tx) => {
+        const existing = await tx.auditLog.findFirst({
+          where: { action: 'STRIPE_WEBHOOK_PROCESSED', resourceId: event.id },
+          select: { id: true },
+        })
+        if (existing) return false
+        await tx.auditLog.create({
+          data: {
+            action: 'STRIPE_WEBHOOK_PROCESSED',
+            resource: 'stripe',
+            resourceId: event.id,
+            metadata: { eventType: event.type },
+          },
+        })
+        return true
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+    if (!firstDelivery) {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+  } catch (err) {
+    // Serialization failure (P2034 / 40001) means another concurrent delivery
+    // won the race and already recorded the marker. Treat as duplicate.
+    const code = (err as { code?: string } | null)?.code
+    if (code === 'P2034' || /40001|serialization/i.test(String(err))) {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+    // Any other DB error is transient — let Stripe retry.
+    console.error('[stripe-webhook] Idempotency gate failed', err)
+    return NextResponse.json({ error: 'transient_error' }, { status: 500 })
+  }
 
   try {
     switch (event.type) {

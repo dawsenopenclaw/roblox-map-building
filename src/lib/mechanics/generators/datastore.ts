@@ -1,4 +1,6 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
+import { safeLuaString } from '../../luau/string'
 
 /**
  * Generic schema-based DataStore service.
@@ -11,7 +13,7 @@ export function generateDataStoreMechanic(
   schema: Record<string, unknown> = { level: 1, xp: 0, lastLogin: 0, unlocks: {} },
   name: string = 'PlayerProfile',
 ): GameMechanic {
-  const safeName = name.replace(/[^A-Za-z0-9]/g, '') || 'PlayerProfile'
+  const safeName = safeLuaIdentifier(name, 'PlayerProfile')
   const defaultLua = tableToLua(schema, 1)
 
   const luauCode = `--!strict
@@ -151,7 +153,7 @@ function tableToLua(obj: unknown, depth: number): string {
   if (obj === null || obj === undefined) return 'nil'
   if (typeof obj === 'number') return Number.isFinite(obj) ? String(obj) : '0'
   if (typeof obj === 'boolean') return obj ? 'true' : 'false'
-  if (typeof obj === 'string') return `"${obj.replace(/"/g, '\\"')}"`
+  if (typeof obj === 'string') return `"${safeLuaString(obj)}"`
   if (Array.isArray(obj)) {
     if (obj.length === 0) return '{}'
     const parts = obj.map((v) => `${pad(depth + 1)}${tableToLua(v, depth + 1)},`).join('\n')
@@ -161,7 +163,7 @@ function tableToLua(obj: unknown, depth: number): string {
     const entries = Object.entries(obj as Record<string, unknown>)
     if (entries.length === 0) return '{}'
     const parts = entries
-      .map(([k, v]) => `${pad(depth + 1)}${/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `["${k}"]`} = ${tableToLua(v, depth + 1)},`)
+      .map(([k, v]) => `${pad(depth + 1)}${/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `["${safeLuaString(k)}"]`} = ${tableToLua(v, depth + 1)},`)
       .join('\n')
     return `{\n${parts}\n${pad(depth)}}`
   }

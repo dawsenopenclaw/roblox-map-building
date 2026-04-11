@@ -21,7 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { z } from 'zod'
 import { requireTier } from '@/lib/tier-guard'
 import { parseBody } from '@/lib/validations'
@@ -47,8 +47,9 @@ const sfxSchema = z.object({
 })
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authResult = await getDbUserOrUnauthorized()
+  if ('response' in authResult) return authResult.response
+  const { user, clerkId: userId } = authResult
 
   const tierDenied = await requireTier(userId, 'FREE')
   if (tierDenied) return tierDenied
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const prompt = body.prompt.trim()
 
   try {
-    await spendTokens(userId, SFX_CREDIT_COST, 'ai.audio.sfx', {
+    await spendTokens(user.id, SFX_CREDIT_COST, 'ai.audio.sfx', {
       prompt: prompt.slice(0, 120),
     })
   } catch (err) {

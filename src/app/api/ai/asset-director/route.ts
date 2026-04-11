@@ -21,7 +21,7 @@
  */
 
 import { NextRequest } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { z } from 'zod'
 import {
   directBuildAssets,
@@ -75,17 +75,15 @@ function sseEvent(event: string, data: unknown): string {
 // ── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // Auth
-  const { userId } = await auth()
-  if (!userId) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  // Auth — resolve Clerk session into the internal DB User row because
+  // gateIntentsByCredits / directBuildAssets key token spend off User.id (cuid).
+  const authResult = await getDbUserOrUnauthorized()
+  if ('response' in authResult) return authResult.response
+  const { user, clerkId } = authResult
+  const userId = user.id
 
-  // Rate limit (5 per hour, per user)
-  const rl = await checkRateLimit(assetDirectorLimiter, userId, 5, 3600)
+  // Rate limit (5 per hour, per user) — keyed by Clerk id
+  const rl = await checkRateLimit(assetDirectorLimiter, clerkId, 5, 3600)
   if (!rl.allowed) return rateLimitResponse(rl)
 
   // Body parse + validate

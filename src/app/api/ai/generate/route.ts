@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { spendTokens } from '@/lib/tokens-server'
 import { requireTier } from '@/lib/tier-guard'
 import { dispatchWebhookEvent } from '@/lib/webhook-dispatch'
@@ -115,19 +115,20 @@ export async function POST(req: NextRequest) {
   let authedUserId: string | null = null
 
   if (!isDemo) {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const result = await getDbUserOrUnauthorized()
+    if ('response' in result) return result.response
+    const { user, clerkId } = result
     // Generate requires at minimum a FREE tier account with a token balance.
     // The spendTokens call below will enforce the actual balance limit, but we
     // do a tier check here to keep the guard pattern consistent and to block
     // users whose subscriptions are in a terminal state (CANCELED, etc.).
-    const tierDenied = await requireTier(userId, 'FREE')
+    const tierDenied = await requireTier(clerkId, 'FREE')
     if (tierDenied) return tierDenied
-    authedUserId = userId
+    authedUserId = user.id
 
     // Rate limit: 20 AI generate requests per minute per user
     try {
-      const rl = await aiRateLimit(userId)
+      const rl = await aiRateLimit(clerkId)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait before submitting another generation.' },

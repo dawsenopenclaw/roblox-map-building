@@ -29,14 +29,20 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
+import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { requireTier } from '@/lib/tier-guard'
 import { aiImageRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { IMAGE_STYLE_KEYS, getImageStyle } from '@/lib/image-styles'
 import { enhancePrompt } from '@/lib/ai/prompt-enhancer'
+import { spendTokens } from '@/lib/tokens-server'
 import { z } from 'zod'
 
 export const maxDuration = 120
+
+// Per-image credit cost. Charged once per generation call, multiplied by the
+// caller-requested `count`. Matches the audio cost scale (music=30, sfx=10) so
+// a batch of images lands in the same ballpark as a single sfx clip.
+const IMAGE_CREDIT_COST = 5
 
 // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -206,9 +212,14 @@ function buildDemoImages(count: number, prompt: string, style: string) {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Auth + rate limit ───────────────────────────────────────────────────
+  // `dbUser` is null in DEMO_MODE so we can skip the per-image credit charge.
+  let dbUserId: string | null = null
   if (process.env.DEMO_MODE !== 'true') {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authResult = await getDbUserOrUnauthorized()
+    if ('response' in authResult) return authResult.response
+    const { user, clerkId: userId } = authResult
+    dbUserId = user.id
+
     const tierDenied = await requireTier(userId, 'HOBBY')
     if (tierDenied) return tierDenied
 
@@ -284,6 +295,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       status: 'demo',
       message: 'Set FAL_KEY to generate real images via Fal AI',
     })
+  }
+
+  // ── Credits: charge up front (skipped in DEMO_MODE) ─────────────────────
+  // Charged per image multiplied by count. Failed generation is NOT auto-
+  // refunded — matches the music/sfx pipeline behaviour. A 402 response
+  // signals insufficient balance so the client can prompt for a top-up.
+  const creditsToCharge = IMAGE_CREDIT_COST * count
+  if (dbUserId) {
+    try {
+      await spendTokens(dbUserId, creditsToCharge, 'ai.image.generate', {
+        prompt: prompt.slice(0, 120),
+        style,
+        count,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Credit charge failed'
+      return NextResponse.json({ error: message }, { status: 402 })
+    }
   }
 
   // ── Generate ──────────────────────────────────────────────────────────

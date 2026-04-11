@@ -135,11 +135,22 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
+function safeErrorMessage(err: unknown): string {
+  // In production, never leak raw error details (stack traces, env var names,
+  // internal paths) to the plugin. Verbose messages remain in dev for
+  // debugging.
+  if (process.env.NODE_ENV === 'production') {
+    return 'An internal error occurred. Please try again.'
+  }
+  return err instanceof Error ? err.message : String(err)
+}
+
 export async function GET(req: NextRequest) {
   try { return await handleSync(req) } catch (err) {
     // NEVER return 500 with empty body — plugin can't parse it
+    console.error('[studio/sync] handler error:', err)
     return NextResponse.json(
-      { serverTime: Date.now(), heartbeat: false, changes: [], error: 'internal', message: String(err) },
+      { serverTime: Date.now(), heartbeat: false, changes: [], error: 'internal', message: safeErrorMessage(err) },
       { status: 200, headers: CORS_HEADERS },
     )
   }

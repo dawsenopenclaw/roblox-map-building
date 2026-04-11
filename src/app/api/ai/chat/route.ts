@@ -20,6 +20,7 @@ import {
 } from '@/lib/roblox-asset-search'
 import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
+import { db } from '@/lib/db'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
@@ -6210,7 +6211,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     if (userId) {
-      authedUserId = userId
+      // Resolve Clerk session id -> internal DB User.id (cuid). spendTokens,
+      // getTokenBalance, and Prisma writes all key off User.id — passing the
+      // raw Clerk id causes "user not found" errors at runtime.
+      try {
+        const dbUser = await db.user.findUnique({
+          where: { clerkId: userId },
+          select: { id: true },
+        })
+        if (dbUser) {
+          authedUserId = dbUser.id
+        }
+      } catch {
+        // DB unavailable — leave authedUserId null so token-spend branches skip
+      }
 
       // Admin bypass: check if this user's email is in ADMIN_EMAILS.
       // Admins skip all token spend/balance checks so they can test freely.

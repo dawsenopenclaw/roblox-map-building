@@ -19,12 +19,16 @@
  *
  * DEPENDENCY NOTE — mesh-pipeline / audio-pipeline
  * ------------------------------------------------
- * This file imports from './mesh-pipeline' and './audio-pipeline', which are
- * being built by parallel agents. Those modules may not exist on disk at the
- * exact moment tsc runs against this file. We import them lazily inside the
- * dispatch functions (via dynamic `import()`), and we declare their module
- * shapes near the top of this file so the rest of the code stays type-safe
- * without needing the files to exist.
+ * Previously these were loaded via dynamic `import()` because the pipeline
+ * modules were being built by parallel agents. Vercel's bundler does not
+ * always include dynamically-imported server modules in the route bundle,
+ * which caused "module not found" runtime errors in production.
+ *
+ * They are now imported statically at the top of this file. The module
+ * shape is still asserted via `as unknown as` coercion inside the
+ * dispatch functions so the contract declared here (PipelineCallInput /
+ * PipelineCallResult) is what the dispatcher sees, regardless of the real
+ * exports in each pipeline file.
  */
 
 import 'server-only'
@@ -32,6 +36,8 @@ import { z } from 'zod'
 import { callAI } from '@/lib/ai/provider'
 import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
 import { INTENT_DETECTION_SYSTEM_PROMPT } from '@/lib/asset-director-prompts'
+import * as meshPipelineModule from './mesh-pipeline'
+import * as audioPipelineModule from './audio-pipeline'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -153,26 +159,23 @@ interface AudioPipelineModule {
   generateVoice: (input: PipelineCallInput) => Promise<PipelineCallResult>
 }
 
-// Cache dynamic imports so we don't re-hit the module loader for every job.
-let meshPipelineModulePromise:  Promise<MeshPipelineModule>  | null = null
-let audioPipelineModulePromise: Promise<AudioPipelineModule> | null = null
+// Static imports are bundled by Vercel (unlike dynamic `import()` which
+// historically caused "module not found" runtime errors). The `as unknown
+// as` coercion keeps the rest of the dispatcher pinned to the contract
+// declared in this file rather than leaking the real pipeline signatures
+// (which differ — e.g. generateMeshFromPrompt takes GenerateMeshParams,
+// not PipelineCallInput) through the public surface of asset-director.
+const meshPipeline: MeshPipelineModule =
+  meshPipelineModule as unknown as MeshPipelineModule
+const audioPipeline: AudioPipelineModule =
+  audioPipelineModule as unknown as AudioPipelineModule
 
-async function loadMeshPipeline(): Promise<MeshPipelineModule> {
-  if (!meshPipelineModulePromise) {
-    // Dynamic import keeps tsc happy if the module hasn't landed yet —
-    // the type assertion aligns the unknown module shape with our contract.
-    meshPipelineModulePromise = import('./mesh-pipeline' as string)
-      .then((mod) => mod as unknown as MeshPipelineModule)
-  }
-  return meshPipelineModulePromise
+function loadMeshPipeline(): MeshPipelineModule {
+  return meshPipeline
 }
 
-async function loadAudioPipeline(): Promise<AudioPipelineModule> {
-  if (!audioPipelineModulePromise) {
-    audioPipelineModulePromise = import('./audio-pipeline' as string)
-      .then((mod) => mod as unknown as AudioPipelineModule)
-  }
-  return audioPipelineModulePromise
+function loadAudioPipeline(): AudioPipelineModule {
+  return audioPipeline
 }
 
 // ── Step 1: Intent detection ──────────────────────────────────────────────────
@@ -304,19 +307,19 @@ async function dispatchIntent(
 
   switch (intent.type) {
     case 'mesh': {
-      const mod = await loadMeshPipeline()
+      const mod = loadMeshPipeline()
       return mod.generateMeshFromPrompt(input)
     }
     case 'music': {
-      const mod = await loadAudioPipeline()
+      const mod = loadAudioPipeline()
       return mod.generateMusic(input)
     }
     case 'sfx': {
-      const mod = await loadAudioPipeline()
+      const mod = loadAudioPipeline()
       return mod.generateSFX(input)
     }
     case 'voice': {
-      const mod = await loadAudioPipeline()
+      const mod = loadAudioPipeline()
       return mod.generateVoice(input)
     }
     case 'texture': {

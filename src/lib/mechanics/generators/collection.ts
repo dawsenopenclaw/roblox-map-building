@@ -1,4 +1,6 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
+import { safeLuaString } from '../../luau/string'
 
 export interface CollectibleItem {
   id: string
@@ -28,14 +30,18 @@ export function generateCollectionMechanic(
           { id: 'goldOre', name: 'Gold Ore', reward: 50, respawnSeconds: 30 },
         ]
 
-  const currencyModule = opts.currencyModule ?? 'CoinsService'
-  const folderName = opts.folder ?? 'Collectibles'
+  const currencyModule = safeLuaIdentifier(opts.currencyModule ?? 'CoinsService', 'CoinsService')
+  const folderName = safeLuaIdentifier(opts.folder ?? 'Collectibles', 'Collectibles')
 
   const itemsLua = list
-    .map(
-      (i) =>
-        `    ${i.id} = { id = "${i.id}", name = "${i.name}", reward = ${i.reward}, respawn = ${i.respawnSeconds ?? 10} },`,
-    )
+    .map((i) => {
+      const key = safeLuaIdentifier(i.id, 'item')
+      const idLit = safeLuaString(i.id)
+      const nameLit = safeLuaString(i.name)
+      const reward = Number.isFinite(i.reward) ? i.reward : 0
+      const respawn = Number.isFinite(i.respawnSeconds ?? 10) ? (i.respawnSeconds ?? 10) : 10
+      return `    ${key} = { id = "${idLit}", name = "${nameLit}", reward = ${reward}, respawn = ${respawn} },`
+    })
     .join('\n')
 
   const luauCode = `--!strict

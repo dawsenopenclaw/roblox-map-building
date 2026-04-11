@@ -111,6 +111,26 @@ export async function PUT(
     return NextResponse.json({ error: 'Session not found' }, { status: 404 })
   }
 
+  // Optional optimistic-concurrency check via If-Match. When the client sends
+  // the updatedAt timestamp it last observed, we reject stale writes with 409.
+  // Legacy clients that don't send the header continue to work unchanged
+  // (last-write-wins) for backwards compatibility.
+  const ifMatch = req.headers.get('if-match')
+  if (ifMatch) {
+    const currentTag = existing.updatedAt.toISOString()
+    // Accept both raw ISO and quoted ETag forms (e.g. `"2026-..."`).
+    const normalized = ifMatch.replace(/^"(.*)"$/, '$1')
+    if (normalized !== currentTag) {
+      return NextResponse.json(
+        {
+          error: 'Conflict: session has been modified since you last loaded it.',
+          currentUpdatedAt: currentTag,
+        },
+        { status: 409 },
+      )
+    }
+  }
+
   try {
     const result = await saveSession(userId, {
       id: sessionId,

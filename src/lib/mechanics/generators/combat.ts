@@ -1,4 +1,6 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
+import { safeLuaString } from '../../luau/string'
 
 export interface Weapon {
   id: string
@@ -23,10 +25,15 @@ export function generateCombatMechanic(weapons: Weapon[] = []): GameMechanic {
         ]
 
   const weaponsLuau = list
-    .map(
-      (w) =>
-        `    ${w.id} = { id = "${w.id}", name = "${w.name}", damage = ${w.damage}, cooldown = ${w.cooldown}, range = ${w.range} },`,
-    )
+    .map((w) => {
+      const key = safeLuaIdentifier(w.id, 'weapon')
+      const idLit = safeLuaString(w.id)
+      const nameLit = safeLuaString(w.name)
+      const dmg = Number.isFinite(w.damage) ? w.damage : 0
+      const cd = Number.isFinite(w.cooldown) ? w.cooldown : 1
+      const rng = Number.isFinite(w.range) ? w.range : 0
+      return `    ${key} = { id = "${idLit}", name = "${nameLit}", damage = ${dmg}, cooldown = ${cd}, range = ${rng} },`
+    })
     .join('\n')
 
   const luauCode = `--!strict

@@ -1,4 +1,5 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
 
 /**
  * Global OrderedDataStore leaderboard for a named stat.
@@ -12,7 +13,7 @@ export function generateLeaderboardMechanic(
   stat: string = 'Coins',
   opts: { top?: number } = {},
 ): GameMechanic {
-  const safeStat = stat.replace(/[^A-Za-z0-9]/g, '') || 'Coins'
+  const safeStat = safeLuaIdentifier(stat, 'Coins')
   const top = opts.top ?? 100
 
   const luauCode = `--!strict

@@ -36,7 +36,15 @@ const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 // STUDIO_AUTH_SECRET MUST be set in Vercel environment variables.
 // If it is missing each Lambda cold-start gets a different secret, so session
 // JWTs issued by one Lambda are rejected by every other Lambda.
-const SECRET: string = (() => {
+//
+// IMPORTANT: The secret is read LAZILY via `getStudioSecret()` instead of at
+// module load time. On Vercel's bundler, reading env vars at module top-level
+// can resolve before the runtime env is injected on some cold-start paths,
+// especially when the file is pulled into a client bundle or edge shim. The
+// lazy read guarantees we always see the request-time environment.
+let cachedSecret: string | null = null
+function getStudioSecret(): string {
+  if (cachedSecret) return cachedSecret
   // CLERK_SECRET_KEY is used as a fallback so that deployments which already
   // have Clerk configured get a stable secret without requiring a separate env
   // var. Coupling risk: if CLERK_SECRET_KEY is rotated, all existing Studio
@@ -50,10 +58,12 @@ const SECRET: string = (() => {
       'Using a per-process random secret — tokens from other Lambda instances ' +
       'will be rejected. Set STUDIO_AUTH_SECRET in Vercel environment variables.',
     )
+    cachedSecret = fallback
     return fallback
   }
+  cachedSecret = s
   return s
-})()
+}
 
 // ── Pending code store ────────────────────────────────────────────────────────
 // Survives Next.js hot-reloads via globalThis. Shared across invocations on
@@ -258,7 +268,7 @@ function buildSessionJwt(opts: {
   }
   const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url')
   const sig = crypto
-    .createHmac('sha256', SECRET)
+    .createHmac('sha256', getStudioSecret())
     .update(payloadB64)
     .digest('base64url')
   return `${payloadB64}.${sig}`
@@ -289,7 +299,7 @@ export async function GET(req: NextRequest) {
     const expiresAt = Date.now() + CODE_TTL_MS
 
     // Sign the code so the client can use it for claim verification
-    const hmac = crypto.createHmac('sha256', SECRET).update(`${code}:${expiresAt}`).digest('hex').slice(0, 16)
+    const hmac = crypto.createHmac('sha256', getStudioSecret()).update(`${code}:${expiresAt}`).digest('hex').slice(0, 16)
     const token = Buffer.from(`${code}:${expiresAt}:${hmac}`).toString('base64url')
 
     // Store in memory (same Lambda) and Redis (cross-Lambda)

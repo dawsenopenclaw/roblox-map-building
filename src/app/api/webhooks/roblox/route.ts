@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 
 // ── Robux credit amounts (must match billing/robux route) ───────────────────
 
@@ -128,18 +129,51 @@ export async function POST(req: NextRequest) {
     const { db } = await import('@/lib/db')
     const { earnTokens } = await import('@/lib/tokens-server')
 
-    // Idempotency: for DevProduct purchases, check purchaseId to prevent double-crediting
+    // Idempotency gate — serializable transaction + conditional check prevents
+    // concurrent deliveries of the same purchase from both passing the guard
+    // and double-crediting. We look for an existing marker first and then
+    // insert a reservation row in the same tx. Conflicting concurrent calls
+    // will serialization-fail and be treated as duplicates.
+    const idemKey = body.type === 'gamepass_purchase' && body.gamePassId
+      ? `${body.robloxUserId}_${body.gamePassId}`
+      : null
+
     if (body.type === 'devproduct_purchase' && body.purchaseId) {
-      const existing = await db.auditLog.findFirst({
-        where: {
-          action: 'ROBUX_PURCHASE_COMPLETED',
-          metadata: { path: ['purchaseId'], equals: body.purchaseId },
-        },
-        select: { id: true },
-      })
-      if (existing) {
-        console.info('[roblox-webhook] Duplicate purchaseId, skipping:', body.purchaseId)
-        return NextResponse.json({ received: true, duplicate: true })
+      try {
+        const firstDelivery = await db.$transaction(
+          async (tx) => {
+            const existing = await tx.auditLog.findFirst({
+              where: {
+                action: 'ROBUX_PURCHASE_COMPLETED',
+                metadata: { path: ['purchaseId'], equals: body.purchaseId },
+              },
+              select: { id: true },
+            })
+            if (existing) return false
+            // Reserve the idempotency slot immediately so concurrent deliveries
+            // either see this row or hit a serialization failure.
+            await tx.auditLog.create({
+              data: {
+                action: 'ROBUX_PURCHASE_RESERVED',
+                resource: 'robux',
+                resourceId: `reserve_${body.purchaseId}`,
+                metadata: { purchaseId: body.purchaseId, tier: body.tier },
+              },
+            })
+            return true
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        )
+        if (!firstDelivery) {
+          console.info('[roblox-webhook] Duplicate purchaseId, skipping:', body.purchaseId)
+          return NextResponse.json({ received: true, duplicate: true })
+        }
+      } catch (err) {
+        const code = (err as { code?: string } | null)?.code
+        if (code === 'P2034' || /40001|serialization/i.test(String(err))) {
+          return NextResponse.json({ received: true, duplicate: true })
+        }
+        throw err
       }
     }
 
@@ -149,34 +183,57 @@ export async function POST(req: NextRequest) {
     // purchase of the same GamePass by a DIFFERENT user was silently
     // dropped as a "duplicate". We store the composite on the audit log
     // row below as `gamePassIdemKey` and look it up here.
-    if (body.type === 'gamepass_purchase' && body.gamePassId) {
-      const idemKey = `${body.robloxUserId}_${body.gamePassId}`
-      const existing = await db.auditLog.findFirst({
-        where: {
-          action: 'ROBUX_PURCHASE_COMPLETED',
-          metadata: {
-            path: ['gamePassIdemKey'],
-            equals: idemKey,
+    if (body.type === 'gamepass_purchase' && body.gamePassId && idemKey) {
+      try {
+        const firstDelivery = await db.$transaction(
+          async (tx) => {
+            const existing = await tx.auditLog.findFirst({
+              where: {
+                action: 'ROBUX_PURCHASE_COMPLETED',
+                metadata: { path: ['gamePassIdemKey'], equals: idemKey },
+              },
+              select: { id: true },
+            })
+            if (existing) return false
+            await tx.auditLog.create({
+              data: {
+                action: 'ROBUX_PURCHASE_RESERVED',
+                resource: 'robux',
+                resourceId: `reserve_${idemKey}`,
+                metadata: { gamePassIdemKey: idemKey, tier: body.tier },
+              },
+            })
+            return true
           },
-        },
-        select: { id: true },
-      })
-      if (existing) {
-        console.info('[roblox-webhook] Duplicate gamepass purchase, skipping:', idemKey)
-        return NextResponse.json({ received: true, duplicate: true })
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        )
+        if (!firstDelivery) {
+          console.info('[roblox-webhook] Duplicate gamepass purchase, skipping:', idemKey)
+          return NextResponse.json({ received: true, duplicate: true })
+        }
+      } catch (err) {
+        const code = (err as { code?: string } | null)?.code
+        if (code === 'P2034' || /40001|serialization/i.test(String(err))) {
+          return NextResponse.json({ received: true, duplicate: true })
+        }
+        throw err
       }
     }
 
     // Find the ForjeGames user linked to this Roblox account.
     // Users link their Roblox account via the settings page, which stores
-    // the robloxUserId on the user record.
+    // the robloxUserId on the user record. We OR in robloxUsername as a
+    // secondary match, but only when the payload actually includes one —
+    // otherwise a null username would match every user whose robloxUsername
+    // column is NULL.
+    const userOrClauses: Prisma.UserWhereInput[] = [
+      { robloxUserId: String(body.robloxUserId) },
+    ]
+    if (body.robloxUsername && body.robloxUsername.length > 0) {
+      userOrClauses.push({ robloxUsername: body.robloxUsername })
+    }
     const user = await db.user.findFirst({
-      where: {
-        OR: [
-          { robloxUserId: String(body.robloxUserId) },
-          { robloxUsername: body.robloxUsername ?? '__no_match__' },
-        ],
-      },
+      where: { OR: userOrClauses },
       select: { id: true, clerkId: true },
     })
 

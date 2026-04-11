@@ -1,4 +1,5 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
 
 /**
  * Inventory mechanic — slot-based per-player inventory with DataStore persistence.
@@ -9,7 +10,7 @@ export function generateInventoryMechanic(
   name: string = 'PlayerInventory',
   opts: { maxSlots?: number; defaultStackSize?: number } = {},
 ): GameMechanic {
-  const safeName = name.replace(/[^A-Za-z0-9]/g, '') || 'PlayerInventory'
+  const safeName = safeLuaIdentifier(name, 'PlayerInventory')
   const maxSlots = opts.maxSlots ?? 50
   const stackSize = opts.defaultStackSize ?? 99
 

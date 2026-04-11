@@ -474,22 +474,32 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
 
 // ── Studio command push ───────────────────────────────────────────────────────
 
-function pushToStudio(sessionId: string, taskId: string, luauCode: string): void {
-  // queueCommand is now async — fire and forget; errors are logged
-  queueCommand(sessionId, {
-    type: 'execute_luau',
-    data: {
-      source: luauCode,
-      taskId,
-      origin: 'build_executor',
-    },
-  }).then((result) => {
+/**
+ * Queue a Luau execute command for the Studio session.
+ *
+ * Returns a Promise so the caller can `await` it — previously this was
+ * fire-and-forget (`pushToStudio(...)` returned void, the promise chain
+ * was orphaned), which meant on Vercel serverless the lambda could exit
+ * mid-queue and the command would silently drop. Awaiting the returned
+ * promise from inside `executeTask` (which runs under `Promise.allSettled`
+ * in `executeWave`) keeps the lambda alive until every push completes.
+ */
+async function pushToStudio(sessionId: string, taskId: string, luauCode: string): Promise<void> {
+  try {
+    const result = await queueCommand(sessionId, {
+      type: 'execute_luau',
+      data: {
+        source: luauCode,
+        taskId,
+        origin: 'build_executor',
+      },
+    })
     if (!result.ok) {
       console.warn(`[build-executor] Failed to push task ${taskId} to Studio: ${result.error}`)
     }
-  }).catch((err: unknown) => {
+  } catch (err: unknown) {
     console.warn(`[build-executor] queueCommand threw for task ${taskId}:`, err)
-  })
+  }
 }
 
 // ── Single task executor ──────────────────────────────────────────────────────
@@ -536,9 +546,10 @@ async function executeTask(
         console.warn(`[build-executor] Token spend failed for task ${task.id}:`, err)
       })
 
-      // Push to Studio if session is connected
+      // Push to Studio if session is connected. Awaited so Vercel keeps
+      // the lambda alive until the command is actually enqueued.
       if (sessionId && luauCode.length > 0) {
-        pushToStudio(sessionId, task.id, luauCode)
+        await pushToStudio(sessionId, task.id, luauCode)
       }
 
       taskProgress.luauCode = luauCode
@@ -617,6 +628,13 @@ export async function executeBuildPlan(
 
   await writeProgress(initialProgress)
 
+  // TODO(vercel-compat): This fire-and-forget background task will be killed
+  // when the Vercel lambda exits. The API contract returns `{ buildId }`
+  // immediately and the client polls via Redis, so we can't just await this.
+  // Proper fix: wire up `waitUntil()` from `@vercel/functions` in the
+  // caller route (src/app/api/ai/build/execute/route.ts) by passing it a
+  // promise returned from this function. Until then, rely on the Redis
+  // progress state being persisted eagerly so the client can recover.
   // Run in background — do not await
   void (async () => {
     try {

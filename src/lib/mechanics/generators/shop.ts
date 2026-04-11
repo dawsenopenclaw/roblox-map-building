@@ -1,4 +1,6 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
+import { safeLuaString } from '../../luau/string'
 
 export interface ShopItem {
   id: string
@@ -17,9 +19,9 @@ export function generateShopMechanic(
   items: ShopItem[] = [],
   opts: { currencyModule?: string; inventoryModule?: string } = {},
 ): GameMechanic {
-  const safeName = name.replace(/[^A-Za-z0-9]/g, '') || 'MainShop'
-  const currencyModule = opts.currencyModule ?? 'CoinsService'
-  const inventoryModule = opts.inventoryModule ?? 'PlayerInventory'
+  const safeName = safeLuaIdentifier(name, 'MainShop')
+  const currencyModule = safeLuaIdentifier(opts.currencyModule ?? 'CoinsService', 'CoinsService')
+  const inventoryModule = safeLuaIdentifier(opts.inventoryModule ?? 'PlayerInventory', 'PlayerInventory')
 
   const defaultItems: ShopItem[] =
     items.length > 0
@@ -142,5 +144,5 @@ return { Items = ITEMS }
 }
 
 function q(s: string): string {
-  return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  return `"${safeLuaString(s)}"`
 }

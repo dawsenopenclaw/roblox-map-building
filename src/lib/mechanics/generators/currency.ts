@@ -1,4 +1,5 @@
 import type { GameMechanic } from '../../orchestrator/types'
+import { safeLuaIdentifier } from '../../luau/identifier'
 
 /**
  * Currency mechanic generator.
@@ -11,7 +12,7 @@ import type { GameMechanic } from '../../orchestrator/types'
  *   - Debounced writes
  */
 export function generateCurrencyMechanic(name: string = 'Coins'): GameMechanic {
-  const safeName = sanitize(name)
+  const safeName = safeLuaIdentifier(name, 'Coins')
   const dsName = `${safeName}V1`
   const scriptPath = `ServerScriptService/Economy/${safeName}Service.lua`
 
@@ -175,6 +176,3 @@ return ${safeName}Service
   }
 }
 
-function sanitize(s: string): string {
-  return s.replace(/[^A-Za-z0-9]/g, '') || 'Coins'
-}

@@ -40,6 +40,23 @@ interface WSConnection {
   userId: string
   connectedAt: number
   lastPing: number
+  /**
+   * Origin (e.g. "https://forjegames.com") captured from the upgrade request.
+   * Used to build absolute URLs for server-to-server internal fetches.
+   */
+  origin?: string
+  /**
+   * Authorization header from the upgrade request. Forwarded verbatim on
+   * internal fetches so the downstream Clerk middleware sees the same
+   * credentials as the original request.
+   */
+  authHeader?: string
+  /**
+   * Cookie header from the upgrade request. Clerk's Next.js middleware
+   * reads the session from `__session` / `__clerk_*` cookies, so this
+   * must be propagated unchanged for downstream auth to succeed.
+   */
+  cookieHeader?: string
 }
 
 // Global connection store — keyed by userId for targeted messaging.
@@ -187,10 +204,23 @@ async function handleMessage(
           headers['x-studio-session'] = String(message.studioSessionId)
         }
 
+        // Propagate Clerk auth from the original WS upgrade request.
+        // The downstream /api/ai/chat route resolves the user via
+        // `auth()` (Clerk middleware), which reads either the
+        // Authorization bearer token or the session cookies. Without
+        // these headers the forwarded fetch is unauthenticated and
+        // spendTokens/user-scoped writes fail.
+        if (conn.authHeader) {
+          headers['Authorization'] = conn.authHeader
+        }
+        if (conn.cookieHeader) {
+          headers['Cookie'] = conn.cookieHeader
+        }
+
         // Determine the base URL for internal API calls.
         // On edge runtime we don't have req.nextUrl easily here, so we
         // use the origin from the upgrade request stored on the connection.
-        const origin = (conn as WSConnection & { origin?: string }).origin || ''
+        const origin = conn.origin || ''
         const chatUrl = origin ? `${origin}/api/ai/chat` : '/api/ai/chat'
 
         const res = await fetch(chatUrl, {
@@ -362,13 +392,21 @@ export async function GET(req: NextRequest): Promise<Response> {
   // Derive the origin for internal API calls
   const origin = req.nextUrl.origin
 
+  // Capture Clerk auth from the upgrade request so the chat-forwarding
+  // code can replay it on internal fetches. Without this the downstream
+  // /api/ai/chat route runs as an anonymous user.
+  const authHeader  = req.headers.get('authorization') ?? undefined
+  const cookieHeader = req.headers.get('cookie')        ?? undefined
+
   // Create connection record
-  const conn: WSConnection & { origin: string } = {
+  const conn: WSConnection = {
     socket: server,
     userId,
     connectedAt: Date.now(),
     lastPing: Date.now(),
     origin,
+    authHeader,
+    cookieHeader,
   }
 
   // Register connection
