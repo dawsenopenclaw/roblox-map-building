@@ -1,5 +1,5 @@
 --[[
-    ForjeGames Studio Plugin  v4.0.0
+    ForjeGames Studio Plugin  v4.6.0
     ================================
     Bridge between the ForjeGames web editor and Roblox Studio.
 
@@ -9,14 +9,19 @@
       3. Poll loop — GET /api/studio/sync every 1 s; execute returned commands
       4. Context   — push workspace snapshot to the server every 2 s via sync params
       5. Screenshot — capture viewport every 8 s and POST as base64 PNG
+      6. Output log — subscribe to LogService.MessageOut into a ring buffer so
+                      cmdGetOutput can return recent Studio console messages
+                      back to the web editor for error analysis.
 
     All HTTP calls are pcall-wrapped with exponential back-off.
-    All loadstring execution is pcall-wrapped with ChangeHistoryService recording.
+    loadstring execution is gated by the 'ForjeGames_AllowLoadstring' plugin
+    setting (defaults to true today; set to false to force the structured-
+    commands path required for Creator Store distribution).
     All server data is validated before use — never trust the response payload.
 
     External dependencies (Roblox Services only — no external libraries):
       HttpService, ChangeHistoryService, CollectionService, InsertService,
-      SelectionService, RunService, UserInputService
+      SelectionService, RunService, UserInputService, LogService, SoundService
 ]]
 
 -- ─── Services ──────────────────────────────────────────────────────────────────
@@ -28,6 +33,9 @@ local SelectionService     = game:GetService("Selection")
 local RunService           = game:GetService("RunService")
 local StudioService        = game:GetService("StudioService")
 local CoreGui              = game:GetService("CoreGui")
+local LogService           = game:GetService("LogService")
+local SoundService         = game:GetService("SoundService")
+local ServerStorage        = game:GetService("ServerStorage")
 
 -- ─── Constants ─────────────────────────────────────────────────────────────────
 local PLUGIN_VERSION      = "4.6.0"
@@ -41,6 +49,8 @@ local MAX_BACKOFF_S       = 30                  -- cap on exponential back-off
 local MAX_RECONNECT_TRIES = 5                   -- attempts before giving up
 local ACTIVITY_LOG_MAX    = 10                  -- entries kept in the activity log
 local SCREENSHOT_MAX_PARTS = 200               -- workspace parts threshold for screenshot hash
+local OUTPUT_LOG_MAX      = 200                 -- entries kept in the LogService ring buffer
+local LOADSTRING_SETTING  = "ForjeGames_AllowLoadstring" -- plugin setting name
 
 -- ─── Mutable State ─────────────────────────────────────────────────────────────
 -- All mutable state lives inside this module-level table so nothing leaks to _G.
@@ -73,6 +83,19 @@ local State = {
     -- Screenshot
     lastScreenshotHash = "",
     lastScreenshotTime = 0,
+
+    -- Output log ring buffer — captured from LogService.MessageOut so
+    -- cmdGetOutput can relay recent Studio console messages to the web
+    -- editor for error analysis in the agentic loop.
+    outputLog = {},              -- { time: number, text: string, type: string }[]
+    outputLogSeq = 0,            -- monotonic sequence so the server can drop duplicates
+
+    -- Playtest mode flag — the plugin cannot actually press Studio's Play
+    -- button (that is a user-driven action) so cmdStartPlaytest / cmdStopPlaytest
+    -- are lightweight session markers only. Real play simulation runs via
+    -- execute_luau wrapping user code in a test harness; see agentic-playtest.ts.
+    playtestActive = false,
+    playtestStartedAt = 0,
 
     -- Last context send timestamp (for debounce)
     lastContextSend = 0,
@@ -376,10 +399,29 @@ local function getCamera()
     return workspace.CurrentCamera
 end
 
+-- Read the loadstring gate. Defaults to TRUE (backwards compatible) so existing
+-- users aren't broken by the upgrade. Flip to false to force the structured-
+-- commands path required for Creator Store distribution. The setting can be
+-- toggled from Studio's plugin settings panel without reinstalling.
+local function isLoadstringAllowed()
+    local ok, val = pcall(function()
+        return plugin:GetSetting(LOADSTRING_SETTING)
+    end)
+    if not ok then return true end  -- fail open for backwards compat
+    -- plugin:GetSetting returns nil for never-set keys — default true in that case
+    if val == nil then return true end
+    return val == true
+end
+
 -- execute_luau — run arbitrary Luau code sent from the web editor
 local function cmdExecuteLuau(data)
     if not State.features.executeCode then
         return false, "executeCode feature is disabled"
+    end
+    if not isLoadstringAllowed() then
+        return false, "loadstring is disabled on this plugin (Creator Store edition). " ..
+                      "Set the ForjeGames_AllowLoadstring plugin setting to true, or have the " ..
+                      "server send a 'structured_commands' command instead."
     end
 
     local code = data.code
@@ -696,6 +738,285 @@ local function cmdScanWorkspace(data)
     return true, nil, tree
 end
 
+-- structured_commands — interpret a list of high-level scene mutations.
+-- This is the Creator Store path — loadstring is forbidden on the store so
+-- the server transpiles Luau to a short command list that this function
+-- executes via real Roblox APIs. Each command is a table of shape:
+--   { op = "create_part", name?, parent?, props? = { position, size, color, material, ... } }
+--   { op = "create_model", name?, parent? }
+--   { op = "create_instance", className, name?, parent?, props? }
+--   { op = "set_property", path, property, value, valueType? }
+--   { op = "delete_named", name, parent? } / { op = "delete_path", path }
+--   { op = "insert_asset", assetId, properties? }
+--   { op = "clone_instance", path, name?, parent? }
+local function cmdStructuredCommands(data)
+    local commands = data.commands
+    if type(commands) ~= "table" then
+        return false, "data.commands must be an array"
+    end
+
+    local recording
+    pcall(function()
+        recording = ChangeHistoryService:TryBeginRecording("ForjeAI: Structured Commands")
+    end)
+
+    local executed = 0
+    local failed   = 0
+    local results  = {}
+
+    -- Resolve "parent" spec — accepts Instance path string or a class-name
+    -- shortcut like "Workspace" / "ServerStorage" / "ReplicatedStorage".
+    local function resolveParent(spec)
+        if not spec or spec == "" or spec == "Workspace" then
+            return game:GetService("Workspace")
+        end
+        local svcOk, svc = pcall(function() return game:GetService(spec) end)
+        if svcOk and svc then return svc end
+        return resolveInstancePath(spec) or game:GetService("Workspace")
+    end
+
+    for i, cmd in ipairs(commands) do
+        local op = tostring(cmd.op or "")
+        local ok, err = pcall(function()
+            if op == "create_part" then
+                local part = Instance.new("Part")
+                part.Anchored = true
+                part.Name = tostring(cmd.name or "ForjePart")
+                local props = cmd.props or {}
+                if props.size then
+                    part.Size = Vector3.new(props.size.X or props.size[1] or 4, props.size.Y or props.size[2] or 1, props.size.Z or props.size[3] or 4)
+                end
+                if props.position then
+                    part.Position = Vector3.new(props.position.X or props.position[1] or 0, props.position.Y or props.position[2] or 0, props.position.Z or props.position[3] or 0)
+                end
+                if props.color then
+                    part.Color = Color3.new(props.color.R or props.color[1] or 1, props.color.G or props.color[2] or 1, props.color.B or props.color[3] or 1)
+                end
+                if props.material then
+                    pcall(function() part.Material = Enum.Material[props.material] end)
+                end
+                if props.transparency then part.Transparency = tonumber(props.transparency) or 0 end
+                CollectionService:AddTag(part, PLUGIN_TAG)
+                part.Parent = resolveParent(cmd.parent)
+
+            elseif op == "create_model" then
+                local m = Instance.new("Model")
+                m.Name = tostring(cmd.name or "ForjeModel")
+                CollectionService:AddTag(m, PLUGIN_TAG)
+                m.Parent = resolveParent(cmd.parent)
+
+            elseif op == "create_instance" then
+                local cls = tostring(cmd.className or "")
+                if cls == "" then error("create_instance needs className") end
+                local inst = Instance.new(cls)
+                inst.Name = tostring(cmd.name or cls)
+                if type(cmd.props) == "table" then
+                    for k, v in pairs(cmd.props) do
+                        pcall(function() inst[k] = v end)
+                    end
+                end
+                CollectionService:AddTag(inst, PLUGIN_TAG)
+                inst.Parent = resolveParent(cmd.parent)
+
+            elseif op == "set_property" then
+                local target = resolveInstancePath(cmd.path)
+                if not target then error("set_property: instance not found at " .. tostring(cmd.path)) end
+                local coerced = coerceValue(tostring(cmd.valueType or ""), cmd.value)
+                target[tostring(cmd.property or "")] = coerced
+
+            elseif op == "delete_named" then
+                local parent = resolveParent(cmd.parent)
+                local target = parent:FindFirstChild(tostring(cmd.name or ""))
+                if target then target:Destroy() end
+
+            elseif op == "delete_path" then
+                local target = resolveInstancePath(cmd.path)
+                if target then target:Destroy() end
+
+            elseif op == "insert_asset" then
+                local subOk, subErr = cmdInsertAsset({
+                    assetId    = cmd.assetId,
+                    properties = cmd.properties,
+                })
+                if not subOk then error(tostring(subErr)) end
+
+            elseif op == "clone_instance" then
+                local src = resolveInstancePath(cmd.path)
+                if not src then error("clone_instance: source not found at " .. tostring(cmd.path)) end
+                local clone = src:Clone()
+                if cmd.name then clone.Name = tostring(cmd.name) end
+                CollectionService:AddTag(clone, PLUGIN_TAG)
+                clone.Parent = resolveParent(cmd.parent)
+
+            else
+                error("Unknown structured op: " .. op)
+            end
+        end)
+
+        if ok then
+            executed += 1
+            table.insert(results, { index = i, op = op, ok = true })
+        else
+            failed += 1
+            table.insert(results, { index = i, op = op, ok = false, error = tostring(err) })
+        end
+    end
+
+    pcall(function()
+        if recording then
+            local finishOp = (failed == 0)
+                and Enum.FinishRecordingOperation.Commit
+                or  Enum.FinishRecordingOperation.Commit  -- still commit partial work for debuggability
+            ChangeHistoryService:FinishRecording(recording, finishOp)
+        end
+    end)
+
+    State.commandsExecuted += executed
+    State.partsPlaced += executed
+
+    if failed > 0 then
+        return false, string.format("%d/%d structured commands failed", failed, #commands), results
+    end
+    return true, nil, results
+end
+
+-- start_playtest — lightweight session marker. The plugin cannot actually press
+-- Studio's Play button from plugin context, so "playtest" in our agentic loop
+-- means "run user code in the edit session via the execute_luau harness and
+-- watch for errors / scene changes". This handler just sets a flag so the
+-- server knows the session is in test mode, and optionally executes a harness
+-- block passed in data.harness.
+local function cmdStartPlaytest(data)
+    State.playtestActive = true
+    State.playtestStartedAt = tick()
+    logActivity("Playtest started")
+
+    -- Optional harness code that wraps the user's test in pcall + sentinel
+    if type(data.harness) == "string" and data.harness ~= "" and isLoadstringAllowed() then
+        local ok, err = cmdExecuteLuau({ code = data.harness })
+        if not ok then
+            State.playtestActive = false
+            return false, "Harness failed: " .. tostring(err)
+        end
+    end
+    return true, nil, { mode = tostring(data.mode or "edit"), startedAt = State.playtestStartedAt }
+end
+
+-- stop_playtest — clear the session marker
+local function cmdStopPlaytest(_data)
+    local elapsed = State.playtestActive and (tick() - State.playtestStartedAt) or 0
+    State.playtestActive = false
+    logActivity(string.format("Playtest stopped (%.1fs)", elapsed))
+    return true, nil, { elapsedSec = elapsed }
+end
+
+-- get_output — return recent Studio console messages the plugin captured via
+-- LogService.MessageOut. The ring buffer is populated by the connection
+-- installed at plugin init (see State.outputLog + init-time subscription).
+local function cmdGetOutput(data)
+    local since = tonumber(data.since or 0) or 0
+    local limit = math.min(tonumber(data.limit or 100) or 100, OUTPUT_LOG_MAX)
+
+    local entries = {}
+    local count = 0
+    -- State.outputLog is kept newest-first so we can slice directly
+    for _, entry in ipairs(State.outputLog) do
+        if entry.seq > since then
+            count += 1
+            table.insert(entries, entry)
+            if count >= limit then break end
+        end
+    end
+
+    -- Reverse so the consumer sees chronological order (oldest first)
+    local chronological = {}
+    for i = #entries, 1, -1 do
+        table.insert(chronological, entries[i])
+    end
+
+    -- Optionally clear the buffer
+    if data.clear == true then
+        State.outputLog = {}
+    end
+
+    return true, nil, {
+        messages = chronological,
+        latestSeq = State.outputLogSeq,
+        count = #chronological,
+    }
+end
+
+-- capture_screenshot — stub handler. Roblox Studio plugins have no stable API
+-- to read the viewport to pixels (see the long comment around line 920). This
+-- handler exists so the command no longer hits the "Unknown command type"
+-- fallback — it returns scene metadata the vision path can fall back on (the
+-- scene-manifest analyzer at src/lib/ai/playtest-vision.ts runs on
+-- scan_workspace data, not pixels). When Roblox exposes a real screenshot
+-- API we flip this one function and everything else downstream already works.
+local function cmdCaptureScreenshot(_data)
+    local cam = getCamera()
+    local meta = {
+        capturedAt = tick(),
+        hasPixels = false,
+        pluginNote = "Roblox plugin API does not expose viewport pixel capture; " ..
+                     "vision analysis uses scan_workspace scene manifest instead.",
+        partCount = State.lastPartCount,
+        modelCount = State.lastModelCount,
+    }
+    if cam then
+        local p = cam.CFrame.Position
+        local l = cam.CFrame.LookVector
+        meta.camera = {
+            position = { X = p.X, Y = p.Y, Z = p.Z },
+            look     = { X = l.X, Y = l.Y, Z = l.Z },
+            fov      = cam.FieldOfView,
+        }
+    end
+    return true, nil, meta
+end
+
+-- create_sound — insert a Sound instance using a Roblox asset ID. The plugin
+-- creates the Sound under the requested parent (default: SoundService) and
+-- plays it immediately when data.autoPlay is truthy.
+local function cmdCreateSound(data)
+    local soundId = tostring(data.soundId or data.assetId or "")
+    if soundId == "" then
+        return false, "data.soundId is required"
+    end
+    -- Normalise to rbxassetid:// prefix
+    if not soundId:match("^rbxasset") and not soundId:match("^http") then
+        soundId = "rbxassetid://" .. soundId:gsub("[^%d]", "")
+    end
+
+    local recording
+    pcall(function()
+        recording = ChangeHistoryService:TryBeginRecording("ForjeAI: Create Sound")
+    end)
+
+    local sound = Instance.new("Sound")
+    sound.Name = tostring(data.name or "ForjeSound")
+    sound.SoundId = soundId
+    if type(data.volume) == "number" then sound.Volume = data.volume end
+    if type(data.looped) == "boolean" then sound.Looped = data.looped end
+    if type(data.playbackSpeed) == "number" then sound.PlaybackSpeed = data.playbackSpeed end
+
+    CollectionService:AddTag(sound, PLUGIN_TAG)
+    local parent = data.parent and resolveInstancePath(data.parent) or SoundService
+    sound.Parent = parent or SoundService
+
+    if data.autoPlay == true then
+        pcall(function() sound:Play() end)
+    end
+
+    pcall(function()
+        if recording then
+            ChangeHistoryService:FinishRecording(recording, Enum.FinishRecordingOperation.Commit)
+        end
+    end)
+
+    return true, nil, { path = sound:GetFullName(), soundId = soundId }
+end
+
 -- Dispatch a single command from the server
 local function dispatchCommand(cmd)
     if type(cmd) ~= "table" then return end
@@ -722,6 +1043,24 @@ local function dispatchCommand(cmd)
 
     elseif cmdType == "scan_workspace" then
         ok, err, extra = cmdScanWorkspace(data)
+
+    elseif cmdType == "structured_commands" then
+        ok, err, extra = cmdStructuredCommands(data)
+
+    elseif cmdType == "start_playtest" then
+        ok, err, extra = cmdStartPlaytest(data)
+
+    elseif cmdType == "stop_playtest" then
+        ok, err, extra = cmdStopPlaytest(data)
+
+    elseif cmdType == "get_output" then
+        ok, err, extra = cmdGetOutput(data)
+
+    elseif cmdType == "capture_screenshot" then
+        ok, err, extra = cmdCaptureScreenshot(data)
+
+    elseif cmdType == "create_sound" then
+        ok, err, extra = cmdCreateSound(data)
 
     else
         ok  = false
@@ -1055,12 +1394,44 @@ local function doSyncTick()
             else
                 -- dispatchResult = ok (bool), dispatchErr = err, dispatchExtra = extra
                 local cmdType = tostring(cmd.type or "")
+                local cmdId   = tostring(cmd.id or "")
+
+                -- Every data-carrying result is POSTed to /api/studio/bridge-result
+                -- correlated by cmd.id so MCP tools (studio-bridge /
+                -- studio-controller) and the agentic loop can read it back via
+                -- GET /api/studio/bridge-result?requestId=<id>&resultType=<type>.
+                -- Map cmdType -> resultType for the correlated read.
+                local resultTypeMap = {
+                    scan_workspace       = "snapshot",
+                    structured_commands  = "structured_result",
+                    start_playtest       = "playtest_started",
+                    stop_playtest        = "playtest_stopped",
+                    get_output           = "output",
+                    capture_screenshot   = "screenshot",
+                    create_sound         = "sound_created",
+                }
+                local resultType = resultTypeMap[cmdType]
+
+                if dispatchResult and dispatchExtra ~= nil and resultType and cmdId ~= "" then
+                    -- Fire-and-forget POST to bridge-result — correlated read path.
+                    task.spawn(function()
+                        pcall(function()
+                            httpRequest("POST", "/api/studio/bridge-result", {
+                                requestId  = cmdId,
+                                resultType = resultType,
+                                data       = dispatchExtra,
+                            })
+                        end)
+                    end)
+                end
+
+                -- Additionally, scan_workspace results flow into session.latestState
+                -- via /api/studio/update so the agentic-loop scene check
+                -- (src/lib/ai/agentic-loop.ts) can read them without
+                -- correlating by requestId. This is the uncorrelated-fallback
+                -- path. Keep both — correlated reads time out after 20s;
+                -- session fallback is always-fresh.
                 if dispatchResult and dispatchExtra ~= nil and cmdType == "scan_workspace" then
-                    -- POST the scan tree to /api/studio/update so the
-                    -- server can stash it on session.latestState.worldSnapshot
-                    -- and the agentic loop + vision/scene analyzer can read
-                    -- it back. Fire-and-forget so a network hiccup can't
-                    -- stall the command loop.
                     task.spawn(function()
                         pcall(function()
                             httpRequest("POST", "/api/studio/update", {
@@ -1068,6 +1439,26 @@ local function doSyncTick()
                                 timestamp = math.floor(tick() * 1000),
                                 event     = "workspace_snapshot",
                                 snapshot  = dispatchExtra,
+                                source    = "plugin",
+                                placeId   = tostring(game.PlaceId),
+                                changes   = {},
+                            })
+                        end)
+                    end)
+                end
+
+                -- get_output results also mirror to session.latestState.outputLog
+                -- so the agentic-loop.ts observe phase can read recent console
+                -- messages without correlating. Errors captured here are what
+                -- feed the analyzeOutput() call.
+                if dispatchResult and dispatchExtra ~= nil and cmdType == "get_output" then
+                    task.spawn(function()
+                        pcall(function()
+                            httpRequest("POST", "/api/studio/update", {
+                                sessionId = State.sessionId,
+                                timestamp = math.floor(tick() * 1000),
+                                event     = "output_log",
+                                outputLog = dispatchExtra.messages,
                                 source    = "plugin",
                                 placeId   = tostring(game.PlaceId),
                                 changes   = {},
@@ -1733,6 +2124,33 @@ refreshGui()
 -- Connect heartbeat
 local heartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
 table.insert(State.connections, heartbeatConn)
+
+-- Subscribe to LogService.MessageOut so cmdGetOutput can relay recent
+-- Studio console messages back to the web editor's agentic-loop observe
+-- phase. Ring buffer capped at OUTPUT_LOG_MAX; oldest entries drop when
+-- the buffer overflows. Each entry is { time, text, type, seq } where
+-- `type` is one of "output" / "info" / "warning" / "error".
+local logConn = LogService.MessageOut:Connect(function(message, messageType)
+    State.outputLogSeq += 1
+    local typeName = "output"
+    if messageType == Enum.MessageType.MessageWarning then
+        typeName = "warning"
+    elseif messageType == Enum.MessageType.MessageError then
+        typeName = "error"
+    elseif messageType == Enum.MessageType.MessageInfo then
+        typeName = "info"
+    end
+    table.insert(State.outputLog, 1, {
+        time = tick(),
+        text = tostring(message):sub(1, 1024),  -- clamp long messages
+        type = typeName,
+        seq  = State.outputLogSeq,
+    })
+    if #State.outputLog > OUTPUT_LOG_MAX then
+        State.outputLog[OUTPUT_LOG_MAX + 1] = nil
+    end
+end)
+table.insert(State.connections, logConn)
 
 -- Cleanup on plugin unload
 plugin.Unloading:Connect(function()

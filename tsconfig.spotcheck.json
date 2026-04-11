@@ -17,7 +17,14 @@
     "src/lib/ai/agentic-playtest.ts",
     "src/lib/ai/agentic-loop.ts",
     "src/lib/ai/playtest-vision.ts",
-    "src/app/api/ai/orchestrate/route.ts"
+    "src/lib/analytics.ts",
+    "src/lib/validations.ts",
+    "src/app/api/ai/orchestrate/route.ts",
+    "src/app/api/studio/update/route.ts",
+    "src/app/api/crons/stripe-reconcile/route.ts",
+    "src/app/unsubscribe/page.tsx",
+    "src/app/verify-email/page.tsx",
+    "src/app/status/page.tsx"
   ],
   "exclude": ["node_modules", ".next"]
 }

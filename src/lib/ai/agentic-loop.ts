@@ -283,20 +283,52 @@ async function stopPlaytest(sessionId: string): Promise<void> {
 
 /**
  * Capture the output log from Studio.
+ *
+ * Queues a `get_output` command and reads the result back from two places:
+ *   1. `session.latestOutputLog` — the plugin POSTs its LogService ring
+ *      buffer to /api/studio/update with event=output_log. This is the
+ *      uncorrelated fallback that always has the freshest data.
+ *   2. bridge-result correlated read — not used here because the agentic
+ *      loop does not currently propagate requestId to the plugin; we rely
+ *      on the session-state path which is simpler and always fresh.
  */
 async function captureOutputLog(sessionId: string): Promise<string[]> {
-  // Queue a get_output command -- the result comes back through bridge_result
+  // Remember the pre-command output log size so we can diff it later and
+  // only return messages that showed up during this observe window
+  const preSession = await getSession(sessionId)
+  const preLog = Array.isArray(
+    (preSession?.latestState as Record<string, unknown> | undefined)?.outputLog,
+  )
+    ? ((preSession!.latestState as { outputLog: unknown[] }).outputLog as unknown[])
+    : []
+  const preCount = preLog.length
+
+  // Queue a get_output command. Plugin handler POSTs the ring buffer to
+  // /api/studio/update with event=output_log, which stores it on
+  // session.latestState.outputLog (see update/route.ts).
   await queueCommand(sessionId, {
     type: 'get_output',
-    data: { maxEntries: 200, filter: 'all' },
+    data: { limit: 200, clear: false },
   })
 
-  // Wait for the result to arrive
-  await delay(COMMAND_QUEUE_DELAY_MS)
+  // Wait for the plugin to poll, run the command, and POST the result back
+  await delay(COMMAND_QUEUE_DELAY_MS * 2)
 
-  // The output log is available through the session state
-  // In a real implementation, this would poll a bridge-result endpoint
-  return []
+  const updated = await getSession(sessionId)
+  const rawLog = (updated?.latestState as Record<string, unknown> | undefined)?.outputLog
+  if (!Array.isArray(rawLog)) return []
+
+  // Each entry is { time, text, type, seq } from the plugin. Flatten to
+  // strings so analyzeOutput() can regex-scan them. Only return messages
+  // newer than the pre-command snapshot so we don't re-flag old noise.
+  const newMessages = rawLog.slice(preCount) as Array<Record<string, unknown>>
+  return newMessages
+    .map((entry) => {
+      const type = typeof entry.type === 'string' ? entry.type.toUpperCase() : 'OUTPUT'
+      const text = typeof entry.text === 'string' ? entry.text : ''
+      return `[${type}] ${text}`
+    })
+    .filter((s) => s.trim().length > 0)
 }
 
 /**

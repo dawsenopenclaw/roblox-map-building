@@ -188,10 +188,22 @@ export const studioUpdateSchema = z
       .optional(),
     source: z.string().optional(),
     placeId: z.string().optional(),
+    placeName: z.string().optional(),
     jobId: z.string().optional(),
     event: z.string().optional(),
     /** Workspace snapshot sent with workspace_snapshot events */
     snapshot: z.record(z.unknown()).optional(),
+    /** LogService ring-buffer entries sent with output_log events */
+    outputLog: z.array(z.unknown()).optional(),
+    // ── Plugin-sent heartbeat extras (inlined so the schema stays strict) ──
+    camera: z.record(z.unknown()).optional(),
+    partCount: z.number().optional(),
+    modelCount: z.number().optional(),
+    lightCount: z.number().optional(),
+    nearbyParts: z.unknown().optional(),
+    selected: z.unknown().optional(),
+    sceneTree: z.unknown().optional(),
+    groundY: z.number().optional(),
   })
   .refine((b) => b.sessionId ?? b.sessionToken, { message: 'sessionId is required' })
 

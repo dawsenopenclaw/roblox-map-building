@@ -170,8 +170,13 @@ export async function captureServerEvent<E extends AnalyticsEvent>(
   properties?: EventProperties[E],
   userContext?: UserContext
 ): Promise<void> {
-  // COPPA: never track under-13 users server-side either
-  if (userContext?.isUnder13 === true) return
+  // COPPA: require explicit `isUnder13 === false` — not just "not true".
+  // If userContext is missing or the age gate has not been completed yet
+  // (`isUnder13` is undefined), we MUST NOT emit any event, because the
+  // user might turn out to be under 13 once the gate runs. Silent failure
+  // is correct here: a missed analytic event is a much smaller cost than
+  // a COPPA violation.
+  if (!userContext || userContext.isUnder13 !== false) return
   try {
     const { getPostHogClient } = await import('./posthog')
     const client = getPostHogClient()
@@ -202,6 +207,10 @@ export async function identifyServerUser(
     displayName?: string
   }
 ): Promise<void> {
+  // COPPA: same rule as captureServerEvent — require explicit `isUnder13 === false`.
+  // A call that omits isUnder13 is an accidental identify before age check
+  // and must be dropped.
+  if (properties.isUnder13 !== false) return
   try {
     const { getPostHogClient } = await import('./posthog')
     const client = getPostHogClient()

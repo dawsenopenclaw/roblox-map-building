@@ -41,10 +41,10 @@ const JSON_LD = {
 
 export default function StatusPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-[#050810] flex flex-col overflow-x-hidden">
       <MarketingNav />
 
-      <div className="flex-1 pt-16">
+      <div className="flex-1 pt-16 page-fade-in">
         <StatusPageClient />
       </div>
 

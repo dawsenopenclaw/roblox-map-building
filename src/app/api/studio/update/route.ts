@@ -42,6 +42,8 @@ interface UpdateBody {
   sessionToken?: string
   /** Workspace snapshot pushed by scan_workspace command */
   snapshot?: Record<string, unknown>
+  /** Recent console messages pushed by get_output command */
+  outputLog?: unknown[]
 }
 
 const CORS_HEADERS = {
@@ -56,7 +58,10 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   const parsedBody = await parseBody(req, studioUpdateSchema)
-  if (!parsedBody.ok) {
+  // `in` narrowing instead of `!parsedBody.ok` — zod's .refine() widens the
+  // discriminator property type to `boolean` in some TS versions, which
+  // breaks plain discriminated-union narrowing. Using `in` sidesteps that.
+  if ('error' in parsedBody) {
     return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: CORS_HEADERS })
   }
   const rawBody = parsedBody.data
@@ -84,7 +89,12 @@ export async function POST(req: NextRequest) {
       { status: 400, headers: CORS_HEADERS },
     )
   }
-  const body: UpdateBody = { ...rawBody, sessionId, changes: rawBody.changes ?? [] }
+  // Force the change entries to PluginChange[] — zod's inference loses the
+  // required-ness of `type` when the outer schema has a .refine() wrapper.
+  const safeChanges: PluginChange[] = (rawBody.changes ?? []).filter(
+    (c): c is PluginChange => typeof c?.type === 'string',
+  )
+  const body: UpdateBody = { ...rawBody, sessionId, changes: safeChanges }
 
   // Store the latest state snapshot on the session
   const statePayload: Record<string, unknown> = {
@@ -100,6 +110,15 @@ export async function POST(req: NextRequest) {
   if (body.event === 'workspace_snapshot' && body.snapshot) {
     statePayload.worldSnapshot = body.snapshot
     statePayload.snapshotAt = Date.now()
+  }
+
+  // Attach recent LogService output when the plugin posts its ring buffer.
+  // The plugin sends `outputLog` alongside `event: 'output_log'`; we stash
+  // it on latestState.outputLog so agentic-loop.ts captureOutputLog() can
+  // read it back through getSession() → session.latestState.outputLog.
+  if (body.event === 'output_log' && Array.isArray(body.outputLog)) {
+    statePayload.outputLog = body.outputLog
+    statePayload.outputLogAt = Date.now()
   }
 
   // Store camera + nearby parts + selection + ground from heartbeat for AI context
