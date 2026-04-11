@@ -69,6 +69,10 @@ const isPublicRoute = createRouteMatcher([
   '/about',
   '/blog(.*)',
   '/changelog',
+  '/whats-new(.*)',
+  '/help(.*)',
+  '/status(.*)',
+  '/install(.*)',
   // AI chat — guest mode with strict rate limiting (3 messages then signup required)
   '/api/ai/chat',
   // AI feedback — anonymous thumbs up/down (POST only, GET requires auth)

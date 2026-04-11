@@ -482,19 +482,26 @@ function HeroPromptInput() {
 /* ─── Rotating hero text — 3D vertical carousel ─────────────────────────── */
 
 const ROTATING_WORDS = ['Game', 'Map', 'UI', 'Terrain', 'World', 'Scripts', 'Assets']
+const ROTATE_INTERVAL_MS = 2400
 
 function RotatingHeroText() {
+  // Single-source-of-truth for the active word. React state guarantees the
+  // text changes regardless of whether CSS animations are enabled — even
+  // users with prefers-reduced-motion will at least see the words cycle.
+  // The wheel rotation visual is added on top via a CSS @keyframe that
+  // re-fires on every key change (key={index} forces remount).
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex(prev => (prev + 1) % ROTATING_WORDS.length)
-    }, 2400)
+    }, ROTATE_INTERVAL_MS)
     return () => clearInterval(timer)
   }, [])
 
   // Find the longest word so the container reserves space (no layout shift)
   const longestWord = ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
+  const currentWord = ROTATING_WORDS[index]
 
   return (
     <h1
@@ -513,84 +520,68 @@ function RotatingHeroText() {
       <span style={{ color: '#FAFAFA' }}>Forge your</span>
       <span
         aria-live="polite"
+        aria-label={`your ${currentWord}`}
         style={{
           display: 'inline-block',
           position: 'relative',
           height: '1.15em',
           minWidth: `${longestWord.length}ch`,
           verticalAlign: 'bottom',
-          // 3D context for the barrel rotation
-          perspective: '600px',
+          // 3D context — children are NOT flattened, perspective gives depth
+          perspective: '800px',
           perspectiveOrigin: '50% 50%',
           transformStyle: 'preserve-3d',
         }}
       >
-        {/* Invisible spacer so width tracks the longest word — prevents layout jitter */}
+        {/* Invisible spacer so width tracks the longest word — no layout jitter */}
         <span aria-hidden="true" style={{ visibility: 'hidden', display: 'inline-block' }}>
           {longestWord}
         </span>
 
-        {ROTATING_WORDS.map((word, i) => {
-          // 3D barrel rotation. Each word sits on the surface of an invisible
-          // cylinder (rotated around its center horizontal axis).
-          //
-          //   Active word  : rotateX(0deg)    translateY(0)        — visible, facing viewer
-          //   Leaving word : rotateX(90deg)   translateY(-50%)     — rotated UP and away over the top
-          //   Next/other   : rotateX(-90deg)  translateY(50%)      — waiting BELOW, tilted up at viewer
-          //
-          // The transform-origin sits BEHIND the text so it pivots like a real wheel,
-          // not like a flat card flipping in place.
-          const total = ROTATING_WORDS.length
-          const prevIndex = (index - 1 + total) % total
-          const isActive = i === index
-          const isLeaving = i === prevIndex
-
-          let rotateX = -90  // default: waiting below
-          let translateY = '50%'
-          let opacity = 0
-
-          if (isActive) {
-            rotateX = 0
-            translateY = '0%'
-            opacity = 1
-          } else if (isLeaving) {
-            rotateX = 90       // rotated up and away over the top
-            translateY = '-50%'
-            opacity = 0
-          }
-
-          return (
-            <span
-              key={word}
-              className="gradient-text"
-              aria-hidden={!isActive}
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: '100%',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                // Pivot point sits behind the text, giving the wheel-like feel
-                transformOrigin: '50% 50% -0.55em',
-                transform: `translateY(${translateY}) rotateX(${rotateX}deg)`,
-                opacity,
-                transition: isActive || isLeaving
-                  ? 'transform 0.75s cubic-bezier(0.32, 0.72, 0.24, 1), opacity 0.4s ease-out'
-                  : 'none',
-                willChange: 'transform, opacity',
-                backfaceVisibility: 'hidden',
-                // Refined glow — tight inner highlight + one soft warm halo,
-                // no wide bloom (which felt bulky). Just enough to feel lit.
-                filter: isActive
-                  ? 'drop-shadow(0 0 1px rgba(255,225,150,0.55)) drop-shadow(0 0 8px rgba(212,175,55,0.28))'
-                  : 'none',
-              }}
-            >
-              {word}
-            </span>
-          )
-        })}
+        {/*
+          One visible word at a time. `key={index}` forces React to unmount the
+          old span and mount a fresh one each cycle, which in turn re-fires the
+          CSS @keyframe `forge-word-roll` defined in globals.css. That keyframe
+          rolls the new word IN from below; the previous word disappears (it's
+          unmounted instantly, which is fine because the new word covers it).
+          For a "leaving" effect we render a second span keyed to (index-1)
+          that runs the exit keyframe.
+        */}
+        <span
+          key={`leaving-${index}`}
+          aria-hidden="true"
+          className="forge-word forge-word-leaving"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '100%',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            transformOrigin: '50% 50% -0.55em',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform, opacity',
+          }}
+        >
+          {ROTATING_WORDS[(index - 1 + ROTATING_WORDS.length) % ROTATING_WORDS.length]}
+        </span>
+        <span
+          key={`active-${index}`}
+          className="forge-word forge-word-entering"
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '100%',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            transformOrigin: '50% 50% -0.55em',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform, opacity',
+          }}
+        >
+          {currentWord}
+        </span>
       </span>
     </h1>
   )

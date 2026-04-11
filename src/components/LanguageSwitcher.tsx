@@ -41,7 +41,15 @@ function persistLocaleCookie(locale: Locale) {
 
 function swapLocaleInPath(pathname: string, nextLocale: Locale): string {
   const segments = pathname.split('/').filter(Boolean)
-  if (segments.length > 0 && isLocale(segments[0])) {
+  const hasPrefix = segments.length > 0 && isLocale(segments[0])
+  // next-intl is configured with `localePrefix: 'as-needed'`, so the default
+  // locale (English) MUST NOT appear in the URL — `/en/pricing` 404s.
+  // Strip the prefix when switching to the default locale.
+  if (nextLocale === defaultLocale) {
+    if (hasPrefix) segments.shift()
+    return '/' + segments.join('/')
+  }
+  if (hasPrefix) {
     segments[0] = nextLocale
   } else {
     segments.unshift(nextLocale)

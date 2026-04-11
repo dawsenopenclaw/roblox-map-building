@@ -1049,12 +1049,29 @@ async function callGroq(
 }
 
 // OpenAI API call helper (server-side, reads OPENAI_API_KEY from env)
-const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'o1-preview'] as const
+// BUG 11: 'gpt-4o-codex' is routed through the same OpenAI endpoint but maps
+// to an underlying model optimised for code review + generation. We add a
+// Luau-expert system prompt prefix wherever this model is used.
+const OPENAI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'o1-preview', 'gpt-4o-codex'] as const
 type OpenAIModelId = (typeof OPENAI_MODELS)[number]
 
 function isOpenAIModel(model: string): model is OpenAIModelId {
   return (OPENAI_MODELS as readonly string[]).includes(model)
 }
+
+// BUG 11: map Forje-facing Codex alias to a real OpenAI model. At time of
+// writing OpenAI has deprecated the standalone Codex endpoint, so we route
+// through gpt-4o which scores highest on code benchmarks via the Chat API.
+// If/when Codex gets its own ID we can update this single line.
+function resolveOpenAIModelName(model: OpenAIModelId): string {
+  return model === 'gpt-4o-codex' ? 'gpt-4o' : model
+}
+
+// BUG 11: system prompt prefix applied when the Codex alias is selected
+const CODEX_SYSTEM_PREFIX =
+  'You are a Roblox Luau code expert. Review and improve any code you receive. ' +
+  'Prefer idiomatic Luau 5.1 (Roblox dialect), explain non-obvious choices in comments, ' +
+  'flag performance issues, and suggest safer alternatives to deprecated APIs.\n\n'
 
 async function callOpenAI(
   systemPrompt: string,
@@ -1069,19 +1086,24 @@ async function callOpenAI(
   try {
     // o1-preview uses a different message format — no system message, uses max_completion_tokens
     const isO1 = model === 'o1-preview'
+    // BUG 11: Codex alias injects a Luau-expert prefix into the system prompt
+    const effectiveSystem = model === 'gpt-4o-codex'
+      ? CODEX_SYSTEM_PREFIX + systemPrompt
+      : systemPrompt
+    const resolvedModel = resolveOpenAIModelName(model)
     const messages = isO1
       ? [
           ...history.map((h) => ({ role: h.role, content: h.content })),
-          { role: 'user', content: systemPrompt + '\n\n' + userMessage },
+          { role: 'user', content: effectiveSystem + '\n\n' + userMessage },
         ]
       : [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: effectiveSystem },
           ...history.map((h) => ({ role: h.role, content: h.content })),
           { role: 'user', content: userMessage },
         ]
 
     const bodyPayload: Record<string, unknown> = {
-      model,
+      model: resolvedModel,
       messages,
     }
     if (isO1) {
@@ -1144,19 +1166,24 @@ async function streamOpenAI(
   if (!openaiKey) throw new Error('OPENAI_API_KEY not configured')
 
   const isO1 = model === 'o1-preview'
+  // BUG 11: Codex alias injects a Luau-expert prefix into the system prompt
+  const effectiveSystem = model === 'gpt-4o-codex'
+    ? CODEX_SYSTEM_PREFIX + systemPrompt
+    : systemPrompt
+  const resolvedModel = resolveOpenAIModelName(model)
   const messages = isO1
     ? [
         ...history.map((h) => ({ role: h.role, content: h.content })),
-        { role: 'user', content: systemPrompt + '\n\n' + userMessage },
+        { role: 'user', content: effectiveSystem + '\n\n' + userMessage },
       ]
     : [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: effectiveSystem },
         ...history.map((h) => ({ role: h.role, content: h.content })),
         { role: 'user', content: userMessage },
       ]
 
   const bodyPayload: Record<string, unknown> = {
-    model,
+    model: resolvedModel,
     messages,
     stream: true,
   }

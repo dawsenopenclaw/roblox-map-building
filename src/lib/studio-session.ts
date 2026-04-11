@@ -30,6 +30,8 @@ export type ChangeType =
   | 'structured_commands'
   | 'insert_asset'
   | 'scan_workspace'
+  // Audio pipeline
+  | 'create_sound'
   // Studio Bridge commands
   | 'get_hierarchy'
   | 'get_properties'

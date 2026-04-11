@@ -115,6 +115,7 @@ export type ModelId =
   | 'gpt-4o'
   | 'gpt-4o-mini'
   | 'o1-preview'
+  | 'gpt-4o-codex'
   | 'grok-3'
   | 'custom-anthropic'
   | 'custom-openai'
@@ -165,6 +166,9 @@ export const MODELS: ModelOption[] = [
   { id: 'gpt-4o',           label: 'GPT-4o',            provider: 'OpenAI',    color: '#10A37F' },
   { id: 'gpt-4o-mini',      label: 'GPT-4o Mini',       provider: 'OpenAI',    color: '#10A37F', badge: 'FAST' },
   { id: 'o1-preview',       label: 'o1-preview',        provider: 'OpenAI',    color: '#10A37F', badge: 'THINK' },
+  // BUG 11: Codex — OpenAI's code-focused model, routed via the existing
+  // OpenAI integration in /api/ai/chat. Good for code review / Luau audit.
+  { id: 'gpt-4o-codex',     label: 'Codex',             provider: 'OpenAI',    color: '#10A37F', badge: 'CODE' },
   { id: 'custom-anthropic', label: 'Claude 4',          provider: 'Your Key',  color: '#CC785C', badge: 'PRO' },
   { id: 'custom-openai',    label: 'GPT (Your Key)',    provider: 'Your Key',  color: '#10A37F', badge: 'PRO' },
   { id: 'custom-google',    label: 'Gemini Pro',        provider: 'Your Key',  color: '#4285F4', badge: 'PRO' },
@@ -372,6 +376,16 @@ export function useChat(options: UseChatOptions = {}) {
   const [planText, setPlanText] = useState<string | null>(null)
   // Prompt enhancement toggle — when true, prompts are enhanced via Groq before main AI
   const [enhancePrompts, setEnhancePrompts] = useState(true)
+  /**
+   * Image-mode options (BUG 9). Surfaced in ChatPanel via a toggle row when
+   * aiMode === 'image'. `style` = 'auto' lets the keyword detector choose a
+   * preset; any other value is passed straight to /api/ai/image.
+   */
+  const [imageOptions, setImageOptions] = useState<{
+    style: string
+    removeBackground: boolean
+    upscale: boolean
+  }>({ style: 'auto', removeBackground: false, upscale: false })
   /** Epoch-ms timestamp bumped each time messages are written to localStorage. Used by ChatPanel to flash the "Saved" indicator. */
   const [savedAt, setSavedAt] = useState(0)
   /** Cloud sessions fetched from GET /api/sessions — populated on mount and after sync. */
@@ -471,6 +485,9 @@ export function useChat(options: UseChatOptions = {}) {
           id: currentSessionIdRef.current,
           title: makeSessionTitle(msgs),
           messages: cloudMessages,
+          // Persist the current AI mode so switching devices restores it
+          aiMode,
+          model: selectedModel,
         }),
       })
       // Refresh cloud sessions list after successful sync
@@ -478,7 +495,7 @@ export function useChat(options: UseChatOptions = {}) {
     } catch {
       // Cloud sync failed — localStorage is still the source of truth
     }
-  }, [fetchCloudSessions])
+  }, [fetchCloudSessions, aiMode, selectedModel])
 
   /** Debounced cloud save — schedules a cloud sync 2 seconds after the last call. */
   const debouncedCloudSave = useCallback(() => {
@@ -820,15 +837,34 @@ export function useChat(options: UseChatOptions = {}) {
             let apiBody: Record<string, unknown> = {}
 
             if (aiMode === 'image') {
-              // Route to /api/ai/image with mode detection from prompt
-              const promptLower = trimmed.toLowerCase()
-              const imageMode = promptLower.includes('icon') ? 'icon'
-                : promptLower.includes('thumbnail') || promptLower.includes('cover') ? 'thumbnail'
-                : promptLower.includes('gfx') || promptLower.includes('character') ? 'gfx'
-                : promptLower.includes('clothing') || promptLower.includes('shirt') || promptLower.includes('pants') ? 'clothing'
-                : 'asset'
+              // Route to /api/ai/image. Prefer the explicit imageOptions.style
+              // when set (BUG 9), else fall back to keyword-based detection so
+              // older flows keep working without UI interaction.
+              let style = imageOptions.style
+              if (!style || style === 'auto') {
+                const promptLower = trimmed.toLowerCase()
+                const imageMode = promptLower.includes('icon') ? 'icon'
+                  : promptLower.includes('thumbnail') || promptLower.includes('cover') ? 'thumbnail'
+                  : promptLower.includes('gfx') || promptLower.includes('character') ? 'gfx'
+                  : promptLower.includes('clothing') || promptLower.includes('shirt') || promptLower.includes('pants') ? 'clothing'
+                  : 'asset'
+                const styleMap: Record<string, string> = {
+                  'icon': 'roblox-icon',
+                  'thumbnail': 'game-thumbnail',
+                  'gfx': 'gfx-render',
+                  'clothing': 'clothing',
+                  'asset': 'roblox-icon',
+                }
+                style = styleMap[imageMode] || 'roblox-icon'
+              }
               apiUrl = '/api/ai/image'
-              apiBody = { prompt: trimmed, mode: imageMode, count: 1 }
+              apiBody = {
+                prompt: trimmed,
+                style,
+                count: 1,
+                removeBackground: imageOptions.removeBackground,
+                upscale: imageOptions.upscale,
+              }
             } else if (aiMode === 'mesh') {
               apiUrl = '/api/ai/mesh'
               apiBody = { prompt: trimmed.slice(0, 200), quality: 'draft', withTextures: true }
@@ -855,6 +891,13 @@ export function useChat(options: UseChatOptions = {}) {
               }
             }
 
+            // The client has already enhanced the prompt above (when
+            // enhancePrompts is on), so tell /api/ai/image to skip its own
+            // server-side enhancement to avoid a duplicate Groq call (BUG 12).
+            if (aiMode === 'image' && enhancePrompts) {
+              apiBody.skipEnhance = true
+            }
+
             const specialRes = await fetch(apiUrl, {
               method: 'POST',
               headers,
@@ -863,7 +906,7 @@ export function useChat(options: UseChatOptions = {}) {
 
             const specialData = await specialRes.json()
             const resultContent = aiMode === 'image'
-              ? `**Generated Image${specialData.images?.length > 1 ? 's' : ''}** (${apiBody.mode || 'asset'} mode)\n\n${
+              ? `**Generated Image${specialData.images?.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'} mode)\n\n${
                   (specialData.images || []).map((img: { url: string }, i: number) =>
                     `![Generated ${i + 1}](${img.url})`
                   ).join('\n\n')
@@ -1008,7 +1051,7 @@ export function useChat(options: UseChatOptions = {}) {
           // Send chat message over WebSocket
           wsSend({
             type: 'chat',
-            message: trimmed,
+            message: enhancedMessage,
             model: selectedModel,
             aiMode: aiMode,
             studioContext: studioConnected && studioContext ? studioContext : undefined,
@@ -1180,11 +1223,23 @@ export function useChat(options: UseChatOptions = {}) {
                 timestamp: new Date(),
               })
             }
-            if (meta.executedInStudio) {
+            // BUG 7: show an accurate Studio-status message based on actual
+            // connection state. Prior to this fix the same "Sent to Roblox
+            // Studio" text was shown on every build, including when Studio
+            // wasn't connected — which looked like an error to users.
+            if (meta.hasCode || meta.executedInStudio) {
+              let statusContent: string
+              if (meta.executedInStudio) {
+                statusContent = 'Sent to Roblox Studio ✓'
+              } else if (studioConnected) {
+                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+              } else {
+                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+              }
               result.push({
                 id: uid(),
                 role: 'status',
-                content: 'Sent to Roblox Studio — check your viewport!',
+                content: statusContent,
                 timestamp: new Date(),
               })
             }
@@ -1473,12 +1528,21 @@ export function useChat(options: UseChatOptions = {}) {
                 timestamp: new Date(),
               })
             }
-            // Show execution status to user
-            if (meta.executedInStudio) {
+            // BUG 7: accurate Studio-status message based on real connection
+            // state — see the WebSocket path above for the full rationale.
+            if (meta.hasCode || meta.executedInStudio) {
+              let statusContent: string
+              if (meta.executedInStudio) {
+                statusContent = 'Sent to Roblox Studio ✓'
+              } else if (studioConnected) {
+                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+              } else {
+                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+              }
               result.push({
                 id: uid(),
                 role: 'status',
-                content: 'Sent to Roblox Studio — check your viewport!',
+                content: statusContent,
                 timestamp: new Date(),
               })
             }
@@ -1769,7 +1833,7 @@ export function useChat(options: UseChatOptions = {}) {
     },
     // retryCountRef / isAutoRetryRef / lastLuauRef / lastBuildPromptRef are refs — intentionally omitted
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync, wsConnected, wsSend, wsOn, playCompletionSoundIfEnabled, enhancePrompts, debouncedCloudSave, autoPlaytest, triggerAutoPlaytest, aiMode, saveCheckpoint],
+    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync, wsConnected, wsSend, wsOn, playCompletionSoundIfEnabled, enhancePrompts, debouncedCloudSave, autoPlaytest, triggerAutoPlaytest, aiMode, saveCheckpoint, imageOptions],
   )
 
   /** Exposed so UI error actions ("Try again") can reset the retry counter */
@@ -1847,6 +1911,9 @@ export function useChat(options: UseChatOptions = {}) {
           }))
           setMessagesSync(() => rehydrated)
           setSuggestions([])
+          // Restore persisted AI mode (BUG 1) — falls back to 'build' when absent
+          const restoredMode = (data.session.aiMode as string | undefined) || 'build'
+          setAIMode(restoredMode as AIMode)
           return
         }
       }
@@ -1867,9 +1934,15 @@ export function useChat(options: UseChatOptions = {}) {
     setSuggestions([])
   }, [setMessagesSync, setSessionId, syncToCloud])
 
-  /** Return metadata for all saved sessions (no message payloads). */
+  /**
+   * Return metadata for all saved sessions (no message payloads).
+   * Merges localStorage (fast, offline) and cloud sessions (cross-device).
+   * Cloud entries win when ids collide. Result is sorted by updatedAt desc
+   * so the mobile history panel shows recent activity from both sources
+   * (BUG 8).
+   */
   const listSessions = useCallback((): ChatSessionMeta[] => {
-    return loadSessions().map(({ id, title, createdAt, updatedAt, messages }) => {
+    const local = loadSessions().map(({ id, title, createdAt, updatedAt, messages }) => {
       const firstAi = messages.find((m) => m.role === 'assistant')
       const firstAiPreview = firstAi
         ? firstAi.content.replace(/```[\s\S]*?```/g, '[code]').replace(/\s+/g, ' ').trim().slice(0, 60) || null
@@ -1881,9 +1954,30 @@ export function useChat(options: UseChatOptions = {}) {
         updatedAt,
         messageCount: messages.length,
         firstAiPreview,
-      }
+      } as ChatSessionMeta
     })
-  }, [])
+
+    const cloudIds = new Set(cloudSessions.map((s) => s.id))
+    const cloudMeta: ChatSessionMeta[] = cloudSessions.map((c) => ({
+      id: c.id,
+      title: c.title,
+      createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt as unknown as string).toISOString(),
+      updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : new Date(c.updatedAt as unknown as string).toISOString(),
+      messageCount: c._count?.messages ?? 0,
+      // Cloud list response omits message bodies, so preview is unavailable
+      // until the session is opened; null is fine — the panel handles it.
+      firstAiPreview: null,
+    }))
+
+    const merged: ChatSessionMeta[] = [
+      ...cloudMeta,
+      ...local.filter((l) => !cloudIds.has(l.id)),
+    ]
+    merged.sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
+    return merged
+  }, [cloudSessions])
 
   /** Delete a saved session by id (localStorage + cloud). */
   const deleteSession = useCallback((id: string) => {
@@ -1923,6 +2017,11 @@ export function useChat(options: UseChatOptions = {}) {
     setSuggestions([])
   }, [setMessagesSync])
 
+  // BUG 2: "Build direction" — lets the user explicitly tell the AI how to
+  // treat the next prompt relative to prior context. Stored as a ref so
+  // setting it doesn't trigger a re-render of the whole hook consumer.
+  const [buildDirection, setBuildDirection] = useState<'continue' | 'pivot' | 'start-over'>('continue')
+
   // Slash command mode switching: /think, /plan, /build, etc.
   const wrappedSendMessage = useCallback(
     (text: string) => {
@@ -1943,9 +2042,32 @@ export function useChat(options: UseChatOptions = {}) {
           return
         }
       }
-      sendMessage(text)
+
+      // BUG 2: apply build-direction semantics before sending.
+      // - continue: default, just send as-is
+      // - pivot: prepend "Change direction:" so the AI knows to take the
+      //   conversation in a new direction instead of refining the last build
+      // - start-over: clear the chat history first, then send as a fresh build
+      let finalText = text
+      if (buildDirection === 'pivot') {
+        finalText = `Change direction: ${text}`
+      } else if (buildDirection === 'start-over') {
+        // Clear history synchronously so the next sendMessage sees empty state
+        if (typeof window !== 'undefined') {
+          try { localStorage.removeItem(LS_ACTIVE_KEY) } catch { /* ignore */ }
+        }
+        setSessionId(uid())
+        setMessagesSync(() => [])
+        setSuggestions([])
+        setTotalTokens(0)
+      }
+      // Reset to continue after each send so direction is one-shot
+      if (buildDirection !== 'continue') {
+        setBuildDirection('continue')
+      }
+      sendMessage(finalText)
     },
-    [sendMessage],
+    [sendMessage, buildDirection, setMessagesSync, setSessionId],
   )
 
   // Plan mode approval
@@ -2001,6 +2123,9 @@ export function useChat(options: UseChatOptions = {}) {
     approvePlan,
     editPlan,
     cancelPlan,
+    // BUG 2: Build direction
+    buildDirection,
+    setBuildDirection,
     // Session persistence
     newChat,
     loadSession,
@@ -2022,5 +2147,8 @@ export function useChat(options: UseChatOptions = {}) {
     // Cloud session persistence
     cloudSessions,
     syncToCloud,
+    // Image mode options (BUG 9)
+    imageOptions,
+    setImageOptions,
   }
 }

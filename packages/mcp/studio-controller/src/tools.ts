@@ -1,32 +1,53 @@
 /**
- * Studio Controller — Tool Definitions
+ * Studio Controller -- Tool Definitions
  *
- * Each tool delegates to HTTP calls against the local Roblox Studio plugin
- * endpoint. The plugin runs an HTTP server on localhost (default port 33796)
- * that accepts JSON-RPC-style requests.
+ * These tools talk to the Roblox Studio plugin via the same cloud relay
+ * pattern used by `packages/mcp/studio-bridge/`. Roblox Studio plugins
+ * cannot accept inbound HTTP, so this server queues commands through the
+ * ForjeGames `/api/studio/execute` endpoint; the plugin polls and picks
+ * them up. Results are returned via the plugin change-push pipeline and
+ * retrieved from `/api/studio/bridge-result`.
  *
- * Endpoint pattern:
- *   POST http://localhost:<PLUGIN_PORT>/<action>
- *   Body: JSON payload specific to each action
- *   Response: JSON with { success: boolean, data?: unknown, error?: string }
+ * Required environment variables:
+ *   FORJE_API_BASE    -- ForjeGames API base (default https://forjegames.com)
+ *   FORJE_API_TOKEN   -- Session token (same token the Studio plugin uses)
+ *   FORJE_SESSION_ID  -- Studio session id to target
  */
 
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Plugin HTTP configuration
+// Relay configuration
 // ---------------------------------------------------------------------------
 
-const PLUGIN_PORT = Number(process.env.STUDIO_PLUGIN_PORT ?? 33796)
-const PLUGIN_HOST = process.env.STUDIO_PLUGIN_HOST ?? 'localhost'
-const REQUEST_TIMEOUT_MS = 30_000
+const API_BASE = process.env.FORJE_API_BASE ?? 'https://forjegames.com'
+const POLL_TIMEOUT_MS = 20_000
+const POLL_INTERVAL_MS = 1_500
+const QUEUE_TIMEOUT_MS = 10_000
 
-function pluginUrl(action: string): string {
-  return `http://${PLUGIN_HOST}:${PLUGIN_PORT}/${action}`
+function getApiToken(): string {
+  const t = process.env.FORJE_API_TOKEN ?? process.env.FORJE_SESSION_TOKEN
+  if (!t) throw new Error('FORJE_API_TOKEN (or FORJE_SESSION_TOKEN) is not set')
+  return t
+}
+
+function getSessionId(): string {
+  const s = process.env.FORJE_SESSION_ID
+  if (!s) throw new Error('FORJE_SESSION_ID is not set')
+  return s
+}
+
+function apiHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${getApiToken()}`,
+    'X-Session-Id': getSessionId(),
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Plugin HTTP client
+// Relay client
 // ---------------------------------------------------------------------------
 
 interface PluginResponse {
@@ -35,29 +56,76 @@ interface PluginResponse {
   error?: string
 }
 
-async function callPlugin(
-  action: string,
-  payload: Record<string, unknown> = {},
-): Promise<PluginResponse> {
+/**
+ * Queue a command for the Studio plugin via the ForjeGames cloud relay.
+ * Shape matches `packages/mcp/studio-bridge/src/index.ts`.
+ */
+async function queuePluginCommand(
+  type: string,
+  data: Record<string, unknown>,
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    const res = await fetch(pluginUrl(action), {
+    const res = await fetch(`${API_BASE}/api/studio/execute`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: apiHeaders(),
+      body: JSON.stringify({ type, data, sessionId: getSessionId() }),
+      signal: AbortSignal.timeout(QUEUE_TIMEOUT_MS),
     })
     if (!res.ok) {
       const txt = await res.text().catch(() => String(res.status))
-      return { success: false, error: `Plugin returned ${res.status}: ${txt}` }
+      return { ok: false, error: `API returned ${res.status}: ${txt}` }
     }
-    const body = (await res.json()) as PluginResponse
-    return body
+    return { ok: true }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    return {
-      success: false,
-      error: `Failed to reach Studio plugin at ${pluginUrl(action)}: ${msg}`,
+    return { ok: false, error: `Failed to reach ForjeGames relay: ${msg}` }
+  }
+}
+
+/**
+ * Queue a command and poll the bridge-result endpoint for the plugin's
+ * response. Used for commands that need a round-trip (reads, screenshots,
+ * script source, etc).
+ */
+async function queueAndWaitForResult(
+  type: string,
+  data: Record<string, unknown>,
+  resultType: string,
+): Promise<PluginResponse> {
+  const requestId = randomUUID()
+  const queueRes = await queuePluginCommand(type, { ...data, _requestId: requestId })
+  if (!queueRes.ok) return { success: false, error: queueRes.error }
+
+  const deadline = Date.now() + POLL_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    await new Promise<void>((r) => setTimeout(r, POLL_INTERVAL_MS))
+    try {
+      const pollRes = await fetch(
+        `${API_BASE}/api/studio/bridge-result?requestId=${requestId}&resultType=${resultType}`,
+        {
+          method: 'GET',
+          headers: apiHeaders(),
+          signal: AbortSignal.timeout(5_000),
+        },
+      )
+      if (pollRes.ok) {
+        const body = (await pollRes.json()) as { ready?: boolean; data?: unknown }
+        if (body.ready) {
+          return { success: true, data: body.data }
+        }
+      }
+    } catch {
+      // Transient polling failure -- keep trying until deadline
     }
+  }
+
+  // Fire-and-forget fallback: command was queued but no round-trip result in time
+  return {
+    success: true,
+    data: {
+      status: 'queued',
+      note: 'Command queued via cloud relay but response was not received within timeout. The plugin will execute it on its next poll cycle.',
+    },
   }
 }
 
@@ -223,15 +291,20 @@ function jsonContent(data: unknown) {
 }
 
 export async function handleReadScene(args: { root: string; maxDepth: number }) {
-  const res = await callPlugin('read_scene', {
-    root: args.root,
-    maxDepth: args.maxDepth,
-  })
+  const res = await queueAndWaitForResult(
+    'get_hierarchy',
+    { root: args.root, maxDepth: args.maxDepth },
+    'hierarchy_result',
+  )
   return jsonContent(res.success ? res.data : { error: res.error })
 }
 
 export async function handleReadScript(args: { scriptPath: string }) {
-  const res = await callPlugin('read_script', { path: args.scriptPath })
+  const res = await queueAndWaitForResult(
+    'read_script',
+    { path: args.scriptPath },
+    'script_result',
+  )
   return jsonContent(res.success ? res.data : { error: res.error })
 }
 
@@ -240,44 +313,45 @@ export async function handleWriteScript(args: {
   source: string
   scriptType: string
 }) {
-  const res = await callPlugin('write_script', {
+  const res = await queuePluginCommand('write_script', {
     path: args.scriptPath,
     source: args.source,
     scriptType: args.scriptType,
   })
   return jsonContent(
-    res.success
+    res.ok
       ? { success: true, path: args.scriptPath, bytesWritten: args.source.length }
       : { error: res.error },
   )
 }
 
 export async function handleStartPlaytest(args: { mode: string }) {
-  const res = await callPlugin('start_playtest', { mode: args.mode })
-  return jsonContent(
-    res.success
-      ? { success: true, mode: args.mode, status: 'playtest_starting' }
-      : { error: res.error },
+  const res = await queueAndWaitForResult(
+    'start_playtest',
+    { mode: args.mode },
+    'start_playtest_result',
   )
+  return jsonContent(res.success ? res.data : { error: res.error })
 }
 
 export async function handleStopPlaytest() {
-  const res = await callPlugin('stop_playtest', {})
-  return jsonContent(
-    res.success
-      ? { success: true, status: 'playtest_stopping' }
-      : { error: res.error },
+  const res = await queueAndWaitForResult(
+    'stop_playtest',
+    {},
+    'stop_playtest_result',
   )
+  return jsonContent(res.success ? res.data : { error: res.error })
 }
 
 export async function handleCaptureScreenshot(args: {
   format: string
   quality: number
 }) {
-  const res = await callPlugin('capture_screenshot', {
-    format: args.format,
-    quality: args.quality,
-  })
+  const res = await queueAndWaitForResult(
+    'capture_screenshot',
+    { format: args.format, quality: args.quality },
+    'screenshot_result',
+  )
   return jsonContent(res.success ? res.data : { error: res.error })
 }
 
@@ -286,11 +360,15 @@ export async function handleGetOutputLog(args: {
   filter: string
   since: number
 }) {
-  const res = await callPlugin('get_output_log', {
-    maxEntries: args.maxEntries,
-    filter: args.filter,
-    since: args.since,
-  })
+  const res = await queueAndWaitForResult(
+    'get_output',
+    {
+      maxEntries: args.maxEntries,
+      filter: args.filter,
+      since: args.since,
+    },
+    'output_result',
+  )
   return jsonContent(res.success ? res.data : { error: res.error })
 }
 
@@ -303,7 +381,7 @@ export async function handleSimulateInput(args: {
   duration: number
   scrollDelta: number
 }) {
-  const res = await callPlugin('simulate_input', {
+  const res = await queuePluginCommand('simulate_input', {
     inputType: args.inputType,
     key: args.key,
     action: args.action,
@@ -313,7 +391,7 @@ export async function handleSimulateInput(args: {
     scrollDelta: args.scrollDelta,
   })
   return jsonContent(
-    res.success
+    res.ok
       ? { success: true, inputType: args.inputType, key: args.key, action: args.action }
       : { error: res.error },
   )
@@ -326,13 +404,17 @@ export async function handleNavigateCharacter(args: {
   speed: number
   timeout: number
 }) {
-  const res = await callPlugin('navigate_character', {
-    targetX: args.x,
-    targetY: args.y,
-    targetZ: args.z,
-    speed: args.speed,
-    timeout: args.timeout,
-  })
+  const res = await queueAndWaitForResult(
+    'navigate_character',
+    {
+      targetX: args.x,
+      targetY: args.y,
+      targetZ: args.z,
+      speed: args.speed,
+      timeout: args.timeout,
+    },
+    'navigate_character_result',
+  )
   return jsonContent(
     res.success
       ? { success: true, target: { x: args.x, y: args.y, z: args.z }, ...((res.data as object) ?? {}) }
@@ -344,9 +426,13 @@ export async function handleGetInstanceProperties(args: {
   instancePath: string
   properties: string[]
 }) {
-  const res = await callPlugin('get_instance_properties', {
-    path: args.instancePath,
-    properties: args.properties,
-  })
+  const res = await queueAndWaitForResult(
+    'get_properties',
+    {
+      instancePath: args.instancePath,
+      properties: args.properties,
+    },
+    'properties_result',
+  )
   return jsonContent(res.success ? res.data : { error: res.error })
 }

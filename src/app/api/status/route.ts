@@ -95,30 +95,32 @@ export async function GET() {
   }
 
   // --- AI text providers ---
-  const anthropic = await checkIfConfigured('ANTHROPIC_API_KEY', () =>
-    probe('https://api.anthropic.com/v1/models', {
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
-    })
-  )
-
-  const gemini = await checkIfConfigured('GEMINI_API_KEY', () =>
-    probe(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`
-    )
-  )
-
-  const openai = await checkIfConfigured('OPENAI_API_KEY', () =>
-    probe('https://api.openai.com/v1/models', {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    })
-  )
-
-  const groq = await checkIfConfigured('GROQ_API_KEY', () =>
-    probe('https://api.groq.com/openai/v1/models', {
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    })
-  )
+  // Fan out the four provider probes in parallel. Previously these were
+  // four sequential `await`s, which compounded the 4s probe timeout into
+  // a worst-case ~16s response for the status page.
+  const [anthropic, gemini, openai, groq] = await Promise.all([
+    checkIfConfigured('ANTHROPIC_API_KEY', () =>
+      probe('https://api.anthropic.com/v1/models', {
+        'x-api-key': process.env.ANTHROPIC_API_KEY!,
+        'anthropic-version': '2023-06-01',
+      })
+    ),
+    checkIfConfigured('GEMINI_API_KEY', () =>
+      probe(
+        `https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`
+      )
+    ),
+    checkIfConfigured('OPENAI_API_KEY', () =>
+      probe('https://api.openai.com/v1/models', {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      })
+    ),
+    checkIfConfigured('GROQ_API_KEY', () =>
+      probe('https://api.groq.com/openai/v1/models', {
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      })
+    ),
+  ])
 
   const aiGeneration = rollup([anthropic, gemini, openai, groq])
 

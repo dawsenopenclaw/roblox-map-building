@@ -99,21 +99,41 @@ pcall(function()
 end)
 
 -- ============================================================
--- HMAC-SHA256 signing (pure Lua via Roblox bit32)
--- Roblox doesn't have a native HMAC library, so we use a
--- lightweight SHA-256 + HMAC implementation.
--- In production, consider using a ModuleScript for sha256.
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- !! WARNING: HMAC-SHA256 SIGNING IS NOT IMPLEMENTED        !!
+-- !!                                                        !!
+-- !! The `hmacSign` function below is a stub. It does NOT    !!
+-- !! compute a real HMAC-SHA256 digest — it returns the     !!
+-- !! secret itself.  This has two serious consequences:     !!
+-- !!                                                        !!
+-- !!   1. The server-side HMAC signature check will fail —  !!
+-- !!      purchases never credit via the signed path.       !!
+-- !!   2. The raw webhook secret is emitted in the          !!
+-- !!      `X-Forje-Signature` header on every request, so   !!
+-- !!      anybody who can observe network traffic can read  !!
+-- !!      it and forge purchase webhooks at will.           !!
+-- !!                                                        !!
+-- !! TODO(forje): Replace the stub with a real HMAC-SHA256   !!
+-- !! implementation. Options:                               !!
+-- !!   - Paste a vetted pure-Lua SHA-256 module (e.g.       !!
+-- !!     boatbomber/sha256 on GitHub) and wrap it in the    !!
+-- !!     standard HMAC construction.                        !!
+-- !!   - Or move to a different auth scheme: embed a        !!
+-- !!     shared secret in the JSON body and compare it      !!
+-- !!     server-side with a constant-time comparison.       !!
+-- !!                                                        !!
+-- !! Until then, the server MUST disable this code path in  !!
+-- !! production (see `src/app/api/webhooks/roblox/route.ts` !!
+-- !! which returns 503 when NODE_ENV === 'production').     !!
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 -- ============================================================
 
--- Minimal SHA-256 implementation for HMAC
--- For a production deployment, use a well-tested ModuleScript like
--- "SHA256" from the Roblox toolbox or a verified open-source module.
-
 local function hmacSign(secret, message)
-	-- Fallback: send the secret as a header if HMAC is not available.
-	-- The server also supports x-roblox-webhook-secret header auth.
-	-- This is a simplified approach; for full HMAC, import a SHA-256 module.
-	return secret  -- Server will verify via header comparison
+	-- STUB — see the WARNING block above. Do not rely on this for
+	-- production authentication. The server currently refuses this
+	-- webhook when NODE_ENV === 'production'.
+	warn("[ForjeGames] hmacSign stub invoked — HMAC not implemented; header will leak secret")
+	return secret
 end
 
 -- ============================================================
@@ -508,7 +528,10 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 	local success, data = postToForje(WEBHOOK_PATH, {
 		robloxUserId = player.UserId,
 		productId = product.productId,
-		purchaseToken = "gp_" .. tostring(gamePassId) .. "_" .. tostring(player.UserId) .. "_" .. tostring(os.time()),
+		-- GamePasses are one-time purchases, so the token must be stable
+		-- across retries (otherwise a flaky network = duplicate credit).
+		-- Do NOT include os.time() here.
+		purchaseToken = "gp_" .. tostring(gamePassId) .. "_" .. tostring(player.UserId),
 		amount = product.robux,
 	})
 

@@ -172,7 +172,8 @@ export async function sendPushNotification(
 
 /**
  * Notify a user that their build is complete.
- * Sends both an email and a push notification.
+ * Sends both an email and a push notification, respecting the user's
+ * per-channel preferences for BUILD_COMPLETE / BUILD_FAILED.
  */
 export async function notifyBuildComplete(
   userId: string,
@@ -194,29 +195,48 @@ export async function notifyBuildComplete(
     return
   }
 
+  // Check per-channel preferences — skip any channel the user disabled.
+  // Failures during prefs lookup fall through to "send everything" so a
+  // preference-service outage never silences production notifications.
+  let emailEnabled = true
+  let pushEnabled = true
+  try {
+    const { getUserPreferences } = await import('./notification-preferences')
+    const { preferences } = await getUserPreferences(userId)
+    const type = summary.success ? 'BUILD_COMPLETE' : 'BUILD_FAILED'
+    emailEnabled = preferences[type]?.EMAIL ?? true
+    pushEnabled = preferences[type]?.PUSH ?? true
+  } catch (err) {
+    console.warn('[notifications-server] notifyBuildComplete: prefs lookup failed, defaulting to enabled:', err)
+  }
+
   const title = summary.success
     ? `Your ${summary.buildType} "${summary.buildName}" is ready!`
     : `Your ${summary.buildType} "${summary.buildName}" failed`
 
   // Email — use the rich template from email.ts
-  sendBuildCompleteEmail({
-    email: user.email,
-    buildType: summary.buildType,
-    buildName: summary.buildName,
-    buildId,
-    thumbnailUrl: summary.thumbnailUrl,
-  }).catch((err) => {
-    console.error('[notifications-server] Build-complete email failed:', err)
-  })
+  if (emailEnabled) {
+    sendBuildCompleteEmail({
+      email: user.email,
+      buildType: summary.buildType,
+      buildName: summary.buildName,
+      buildId,
+      thumbnailUrl: summary.thumbnailUrl,
+    }).catch((err) => {
+      console.error('[notifications-server] Build-complete email failed:', err)
+    })
+  }
 
   // Push notification
-  sendPushNotification(userId, title, summary.success
-    ? 'Your game is ready! Open the dashboard to view it.'
-    : 'Check the editor for error details.',
-    { actionUrl: `/editor?build=${buildId}` },
-  ).catch((err) => {
-    console.error('[notifications-server] Build-complete push failed:', err)
-  })
+  if (pushEnabled) {
+    sendPushNotification(userId, title, summary.success
+      ? 'Your game is ready! Open the dashboard to view it.'
+      : 'Check the editor for error details.',
+      { actionUrl: `/editor?build=${buildId}` },
+    ).catch((err) => {
+      console.error('[notifications-server] Build-complete push failed:', err)
+    })
+  }
 }
 
 /**

@@ -55,7 +55,7 @@ const cspDirectives = [
   // Images: self + Clerk avatars + Roblox CDN + S3/R2 + Meshy thumbnails
   "img-src 'self' data: blob: https://img.clerk.com https://images.clerk.dev https://*.rbxcdn.com https://thumbnails.roblox.com https://*.amazonaws.com https://*.r2.dev https://assets.meshy.ai",
   // Connections: self + API calls to AI providers, payments, auth, analytics + dev HMR
-  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com https://*.fal.run https://api.meshy.ai https://api.stripe.com https://upstash.com https://*.sentry.io https://*.ingest.sentry.io https://thumbnails.roblox.com https://users.roblox.com wss://*.clerk.accounts.dev https://app.posthog.com https://us.i.posthog.com https://eu.i.posthog.com${isDev ? ' ws://localhost:3000 ws://localhost:3001' : ''}`,
+  `connect-src 'self' https://clerk.forjegames.com https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com https://*.fal.run https://api.meshy.ai https://api.stripe.com https://*.upstash.io https://*.sentry.io https://*.ingest.sentry.io https://thumbnails.roblox.com https://users.roblox.com wss://*.clerk.accounts.dev https://app.posthog.com https://us.i.posthog.com https://eu.i.posthog.com${isDev ? ' ws://localhost:3000 ws://localhost:3001' : ''}`,
   // Frames: Stripe only (for Stripe Elements / payment UI)
   "frame-src https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com",
   // Workers: none
@@ -169,24 +169,33 @@ const nextConfig: NextConfig = {
   },
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { withSentryConfig } = require('@sentry/nextjs')
-
-// Compose: next-intl wraps nextConfig first, then Sentry wraps the result so
-// both plugins cooperate. Order matters — Sentry must be the outermost layer
-// so its webpack plugin still sees the final merged config.
+// Compose: next-intl wraps nextConfig first, then Sentry wraps the result.
+// In development we skip Sentry entirely to avoid Turbopack incompatibilities
+// (require-in-the-middle external warnings, instrumentation hook parse errors).
+// Production builds still wrap with Sentry for source maps + auto-instrumentation.
 const nextConfigWithIntl = withNextIntl(nextConfig)
 
-export default withSentryConfig(nextConfigWithIntl, {
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  // Upload source maps in CI/production only; skip in local dev to keep builds fast
-  silent: true,
-  widenClientFileUpload: true,
-  // Automatically instrument Next.js data fetching methods and API routes
-  autoInstrumentServerFunctions: true,
-  // Tree-shake Sentry debug code from production bundles
-  disableLogger: true,
-  // Avoid requiring SENTRY_AUTH_TOKEN during local dev (source map upload is optional)
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-})
+const isDevelopment = process.env.NODE_ENV !== 'production'
+// Escape hatch: when NEXT_SKIP_SENTRY=1 the prod build won't wrap with Sentry.
+// Useful to verify a build passes without Sentry's webpack plugin interfering
+// with edge route emission (we've seen "Cannot find module for page: /api/og"
+// errors during collectPageData when the plugin is active).
+const skipSentry = process.env.NEXT_SKIP_SENTRY === '1'
+
+let finalConfig: NextConfig = nextConfigWithIntl
+
+if (!isDevelopment && !skipSentry) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { withSentryConfig } = require('@sentry/nextjs')
+  finalConfig = withSentryConfig(nextConfigWithIntl, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: true,
+    widenClientFileUpload: true,
+    autoInstrumentServerFunctions: true,
+    disableLogger: true,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+  })
+}
+
+export default finalConfig

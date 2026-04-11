@@ -667,10 +667,10 @@ export async function playtestWithAI(
         method: 'POST',
         headers,
         body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
+          message: `${systemPrompt}\n\n${userMessage}`,
+          history: [],
+          aiMode: 'debug',
+          model: 'claude-sonnet-4.5',
         }),
         signal: AbortSignal.timeout(30_000),
       })
@@ -681,12 +681,7 @@ export async function playtestWithAI(
       }
 
       const json = await res.json().catch(() => null)
-      const fixedCode =
-        json?.choices?.[0]?.message?.content ??
-        json?.message?.content ??
-        json?.content ??
-        json?.text ??
-        null
+      const fixedCode = json?.message
 
       if (typeof fixedCode !== 'string' || fixedCode.trim().length === 0) {
         return null

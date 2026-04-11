@@ -34,8 +34,12 @@ export function MobileBottomSheet({
   const [mounted, setMounted] = useState(open)
   const [visible, setVisible] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
+  // State (not ref) so that toggling dragging triggers a re-render and the
+  // inline `transition` style updates in sync with the drag gesture.
+  // A ref is invisible to React and left the sheet with its easing
+  // transition applied during drag, which made the sheet feel laggy.
+  const [isDragging, setIsDragging] = useState(false)
   const dragStartY = useRef<number | null>(null)
-  const dragging = useRef(false)
 
   // Mount/unmount with animation
   useEffect(() => {
@@ -74,20 +78,23 @@ export function MobileBottomSheet({
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     dragStartY.current = e.clientY
-    dragging.current = true
+    setIsDragging(true)
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
   }, [])
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragging.current || dragStartY.current == null) return
-    const delta = e.clientY - dragStartY.current
-    // Only allow drag-down
-    setDragOffset(Math.max(0, delta))
-  }, [])
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging || dragStartY.current == null) return
+      const delta = e.clientY - dragStartY.current
+      // Only allow drag-down
+      setDragOffset(Math.max(0, delta))
+    },
+    [isDragging],
+  )
 
   const onPointerUp = useCallback(() => {
-    if (!dragging.current) return
-    dragging.current = false
+    if (!isDragging) return
+    setIsDragging(false)
     const offset = dragOffset
     dragStartY.current = null
     // Dismiss if dragged more than 100px
@@ -98,7 +105,7 @@ export function MobileBottomSheet({
       // Snap back
       setDragOffset(0)
     }
-  }, [dragOffset, onClose])
+  }, [dragOffset, isDragging, onClose])
 
   if (!mounted) return null
 
@@ -149,7 +156,7 @@ export function MobileBottomSheet({
           flexDirection: 'column',
           overflow: 'hidden',
           transform: `translateY(${translateY})`,
-          transition: dragging.current
+          transition: isDragging
             ? 'none'
             : 'transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
           touchAction: 'none',

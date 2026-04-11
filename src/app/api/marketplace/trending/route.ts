@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
+// PERF: Trending is expensive — we fetch 4x the limit, compute a score per item,
+// then fire-and-forget UPDATEs. That's a lot to do per request. The UI also
+// auto-refreshes. A 60s revalidate window lets Next.js/edge cache the response
+// so repeat viewers within the minute hit the cache instead of the DB.
+export const revalidate = 60
+
 // ── Trending score algorithm ────────────────────────────────────────────────
 // score = (likes * 3 + forks * 5 + views) / (hours_since_creation + 2)^1.5
 
@@ -92,7 +98,16 @@ export async function GET(req: NextRequest) {
       // ignore errors — trending score update is best-effort
     })
 
-    return NextResponse.json({ templates: trending })
+    return NextResponse.json(
+      { templates: trending },
+      {
+        headers: {
+          // Edge/CDN cache for 60s, serve stale for up to 120s while revalidating.
+          // Trending changes slowly — stale data is fine for a minute.
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        },
+      },
+    )
   } catch {
     return NextResponse.json(
       { error: 'Failed to fetch trending templates' },

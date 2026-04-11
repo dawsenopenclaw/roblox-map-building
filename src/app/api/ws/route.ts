@@ -20,8 +20,18 @@
  */
 
 import { type NextRequest } from 'next/server'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
 
 export const runtime = 'edge'
+
+// ─── Clerk JWKS (module scope — reused across invocations) ─────────────────
+// Clerk publishes its signing keys at this JWKS endpoint. We create the
+// remote key set once per isolate so the underlying cache survives across
+// connection upgrades.
+const CLERK_DOMAIN = 'clerk.forjegames.com'
+const CLERK_JWKS = createRemoteJWKSet(
+  new URL(`https://${CLERK_DOMAIN}/.well-known/jwks.json`),
+)
 
 // ─── Connection Registry ────────────────────────────────────────────────────
 
@@ -81,39 +91,23 @@ function broadcast(data: Record<string, unknown>): number {
 // ─── Token verification ────────────────────────────────────────────────────
 
 /**
- * Lightweight Clerk JWT verification for the edge runtime.
- * Decodes the JWT payload without a full Clerk SDK import to keep
- * the edge bundle small. In production you would verify the signature
- * against Clerk's JWKS endpoint; here we decode the payload and
- * extract the `sub` (userId) claim.
+ * Verify a Clerk-issued JWT against Clerk's JWKS endpoint.
  *
- * For a production deployment, add signature verification using
- * the jose library or Clerk's edge helpers.
+ * Uses the `jose` library (edge-runtime compatible) to perform full
+ * signature verification, issuer validation, and expiry checks. Previously
+ * this function only base64-decoded the payload, which let an attacker
+ * forge a token with an arbitrary `sub` claim and impersonate any user.
+ *
+ * Returns the Clerk userId (sub claim) on success, or null on any failure.
  */
 async function verifyClerkToken(token: string): Promise<string | null> {
   try {
-    // JWT structure: header.payload.signature
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-
-    // Decode the payload (base64url)
-    const payloadB64 = parts[1]
-      .replace(/-/g, '+')
-      .replace(/_/g, '/')
-    const payloadJson = atob(payloadB64)
-    const payload = JSON.parse(payloadJson) as {
-      sub?: string
-      exp?: number
-      iss?: string
-    }
-
-    // Check expiry
-    if (payload.exp && payload.exp * 1000 < Date.now()) {
-      return null
-    }
-
-    // Return the Clerk userId (sub claim)
-    return payload.sub || null
+    const { payload } = await jwtVerify(token, CLERK_JWKS, {
+      issuer: `https://${CLERK_DOMAIN}`,
+    })
+    const sub = payload.sub
+    if (typeof sub !== 'string' || !payload.exp) return null
+    return sub
   } catch {
     return null
   }

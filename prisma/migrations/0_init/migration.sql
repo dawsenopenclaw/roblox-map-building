@@ -1,6 +1,9 @@
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
+-- CreateExtension (pgvector required for RobloxDocChunk.embedding)
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- CreateEnum
 CREATE TYPE "public"."AchievementCategory" AS ENUM ('FIRST_STEPS', 'VELOCITY', 'MARKETPLACE', 'COMMUNITY', 'QUALITY', 'EXPLORATION', 'SOCIAL');
 

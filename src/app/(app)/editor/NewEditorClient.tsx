@@ -1489,6 +1489,43 @@ function TopBar({
       {/* Center: Layout switcher + connection pill */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <LayoutSwitcher layout={editorLayout} onChange={onLayoutChange} />
+        {/*
+          Not-connected indicator — click to open the connect-studio flow.
+          This is the "manual mode" signal: the user is told up-front that
+          builds will fall back to copy/paste + .rbxmx until a plugin
+          session exists. Studio building is ForjeGames' core feature and
+          we never silently hide that state.
+        */}
+        {!isConnected && onConnect && (
+          <button
+            type="button"
+            onClick={onConnect}
+            title="Click to connect Roblox Studio — until then, builds show as copy/paste"
+            style={{
+              padding: '3px 10px',
+              borderRadius: 6,
+              background: 'rgba(250,204,21,0.06)',
+              border: '1px solid rgba(250,204,21,0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            <div style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: '#FACC15',
+              boxShadow: '0 0 4px rgba(250,204,21,0.55)',
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: 'rgba(250,204,21,0.85)', fontWeight: 500 }}>
+              No Studio — manual mode
+            </span>
+          </button>
+        )}
         {isConnected && placeName && (() => {
           const isReconnecting = sseReconnectPhase === 'reconnecting' || sseReconnectPhase === 'lost'
           const isFailed = sseReconnectPhase === 'failed'
@@ -2520,6 +2557,12 @@ export default function NewEditorClient() {
 
 function EditorInner() {
   const isMobile = useIsMobile()
+  const { isSignedIn, isLoaded: authLoaded } = useUser()
+  // BUG 3: Show a one-time signup prompt to guest users after their first
+  // successful message lands. Flag is persisted in localStorage so we never
+  // annoy them twice.
+  const [showGuestSignupPrompt, setShowGuestSignupPrompt] = useState(false)
+  const guestPromptHandledRef = useRef(false)
   const [mobileTab, setMobileTab] = useState<'chat' | 'studio'>('chat')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [viewportExpanded, setViewportExpanded] = useState(false)
@@ -2658,6 +2701,25 @@ function EditorInner() {
           model: 'studio',
           success: true,
         })
+        // Fire-and-forget: trigger email + push via the server endpoint
+        // (BUG 2 — notifyBuildComplete was previously dead code). We
+        // deliberately do NOT await so a slow Resend / VAPID call can't
+        // stall the UI, and we swallow any error so users with
+        // notifications disabled see no console noise.
+        try {
+          fetch('/api/notifications/build-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              buildId: sessionId ?? `build-${Date.now()}`,
+              summary: {
+                buildName: prompt.slice(0, 60) || 'Untitled Build',
+                buildType: 'build',
+                success: true,
+              },
+            }),
+          }).catch(() => { /* best-effort — ignore */ })
+        } catch { /* best-effort — ignore */ }
       } catch {
         studio.addActivity('Studio execution failed — check your connection.')
         toast('Studio execution failed', 'error')
@@ -2674,6 +2736,36 @@ function EditorInner() {
     studioConnected: studio.isConnected,
     studioContext: studio.studioContext,
   })
+
+  // BUG 3: Detect the first completed exchange for a guest user and show
+  // the signup prompt. Fires after a user message has received an assistant
+  // response AND the user is definitely not signed in. Uses a one-time flag
+  // in localStorage so each guest only sees it once per browser.
+  useEffect(() => {
+    if (!authLoaded || isSignedIn || guestPromptHandledRef.current) return
+    if (typeof window === 'undefined') return
+    try {
+      if (localStorage.getItem('forje_guest_signup_prompted') === '1') {
+        guestPromptHandledRef.current = true
+        return
+      }
+    } catch { /* ignore */ }
+
+    const msgs = chat.messages
+    const hasUser = msgs.some((m) => m.role === 'user')
+    const hasAssistant = msgs.some((m) => m.role === 'assistant' && !m.streaming)
+    if (hasUser && hasAssistant && !chat.loading && !chat.streaming) {
+      guestPromptHandledRef.current = true
+      // Defer so the user actually sees the response land first
+      const t = setTimeout(() => setShowGuestSignupPrompt(true), 900)
+      return () => clearTimeout(t)
+    }
+  }, [authLoaded, isSignedIn, chat.messages, chat.loading, chat.streaming])
+
+  const dismissGuestSignupPrompt = useCallback(() => {
+    setShowGuestSignupPrompt(false)
+    try { localStorage.setItem('forje_guest_signup_prompted', '1') } catch { /* ignore */ }
+  }, [])
 
   // Onboarding overlay — page-aware: skips steps that don't apply to current state.
   // Suppressed entirely if the user already has chat history or has dismissed before.
@@ -2728,6 +2820,12 @@ function EditorInner() {
     // Auto-enhance
     autoEnhanceEnabled,
     onAutoEnhanceToggle: setAutoEnhanceEnabled,
+    // Image mode options (BUG 9)
+    imageOptions: chat.imageOptions,
+    onImageOptionsChange: chat.setImageOptions,
+    // BUG 2: Build direction picker
+    buildDirection: chat.buildDirection,
+    onBuildDirectionChange: chat.setBuildDirection,
   } as const
 
   // Auto-send ?prompt= / ?voice= / ?imageprompt= params — fires once on first mount only
@@ -2918,11 +3016,63 @@ function EditorInner() {
   }, [studio])
 
   // Send generated asset Luau to Studio
+  // BUG 10: When a `robloxAssetId` is available (meaning the mesh was already
+  // uploaded to Roblox via Open Cloud), prefer the insert_asset command path
+  // — the plugin uses InsertService:LoadAsset(assetId) which is faster,
+  // cleaner, and doesn't require streaming the raw model file. Falls back to
+  // the Luau push path when no assetId is available (demo mode,
+  // ROBLOX_OPEN_CLOUD_API_KEY not configured, etc.).
   const handleAssetSendToStudio = useCallback(
-    (luauCode: string, assetPrompt: string) => {
+    (
+      luauCode: string,
+      assetPrompt: string,
+      meta?: { robloxAssetId?: string | null; name?: string },
+    ) => {
+      if (meta?.robloxAssetId && studio.sessionId && studio.isConnected) {
+        fetch('/api/studio/push-asset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: studio.sessionId,
+            assetId: meta.robloxAssetId,
+            robloxAssetId: meta.robloxAssetId,
+            name: meta.name ?? (assetPrompt.slice(0, 64) || 'Generated Asset'),
+          }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '')
+              console.warn('[handleAssetSendToStudio] push-asset failed, falling back to luau:', errText)
+              void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
+              return
+            }
+            studio.addActivity(`Inserted asset ${meta.robloxAssetId} via InsertService`)
+            toast('Asset sent to Studio', 'success')
+          })
+          .catch((err: unknown) => {
+            console.warn('[handleAssetSendToStudio] push-asset error, falling back to luau:', err)
+            void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
+          })
+        return
+      }
+      // Fallback: no assetId available → push raw Luau code as before
       void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
     },
-    [handleBuildComplete, studio.sessionId],
+    [handleBuildComplete, studio, toast],
+  )
+
+  // PERF: Stable curried variant — passing an inline `(luau) => handleAssetSendToStudio(luau, 'mesh')`
+  // lambda to ChatPanel creates a fresh function on every render of NewEditorClient,
+  // which defeats React.memo on MessageBubble (every bubble would re-render on every
+  // keystroke in the textarea). A useCallback-bound closure lets MessageBubble's
+  // memo actually skip work.
+  const handleMeshSendToStudio = useCallback(
+    (
+      luau: string,
+      prompt?: string,
+      meta?: { robloxAssetId?: string | null; name?: string },
+    ) => handleAssetSendToStudio(luau, prompt || 'mesh', meta),
+    [handleAssetSendToStudio],
   )
 
   // Build-error action handlers
@@ -3176,7 +3326,7 @@ function EditorInner() {
               onBuildDifferently={handleBuildDifferently}
               onDismiss={handleDismissError}
               onEditAndResend={chat.editAndResend}
-              onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+              onSendToStudio={handleMeshSendToStudio}
               studioConnected={studio.isConnected}
               savedAt={chat.savedAt}
               imageFile={chat.imageFile}
@@ -3261,7 +3411,7 @@ function EditorInner() {
                     onBuildDifferently={handleBuildDifferently}
                     onDismiss={handleDismissError}
                     onEditAndResend={chat.editAndResend}
-                    onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                    onSendToStudio={handleMeshSendToStudio}
                     studioConnected={studio.isConnected}
                     savedAt={chat.savedAt}
               imageFile={chat.imageFile}
@@ -3384,7 +3534,7 @@ function EditorInner() {
                       onBuildDifferently={handleBuildDifferently}
                       onDismiss={handleDismissError}
                       onEditAndResend={chat.editAndResend}
-                      onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                      onSendToStudio={handleMeshSendToStudio}
                       studioConnected={studio.isConnected}
                       savedAt={chat.savedAt}
               imageFile={chat.imageFile}
@@ -3416,7 +3566,7 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
-                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                        onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
                         savedAt={chat.savedAt}
               imageFile={chat.imageFile}
@@ -3471,7 +3621,7 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
-                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                        onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
                         savedAt={chat.savedAt}
               imageFile={chat.imageFile}
@@ -3539,7 +3689,7 @@ function EditorInner() {
                     <div style={{ flex: 1, overflowY: sidebarPanel === 'generate' ? 'hidden' : 'auto', padding: sidebarPanel === 'generate' ? 0 : 16 }}>
                       {sidebarPanel === 'generate' && (
                         <AssetGenerator
-                          onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                          onSendToStudio={handleMeshSendToStudio}
                         />
                       )}
                       {sidebarPanel === 'marketplace' && (
@@ -3743,6 +3893,99 @@ function EditorInner() {
       {/* Shortcuts Help overlay */}
       <ShortcutsHelp isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
+      {/* BUG 3: Guest signup prompt — one-time modal after first AI response */}
+      {showGuestSignupPrompt && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fg-guest-signup-title"
+          onClick={dismissGuestSignupPrompt}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(5,8,16,0.72)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'msgFadeUp 0.25s ease-out forwards',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 420,
+              width: '100%',
+              padding: 28,
+              borderRadius: 18,
+              background: 'linear-gradient(180deg, rgba(20,26,48,0.95) 0%, rgba(12,16,32,0.95) 100%)',
+              border: '1px solid rgba(212,175,55,0.25)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.55), 0 0 40px rgba(212,175,55,0.12)',
+              fontFamily: 'Inter, sans-serif',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 10 }}>✨</div>
+            <h2
+              id="fg-guest-signup-title"
+              style={{
+                margin: '0 0 8px',
+                fontSize: 20,
+                fontWeight: 700,
+                color: '#fafafa',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Loved that build?
+            </h2>
+            <p style={{ margin: '0 0 22px', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+              Sign up to save it forever, sync across devices, and unlock premium models.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <Link
+                href="/sign-up"
+                onClick={() => {
+                  try { localStorage.setItem('forje_guest_signup_prompted', '1') } catch { /* ignore */ }
+                }}
+                style={{
+                  display: 'block',
+                  padding: '12px 18px',
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                  color: '#030712',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(212,175,55,0.35)',
+                }}
+              >
+                Sign up free
+              </Link>
+              <button
+                type="button"
+                onClick={dismissGuestSignupPrompt}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 12,
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Continue as guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile bottom-sheet drawer: houses the marketplace / history / settings etc.
           that would normally live in the desktop right-side panel. */}
       {isMobile && (
@@ -3808,7 +4051,7 @@ function EditorInner() {
           {/* Panel body content — mirrors the desktop side panel */}
           {sidebarPanel === 'generate' && (
             <AssetGenerator
-              onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+              onSendToStudio={handleMeshSendToStudio}
             />
           )}
           {sidebarPanel === 'marketplace' && (

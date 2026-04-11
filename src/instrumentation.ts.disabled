@@ -1,0 +1,6 @@
+// Sentry instrumentation — no-op in dev to avoid Turbopack hanging on
+// relative imports outside `src/`. Production builds load Sentry normally
+// via the next.config.ts plugin integration.
+export function register() {}
+
+export function onRequestError() {}

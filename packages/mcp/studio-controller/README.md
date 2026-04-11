@@ -1,6 +1,9 @@
 # Studio Controller MCP Server
 
-MCP server for direct read/write control of Roblox Studio state. Communicates with the Studio plugin's local HTTP endpoint on `localhost:33796` for real-time interaction with no cloud relay delay.
+A specialized MCP tool surface for Roblox Studio control, alongside `studio-bridge`. It communicates with the ForjeGames Studio plugin via the **same cloud relay pattern** that `studio-bridge` uses: commands are queued through `/api/studio/execute` and the plugin polls for them; responses are returned through `/api/studio/bridge-result`.
+
+> **Why not talk to the plugin directly?**
+> Roblox Studio plugins cannot open inbound HTTP sockets. There is no way for an external process to connect straight to a running plugin. Every Studio-side tool the AI can invoke must go through the ForjeGames cloud relay.
 
 ## Port
 
@@ -13,21 +16,34 @@ MCP server for direct read/write control of Roblox Studio state. Communicates wi
 | `read_scene` | Get the full scene hierarchy (services, instances, class names) |
 | `read_script` | Read a Luau script's source code by instance path |
 | `write_script` | Write Luau code to a script (creates if missing) |
-| `start_playtest` | Start a playtest session (play, play_here, run) |
-| `stop_playtest` | Stop the current playtest and return to Edit mode |
-| `capture_screenshot` | Capture the Studio viewport as PNG/JPEG |
+| `start_playtest` | **Limited** -- see note below |
+| `stop_playtest` | **Limited** -- see note below |
+| `capture_screenshot` | **Limited** -- see note below |
 | `get_output_log` | Get Output/console log entries (prints, warns, errors) |
-| `simulate_input` | Simulate keyboard/mouse input during playtest |
+| `simulate_input` | Simulate keyboard/mouse input during an active playtest |
 | `navigate_character` | Move the player character to a world position |
 | `get_instance_properties` | Get properties of a specific instance by path |
+
+### Limitations (honest list)
+
+Several tools exist for API symmetry with the long-term roadmap but currently return a `user_action_required` status because Roblox does not expose the required APIs to plugins:
+
+- **`start_playtest` / `stop_playtest`** — Roblox plugins cannot start or stop a Play / Run session programmatically. The plugin will display a Studio notification telling the user to press **F5** (or **Shift+F5** to stop) and the tool response will indicate `user_action_required`.
+- **`capture_screenshot`** — The `ScreenshotHud` API is not a functional capture surface from plugin edit context, and `CaptureService` is not plugin-accessible. The tool returns `user_action_required`; use Roblox's built-in screenshot shortcut (`PrtScn` in Studio) or the session screenshot uploader on the ForjeGames web app instead.
+
+If and when Roblox exposes real APIs for these, these handlers will be upgraded. Until then, the MCP layer will not pretend they worked.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `STUDIO_CONTROLLER_PORT` | `3006` | Port for this MCP server |
-| `STUDIO_PLUGIN_PORT` | `33796` | Port of the Studio plugin HTTP server |
-| `STUDIO_PLUGIN_HOST` | `localhost` | Host of the Studio plugin HTTP server |
+| `STUDIO_CONTROLLER_PORT` | `3006` | Port this MCP server listens on |
+| `FORJE_API_BASE` | `https://forjegames.com` | ForjeGames API base URL |
+| `FORJE_API_TOKEN` | *(required)* | Session token used by the Studio plugin |
+| `FORJE_SESSION_ID` | *(required)* | Target Studio session id |
+| `STUDIO_CONTROLLER_ALLOWED_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000,https://forjegames.com,https://www.forjegames.com` | Comma-separated CORS allow-list |
+
+`FORJE_SESSION_TOKEN` is accepted as a fallback for `FORJE_API_TOKEN`.
 
 ## Usage
 
@@ -42,9 +58,20 @@ npm start
 
 ## Architecture
 
-Unlike `studio-bridge` (which relays commands through the ForjeGames cloud API and relies on plugin polling), `studio-controller` talks directly to the Studio plugin over localhost HTTP. This provides:
+```
+  AI client (Claude / Cursor / etc.)
+              |
+              v
+  studio-controller MCP server  (this package, port 3006)
+              |
+              |  HTTP POST /api/studio/execute   (command)
+              |  HTTP GET  /api/studio/bridge-result?requestId=...
+              v
+  ForjeGames API   (cloud relay -- same queue studio-bridge uses)
+              ^
+              |  long-poll / push
+              |
+  Roblox Studio Plugin  (packages/studio-plugin)
+```
 
-- Real-time response (no 2-5s polling delay)
-- No authentication/session tokens required
-- Works offline (no internet needed)
-- Lower latency for rapid iteration workflows
+`studio-controller` provides a **different tool surface** than `studio-bridge` (focused on read/write + playtest control primitives); both servers ultimately share the same cloud relay and plugin. There is no direct-localhost mode, and adding one is not possible on current Roblox Studio.

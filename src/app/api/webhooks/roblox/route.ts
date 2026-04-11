@@ -54,11 +54,15 @@ const webhookSchema = z.object({
 // ── Webhook secret verification ─────────────────────────────────────────────
 
 function verifyWebhookSecret(req: NextRequest): boolean {
-  const secret = process.env.ROBLOX_WEBHOOK_SECRET
+  // Standardized env var name is ROBUX_WEBHOOK_SECRET (matches .env.example
+  // and the /api/payments/robux/link endpoint). Fall back to the legacy
+  // ROBLOX_WEBHOOK_SECRET name for back-compat with older deployments.
+  const secret =
+    process.env.ROBUX_WEBHOOK_SECRET ?? process.env.ROBLOX_WEBHOOK_SECRET
   if (!secret) {
     // In development, allow unsigned requests with a warning
     if (process.env.NODE_ENV === 'development') {
-      console.warn('[roblox-webhook] ROBLOX_WEBHOOK_SECRET not set — allowing unsigned request in dev')
+      console.warn('[roblox-webhook] ROBUX_WEBHOOK_SECRET not set — allowing unsigned request in dev')
       return true
     }
     return false
@@ -80,6 +84,22 @@ function verifyWebhookSecret(req: NextRequest): boolean {
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  // FAIL-SAFE: The Lua client (packages/studio-plugin/RobuxPayment.lua) ships
+  // with a stubbed `hmacSign` that returns the raw secret, which both breaks
+  // the signature check AND leaks the secret on every request. Until a real
+  // HMAC implementation lands, refuse this webhook in production to prevent
+  // silent credit loss and forged purchases. See the big WARNING block in
+  // RobuxPayment.lua for details.
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      {
+        error: 'Robux webhook temporarily disabled',
+        reason: 'hmac_not_implemented',
+      },
+      { status: 503 },
+    )
+  }
+
   // Verify webhook authenticity
   if (!verifyWebhookSecret(req)) {
     return NextResponse.json({ error: 'Invalid webhook secret' }, { status: 401 })
@@ -123,20 +143,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // For GamePass purchases, check by robloxUserId + gamePassId to prevent double-crediting
+    // For GamePass purchases, check by a composite key of robloxUserId +
+    // gamePassId. The previous implementation keyed on gamePassId alone,
+    // which meant once any user bought a given GamePass, every subsequent
+    // purchase of the same GamePass by a DIFFERENT user was silently
+    // dropped as a "duplicate". We store the composite on the audit log
+    // row below as `gamePassIdemKey` and look it up here.
     if (body.type === 'gamepass_purchase' && body.gamePassId) {
+      const idemKey = `${body.robloxUserId}_${body.gamePassId}`
       const existing = await db.auditLog.findFirst({
         where: {
           action: 'ROBUX_PURCHASE_COMPLETED',
           metadata: {
-            path: ['gamePassId'],
-            equals: body.gamePassId,
+            path: ['gamePassIdemKey'],
+            equals: idemKey,
           },
         },
         select: { id: true },
       })
       if (existing) {
-        console.info('[roblox-webhook] Duplicate gamepass purchase, skipping:', body.gamePassId)
+        console.info('[roblox-webhook] Duplicate gamepass purchase, skipping:', idemKey)
         return NextResponse.json({ received: true, duplicate: true })
       }
     }
@@ -189,7 +215,13 @@ export async function POST(req: NextRequest) {
       },
     )
 
-    // Record the completed purchase
+    // Record the completed purchase. `gamePassIdemKey` is a composite of
+    // robloxUserId + gamePassId and is the key we use for GamePass
+    // idempotency checks above — see the comment on the duplicate-check
+    // block.
+    const gamePassIdemKey = body.gamePassId
+      ? `${body.robloxUserId}_${body.gamePassId}`
+      : undefined
     await db.auditLog.create({
       data: {
         action: 'ROBUX_PURCHASE_COMPLETED',
@@ -203,6 +235,7 @@ export async function POST(req: NextRequest) {
           status: 'completed',
           purchaseId: body.purchaseId,
           gamePassId: body.gamePassId,
+          gamePassIdemKey,
         },
       },
     })

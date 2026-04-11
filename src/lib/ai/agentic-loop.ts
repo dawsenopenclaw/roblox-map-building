@@ -16,6 +16,7 @@ import 'server-only'
 import { callAI, type AIMessage } from './provider'
 import { queueCommand, getSession } from '@/lib/studio-session'
 import { analyzeLuau, autoFixLuau } from './static-analysis'
+import { luauToStructuredCommands } from './structured-commands'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -197,11 +198,50 @@ function runStaticAnalysis(code: string): { valid: boolean; errors: string[]; fi
 
 /**
  * Deploy code to Studio via the command queue.
+ *
+ * Branches on plugin edition (mirrors src/app/api/ai/chat/route.ts):
+ *   - Creator Store edition (pluginVersion ends in `-store`) cannot run
+ *     loadstring(), so we translate the Luau to structured commands and
+ *     queue `structured_commands`. If the code contains constructs the
+ *     translator cannot handle, we fail the deploy with a clear message.
+ *   - Direct-download edition receives raw Luau via `execute_luau`.
  */
 async function deployToStudio(
   sessionId: string,
   code: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  const session = await getSession(sessionId)
+  const isStoreEdition = session?.pluginVersion?.endsWith('-store') ?? false
+
+  if (isStoreEdition) {
+    const { commands, hasUntranslatableCode, warnings } = luauToStructuredCommands(code)
+    if (hasUntranslatableCode) {
+      return {
+        ok: false,
+        error:
+          'Generated Luau contains constructs that cannot be translated to structured commands for the Creator Store plugin edition' +
+          (warnings.length > 0 ? ` (${warnings.join('; ')})` : '') +
+          '. Use the direct-download plugin edition for this prompt.',
+      }
+    }
+    if (commands.length === 0) {
+      return {
+        ok: false,
+        error: 'Translation produced zero structured commands; nothing to deploy to the store-edition plugin.',
+      }
+    }
+    const result = await queueCommand(sessionId, {
+      type: 'structured_commands',
+      data: { commands },
+    })
+    if (!result.ok) {
+      return { ok: false, error: result.error ?? 'Failed to queue structured_commands' }
+    }
+    await delay(COMMAND_QUEUE_DELAY_MS)
+    return { ok: true }
+  }
+
+  // Direct-download plugin: raw Luau via loadstring
   const result = await queueCommand(sessionId, {
     type: 'execute_luau',
     data: { code },

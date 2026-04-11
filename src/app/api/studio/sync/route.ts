@@ -276,6 +276,14 @@ async function handleSync(req: NextRequest) {
     session.pluginVersion = pluginVer
   }
 
+  // TODO(BUG 7): Push a `studio-sync` WS event to the user's browser here so
+  // the editor can refresh plugin status without polling. Blocked by the fact
+  // that /api/ws runs in the edge runtime with a per-isolate in-memory
+  // connection Map, so this Node route can't call `pushToUser` directly. A
+  // proper fix would publish to Redis (pub/sub) and have the ws route
+  // subscribe on connect — same pattern as studio-sse-bus.ts. For now the
+  // editor continues to poll /api/studio/status every 2s.
+
   if (needsUpdate) {
     const absDownloadUrl = manifest.downloadUrl.startsWith('http')
       ? manifest.downloadUrl

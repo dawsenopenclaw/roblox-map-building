@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -17,22 +18,34 @@ interface NavLink {
   badge?: 'New'
 }
 
-const NAV_LINKS: NavLink[] = [
-  { href: '#features',  label: 'Features',  scroll: true,  Icon: Sparkles     },
-  { href: '#showcase',  label: 'Showcase',  scroll: true,  Icon: Layout       },
-  { href: '#pricing',   label: 'Pricing',   scroll: true,  Icon: CreditCard   },
-  { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New' },
-  { href: '/docs',      label: 'Docs',      scroll: false, Icon: BookOpen     },
-  { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
-  { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy     },
-  { href: '/status',    label: 'Status',    scroll: false, Icon: Activity     },
-]
+/**
+ * BUG 1: when we're NOT on the homepage, anchor-style links like `#features`
+ * don't resolve because those sections only exist on `/`. We rewrite them to
+ * absolute homepage anchors (`/#features`) and disable the smooth-scroll
+ * interception so Next.js does a full navigation. `#pricing` gets rewritten to
+ * the dedicated `/pricing` page so the CTA keeps working.
+ */
+function buildNavLinks(pathname: string | null): NavLink[] {
+  const onHome = pathname === '/' || pathname === ''
+  return [
+    { href: onHome ? '#features' : '/#features',  label: 'Features',  scroll: onHome,  Icon: Sparkles     },
+    { href: onHome ? '#showcase' : '/showcase',   label: 'Showcase',  scroll: onHome,  Icon: Layout       },
+    { href: onHome ? '#pricing'  : '/pricing',    label: 'Pricing',   scroll: onHome,  Icon: CreditCard   },
+    { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New' },
+    { href: '/docs',      label: 'Docs',      scroll: false, Icon: BookOpen     },
+    { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
+    { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy     },
+    { href: '/status',    label: 'Status',    scroll: false, Icon: Activity     },
+  ]
+}
 
 function MarketingNav() {
   const [scrolled, setScrolled]   = useState(false)
   const [menuOpen, setMenuOpen]   = useState(false)
   const { isSignedIn, isLoaded }  = useAuth()
   const navRef                    = useRef<HTMLElement>(null)
+  const pathname                  = usePathname()
+  const NAV_LINKS                 = buildNavLinks(pathname)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -84,7 +97,7 @@ function MarketingNav() {
       ].join(' ')}
       style={scrolled ? { boxShadow: '0 1px 0 rgba(255,255,255,0.03)' } : undefined}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3 sm:gap-4">
 
         {/* Logo — left */}
         <Link
@@ -96,9 +109,9 @@ function MarketingNav() {
           <span className="text-white">Games</span>
         </Link>
 
-        {/* Desktop nav — center */}
+        {/* Desktop nav — center, sharing space with logo + CTA via flex-1 */}
         <nav
-          className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
+          className="hidden md:flex flex-1 items-center justify-center gap-0.5 lg:gap-1 min-w-0"
           aria-label="Site navigation"
         >
           {NAV_LINKS.map((link) => (
@@ -106,7 +119,7 @@ function MarketingNav() {
               key={link.href}
               href={link.href}
               onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
-              className="relative inline-flex items-center gap-1.5 px-4 py-2 text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37]"
+              className="relative inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-2 text-[13px] lg:text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] whitespace-nowrap"
             >
               <link.Icon size={14} aria-hidden="true" />
               {link.label}

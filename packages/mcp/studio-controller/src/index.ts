@@ -2,18 +2,21 @@
 /**
  * Studio Controller MCP Server -- port 3006
  *
- * Bridges the AI web app and Roblox Studio by talking directly to the local
- * Studio plugin HTTP endpoint (default localhost:33796). Unlike studio-bridge
- * (which relays through the ForjeGames cloud API), this server communicates
- * with Studio in real time over localhost -- no polling delay.
+ * A specialized MCP tool surface for Roblox Studio control. Communicates
+ * with the Studio plugin via the ForjeGames cloud relay -- the same pattern
+ * studio-bridge uses -- because Roblox plugins cannot accept inbound HTTP.
+ * Tools queue commands through `/api/studio/execute` and poll for results
+ * via `/api/studio/bridge-result`.
+ *
+ * Required env: FORJE_API_TOKEN, FORJE_SESSION_ID (+ optional FORJE_API_BASE)
  *
  * Tools:
  *   read_scene              -> Full scene hierarchy (services, instances, properties)
  *   read_script             -> Read a Luau script's source from a given path
  *   write_script            -> Write Luau code to a script at a given path
- *   start_playtest          -> Start a playtest session in Studio
- *   stop_playtest           -> Stop the current playtest
- *   capture_screenshot      -> Capture the Studio viewport as PNG
+ *   start_playtest          -> Start a playtest session in Studio (see README)
+ *   stop_playtest           -> Stop the current playtest (see README)
+ *   capture_screenshot      -> Capture the Studio viewport (see README)
  *   get_output_log          -> Get the Output/console log from Studio
  *   simulate_input          -> Simulate keyboard/mouse input during playtest
  *   navigate_character      -> Move the player character to a position
@@ -58,6 +61,22 @@ import {
 // ---------------------------------------------------------------------------
 
 const PORT = Number(process.env.STUDIO_CONTROLLER_PORT ?? 3006)
+
+// CORS allow-list -- lock down to known origins. Override with
+// STUDIO_CONTROLLER_ALLOWED_ORIGINS (comma-separated). Default covers the
+// local Next dev server and the ForjeGames production web app.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://forjegames.com',
+  'https://www.forjegames.com',
+]
+const ALLOWED_ORIGINS = new Set(
+  (process.env.STUDIO_CONTROLLER_ALLOWED_ORIGINS
+    ?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean) ?? DEFAULT_ALLOWED_ORIGINS),
+)
 
 // ---------------------------------------------------------------------------
 // MCP server -- tool registration
@@ -213,8 +232,12 @@ function buildMcpServer(): McpServer {
 // HTTP server -- StreamableHTTP transport with session management
 // ---------------------------------------------------------------------------
 
-const mcpServer = buildMcpServer()
+// Each session gets its own McpServer instance. The MCP TypeScript SDK's
+// StreamableHTTPServerTransport is not designed to share a single McpServer
+// across multiple transports concurrently; stateless fallback requests also
+// build their own throwaway server.
 const transports = new Map<string, StreamableHTTPServerTransport>()
+const sessionServers = new Map<string, McpServer>()
 
 async function readBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -245,12 +268,16 @@ function sendJson(res: ServerResponse, statusCode: number, body: unknown): void 
 
 const httpServer = createServer(
   async (req: IncomingMessage, res: ServerResponse) => {
-    // CORS headers for local dev
-    res.setHeader('Access-Control-Allow-Origin', '*')
+    // CORS headers -- only echo the Origin if it is in the allow-list.
+    const origin = req.headers.origin
+    if (origin && ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin)
+      res.setHeader('Vary', 'Origin')
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, mcp-session-id',
+      'Content-Type, mcp-session-id, authorization',
     )
 
     if (req.method === 'OPTIONS') {
@@ -285,27 +312,42 @@ const httpServer = createServer(
         }
 
         if (!sessionId && isInitializeRequest(body)) {
-          // New stateful session
+          // New stateful session -- build a fresh McpServer per session so
+          // we never share tool-handler state across concurrent transports.
+          const perSessionServer = buildMcpServer()
           const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => randomUUID(),
             onsessioninitialized: (id) => {
               transports.set(id, transport)
+              sessionServers.set(id, perSessionServer)
             },
           })
           transport.onclose = () => {
-            if (transport.sessionId) transports.delete(transport.sessionId)
+            if (transport.sessionId) {
+              transports.delete(transport.sessionId)
+              const srv = sessionServers.get(transport.sessionId)
+              if (srv) {
+                sessionServers.delete(transport.sessionId)
+                void srv.close().catch(() => {})
+              }
+            }
           }
-          await mcpServer.connect(transport)
+          await perSessionServer.connect(transport)
           await transport.handleRequest(req, res, body)
           return
         }
 
-        // Stateless fallback
+        // Stateless fallback -- also build a fresh server per request.
+        const statelessServer = buildMcpServer()
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: undefined,
         })
-        await mcpServer.connect(transport)
-        await transport.handleRequest(req, res, body)
+        await statelessServer.connect(transport)
+        try {
+          await transport.handleRequest(req, res, body)
+        } finally {
+          void statelessServer.close().catch(() => {})
+        }
         return
       }
 
@@ -370,6 +412,10 @@ httpServer.on('error', (err: NodeJS.ErrnoException) => {
 
 process.on('SIGTERM', async () => {
   process.stderr.write('[studio-controller] Shutting down...\n')
-  await mcpServer.close()
+  for (const srv of sessionServers.values()) {
+    await srv.close().catch(() => {})
+  }
+  sessionServers.clear()
+  transports.clear()
   httpServer.close(() => process.exit(0))
 })

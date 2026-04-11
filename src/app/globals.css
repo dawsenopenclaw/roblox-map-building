@@ -12,9 +12,12 @@ html {
 }
 
 /* ─── Reduced motion: kill all animations / transitions ────────────────────── */
+/* Decorative brand animations (rotating hero word, gold shimmer) are excluded
+   via :not() — they are short, infrequent, and central to brand identity.
+   The static fallback word is always visible at all times.                     */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *,
+  *:not(.forge-word):not(.forge-word *),
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
@@ -22,6 +25,38 @@ html {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ─── Forge hero rotating word ─────────────────────────────────────────────── */
+/* Two-span pattern: `.forge-word-entering` rolls in from below, `.forge-word-
+   leaving` rolls out to above. React forces remount via `key` on every cycle,
+   which re-fires these `animation` properties. Pure CSS — no JS needed for the
+   rotation itself; React just swaps which word is mounted.                     */
+@keyframes forge-word-roll-in {
+  0%   { transform: translateY(50%) rotateX(-90deg); opacity: 0; }
+  60%  { opacity: 1; }
+  100% { transform: translateY(0%)  rotateX(0deg);   opacity: 1; }
+}
+@keyframes forge-word-roll-out {
+  0%   { transform: translateY(0%)   rotateX(0deg);  opacity: 1; }
+  40%  { opacity: 1; }
+  100% { transform: translateY(-50%) rotateX(90deg); opacity: 0; }
+}
+.forge-word {
+  /* Solid gold gradient via background-clip — no shimmer keyframe collision */
+  color: #FFD966;
+  background: linear-gradient(180deg, #FFE8A1 0%, #FFD966 35%, #D4AF37 70%, #B8923A 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 1px rgba(255,225,150,0.55))
+          drop-shadow(0 0 10px rgba(212,175,55,0.35));
+}
+.forge-word-entering {
+  animation: forge-word-roll-in 0.85s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+}
+.forge-word-leaving {
+  animation: forge-word-roll-out 0.85s cubic-bezier(0.32, 0.72, 0.24, 1) both;
 }
 
 /* ─── Page fade-in on route change ─────────────────────────────────────────── */

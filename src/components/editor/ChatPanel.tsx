@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { GlassPanel } from './GlassPanel'
 import type { ChatMessage, MeshResult, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
@@ -25,6 +25,7 @@ import {
 import { PlaytestToggle } from './PlaytestToggle'
 import { EnhanceToggle } from './EnhanceToggle'
 import { PlaytestIndicator } from './PlaytestIndicator'
+import { ManualBuildPanel } from './ManualBuildPanel'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // ─── Showcase example prompts (empty state) ───────────────────────────────────
@@ -641,7 +642,11 @@ function SignupPromptCard() {
   )
 }
 
-function MessageBubble({
+// PERF: MessageBubble is wrapped in React.memo at the bottom of its definition.
+// Before the memo, typing in the ChatPanel textarea (setInput) caused EVERY
+// bubble to re-render on every keystroke. Memoization keeps stable bubbles
+// untouched and lets React reconcile only the newly-streaming one.
+function MessageBubbleImpl({
   msg,
   userPrompt,
   previousCode,
@@ -1247,6 +1252,15 @@ function MessageBubble({
         {!msg.streaming && msg.meshResult && (
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
         )}
+        {/*
+          Manual build fallback: when Studio isn't connected and the AI
+          generated code, show the copy/paste + .rbxmx download safety net.
+          This is the non-negotiable path that ensures every user can use
+          ForjeGames regardless of plugin status.
+        */}
+        {!msg.streaming && !studioConnected && msg.luauCode && msg.role === 'assistant' && (
+          <ManualBuildPanel luauCode={msg.luauCode} prompt={userPrompt} />
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} />
@@ -1316,6 +1330,11 @@ function MessageBubble({
     </div>
   )
 }
+
+// Memoized wrapper: re-renders only when msg identity/content or the
+// callback refs change. The parent passes stable callbacks from useChat
+// (all wrapped in useCallback) so this delivers a real win.
+const MessageBubble = React.memo(MessageBubbleImpl)
 
 // ─── Mesh Result Card ────────────────────────────────────────────────────────
 
@@ -2542,6 +2561,19 @@ interface ChatPanelProps {
   onSaveCheckpoint?: (label?: string) => void
   onRestoreToCheckpoint?: (checkpointId: string) => void
   onDeleteCheckpoint?: (checkpointId: string) => void
+  /**
+   * Image mode options (BUG 9). When present, these drive the style preset
+   * selector and background-removal / upscale toggles shown under the mode
+   * pill when `aiMode === 'image'`. Plumbed through from useChat.
+   */
+  imageOptions?: { style: string; removeBackground: boolean; upscale: boolean }
+  onImageOptionsChange?: (opts: { style: string; removeBackground: boolean; upscale: boolean }) => void
+  /**
+   * BUG 2: Build direction — lets the user choose whether the next prompt
+   * continues the current build, pivots direction, or starts fresh.
+   */
+  buildDirection?: 'continue' | 'pivot' | 'start-over'
+  onBuildDirectionChange?: (dir: 'continue' | 'pivot' | 'start-over') => void
 }
 
 export function ChatPanel({
@@ -2587,6 +2619,10 @@ export function ChatPanel({
   onSaveCheckpoint,
   onRestoreToCheckpoint,
   onDeleteCheckpoint,
+  imageOptions,
+  onImageOptionsChange,
+  buildDirection = 'continue',
+  onBuildDirectionChange,
 }: ChatPanelProps) {
   const isMobile = useIsMobile()
   const internalRef = useRef<HTMLTextAreaElement>(null)
@@ -2651,14 +2687,22 @@ export function ChatPanel({
     return () => URL.revokeObjectURL(url)
   }, [imageFile])
 
-  // Track scroll position to show/hide scroll-to-bottom button
+  // BUG 8: track both a "scrolled up" state (for the FAB visibility) and an
+  // "is near bottom" state (for auto-scroll decisions). Near-bottom threshold
+  // is tighter (~100px) so we only snap the user down when they're already at
+  // the tail of the conversation. If they've deliberately scrolled up to read
+  // history we leave them alone — previously ANY message update (including
+  // mid-stream content appends) would scrollIntoView() and fight the user.
+  const isNearBottomRef = useRef(true)
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
     const scrolledUp = distFromBottom > 200
+    const nearBottom = distFromBottom < 100
     setShowScrollBtn(scrolledUp)
     isScrolledUpRef.current = scrolledUp
+    isNearBottomRef.current = nearBottom
     // Reset unread count when user scrolls back to bottom
     if (!scrolledUp) setUnreadCount(0)
   }, [])
@@ -2685,20 +2729,79 @@ export function ChatPanel({
     requestAnimationFrame(step)
   }, [])
 
-  // Scroll to bottom on new message — or increment unread count if scrolled up
+  // BUG 8: only auto-scroll when a NEW message is appended (message count
+  // changes) AND the user is near the bottom. Mid-stream content edits (which
+  // mutate the last assistant message in place) must NOT yank the user back
+  // to the bottom if they've scrolled up to read history.
+  const prevMessageCountRef = useRef(messages.length)
   useEffect(() => {
-    if (isScrolledUpRef.current) {
-      // New message arrived while scrolled up — show badge + pulse
-      const lastMsg = messages[messages.length - 1]
-      if (lastMsg && lastMsg.role === 'assistant') {
-        setUnreadCount((n) => n + 1)
-        setIsPulsing(true)
-        setTimeout(() => setIsPulsing(false), 900)
-      }
-    } else {
+    const prevCount = prevMessageCountRef.current
+    const nextCount = messages.length
+    prevMessageCountRef.current = nextCount
+
+    // Only react to NEW messages, not in-place content edits
+    if (nextCount <= prevCount) return
+
+    if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+
+    // User is scrolled up — show badge + pulse instead of yanking them back
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg && lastMsg.role === 'assistant') {
+      setUnreadCount((n) => n + 1)
+      setIsPulsing(true)
+      setTimeout(() => setIsPulsing(false), 900)
     }
   }, [messages])
+
+  // PERF: Build MessageBubble elements in a single forward pass so we can O(1)
+  // look up each message's nearest preceding user message and the most recent
+  // prior assistant luau code. This replaces an O(n²) per-render scan that
+  // allocated fresh arrays for every message on every keystroke (setInput
+  // triggers a full ChatPanel render).
+  //
+  // Only depends on `messages` + the stable callbacks — so typing in the
+  // textarea no longer forces the entire bubble list to be recomputed.
+  const renderedMessages = useMemo(() => {
+    let lastUserContent: string | undefined = undefined
+    let lastAssistantLuau: string | undefined = undefined
+    const out: React.ReactNode[] = []
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
+      const precedingUser = lastUserContent
+      const precedingCode =
+        msg.role === 'assistant' && msg.hasCode ? lastAssistantLuau : undefined
+      out.push(
+        <MessageBubble
+          key={msg.id}
+          msg={msg}
+          userPrompt={precedingUser}
+          previousCode={precedingCode}
+          onRetry={onRetry}
+          onBuildDifferently={onBuildDifferently}
+          onDismiss={onDismiss}
+          onEditAndResend={onEditAndResend}
+          onSendToStudio={onSendToStudio}
+          studioConnected={studioConnected}
+        />,
+      )
+      // Advance trailing state AFTER rendering so the current message sees
+      // strictly-prior history (matches original semantics of slice(0, idx)).
+      if (msg.role === 'user') lastUserContent = msg.content
+      if (msg.role === 'assistant' && msg.luauCode) lastAssistantLuau = msg.luauCode
+    }
+    return out
+  }, [
+    messages,
+    onRetry,
+    onBuildDifferently,
+    onDismiss,
+    onEditAndResend,
+    onSendToStudio,
+    studioConnected,
+  ])
 
   // Once messages appear, keep extras accessible
   const hasMessages = messages.length > 0
@@ -2787,28 +2890,12 @@ export function ChatPanel({
         {!hasMessages ? (
           <EmptyState onQuickAction={(prompt) => onSend(prompt)} />
         ) : (
-          messages.map((msg, idx) => {
-            // Find the nearest preceding user message to use as the share prompt
-            const precedingUser = [...messages.slice(0, idx)].reverse().find((m) => m.role === 'user')
-            // Find the most recent prior assistant message that had luau code — used for diff view
-            const precedingCode = msg.role === 'assistant' && msg.hasCode
-              ? [...messages.slice(0, idx)].reverse().find((m) => m.role === 'assistant' && m.luauCode)?.luauCode
-              : undefined
-            return (
-              <MessageBubble
-                key={msg.id}
-                msg={msg}
-                userPrompt={precedingUser?.content}
-                previousCode={precedingCode}
-                onRetry={onRetry}
-                onBuildDifferently={onBuildDifferently}
-                onDismiss={onDismiss}
-                onEditAndResend={onEditAndResend}
-                onSendToStudio={onSendToStudio}
-                studioConnected={studioConnected}
-              />
-            )
-          })
+          // PERF: Single forward pass computes both "nearest preceding user message"
+          // and "previous assistant luau code" for every message. Previous impl did
+          // `[...messages.slice(0, idx)].reverse().find(...)` TWICE per message which
+          // is O(n²) and was allocating/copying arrays for every message on every
+          // re-render (e.g. every keystroke in the textarea).
+          renderedMessages
         )}
 
         {/* MCP tool result card — appears after messages when a tool completes/fails */}
@@ -3025,9 +3112,70 @@ export function ChatPanel({
         {aiMode === 'image' && (
           <>
             <ImageStylePresetSelector
-              selectedStyle={stylePreset ?? ''}
-              onStyleChange={(key) => setStylePreset(key)}
+              // Drive the preset selector from useChat's imageOptions when
+              // available so the chosen style actually reaches /api/ai/image
+              // (BUG 9). Falls back to local state for older callers.
+              selectedStyle={
+                imageOptions && imageOptions.style !== 'auto'
+                  ? imageOptions.style
+                  : stylePreset ?? ''
+              }
+              onStyleChange={(key) => {
+                setStylePreset(key)
+                if (onImageOptionsChange) {
+                  onImageOptionsChange({
+                    style: key,
+                    removeBackground: imageOptions?.removeBackground ?? false,
+                    upscale: imageOptions?.upscale ?? false,
+                  })
+                }
+              }}
             />
+            {/* Background removal + HD upscale toggles (BUG 9) */}
+            {onImageOptionsChange && imageOptions && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 2px' }}>
+                <button
+                  type="button"
+                  onClick={() => onImageOptionsChange({
+                    ...imageOptions,
+                    removeBackground: !imageOptions.removeBackground,
+                  })}
+                  style={{
+                    fontSize: 11,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  title="Run background removal on the generated image"
+                >
+                  {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onImageOptionsChange({
+                    ...imageOptions,
+                    upscale: !imageOptions.upscale,
+                  })}
+                  style={{
+                    fontSize: 11,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  title="Upscale the generated image to 2x resolution"
+                >
+                  {imageOptions.upscale ? '✓ ' : ''}HD Upscale
+                </button>
+              </div>
+            )}
             <StyleReferenceUpload
               references={styleRefs}
               onAdd={(f) => setStyleRefs(prev => [...prev, f])}
@@ -3065,6 +3213,56 @@ export function ChatPanel({
           )}
         </div>
 
+        {/* BUG 2: Build direction chips — lets the user pick how the next
+            prompt should relate to the current build. Only shown when we have
+            existing messages AND a change handler is wired; chips are
+            one-shot (the hook resets to "continue" after each send). */}
+        {onBuildDirectionChange && hasMessages && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              fontFamily: 'Inter, sans-serif',
+            }}
+            role="radiogroup"
+            aria-label="Build direction"
+          >
+            {(['continue', 'pivot', 'start-over'] as const).map((dir) => {
+              const label = dir === 'start-over' ? 'Start over' : dir.charAt(0).toUpperCase() + dir.slice(1)
+              const active = buildDirection === dir
+              return (
+                <button
+                  key={dir}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => onBuildDirectionChange(dir)}
+                  title={
+                    dir === 'continue'
+                      ? 'Refine or add to the current build (default)'
+                      : dir === 'pivot'
+                      ? 'Change direction — prepends "Change direction:" to your prompt'
+                      : 'Clear chat history and start fresh'
+                  }
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 9px',
+                    borderRadius: 999,
+                    border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.10)'}`,
+                    background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
+                    color: active ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.55)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Textarea + actions */}
         <div
           style={{
@@ -3078,8 +3276,11 @@ export function ChatPanel({
             transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
           }}
           onFocusCapture={(e) => {
-            const focusColor = modeConfig.color
-            e.currentTarget.style.borderColor = focusColor.replace(')', ',0.4)').replace('rgb', 'rgba').replace('#', '') || 'rgba(212,175,55,0.4)'
+            // Use modeConfig.borderColor directly — it's already an rgba
+            // string. The previous string-munging only worked for colours
+            // already in rgb(...) form and produced garbage output for hex
+            // values, so non-build modes never got their focus tint.
+            e.currentTarget.style.borderColor = modeConfig.borderColor
             e.currentTarget.style.boxShadow = `0 0 0 1px ${modeConfig.bgColor}, 0 0 16px ${modeConfig.bgColor}`
           }}
           onBlurCapture={(e) => {

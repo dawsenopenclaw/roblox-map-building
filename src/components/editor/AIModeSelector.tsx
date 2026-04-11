@@ -231,8 +231,21 @@ export const AI_MODES: AIModeConfig[] = [
   },
 ]
 
+// PERF: Build O(1) lookup maps at module load. `getModeConfig` is called on
+// every render of ChatPanel + NewEditorClient + AIModeSelector — each call
+// previously did a linear AI_MODES.find (9 iterations). Map.get is ~free.
+// `AI_MODE_BY_SHORTCUT` is used by the global keydown handler which fires on
+// literally every keystroke, including every character typed into the chat
+// textarea.
+const AI_MODE_BY_ID: Map<AIMode, AIModeConfig> = new Map(
+  AI_MODES.map((m) => [m.id, m] as const),
+)
+const AI_MODE_BY_SHORTCUT: Map<string, AIModeConfig> = new Map(
+  AI_MODES.filter((m) => m.shortcut).map((m) => [m.shortcut!, m] as const),
+)
+
 export function getModeConfig(mode: AIMode): AIModeConfig {
-  return AI_MODES.find(m => m.id === mode) ?? AI_MODES[0]
+  return AI_MODE_BY_ID.get(mode) ?? AI_MODES[0]
 }
 
 // ─── Thinking/Reasoning Display ──────────────────────────────────────────────
@@ -625,10 +638,12 @@ export function AIModeSelector({
   const moreModes: AIMode[] = ['terrain', 'mesh', 'debug', 'idea']
 
   // Keyboard shortcut: Alt+number to switch modes
+  // PERF: bail out BEFORE doing the map lookup on non-Alt keys so the common
+  // case (typing into the chat textarea) short-circuits immediately.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return
-      const mode = AI_MODES.find(m => m.shortcut === e.key)
+      const mode = AI_MODE_BY_SHORTCUT.get(e.key)
       if (mode) {
         e.preventDefault()
         onModeChange(mode.id)
@@ -671,7 +686,7 @@ export function AIModeSelector({
         }}
       >
         {primaryModes.map(modeId => {
-          const config = AI_MODES.find(m => m.id === modeId)!
+          const config = AI_MODE_BY_ID.get(modeId)!
           const isActive = activeMode === modeId
           return (
             <button
@@ -779,7 +794,7 @@ export function AIModeSelector({
             animation: 'msgFadeUp 0.15s ease-out forwards',
           }}>
             {moreModes.map(modeId => {
-              const config = AI_MODES.find(m => m.id === modeId)!
+              const config = AI_MODE_BY_ID.get(modeId)!
               const isActive = activeMode === modeId
               return (
                 <button
@@ -884,6 +899,7 @@ export const IMAGE_STYLE_PRESETS: ImageStyleOption[] = [
   { key: 'realistic', label: 'Realistic', color: '#60A5FA', bgColor: 'rgba(96,165,250,0.15)', description: 'Photorealistic, DSLR quality detail' },
   { key: 'anime', label: 'Anime', color: '#F472B6', bgColor: 'rgba(244,114,182,0.15)', description: 'Cel-shaded anime art, manga-inspired' },
   { key: 'pixel-art', label: 'Pixel', color: '#4ADE80', bgColor: 'rgba(74,222,128,0.15)', description: 'Retro 8-bit pixel art, limited palette' },
+  { key: 'clothing', label: 'Clothing', color: '#C084FC', bgColor: 'rgba(192,132,252,0.15)', description: 'Roblox shirt/pants UV templates' },
 ]
 
 // ─── Image Style Preset Selector ────────────────────────────────────────────

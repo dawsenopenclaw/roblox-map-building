@@ -502,7 +502,11 @@ local function executeStructuredCommands(commands)
                     tonumber(cmd.position.y) or 0,
                     tonumber(cmd.position.z) or 0
                   )
-                  if model:IsA("Model") and model.PrimaryPart then
+                  -- PivotTo works on any PVInstance without requiring a
+                  -- PrimaryPart, unlike the deprecated SetPrimaryPartCFrame.
+                  if model.PivotTo then
+                    model:PivotTo(cf)
+                  elseif model:IsA("Model") and model.PrimaryPart then
                     model:SetPrimaryPartCFrame(cf)
                   end
                 end)
@@ -535,10 +539,25 @@ local function executeStructuredCommands(commands)
         end
 
       elseif cmdType == "execute_script" then
-        -- Sandboxed script execution: creates a Script with the given source
-        -- and runs it in a controlled way. For Creator Store safety, this does
-        -- NOT use loadstring(). Instead it creates a temporary Script instance
-        -- that Roblox's engine executes natively.
+        -- Parents a freshly-created Script/LocalScript containing arbitrary
+        -- Luau source into ServerScriptService. This is functionally
+        -- equivalent to loadstring() from a Creator Store policy standpoint
+        -- (both run untrusted AI-generated code inside the game), so it is
+        -- gated behind the same dev-only setting toggle. Store builds ship
+        -- with the setting OFF and should route through structured commands
+        -- instead.
+        local allowExec = false
+        pcall(function()
+          allowExec = plugin and plugin:GetSetting("ForjeGames_AllowLoadstring") == true
+        end)
+        if not allowExec then
+          warn("[ForjeGames] execute_script requires ForjeGames_AllowLoadstring (dev only). "
+            .. "Use structured commands in Creator Store builds.")
+          notifyMessage(
+            "execute_script is disabled. Use structured commands or enable dev loadstring in plugin settings.",
+            "warn"
+          )
+        else
         local scriptSource = cmd.source or cmd.code or ""
         if scriptSource ~= "" then
           local tempScript = Instance.new("Script")
@@ -565,6 +584,7 @@ end)
           tempScript.Parent = cmd.runContext == "server" and game:GetService("ServerScriptService")
             or workspace
         end
+        end -- end of allowExec else-branch
       end
     end)
 
@@ -1120,85 +1140,60 @@ local function handleGetScripts(data)
   end
 end
 
--- Handle: start_playtest
+-- ============================================================
+-- Playtest / screenshot handlers
+--
+-- Roblox Studio does NOT expose plugin APIs for:
+--   * Starting a playtest (there is no Plugin:StartPlaySolo, and
+--     TestService:Run / StudioService:PromptPlaySolo do not work
+--     from a normal plugin in edit context).
+--   * Stopping a playtest (no Plugin:StopPlaySolo either).
+--   * Capturing the viewport (ScreenshotHud is not a capture API;
+--     CaptureService is player-only).
+--
+-- Rather than silently swallowing failures inside pcalls and lying
+-- to the caller, these handlers surface `user_action_required`
+-- results so the MCP layer can tell the AI exactly what happened.
+-- ============================================================
+
 local function handleStartPlaytest(data)
-  -- Use PluginGuiService or direct plugin API to start playtest
-  -- Note: plugin global is injected by the Roblox plugin environment
-  pcall(function()
-    local PluginManager = game:GetService("PluginGuiService")
-    -- Fallback method: use ChangeHistoryService waypoint + RunService
-  end)
-
-  -- The most reliable way to trigger a playtest from a plugin:
-  pcall(function()
-    -- plugin:GetStudioTool is not available, but we can use the command bar approach
-    -- via game:GetService("StudioService")
-    local mode = data.mode or "server"
-    if mode == "server" or mode == "start" then
-      -- Trigger Play via the toolbar Run action
-      -- This is the standard plugin API for starting playtests
-      local testService = game:GetService("TestService")
-      if testService then
-        testService:Run()
-      end
-    end
-  end)
-
-  -- Alternative: use StudioService to trigger playtest
-  pcall(function()
-    local mode = data.mode or "server"
-    if mode == "server" then
-      -- The safest cross-version approach
-      local studioService = game:FindService("StudioService")
-      if studioService and studioService.PromptPlaySolo then
-        studioService:PromptPlaySolo()
-      end
-    end
-  end)
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot start playtests programmatically. Press F5 to start a playtest manually.",
+    "warn"
+  )
+  if requestId then
+    pushBridgeResult("start_playtest_result", requestId, {
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic playtest start. User must press F5 in Studio.",
+    })
+  end
 end
 
--- Handle: stop_playtest
-local function handleStopPlaytest(_data)
-  pcall(function()
-    local testService = game:GetService("TestService")
-    if testService then
-      -- No direct Stop method on TestService in all versions
-    end
-  end)
-
-  -- Use RunService to detect and stop
-  pcall(function()
-    if RunService:IsRunning() then
-      -- Trigger stop via the standard plugin mechanism
-      local studioService = game:FindService("StudioService")
-      if studioService and studioService.PromptStopPlaySolo then
-        studioService:PromptStopPlaySolo()
-      end
-    end
-  end)
+local function handleStopPlaytest(data)
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot stop playtests programmatically. Press Shift+F5 to stop the current playtest manually.",
+    "warn"
+  )
+  if requestId then
+    pushBridgeResult("stop_playtest_result", requestId, {
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic playtest stop. User must press Shift+F5 in Studio.",
+    })
+  end
 end
 
--- Handle: capture_screenshot
 local function handleCaptureScreenshot(data)
-  local requestId = data._requestId
-  -- Attempt to capture viewport via ScreenshotHud or ViewportFrame
-  -- Note: Full viewport capture requires ScreenshotHud which is limited in plugin context
-  -- Push the screenshot through the existing screenshot pipeline
-  pcall(function()
-    local screenshotHud = game:GetService("ScreenshotHud")
-    if screenshotHud then
-      screenshotHud.Visible = true
-      task.delay(0.5, function()
-        screenshotHud.Visible = false
-      end)
-    end
-  end)
-
-  -- Push a status result; actual screenshot capture goes through Sync.pushScreenshot
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot capture the Studio viewport. Use the session screenshot uploader on the web app, or take a screenshot via Studio's built-in tools.",
+    "warn"
+  )
   if requestId then
     pushBridgeResult("screenshot_result", requestId, {
-      status = "capture_triggered",
-      note = "Screenshot capture initiated. Use the session screenshot endpoint to retrieve.",
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic viewport capture. User must upload a screenshot manually, or the AI should rely on read_scene / get_output_log instead.",
     })
   end
 end
@@ -1355,6 +1350,49 @@ local function applyChanges(changes)
           pcall(function()
             instance[data.property] = data.value
           end)
+        end
+
+      elseif changeType == "create_sound" and data then
+        -- Audio pipeline: insert a Sound instance with a Roblox audio asset id.
+        -- Data shape:
+        --   { assetId, name?, parent?, looped?, volume?, playbackSpeed?, autoPlay? }
+        local soundOk, soundErr = pcall(function()
+          if not data.assetId then
+            warn("[ForjeGames Sync] create_sound: missing assetId")
+            return
+          end
+
+          local sound = Instance.new("Sound")
+          sound.Name = data.name or "ForjeAI_Sound"
+          sound.SoundId = "rbxassetid://" .. tostring(data.assetId)
+          sound:SetAttribute("fj_generated", true)
+          if data.kind then sound:SetAttribute("fj_audio_kind", tostring(data.kind)) end
+
+          if data.looped ~= nil then sound.Looped = data.looped and true or false end
+          if data.volume ~= nil then
+            local v = tonumber(data.volume)
+            if v then sound.Volume = math.clamp(v, 0, 10) end
+          end
+          if data.playbackSpeed ~= nil then
+            local s = tonumber(data.playbackSpeed)
+            if s then sound.PlaybackSpeed = s end
+          end
+
+          local parent = workspace
+          if data.parent and data.parent ~= "" then
+            local found = workspace:FindFirstChild(tostring(data.parent), true)
+            if found then
+              parent = found
+            end
+          end
+          sound.Parent = parent
+
+          if data.autoPlay then
+            pcall(function() sound:Play() end)
+          end
+        end)
+        if not soundOk then
+          warn("[ForjeGames Sync] create_sound failed: " .. tostring(soundErr))
         end
 
       -- Studio Bridge commands

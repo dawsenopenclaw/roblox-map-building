@@ -36,7 +36,16 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   try {
     const sessions = await loadSessions(userId)
-    return NextResponse.json({ sessions })
+    // BUG 6: let the browser (but not shared proxies) cache the list for 30s.
+    // The client refetches after every save anyway, so staleness is bounded.
+    return NextResponse.json(
+      { sessions },
+      {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      },
+    )
   } catch (err) {
     console.error('[sessions GET] Error listing sessions:', err)
     return NextResponse.json({ error: 'Failed to list sessions' }, { status: 500 })
