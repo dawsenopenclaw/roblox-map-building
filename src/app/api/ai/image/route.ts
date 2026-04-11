@@ -34,7 +34,7 @@ import { requireTier } from '@/lib/tier-guard'
 import { aiImageRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { IMAGE_STYLE_KEYS, getImageStyle } from '@/lib/image-styles'
 import { enhancePrompt } from '@/lib/ai/prompt-enhancer'
-import { spendTokens } from '@/lib/tokens-server'
+import { spendTokens, earnTokens } from '@/lib/tokens-server'
 import { z } from 'zod'
 
 export const maxDuration = 120
@@ -298,9 +298,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── Credits: charge up front (skipped in DEMO_MODE) ─────────────────────
-  // Charged per image multiplied by count. Failed generation is NOT auto-
-  // refunded — matches the music/sfx pipeline behaviour. A 402 response
-  // signals insufficient balance so the client can prompt for a top-up.
+  // Charged per image multiplied by count. If generation fails below, we
+  // refund the charge via earnTokens('REFUND', ...). Previously the catch
+  // handler just returned 502 and left the user out-of-pocket — an image
+  // route double-charge was one of the flagged audit bugs.
   const creditsToCharge = IMAGE_CREDIT_COST * count
   if (dbUserId) {
     try {
@@ -390,6 +391,38 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[image POST] Generation failed:', message)
+
+    // Refund the upfront credit charge if we actually spent any. Best-
+    // effort: if the refund itself fails we log (the user can chargeback
+    // via support) but we still return the original 502 to the caller.
+    if (dbUserId) {
+      try {
+        await earnTokens(
+          dbUserId,
+          creditsToCharge,
+          'REFUND',
+          'Refund: ai.image.generate failed',
+          {
+            prompt: prompt.slice(0, 120),
+            style,
+            count,
+            reason: message,
+          },
+        )
+      } catch (refundErr) {
+        console.error(
+          '[image POST] REFUND FAILED — user charged for failed generation:',
+          {
+            userId: dbUserId,
+            credits: creditsToCharge,
+            generationError: message,
+            refundError:
+              refundErr instanceof Error ? refundErr.message : String(refundErr),
+          },
+        )
+      }
+    }
+
     return NextResponse.json(
       { error: 'Image generation failed', detail: message },
       { status: 502 },
