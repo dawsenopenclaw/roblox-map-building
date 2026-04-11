@@ -185,8 +185,32 @@ function IconShield({ size = 20 }: { size?: number }) {
 
 /* ─── Pricing card ───────────────────────────────────────────────────────── */
 
-function PricingCard({ name, price, period, features, cta, recommended, description, href = '/editor', royalAccent }: {
-  name: string; price: string; period: string; features: string[]; cta: string; recommended?: boolean; description: string; href?: string; royalAccent?: boolean
+function PricingCard({
+  name,
+  price,
+  period,
+  features,
+  cta,
+  recommended,
+  description,
+  href = '/editor',
+  royalAccent,
+  onCheckout,
+  loading,
+}: {
+  name: string
+  price: string
+  period: string
+  features: string[]
+  cta: string
+  recommended?: boolean
+  description: string
+  href?: string
+  royalAccent?: boolean
+  /** When provided, the CTA becomes a button that runs this callback instead of navigating to `href`. */
+  onCheckout?: () => void | Promise<void>
+  /** External loading state — disables the button and shows "Redirecting…". */
+  loading?: boolean
 }) {
   return (
     <div
@@ -259,21 +283,39 @@ function PricingCard({ name, price, period, features, cta, recommended, descript
           ))}
         </ul>
 
-        <Link
-          href={href}
-          className={`block text-center py-3 rounded-xl text-sm font-semibold ${recommended ? 'pricing-cta-recommended' : 'pricing-cta-default'}`}
-          style={recommended ? {
-            background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
-            color: '#09090b',
-            boxShadow: '0 0 24px rgba(212,175,55,0.3)',
-          } : {
-            background: 'rgba(255,255,255,0.05)',
-            color: '#A1A1AA',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          {cta}
-        </Link>
+        {(() => {
+          const ctaClasses = `block w-full text-center py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${recommended ? 'pricing-cta-recommended' : 'pricing-cta-default'} ${loading ? 'opacity-60 cursor-wait' : 'hover:-translate-y-0.5'}`
+          const ctaStyle = recommended
+            ? {
+                background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+                color: '#09090b',
+                boxShadow: '0 0 24px rgba(212,175,55,0.3)',
+              }
+            : {
+                background: 'rgba(255,255,255,0.05)',
+                color: '#A1A1AA',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }
+          const label = loading ? 'Redirecting…' : cta
+          if (onCheckout) {
+            return (
+              <button
+                type="button"
+                onClick={() => void onCheckout()}
+                disabled={loading}
+                className={ctaClasses}
+                style={ctaStyle}
+              >
+                {label}
+              </button>
+            )
+          }
+          return (
+            <Link href={href} className={ctaClasses} style={ctaStyle}>
+              {label}
+            </Link>
+          )
+        })()}
       </div>
     </div>
   )
@@ -600,6 +642,50 @@ export default function HomeClient() {
   // words mid-animation across languages is non-trivial and untranslated
   // headlines are intentional brand treatment. See TODO below.
   const tHero = useTranslations('hero')
+
+  // ─── Inline Stripe checkout for the home pricing section ────────────────
+  // Clicking a tier button on the home page posts directly to
+  // /api/billing/checkout and redirects to the Stripe Checkout Session URL
+  // that the server returns. No detour through /pricing. One card at a time
+  // is loading at most — tracked by tier key.
+  const [checkoutTier, setCheckoutTier] = useState<'HOBBY' | 'CREATOR' | 'STUDIO' | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
+  const handleHomeCheckout = async (tier: 'HOBBY' | 'CREATOR' | 'STUDIO') => {
+    setCheckoutTier(tier)
+    setCheckoutError(null)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'subscription', tier, yearly: false }),
+      })
+      if (res.status === 401) {
+        // Not signed in — send them to sign-up with the plan pre-selected.
+        // The checkout flow will resume after auth if the sign-up flow is
+        // wired to carry the ?plan param through.
+        window.location.href = `/sign-up?plan=${tier.toLowerCase()}&next=/pricing`
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && typeof data?.url === 'string') {
+        window.location.href = data.url
+        return
+      }
+      if (typeof data?.redirect === 'string') {
+        window.location.href = data.redirect
+        return
+      }
+      setCheckoutError(
+        typeof data?.error === 'string'
+          ? data.error
+          : 'Checkout failed. Please try again or visit /pricing.',
+      )
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Network error during checkout.')
+    } finally {
+      setCheckoutTier(null)
+    }
+  }
 
   return (
     <>
@@ -1217,22 +1303,36 @@ export default function HomeClient() {
           <div className="relative max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                Pricing
+                Wanna generate a game? Look here.
               </p>
               <h2
                 className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
                 style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
               >
-                Start free.
+                Pick a plan.
                 <br />
-                <span className="gradient-text">Scale when you are ready.</span>
+                <span className="gradient-text">Start in under a minute.</span>
               </h2>
               <p className="reveal reveal-delay-2 text-lg" style={{ color: '#71717A' }}>
-                No credit card to start. Cancel anytime.
+                No credit card for Free. Paid tiers go straight to Stripe — no sign-up detour.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {checkoutError && (
+              <div
+                className="reveal mx-auto mb-6 max-w-xl px-4 py-3 rounded-xl text-sm text-center"
+                style={{
+                  background: 'rgba(239,68,68,0.08)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  color: '#FCA5A5',
+                }}
+                role="alert"
+              >
+                {checkoutError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
               <PricingCard
                 name="Free"
                 price="$0"
@@ -1245,8 +1345,25 @@ export default function HomeClient() {
                   'Live Studio sync',
                   'Community support',
                 ]}
-                cta="View all plans"
-                href="/pricing"
+                cta="Start free"
+                href="/editor"
+              />
+              <PricingCard
+                name="Starter"
+                price="$10"
+                period="/month"
+                description="For hobbyists leveling up"
+                features={[
+                  '5,000 tokens / month',
+                  '5 projects',
+                  'Voice-to-game',
+                  'Image-to-map',
+                  '3D asset generation',
+                  'Email support',
+                ]}
+                cta="Get Starter"
+                onCheckout={() => handleHomeCheckout('HOBBY')}
+                loading={checkoutTier === 'HOBBY'}
               />
               <PricingCard
                 name="Creator"
@@ -1261,8 +1378,9 @@ export default function HomeClient() {
                   'Team collaboration (3 members)',
                   'Priority support',
                 ]}
-                cta="View all plans"
-                href="/pricing"
+                cta="Get Creator"
+                onCheckout={() => handleHomeCheckout('CREATOR')}
+                loading={checkoutTier === 'CREATOR'}
                 recommended
               />
               <PricingCard
@@ -1278,10 +1396,43 @@ export default function HomeClient() {
                   'White-label exports',
                   'Dedicated support',
                 ]}
-                cta="View all plans"
-                href="/pricing"
+                cta="Get Studio"
+                onCheckout={() => handleHomeCheckout('STUDIO')}
+                loading={checkoutTier === 'STUDIO'}
                 royalAccent
               />
+            </div>
+
+            {/* Enterprise Contact Us strip — for anyone over $1k/month. */}
+            <div
+              className="reveal mt-10 mx-auto max-w-4xl rounded-2xl px-6 py-8 flex flex-col sm:flex-row items-center gap-6 justify-between"
+              style={{
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+                border: '1px solid rgba(212,175,55,0.18)',
+              }}
+            >
+              <div className="flex-1 text-center sm:text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: '#D4AF37' }}>
+                  Enterprise &amp; Teams
+                </p>
+                <h3 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>
+                  Over $1,000 / month?
+                </h3>
+                <p className="text-sm" style={{ color: '#A1A1AA' }}>
+                  Unlimited seats, volume token pricing, SLA, dedicated support, SSO, invoicing.
+                </p>
+              </div>
+              <a
+                href="mailto:sales@forjegames.com?subject=Enterprise%20plan%20inquiry%20(%3E%20%241k%2Fmonth)&body=Team%20size%3A%20%0AEstimated%20monthly%20tokens%3A%20%0AUse%20case%3A%20"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 flex-shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                  color: '#0A0810',
+                  boxShadow: '0 10px 30px rgba(212,175,55,0.25)',
+                }}
+              >
+                Contact sales →
+              </a>
             </div>
 
             <div className="reveal mt-10 text-center">

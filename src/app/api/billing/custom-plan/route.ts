@@ -51,15 +51,23 @@ interface CustomPlanBreakdown {
 interface CustomPlanResponse {
   priceUSD:    number
   breakdown:   CustomPlanBreakdown
-  checkoutUrl: string
-  mock:        boolean
+  /** Present only when the caller is authenticated and Stripe is configured. */
+  checkoutUrl?: string
+  /**
+   * `true` iff `checkoutUrl` is a real Stripe Checkout Session URL.
+   * `false` means price-calc-only (slider preview before sign-in, or Stripe disabled).
+   */
+  mock: boolean
+  /** Surfaces optional auth/Stripe errors without blocking the price preview. */
+  checkoutError?: string
 }
 
 /**
- * Calculate the USD price for a custom token plan.
- * Pure function — safe to import/reuse client-side.
+ * Pure price-calculation helper. Safe to call during anonymous slider
+ * previews — does not touch Stripe, DB, or auth. The /api/billing/custom-plan
+ * POST handler wraps this with optional real-Stripe checkout for authed users.
  */
-function calculateCustomPlanPrice(monthlyTokens: number): CustomPlanResponse {
+function calculateCustomPlanPrice(monthlyTokens: number): Pick<CustomPlanResponse, 'priceUSD' | 'breakdown'> {
   const clamped = Math.max(MIN_TOKENS, Math.min(MAX_TOKENS, Math.floor(monthlyTokens)))
   const billableTokens = Math.max(0, clamped - FREE_TOKEN_FLOOR)
   const rawPriceUsd    = billableTokens * PRICE_PER_TOKEN_USD
@@ -76,23 +84,11 @@ function calculateCustomPlanPrice(monthlyTokens: number): CustomPlanResponse {
     approxMeshes:   Math.floor(clamped / AVG_TOKENS_PER_MESH),
   }
 
-  return {
-    priceUSD,
-    breakdown,
-    // TODO(stripe): replace with real Stripe Checkout session once dynamic
-    // price IDs for custom plans are wired up. For now we return a mock URL
-    // so the frontend can exercise the full checkout flow end-to-end.
-    checkoutUrl: `/billing/custom-plan/mock-checkout?tokens=${clamped}&price=${priceUSD}`,
-    mock: true,
-  }
+  return { priceUSD, breakdown }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    // Auth is optional for price-calc (allows anonymous slider previews),
-    // but we still log the user if present for analytics/TODO Stripe.
-    await auth().catch(() => null)
-
     const body   = await req.json().catch(() => ({}))
     const parsed = schema.safeParse(body)
 
@@ -106,8 +102,82 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const result = calculateCustomPlanPrice(parsed.data.monthlyTokens)
-    return NextResponse.json(result)
+    const { priceUSD, breakdown } = calculateCustomPlanPrice(parsed.data.monthlyTokens)
+
+    // Try to upgrade the price-calc response to a real Stripe Checkout URL
+    // when the caller is authed. Anonymous slider previews still get a
+    // useful response (priceUSD + breakdown) — they just won't get a URL.
+    const authResult = await auth().catch(() => null)
+    const clerkId = authResult?.userId
+    if (!clerkId) {
+      return NextResponse.json<CustomPlanResponse>({
+        priceUSD,
+        breakdown,
+        mock: false,
+        // Deliberately omit checkoutUrl — the client can detect its absence
+        // and redirect the user to /sign-up?plan=custom before retrying.
+      })
+    }
+
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json<CustomPlanResponse>({
+        priceUSD,
+        breakdown,
+        mock: true,
+        checkoutError: 'Stripe not configured on this environment',
+      })
+    }
+
+    const { db } = await import('@/lib/db')
+    const { createCustomer, createCustomPlanCheckoutSession } = await import('@/lib/stripe')
+    const { clientEnv } = await import('@/lib/env')
+
+    const user = await db.user.findUnique({
+      where: { clerkId },
+      include: { subscription: true },
+    })
+    if (!user) {
+      return NextResponse.json<CustomPlanResponse>({
+        priceUSD,
+        breakdown,
+        mock: true,
+        checkoutError: 'User record missing — re-authenticate and try again',
+      })
+    }
+
+    // Ensure Stripe customer exists — mirrors the logic in /api/billing/checkout.
+    let customerId = user.subscription?.stripeCustomerId
+    if (!customerId || customerId.startsWith('pending_')) {
+      const customer = await createCustomer({ email: user.email, userId: user.id })
+      customerId = customer.id
+      await db.subscription.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          stripeCustomerId: customerId,
+          tier: 'FREE',
+          status: 'ACTIVE',
+        },
+        update: { stripeCustomerId: customerId },
+      })
+    }
+
+    const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
+    const session = await createCustomPlanCheckoutSession({
+      customerId,
+      userId: user.id,
+      monthlyTokens: breakdown.monthlyTokens,
+      priceUSD,
+      successUrl: `${appUrl}/dashboard?upgraded=true&plan=custom`,
+      cancelUrl: `${appUrl}/pricing`,
+    })
+
+    return NextResponse.json<CustomPlanResponse>({
+      priceUSD,
+      breakdown,
+      checkoutUrl: session.url ?? undefined,
+      mock: false,
+    })
   } catch (err) {
     Sentry.captureException(err, { tags: { route: 'billing/custom-plan' } })
     console.error('[billing/custom-plan] Unhandled error', err)

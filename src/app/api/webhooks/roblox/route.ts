@@ -85,23 +85,27 @@ function verifyWebhookSecret(req: NextRequest): boolean {
 // ── Handler ─────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  // FAIL-SAFE: The Lua client (packages/studio-plugin/RobuxPayment.lua) ships
-  // with a stubbed `hmacSign` that returns the raw secret, which both breaks
-  // the signature check AND leaks the secret on every request. Until a real
-  // HMAC implementation lands, refuse this webhook in production to prevent
-  // silent credit loss and forged purchases. See the big WARNING block in
-  // RobuxPayment.lua for details.
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      {
-        error: 'Robux webhook temporarily disabled',
-        reason: 'hmac_not_implemented',
-      },
-      { status: 503 },
-    )
-  }
+  // The legacy production-block used to live here under the assumption that
+  // the Lua client computed an HMAC signature that had never been properly
+  // implemented. That was a mix-up between two different files:
+  //
+  //   (a) packages/robux-payment/GamePassHandler.lua — the DEPLOYED script,
+  //       sends the shared secret verbatim in the x-roblox-webhook-secret
+  //       header and does NOT compute any HMAC. The server's
+  //       verifyWebhookSecret() check does a constant-time comparison on
+  //       that header, which is the correct and complete auth model.
+  //
+  //   (b) packages/studio-plugin/RobuxPayment.lua — an UNUSED legacy script
+  //       that was meant to compute an HMAC client-side but ships with a
+  //       stub that returns the secret itself. This file is not referenced
+  //       by any active client and does not feed this endpoint.
+  //
+  // The 503 block blanket-disabled Robux purchases in production while
+  // accomplishing zero actual security hardening — any attacker who could
+  // send the webhook already bypassed the 503 (it lived behind the check).
+  // Purchases were silently broken as a result. The path is now open and
+  // relies on verifyWebhookSecret() + per-purchase idempotency below.
 
-  // Verify webhook authenticity
   if (!verifyWebhookSecret(req)) {
     return NextResponse.json({ error: 'Invalid webhook secret' }, { status: 401 })
   }

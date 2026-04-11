@@ -127,7 +127,11 @@ export default function CustomPricingCalculator() {
     [tokens],
   )
 
-  // One-click "subscribe to custom plan" — hits our API, redirects if URL
+  // One-click "subscribe to custom plan" — hits our API, then either
+  //   (a) redirects to a real Stripe Checkout URL if the server returns one,
+  //   (b) routes the user to sign-up pre-loaded with `?plan=custom` and
+  //       `?tokens=N` so the flow can resume after auth, or
+  //   (c) surfaces a Stripe-config error inline.
   const handleCheckout = useCallback(async () => {
     setCheckout(true)
     setCheckoutError(null)
@@ -142,11 +146,20 @@ export default function CustomPricingCalculator() {
       if (!res.ok) {
         throw new Error(data?.error || `Checkout failed (${res.status})`)
       }
-      if (data?.checkoutUrl) {
+      // Happy path: real Stripe Session URL.
+      if (typeof data?.checkoutUrl === 'string' && data.checkoutUrl.length > 0) {
         window.location.href = data.checkoutUrl
         return
       }
-      throw new Error('No checkout URL returned')
+      // Server-side Stripe-config error — show it inline, don't navigate.
+      if (typeof data?.checkoutError === 'string') {
+        throw new Error(data.checkoutError)
+      }
+      // Response shape { priceUSD, breakdown, mock: false } with no
+      // checkoutUrl means the server knows the price but couldn't start
+      // a real checkout — almost always because the user is signed out.
+      // Send them to sign-up with enough params to resume after auth.
+      window.location.href = `/sign-up?plan=custom&tokens=${tokens}&next=/pricing%23custom-plan`
     } catch (err) {
       setCheckoutError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {

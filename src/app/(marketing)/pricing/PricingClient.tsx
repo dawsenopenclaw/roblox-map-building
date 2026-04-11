@@ -28,7 +28,7 @@ import RobuxPayment from '@/components/billing/RobuxPayment'
 type BillingConfig = {
   stripeConfigured: boolean
   subscriptions: {
-    STARTER: { monthly: boolean; yearly: boolean }
+    HOBBY: { monthly: boolean; yearly: boolean }
     CREATOR: { monthly: boolean; yearly: boolean }
     STUDIO:  { monthly: boolean; yearly: boolean }
   }
@@ -42,7 +42,7 @@ type BillingConfig = {
 const EMPTY_CONFIG: BillingConfig = {
   stripeConfigured: false,
   subscriptions: {
-    STARTER: { monthly: false, yearly: false },
+    HOBBY: { monthly: false, yearly: false },
     CREATOR: { monthly: false, yearly: false },
     STUDIO:  { monthly: false, yearly: false },
   },
@@ -55,7 +55,7 @@ const EMPTY_CONFIG: BillingConfig = {
 
 // Tier prices: $10–$200 fixed, $10–$1000 custom (1M tokens), enterprise above
 const ANNUAL_TOTALS = {
-  STARTER: 96.00,    // $8/mo annual = $96/year (saves $24)
+  HOBBY: 96.00,    // $8/mo annual = $96/year (saves $24)
   CREATOR: 480.00,   // $40/mo annual = $480/year (saves $120)
   STUDIO:  1920.00,  // $160/mo annual = $1920/year (saves $480)
 }
@@ -85,12 +85,12 @@ const TIERS = [
     ],
   },
   {
-    key: 'STARTER',
+    key: 'HOBBY',
     name: 'Starter',
     icon: Star,
     priceMonthly: 10,
     priceYearly: 8,
-    yearlyTotal: ANNUAL_TOTALS.STARTER,
+    yearlyTotal: ANNUAL_TOTALS.HOBBY,
     tagline: 'For hobbyists leveling up',
     highlight: false,
     badge: null,
@@ -673,9 +673,9 @@ export default function PricingClient() {
   const [annual, setAnnual]     = useState(false)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  // Plans are fully hidden until the user clicks "View our plans".
-  // Once revealed, all 5 tiers (Free, Starter, Creator, Studio, Custom) appear.
-  const [showAllTiers, setShowAllTiers] = useState(false)
+  // Plans are shown immediately on /pricing — the earlier "click to reveal"
+  // gate added friction and was removed per user request. The home page has
+  // its own standalone pricing section that links here.
 
   const showError = useCallback((msg: string) => {
     setToastMsg(msg)
@@ -872,45 +872,15 @@ export default function PricingClient() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Tier Cards — fully hidden until "View our plans" is clicked,       */}
-        {/* then all 5 tiers (Free, Starter, Creator, Studio, Custom) reveal.  */}
+        {/* Tier Cards — always visible. The gate state was removed.           */}
+        {/* All 5 tiers shown: Free, Starter, Creator, Studio, and Custom      */}
+        {/* (the CustomPricingCalculator below counts as the 5th tier).        */}
         {/* ------------------------------------------------------------------ */}
-        {/* Local keyframes for the smooth fade-in reveal */}
-        <style>{`
-          @keyframes pricingTiersFadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          .pricing-tiers-reveal {
-            animation: pricingTiersFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-          }
-        `}</style>
-
-        {!showAllTiers && (
-          <div className="flex justify-center mb-24 mt-4">
-            <button
-              type="button"
-              onClick={() => setShowAllTiers(true)}
-              className="group inline-flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-bold transition-all duration-300 hover:-translate-y-0.5"
-              style={{
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                color: '#0A0810',
-                boxShadow: '0 10px 40px rgba(212,175,55,0.35), 0 0 0 1px rgba(212,175,55,0.4)',
-              }}
-            >
-              <span>View our plans</span>
-              <ChevronDown className="w-5 h-5 transition-transform duration-300 group-hover:translate-y-0.5" />
-            </button>
-          </div>
-        )}
-
-        {showAllTiers && (() => {
-          // All 5 tiers shown once revealed — the CustomPricingCalculator
-          // below counts as the 5th tier.
+        {(() => {
           const visibleTiers = TIERS
           return (
         <>
-        <div className="pricing-tiers-reveal grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 items-start transition-all duration-300">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 items-start transition-all duration-300">
           {visibleTiers.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon  = tier.icon
@@ -1101,32 +1071,46 @@ export default function PricingClient() {
         {/* ------------------------------------------------------------------ */}
         {/* Custom Pricing Calculator — the 5th tier ("build your own plan")   */}
         {/* ------------------------------------------------------------------ */}
-        <div className="pricing-tiers-reveal">
+        <div>
           <CustomPricingCalculator />
-        </div>
-
-        {/* "Hide plans" toggle — collapses back to the single CTA button */}
-        <div className="pricing-tiers-reveal flex justify-center mb-16 mt-4">
-          <button
-            type="button"
-            onClick={() => setShowAllTiers(false)}
-            className="group flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200"
-            style={{
-              background: 'rgba(212,175,55,0.08)',
-              border: '1px solid rgba(212,175,55,0.25)',
-              color: '#D4AF37',
-            }}
-          >
-            <span>Hide plans</span>
-            <ChevronDown
-              className="w-4 h-4 transition-transform duration-300"
-              style={{ transform: 'rotate(180deg)' }}
-            />
-          </button>
         </div>
         </>
           )
         })()}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Enterprise Contact Us strip — for teams over $1k/month              */}
+        {/* ------------------------------------------------------------------ */}
+        <div
+          className="mt-16 mb-4 mx-auto max-w-4xl rounded-2xl px-6 py-8 flex flex-col sm:flex-row items-center gap-6 justify-between"
+          style={{
+            background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(124,58,237,0.06) 100%)',
+            border: '1px solid rgba(212,175,55,0.18)',
+          }}
+        >
+          <div className="flex-1 text-center sm:text-left">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: '#D4AF37' }}>
+              Enterprise &amp; Teams
+            </p>
+            <h3 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>
+              Over $1,000 / month?
+            </h3>
+            <p className="text-sm" style={{ color: '#A1A1AA' }}>
+              Unlimited seats, volume token pricing, SLA, dedicated support, SSO, invoicing.
+            </p>
+          </div>
+          <a
+            href="mailto:sales@forjegames.com?subject=Enterprise%20plan%20inquiry%20(%3E%20%241k%2Fmonth)&body=Team%20size%3A%20%0AEstimated%20monthly%20tokens%3A%20%0AUse%20case%3A%20"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+              color: '#0A0810',
+              boxShadow: '0 10px 30px rgba(212,175,55,0.25)',
+            }}
+          >
+            Contact sales →
+          </a>
+        </div>
 
         {/* ------------------------------------------------------------------ */}
         {/* Pay with Robux                                                      */}
