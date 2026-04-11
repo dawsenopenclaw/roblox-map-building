@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false
+  },
+  "include": [
+    "src/components/GlitchText.tsx",
+    "src/components/marketing/ProductPreviewGallery.tsx",
+    "src/app/NotFoundClient.tsx",
+    "src/app/error.tsx",
+    "src/app/api/dashboard/stats/route.ts",
+    "src/app/api/community/creator-leaderboard/route.ts"
+  ],
+  "exclude": ["node_modules", ".next"]
+}

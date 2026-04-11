@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { levelForXp } from '@/lib/viral/xp-engine'
 
 /**
  * GET /api/community/creator-leaderboard?sort=xp|forks|likes&limit=25
@@ -8,6 +7,19 @@ import { levelForXp } from '@/lib/viral/xp-engine'
  * received. Public — no auth required.
  *
  * Caching: 5 minutes.
+ *
+ * STATUS — known limitation: the User model does NOT currently expose `xp`,
+ * `isPublic`, `totalForks`, or `totalLikes`. XP lives on the UserXP model and
+ * forks/likes are derived from Project aggregates. The previous implementation
+ * tried to select those fields directly on User, threw a Prisma error, and
+ * silently fell through to DEMO_ENTRIES on every single request — and it did
+ * so AFTER hitting the DB, which wasted a query per call. Until the proper
+ * UserXP join + Project aggregate path lands in a follow-up, we serve the
+ * curated demo set directly. This is what users currently see anyway, just
+ * without the wasted DB roundtrip.
+ *
+ * Follow-up: replace with a denormalized creator_leaderboard materialized
+ * view refreshed nightly. Tracked in .planning/old-windows-assets/ audit doc.
  */
 
 export const revalidate = 300
@@ -36,76 +48,8 @@ const DEMO_ENTRIES: LeaderboardEntry[] = [
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const sortParam = url.searchParams.get('sort')
-  const limitParam = url.searchParams.get('limit')
   const sort: SortKey =
     sortParam === 'forks' || sortParam === 'likes' ? sortParam : 'xp'
-  const limit = Math.min(Math.max(Number(limitParam) || 25, 1), 100)
 
-  try {
-    const { db } = await import('@/lib/db')
-
-    // Order users by the requested dimension.
-    const orderBy =
-      sort === 'xp'
-        ? [{ xp: 'desc' as const }]
-        : sort === 'forks'
-          ? [{ totalForks: 'desc' as const }]
-          : [{ totalLikes: 'desc' as const }]
-
-    // `totalForks`/`totalLikes` may be maintained as denormalized columns or
-    // computed from project aggregates. We attempt the simple path first; if
-    // the column is missing, we fall back to computing on-the-fly.
-    let users: Array<{
-      id: string
-      username: string | null
-      avatarUrl: string | null
-      xp: number | null
-      totalForks?: number | null
-      totalLikes?: number | null
-    }> = []
-    try {
-      users = await db.user.findMany({
-        where: { isPublic: true },
-        orderBy,
-        take: limit,
-        select: {
-          id: true,
-          username: true,
-          avatarUrl: true,
-          xp: true,
-          // @ts-expect-error — fields may not exist in all envs
-          totalForks: true,
-          // @ts-expect-error — see above
-          totalLikes: true,
-        },
-      })
-    } catch {
-      // Fallback: simple XP sort without denormalized columns.
-      users = await db.user.findMany({
-        where: { isPublic: true },
-        orderBy: [{ xp: 'desc' }],
-        take: limit,
-        select: { id: true, username: true, avatarUrl: true, xp: true },
-      })
-    }
-
-    if (users.length === 0) {
-      return NextResponse.json({ sort, entries: DEMO_ENTRIES, demo: true })
-    }
-
-    const entries: LeaderboardEntry[] = users.map((u, i) => ({
-      rank: i + 1,
-      userId: u.id,
-      username: u.username ?? 'anonymous',
-      avatarUrl: u.avatarUrl ?? null,
-      xp: u.xp ?? 0,
-      level: levelForXp(u.xp ?? 0),
-      totalForks: u.totalForks ?? 0,
-      totalLikes: u.totalLikes ?? 0,
-    }))
-
-    return NextResponse.json({ sort, entries })
-  } catch {
-    return NextResponse.json({ sort, entries: DEMO_ENTRIES, demo: true })
-  }
+  return NextResponse.json({ sort, entries: DEMO_ENTRIES, demo: true })
 }

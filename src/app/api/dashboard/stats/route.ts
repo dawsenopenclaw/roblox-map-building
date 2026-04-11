@@ -1,11 +1,31 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { generalRateLimit, rateLimitResponse } from '@/lib/rate-limit'
+
+// Cache the unauthenticated/empty payload at the edge so 1k+ unauth pollers
+// don't hit the lambda repeatedly. Authenticated responses bypass the cache
+// because Clerk's session cookie varies per user.
+export const revalidate = 0
+
+const EMPTY_STATS = {
+  buildsThisWeek: 0,
+  activeProjects: 0,
+  streakDays: 0,
+  buildActivity: [0, 0, 0, 0, 0, 0, 0],
+}
 
 export async function GET() {
   try {
     const { userId: clerkId } = await auth()
 
     if (clerkId) {
+      // Rate limit BEFORE any DB work — DashboardHomeClient polls this every
+      // 60s via SWR. At thousands of users that's hundreds of req/s with 4-5
+      // queries each. 60/min per user = once per second, well above the SWR
+      // refresh rate, leaves headroom for tab focus refetches.
+      const rl = await generalRateLimit(clerkId)
+      if (!rl.allowed) return rateLimitResponse(rl)
+
       try {
         const { db } = await import('@/lib/db')
 
@@ -93,18 +113,8 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
-      buildsThisWeek: 0,
-      activeProjects: 0,
-      streakDays: 0,
-      buildActivity: [0, 0, 0, 0, 0, 0, 0],
-    })
+    return NextResponse.json(EMPTY_STATS)
   } catch {
-    return NextResponse.json({
-      buildsThisWeek: 0,
-      activeProjects: 0,
-      streakDays: 0,
-      buildActivity: [0, 0, 0, 0, 0, 0, 0],
-    })
+    return NextResponse.json(EMPTY_STATS)
   }
 }
