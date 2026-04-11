@@ -66,7 +66,7 @@ export default function JoinTeamPage() {
         setStatus('success')
         setTimeout(() => router.push('/team'), 2500)
       } catch {
-        setResult({ error: 'Something went wrong. Please try again.' })
+        setResult({ error: 'Could not join the team — the invite link may be expired. Ask your team owner to resend it.' })
         setStatus('error')
       }
     }

@@ -9,6 +9,7 @@ import { PurchaseButton } from './PurchaseButton'
 import { ReviewForm } from './ReviewForm'
 import { captureServerEvent } from '@/lib/analytics'
 import { ShareButtons } from '@/components/ShareButtons'
+import { TemplateCodePreview } from './TemplateCodePreview'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://forjegames.com'
 
@@ -158,7 +159,7 @@ const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
     title: 'Medieval Castle Pack',
     slug: 'medieval-castle-pack',
     description:
-      'A fully featured medieval castle game template for Roblox. Includes dungeon systems, NPC enemies, loot tables, and a complete quest framework.\n\nWhat\'s included:\n- Fully scripted castle environment\n- Enemy AI with patrol routes\n- Inventory and loot system\n- Quest tracker UI\n- Mobile-optimized controls',
+      'A fully featured medieval castle game template for Roblox. Includes dungeon systems, NPC enemies, loot tables, and a complete quest framework.\n\nWhat\'s included:\n- Fully scripted castle environment\n- Enemy AI with patrol routes\n- Inventory and loot system\n- Quest tracker UI\n- Mobile-optimized controls\n\n---LUAU---\n--!strict\n-- Medieval Castle Pack — main castle builder\n-- Place this Script in ServerScriptService\n\nlocal Workspace = game:GetService("Workspace")\n\nlocal CONFIG = table.freeze({\n\tCASTLE_ORIGIN = Vector3.new(0, 0, 0),\n\tWALL_HEIGHT   = 24,\n\tWALL_THICKNESS = 4,\n\tWALL_LENGTH    = 80,\n\tTOWER_HEIGHT   = 40,\n\tTOWER_RADIUS   = 8,\n\tMATERIAL       = Enum.Material.SmoothPlastic,\n\tCOLOR          = Color3.fromRGB(120, 100, 80),\n})\n\nlocal function makePart(size: Vector3, position: Vector3, name: string): Part\n\tlocal p = Instance.new("Part")\n\tp.Name       = name\n\tp.Size       = size\n\tp.Position   = position\n\tp.Material   = CONFIG.MATERIAL\n\tp.Color      = CONFIG.COLOR\n\tp.Anchored   = true\n\tp.CastShadow = true\n\tp.Parent     = Workspace\n\treturn p\nend\n\nlocal function buildWall(origin: Vector3, axis: string, length: number)\n\tlocal size = axis == "X"\n\t\tand Vector3.new(length, CONFIG.WALL_HEIGHT, CONFIG.WALL_THICKNESS)\n\t\tor  Vector3.new(CONFIG.WALL_THICKNESS, CONFIG.WALL_HEIGHT, length)\n\tmakePart(size, origin + Vector3.new(0, CONFIG.WALL_HEIGHT / 2, 0), "Wall_"..axis)\nend\n\nlocal function buildTower(origin: Vector3, label: string)\n\tfor i = 0, 3 do\n\t\tlocal seg = Instance.new("Part")\n\t\tseg.Name     = "Tower_"..label.."_Seg"..i\n\t\tseg.Size     = Vector3.new(CONFIG.TOWER_RADIUS * 2, 10, CONFIG.TOWER_RADIUS * 2)\n\t\tseg.Position = origin + Vector3.new(0, i * 10 + 5, 0)\n\t\tseg.Material = CONFIG.MATERIAL\n\t\tseg.Color    = CONFIG.COLOR\n\t\tseg.Anchored = true\n\t\tseg.Parent   = Workspace\n\tend\nend\n\nlocal o = CONFIG.CASTLE_ORIGIN\nlocal half = CONFIG.WALL_LENGTH / 2\n\nbuildWall(o + Vector3.new(0, 0,  half), "X", CONFIG.WALL_LENGTH)\nbuildWall(o + Vector3.new(0, 0, -half), "X", CONFIG.WALL_LENGTH)\nbuildWall(o + Vector3.new( half, 0, 0), "Z", CONFIG.WALL_LENGTH)\nbuildWall(o + Vector3.new(-half, 0, 0), "Z", CONFIG.WALL_LENGTH)\n\nbuildTower(o + Vector3.new( half, 0,  half), "NE")\nbuildTower(o + Vector3.new(-half, 0,  half), "NW")\nbuildTower(o + Vector3.new( half, 0, -half), "SE")\nbuildTower(o + Vector3.new(-half, 0, -half), "SW")\n\nprint("[CastlePack] Built castle at", tostring(o))\n---END---',
     category: 'GAME_TEMPLATE',
     status: 'PUBLISHED',
     priceCents: 1499,
@@ -238,7 +239,7 @@ const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
     title: 'Combat System v2',
     slug: 'combat-system-v2',
     description:
-      'A complete combat system for action games. Includes hitbox detection, combo chains, blocking, dodge rolls, and skill cooldowns.\n\nWhat\'s included:\n- Melee & ranged combat\n- Combo input detection\n- Hitbox visualizer (dev mode)\n- Ragdoll on death\n- Fully networked via RemoteEvents',
+      'A complete combat system for action games. Includes hitbox detection, combo chains, blocking, dodge rolls, and skill cooldowns.\n\nWhat\'s included:\n- Melee & ranged combat\n- Combo input detection\n- Hitbox visualizer (dev mode)\n- Ragdoll on death\n- Fully networked via RemoteEvents\n\n---LUAU---\n--!strict\n-- Combat System v2 — server-side hitbox handler\n-- Place in ServerScriptService\n\nlocal Players       = game:GetService("Players")\nlocal ReplicatedStorage = game:GetService("ReplicatedStorage")\n\nlocal HIT_REMOTE    = Instance.new("RemoteEvent")\nHIT_REMOTE.Name     = "CombatHit"\nHIT_REMOTE.Parent   = ReplicatedStorage\n\nlocal DAMAGE_TABLE = table.freeze({\n\tlight  = 12,\n\theavy  = 28,\n\tcombo3 = 18,\n\tdodge  = 8,\n})\n\nlocal COOLDOWNS: { [Player]: number } = {}\nlocal COOLDOWN_SECS = 0.35\n\nlocal function isOnCooldown(player: Player): boolean\n\tlocal last = COOLDOWNS[player]\n\tif not last then return false end\n\treturn (os.clock() - last) < COOLDOWN_SECS\nend\n\nlocal function applyHit(\n\tattacker: Player,\n\ttarget: Model,\n\thitType: string\n): ()\n\tif isOnCooldown(attacker) then return end\n\tCOOLDOWNS[attacker] = os.clock()\n\n\tlocal humanoid = target:FindFirstChildOfClass("Humanoid")\n\tif not humanoid or humanoid.Health <= 0 then return end\n\n\tlocal dmg = DAMAGE_TABLE[hitType] or DAMAGE_TABLE.light\n\thumanoid:TakeDamage(dmg)\n\n\tprint(("[Combat] %s hit %s for %d (%s)"):format(\n\t\tattacker.Name, target.Name, dmg, hitType\n\t))\nend\n\nHIT_REMOTE.OnServerEvent:Connect(function(\n\tplayer: Player,\n\ttargetModel: unknown,\n\thitType: unknown\n)\n\tif typeof(targetModel) ~= "Instance" then return end\n\tif not (targetModel :: Instance):IsA("Model") then return end\n\tif typeof(hitType) ~= "string" then return end\n\tapplyHit(player, targetModel :: Model, hitType :: string)\nend)\n\nPlayers.PlayerRemoving:Connect(function(p) COOLDOWNS[p] = nil end)\n\nprint("[CombatV2] Server hitbox handler active")\n---END---',
     category: 'SCRIPT',
     status: 'PUBLISHED',
     priceCents: 1999,
@@ -278,7 +279,7 @@ const DEMO_TEMPLATES: Record<string, DemoTemplate> = {
     title: 'Admin Panel Script',
     slug: 'admin-panel-script',
     description:
-      'A free, lightweight admin panel for any Roblox game. Permission-based commands, banning, kick, teleport, and a visual UI.\n\nWhat\'s included:\n- Role-based permissions\n- 20+ built-in commands\n- In-game GUI panel\n- Ban/unban system\n- Audit log',
+      'A free, lightweight admin panel for any Roblox game. Permission-based commands, banning, kick, teleport, and a visual UI.\n\nWhat\'s included:\n- Role-based permissions\n- 20+ built-in commands\n- In-game GUI panel\n- Ban/unban system\n- Audit log\n\n---LUAU---\n--!strict\n-- Admin Panel Script — core command handler\n-- Place in ServerScriptService\n\nlocal Players  = game:GetService("Players")\nlocal HttpService = game:GetService("HttpService")\n\ntype Role = "owner" | "admin" | "mod" | "none"\n\nlocal ADMINS: { [string]: Role } = {\n\t-- Replace with your Roblox usernames\n\t["YourUsernameHere"] = "owner",\n}\n\nlocal BANNED: { [number]: { reason: string; by: string } } = {}\nlocal AUDIT:  { string } = {}\n\nlocal function getRole(player: Player): Role\n\treturn ADMINS[player.Name] or "none"\nend\n\nlocal function log(msg: string)\n\tlocal entry = ("[%s] %s"):format(os.date("%H:%M:%S"), msg)\n\ttable.insert(AUDIT, 1, entry)\n\tif #AUDIT > 200 then table.remove(AUDIT) end\n\tprint("[AdminPanel]", entry)\nend\n\nlocal COMMANDS: { [string]: (admin: Player, args: { string }) -> () } = {}\n\nCOMMANDS["kick"] = function(admin, args)\n\tif getRole(admin) == "none" then return end\n\tlocal target = Players:FindFirstChild(args[1])\n\tif not target then return end\n\t(target :: Player):Kick(args[2] or "Kicked by admin")\n\tlog(("%s kicked %s"):format(admin.Name, args[1]))\nend\n\nCOMMANDS["ban"] = function(admin, args)\n\tif getRole(admin) == "none" then return end\n\tlocal target = Players:FindFirstChild(args[1])\n\tif not target then return end\n\tBANNED[(target :: Player).UserId] = { reason = args[2] or "Banned", by = admin.Name };(target :: Player):Kick("Banned: "..(args[2] or "No reason"))\n\tlog(("%s banned %s"):format(admin.Name, args[1]))\nend\n\nCOMMANDS["tp"] = function(admin, args)\n\tif getRole(admin) == "none" then return end\n\tlocal from = Players:FindFirstChild(args[1])\n\tlocal to   = Players:FindFirstChild(args[2])\n\tif not from or not to then return end\n\tlocal char = (from :: Player).Character\n\tlocal dest = (to   :: Player).Character\n\tif char and dest then\n\t\tchar:PivotTo(dest:GetPivot() * CFrame.new(4, 0, 0))\n\t\tlog(("%s teleported %s → %s"):format(admin.Name, args[1], args[2]))\n\tend\nend\n\nPlayers.PlayerAdded:Connect(function(player)\n\tif BANNED[player.UserId] then\n\t\tplayer:Kick("You are banned: "..BANNED[player.UserId].reason)\n\tend\nend)\n\nPlayers.PlayerAdded:Connect(function(player)\n\tplayer.Chatted:Connect(function(msg)\n\t\tif not msg:sub(1,1) == "!" then return end\n\t\tlocal parts = msg:sub(2):split(" ")\n\t\tlocal cmd   = table.remove(parts, 1):lower()\n\t\tif COMMANDS[cmd] then COMMANDS[cmd](player, parts) end\n\tend)\nend)\n\nprint("[AdminPanel] Loaded — "..tostring(#(ADMINS :: {})).." admin(s) registered")\n---END---',
     category: 'SCRIPT',
     status: 'PUBLISHED',
     priceCents: 0,
@@ -738,8 +739,20 @@ function TemplateDetail({
           {/* Description */}
           <div className="bg-[#0d0d14] border border-white/10 rounded-xl p-5">
             <h2 className="text-lg font-semibold text-white mb-3">Description</h2>
-            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{template.description}</p>
+            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+              {/* Strip the ---LUAU--- block from the visible description */}
+              {template.description.includes('---LUAU---')
+                ? template.description.slice(0, template.description.indexOf('---LUAU---')).trim()
+                : template.description}
+            </p>
           </div>
+
+          {/* Luau code preview — only shown when code is embedded in description */}
+          <TemplateCodePreview
+            description={template.description}
+            slug={template.slug}
+            title={template.title}
+          />
 
           {/* Reviews */}
           <div>
@@ -890,10 +903,13 @@ function TemplateDetail({
             {/* CTA area */}
             {isDemo ? (
               <div className="space-y-3">
-                <div className="w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] text-black font-bold py-3.5 rounded-xl text-sm text-center cursor-not-allowed opacity-70">
-                  Use Template — {isFree ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
-                </div>
-                <p className="text-xs text-white/25 text-center">Sign in to purchase</p>
+                <a
+                  href={`/editor?template=${encodeURIComponent(template.slug)}`}
+                  className="block w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] hover:from-[#c49b2f] hover:to-[#b38a28] text-black font-bold py-3.5 rounded-xl text-sm text-center transition-all duration-200 shadow-[0_0_20px_rgba(212,175,55,0.2)]"
+                >
+                  Use This Template — {isFree ? 'Free' : `$${(template.priceCents / 100).toFixed(2)}`}
+                </a>
+                <p className="text-xs text-white/25 text-center">Opens in the AI editor · no account needed</p>
               </div>
             ) : isCreator ? (
               <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-center text-sm text-white/50">
@@ -904,11 +920,17 @@ function TemplateDetail({
                 <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 text-center text-sm text-emerald-400 font-semibold">
                   Purchased — you own this
                 </div>
+                <a
+                  href={`/editor?template=${encodeURIComponent(template.slug)}`}
+                  className="block w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] hover:from-[#c49b2f] hover:to-[#b38a28] text-black font-bold py-3.5 rounded-xl text-sm text-center transition-all duration-200 shadow-[0_0_20px_rgba(212,175,55,0.15)]"
+                >
+                  Use This Template
+                </a>
                 {template.rbxmFileUrl && (
                   <a
                     href={template.rbxmFileUrl}
                     download
-                    className="block w-full bg-gradient-to-r from-[#D4AF37] to-[#c49b2f] hover:from-[#c49b2f] hover:to-[#b38a28] text-black font-bold py-3.5 rounded-xl text-sm text-center transition-all duration-200"
+                    className="block w-full bg-white/5 hover:bg-white/8 border border-white/10 text-white/70 font-semibold py-3 rounded-xl text-sm text-center transition-all duration-200"
                   >
                     Download .rbxm
                   </a>

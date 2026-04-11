@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "features": "Features",
+    "showcase": "Showcase",
+    "pricing": "Pricing",
+    "download": "Download",
+    "openEditor": "Open Editor"
+  },
+  "hero": {
+    "title": "Describe it. Forje it.",
+    "subtitle": "The AI that turns words into complete, playable Roblox games. No coding. No asset hunting. Just imagination.",
+    "ctaPrimary": "Start Building Free",
+    "ctaSecondary": "Watch Demo"
+  },
+  "editor": {
+    "placeholder": "Describe what you want to build...",
+    "send": "Send",
+    "newChat": "New Chat",
+    "connectStudio": "Connect Studio"
+  },
+  "modes": {
+    "build": "Build",
+    "think": "Think",
+    "plan": "Plan",
+    "image": "Image",
+    "script": "Script",
+    "terrain": "Terrain",
+    "mesh": "3D Model",
+    "debug": "Debug",
+    "idea": "Ideas"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm"
+  }
+}

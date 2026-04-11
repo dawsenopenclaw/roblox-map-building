@@ -4,11 +4,20 @@ import Link from 'next/link'
 import { createMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Blog',
+  title: 'Blog — AI Game Development Tips, Tutorials & News',
   description:
-    'Tutorials, product news, and deep dives on AI-powered Roblox game development. Written by the ForjeGames team.',
+    'ForjeGames blog: step-by-step tutorials on AI Roblox game building, voice-to-game walkthroughs, product updates, and expert tips for Roblox developers. Written by the ForjeGames team.',
   path: '/blog',
-  keywords: ['Roblox AI blog', 'game development tutorials', 'ForjeGames news', 'Roblox tips'],
+  keywords: [
+    'AI Roblox game development blog',
+    'Roblox AI builder tutorials',
+    'ForjeGames blog',
+    'Roblox game dev tips',
+    'voice to game tutorial',
+    'AI terrain generation tutorial',
+    'Roblox scripting AI',
+    'ForjeGames news',
+  ],
 })
 
 interface Post {
@@ -31,6 +40,24 @@ const POSTS: Post[] = [
     category: 'Announcement',
   },
   {
+    slug: 'how-to-build-roblox-game-2026',
+    title: 'How to Build a Roblox Game in 2026 — The Complete Guide',
+    excerpt:
+      'From traditional Studio workflows to AI-powered building — everything you need to go from zero to published Roblox game in 2026. Includes step-by-step guide, game type breakdown, and FAQ.',
+    date: 'April 4, 2026',
+    readTime: '12 min read',
+    category: 'Guide',
+  },
+  {
+    slug: 'top-ai-tools-roblox-2026',
+    title: 'Top 10 AI Tools for Roblox Developers in 2026',
+    excerpt:
+      'An honest breakdown of every AI tool worth using for Roblox development — ranked by impact, with feature comparisons, pricing, and a clear verdict on what actually moves the needle.',
+    date: 'April 4, 2026',
+    readTime: '10 min read',
+    category: 'Deep Dive',
+  },
+  {
     slug: 'building-roblox-games-with-ai',
     title: 'How AI is Changing Roblox Game Development',
     excerpt:
@@ -38,6 +65,15 @@ const POSTS: Post[] = [
     date: 'March 29, 2026',
     readTime: '8 min read',
     category: 'Deep Dive',
+  },
+  {
+    slug: 'studio-plugin-setup-guide',
+    title: 'Roblox Studio Plugin Guide — How to Connect ForjeGames',
+    excerpt:
+      'Install the ForjeGames plugin, connect your account, and sync AI builds directly into Roblox Studio. Windows and Mac installation covered, plus troubleshooting for every common issue.',
+    date: 'April 4, 2026',
+    readTime: '8 min read',
+    category: 'Tutorial',
   },
   {
     slug: 'voice-to-game-tutorial',
@@ -50,12 +86,13 @@ const POSTS: Post[] = [
   },
 ]
 
-const CATEGORIES = ['All', 'Announcement', 'Deep Dive', 'Tutorial']
+const CATEGORIES = ['All', 'Announcement', 'Guide', 'Deep Dive', 'Tutorial']
 
 const CATEGORY_META: Record<string, { bg: string; color: string; border: string }> = {
-  Announcement: { bg: 'rgba(212,175,55,0.08)', color: '#D4AF37', border: 'rgba(212,175,55,0.2)' },
-  'Deep Dive':  { bg: 'rgba(168,85,247,0.08)', color: '#c084fc', border: 'rgba(192,132,252,0.2)' },
-  Tutorial:     { bg: 'rgba(59,130,246,0.08)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' },
+  Announcement: { bg: 'rgba(212,175,55,0.08)', color: '#D4AF37',  border: 'rgba(212,175,55,0.2)' },
+  Guide:        { bg: 'rgba(16,185,129,0.08)', color: '#34d399',  border: 'rgba(52,211,153,0.2)' },
+  'Deep Dive':  { bg: 'rgba(168,85,247,0.08)', color: '#c084fc',  border: 'rgba(192,132,252,0.2)' },
+  Tutorial:     { bg: 'rgba(59,130,246,0.08)', color: '#60a5fa',  border: 'rgba(96,165,250,0.2)' },
 }
 
 // Category pill icons (SVG)
@@ -64,6 +101,12 @@ const CATEGORY_ICONS: Record<string, ReactNode> = {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 8.01c0-2.21-4.03-4-9-4S4 5.8 4 8.01c0 .95.58 1.84 1.58 2.56L5 14l3.24-1.62C9.35 12.77 10.65 13 12 13c4.97 0 9-1.79 9-4z"/>
       <path d="M4 13c0 2.21 4.03 4 9 4 1.35 0 2.65-.23 3.76-.62L20 18l-.58-3.43C20.42 13.85 21 12.96 21 12"/>
+    </svg>
+  ),
+  Guide: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
   ),
   'Deep Dive': (
@@ -89,7 +132,7 @@ export default function BlogIndexPage() {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b px-6 pb-16 pt-32 text-center"
-        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0A0E27' }}
+        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#050810' }}
       >
         <div
           className="pointer-events-none absolute inset-0"

@@ -236,11 +236,16 @@ export default function BillingClient() {
     try {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = await res.json() as { url: string; demo?: boolean }
-      if (data.url) {
+      if (data.url && data.url !== '/billing' && data.url !== '/billing?demo=true') {
         window.location.href = data.url
+      } else if (data.url === '/pricing') {
+        window.location.href = '/pricing'
+      } else {
+        // No Stripe customer yet — send to pricing
+        window.location.href = '/pricing'
       }
     } catch {
-      window.location.href = '/billing'
+      window.location.href = '/pricing'
     }
   }, [])
 
@@ -285,7 +290,8 @@ export default function BillingClient() {
       <div className="space-y-5">
 
         {/* ── Current Plan ── */}
-        <div className={`relative overflow-hidden bg-[#0F1320] border border-white/[0.08] rounded-2xl p-7 ${tierConfig.glowColor}`}>
+        {/* TODO: Replace FREE_DEFAULTS with real Stripe subscription data once Stripe integration is live */}
+        <div className={`relative overflow-hidden card-premium ${billing.status === 'ACTIVE' && billing.tier !== 'FREE' ? '!border-[#D4AF37]/30' : ''} rounded-xl p-7 ${tierConfig.glowColor}`}>
           {/* Tier gradient overlay */}
           <div className={`absolute inset-0 bg-gradient-to-br ${tierConfig.gradient} pointer-events-none`} />
           <div className="relative">
@@ -330,7 +336,8 @@ export default function BillingClient() {
               <div className="flex flex-col gap-2.5 flex-shrink-0">
                 <Link
                   href="/pricing"
-                  className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shadow-lg shadow-[#D4AF37]/20"
+                  className="inline-flex items-center gap-2 text-white font-bold px-5 py-2.5 rounded-[10px] text-sm transition-all shadow-lg shadow-[#D4AF37]/20 hover:brightness-110 active:scale-[0.97]"
+                  style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)' }}
                 >
                   <TrendingUp size={14} />
                   {billing.tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
@@ -349,7 +356,7 @@ export default function BillingClient() {
         <SectionDivider />
 
         {/* ── Token Balance ── */}
-        <div className="relative overflow-hidden bg-[#0F1320] border border-white/[0.08] rounded-2xl p-7">
+        <div className="relative overflow-hidden card-premium rounded-xl p-7">
           {/* Subtle gold ambient */}
           <div className="absolute top-0 right-0 w-48 h-48 bg-[#D4AF37]/[0.04] rounded-full blur-3xl pointer-events-none translate-x-16 -translate-y-16" />
           <div className="relative">
@@ -423,7 +430,7 @@ export default function BillingClient() {
         <SectionDivider />
 
         {/* ── Usage Breakdown ── */}
-        <div className="bg-[#0F1320] border border-white/[0.08] rounded-2xl p-7">
+        <div className="card-premium rounded-xl p-7">
           <div className="flex items-center gap-2 mb-6">
             <Sparkles size={14} className="text-gray-500" />
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-[0.12em]">Usage This Month</p>
@@ -452,7 +459,7 @@ export default function BillingClient() {
         <SectionDivider />
 
         {/* ── Payment History ── */}
-        <div className="bg-[#0F1320] border border-white/[0.08] rounded-2xl p-7">
+        <div className="card-premium rounded-xl p-7">
           <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <CreditCard size={14} className="text-gray-500" />

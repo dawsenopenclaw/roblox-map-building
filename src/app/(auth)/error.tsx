@@ -23,9 +23,9 @@ export default function AuthError({
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold text-white mb-2">Something went wrong</h2>
+        <h2 className="text-lg font-bold text-white mb-2">Sign-in error</h2>
         <p className="text-gray-300 text-sm mb-5">
-          We couldn't complete this action. Please try again.
+          We couldn&apos;t complete this step. Try again — if it keeps failing, clear your cookies or use a different browser.
         </p>
         {error.digest && (
           <p className="text-gray-500 text-xs font-mono mb-4">ID: {error.digest}</p>

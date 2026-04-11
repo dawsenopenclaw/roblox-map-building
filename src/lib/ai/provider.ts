@@ -11,6 +11,7 @@
  */
 
 import 'server-only'
+import { buildRAGSystemPrompt } from './rag'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -22,6 +23,12 @@ export interface AICallOptions {
   jsonMode?: boolean
   maxTokens?: number
   temperature?: number
+  /** When true, use lower temperature (0.2) for deterministic code output */
+  codeMode?: boolean
+  /** When true, enrich the system prompt with relevant Roblox docs from vector DB */
+  useRAG?: boolean
+  /** Filter RAG retrieval to specific doc categories */
+  ragCategories?: string[]
 }
 
 // ── Gemini REST call ──────────────────────────────────────────────────────────
@@ -34,7 +41,7 @@ async function callGemini(
   const key = process.env.GEMINI_API_KEY
   if (!key) return null
 
-  const { maxTokens = 4096, temperature = 0.7, jsonMode = false } = opts
+  const { maxTokens = 4096, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
 
   // Gemini uses a separate system_instruction + contents format
   const contents = messages
@@ -61,7 +68,7 @@ async function callGemini(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(60_000),
       },
     )
     if (!res.ok) {
@@ -92,7 +99,7 @@ async function callGroq(
   const key = process.env.GROQ_API_KEY
   if (!key) return null
 
-  const { maxTokens = 4096, temperature = 0.7 } = opts
+  const { maxTokens = 4096, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -115,7 +122,7 @@ async function callGroq(
         max_tokens: maxTokens,
         temperature,
       }),
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(60_000),
     })
     if (!res.ok) {
       console.error('[ai-provider/groq] HTTP', res.status, await res.text().catch(() => ''))
@@ -150,10 +157,22 @@ export async function callAI(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string> {
-  const geminiResult = await callGemini(systemPrompt, messages, opts)
+  // RAG enrichment: retrieve relevant Roblox docs and inject into system prompt
+  let enrichedPrompt = systemPrompt
+  if (opts.useRAG) {
+    // Extract user prompt from messages for embedding
+    const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
+    try {
+      enrichedPrompt = await buildRAGSystemPrompt(systemPrompt, userMessage, opts.ragCategories)
+    } catch (e) {
+      console.error('[ai-provider] RAG enrichment failed, using base prompt:', (e as Error).message)
+    }
+  }
+
+  const geminiResult = await callGemini(enrichedPrompt, messages, opts)
   if (geminiResult) return geminiResult
 
-  const groqResult = await callGroq(systemPrompt, messages, opts)
+  const groqResult = await callGroq(enrichedPrompt, messages, opts)
   if (groqResult) return groqResult
 
   throw new Error('[ai-provider] All AI providers failed. Check GEMINI_API_KEY and GROQ_API_KEY env vars.')

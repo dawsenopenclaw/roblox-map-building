@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import useSWR from 'swr'
 import { NotificationPreferences } from '@/components/NotificationPreferences'
+import RobloxLinkCard from '@/components/settings/RobloxLinkCard'
 import { useTheme as useThemeHook } from '@/components/ThemeProvider'
 import { useEditorSettings } from '@/app/(app)/editor/hooks/useEditorSettings'
 import {
@@ -267,7 +268,7 @@ function AccountStatsCard() {
   ]
 
   return (
-    <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+    <div className="card-premium rounded-xl p-6">
       <h3 className="text-white font-semibold mb-5">Account Stats</h3>
       {/* Tier badge row */}
       <div
@@ -308,7 +309,7 @@ function AccountStatsCard() {
           <div
             key={item.label}
             className="rounded-xl p-3"
-            style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-sm">{item.icon}</span>
@@ -326,7 +327,7 @@ function AccountStatsCard() {
         <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Referral Code</p>
         <div
           className="flex items-center justify-between gap-3 p-3 rounded-xl"
-          style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.06)' }}
+          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           {isLoading
             ? <div className="h-4 w-32 bg-white/10 rounded animate-pulse" />
@@ -370,6 +371,12 @@ function ProfileTab() {
   const [deleteInput, setDeleteInput] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  // Snapshot of last-saved values, used to detect dirty form state
+  const initialRef = useRef({
+    displayName: '', username: '', bio: '',
+    twitter: '', discord: '', github: '',
+  })
+
   const charities = ['Code.org', 'Girls Who Code', 'Khan Academy']
 
   // Hydrate everything from the API — schema has all these columns
@@ -387,10 +394,26 @@ function ProfileTab() {
         if (p.discordHandle) setDiscord(p.discordHandle)
         if (p.githubHandle)  setGithub(p.githubHandle)
         if (p.avatarUrl)     setAvatarUrl(p.avatarUrl)
+        initialRef.current = {
+          displayName: p.displayName ?? '',
+          username:    p.username ?? '',
+          bio:         p.bio ?? '',
+          twitter:     p.twitterHandle ?? '',
+          discord:     p.discordHandle ?? '',
+          github:      p.githubHandle ?? '',
+        }
       })
       .catch((err) => { if ((err as Error).name !== 'AbortError') {/* non-fatal */} })
     return () => controller.abort()
   }, [])
+
+  const isDirty =
+    displayName !== initialRef.current.displayName ||
+    username    !== initialRef.current.username    ||
+    bio         !== initialRef.current.bio         ||
+    twitter     !== initialRef.current.twitter     ||
+    discord     !== initialRef.current.discord     ||
+    github      !== initialRef.current.github
 
   const handleSave = async () => {
     setSaving(true)
@@ -408,13 +431,15 @@ function ProfileTab() {
         }),
       })
       if (res.ok) {
+        // Reset baseline so the save button becomes inactive again
+        initialRef.current = { displayName, username, bio, twitter, discord, github }
         show({ variant: 'success', title: 'Profile saved' })
       } else {
         const err = await res.json() as { error?: string }
-        show({ variant: 'error', title: err?.error ?? 'Failed to save' })
+        show({ variant: 'error', title: 'Could not save profile', description: err?.error ?? 'Please check your details and try again.' })
       }
     } catch {
-      show({ variant: 'error', title: 'Failed to save' })
+      show({ variant: 'error', title: 'Could not save profile', description: 'Network error — please check your connection and try again.' })
     } finally {
       setSaving(false)
     }
@@ -439,7 +464,7 @@ function ProfileTab() {
   return (
     <div className="space-y-4">
       {/* Profile card */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <h3 className="text-white font-semibold mb-5">Profile</h3>
 
         {/* Avatar */}
@@ -455,20 +480,20 @@ function ProfileTab() {
         <div className="space-y-4">
           {/* Email (read-only) */}
           <div>
-            <label htmlFor="profile-email" className="block text-sm text-gray-300 mb-1.5">Email</label>
+            <label htmlFor="profile-email" className="label-premium">Email</label>
             <input
               id="profile-email"
               type="email"
               value={user?.primaryEmailAddress?.emailAddress ?? ''}
               disabled
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-gray-400 text-sm cursor-not-allowed"
+              className="input-premium"
             />
             <p className="text-gray-500 text-xs mt-1.5">Managed by Clerk — change in account settings.</p>
           </div>
 
           {/* Display Name */}
           <div>
-            <label htmlFor="profile-display-name" className="block text-sm text-gray-300 mb-1.5">Display Name</label>
+            <label htmlFor="profile-display-name" className="label-premium">Display Name</label>
             <input
               id="profile-display-name"
               type="text"
@@ -476,15 +501,15 @@ function ProfileTab() {
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
               placeholder="Your display name"
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+              className="input-premium"
             />
           </div>
 
           {/* Username */}
           <div>
-            <label htmlFor="profile-username" className="block text-sm text-gray-300 mb-1.5">Username</label>
+            <label htmlFor="profile-username" className="label-premium">Username</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none">@</span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm select-none z-10">@</span>
               <input
                 id="profile-username"
                 type="text"
@@ -492,7 +517,7 @@ function ProfileTab() {
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
                 maxLength={30}
                 placeholder="your_username"
-                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                className="input-premium pl-7"
               />
             </div>
             <p className="text-gray-500 text-xs mt-1.5">Letters, numbers, underscores, hyphens only.</p>
@@ -500,7 +525,7 @@ function ProfileTab() {
 
           {/* Bio */}
           <div>
-            <label htmlFor="profile-bio" className="block text-sm text-gray-300 mb-1.5">
+            <label htmlFor="profile-bio" className="label-premium">
               Bio
               <span className="ml-2 text-gray-600 text-xs font-normal">{bio.length}/500</span>
             </label>
@@ -511,16 +536,16 @@ function ProfileTab() {
               rows={3}
               maxLength={500}
               placeholder="Tell the world what you build..."
-              className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors resize-none"
+              className="input-premium resize-none"
             />
           </div>
 
           {/* Social Links */}
           <div>
-            <p className="block text-sm text-gray-300 mb-3">Social Links</p>
+            <p className="label-premium mb-3">Social Links</p>
             <div className="space-y-2.5">
               <div className="relative">
-                <Twitter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-sky-400" />
+                <Twitter size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sky-400 z-10 pointer-events-none" />
                 <input
                   type="text"
                   value={twitter}
@@ -528,11 +553,11 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Twitter / X handle"
                   aria-label="Twitter handle"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                  className="input-premium pl-9"
                 />
               </div>
               <div className="relative">
-                <MessageCircle size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" />
+                <MessageCircle size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-400 z-10 pointer-events-none" />
                 <input
                   type="text"
                   value={discord}
@@ -540,11 +565,11 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="Discord username"
                   aria-label="Discord username"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                  className="input-premium pl-9"
                 />
               </div>
               <div className="relative">
-                <Github size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Github size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10 pointer-events-none" />
                 <input
                   type="text"
                   value={github}
@@ -552,7 +577,7 @@ function ProfileTab() {
                   maxLength={50}
                   placeholder="GitHub username"
                   aria-label="GitHub username"
-                  className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                  className="input-premium pl-9"
                 />
               </div>
             </div>
@@ -560,16 +585,16 @@ function ProfileTab() {
 
           {/* Charity */}
           <div>
-            <label htmlFor="profile-charity" className="block text-sm text-gray-300 mb-1.5">Charity Preference</label>
+            <label htmlFor="profile-charity" className="label-premium">Charity Preference</label>
             <div className="relative">
               <select
                 id="profile-charity"
                 value={charity}
                 onChange={(e) => setCharity(e.target.value)}
-                className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl px-4 pr-10 py-3 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors appearance-none"
+                className="input-premium pr-10 appearance-none cursor-pointer"
               >
                 {charities.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c} className="bg-[#141414]">{c}</option>
                 ))}
               </select>
               <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -578,20 +603,29 @@ function ProfileTab() {
           </div>
         </div>
 
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="mt-6 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-70"
-        >
-          {saving ? 'Saving...' : 'Save Changes'}
-        </button>
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+            className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all duration-200 ${
+              isDirty && !saving
+                ? 'bg-gradient-to-r from-[#D4AF37] to-[#E6A519] text-black shadow-[0_0_20px_rgba(212,175,55,0.25)] hover:shadow-[0_0_28px_rgba(212,175,55,0.4)]'
+                : 'bg-white/[0.04] text-white/30 cursor-not-allowed border border-white/[0.06]'
+            }`}
+          >
+            {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          {isDirty && !saving && (
+            <span className="text-xs text-[#D4AF37]/70">Unsaved changes</span>
+          )}
+        </div>
       </div>
 
       {/* Account Stats */}
       <AccountStatsCard />
 
       {/* Danger Zone */}
-      <div className="bg-[#141414] border border-red-500/20 rounded-xl p-6">
+      <div className="card-premium !border-red-500/20 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-2">
           <Trash2 size={15} className="text-red-400" />
           <h3 className="text-red-400 font-semibold">Danger Zone</h3>
@@ -624,7 +658,7 @@ function ProfileTab() {
               onChange={(e) => setDeleteInput(e.target.value)}
               placeholder="delete my account"
               autoComplete="off"
-              className="w-full bg-[#1c1c1c] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
+              className="w-full bg-white/[0.04] border border-red-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
             />
             <div className="flex gap-3">
               <button
@@ -667,7 +701,7 @@ function BillingTab() {
   return (
     <div className="space-y-4">
       {/* Plan */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Current Plan</p>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -701,7 +735,7 @@ function BillingTab() {
           <div className="flex flex-col gap-2 flex-shrink-0">
             <Link
               href="/#pricing"
-              className="inline-flex items-center gap-1.5 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
             >
               <TrendingUp size={14} />
               Change Plan
@@ -723,7 +757,7 @@ function BillingTab() {
       </div>
 
       {/* Token Balance */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Token Balance</p>
         <div className="flex items-end gap-3 mb-1">
           <span className="text-5xl font-bold text-[#D4AF37] tabular-nums leading-none">
@@ -760,7 +794,7 @@ function BillingTab() {
       </div>
 
       {/* Usage Breakdown */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Usage This Month</p>
         <div className="space-y-5">
           {[
@@ -796,7 +830,7 @@ function BillingTab() {
       </div>
 
       {/* Payment History */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">Payment History</p>
         <div className="py-4 text-center">
           <p className="text-gray-500 text-sm mb-2">Full payment history is available on the billing page.</p>
@@ -816,7 +850,7 @@ function BillingTab() {
 
 function ApiKeysTab() {
   return (
-    <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+    <div className="card-premium rounded-xl p-6">
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <div>
           <h3 className="text-white font-semibold">API Keys</h3>
@@ -826,7 +860,7 @@ function ApiKeysTab() {
         </div>
         <Link
           href="/settings/api-keys"
-          className="inline-flex items-center gap-1.5 text-sm bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-4 py-2 rounded-xl transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-4 py-2 rounded-xl transition-colors"
         >
           <Key size={14} />
           Manage Keys
@@ -850,7 +884,7 @@ function ApiKeysTab() {
 function NotificationsTab() {
   return (
     <div className="space-y-4">
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <h3 className="text-white font-semibold mb-1">Notification Preferences</h3>
         <p className="text-gray-400 text-xs mb-5">
           Choose how you want to be notified for each event type. Configure email, SMS, push, and in-app alerts.
@@ -1060,7 +1094,7 @@ function AppearanceTab() {
       </div>
 
       {/* Light / Dark quick toggle */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+      <div className="card-premium rounded-xl p-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Mode</p>
         <div className="flex gap-2">
           <button
@@ -1089,7 +1123,7 @@ function AppearanceTab() {
       </div>
 
       {/* Accent color */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+      <div className="card-premium rounded-xl p-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Accent Color</p>
         <div className="flex flex-wrap gap-2">
           {ACCENT_PRESETS.map((preset) => {
@@ -1121,7 +1155,7 @@ function AppearanceTab() {
       </div>
 
       {/* Font size */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-5">
+      <div className="card-premium rounded-xl p-5">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Font Size</p>
         <div className="flex gap-2">
           {(['small', 'medium', 'large'] as const).map((size) => (
@@ -1287,18 +1321,6 @@ function ConnectedTab() {
     iconBg: string
   }[] = [
     {
-      key: 'roblox',
-      label: 'Roblox',
-      description: 'Publish maps, sync assets, and deploy directly to your games.',
-      placeholder: 'Your Roblox username',
-      icon: (
-        <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" aria-hidden="true">
-          <path d="M5.04 3L3 18.96 18.96 21 21 5.04 5.04 3zm10.2 11.4l-4.56-.6-.6 4.56-2.52-.36.6-4.56-4.56-.6.36-2.52 4.56.6.6-4.56 2.52.36-.6 4.56 4.56.6-.36 2.52z" />
-        </svg>
-      ),
-      iconBg: 'bg-red-500/20 text-red-400',
-    },
-    {
       key: 'github',
       label: 'GitHub',
       description: 'Sync your projects with GitHub repositories for version control.',
@@ -1310,11 +1332,14 @@ function ConnectedTab() {
 
   return (
     <div className="space-y-4">
+      {/* Verified Roblox account linking (with bio-phrase verification) */}
+      <RobloxLinkCard />
+
       {items.map((item) => {
         const conn = connections[item.key]
         const isOpen = inputOpen === item.key
         return (
-          <div key={item.key} className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+          <div key={item.key} className="card-premium rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4 flex-1 min-w-0">
                 <div
@@ -1352,7 +1377,7 @@ function ConnectedTab() {
                 ) : (
                   <button
                     onClick={() => handleOpenConnect(item.key)}
-                    className="inline-flex items-center gap-1.5 text-xs bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-3 py-2 rounded-xl transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-3 py-2 rounded-xl transition-colors"
                   >
                     <Link2 size={12} />
                     Connect
@@ -1378,13 +1403,13 @@ function ConnectedTab() {
                       placeholder={item.placeholder}
                       maxLength={100}
                       autoFocus
-                      className="w-full bg-[#1c1c1c] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
+                      className="w-full bg-white/[0.04] border border-white/10 rounded-xl pl-8 pr-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#D4AF37]/40 transition-colors"
                     />
                   </div>
                   <button
                     onClick={() => void handleSaveConnect()}
                     disabled={saving || !inputValue.trim()}
-                    className="px-4 py-2.5 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
+                    className="px-4 py-2.5 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold rounded-xl text-sm transition-colors disabled:opacity-50"
                   >
                     {saving ? 'Saving…' : 'Save'}
                   </button>
@@ -1415,7 +1440,7 @@ function StudioTab() {
   return (
     <div className="space-y-4">
       {/* Connection Status */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Studio Connection</p>
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-500'}`}
@@ -1428,7 +1453,7 @@ function StudioTab() {
         {!isConnected && (
           <Link
             href="/settings/studio"
-            className="inline-flex items-center gap-2 bg-[#D4AF37] hover:bg-[#E6A519] text-black font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            className="inline-flex items-center gap-2 bg-gradient-to-br from-[#D4AF37] to-[#C8962A] hover:brightness-110 active:scale-[0.97] text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
           >
             <Plug size={14} />
             Connect Studio
@@ -1437,7 +1462,7 @@ function StudioTab() {
       </div>
 
       {/* Plugin Download */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Studio Plugin</p>
         <p className="text-gray-300 text-sm mb-4">
           Install the ForjeGames plugin in Roblox Studio to sync builds directly.
@@ -1455,7 +1480,7 @@ function StudioTab() {
       </div>
 
       {/* Quick Setup */}
-      <div className="bg-[#111113] border border-white/[0.06] rounded-xl p-6">
+      <div className="card-premium rounded-xl p-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">Setup Guide</p>
         <ol className="space-y-3 text-sm text-gray-300">
           <li className="flex gap-3">
@@ -1502,7 +1527,7 @@ export default function SettingsClient() {
   )
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>

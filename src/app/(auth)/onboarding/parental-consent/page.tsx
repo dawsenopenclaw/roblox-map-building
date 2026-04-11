@@ -64,7 +64,7 @@ export default function ParentalConsentPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.')
+        setError(data.error || "Couldn't send the parental consent email. Check the address and try again.")
         return false
       }
       return true
@@ -93,12 +93,26 @@ export default function ParentalConsentPage() {
   // ── Sent state ──────────────────────────────────────────────────────────────
   if (sent) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
+      <div className="relative min-h-screen flex items-center justify-center p-4" style={{ background: '#050810' }}>
+        <div
+          className="pointer-events-none fixed inset-0"
+          aria-hidden
+          style={{ background: 'radial-gradient(ellipse 600px 500px at 50% 35%, rgba(212,175,55,0.04) 0%, transparent 70%)' }}
+        />
+        <div className="relative z-10 max-w-md w-full text-center">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#D4AF37]">ForjeGames</h1>
+            <h1 className="text-2xl font-bold"><span className="text-white">Forje</span><span className="text-[#D4AF37]">Games</span></h1>
           </div>
-          <div className="bg-[#141414] border border-white/10 rounded-xl p-8 shadow-xl">
+          <div
+            className="rounded-xl p-8"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 80px rgba(212,175,55,0.03)',
+            }}
+          >
             <ProgressBar />
             <div className="text-5xl mb-4"><span aria-hidden="true">📧</span></div>
             <h2 className="text-xl font-bold text-white mb-3">Check your parent&apos;s email</h2>
@@ -117,7 +131,11 @@ export default function ParentalConsentPage() {
               <button
                 onClick={handleResend}
                 disabled={loading || cooldown > 0}
-                className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full text-black font-bold py-3 rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
+                  boxShadow: '0 0 24px rgba(212,175,55,0.25)',
+                }}
               >
                 {loading
                   ? 'Sending…'
@@ -140,21 +158,34 @@ export default function ParentalConsentPage() {
 
   // ── Form ────────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="relative min-h-screen flex items-center justify-center p-4" style={{ background: '#050810' }}>
+      <div
+        className="pointer-events-none fixed inset-0"
+        aria-hidden
+        style={{ background: 'radial-gradient(ellipse 600px 500px at 50% 35%, rgba(212,175,55,0.04) 0%, transparent 70%)' }}
+      />
+      <div className="relative z-10 max-w-md w-full">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-[#D4AF37]">ForjeGames</h1>
+          <h1 className="text-2xl font-bold"><span className="text-white">Forje</span><span className="text-[#D4AF37]">Games</span></h1>
         </div>
 
         {/* Card */}
-        <div className="bg-[#141414] border border-white/10 rounded-xl p-8 shadow-xl">
+        <div
+          className="rounded-xl p-8"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 80px rgba(212,175,55,0.03)',
+          }}
+        >
           <ProgressBar />
 
-          <h2 className="text-xl font-bold text-white mb-2">Parent&apos;s Permission Required</h2>
+          <h2 className="text-xl font-bold text-white mb-2">One last step — we need a grown-up</h2>
           <p className="text-gray-400 text-sm mb-6">
-            Since you&apos;re under 13, we need a parent or guardian to approve your account.
-            This is required by US law (COPPA). We&apos;ll send them a one-click approval link.
+            We&apos;ll send a quick approval link to your parent or guardian. Once they click it, your account unlocks and you&apos;re in. No paperwork, no waiting around.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -169,16 +200,25 @@ export default function ParentalConsentPage() {
                 onChange={(e) => { setParentEmail(e.target.value); setError('') }}
                 placeholder="parent@example.com"
                 required
-                className="w-full bg-[#141414] border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-[#D4AF37] transition-colors placeholder-gray-600"
+                className="w-full text-white rounded-lg px-4 py-3 focus:outline-none transition-colors placeholder-gray-600"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = '#D4AF37' }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
               />
             </div>
 
-            <div className="bg-[#0a0a0a] rounded-lg p-4 text-xs text-gray-400">
-              <strong className="text-gray-300">What we tell your parent:</strong>
+            <div
+              className="rounded-lg p-4 text-xs text-gray-400"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              <strong className="text-gray-300">Here&apos;s what they&apos;ll see:</strong>
               <ul className="mt-2 space-y-1 list-disc list-inside">
-                <li>What ForjeGames is (AI game dev platform)</li>
-                <li>What data we collect (email + date of birth)</li>
-                <li>How to approve or deny the account</li>
+                <li>A friendly intro to ForjeGames (AI game dev platform)</li>
+                <li>What we collect — just your email and birth year</li>
+                <li>One button to approve, one to decline</li>
               </ul>
             </div>
 
@@ -187,11 +227,26 @@ export default function ParentalConsentPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-lg hover:bg-[#E6A519] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full text-black font-bold py-3 rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, #D4AF37 0%, #F5D060 100%)',
+                boxShadow: '0 0 24px rgba(212,175,55,0.25)',
+              }}
             >
-              {loading ? 'Sending…' : 'Send Consent Email'}
+              {loading ? 'Sending…' : 'Send approval link'}
             </button>
           </form>
+        </div>
+
+        {/* Escape hatches */}
+        <div className="mt-5 flex items-center justify-center gap-4 text-xs text-zinc-600">
+          <a href="/onboarding/age-gate" className="hover:text-zinc-400 transition-colors">
+            ← Wrong birth year?
+          </a>
+          <span className="text-zinc-800">·</span>
+          <a href="/sign-in" className="hover:text-zinc-400 transition-colors">
+            Use a different account
+          </a>
         </div>
       </div>
     </div>

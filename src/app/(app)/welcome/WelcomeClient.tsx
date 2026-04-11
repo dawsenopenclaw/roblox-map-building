@@ -67,7 +67,7 @@ function Confetti() {
     resize()
     window.addEventListener('resize', resize)
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 120; i++) {
       particlesRef.current.push({
         id: i,
         x: Math.random() * width,
@@ -663,12 +663,19 @@ export default function WelcomePage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4 py-12 font-inter"
-      style={{ background: '#0a0a0a' }}
+      className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12 font-inter"
+      style={{ background: '#050810' }}
     >
+      {/* Ambient gold glow — matches auth layout */}
+      <div
+        className="pointer-events-none fixed inset-0"
+        aria-hidden
+        style={{ background: 'radial-gradient(ellipse 700px 500px at 50% 30%, rgba(212,175,55,0.05) 0%, transparent 70%)' }}
+      />
+
       {showConfetti && <Confetti />}
 
-      <div className="w-full max-w-lg">
+      <div className="relative z-10 w-full max-w-lg">
         {/* Progress dots */}
         <ProgressDots step={step} total={TOTAL_STEPS} />
 
@@ -676,9 +683,11 @@ export default function WelcomePage() {
         <div
           className="relative rounded-2xl overflow-hidden"
           style={{
-            background: '#111111',
+            background: 'rgba(255,255,255,0.03)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
             border: '1px solid rgba(255,255,255,0.07)',
-            boxShadow: '0 40px 80px rgba(0,0,0,0.6), 0 0 40px rgba(212,175,55,0.04)',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.6), 0 0 80px rgba(212,175,55,0.04)',
           }}
         >
           {/* Top edge glow */}

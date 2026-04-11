@@ -32,6 +32,12 @@ interface GeneratedAsset {
   status:       'complete' | 'pending' | 'demo' | 'queued' | 'generating' | 'optimizing' | 'uploading' | 'failed'
   taskId?:      string
   assetId?:     string
+  /**
+   * BUG 10: numeric Roblox asset ID returned by the Open Cloud uploader once
+   * the mesh has been published to Roblox. When present, we prefer the
+   * `insert_asset` command path over pushing raw Luau code.
+   */
+  robloxAssetId?: string | null
   asset: {
     meshUrl:      string | null
     textureUrls:  { albedo: string | null; normal: string | null; roughness: string | null; metallic: string | null }
@@ -240,7 +246,16 @@ function CopyButton({ text }: { text: string }) {
 
 interface AssetGeneratorProps {
   className?: string
-  onSendToStudio?: (luauCode: string, prompt: string) => void
+  /**
+   * BUG 10: optional `meta` now carries a `robloxAssetId` so the parent can
+   * choose between the insert_asset command path (preferred, uses
+   * InsertService:LoadAsset) and the raw-luau push path (fallback).
+   */
+  onSendToStudio?: (
+    luauCode: string,
+    prompt: string,
+    meta?: { robloxAssetId?: string | null; name?: string }
+  ) => void
 }
 
 export function AssetGenerator({ className = '', onSendToStudio }: AssetGeneratorProps) {
@@ -318,6 +333,8 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
           normalUrl?: string | null
           roughnessUrl?: string | null
           metallicUrl?: string | null
+          // BUG 10: numeric Roblox asset ID for insert_asset command path
+          robloxAssetId?: string | null
           errorMessage?: string | null
           tokensCost?: number
         }
@@ -331,6 +348,9 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
           setResult((prev) => prev ? {
             ...prev,
             status: 'complete' as const,
+            // BUG 10: capture the uploaded Roblox asset ID for the
+            // insert_asset command path used by handleSendToStudio below.
+            robloxAssetId: data.robloxAssetId ?? prev.robloxAssetId ?? null,
             asset: {
               ...prev.asset,
               meshUrl:     data.meshUrl ?? prev.asset.meshUrl,
@@ -425,7 +445,12 @@ export function AssetGenerator({ className = '', onSendToStudio }: AssetGenerato
 
   const handleSendToStudio = useCallback(() => {
     if (!result || !onSendToStudio) return
-    onSendToStudio(result.luauCode, prompt)
+    // BUG 10: pass the uploaded Roblox asset ID so the parent can use the
+    // insert_asset command path instead of pushing the raw Luau model.
+    onSendToStudio(result.luauCode, prompt, {
+      robloxAssetId: result.robloxAssetId ?? null,
+      name: prompt.slice(0, 64) || 'Generated Asset',
+    })
   }, [result, prompt, onSendToStudio])
 
   const currentCategoryTemplates = categories.find((c) => c.slug === activeCategory)?.templates ?? []

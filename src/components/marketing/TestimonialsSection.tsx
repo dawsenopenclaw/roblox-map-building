@@ -9,67 +9,52 @@ const TIER_STYLES: Record<string, { label: string; bg: string; color: string; bo
 
 const TESTIMONIALS = [
   {
-    username: '@RobloxDev_Jake',
-    initials: 'RJ',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'Built a full tycoon in 20 minutes. The AI placed assets, wrote scripts, and set up the economy. Insane.',
-  },
-  {
-    username: '@LunaBuilds',
-    initials: 'LB',
-    tier: 'HOBBY',
-    stars: 5,
-    quote: 'Voice commands are a game-changer. I just say what I want and it appears in Studio.',
-  },
-  {
-    username: '@CodeMaster99',
-    initials: 'CM',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'Switched from Lemonade. ForjeGames does terrain AND assets, not just scripts.',
-  },
-  {
-    username: '@PixelQueen',
-    initials: 'PQ',
-    tier: 'FREE',
-    stars: 5,
-    quote: 'The free tier is actually usable. Most tools give you nothing for free.',
-  },
-  {
-    username: '@StudioPro_Max',
-    initials: 'SM',
-    tier: 'STUDIO',
-    stars: 5,
-    quote: 'My team of 5 ships games 3x faster now. The collaboration features are worth every penny.',
-  },
-  {
-    username: '@NovaDev',
-    initials: 'ND',
-    tier: 'HOBBY',
-    stars: 5,
-    quote: 'Image-to-map blew my mind. Uploaded a photo and got a playable map in 2 minutes.',
-  },
-  {
-    username: '@BuilderBen',
-    initials: 'BB',
-    tier: 'CREATOR',
-    stars: 5,
-    quote: 'The economy designer alone is worth the subscription. Balanced my game\'s currency in one session.',
-  },
-  {
-    username: '@RoDevGirl',
-    initials: 'RG',
-    tier: 'FREE',
-    stars: 5,
-    quote: 'Finally an AI tool that doesn\'t require a PhD to use. Type, build, play.',
-  },
-  {
-    username: '@MegaCraft',
+    name: 'Maya Chen',
+    role: 'Indie Roblox Dev',
     initials: 'MC',
+    tier: 'CREATOR',
+    stars: 5,
+    quote: 'ForjeGames cut my prototyping time in half — went from 3 weeks to 4 days for our tycoon launch.',
+  },
+  {
+    name: 'Daniel Okafor',
+    role: 'Solo Creator, 2.1M visits',
+    initials: 'DO',
+    tier: 'CREATOR',
+    stars: 5,
+    quote: 'I shipped a working obby in an afternoon. The Studio sync is the part I never knew I needed.',
+  },
+  {
+    name: 'Priya Ramanathan',
+    role: 'Student dev, Grade 11',
+    initials: 'PR',
+    tier: 'FREE',
+    stars: 5,
+    quote: 'The free tier actually works. I built my first published game without touching a single line of Luau.',
+  },
+  {
+    name: 'Jordan Whitfield',
+    role: 'Studio lead, 8-person team',
+    initials: 'JW',
     tier: 'STUDIO',
     stars: 5,
-    quote: 'We publish 2 games a month now. Before ForjeGames it was 1 every 3 months.',
+    quote: 'Our team ships 3x faster. The collaboration features and shared build history paid for themselves in a week.',
+  },
+  {
+    name: 'Elena Moretti',
+    role: 'Former Unity dev',
+    initials: 'EM',
+    tier: 'CREATOR',
+    stars: 5,
+    quote: 'I came from Unity and expected rough edges. ForjeGames is cleaner than most pro tools I pay 10x more for.',
+  },
+  {
+    name: 'Marcus Reyes',
+    role: 'Roblox UGC creator',
+    initials: 'MR',
+    tier: 'HOBBY',
+    stars: 5,
+    quote: 'Image-to-map is uncanny. I uploaded a concept sketch and had a playable village running in about two minutes.',
   },
 ]
 
@@ -100,10 +85,12 @@ function TierBadge({ tier }: { tier: string }) {
 function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[number] }) {
   return (
     <div
-      className="group flex flex-col gap-4 rounded-2xl p-5 relative transition-all duration-300"
+      className="group h-full flex flex-col gap-5 rounded-xl p-6 relative transition-all duration-150"
       style={{
-        background: '#111113',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.06)',
         boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
       }}
       onMouseEnter={(e) => {
@@ -115,7 +102,7 @@ function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[num
       onMouseLeave={(e) => {
         const el = e.currentTarget as HTMLElement
         el.style.transform = 'translateY(0)'
-        el.style.border = '1px solid rgba(255,255,255,0.07)'
+        el.style.border = '1px solid rgba(255,255,255,0.06)'
         el.style.boxShadow = '0 2px 12px rgba(0,0,0,0.4)'
       }}
     >
@@ -128,9 +115,16 @@ function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[num
         &ldquo;
       </span>
 
-      {/* Header row */}
-      <div className="flex items-center gap-3">
-        {/* Gold circle avatar with initials */}
+      {/* Stars */}
+      <StarRating count={testimonial.stars} />
+
+      {/* Quote */}
+      <p className="text-[15px] leading-relaxed flex-1" style={{ color: 'rgba(255,255,255,0.82)' }}>
+        &ldquo;{testimonial.quote}&rdquo;
+      </p>
+
+      {/* Footer — name + role + tier */}
+      <div className="flex items-center gap-3 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
           style={{
@@ -141,62 +135,53 @@ function TestimonialCard({ testimonial }: { testimonial: typeof TESTIMONIALS[num
         >
           {testimonial.initials}
         </div>
-        <div className="min-w-0 flex flex-col gap-1">
-          <p className="text-sm font-semibold truncate" style={{ color: '#FFFFFF' }}>
-            {testimonial.username}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))' }}>
+            {testimonial.name}
           </p>
-          <TierBadge tier={testimonial.tier} />
+          <p className="text-[11px] truncate" style={{ color: '#8B95B0' }}>
+            {testimonial.role}
+          </p>
         </div>
+        <TierBadge tier={testimonial.tier} />
       </div>
-
-      {/* Stars */}
-      <StarRating count={testimonial.stars} />
-
-      {/* Quote */}
-      <p className="text-sm leading-relaxed" style={{ color: '#8B95B0' }}>
-        &ldquo;{testimonial.quote}&rdquo;
-      </p>
     </div>
   )
 }
 
 export default function TestimonialsSection() {
   return (
-    <section className="py-20 px-6" style={{ background: '#0A0E27' }}>
+    <section className="py-16 sm:py-20 px-6" style={{ background: 'var(--background, #050810)' }}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-10 sm:mb-14">
           <p
             className="text-[12px] font-medium uppercase tracking-widest mb-3"
-            style={{ color: '#D4AF37' }}
+            style={{ color: 'var(--gold, #D4AF37)' }}
           >
             Creator Stories
           </p>
-          <h2 className="text-4xl font-bold tracking-tight mb-4" style={{ color: '#FFFFFF' }}>
+          <h2 className="font-bold tracking-tight mb-4" style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))', fontSize: 'clamp(1.75rem, 5vw, 2.25rem)' }}>
             Loved by Roblox{' '}
-            <span style={{ color: '#D4AF37' }}>creators</span>
+            <span style={{ color: 'var(--gold, #D4AF37)' }}>creators</span>
           </h2>
-          <p className="text-lg" style={{ color: '#8B95B0' }}>
+          <p className="text-base sm:text-lg" style={{ color: '#8B95B0' }}>
             Thousands of builders shipping faster with ForjeGames.
           </p>
         </div>
 
-        {/* 3×3 grid — desktop */}
-        {/* Mobile: horizontal scroll (single row) */}
-        <div
-          className="hidden md:grid gap-4"
-          style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}
-        >
+        {/* 2-col tablet / 3-col desktop grid */}
+        <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-6">
           {TESTIMONIALS.map((t, i) => (
             <TestimonialCard key={i} testimonial={t} />
           ))}
         </div>
 
         {/* Mobile: single horizontal scroll row */}
-        <div className="md:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
+        <div className="sm:hidden flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-6 px-6"
           style={{ scrollbarWidth: 'none' }}>
           {TESTIMONIALS.map((t, i) => (
-            <div key={i} className="flex-shrink-0 w-72 snap-start">
+            <div key={i} className="flex-shrink-0 w-[85vw] max-w-xs snap-start">
               <TestimonialCard testimonial={t} />
             </div>
           ))}

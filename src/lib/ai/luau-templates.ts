@@ -1329,6 +1329,10 @@ export interface ProBuildingParams {
   withInterior: boolean
   withLighting: boolean
   withVegetation: boolean
+  /** Number of interior rooms per floor (0 = open plan) */
+  roomsPerFloor?: number
+  /** Add low-poly wall surface details like brick lines, panels, trim boards */
+  withWallDetail?: boolean
 }
 
 export function professionalBuilding(params: ProBuildingParams): string {
@@ -1371,6 +1375,9 @@ export function professionalBuilding(params: ProBuildingParams): string {
     style === 'medieval'   ? '80, 70, 60' :
     style === 'futuristic' ? '20, 30, 50' :
     '50, 50, 50'
+
+  const roomsPerFloor = params.roomsPerFloor ?? 0
+  const withWallDetail = params.withWallDetail ?? true
 
   const floorHeight = 4
   const totalHeight = floors * floorHeight
@@ -1650,7 +1657,7 @@ for floor = 1, FLOORS do
     Vector3.new(originX, floorY + 0.1, originZ),
     floorCol, floorMat)
 
-  -- Baseboard trim
+  -- Baseboard trim (runs along bottom of every interior wall)
   local baseboards = {
     {size=Vector3.new(W - WT*2, 0.3, 0.15), pos=Vector3.new(originX, floorY + 0.25, originZ + D/2 - WT - 0.07)},
     {size=Vector3.new(W - WT*2, 0.3, 0.15), pos=Vector3.new(originX, floorY + 0.25, originZ - D/2 + WT + 0.07)},
@@ -1661,8 +1668,177 @@ for floor = 1, FLOORS do
     makePart(fDetails, "Baseboard_F"..floor.."_"..bi, bb.size, bb.pos,
       {${trimColorR}}, Enum.Material.SmoothPlastic)
   end
+
+  -- Crown molding (top trim along ceiling)
+  local crownY = floorY + FH - 0.15
+  local crowns = {
+    {size=Vector3.new(W - WT*2, 0.2, 0.12), pos=Vector3.new(originX, crownY, originZ + D/2 - WT - 0.06)},
+    {size=Vector3.new(W - WT*2, 0.2, 0.12), pos=Vector3.new(originX, crownY, originZ - D/2 + WT + 0.06)},
+    {size=Vector3.new(0.12, 0.2, D - WT*2), pos=Vector3.new(originX - W/2 + WT + 0.06, crownY, originZ)},
+    {size=Vector3.new(0.12, 0.2, D - WT*2), pos=Vector3.new(originX + W/2 - WT - 0.06, crownY, originZ)},
+  }
+  for ci, cr in ipairs(crowns) do
+    makePart(fDetails, "Crown_F"..floor.."_"..ci, cr.size, cr.pos,
+      {${trimColorR}}, Enum.Material.SmoothPlastic)
+  end
+
+  -- Interior ceiling slab (visible from below)
+  makePart(fDetails, "Ceiling_F"..floor,
+    Vector3.new(W - WT*2, 0.15, D - WT*2),
+    Vector3.new(originX, floorY + FH - 0.075, originZ),
+    {240, 238, 235}, Enum.Material.SmoothPlastic)
 end
+
+${roomsPerFloor > 0 ? `
+-- ── Interior dividing walls (rooms) ──────────────────────────────────────────
+local fInterior = Instance.new("Folder"); fInterior.Name = "Interior"; fInterior.Parent = building
+local ROOMS = ${roomsPerFloor}
+local interiorW = W - WT * 2
+local interiorD = D - WT * 2
+
+for floor = 1, FLOORS do
+  local floorY = originY + ${foundationHeight} + (floor - 1) * FH
+  local wallH = FH - 0.4  -- slightly shorter than ceiling for visual gap
+
+  if ROOMS >= 2 then
+    -- Center wall running front-to-back (splits left/right)
+    makePart(fInterior, "DivWall_LR_F"..floor,
+      Vector3.new(0.3, wallH, interiorD * 0.7),
+      Vector3.new(originX, floorY + wallH/2 + 0.2, originZ),
+      {230, 225, 220}, Enum.Material.SmoothPlastic)
+
+    -- Doorway cutout in center wall (leave a gap at the front)
+    -- The wall above only covers 70% depth, leaving 30% as a doorway
+  end
+
+  if ROOMS >= 3 then
+    -- Cross wall running left-to-right (splits front/back on left side)
+    makePart(fInterior, "DivWall_FB_Left_F"..floor,
+      Vector3.new(interiorW/2 - 0.15, wallH, 0.3),
+      Vector3.new(originX - interiorW/4, floorY + wallH/2 + 0.2, originZ),
+      {230, 225, 220}, Enum.Material.SmoothPlastic)
+  end
+
+  if ROOMS >= 4 then
+    -- Cross wall on right side too
+    makePart(fInterior, "DivWall_FB_Right_F"..floor,
+      Vector3.new(interiorW/2 - 0.15, wallH, 0.3),
+      Vector3.new(originX + interiorW/4, floorY + wallH/2 + 0.2, originZ - interiorD * 0.15),
+      {230, 225, 220}, Enum.Material.SmoothPlastic)
+  end
+end
+` : '-- roomsPerFloor = 0: open floor plan'}
 ` : '-- withInterior = false: no interior details added'}
+
+${withWallDetail ? `
+-- ── Wall surface detail (low-poly texture lines) ────────────────────────────
+local fTexture = Instance.new("Folder"); fTexture.Name = "WallTexture"; fTexture.Parent = building
+
+-- Horizontal mortar/panel lines on exterior walls
+for floor = 1, FLOORS do
+  local floorBase = originY + ${foundationHeight} + (floor - 1) * FH
+
+  -- Horizontal lines every ~1 stud (brick coursing / siding lines)
+  local lineCount = math.floor(FH / 1.0)
+  for li = 1, lineCount do
+    local ly = floorBase + li * (FH / (lineCount + 1))
+
+    -- Front wall lines
+    makePart(fTexture, "HLine_Front_F"..floor.."_"..li,
+      Vector3.new(W - 1, 0.05, 0.05),
+      Vector3.new(originX, ly, originZ + D/2 + WT/2 + 0.03),
+      {${trimColorR}}, Enum.Material.SmoothPlastic)
+
+    -- Back wall lines
+    makePart(fTexture, "HLine_Back_F"..floor.."_"..li,
+      Vector3.new(W - 1, 0.05, 0.05),
+      Vector3.new(originX, ly, originZ - D/2 - WT/2 - 0.03),
+      {${trimColorR}}, Enum.Material.SmoothPlastic)
+  end
+
+  -- Vertical lines for brick pattern (staggered every other row)
+  local vLineSpacing = ${style === 'medieval' || style === 'victorian' ? 2.0 : 3.5}
+  local numVLines = math.floor(W / vLineSpacing)
+  for vi = 1, numVLines do
+    for ri = 1, lineCount do
+      local ly = floorBase + ri * (FH / (lineCount + 1))
+      local stagger = (ri % 2 == 0) and vLineSpacing / 2 or 0
+      local vx = originX - W/2 + 1 + (vi - 1) * vLineSpacing + stagger
+      if vx > originX - W/2 + 0.5 and vx < originX + W/2 - 0.5 then
+        makePart(fTexture, "VLine_F"..floor.."_"..vi.."_"..ri,
+          Vector3.new(0.05, FH / (lineCount + 1) - 0.05, 0.05),
+          Vector3.new(vx, ly - FH / (lineCount + 1) / 2, originZ + D/2 + WT/2 + 0.03),
+          {${trimColorR}}, Enum.Material.SmoothPlastic)
+      end
+    end
+  end
+end
+
+-- Wainscoting / lower wall panels (bottom third of each floor, slightly raised)
+for floor = 1, FLOORS do
+  local floorBase = originY + ${foundationHeight} + (floor - 1) * FH
+  local panelH = FH * 0.33
+  local panelY = floorBase + panelH / 2
+
+  -- Front and back wainscoting panels
+  makePart(fTexture, "Wainscot_Front_F"..floor,
+    Vector3.new(W - 1.2, panelH, 0.08),
+    Vector3.new(originX, panelY, originZ + D/2 + WT/2 + 0.04),
+    {${trimColorR}}, ${style === 'modern' || style === 'futuristic' ? 'Enum.Material.SmoothPlastic' : 'Enum.Material.WoodPlanks'})
+
+  makePart(fTexture, "Wainscot_Back_F"..floor,
+    Vector3.new(W - 1.2, panelH, 0.08),
+    Vector3.new(originX, panelY, originZ - D/2 - WT/2 - 0.04),
+    {${trimColorR}}, ${style === 'modern' || style === 'futuristic' ? 'Enum.Material.SmoothPlastic' : 'Enum.Material.WoodPlanks'})
+
+  -- Side wainscoting
+  makePart(fTexture, "Wainscot_Left_F"..floor,
+    Vector3.new(0.08, panelH, D - 1.2),
+    Vector3.new(originX - W/2 - WT/2 - 0.04, panelY, originZ),
+    {${trimColorR}}, ${style === 'modern' || style === 'futuristic' ? 'Enum.Material.SmoothPlastic' : 'Enum.Material.WoodPlanks'})
+
+  makePart(fTexture, "Wainscot_Right_F"..floor,
+    Vector3.new(0.08, panelH, D - 1.2),
+    Vector3.new(originX + W/2 + WT/2 + 0.04, panelY, originZ),
+    {${trimColorR}}, ${style === 'modern' || style === 'futuristic' ? 'Enum.Material.SmoothPlastic' : 'Enum.Material.WoodPlanks'})
+
+  -- Chair rail (thin horizontal strip at top of wainscoting)
+  makePart(fTexture, "ChairRail_Front_F"..floor,
+    Vector3.new(W - 0.8, 0.12, 0.12),
+    Vector3.new(originX, panelY + panelH/2 + 0.06, originZ + D/2 + WT/2 + 0.06),
+    {${trimColorR}}, Enum.Material.SmoothPlastic)
+
+  makePart(fTexture, "ChairRail_Back_F"..floor,
+    Vector3.new(W - 0.8, 0.12, 0.12),
+    Vector3.new(originX, panelY + panelH/2 + 0.06, originZ - D/2 - WT/2 - 0.06),
+    {${trimColorR}}, Enum.Material.SmoothPlastic)
+end
+
+-- Keystone above door (decorative wedge)
+local keystoneY = originY + ${foundationHeight} + 4.6
+makePart(fTexture, "Keystone",
+  Vector3.new(1.0, 0.6, 0.3),
+  Vector3.new(originX, keystoneY, originZ + D/2 + WT/2 + 0.15),
+  {${trimColorR}}, Enum.Material.Concrete)
+
+-- Address plaque / sign area above door
+local plaqueY = originY + ${foundationHeight} + 3.2
+local plaque = makePart(fTexture, "SignPlaque",
+  Vector3.new(2.5, 0.8, 0.1),
+  Vector3.new(originX, plaqueY + 2.5, originZ + D/2 + WT/2 + 0.06),
+  {${trimColorR}}, Enum.Material.SmoothPlastic)
+local signGui = Instance.new("SurfaceGui")
+signGui.Face = Enum.NormalId.Front
+signGui.Parent = plaque
+local signLabel = Instance.new("TextLabel")
+signLabel.Size = UDim2.new(1, 0, 1, 0)
+signLabel.BackgroundTransparency = 1
+signLabel.Text = "${name}"
+signLabel.TextColor3 = Color3.fromRGB(255, 248, 230)
+signLabel.TextScaled = true
+signLabel.Font = Enum.Font.GothamBold
+signLabel.Parent = signGui
+` : '-- withWallDetail = false: no surface texture details added'}
 
 building.PrimaryPart = building:FindFirstChildOfClass("Part")
 ChangeHistoryService:SetWaypoint("Built_${name}")

@@ -361,6 +361,59 @@ export default function GrowthPage() {
     )
   }
 
+  // API returned null (network failure after loading finished)
+  if (!metrics) {
+    return (
+      <div style={{ padding: '40px 24px', maxWidth: '480px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '40px 32px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertCircle size={24} color="#EF4444" />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--foreground)' }}>Growth data unavailable</p>
+            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--muted)' }}>
+              Could not load metrics. Check your network connection and try again.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setLoading(true)
+              Promise.all([
+                fetch('/api/growth/metrics').then((r) => r.json()).catch(() => null),
+                fetch('/api/growth/suggestions').then((r) => r.json()).catch(() => null),
+              ]).then(([m, s]) => {
+                setMetrics(m)
+                setSuggestions(s)
+                setLoading(false)
+              })
+            }}
+            style={{
+              background: 'var(--gold)',
+              color: '#000',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const m = metrics
   const s = suggestions
 

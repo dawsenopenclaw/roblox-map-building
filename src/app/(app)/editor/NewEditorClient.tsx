@@ -10,9 +10,9 @@ import { Viewport3D } from '@/components/editor/Viewport3D'
 import { CommandPalette } from '@/components/editor/CommandPalette'
 import { AIContextPanel } from '@/components/editor/AIContextPanel'
 import { parseLuauCode } from '@/lib/luau-parser'
-import { useChat, loadSessions, type ChatSessionMeta } from './hooks/useChat'
+import { useChat, loadSessions, type ChatSessionMeta, type ChatMessage } from './hooks/useChat'
 import { useStudioConnection, type StudioActivity } from './hooks/useStudioConnection'
-import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
+import { OnboardingOverlay, useOnboardingOverlay, hasUsedVoiceInput, markVoiceInputUsed } from './components/OnboardingOverlay'
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
 import { ToastProvider, useToast } from '@/components/editor/EditorToasts'
 import { ShortcutsHelp } from '@/components/editor/ShortcutsHelp'
@@ -22,6 +22,11 @@ import SettingsPanel from './panels/SettingsPanel'
 import { FirstRunExperience } from '@/components/editor/FirstRunExperience'
 import { SuggestedPrompts } from '@/components/editor/SuggestedPrompts'
 import { AssetGenerator } from '@/components/editor/AssetGenerator'
+import { ProjectsSidebarPanel } from './panels/ProjectsSidebarPanel'
+import { saveProject, loadProject, type ProjectData } from '@/hooks/useProject'
+import { useAutoPlaytest } from '@/hooks/useAutoPlaytest'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { MobileBottomSheet } from '@/components/editor/MobileBottomSheet'
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -101,6 +106,16 @@ function IconBuildHistory() {
       <path d="M5 7h8M5 10h5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
       <circle cx="13" cy="12.5" r="2.5" fill="rgba(212,175,55,0)" stroke="currentColor" strokeWidth="1.3"/>
       <path d="M13 11.5v1.5l1 0.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
+function IconProjects() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="2" y="5" width="6" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <rect x="10" y="3" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M4 8h2M4 11h2M12 6h2M12 9h2M12 12h2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -1289,6 +1304,8 @@ function TopBar({
   onLayoutChange,
   latencyMs,
   sseReconnectPhase,
+  isMobile = false,
+  onMobileMenuOpen,
 }: {
   isConnected: boolean
   placeName: string
@@ -1300,6 +1317,8 @@ function TopBar({
   onLayoutChange: (l: EditorLayout) => void
   latencyMs?: number | null
   sseReconnectPhase?: import('./hooks/useStudioSSE').SSEReconnectPhase
+  isMobile?: boolean
+  onMobileMenuOpen?: () => void
 }) {
   const { user } = useUser()
   const [newChatHovered, setNewChatHovered] = useState(false)
@@ -1313,6 +1332,94 @@ function TopBar({
       setGuestTokensUsed(stored)
     }
   }, [user, totalTokens])
+
+  if (isMobile) {
+    return (
+      <div
+        style={{
+          flexShrink: 0,
+          height: 48,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 12px',
+          background: 'rgba(8,12,28,0.85)',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          zIndex: 20,
+          backdropFilter: 'blur(12px)',
+          position: 'relative',
+        }}
+      >
+        {/* Gradient glow bottom border */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1,
+          background: 'linear-gradient(90deg, transparent 0%, rgba(212,175,55,0.04) 25%, rgba(212,175,55,0.06) 50%, rgba(212,175,55,0.04) 75%, transparent 100%)',
+          pointerEvents: 'none', zIndex: 1 }} />
+
+        {/* Left: Just the logo */}
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 12 12" fill="#030712">
+              <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
+            </svg>
+          </div>
+          <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <span style={{ color: '#D4AF37' }}>Forje</span>
+            <span style={{ color: 'white' }}>Games</span>
+          </span>
+        </Link>
+
+        {/* Right: connection dot + menu button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isConnected && (
+            <div title={placeName || 'Connected'} style={{
+              width: 8, height: 8, borderRadius: '50%', background: '#4ADE80',
+              boxShadow: '0 0 6px rgba(74,222,128,0.6)', flexShrink: 0,
+            }} />
+          )}
+          {onNewChat && (
+            <button
+              onClick={onNewChat}
+              aria-label="New chat"
+              style={{
+                width: 44, height: 44, minWidth: 44, minHeight: 44,
+                borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+                background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+                <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={onMobileMenuOpen}
+            aria-label="Open menu"
+            style={{
+              width: 44, height: 44, minWidth: 44, minHeight: 44,
+              borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+              background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.75)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', flexShrink: 0,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes connectedPing {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0; transform: scale(2.8); }
+          }
+        `}</style>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -1382,6 +1489,43 @@ function TopBar({
       {/* Center: Layout switcher + connection pill */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <LayoutSwitcher layout={editorLayout} onChange={onLayoutChange} />
+        {/*
+          Not-connected indicator — click to open the connect-studio flow.
+          This is the "manual mode" signal: the user is told up-front that
+          builds will fall back to copy/paste + .rbxmx until a plugin
+          session exists. Studio building is ForjeGames' core feature and
+          we never silently hide that state.
+        */}
+        {!isConnected && onConnect && (
+          <button
+            type="button"
+            onClick={onConnect}
+            title="Click to connect Roblox Studio — until then, builds show as copy/paste"
+            style={{
+              padding: '3px 10px',
+              borderRadius: 6,
+              background: 'rgba(250,204,21,0.06)',
+              border: '1px solid rgba(250,204,21,0.22)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            <div style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: '#FACC15',
+              boxShadow: '0 0 4px rgba(250,204,21,0.55)',
+              flexShrink: 0,
+            }} />
+            <span style={{ fontSize: 11, color: 'rgba(250,204,21,0.85)', fontWeight: 500 }}>
+              No Studio — manual mode
+            </span>
+          </button>
+        )}
         {isConnected && placeName && (() => {
           const isReconnecting = sseReconnectPhase === 'reconnecting' || sseReconnectPhase === 'lost'
           const isFailed = sseReconnectPhase === 'failed'
@@ -2412,9 +2556,21 @@ export default function NewEditorClient() {
 }
 
 function EditorInner() {
+  const isMobile = useIsMobile()
+  const { isSignedIn, isLoaded: authLoaded } = useUser()
+  // BUG 3: Show a one-time signup prompt to guest users after their first
+  // successful message lands. Flag is persisted in localStorage so we never
+  // annoy them twice.
+  const [showGuestSignupPrompt, setShowGuestSignupPrompt] = useState(false)
+  const guestPromptHandledRef = useRef(false)
   const [mobileTab, setMobileTab] = useState<'chat' | 'studio'>('chat')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [viewportExpanded, setViewportExpanded] = useState(false)
   const [sidebarPanel, setSidebarPanel] = useState<string | null>(null)
+  // Project save/load state
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
+  const [activeProjectName, setActiveProjectName] = useState('Untitled Project')
+  const [pendingNewChat, setPendingNewChat] = useState(false)
   const [chatHeight, setChatHeight] = useState<number>(() => {
     if (typeof window === 'undefined') return CHAT_DEFAULT_HEIGHT
     return loadChatHeight()
@@ -2453,8 +2609,24 @@ function EditorInner() {
     try { localStorage.setItem('fg_editor_layout', editorLayout) } catch { /* ignore */ }
   }, [editorLayout])
 
-  // Onboarding overlay
-  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay()
+  // On mobile, override the editor layout so the chat takes the full screen.
+  // The user's desktop layout preference is preserved in localStorage; this
+  // override is purely presentational while the viewport is mobile-sized.
+  const effectiveLayout: EditorLayout = isMobile ? 'chat-focus' : editorLayout
+
+  // On mobile we always show the chat tab — there is no side viewport
+  // rendered in chat-focus mode, so the mobile tab switcher is not needed.
+  useEffect(() => {
+    if (isMobile && mobileTab !== 'chat') setMobileTab('chat')
+  }, [isMobile, mobileTab])
+
+  // Close the mobile menu bottom-sheet whenever the viewport becomes desktop,
+  // and close any open sidebar panel to avoid orphaned state.
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileMenuOpen(false)
+    }
+  }, [isMobile])
 
   // Studio connection
   const studio = useStudioConnection((phase) => {
@@ -2474,6 +2646,25 @@ function EditorInner() {
     }
     prevConnected.current = studio.isConnected
   }, [studio.isConnected, studio.placeName, toast])
+
+  // One-time "What's New" announcement for the ForjeGames 2.0 release.
+  // Shown once per user, gated by a localStorage flag so returning users
+  // never see it again after dismissal.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const FLAG = 'forje_seen_whats_new_2026_04'
+    try {
+      if (localStorage.getItem(FLAG) === 'true') return
+    } catch {
+      return
+    }
+    // Delay slightly so the toast does not collide with editor hydration.
+    const t = setTimeout(() => {
+      toast('✨ 28 new features available! See them at /whats-new', 'info', 8000)
+      try { localStorage.setItem(FLAG, 'true') } catch { /* ignore quota */ }
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [toast])
 
   // Execute Luau in Studio after AI build
   const handleBuildComplete = useCallback(
@@ -2510,6 +2701,25 @@ function EditorInner() {
           model: 'studio',
           success: true,
         })
+        // Fire-and-forget: trigger email + push via the server endpoint
+        // (BUG 2 — notifyBuildComplete was previously dead code). We
+        // deliberately do NOT await so a slow Resend / VAPID call can't
+        // stall the UI, and we swallow any error so users with
+        // notifications disabled see no console noise.
+        try {
+          fetch('/api/notifications/build-complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              buildId: sessionId ?? `build-${Date.now()}`,
+              summary: {
+                buildName: prompt.slice(0, 60) || 'Untitled Build',
+                buildType: 'build',
+                success: true,
+              },
+            }),
+          }).catch(() => { /* best-effort — ignore */ })
+        } catch { /* best-effort — ignore */ }
       } catch {
         studio.addActivity('Studio execution failed — check your connection.')
         toast('Studio execution failed', 'error')
@@ -2526,6 +2736,229 @@ function EditorInner() {
     studioConnected: studio.isConnected,
     studioContext: studio.studioContext,
   })
+
+  // BUG 3: Detect the first completed exchange for a guest user and show
+  // the signup prompt. Fires after a user message has received an assistant
+  // response AND the user is definitely not signed in. Uses a one-time flag
+  // in localStorage so each guest only sees it once per browser.
+  useEffect(() => {
+    if (!authLoaded || isSignedIn || guestPromptHandledRef.current) return
+    if (typeof window === 'undefined') return
+    try {
+      if (localStorage.getItem('forje_guest_signup_prompted') === '1') {
+        guestPromptHandledRef.current = true
+        return
+      }
+    } catch { /* ignore */ }
+
+    const msgs = chat.messages
+    const hasUser = msgs.some((m) => m.role === 'user')
+    const hasAssistant = msgs.some((m) => m.role === 'assistant' && !m.streaming)
+    if (hasUser && hasAssistant && !chat.loading && !chat.streaming) {
+      guestPromptHandledRef.current = true
+      // Defer so the user actually sees the response land first
+      const t = setTimeout(() => setShowGuestSignupPrompt(true), 900)
+      return () => clearTimeout(t)
+    }
+  }, [authLoaded, isSignedIn, chat.messages, chat.loading, chat.streaming])
+
+  const dismissGuestSignupPrompt = useCallback(() => {
+    setShowGuestSignupPrompt(false)
+    try { localStorage.setItem('forje_guest_signup_prompted', '1') } catch { /* ignore */ }
+  }, [])
+
+  // Onboarding overlay — page-aware: skips steps that don't apply to current state.
+  // Suppressed entirely if the user already has chat history or has dismissed before.
+  const onboardingHasMessages = chat.messages.length > 0
+  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay({
+    hasMessages: onboardingHasMessages,
+  })
+  const onboardingHasUsedSlash = useMemo(
+    () => chat.messages.some(
+      (m) => m.role === 'user' && typeof m.content === 'string' && m.content.trim().startsWith('/'),
+    ),
+    [chat.messages],
+  )
+  const [onboardingHasUsedVoice, setOnboardingHasUsedVoice] = useState(false)
+  useEffect(() => {
+    setOnboardingHasUsedVoice(hasUsedVoiceInput())
+  }, [])
+
+  // Auto-playtest hook — runs autonomous test loop after AI generates code
+  const [autoPlaytestEnabled, setAutoPlaytestEnabled] = useState(true)
+  const [autoEnhanceEnabled, setAutoEnhanceEnabled] = useState(true)
+  const playtest = useAutoPlaytest({
+    studioSessionId: studio.sessionId ?? undefined,
+    enabled: autoPlaytestEnabled && studio.isConnected,
+    onCodeFixed: (fixedCode) => {
+      // Replace last assistant message with the fixed code
+      chat.editAndResend?.(chat.messages[chat.messages.length - 1]?.id || '', fixedCode)
+    },
+  })
+
+  // Shared AI mode props for all ChatPanel instances
+  const aiModeProps = {
+    aiMode: chat.aiMode,
+    onAIModeChange: chat.setAIMode,
+    isThinking: chat.isThinking,
+    thinkingText: chat.thinkingText,
+    planText: chat.planText,
+    onApprovePlan: chat.approvePlan,
+    onEditPlan: chat.editPlan,
+    onCancelPlan: chat.cancelPlan,
+    sessionId: chat.currentSessionId,
+    onRestoreCheckpoint: chat.restoreToMessageIndex,
+    checkpoints: chat.checkpoints,
+    onSaveCheckpoint: chat.saveCheckpoint,
+    onRestoreToCheckpoint: chat.restoreToCheckpoint,
+    onDeleteCheckpoint: chat.removeCheckpoint,
+    // Auto-playtest
+    autoPlaytestEnabled,
+    onAutoPlaytestToggle: setAutoPlaytestEnabled,
+    playtestState: playtest,
+    onCancelPlaytest: playtest.cancelPlaytest,
+    // Auto-enhance
+    autoEnhanceEnabled,
+    onAutoEnhanceToggle: setAutoEnhanceEnabled,
+    // Image mode options (BUG 9)
+    imageOptions: chat.imageOptions,
+    onImageOptionsChange: chat.setImageOptions,
+    // BUG 2: Build direction picker
+    buildDirection: chat.buildDirection,
+    onBuildDirectionChange: chat.setBuildDirection,
+  } as const
+
+  // Auto-send ?prompt= / ?voice= / ?imageprompt= params — fires once on first mount only
+  const autoPromptFiredRef = useRef(false)
+  useEffect(() => {
+    if (autoPromptFiredRef.current) return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      // Priority: imageprompt > voice > prompt
+      const initialPrompt =
+        params.get('imageprompt') ?? params.get('voice') ?? params.get('prompt')
+
+      if (initialPrompt && initialPrompt.trim().length > 0) {
+        autoPromptFiredRef.current = true
+
+        // Remember voice usage so the tutorial can skip the "try voice" step next time
+        if (params.has('voice')) {
+          markVoiceInputUsed()
+        }
+
+        // Image-to-Map: restore the image file from sessionStorage so it travels
+        // with the prompt into the chat body for Gemini Vision
+        if (params.has('imageprompt')) {
+          try {
+            const dataUrl = sessionStorage.getItem('fg_itm_image')
+            const name = sessionStorage.getItem('fg_itm_name') ?? 'image.jpg'
+            if (dataUrl) {
+              // Convert data URL → File and store in chat state before sending
+              fetch(dataUrl)
+                .then((r) => r.blob())
+                .then((blob) => {
+                  const file = new File([blob], name, { type: blob.type || 'image/jpeg' })
+                  chat.setImageFile(file)
+                  sessionStorage.removeItem('fg_itm_image')
+                  sessionStorage.removeItem('fg_itm_name')
+                  sessionStorage.removeItem('fg_itm_prompt')
+                })
+                .catch(() => { /* proceed without image */ })
+            }
+          } catch { /* sessionStorage unavailable */ }
+        }
+
+        // Small delay so chat + imageFile state is settled before sending
+        setTimeout(() => {
+          void chat.sendMessage(initialPrompt.trim())
+          // Clean all known query params so refresh doesn't re-fire
+          const url = new URL(window.location.href)
+          url.searchParams.delete('prompt')
+          url.searchParams.delete('voice')
+          url.searchParams.delete('imageprompt')
+          window.history.replaceState({}, '', url.toString())
+        }, 500)
+      }
+    } catch {
+      // ignore — URL parsing failures are non-fatal
+    }
+  // Only on mount — chat.sendMessage intentionally omitted
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Load ?project=<id> from URL on first mount
+  const autoProjectFiredRef = useRef(false)
+  useEffect(() => {
+    if (autoProjectFiredRef.current) return
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const projectId = params.get('project')
+      if (projectId) {
+        autoProjectFiredRef.current = true
+        const data = loadProject(projectId)
+        if (data) {
+          setActiveProjectId(data.id)
+          setActiveProjectName(data.name)
+          // Hydrate messages via loadSession-style injection
+          const rehydrated = data.messages.map((m) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          })) as ChatMessage[]
+          chat.injectMessages?.(rehydrated)
+          // Clean URL
+          const url = new URL(window.location.href)
+          url.searchParams.delete('project')
+          window.history.replaceState({}, '', url.toString())
+        }
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Save current editor state as a named project
+  const handleSaveProject = useCallback((name: string) => {
+    const serializedMessages = chat.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      tokensUsed: m.tokensUsed,
+      timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : String(m.timestamp),
+      model: m.model,
+    }))
+    const saved = saveProject(name, serializedMessages, [], activeProjectId ?? undefined)
+    setActiveProjectId(saved.id)
+    setActiveProjectName(saved.name)
+    toast(`Project "${saved.name}" saved`, 'success')
+  }, [chat.messages, activeProjectId, toast])
+
+  // Load a project into the editor
+  const handleLoadProject = useCallback((project: ProjectData) => {
+    const hasUnsaved = chat.messages.filter((m) => m.role === 'user').length > 0
+    if (hasUnsaved && project.id !== activeProjectId) {
+      if (!window.confirm(`Load "${project.name}"? Your current unsaved work will be lost.`)) return
+    }
+    const rehydrated = project.messages.map((m) => ({
+      ...m,
+      timestamp: new Date(m.timestamp),
+    })) as ChatMessage[]
+    chat.injectMessages?.(rehydrated)
+    setActiveProjectId(project.id)
+    setActiveProjectName(project.name)
+    setSidebarPanel(null)
+    toast(`Loaded "${project.name}"`, 'success')
+  }, [chat, activeProjectId, toast])
+
+  // New Chat — prompt to save if there is unsaved work
+  const handleNewChat = useCallback(() => {
+    const hasWork = chat.messages.filter((m) => m.role === 'user').length > 0
+    if (hasWork && !activeProjectId) {
+      setPendingNewChat(true)
+      return
+    }
+    setActiveProjectId(null)
+    setActiveProjectName('Untitled Project')
+    chat.newChat()
+  }, [chat, activeProjectId])
 
   // Save build history entry for every new AI message that contains Luau code.
   // Covers the case where Studio isn't connected (entry.success = false / "Draft").
@@ -2583,11 +3016,63 @@ function EditorInner() {
   }, [studio])
 
   // Send generated asset Luau to Studio
+  // BUG 10: When a `robloxAssetId` is available (meaning the mesh was already
+  // uploaded to Roblox via Open Cloud), prefer the insert_asset command path
+  // — the plugin uses InsertService:LoadAsset(assetId) which is faster,
+  // cleaner, and doesn't require streaming the raw model file. Falls back to
+  // the Luau push path when no assetId is available (demo mode,
+  // ROBLOX_OPEN_CLOUD_API_KEY not configured, etc.).
   const handleAssetSendToStudio = useCallback(
-    (luauCode: string, assetPrompt: string) => {
+    (
+      luauCode: string,
+      assetPrompt: string,
+      meta?: { robloxAssetId?: string | null; name?: string },
+    ) => {
+      if (meta?.robloxAssetId && studio.sessionId && studio.isConnected) {
+        fetch('/api/studio/push-asset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: studio.sessionId,
+            assetId: meta.robloxAssetId,
+            robloxAssetId: meta.robloxAssetId,
+            name: meta.name ?? (assetPrompt.slice(0, 64) || 'Generated Asset'),
+          }),
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errText = await res.text().catch(() => '')
+              console.warn('[handleAssetSendToStudio] push-asset failed, falling back to luau:', errText)
+              void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
+              return
+            }
+            studio.addActivity(`Inserted asset ${meta.robloxAssetId} via InsertService`)
+            toast('Asset sent to Studio', 'success')
+          })
+          .catch((err: unknown) => {
+            console.warn('[handleAssetSendToStudio] push-asset error, falling back to luau:', err)
+            void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
+          })
+        return
+      }
+      // Fallback: no assetId available → push raw Luau code as before
       void handleBuildComplete(luauCode, assetPrompt, studio.sessionId)
     },
-    [handleBuildComplete, studio.sessionId],
+    [handleBuildComplete, studio, toast],
+  )
+
+  // PERF: Stable curried variant — passing an inline `(luau) => handleAssetSendToStudio(luau, 'mesh')`
+  // lambda to ChatPanel creates a fresh function on every render of NewEditorClient,
+  // which defeats React.memo on MessageBubble (every bubble would re-render on every
+  // keystroke in the textarea). A useCallback-bound closure lets MessageBubble's
+  // memo actually skip work.
+  const handleMeshSendToStudio = useCallback(
+    (
+      luau: string,
+      prompt?: string,
+      meta?: { robloxAssetId?: string | null; name?: string },
+    ) => handleAssetSendToStudio(luau, prompt || 'mesh', meta),
+    [handleAssetSendToStudio],
   )
 
   // Build-error action handlers
@@ -2639,7 +3124,7 @@ function EditorInner() {
     toggleViewport: () => setViewportExpanded((v) => !v),
     toggleSidebar: () => setSidebarPanel((prev) => prev ? null : 'history'),
     toggleShortcutsHelp: () => setShortcutsOpen((v) => !v),
-    newChat: () => chat.newChat(),
+    newChat: () => handleNewChat(),
     closeSidebar: () => {
       if (cmdPaletteOpen) { setCmdPaletteOpen(false); return }
       if (shortcutsOpen) { setShortcutsOpen(false); return }
@@ -2699,9 +3184,85 @@ function EditorInner() {
         fontFamily: 'Inter, sans-serif',
       }}
     >
-      {/* Onboarding */}
+      {/* Onboarding — page-aware: adapts steps to the user's current editor state */}
       {showOnboarding && (
-        <OnboardingOverlay onDone={dismissOnboarding} inputRef={chat.textareaRef} />
+        <OnboardingOverlay
+          onDone={dismissOnboarding}
+          inputRef={chat.textareaRef}
+          onPrefill={(prompt) => chat.setInput(prompt)}
+          hasMessages={onboardingHasMessages}
+          studioConnected={studio.isConnected}
+          hasUsedSlashCommand={onboardingHasUsedSlash}
+          hasUsedVoice={onboardingHasUsedVoice}
+        />
+      )}
+
+      {/* Save-before-new-chat confirmation dialog */}
+      {pendingNewChat && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 200,
+          background: 'rgba(5,8,20,0.85)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 24,
+        }}>
+          <div style={{
+            width: '100%', maxWidth: 320,
+            background: '#0d1020', border: '1px solid rgba(212,175,55,0.3)',
+            borderRadius: 14, padding: 20,
+            boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
+          }}>
+            <p style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>
+              Save before starting new chat?
+            </p>
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>
+              Your current conversation will be lost unless you save it as a project first.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => {
+                  setPendingNewChat(false)
+                  setActiveProjectId(null)
+                  setActiveProjectName('Untitled Project')
+                  chat.newChat()
+                }}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 8,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: 'rgba(255,255,255,0.5)', fontSize: 12,
+                  fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Discard
+              </button>
+              <button
+                onClick={() => {
+                  setPendingNewChat(false)
+                  setSidebarPanel('projects')
+                }}
+                style={{
+                  flex: 1, padding: '8px 0', borderRadius: 8,
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #E6A519 100%)',
+                  border: 'none', color: '#09090b', fontSize: 12,
+                  fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Save Project
+              </button>
+            </div>
+            <button
+              onClick={() => setPendingNewChat(false)}
+              style={{
+                display: 'block', width: '100%', marginTop: 8,
+                padding: '6px 0', borderRadius: 8, background: 'none',
+                border: 'none', color: 'rgba(255,255,255,0.25)', fontSize: 11,
+                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Background */}
@@ -2722,26 +3283,32 @@ function EditorInner() {
           isConnected={studio.isConnected}
           placeName={studio.placeName}
           totalTokens={chat.totalTokens}
-          onNewChat={() => chat.newChat()}
+          onNewChat={() => handleNewChat()}
           onConnect={() => { setStudioWizardOpen(true); studio.generateCode() }}
           onShowShortcuts={() => setShortcutsOpen(true)}
           editorLayout={editorLayout}
           onLayoutChange={setEditorLayout}
           latencyMs={studio.latencyMs}
           sseReconnectPhase={studio.sseReconnectPhase}
+          isMobile={isMobile}
+          onMobileMenuOpen={() => setMobileMenuOpen(true)}
         />
 
-        {/* Mobile tab bar */}
-        <div className="flex md:hidden">
-          <MobileTabBar
-            activeTab={mobileTab}
-            onChange={setMobileTab}
-            isConnected={studio.isConnected}
-          />
-        </div>
+        {/* Mobile tab bar — legacy; hidden in the mobile chat-focus flow since
+            the viewport doesn't render as a tab anymore. Kept for any
+            desktop-narrow fallback (< md but not matched by useIsMobile). */}
+        {!isMobile && (
+          <div className="flex md:hidden">
+            <MobileTabBar
+              activeTab={mobileTab}
+              onChange={setMobileTab}
+              isConnected={studio.isConnected}
+            />
+          </div>
+        )}
 
         {/* Main workspace: layout-conditional */}
-        {editorLayout === 'minimal' ? (
+        {effectiveLayout === 'minimal' ? (
           /* ── Minimal: clean full-screen chat ─────────────────────────────── */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '0 6px 6px' }}>
             <ChatPanel
@@ -2759,12 +3326,16 @@ function EditorInner() {
               onBuildDifferently={handleBuildDifferently}
               onDismiss={handleDismissError}
               onEditAndResend={chat.editAndResend}
-              onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+              onSendToStudio={handleMeshSendToStudio}
               studioConnected={studio.isConnected}
+              savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
               compact={false}
+              {...aiModeProps}
             />
           </div>
-        ) : editorLayout === 'cinematic' ? (
+        ) : effectiveLayout === 'cinematic' ? (
           /* ── Cinematic: fullscreen viewport + floating chat ───────────────── */
           <div style={{ flex: 1, display: 'flex', position: 'relative', overflow: 'hidden', padding: 6 }}>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, borderRadius: 12, overflow: 'hidden' }}>
@@ -2807,7 +3378,7 @@ function EditorInner() {
               {/* Cinematic chat header with collapse toggle */}
               <div style={{ height: 44, flexShrink: 0, display: 'flex', alignItems: 'center',
                 justifyContent: 'space-between', padding: '0 12px',
-                borderBottom: cinematicChatCollapsed ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                borderBottom: cinematicChatCollapsed ? 'none' : '1px solid rgba(255,255,255,0.06)',
                 cursor: 'pointer' }} onClick={() => setCinematicChatCollapsed((v) => !v)}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)' }}>
                   AI Chat
@@ -2840,9 +3411,13 @@ function EditorInner() {
                     onBuildDifferently={handleBuildDifferently}
                     onDismiss={handleDismissError}
                     onEditAndResend={chat.editAndResend}
-                    onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                    onSendToStudio={handleMeshSendToStudio}
                     studioConnected={studio.isConnected}
+                    savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
                     compact={true}
+                    {...aiModeProps}
                   />
                 </div>
               )}
@@ -2862,13 +3437,13 @@ function EditorInner() {
               style={{
                 flex: 1,
                 display: 'flex',
-                flexDirection: editorLayout === 'chat-focus' || editorLayout === 'split' ? 'row' : 'column',
+                flexDirection: effectiveLayout === 'chat-focus' || effectiveLayout === 'split' ? 'row' : 'column',
                 minWidth: 0,
-                padding: '6px 0 6px 6px',
-                gap: editorLayout === 'chat-focus' || editorLayout === 'split' ? 6 : 0,
+                padding: isMobile ? 0 : '6px 0 6px 6px',
+                gap: effectiveLayout === 'chat-focus' || effectiveLayout === 'split' ? 2 : 0,
               }}
             >
-              {editorLayout === 'default' ? (
+              {effectiveLayout === 'default' ? (
                 /* ── Default: viewport top, chat bottom ───────────────────── */
                 <>
                   <div
@@ -2877,7 +3452,7 @@ function EditorInner() {
                   >
                     {/* Studio wizard — only shown when user explicitly clicks "Connect Studio" */}
                     {!studio.isConnected && studioWizardOpen ? (
-                      <div style={{ flex: 1, background: 'rgba(6,10,20,0.5)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.04)', overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ flex: 1, background: 'rgba(6,10,20,0.5)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', overflow: 'hidden', position: 'relative' }}>
                         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
                         <div style={{ position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto' }}>
                           <FirstRunExperience
@@ -2926,7 +3501,7 @@ function EditorInner() {
                       maxHeight: viewportExpanded ? 56 : CHAT_MAX_HEIGHT,
                       flexDirection: 'column',
                       transition: 'height 0.25s ease-out',
-                      padding: '4px 0 0',
+                      padding: '6px 0 0',
                       position: 'relative',
                     }}
                   >
@@ -2959,14 +3534,19 @@ function EditorInner() {
                       onBuildDifferently={handleBuildDifferently}
                       onDismiss={handleDismissError}
                       onEditAndResend={chat.editAndResend}
-                      onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                      onSendToStudio={handleMeshSendToStudio}
                       studioConnected={studio.isConnected}
+                      savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
                       compact={viewportExpanded}
+                      {...aiModeProps}
                     />
                   </div>
                 </>
-              ) : editorLayout === 'chat-focus' ? (
-                /* ── Chat-focus: chat left (60%), viewport right (40%) ──────── */
+              ) : effectiveLayout === 'chat-focus' ? (
+                /* ── Chat-focus: chat left (60%), viewport right (40%) on desktop;
+                     full-screen chat on mobile ──────────────────────────────── */
                 <>
                   <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                     <AgentStrip loading={chat.loading} mcpResult={chat.lastMcpResult} />
@@ -2986,32 +3566,39 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
-                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                        onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
+                        savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
                         compact={false}
+                        {...aiModeProps}
                       />
                     </div>
                   </div>
-                  <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column',
-                    borderRadius: 12, overflow: 'hidden' }}>
-                    <ViewportArea
-                      isConnected={studio.isConnected}
-                      screenshotUrl={studio.screenshotUrl}
-                      placeName={studio.placeName}
-                      connectFlow={studio.connectFlow}
-                      connectCode={studio.connectCode}
-                      connectTimer={studio.connectTimer}
-                      onGenerateCode={studio.generateCode}
-                      onConfirmConnected={studio.confirmConnected}
-                      onDisconnect={studio.disconnect}
-                      onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
-                      activity={studio.activity}
-                      commandsSent={studio.commandsSent}
-                      expanded={false}
-                      onToggleExpand={() => {}}
-                      previewParts={previewParts}
-                    />
-                  </div>
+                  {/* Viewport column is hidden on mobile so the chat takes the full screen */}
+                  {!isMobile && (
+                    <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column',
+                      borderRadius: 12, overflow: 'hidden' }}>
+                      <ViewportArea
+                        isConnected={studio.isConnected}
+                        screenshotUrl={studio.screenshotUrl}
+                        placeName={studio.placeName}
+                        connectFlow={studio.connectFlow}
+                        connectCode={studio.connectCode}
+                        connectTimer={studio.connectTimer}
+                        onGenerateCode={studio.generateCode}
+                        onConfirmConnected={studio.confirmConnected}
+                        onDisconnect={studio.disconnect}
+                        onRequestScreenshot={studio.isConnected ? studio.requestScreenshot : undefined}
+                        activity={studio.activity}
+                        commandsSent={studio.commandsSent}
+                        expanded={false}
+                        onToggleExpand={() => {}}
+                        previewParts={previewParts}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 /* ── Split: 50/50 chat left, viewport right ──────────────── */
@@ -3034,9 +3621,13 @@ function EditorInner() {
                         onBuildDifferently={handleBuildDifferently}
                         onDismiss={handleDismissError}
                         onEditAndResend={chat.editAndResend}
-                        onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                        onSendToStudio={handleMeshSendToStudio}
                         studioConnected={studio.isConnected}
+                        savedAt={chat.savedAt}
+              imageFile={chat.imageFile}
+              onImageFile={chat.setImageFile}
                         compact={false}
+                        {...aiModeProps}
                       />
                     </div>
                   </div>
@@ -3065,16 +3656,17 @@ function EditorInner() {
             </div>
 
             {/* Right sidebar — hidden in chat-focus and split */}
-            {editorLayout === 'default' && (
+            {effectiveLayout === 'default' && (
               <div
                 className="hidden md:flex"
                 style={{ flexShrink: 0, display: 'flex', flexDirection: 'row' }}
               >
                 {sidebarPanel && (
-                  <div style={{ width: 280, background: 'rgba(8,12,28,0.85)',
-                    borderLeft: '1px solid rgba(255,255,255,0.04)', backdropFilter: 'blur(12px)',
+                  <div style={{ width: 280, background: 'rgba(5,8,16,0.95)',
+                    borderLeft: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
                     display: 'flex', flexDirection: 'column', overflow: 'hidden', animation: 'slideIn 0.2s ease-out' }}>
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
                         {sidebarPanel === 'marketplace' && 'Marketplace'}
@@ -3085,6 +3677,7 @@ function EditorInner() {
                         {sidebarPanel === 'context' && 'AI Context'}
                         {sidebarPanel === 'help' && 'Help'}
                         {sidebarPanel === 'preview' && 'Studio Preview'}
+                        {sidebarPanel === 'projects' && 'Projects'}
                       </span>
                       <button onClick={() => setSidebarPanel(null)}
                         style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: 4 }}>
@@ -3096,7 +3689,7 @@ function EditorInner() {
                     <div style={{ flex: 1, overflowY: sidebarPanel === 'generate' ? 'hidden' : 'auto', padding: sidebarPanel === 'generate' ? 0 : 16 }}>
                       {sidebarPanel === 'generate' && (
                         <AssetGenerator
-                          onSendToStudio={(luau) => handleAssetSendToStudio(luau, 'mesh')}
+                          onSendToStudio={handleMeshSendToStudio}
                         />
                       )}
                       {sidebarPanel === 'marketplace' && (
@@ -3129,7 +3722,7 @@ function EditorInner() {
                           onLoadSession={(id) => { chat.loadSession(id); setSidebarPanel(null) }}
                           onDeleteSession={chat.deleteSession}
                           onClearAll={() => { chat.clearAllSessions(); setSidebarPanel(null) }}
-                          onNewChat={() => { chat.newChat(); setSidebarPanel(null) }}
+                          onNewChat={() => { handleNewChat(); setSidebarPanel(null) }}
                         />
                       )}
                       {sidebarPanel === 'builds' && (
@@ -3227,8 +3820,8 @@ function EditorInner() {
 
                 {/* Icon rail */}
                 <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  paddingTop: 8, gap: 2, background: 'rgba(8,12,28,0.3)',
-                  borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
+                  paddingTop: 8, gap: 2, background: 'rgba(5,8,16,0.95)',
+                  borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
                   <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
                     active={sidebarPanel === 'marketplace'} onClick={() => toggleSidebar('marketplace')} />
                   <SidebarButton icon={<IconGenerate />} label="Generate Asset"
@@ -3255,15 +3848,15 @@ function EditorInner() {
               </div>
             )}
 
-            {/* Split/chat-focus: icon-rail only (no panel) */}
-            {(editorLayout === 'split' || editorLayout === 'chat-focus') && (
+            {/* Split/chat-focus: icon-rail only (no panel) — hidden on mobile */}
+            {!isMobile && (effectiveLayout === 'split' || effectiveLayout === 'chat-focus') && (
               <div
                 className="hidden md:flex"
                 style={{ flexShrink: 0, display: 'flex', flexDirection: 'row' }}
               >
                 <div style={{ width: 52, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  paddingTop: 8, gap: 2, background: 'rgba(8,12,28,0.3)',
-                  borderLeft: '1px solid rgba(255,255,255,0.03)' }}>
+                  paddingTop: 8, gap: 2, background: 'rgba(5,8,16,0.95)',
+                  borderLeft: '1px solid rgba(255,255,255,0.06)' }}>
                   <SidebarButton icon={<IconStore />} label="Marketplace" shortcut="⌘M"
                     active={false} onClick={() => { setEditorLayout('default'); toggleSidebar('marketplace') }} />
                   <SidebarButton icon={<IconGenerate />} label="Generate Asset"
@@ -3299,6 +3892,249 @@ function EditorInner() {
 
       {/* Shortcuts Help overlay */}
       <ShortcutsHelp isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* BUG 3: Guest signup prompt — one-time modal after first AI response */}
+      {showGuestSignupPrompt && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="fg-guest-signup-title"
+          onClick={dismissGuestSignupPrompt}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(5,8,16,0.72)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 20,
+            animation: 'msgFadeUp 0.25s ease-out forwards',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 420,
+              width: '100%',
+              padding: 28,
+              borderRadius: 18,
+              background: 'linear-gradient(180deg, rgba(20,26,48,0.95) 0%, rgba(12,16,32,0.95) 100%)',
+              border: '1px solid rgba(212,175,55,0.25)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.55), 0 0 40px rgba(212,175,55,0.12)',
+              fontFamily: 'Inter, sans-serif',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 10 }}>✨</div>
+            <h2
+              id="fg-guest-signup-title"
+              style={{
+                margin: '0 0 8px',
+                fontSize: 20,
+                fontWeight: 700,
+                color: '#fafafa',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              Loved that build?
+            </h2>
+            <p style={{ margin: '0 0 22px', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+              Sign up to save it forever, sync across devices, and unlock premium models.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <Link
+                href="/sign-up"
+                onClick={() => {
+                  try { localStorage.setItem('forje_guest_signup_prompted', '1') } catch { /* ignore */ }
+                }}
+                style={{
+                  display: 'block',
+                  padding: '12px 18px',
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
+                  color: '#030712',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  boxShadow: '0 0 20px rgba(212,175,55,0.35)',
+                }}
+              >
+                Sign up free
+              </Link>
+              <button
+                type="button"
+                onClick={dismissGuestSignupPrompt}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: 12,
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.7)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Continue as guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile bottom-sheet drawer: houses the marketplace / history / settings etc.
+          that would normally live in the desktop right-side panel. */}
+      {isMobile && (
+        <MobileBottomSheet
+          open={mobileMenuOpen || (!!sidebarPanel)}
+          onClose={() => { setMobileMenuOpen(false); setSidebarPanel(null) }}
+          title={
+            sidebarPanel === 'marketplace' ? 'Marketplace' :
+            sidebarPanel === 'generate' ? 'Generate Asset' :
+            sidebarPanel === 'settings' ? 'Settings' :
+            sidebarPanel === 'history' ? 'Chat History' :
+            sidebarPanel === 'builds' ? 'Build History' :
+            sidebarPanel === 'context' ? 'AI Context' :
+            sidebarPanel === 'help' ? 'Help' :
+            sidebarPanel === 'preview' ? 'Studio Preview' :
+            sidebarPanel === 'projects' ? 'Projects' :
+            'Menu'
+          }
+        >
+          {/* No panel selected → show the menu list */}
+          {!sidebarPanel && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                { id: 'marketplace', label: 'Marketplace', icon: <IconStore /> },
+                { id: 'generate', label: 'Generate Asset', icon: <IconGenerate /> },
+                { id: 'history', label: 'Chat History', icon: <IconHistory /> },
+                { id: 'builds', label: 'Build History', icon: <IconBuildHistory /> },
+                { id: 'preview', label: 'Studio Preview', icon: <IconPreview /> },
+                { id: 'context', label: 'AI Context', icon: <IconContext /> },
+                { id: 'settings', label: 'Settings', icon: <IconSettings /> },
+                { id: 'help', label: 'Help', icon: <IconHelp /> },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setSidebarPanel(item.id); setMobileMenuOpen(false) }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    width: '100%',
+                    minHeight: 52,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  <span style={{ color: 'rgba(212,175,55,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24 }}>
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Panel body content — mirrors the desktop side panel */}
+          {sidebarPanel === 'generate' && (
+            <AssetGenerator
+              onSendToStudio={handleMeshSendToStudio}
+            />
+          )}
+          {sidebarPanel === 'marketplace' && (
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+              <p style={{ margin: '0 0 12px' }}>Browse community templates and assets.</p>
+              <div style={{ padding: 12, borderRadius: 10, background: 'rgba(212,175,55,0.06)',
+                border: '1px solid rgba(212,175,55,0.15)', fontSize: 12, color: 'rgba(212,175,55,0.8)' }}>
+                Type &quot;show marketplace&quot; in chat to browse assets
+              </div>
+            </div>
+          )}
+          {sidebarPanel === 'settings' && (
+            <SettingsPanel
+              studioStatus={{
+                connected: studio.isConnected,
+                placeName: studio.placeName || undefined,
+                placeId: studio.placeId ? Number(studio.placeId) : undefined,
+                sessionId: studio.sessionId ?? undefined,
+              }}
+              totalTokens={0}
+              tokensRemaining={null}
+              onDisconnect={studio.disconnect}
+              onRescanWorkspace={studio.isConnected ? studio.requestScreenshot : undefined}
+            />
+          )}
+          {sidebarPanel === 'history' && (
+            <ChatHistoryPanel
+              currentSessionId={chat.currentSessionId}
+              listSessions={chat.listSessions}
+              onLoadSession={(id) => { chat.loadSession(id); setSidebarPanel(null); setMobileMenuOpen(false) }}
+              onDeleteSession={chat.deleteSession}
+              onClearAll={() => { chat.clearAllSessions(); setSidebarPanel(null); setMobileMenuOpen(false) }}
+              onNewChat={() => { handleNewChat(); setSidebarPanel(null); setMobileMenuOpen(false) }}
+            />
+          )}
+          {sidebarPanel === 'builds' && (
+            <BuildHistorySidebarPanel
+              entries={buildHistory.entries}
+              onRerun={(entry) => {
+                chat.sendMessage(entry.prompt)
+                setSidebarPanel(null)
+                setMobileMenuOpen(false)
+              }}
+              onClear={buildHistory.clearAll}
+            />
+          )}
+          {sidebarPanel === 'context' && (
+            <AIContextPanel
+              studioConnected={studio.isConnected}
+              studioContext={studio.studioContext}
+              onSendToChat={(msg) => { chat.sendMessage(msg); setSidebarPanel(null); setMobileMenuOpen(false) }}
+              buildCount={chat.messages.filter((m) => m.hasCode).length}
+              tokenCount={chat.totalTokens}
+            />
+          )}
+          {sidebarPanel === 'preview' && (
+            <StudioPreviewPanel
+              screenshotUrl={studio.screenshotUrl}
+              screenshotTimestamp={studio.screenshotTimestamp}
+              beforeScreenshotUrl={studio.beforeScreenshotUrl}
+              isConnected={studio.isConnected}
+              sseReconnectPhase={studio.sseReconnectPhase}
+              onRequestScreenshot={studio.requestScreenshot}
+              onReconnect={studio.generateCode}
+              sessionId={studio.sessionId}
+              jwt={studio.jwt}
+            />
+          )}
+          {sidebarPanel === 'help' && (
+            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, lineHeight: 1.6 }}>
+              <p style={{ margin: '0 0 12px', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>
+                Quick Start
+              </p>
+              <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <li>Type what you want to build in the chat</li>
+                <li>Connect Roblox Studio with the plugin</li>
+                <li>Builds execute automatically in Studio</li>
+                <li>Iterate — &quot;make it bigger&quot;, &quot;add lighting&quot;</li>
+              </ol>
+            </div>
+          )}
+        </MobileBottomSheet>
+      )}
 
       <style>{`
         @keyframes slideIn {

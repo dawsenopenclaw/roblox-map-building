@@ -4,6 +4,18 @@ import { Webhook } from 'svix'
 import * as Sentry from '@sentry/nextjs'
 import { db } from '@/lib/db'
 import { sendWelcomeEmail } from '@/lib/email'
+import { fetchFullRobloxIdentity } from '@/lib/roblox-identity'
+
+type ClerkExternalAccount = {
+  provider: string                    // "oauth_custom" or "oauth_google", "oauth_apple"
+  provider_user_id: string            // The Roblox user ID (or Google/Apple ID)
+  username: string | null
+  first_name: string | null
+  last_name: string | null
+  label: string | null                // Often contains the provider name like "roblox"
+  email_address: string | null
+  image_url: string | null
+}
 
 type ClerkUserEvent = {
   type: string
@@ -16,6 +28,9 @@ type ClerkUserEvent = {
     last_name: string | null
     image_url: string
     created_at: number
+    external_accounts?: ClerkExternalAccount[]
+    public_metadata?: Record<string, unknown>
+    unsafe_metadata?: Record<string, unknown>
   }
 }
 
@@ -72,14 +87,60 @@ export async function POST(req: NextRequest) {
       )?.email_address
       if (!primaryEmail) return NextResponse.json({ error: 'No primary email' }, { status: 400 })
 
+      // Extract Roblox identity from OAuth external accounts
+      const robloxAccount = event.data.external_accounts?.find(
+        (acc) => acc.provider === 'oauth_custom_roblox' || acc.label?.toLowerCase().includes('roblox'),
+      )
+      let robloxData: {
+        robloxUserId?: string
+        robloxUsername?: string
+        robloxDisplayName?: string
+        robloxAvatarUrl?: string
+        robloxVerifiedAt?: Date
+      } = {}
+
+      if (robloxAccount?.provider_user_id) {
+        // Fetch full Roblox profile from Roblox API
+        try {
+          const identity = await fetchFullRobloxIdentity(robloxAccount.provider_user_id)
+          robloxData = {
+            robloxUserId: robloxAccount.provider_user_id,
+            robloxUsername: identity.user?.name ?? robloxAccount.username ?? undefined,
+            robloxDisplayName: identity.user?.displayName ?? undefined,
+            robloxAvatarUrl: identity.avatarUrl ?? robloxAccount.image_url ?? undefined,
+            robloxVerifiedAt: new Date(),
+          }
+          console.log('[clerk-webhook] Roblox identity linked:', {
+            robloxUserId: robloxData.robloxUserId,
+            robloxUsername: robloxData.robloxUsername,
+            placesFound: identity.places.length,
+          })
+        } catch (e) {
+          console.error('[clerk-webhook] Failed to fetch Roblox identity:', e)
+          // Still save the basic info from OAuth
+          robloxData = {
+            robloxUserId: robloxAccount.provider_user_id,
+            robloxUsername: robloxAccount.username ?? undefined,
+            robloxVerifiedAt: new Date(),
+          }
+        }
+      }
+
       await db.$transaction(async (tx) => {
         const user = await tx.user.create({
           data: {
             clerkId,
             email: primaryEmail,
             displayName:
-              [event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || null,
-            avatarUrl: event.data.image_url,
+              robloxData.robloxDisplayName ??
+              ([event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || null),
+            avatarUrl: robloxData.robloxAvatarUrl ?? event.data.image_url,
+            robloxUserId: robloxData.robloxUserId,
+            robloxUsername: robloxData.robloxUsername,
+            robloxDisplayName: robloxData.robloxDisplayName,
+            robloxAvatarUrl: robloxData.robloxAvatarUrl,
+            robloxVerifiedAt: robloxData.robloxVerifiedAt,
+            robloxHandle: robloxData.robloxUsername,
           },
         })
 
@@ -135,9 +196,33 @@ export async function POST(req: NextRequest) {
       // row doesn't exist yet; the next user.created delivery will create it.
       const existing = await db.user.findUnique({
         where: { clerkId: event.data.id },
-        select: { id: true },
+        select: { id: true, robloxUserId: true },
       })
       if (existing) {
+        // Check if user just linked a new Roblox account
+        const robloxAccount = event.data.external_accounts?.find(
+          (acc) => acc.provider === 'oauth_custom_roblox' || acc.label?.toLowerCase().includes('roblox'),
+        )
+        let robloxUpdate: Record<string, unknown> = {}
+
+        if (robloxAccount?.provider_user_id && !existing.robloxUserId) {
+          // New Roblox link — fetch identity
+          try {
+            const identity = await fetchFullRobloxIdentity(robloxAccount.provider_user_id)
+            robloxUpdate = {
+              robloxUserId: robloxAccount.provider_user_id,
+              robloxUsername: identity.user?.name ?? robloxAccount.username,
+              robloxDisplayName: identity.user?.displayName,
+              robloxAvatarUrl: identity.avatarUrl ?? robloxAccount.image_url,
+              robloxVerifiedAt: new Date(),
+              robloxHandle: identity.user?.name ?? robloxAccount.username,
+            }
+            console.log('[clerk-webhook] Roblox account linked on update:', robloxUpdate.robloxUsername)
+          } catch (e) {
+            console.error('[clerk-webhook] Failed to fetch Roblox identity on update:', e)
+          }
+        }
+
         await db.user.update({
           where: { clerkId: event.data.id },
           data: {
@@ -145,6 +230,7 @@ export async function POST(req: NextRequest) {
             displayName:
               [event.data.first_name, event.data.last_name].filter(Boolean).join(' ') || undefined,
             avatarUrl: event.data.image_url,
+            ...robloxUpdate,
           },
         })
       } else {

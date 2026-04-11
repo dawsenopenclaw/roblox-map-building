@@ -22,6 +22,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { getStudioAuthSecret } from '@/lib/studio-auth-secret'
 
 const CODE_TTL_MS   = 5 * 60 * 1000   // 5 minutes
 const CODE_TTL_SECS = 5 * 60           // Redis EX arg
@@ -32,28 +33,10 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000  // 1 hour
 
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
-// ── Shared secret ────────────────────────────────────────────────────────────
-// STUDIO_AUTH_SECRET MUST be set in Vercel environment variables.
-// If it is missing each Lambda cold-start gets a different secret, so session
-// JWTs issued by one Lambda are rejected by every other Lambda.
-const SECRET: string = (() => {
-  // CLERK_SECRET_KEY is used as a fallback so that deployments which already
-  // have Clerk configured get a stable secret without requiring a separate env
-  // var. Coupling risk: if CLERK_SECRET_KEY is rotated, all existing Studio
-  // JWTs are immediately invalidated. Set STUDIO_AUTH_SECRET independently to
-  // decouple Studio token lifetime from Clerk key rotation.
-  const s = process.env.STUDIO_AUTH_SECRET ?? process.env.CLERK_SECRET_KEY
-  if (!s) {
-    const fallback = crypto.randomBytes(32).toString('hex')
-    console.warn(
-      '[studio/auth] WARNING: STUDIO_AUTH_SECRET is not set. ' +
-      'Using a per-process random secret — tokens from other Lambda instances ' +
-      'will be rejected. Set STUDIO_AUTH_SECRET in Vercel environment variables.',
-    )
-    return fallback
-  }
-  return s
-})()
+// Shared secret resolution lives in `src/lib/studio-auth-secret.ts`.
+// `sync` and `execute` import the same helper so all three routes
+// always agree on the HMAC secret — previously each route had its own
+// resolution logic and they could silently disagree in production.
 
 // ── Pending code store ────────────────────────────────────────────────────────
 // Survives Next.js hot-reloads via globalThis. Shared across invocations on
@@ -258,7 +241,7 @@ function buildSessionJwt(opts: {
   }
   const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url')
   const sig = crypto
-    .createHmac('sha256', SECRET)
+    .createHmac('sha256', getStudioAuthSecret())
     .update(payloadB64)
     .digest('base64url')
   return `${payloadB64}.${sig}`
@@ -289,7 +272,7 @@ export async function GET(req: NextRequest) {
     const expiresAt = Date.now() + CODE_TTL_MS
 
     // Sign the code so the client can use it for claim verification
-    const hmac = crypto.createHmac('sha256', SECRET).update(`${code}:${expiresAt}`).digest('hex').slice(0, 16)
+    const hmac = crypto.createHmac('sha256', getStudioAuthSecret()).update(`${code}:${expiresAt}`).digest('hex').slice(0, 16)
     const token = Buffer.from(`${code}:${expiresAt}:${hmac}`).toString('base64url')
 
     // Store in memory (same Lambda) and Redis (cross-Lambda)

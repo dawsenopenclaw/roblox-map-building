@@ -186,9 +186,9 @@ function ErrorCard({
 
           <h2
             className="text-xl font-bold mb-2"
-            style={{ color: '#FFFFFF', letterSpacing: '-0.01em' }}
+            style={{ color: 'var(--text-primary, rgba(255,255,255,0.9))', letterSpacing: '-0.01em' }}
           >
-            Something went wrong
+            An error occurred in this component
           </h2>
 
           <p

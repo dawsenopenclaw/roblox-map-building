@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession, useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
+import { denyTracking } from '@/lib/posthog-safe'
 
 // ─── Year picker — quick taps, no text input, COPPA compliant ─────────────────
 
@@ -48,7 +49,7 @@ export default function AgeGatePage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'Something went wrong. Please try again.')
+        setError(data.error || "Couldn't save your age. Please try again or contact support.")
         setLoading(false)
         return
       }
@@ -68,9 +69,10 @@ export default function AgeGatePage() {
       }
 
       if (data.isUnder13 === true) {
-        import('posthog-js').then(({ default: posthog }) => {
-          posthog.opt_out_capturing()
-        }).catch(() => {})
+        // COPPA: permanently deny tracking for this browser session.
+        // denyTracking() clears the age-verified flag and opts out any
+        // posthog-js instance that may have been loaded before age confirmation.
+        denyTracking()
       }
 
       const redirect = data.redirect ?? (data.isUnder13 ? '/onboarding/parental-consent' : '/editor')

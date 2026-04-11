@@ -29,20 +29,10 @@ import { drainCommands, getSession, getSessionByToken, createSession } from '@/l
 import { studioSyncRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getRedis } from '@/lib/redis'
 import { trackCommand } from '@/lib/studio-analytics'
+import { getStudioAuthSecret } from '@/lib/studio-auth-secret'
 
-// ── JWT helpers (mirrors auth/route.ts) ───────────────────────────────────────
-// STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
-// secret is generated — tokens issued in a previous process will be invalid
-// after a restart, which is the safe failure mode.
-const SECRET: string = (() => {
-  const s = process.env.STUDIO_AUTH_SECRET
-  if (!s) {
-    const fallback = crypto.randomBytes(32).toString('hex')
-    console.warn('[studio/sync] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')
-    return fallback
-  }
-  return s
-})()
+// JWT secret is resolved lazily via the shared helper so the three
+// studio routes can never disagree on the signing key.
 
 interface JwtPayload {
   sid: string   // sessionId
@@ -65,7 +55,7 @@ function verifyJwt(token: string): JwtPayload | null {
 
     // Verify HMAC — use timingSafeEqual to prevent timing-based side-channel attacks
     const expectedSig = crypto
-      .createHmac('sha256', SECRET)
+      .createHmac('sha256', getStudioAuthSecret())
       .update(payloadB64)
       .digest('base64url')
     const sigBuf = Buffer.from(sig)
@@ -135,11 +125,22 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
 }
 
+function safeErrorMessage(err: unknown): string {
+  // In production, never leak raw error details (stack traces, env var names,
+  // internal paths) to the plugin. Verbose messages remain in dev for
+  // debugging.
+  if (process.env.NODE_ENV === 'production') {
+    return 'An internal error occurred. Please try again.'
+  }
+  return err instanceof Error ? err.message : String(err)
+}
+
 export async function GET(req: NextRequest) {
   try { return await handleSync(req) } catch (err) {
     // NEVER return 500 with empty body — plugin can't parse it
+    console.error('[studio/sync] handler error:', err)
     return NextResponse.json(
-      { serverTime: Date.now(), heartbeat: false, changes: [], error: 'internal', message: String(err) },
+      { serverTime: Date.now(), heartbeat: false, changes: [], error: 'internal', message: safeErrorMessage(err) },
       { status: 200, headers: CORS_HEADERS },
     )
   }
@@ -275,6 +276,14 @@ async function handleSync(req: NextRequest) {
   if (session && pluginVer && pluginVer !== '0.0.0') {
     session.pluginVersion = pluginVer
   }
+
+  // TODO(BUG 7): Push a `studio-sync` WS event to the user's browser here so
+  // the editor can refresh plugin status without polling. Blocked by the fact
+  // that /api/ws runs in the edge runtime with a per-isolate in-memory
+  // connection Map, so this Node route can't call `pushToUser` directly. A
+  // proper fix would publish to Redis (pub/sub) and have the ws route
+  // subscribe on connect — same pattern as studio-sse-bus.ts. For now the
+  // editor continues to poll /api/studio/status every 2s.
 
   if (needsUpdate) {
     const absDownloadUrl = manifest.downloadUrl.startsWith('http')

@@ -9,6 +9,10 @@
     {
       "path": "/api/cron/studio-cleanup",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/send-weekly-newsletter",
+      "schedule": "0 14 * * 1"
     }
   ]
 }

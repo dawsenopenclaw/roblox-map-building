@@ -89,36 +89,53 @@ interface BillingStatus {
 
 function PurchaseButton({ pack }: { pack: typeof TOKEN_PACKS[number] }) {
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
   async function handlePurchase() {
     setLoading(true)
+    setErrorMsg(null)
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'token_pack', packSlug: pack.slug }),
       })
-      if (res.ok) {
-        const { url } = await res.json()
-        if (url) window.location.href = url
+      const data = await res.json() as { url?: string; error?: string; redirect?: string }
+      if (!res.ok) {
+        if (data.redirect) {
+          window.location.href = data.redirect
+          return
+        }
+        setErrorMsg(data.error ?? 'Something went wrong. Please try again.')
+        return
       }
+      if (data.url) window.location.href = data.url
+    } catch {
+      setErrorMsg('Network error. Please try again.')
     } finally {
       setLoading(false)
     }
   }
+
   return (
-    <button
-      onClick={handlePurchase}
-      disabled={loading}
-      className="w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-50 hover:opacity-90 active:scale-[0.98]"
-      style={{
-        background: pack.popular ? GOLD : 'rgba(255,255,255,0.07)',
-        color: pack.popular ? '#000' : 'white',
-        border: pack.popular ? 'none' : '1px solid rgba(255,255,255,0.10)',
-        boxShadow: pack.popular ? `0 2px 14px ${GOLD}50` : 'none',
-      }}
-    >
-      {loading ? 'Redirecting...' : `Buy ${pack.name}`}
-    </button>
+    <div className="space-y-1.5">
+      <button
+        onClick={handlePurchase}
+        disabled={loading}
+        className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-150 disabled:opacity-50 hover:opacity-90 active:scale-[0.98] ${pack.popular ? 'cta-shimmer' : ''}`}
+        style={{
+          background: pack.popular ? GOLD : 'rgba(255,255,255,0.07)',
+          color: pack.popular ? '#000' : 'white',
+          border: pack.popular ? 'none' : '1px solid rgba(255,255,255,0.10)',
+          boxShadow: pack.popular ? `0 2px 14px ${GOLD}50` : 'none',
+        }}
+      >
+        {loading ? 'Redirecting...' : `Buy ${pack.name}`}
+      </button>
+      {errorMsg && (
+        <p className="text-red-400 text-xs text-center leading-tight">{errorMsg}</p>
+      )}
+    </div>
   )
 }
 

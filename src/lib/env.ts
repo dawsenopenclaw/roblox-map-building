@@ -90,6 +90,9 @@ const serverSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_NUMBER: z.string().optional(),
 
+  // ── Web Push — VAPID ──────────────────────────────────────────────────
+  VAPID_PRIVATE_KEY: z.string().optional(),
+
   // ── Analytics / Monitoring ────────────────────────────────────────────────
   SENTRY_DSN: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
@@ -144,6 +147,9 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().optional().default('https://app.posthog.com'),
+
+  // Web Push — VAPID public key
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
 
   // Feature flags
   NEXT_PUBLIC_DEMO_MODE: z.string().optional().transform((v) => v === 'true'),

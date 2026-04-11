@@ -57,12 +57,12 @@ export default function AppError({
           </div>
 
           <h2 className="text-xl font-bold text-white mb-3">
-            {isAiTimeout ? 'Taking longer than usual' : 'Something went wrong'}
+            {isAiTimeout ? 'Taking longer than usual' : 'This section crashed'}
           </h2>
           <p className="text-gray-300 text-sm mb-6">
             {isAiTimeout
               ? 'Your build is taking longer than expected. Try again — nothing was lost.'
-              : 'An error occurred in this section. Your projects and tokens are safe.'}
+              : 'This section hit an error. Your projects and tokens are safe — try reloading.'}
           </p>
 
           {error.digest && (

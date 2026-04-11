@@ -31,6 +31,7 @@ import { chatRoutes } from './routes/ai/chat'
 import { adminRoutes } from './routes/admin'
 import { corsMiddleware, apiRateLimit, auditMiddleware } from './middleware/security'
 import { requestIdMiddleware } from './middleware/requestId'
+import { attachWebSocketServer } from './routes/ws'
 import { createLogger } from './lib/logger'
 import { getMetricsText, getMetricsJson, incrementCounter, recordDuration } from './lib/metrics'
 import { errorHandler, AppError } from './lib/errors'
@@ -148,6 +149,9 @@ const port = parseInt(process.env.PORT || '3001')
 // reverse proxy (Nginx/Caddy/Vercel edge). Setting hostname here prevents
 // @hono/node-server from defaulting to 0.0.0.0.
 const hostname = process.env.API_HOSTNAME ?? '127.0.0.1'
-serve({ fetch: app.fetch, port, hostname }, () => appLog.info(`API running on ${hostname}:${port}`))
+const server = serve({ fetch: app.fetch, port, hostname }, () => appLog.info(`API running on ${hostname}:${port}`))
+
+// Attach WebSocket server to the underlying Node HTTP server for /api/ws
+attachWebSocketServer(server)
 
 export { app }

@@ -186,7 +186,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
       {/* Token balance + upgrade CTA */}
       <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
         <div
-          className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2"
+          className="flex items-center gap-1.5 bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2 transition-colors duration-200 hover:border-[#D4AF37]/40 hover:bg-white/[0.07]"
           role="status"
           aria-label={`Token balance: ${tokenBalance} tokens`}
           aria-live="polite"
@@ -199,7 +199,7 @@ export function AppTopNav({ onMenuOpen, onCommandPalette }: AppTopNavProps) {
           <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--gold)' }} aria-hidden="true">
             {tokenBalance}
           </span>
-          <span className="text-gray-500 text-xs hidden md:block" aria-hidden="true">tokens</span>
+          <span className="text-gray-300 text-xs hidden md:block font-medium" aria-hidden="true">tokens</span>
         </div>
 
         {/* Show upgrade pill when balance is low */}

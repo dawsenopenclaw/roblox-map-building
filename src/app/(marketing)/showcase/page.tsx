@@ -1,17 +1,19 @@
 import type { Metadata } from 'next'
 import { createMetadata } from '@/lib/metadata'
+import ShowcaseHero from '@/components/marketing/ShowcaseHero'
 import ShowcaseClient from './ShowcaseClient'
+import { SHOWCASE_GAMES } from '@/lib/showcase-data'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Showcase',
+  title: 'Showcase — Built with ForjeGames',
   description:
-    'See real Roblox games built with ForjeGames AI. From first prompt to published game in hours.',
+    'Browse real Roblox games built with ForjeGames AI. Every build ships with the exact prompt used — click any card to remix it in the editor.',
   path: '/showcase',
   keywords: [
     'Roblox games built with AI',
     'ForjeGames showcase',
     'AI Roblox game examples',
-    'Roblox game demos',
+    'Roblox game prompts',
     'AI game builder results',
   ],
 })
@@ -28,6 +30,17 @@ const showcaseJsonLd = {
     name: 'ForjeGames',
     url: 'https://forjegames.com',
   },
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: SHOWCASE_GAMES.length,
+    itemListElement: SHOWCASE_GAMES.map((game, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: game.title,
+      description: game.description,
+      url: `https://forjegames.com/showcase#${game.id}`,
+    })),
+  },
 }
 
 export default function ShowcasePage() {
@@ -37,7 +50,10 @@ export default function ShowcasePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(showcaseJsonLd) }}
       />
-      <ShowcaseClient />
+      <main style={{ background: '#050810' }}>
+        <ShowcaseHero />
+        <ShowcaseClient />
+      </main>
     </>
   )
 }

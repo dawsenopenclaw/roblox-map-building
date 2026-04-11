@@ -54,11 +54,11 @@ export default function GlobalError({
               </div>
 
               <h1 className="text-2xl font-bold text-white mb-3">
-                Something went wrong
+                ForjeGames crashed unexpectedly
               </h1>
               <p className="text-gray-300 text-sm leading-relaxed">
-                An unexpected error occurred at the application level. We&apos;ve been
-                automatically notified. Your data is safe.
+                The app hit a critical error and couldn&apos;t recover. Your projects
+                and tokens are unaffected. Hit &quot;Try again&quot; to reload.
               </p>
 
               {error.digest && (

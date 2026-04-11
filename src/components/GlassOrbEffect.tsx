@@ -1,110 +1,159 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 
 /**
- * Deep space background with soft nebula glows and a gentle cursor light.
- * Minimal. No particles, no trails, no noise. Just depth and warmth.
+ * Starfield ambient layer — small white & gold dots that drift slowly across
+ * the viewport like stars in deep space, with a twinkle (opacity pulse).
+ *
+ * Each star gets its OWN named keyframe with hard-coded translate values so
+ * we don't rely on CSS variables inside @keyframes (which has spotty support).
+ * Stars also have a faster drift duration (15-50s) so motion is visible.
  */
-export function GlassOrbEffect() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const mouseRef = useRef({ x: -9999, y: -9999 })
-  const targetRef = useRef({ x: -9999, y: -9999 })
-  const rafRef = useRef(0)
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d', { alpha: true })
-    if (!ctx) return
+interface Star {
+  id: number
+  size: number
+  color: string
+  glow: string
+  startX: number      // % of viewport
+  startY: number      // % of viewport
+  endX: number        // px offset (negative = left, positive = right)
+  endY: number        // px offset
+  driftDur: number    // seconds for one full drift cycle
+  twinkleDur: number
+  twinkleDelay: number
+  driftDelay: number
+  baseOpacity: number
+  blur: number
+}
 
-    let w = 0, h = 0
+function makeStar(layer: 'far' | 'mid' | 'near', i: number, total: number, idOffset: number): Star {
+  const isGold = i % 4 === 0
+  // Distribute via grid to avoid clustering
+  const cols = Math.ceil(Math.sqrt(total))
+  const rows = Math.ceil(total / cols)
+  const col = i % cols
+  const row = Math.floor(i / cols)
+  const cellW = 100 / cols
+  const cellH = 100 / rows
+  const jitterX = (Math.random() - 0.5) * cellW * 0.7
+  const jitterY = (Math.random() - 0.5) * cellH * 0.7
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio, 2)
-      w = window.innerWidth
-      h = window.innerHeight
-      canvas.width = w * dpr
-      canvas.height = h * dpr
-      canvas.style.width = `${w}px`
-      canvas.style.height = `${h}px`
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
+  // Layer-specific properties — near layer drifts more visibly + faster
+  const sizeMap     = { far: [1, 1.6],   mid: [1.6, 2.6], near: [2.6, 4.2] }
+  const driftDurMap = { far: [40, 60],   mid: [25, 40],   near: [15, 25] }    // seconds
+  const driftDistMap = { far: [40, 80],  mid: [70, 120],  near: [120, 200] }  // px
+  const opacityMap  = { far: [0.3, 0.5], mid: [0.45, 0.7], near: [0.6, 0.95] }
+  const blurMap     = { far: [0.5, 1.1], mid: [0.3, 0.7],  near: [0.0, 0.3] }
 
-    resize()
-    window.addEventListener('resize', resize)
+  const sizeRange = sizeMap[layer]
+  const durRange = driftDurMap[layer]
+  const distRange = driftDistMap[layer]
+  const opacityRange = opacityMap[layer]
+  const blurRange = blurMap[layer]
 
-    const onMouseMove = (e: MouseEvent) => {
-      targetRef.current = { x: e.clientX, y: e.clientY }
-    }
-    const onMouseLeave = () => {
-      targetRef.current = { x: -9999, y: -9999 }
-    }
-    window.addEventListener('mousemove', onMouseMove, { passive: true })
-    document.addEventListener('mouseleave', onMouseLeave)
+  // Random direction for drift (uniform around a circle)
+  const angle = Math.random() * Math.PI * 2
+  const distance = distRange[0] + Math.random() * (distRange[1] - distRange[0])
 
-    const loop = () => {
-      // Smooth follow — cursor glow eases toward mouse position
-      const lerp = 0.08
-      if (targetRef.current.x > -999) {
-        mouseRef.current.x += (targetRef.current.x - mouseRef.current.x) * lerp
-        mouseRef.current.y += (targetRef.current.y - mouseRef.current.y) * lerp
-      } else {
-        mouseRef.current.x += (-9999 - mouseRef.current.x) * 0.05
-        mouseRef.current.y += (-9999 - mouseRef.current.y) * 0.05
-      }
+  return {
+    id: i + idOffset,
+    size: sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0]),
+    color: isGold ? '#D4AF37' : '#FFFFFF',
+    glow: isGold ? 'rgba(212,175,55,0.55)' : 'rgba(255,255,255,0.4)',
+    startX: cellW * (col + 0.5) + jitterX,
+    startY: cellH * (row + 0.5) + jitterY,
+    endX: Math.cos(angle) * distance,
+    endY: Math.sin(angle) * distance,
+    driftDur: durRange[0] + Math.random() * (durRange[1] - durRange[0]),
+    twinkleDur: 2.5 + Math.random() * 4,
+    twinkleDelay: -(Math.random() * 6),
+    driftDelay: -(Math.random() * 30),
+    baseOpacity: opacityRange[0] + Math.random() * (opacityRange[1] - opacityRange[0]),
+    blur: blurRange[0] + Math.random() * (blurRange[1] - blurRange[0]),
+  }
+}
 
-      const mx = mouseRef.current.x
-      const my = mouseRef.current.y
-
-      ctx.clearRect(0, 0, w, h)
-
-      // ── Cursor glow — soft warm light that follows smoothly ──
-      if (mx > -999) {
-        // Outer ambient — very wide, very soft
-        const outer = ctx.createRadialGradient(mx, my, 0, mx, my, 400)
-        outer.addColorStop(0, 'rgba(212, 175, 55, 0.04)')
-        outer.addColorStop(0.4, 'rgba(212, 175, 55, 0.015)')
-        outer.addColorStop(1, 'rgba(212, 175, 55, 0)')
-        ctx.fillStyle = outer
-        ctx.beginPath()
-        ctx.arc(mx, my, 400, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Inner warmth
-        const inner = ctx.createRadialGradient(mx, my, 0, mx, my, 120)
-        inner.addColorStop(0, 'rgba(255, 220, 130, 0.07)')
-        inner.addColorStop(0.5, 'rgba(255, 195, 60, 0.025)')
-        inner.addColorStop(1, 'rgba(212, 175, 55, 0)')
-        ctx.fillStyle = inner
-        ctx.beginPath()
-        ctx.arc(mx, my, 120, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
-      rafRef.current = requestAnimationFrame(loop)
-    }
-
-    rafRef.current = requestAnimationFrame(loop)
-
-    return () => {
-      cancelAnimationFrame(rafRef.current)
-      window.removeEventListener('resize', resize)
-      window.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseleave', onMouseLeave)
-    }
+function Starfield() {
+  // Generate stars once on mount (random values stay stable)
+  const stars = useMemo(() => {
+    const far  = Array.from({ length: 32 }, (_, i) => makeStar('far',  i, 32, 0))
+    const mid  = Array.from({ length: 18 }, (_, i) => makeStar('mid',  i, 18, 100))
+    const near = Array.from({ length: 10 }, (_, i) => makeStar('near', i, 10, 200))
+    return [...far, ...mid, ...near]
   }, [])
 
+  // Build a single <style> block with one named keyframe per star
+  // This guarantees the animation actually runs (no CSS variable issues)
+  const keyframeCSS = useMemo(
+    () =>
+      stars
+        .map(
+          (s) => `
+      @keyframes star-drift-${s.id} {
+        0%   { transform: translate(0, 0); }
+        100% { transform: translate(${s.endX}px, ${s.endY}px); }
+      }
+    `,
+        )
+        .join('\n') +
+      `
+      @keyframes star-twinkle-pulse {
+        0%, 100% { opacity: 1; }
+        50%      { opacity: 0.35; }
+      }
+    `,
+    [stars],
+  )
+
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       aria-hidden="true"
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 0,
+        zIndex: 10,
         pointerEvents: 'none',
+        overflow: 'hidden',
       }}
-    />
+    >
+      <style dangerouslySetInnerHTML={{ __html: keyframeCSS }} />
+
+      {stars.map((s) => (
+        <div
+          key={`star-${s.id}`}
+          style={{
+            position: 'absolute',
+            left: `${s.startX}%`,
+            top: `${s.startY}%`,
+            // Drift back and forth with `alternate` so it loops cleanly
+            animation: `star-drift-${s.id} ${s.driftDur}s ease-in-out ${s.driftDelay}s infinite alternate`,
+            willChange: 'transform',
+          }}
+        >
+          <div
+            style={{
+              width: s.size,
+              height: s.size,
+              borderRadius: '50%',
+              backgroundColor: s.color,
+              boxShadow: `0 0 ${s.size + 4}px ${s.size}px ${s.glow}`,
+              filter: `blur(${s.blur}px)`,
+              opacity: s.baseOpacity,
+              animation: `star-twinkle-pulse ${s.twinkleDur}s ease-in-out ${s.twinkleDelay}s infinite`,
+            }}
+          />
+        </div>
+      ))}
+    </div>
   )
+}
+
+export function GlassOrbEffect() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => { setReady(true) }, [])
+  if (!ready) return null
+  return createPortal(<Starfield />, document.body)
 }

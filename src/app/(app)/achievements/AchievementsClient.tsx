@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TierBadge, TierProgressBar, type Tier } from '@/components/TierBadge'
 
 // ─── Types & Demo Data ────────────────────────────────────────────────────────
@@ -188,6 +188,22 @@ const CATEGORY_META: Record<AchievementCategory, { color: string }> = {
 
 const CATEGORIES: AchievementCategory[] = ['Builder', 'Creator', 'Social', 'Streak']
 
+// ─── API response shape ───────────────────────────────────────────────────────
+
+interface ApiAchievement {
+  slug: string
+  unlocked: boolean
+  unlockedAt: string | null
+}
+
+interface AchievementsApiResponse {
+  achievements: ApiAchievement[]
+  unlockedCount: number
+  total: number
+  demo?: boolean
+  _fallback?: boolean
+}
+
 const DEMO_XP   = 850
 const DEMO_TIER = 'APPRENTICE' as Tier
 
@@ -200,12 +216,14 @@ function AchievementCard({ achievement }: { achievement: Achievement }) {
 
   return (
     <div
-      className="relative rounded-2xl border p-4 flex flex-col gap-3 transition-all duration-200"
+      className="relative rounded-xl border p-4 flex flex-col gap-3 transition-all duration-200 hover:-translate-y-0.5"
       style={{
-        background: unlocked ? '#141414' : '#0D0D0D',
-        borderColor: unlocked ? `${catColor}35` : `${GOLD}20`,
-        boxShadow: unlocked ? `0 0 18px ${catColor}10` : `0 0 0 1px ${GOLD}10`,
-        opacity: unlocked ? 1 : 0.8,
+        background: 'rgba(10, 14, 32, 0.6)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        borderColor: unlocked ? `${catColor}35` : 'rgba(255, 255, 255, 0.06)',
+        boxShadow: unlocked ? `0 0 18px ${catColor}10, inset 0 1px 0 rgba(255,255,255,0.04)` : 'inset 0 1px 0 rgba(255,255,255,0.04)',
+        opacity: unlocked ? 1 : 0.85,
       }}
     >
       {/* Lock overlay */}
@@ -378,10 +396,13 @@ export default function AchievementsPage() {
             <button
               key={cat}
               onClick={() => setActiveCategory(activeCategory === cat ? 'All' : cat)}
-              className="rounded-2xl border p-4 text-left transition-all duration-200 hover:scale-[1.02]"
+              className="rounded-xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5"
               style={{
-                background: activeCategory === cat || activeCategory === 'All' ? `${meta.color}08` : '#0D0D0D',
+                background: activeCategory === cat || activeCategory === 'All' ? `${meta.color}12` : 'rgba(10, 14, 32, 0.6)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
                 borderColor: activeCategory === cat ? `${meta.color}40` : 'rgba(255,255,255,0.06)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
               }}
             >
               <div className="w-7 h-7 rounded-lg flex items-center justify-center mb-2" style={{ color: meta.color, background: `${meta.color}15` }}>

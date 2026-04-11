@@ -292,11 +292,26 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
     }
     mq.addEventListener('change', handleMqChange)
 
-    const seen = sessionStorage.getItem('fj_df_splash')
+    // Skip splash if user has seen it within the last 24 hours (reduces friction
+    // for returning users) or within the current session.
+    let seen = false
+    try {
+      const lastSeen = localStorage.getItem('fj_splash_ts')
+      const sessionSeen = sessionStorage.getItem('fj_df_splash')
+      if (sessionSeen) {
+        seen = true
+      } else if (lastSeen && Date.now() - Number(lastSeen) < 86_400_000) {
+        seen = true
+      }
+    } catch { /* storage unavailable — show splash */ }
+
     if (seen || rm) {
       setSplashState('done')
     } else {
-      sessionStorage.setItem('fj_df_splash', '1')
+      try {
+        localStorage.setItem('fj_splash_ts', String(Date.now()))
+        sessionStorage.setItem('fj_df_splash', '1')
+      } catch { /* ignore */ }
       setSplashState('active')
     }
 
@@ -497,7 +512,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
           position: 'fixed',
           inset: 0,
           zIndex: 9999,
-          backgroundColor: quench ? '#FFFFFF' : '#0a0a0a',
+          backgroundColor: quench ? '#FFFFFF' : '#050810',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -516,7 +531,7 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
             style={{
               position: 'absolute',
               inset: 0,
-              backgroundColor: '#0a0a0a',
+              backgroundColor: '#050810',
               clipPath: clip,
               transform: shatterActive ? SHATTER_TRANSFORMS[i] : 'none',
               opacity: shatterActive ? 0 : 1,
@@ -703,15 +718,13 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
                       WebkitTextFillColor: 'transparent',
                       // Animations
                       animation: isRevealed && phase >= 2
-                        ? 'fj-holo-gradient 2s linear infinite, fj-holo-glow 2s ease-in-out infinite, fj-forge-flicker 4s ease-in-out infinite'
+                        ? `fj-holo-gradient 2s linear ${i * -0.15}s infinite, fj-holo-glow 2s ease-in-out ${i * -0.2}s infinite, fj-forge-flicker 4s ease-in-out ${i * 0.3}s infinite`
                         : isRevealed
-                        ? 'fj-holo-gradient 3s linear infinite'
+                        ? `fj-holo-gradient 3s linear ${i * -0.15}s infinite`
                         : 'none',
                       opacity: isRevealed ? 1 : 0,
                       pointerEvents: isRevealed ? 'auto' : 'none',
                       willChange: 'background-position, opacity',
-                      // Stagger gradient offset per letter for wave effect
-                      animationDelay: isRevealed ? `${i * -0.15}s, ${i * -0.2}s, ${i * 0.3}s` : '0s',
                     }}
                   >
                     {letter}

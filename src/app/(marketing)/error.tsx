@@ -24,9 +24,9 @@ export default function MarketingError({
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-3">Something went wrong</h2>
+          <h2 className="text-xl font-bold text-white mb-3">Couldn&apos;t load this page</h2>
           <p className="text-gray-300 text-sm mb-6">
-            This page ran into an error. Try refreshing or head to the app.
+            This page hit an error. Try refreshing — if it keeps happening, head to the app.
           </p>
           {error.digest && (
             <p className="text-gray-500 text-xs font-mono mb-4">ID: {error.digest}</p>

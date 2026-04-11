@@ -1,0 +1,6 @@
+# Showcase thumbnails
+#
+# Drop JPG/PNG thumbnails here matching the file names referenced in
+# `src/lib/showcase-data.ts` (e.g. `medieval-kingdom.jpg`). The cards render a
+# gradient fallback if a file is missing, so deploys won't break before the
+# artwork is ready.

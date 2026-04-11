@@ -46,6 +46,20 @@ const SERVERS = [
     src: 'src/index.ts',
     dist: 'dist/index.js',
   },
+  {
+    name: 'studio-bridge',
+    port: 3005,
+    dir: resolve(__dirname, 'studio-bridge'),
+    src: 'src/index.ts',
+    dist: 'dist/index.js',
+  },
+  {
+    name: 'studio-controller',
+    port: 3006,
+    dir: resolve(__dirname, 'studio-controller'),
+    src: 'src/index.ts',
+    dist: 'dist/index.js',
+  },
 ]
 
 const children = []
@@ -99,6 +113,8 @@ console.log(`[mcp:start] All MCP servers starting...`)
 console.log(`  asset-alchemist  → http://localhost:3002/mcp  (health: http://localhost:3002/health)`)
 console.log(`  city-architect   → http://localhost:3003/mcp  (health: http://localhost:3003/health)`)
 console.log(`  terrain-forge    → http://localhost:3004/mcp  (health: http://localhost:3004/health)`)
+console.log(`  studio-bridge    → http://localhost:3005/mcp  (health: http://localhost:3005/health)`)
+console.log(`  studio-controller→ http://localhost:3006/mcp  (health: http://localhost:3006/health)`)
 
 // Graceful shutdown
 function shutdown() {

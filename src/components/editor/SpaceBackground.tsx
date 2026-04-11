@@ -89,7 +89,7 @@ const SHOOTING_STARS: Array<{
 export function SpaceBackground() {
   const { settings } = useEditorSettings()
   const theme = getThemeById(settings.theme)
-  const isLight = settings.theme === 'light'
+  const isLight = settings.theme === 'light' || settings.theme === 'paper'
 
   // Orb opacity scaling for light theme
   const orbOpacityMul = isLight ? 0.4 : 1

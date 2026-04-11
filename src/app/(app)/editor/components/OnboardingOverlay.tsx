@@ -5,40 +5,79 @@ import { useState, useEffect, useCallback } from 'react'
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const LS_KEY = 'fg_editor_toured'
+/** Legacy/new dismiss flag — once set, tutorial never auto-shows again */
+const LS_DISMISSED_KEY = 'forje_tutorial_dismissed'
+/** Remember once the user has used voice input, so the voice step can be skipped */
+const LS_VOICE_USED_KEY = 'forje_voice_used'
 
 // ─── Step definitions ──────────────────────────────────────────────────────────
 
 interface OnboardingStep {
-  id: string
+  id: StepId
   title: string
   body: string
   /** Which UI zone to highlight */
-  zone: 'input' | 'templates' | 'connect'
+  zone: 'welcome' | 'input' | 'templates' | 'generating' | 'connect' | 'slash' | 'voice'
   /** Optional CTA label override */
   cta?: string
   /** Auto-focus the input on this step */
   focusInput?: boolean
+  /** Pre-fill the input with this prompt */
+  prefillPrompt?: string
 }
 
-const STEPS: OnboardingStep[] = [
+type StepId = 'welcome' | 'input' | 'templates' | 'slash' | 'voice' | 'connect' | 'ready'
+
+const ALL_STEPS: OnboardingStep[] = [
+  {
+    id: 'welcome',
+    title: 'Welcome to ForjeGames!',
+    body: "Let's build something amazing in 30 seconds. The AI does the heavy lifting — you just describe what you want.",
+    zone: 'welcome',
+    cta: "Let's Go →",
+  },
   {
     id: 'input',
-    title: 'Type what you want to build',
-    body: 'Terrain, scripts, 3D models, anything — describe it in plain English and ForjeAI builds it.',
+    title: 'Try your first build',
+    body: 'We\'ve pre-filled a prompt for you. Click "Send" or press Enter to watch the magic happen.',
     zone: 'input',
+    cta: 'Got it',
+    focusInput: true,
+    prefillPrompt: 'Build me a modern house with a garden and driveway',
   },
   {
     id: 'templates',
-    title: 'Or click a starter to begin instantly',
-    body: 'Pick one of the example builds above to jump straight in with a single click.',
+    title: 'Or pick a quick-start',
+    body: 'These cards pre-fill rich prompts for you. One click and you\'re building.',
     zone: 'templates',
   },
   {
+    id: 'slash',
+    title: 'Try a slash command',
+    body: 'Type "/" in the chat to open power commands — save, export, run, checkpoint and more.',
+    zone: 'input',
+    cta: 'Got it',
+  },
+  {
+    id: 'voice',
+    title: 'Speak instead of typing',
+    body: 'Tap the mic next to the chat box to dictate prompts hands-free.',
+    zone: 'input',
+    cta: 'Got it',
+  },
+  {
     id: 'connect',
-    title: 'See builds appear live in Studio',
-    body: 'Connect Roblox Studio once and every build goes straight into your place — no copy-pasting.',
+    title: 'See it in Roblox Studio',
+    body: 'Connect Studio once and every build appears in your place live — no copy-pasting ever.',
     zone: 'connect',
     cta: 'Got it',
+  },
+  {
+    id: 'ready',
+    title: "You're all set!",
+    body: 'Try asking for anything — a castle, a race track, a tycoon lobby, an obby stage. The AI handles it all.',
+    zone: 'welcome',
+    cta: 'Start Building →',
     focusInput: true,
   },
 ]
@@ -58,12 +97,20 @@ interface SpotRect {
 
 function getSpotRect(zone: OnboardingStep['zone']): SpotRect {
   switch (zone) {
+    case 'welcome':
+      // Full left panel — centred welcome card
+      return { top: '56px', left: '12px', width: 'calc(45% - 18px)', height: 'calc(100dvh - 80px)' }
     case 'input':
+    case 'slash':
+    case 'voice':
       // Chat textarea at the very bottom of the left panel
       return { top: 'calc(100dvh - 128px)', left: '12px', width: 'calc(45% - 18px)', height: '104px' }
     case 'templates':
       // SuggestedPrompts row sits just above the chat input
       return { top: 'calc(100dvh - 220px)', left: '12px', width: 'calc(45% - 18px)', height: '84px' }
+    case 'generating':
+      // Left panel chat area — mid-height where AI response appears
+      return { top: '56px', left: '12px', width: 'calc(45% - 18px)', height: 'calc(100dvh - 200px)' }
     case 'connect':
       // Top portion of right studio panel (Connect Studio button lives there)
       return { top: '68px', left: 'calc(45% + 6px)', width: 'calc(55% - 18px)', height: '200px' }
@@ -82,12 +129,20 @@ interface TooltipPos {
 
 function getTooltipPos(zone: OnboardingStep['zone']): TooltipPos {
   switch (zone) {
+    case 'welcome':
+      // Centred over the left panel
+      return { top: '50%', left: 'calc(22.5% - 150px)', transform: 'translateY(-50%)' }
     case 'input':
+    case 'slash':
+    case 'voice':
       // Above the highlighted input bar, anchored left
       return { bottom: '144px', left: '12px' }
     case 'templates':
       // Above the highlighted templates row, anchored left
       return { bottom: '236px', left: '12px' }
+    case 'generating':
+      // Centred in the left panel
+      return { top: '50%', left: 'calc(22.5% - 150px)', transform: 'translateY(-50%)' }
     case 'connect':
       // Left of the right panel, vertically centred with the highlight
       return { top: '88px', right: 'calc(55% + 20px)' }
@@ -100,9 +155,13 @@ type ArrowDir = 'left' | 'right' | 'down' | 'up' | 'none'
 
 function getArrowDir(zone: OnboardingStep['zone']): ArrowDir {
   switch (zone) {
-    case 'input':     return 'down'
-    case 'templates': return 'down'
-    case 'connect':   return 'right'
+    case 'welcome':    return 'none'
+    case 'input':      return 'down'
+    case 'slash':      return 'down'
+    case 'voice':      return 'down'
+    case 'templates':  return 'down'
+    case 'generating': return 'none'
+    case 'connect':    return 'right'
   }
 }
 
@@ -138,11 +197,51 @@ function ArrowNub({ dir }: { dir: ArrowDir }) {
 
 interface OnboardingOverlayProps {
   onDone: () => void
-  /** Ref to the chat textarea so the last step can auto-focus it */
+  /** Ref to the chat textarea so steps can auto-focus and pre-fill it */
   inputRef?: React.RefObject<HTMLTextAreaElement | null>
+  /** Called when a step wants to pre-fill the chat input */
+  onPrefill?: (prompt: string) => void
+  /** True if the user already has chat messages — skip the "type first prompt" step */
+  hasMessages?: boolean
+  /** True if Roblox Studio is already connected — skip the "connect Studio" step */
+  studioConnected?: boolean
+  /** True if any prior user message started with a slash command */
+  hasUsedSlashCommand?: boolean
+  /** True if the user has used voice input before */
+  hasUsedVoice?: boolean
 }
 
-export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) {
+export function OnboardingOverlay({
+  onDone,
+  inputRef,
+  onPrefill,
+  hasMessages = false,
+  studioConnected = false,
+  hasUsedSlashCommand = false,
+  hasUsedVoice = false,
+}: OnboardingOverlayProps) {
+  // Build the filtered step list based on current editor state.
+  // Welcome + Ready always shown; middle steps are conditional.
+  const steps = ALL_STEPS.filter((s) => {
+    switch (s.id) {
+      case 'welcome':
+      case 'ready':
+        return true
+      case 'input':
+      case 'templates':
+        // Skip first-prompt steps if user has already chatted
+        return !hasMessages
+      case 'connect':
+        return !studioConnected
+      case 'slash':
+        return !hasUsedSlashCommand
+      case 'voice':
+        return !hasUsedVoice
+      default:
+        return true
+    }
+  })
+
   const [stepIdx, setStepIdx] = useState(0)
   const [overlayVisible, setOverlayVisible] = useState(false)
   const [cardVisible, setCardVisible] = useState(false)
@@ -154,11 +253,14 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [])
 
-  const step = STEPS[stepIdx]
-  const isLast = stepIdx === STEPS.length - 1
+  const step = steps[stepIdx] ?? steps[0]
+  const isLast = stepIdx >= steps.length - 1
 
   const dismiss = useCallback(() => {
-    try { localStorage.setItem(LS_KEY, 'true') } catch { /* ignore */ }
+    try {
+      localStorage.setItem(LS_KEY, 'true')
+      localStorage.setItem(LS_DISMISSED_KEY, '1')
+    } catch { /* ignore */ }
     setCardVisible(false)
     setTimeout(() => setOverlayVisible(false), 180)
     setTimeout(onDone, 360)
@@ -166,21 +268,25 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
 
   const advance = useCallback(() => {
     if (isLast) {
-      // Auto-focus input before dismissing
-      if (inputRef?.current) {
-        inputRef.current.focus()
-      }
+      if (inputRef?.current) inputRef.current.focus()
       dismiss()
     } else {
       setCardVisible(false)
       setTimeout(() => {
+        const nextStep = steps[stepIdx + 1]
         setStepIdx((i) => i + 1)
+        // Pre-fill input if the next step requests it
+        if (nextStep?.prefillPrompt && inputRef?.current) {
+          inputRef.current.value = nextStep.prefillPrompt
+          inputRef.current.dispatchEvent(new Event('input', { bubbles: true }))
+          if (onPrefill) onPrefill(nextStep.prefillPrompt)
+        }
         setCardVisible(true)
       }, 140)
     }
-  }, [isLast, dismiss, inputRef])
+  }, [isLast, dismiss, inputRef, onPrefill, stepIdx, steps])
 
-  // Focus input on "try" step
+  // Focus input on steps that request it
   useEffect(() => {
     if (step.focusInput && inputRef?.current) {
       const t = setTimeout(() => inputRef.current?.focus(), 300)
@@ -198,7 +304,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Onboarding step ${stepIdx + 1} of ${STEPS.length}`}
+      aria-label={`Onboarding step ${stepIdx + 1} of ${steps.length}`}
       className="fixed inset-0 pointer-events-none"
       style={{
         zIndex: 500,
@@ -274,7 +380,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
           {/* Progress dots */}
           <div className="flex items-center gap-2 mb-3">
             <div className="flex gap-1.5">
-              {STEPS.map((_, i) => (
+              {steps.map((_, i) => (
                 <div
                   key={i}
                   className="rounded-full transition-all duration-300"
@@ -291,7 +397,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
               ))}
             </div>
             <span style={{ fontSize: 10, color: '#52525b', marginLeft: 2, fontFamily: 'Inter, sans-serif' }}>
-              {stepIdx + 1} / {STEPS.length}
+              {stepIdx + 1} / {steps.length}
             </span>
           </div>
 
@@ -363,7 +469,7 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.04)' }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)' }}
             >
-              {isLast ? (step.cta ?? 'Start building') : 'Next →'}
+              {step.cta ?? (isLast ? 'Start Building' : 'Next →')}
             </button>
           </div>
         </div>
@@ -378,12 +484,20 @@ export function OnboardingOverlay({ onDone, inputRef }: OnboardingOverlayProps) 
 
 function StepIcon({ step }: { step: string }) {
   switch (step) {
-    case 'input':
-      // Keyboard / type icon
+    case 'welcome':
+      // Sparkle / wand icon
       return (
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-          <rect x="2" y="5" width="14" height="8" rx="3" stroke="#D4AF37" strokeWidth="1.4"/>
-          <path d="M5 9h4M11 7v4" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
+          <path d="M9 2L10.5 6.5L15 8l-4.5 1.5L9 14l-1.5-4.5L3 8l4.5-1.5L9 2z" stroke="#D4AF37" strokeWidth="1.4" strokeLinejoin="round"/>
+          <circle cx="14" cy="13" r="1" fill="#D4AF37" opacity="0.6"/>
+          <circle cx="4" cy="4" r="0.8" fill="#D4AF37" opacity="0.6"/>
+        </svg>
+      )
+    case 'input':
+      // Send arrow icon
+      return (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M2 9h14M11 4l5 5-5 5" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     case 'templates':
@@ -396,6 +510,15 @@ function StepIcon({ step }: { step: string }) {
           <rect x="10" y="10" width="6" height="6" rx="1.5" stroke="#D4AF37" strokeWidth="1.4"/>
         </svg>
       )
+    case 'generating':
+      // Sparkle / AI icon
+      return (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="6.5" stroke="#D4AF37" strokeWidth="1.4" strokeDasharray="3 2"/>
+          <circle cx="9" cy="9" r="2.5" fill="#D4AF37" opacity="0.5"/>
+          <circle cx="9" cy="9" r="1" fill="#D4AF37"/>
+        </svg>
+      )
     case 'connect':
       // Plug / link icon
       return (
@@ -403,6 +526,30 @@ function StepIcon({ step }: { step: string }) {
           <circle cx="4" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
           <circle cx="14" cy="9" r="2.5" stroke="#D4AF37" strokeWidth="1.4"/>
           <path d="M6.5 9h5" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      )
+    case 'slash':
+      // Slash / command icon
+      return (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <path d="M12 3L6 15" stroke="#D4AF37" strokeWidth="1.6" strokeLinecap="round"/>
+          <rect x="2" y="2" width="14" height="14" rx="3" stroke="#D4AF37" strokeWidth="1.2" opacity="0.5"/>
+        </svg>
+      )
+    case 'voice':
+      // Microphone icon
+      return (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <rect x="7" y="2" width="4" height="8" rx="2" stroke="#D4AF37" strokeWidth="1.4"/>
+          <path d="M4 9a5 5 0 0010 0M9 14v2" stroke="#D4AF37" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+      )
+    case 'ready':
+      // Checkmark icon
+      return (
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="9" r="6.5" stroke="#D4AF37" strokeWidth="1.4"/>
+          <path d="M5.5 9L8 11.5L12.5 6.5" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       )
     default:
@@ -416,19 +563,47 @@ function StepIcon({ step }: { step: string }) {
 
 // ─── Hook ──────────────────────────────────────────────────────────────────────
 
-export function useOnboardingOverlay() {
+/**
+ * Controls whether the editor tutorial should auto-fire.
+ *
+ * The tutorial is suppressed if:
+ *   - it has been dismissed before (either legacy `fg_editor_toured`
+ *     or the new `forje_tutorial_dismissed` key), OR
+ *   - the user already has chat messages (they clearly don't need a first-run tour).
+ */
+export function useOnboardingOverlay(opts?: { hasMessages?: boolean }) {
+  const hasMessages = opts?.hasMessages ?? false
   const [shouldShow, setShouldShow] = useState(false)
 
   useEffect(() => {
     try {
-      const done = localStorage.getItem(LS_KEY)
-      if (!done) setShouldShow(true)
+      const dismissed =
+        localStorage.getItem(LS_DISMISSED_KEY) === '1' ||
+        localStorage.getItem(LS_KEY) === 'true'
+      if (!dismissed && !hasMessages) setShouldShow(true)
     } catch {
       // ignore
     }
+  }, [hasMessages])
+
+  const dismiss = useCallback(() => {
+    try {
+      localStorage.setItem(LS_KEY, 'true')
+      localStorage.setItem(LS_DISMISSED_KEY, '1')
+    } catch { /* ignore */ }
+    setShouldShow(false)
   }, [])
 
-  const dismiss = useCallback(() => setShouldShow(false), [])
-
   return { shouldShow, dismiss }
+}
+
+/** Mark voice input as "used" so the tutorial can skip the voice step next time. */
+export function markVoiceInputUsed() {
+  try { localStorage.setItem(LS_VOICE_USED_KEY, '1') } catch { /* ignore */ }
+}
+
+/** Read whether the user has used voice input before. SSR-safe. */
+export function hasUsedVoiceInput(): boolean {
+  if (typeof window === 'undefined') return false
+  try { return localStorage.getItem(LS_VOICE_USED_KEY) === '1' } catch { return false }
 }

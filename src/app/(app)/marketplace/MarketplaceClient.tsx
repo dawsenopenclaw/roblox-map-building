@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useToast } from '@/components/ui/toast-notification'
 import {
   Search,
@@ -25,20 +25,31 @@ import {
   Building,
   Users,
   Music,
+  Heart,
+  GitFork,
+  Flame,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SortOption = 'trending' | 'newest' | 'top-rated' | 'price-asc' | 'price-desc'
+type SortOption = 'trending' | 'newest' | 'top-rated' | 'price-asc' | 'price-desc' | 'most-liked' | 'most-forked'
 
-type CategoryTab = 'all' | 'GAME_TEMPLATE' | 'MAP_TEMPLATE' | 'SCRIPT' | 'UI_KIT' | 'ASSET' | 'SOUND'
+type CategoryTab = 'all' | 'trending-feed' | 'GAME_TEMPLATE' | 'MAP_TEMPLATE' | 'SCRIPT' | 'UI_KIT' | 'ASSET' | 'SOUND'
 
 interface Creator {
   id: string
   displayName: string | null
   username: string | null
   avatarUrl: string | null
+}
+
+interface ForkedFromEntry {
+  originalItem: {
+    id: string
+    title: string
+    slug: string
+  } | null
 }
 
 interface Template {
@@ -55,12 +66,17 @@ interface Template {
   tags: string[]
   createdAt: string
   creator: Creator
+  likeCount?: number
+  forkCount?: number
+  viewCount?: number
+  forkedFrom?: ForkedFromEntry[] | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CATEGORY_TABS: { value: CategoryTab; label: string; icon: LucideIcon }[] = [
   { value: 'all',           label: 'All',            icon: LayoutGrid },
+  { value: 'trending-feed', label: 'Trending',       icon: Flame },
   { value: 'GAME_TEMPLATE', label: 'Full Games',      icon: Gamepad2 },
   { value: 'MAP_TEMPLATE',  label: 'Terrain & Maps',  icon: Map },
   { value: 'SCRIPT',        label: 'Scripts',         icon: Code2 },
@@ -70,11 +86,13 @@ const CATEGORY_TABS: { value: CategoryTab; label: string; icon: LucideIcon }[] =
 ]
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'trending',   label: 'Trending' },
-  { value: 'newest',     label: 'Newest' },
-  { value: 'top-rated',  label: 'Top Rated' },
-  { value: 'price-asc',  label: 'Price: Low → High' },
-  { value: 'price-desc', label: 'Price: High → Low' },
+  { value: 'trending',    label: 'Trending' },
+  { value: 'newest',      label: 'Newest' },
+  { value: 'top-rated',   label: 'Top Rated' },
+  { value: 'most-liked',  label: 'Most Liked' },
+  { value: 'most-forked', label: 'Most Forked' },
+  { value: 'price-asc',   label: 'Price: Low → High' },
+  { value: 'price-desc',  label: 'Price: High → Low' },
 ]
 
 const PRICE_FILTERS = [
@@ -327,6 +345,17 @@ export default function MarketplacePage() {
     setIsLoading(true)
     setError(null)
     try {
+      // Dedicated trending feed tab → hit the trending API
+      if (activeTab === 'trending-feed') {
+        const res = await fetch(`/api/marketplace/trending?limit=20`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as { templates: Template[] }
+        setTemplates(data.templates ?? [])
+        setTotal(data.templates?.length ?? 0)
+        setTotalPages(1)
+        return
+      }
+
       const params = new URLSearchParams()
       if (activeTab !== 'all') params.set('category', activeTab)
       if (searchQuery.trim()) params.set('search', searchQuery.trim())
@@ -384,7 +413,7 @@ export default function MarketplacePage() {
   return (
     <div className="text-white">
       {/* ── Page Header ────────────────────────────────────────────────────── */}
-      <div className="border-b border-white/5 bg-[#050b14]">
+      <div className="border-b border-white/5" style={{ background: '#050810' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -400,10 +429,10 @@ export default function MarketplacePage() {
             <a
               href="/marketplace/submit"
               className="
-                inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
-                bg-gradient-to-r from-amber-500 to-yellow-400 text-black
-                hover:from-amber-400 hover:to-yellow-300
-                shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]
+                inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] font-bold text-sm
+                bg-gradient-to-br from-[#D4AF37] to-[#C8962A] text-white
+                hover:brightness-110 active:scale-[0.97]
+                shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)]
                 transition-all duration-200 shrink-0
               "
             >
@@ -422,13 +451,7 @@ export default function MarketplacePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search templates, maps, scripts..."
-                className="
-                  w-full bg-white/5 border border-white/10 rounded-xl
-                  pl-10 pr-10 py-3 text-sm text-white placeholder:text-white/30
-                  focus:outline-none focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/10
-                  transition-all duration-200
-                  [&::-webkit-search-cancel-button]:hidden
-                "
+                className="input-premium pl-10 pr-10 [&::-webkit-search-cancel-button]:hidden"
               />
               {searchQuery && (
                 <button
@@ -446,11 +469,13 @@ export default function MarketplacePage() {
               <select
                 value={priceFilter}
                 onChange={(e) => setPriceFilter(e.target.value)}
+                aria-label="Filter by price"
                 className="
-                  appearance-none bg-white/5 border border-white/10 rounded-xl
-                  px-4 py-3 pr-9 text-sm text-white/80
-                  focus:outline-none focus:border-blue-400/50
-                  cursor-pointer transition-all duration-200 w-full sm:min-w-[140px]
+                  appearance-none bg-white/[0.04] border border-white/10 rounded-xl
+                  px-4 py-3 pr-9 text-sm text-white/80 font-medium
+                  hover:bg-white/[0.07] hover:border-white/15
+                  focus:outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/15
+                  cursor-pointer transition-all duration-150 w-full sm:min-w-[140px]
                 "
               >
                 {PRICE_FILTERS.map((p) => (
@@ -467,11 +492,13 @@ export default function MarketplacePage() {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortOption)}
+                aria-label="Sort templates"
                 className="
-                  appearance-none bg-white/5 border border-white/10 rounded-xl
-                  px-4 py-3 pr-9 text-sm text-white/80
-                  focus:outline-none focus:border-blue-400/50
-                  cursor-pointer transition-all duration-200 w-full sm:min-w-[160px]
+                  appearance-none bg-white/[0.04] border border-white/10 rounded-xl
+                  px-4 py-3 pr-9 text-sm text-white/80 font-medium
+                  hover:bg-white/[0.07] hover:border-white/15
+                  focus:outline-none focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/15
+                  cursor-pointer transition-all duration-150 w-full sm:min-w-[160px]
                 "
               >
                 {SORT_OPTIONS.map((o) => (
@@ -506,7 +533,8 @@ export default function MarketplacePage() {
         {/* ── Featured Banner ────────────────────────────────────────────── */}
         {featured && <section aria-label="Featured templates">
           <div
-            className="relative rounded-2xl overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#141414] to-[#1c1c1c] shadow-[0_0_60px_rgba(245,158,11,0.08)]"
+            className="relative rounded-xl overflow-hidden border border-[#D4AF37]/35 shadow-[0_0_60px_rgba(212,175,55,0.08)] card-premium"
+            style={{ backdropFilter: 'blur(14px)' }}
             onMouseEnter={() => setFeaturedPaused(true)}
             onMouseLeave={() => setFeaturedPaused(false)}
             onFocus={() => setFeaturedPaused(true)}
@@ -796,17 +824,118 @@ function TemplateCard({
   gradientClass?: string
   iconChar?: string
 }) {
+  const { show: showToast } = useToast()
   const isFree   = template.priceCents === 0
   const isHot    = template.downloads > 1000
   const catLabel = categoryLabel(template.category)
+  const isDemoTemplate = template.id.startsWith('demo-')
+
+  // Optimistic like/fork state
+  const [liked, setLiked]       = useState(false)
+  const [likeCount, setLikeCount] = useState<number>(template.likeCount ?? 0)
+  const [forkCount, setForkCount] = useState<number>(template.forkCount ?? 0)
+  const [likePending, setLikePending] = useState(false)
+  const [forkPending, setForkPending] = useState(false)
+
+  const forkedFromOriginal = template.forkedFrom?.[0]?.originalItem ?? null
+
+  // Fetch initial like status (skip for demo rows)
+  useEffect(() => {
+    if (isDemoTemplate) return
+    let cancelled = false
+    fetch(`/api/marketplace/templates/${template.id}/like`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.liked === 'boolean') {
+          setLiked(data.liked)
+        }
+      })
+      .catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [template.id, isDemoTemplate])
+
+  const handleLike = async (e: ReactMouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (likePending) return
+    if (isDemoTemplate) {
+      showToast({ variant: 'info', title: 'Demo template', description: 'Sign in and browse real templates to like them.' })
+      return
+    }
+    setLikePending(true)
+    // Optimistic update
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikeCount((c) => c + (wasLiked ? -1 : 1))
+    try {
+      const res = await fetch(`/api/marketplace/templates/${template.id}/like`, { method: 'POST' })
+      if (!res.ok) {
+        if (res.status === 401) {
+          showToast({ variant: 'info', title: 'Sign in to like templates' })
+        } else {
+          throw new Error(`HTTP ${res.status}`)
+        }
+        // Revert
+        setLiked(wasLiked)
+        setLikeCount((c) => c + (wasLiked ? 1 : -1))
+      } else {
+        const data = await res.json() as { liked: boolean }
+        setLiked(data.liked)
+      }
+    } catch {
+      setLiked(wasLiked)
+      setLikeCount((c) => c + (wasLiked ? 1 : -1))
+      showToast({ variant: 'error', title: 'Could not update like — try again' })
+    } finally {
+      setLikePending(false)
+    }
+  }
+
+  const handleFork = async (e: ReactMouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (forkPending) return
+    if (isDemoTemplate) {
+      showToast({ variant: 'info', title: 'Demo template', description: 'Sign in and browse real templates to fork them.' })
+      return
+    }
+    setForkPending(true)
+    try {
+      const res = await fetch(`/api/marketplace/templates/${template.id}/fork`, { method: 'POST' })
+      if (!res.ok) {
+        if (res.status === 401) {
+          showToast({ variant: 'info', title: 'Sign in to fork templates' })
+        } else if (res.status === 400) {
+          const data = await res.json().catch(() => ({}))
+          showToast({ variant: 'info', title: data?.error ?? 'Cannot fork this template' })
+        } else {
+          showToast({ variant: 'error', title: 'Fork failed — try again' })
+        }
+      } else {
+        const data = await res.json() as { templateId: string; slug?: string }
+        setForkCount((c) => c + 1)
+        showToast({
+          variant: 'success',
+          title: 'Remix created',
+          description: 'A draft copy is now in your templates — open it from the submit page to publish.',
+        })
+        if (data?.templateId) {
+          // Navigate to the new fork's detail page
+          window.location.href = `/marketplace/${data.templateId}`
+        }
+      }
+    } catch {
+      showToast({ variant: 'error', title: 'Fork failed — try again' })
+    } finally {
+      setForkPending(false)
+    }
+  }
 
   return (
     <Link
       href={`/marketplace/${template.id}`}
       className="
-        group flex flex-col bg-[#0d0d14] border border-white/8 rounded-xl overflow-hidden
-        hover:border-[#D4AF37]/40 hover:shadow-[0_0_30px_rgba(212,175,55,0.12)]
-        hover:scale-[1.02] hover:-translate-y-0.5
+        group flex flex-col card-premium card-premium-hover rounded-xl overflow-hidden
         transition-all duration-200 cursor-pointer no-underline
       "
     >
@@ -832,11 +961,22 @@ function TemplateCard({
         )}
 
         {/* Badges */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap max-w-[75%]">
           {isHot && (
             <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 flex items-center gap-1">
               <TrendingUp className="w-2.5 h-2.5 text-amber-400" />
               <span className="text-amber-300 text-[10px] font-semibold">Hot</span>
+            </span>
+          )}
+          {forkedFromOriginal && (
+            <span
+              className="px-1.5 py-0.5 rounded-md bg-violet-500/20 border border-violet-500/30 flex items-center gap-1 max-w-full"
+              title={`Forked from ${forkedFromOriginal.title}`}
+            >
+              <GitFork className="w-2.5 h-2.5 text-violet-300" />
+              <span className="text-violet-200 text-[10px] font-semibold truncate">
+                Remix of {forkedFromOriginal.title}
+              </span>
             </span>
           )}
         </div>
@@ -903,6 +1043,45 @@ function TemplateCard({
           </div>
         </div>
 
+        {/* Social actions */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleLike}
+            disabled={likePending}
+            aria-label={liked ? 'Unlike template' : 'Like template'}
+            aria-pressed={liked}
+            className={`
+              flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium
+              border transition-all duration-150
+              ${liked
+                ? 'bg-rose-500/15 border-rose-500/35 text-rose-300 hover:bg-rose-500/20'
+                : 'bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/8'
+              }
+              disabled:opacity-50 disabled:cursor-not-allowed
+            `}
+          >
+            <Heart className={`w-3.5 h-3.5 ${liked ? 'fill-rose-400' : ''}`} />
+            <span className="tabular-nums">{formatCount(likeCount)}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleFork}
+            disabled={forkPending}
+            aria-label="Fork template"
+            className="
+              flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium
+              bg-white/5 border border-white/10 text-white/50
+              hover:text-violet-200 hover:bg-violet-500/10 hover:border-violet-500/30
+              transition-all duration-150
+              disabled:opacity-50 disabled:cursor-not-allowed
+            "
+          >
+            <GitFork className="w-3.5 h-3.5" />
+            <span className="tabular-nums">{formatCount(forkCount)}</span>
+          </button>
+        </div>
+
         {/* Gold CTA */}
         <div
           className="
@@ -925,7 +1104,7 @@ function TemplateCard({
 
 function SkeletonCard() {
   return (
-    <div className="flex flex-col bg-[#0d0d14] border border-white/5 rounded-xl overflow-hidden animate-pulse">
+    <div className="flex flex-col card-premium rounded-xl overflow-hidden animate-pulse">
       <div className="aspect-video bg-white/5" />
       <div className="p-4 flex flex-col gap-3">
         <div className="h-2.5 w-16 bg-white/8 rounded" />

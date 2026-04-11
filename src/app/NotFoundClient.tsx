@@ -30,14 +30,14 @@ export default function NotFoundClient() {
         className="pointer-events-none fixed inset-0 opacity-[0.025]"
         style={{
           backgroundImage:
-            'linear-gradient(#A78BFA 1px, transparent 1px), linear-gradient(90deg, #A78BFA 1px, transparent 1px)',
+            'linear-gradient(#D4AF37 1px, transparent 1px), linear-gradient(90deg, #D4AF37 1px, transparent 1px)',
           backgroundSize: '60px 60px',
         }}
       />
 
       {/* Radial glow */}
       <div className="pointer-events-none fixed inset-0 flex items-center justify-center">
-        <div className="w-[600px] h-[600px] rounded-full bg-[#A78BFA]/7 blur-[130px]" />
+        <div className="w-[600px] h-[600px] rounded-full bg-[#D4AF37]/7 blur-[130px]" />
       </div>
 
       <div className="relative max-w-lg w-full text-center">
@@ -45,7 +45,7 @@ export default function NotFoundClient() {
         <p
           className="absolute -top-14 left-1/2 -translate-x-1/2 text-[140px] font-black leading-none select-none pointer-events-none"
           style={{
-            background: 'linear-gradient(180deg, #A78BFA 0%, #8B5CF6 40%, rgba(167,139,250,0.04) 100%)',
+            background: 'linear-gradient(180deg, #D4AF37 0%, #FFD966 40%, rgba(212,175,55,0.04) 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -57,12 +57,15 @@ export default function NotFoundClient() {
 
         <div className="relative bg-white/[0.025] border border-white/[0.07] rounded-2xl p-10 shadow-2xl backdrop-blur-sm">
 
-          {/* Icon */}
+          {/* Icon — premium gold glow */}
           <div className="mx-auto mb-7 relative w-20 h-20">
-            <div className="absolute inset-0 rounded-full bg-[#A78BFA]/10 animate-ping" style={{ animationDuration: '3s' }} />
-            <div className="relative w-20 h-20 rounded-full bg-[#A78BFA]/10 border border-[#A78BFA]/25 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-[#D4AF37]/10 animate-ping" style={{ animationDuration: '3s' }} />
+            <div
+              className="relative w-20 h-20 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center"
+              style={{ boxShadow: '0 0 40px rgba(212,175,55,0.28), inset 0 0 20px rgba(212,175,55,0.08)' }}
+            >
               <svg
-                className="w-9 h-9 text-[#A78BFA]"
+                className="w-9 h-9 text-[#D4AF37]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -88,12 +91,12 @@ export default function NotFoundClient() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search for a page..."
-              className="flex-1 bg-white/[0.04] border border-white/[0.07] focus:border-[#A78BFA]/40 text-white placeholder-gray-600 text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
+              className="flex-1 bg-white/[0.04] border border-white/[0.07] focus:border-[#D4AF37]/40 text-white placeholder-gray-600 text-sm rounded-xl px-4 py-2.5 outline-none transition-colors"
             />
             <button
               type="submit"
               className="text-black font-bold px-4 py-2.5 rounded-xl transition-colors text-sm shrink-0"
-              style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
             >
               Search
             </button>
@@ -102,8 +105,8 @@ export default function NotFoundClient() {
           {/* Primary CTA */}
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-black font-bold px-8 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#A78BFA]/20 hover:shadow-[#A78BFA]/30 hover:-translate-y-0.5 mb-8"
-            style={{ background: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)' }}
+            className="inline-flex items-center gap-2 text-black font-bold px-8 py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#D4AF37]/20 hover:shadow-[#D4AF37]/30 hover:-translate-y-0.5 mb-8"
+            style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -120,7 +123,7 @@ export default function NotFoundClient() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm text-gray-500 hover:text-[#A78BFA] transition-colors"
+                  className="text-sm text-gray-500 hover:text-[#D4AF37] transition-colors"
                 >
                   {link.label}
                 </Link>

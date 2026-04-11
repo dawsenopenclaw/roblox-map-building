@@ -1,5 +1,7 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
 import { PostHogConsentWrapper } from '@/components/PostHogConsentWrapper'
@@ -7,6 +9,7 @@ import { SkipToContent } from '@/components/SkipToContent'
 import { InstallPrompt } from '@/components/InstallPrompt'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { ToastProvider } from '@/components/ui/toast-notification'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 import Script from 'next/script'
 import { Suspense } from 'react'
 import { BASE_URL, SITE_NAME, DEFAULT_DESCRIPTION, OG_IMAGE } from '@/lib/metadata'
@@ -15,6 +18,7 @@ import { GlassOrbEffect } from '@/components/GlassOrbEffect'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { CookieBanner } from '@/components/CookieBanner'
 import { GlobalShortcuts } from '@/components/GlobalShortcuts'
+import { GlobalScrollReveal } from '@/components/GlobalScrollReveal'
 import { ProfileButton } from '@/components/ProfileButton'
 
 const inter = Inter({
@@ -30,27 +34,43 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#09090b',
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: SITE_NAME,
-    template: `%s — ${SITE_NAME}`,
+    default: 'ForjeGames — Build Roblox Games with AI | #1 AI Roblox Game Builder',
+    template: `%s — ForjeGames`,
   },
   description: DEFAULT_DESCRIPTION,
   keywords: [
-    'Roblox AI',
+    'AI Roblox game builder',
+    'Roblox AI builder',
+    'build Roblox games with AI',
+    'Roblox game builder',
     'Roblox map builder',
-    'Roblox game development',
-    'AI terrain generation',
-    'Roblox Studio AI',
+    'Roblox Studio AI plugin',
+    'Roblox terrain generator',
+    'Roblox script generator',
     'voice to game',
-    'image to map',
+    'image to map Roblox',
     'Luau script generator',
     'Roblox asset generator',
+    'AI game development',
+    'Roblox Studio plugin',
+    'ForjeGames',
   ],
-  authors: [{ name: 'ForjeGames' }],
+  authors: [{ name: 'ForjeGames', url: BASE_URL }],
   creator: 'ForjeGames',
   publisher: 'ForjeGames LLC',
+  category: 'technology',
   robots: {
     index: true,
     follow: true,
@@ -67,14 +87,14 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: BASE_URL,
     siteName: SITE_NAME,
-    title: SITE_NAME,
+    title: 'ForjeGames — Build Roblox Games with AI | Voice to Game, 3D Generation',
     description: DEFAULT_DESCRIPTION,
     images: [
       {
-        url: OG_IMAGE,
+        url: `${OG_IMAGE}?type=editor`,
         width: 1200,
         height: 630,
-        alt: 'ForjeGames — AI-powered Roblox game development',
+        alt: 'ForjeGames — The #1 AI Roblox Game Builder. Build terrain, scripts, and 3D assets with AI.',
       },
     ],
   },
@@ -82,13 +102,14 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@forjegames',
     creator: '@forjegames',
-    title: SITE_NAME,
+    title: 'ForjeGames — Build Roblox Games with AI | Voice to Game, 3D Generation',
     description: DEFAULT_DESCRIPTION,
-    images: [OG_IMAGE],
+    images: [`${OG_IMAGE}?type=editor`],
   },
   verification: {
     // Add Google Search Console / Bing verification tokens here when available
     // google: 'your-token',
+    // other: { 'msvalidate.01': 'your-bing-token' },
   },
   alternates: {
     canonical: BASE_URL,
@@ -96,45 +117,56 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    title: SITE_NAME,
+    title: 'ForjeGames',
     statusBarStyle: 'black-translucent',
   },
   other: {
     'application/ld+json': JSON.stringify({
       '@context': 'https://schema.org',
-      '@type': 'SoftwareApplication',
-      name: SITE_NAME,
-      description: DEFAULT_DESCRIPTION,
+      '@type': 'Organization',
+      name: 'ForjeGames',
       url: BASE_URL,
-      applicationCategory: 'DeveloperApplication',
-      operatingSystem: 'Web',
-      offers: {
-        '@type': 'Offer',
-        price: '0',
-        priceCurrency: 'USD',
-        description: 'Free tier available. Paid plans from $9.99/month.',
+      logo: `${BASE_URL}/favicon.svg`,
+      description: DEFAULT_DESCRIPTION,
+      sameAs: [
+        'https://twitter.com/forjegames',
+        'https://discord.gg/forjegames',
+      ],
+      contactPoint: {
+        '@type': 'ContactPoint',
+        email: 'support@forjegames.com',
+        contactType: 'customer support',
       },
-      /* aggregateRating removed — no real reviews yet */
-      author: {
-        '@type': 'Organization',
-        name: 'ForjeGames LLC',
-        url: BASE_URL,
-      },
+      foundingDate: '2026',
+      knowsAbout: [
+        'Roblox game development',
+        'AI game generation',
+        'Roblox Studio plugins',
+        'procedural terrain generation',
+        'Luau scripting',
+      ],
     }),
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Resolve the active locale + messages from the next-intl request config
+  // (src/i18n/request.ts). On un-prefixed routes this is the default locale;
+  // on `/es`, `/fr`, … the locale layout takes over before this provider is
+  // reached. Wrapping at the root ensures `useTranslations()` works in every
+  // component tree without each route group needing its own provider.
+  const locale = await getLocale()
+  const messages = await getMessages()
+
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#09090b" />
-        <link rel="manifest" href="/manifest.json" />
+        {/* viewport + theme-color are emitted automatically via the Next.js
+            `viewport` export above; no need to duplicate them here. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="icon" type="image/svg+xml" sizes="32x32" href="/favicon.svg" />
@@ -159,8 +191,8 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          afterSignInUrl="/editor"
-          afterSignUpUrl="/welcome"
+          signInFallbackRedirectUrl="/editor"
+          signUpFallbackRedirectUrl="/welcome"
           afterSignOutUrl="/sign-in"
           appearance={{
             variables: {
@@ -187,26 +219,30 @@ export default function RootLayout({
             boundaries from rendering any intermediate loading state that
             could produce a white flash or unstyled content.
           */}
-          <SplashScreen>
-            <Suspense fallback={null}>
-              <GlassOrbEffect />
-              <SkipToContent />
-              <OfflineIndicator />
-              <GlobalShortcuts />
-              <ThemeProvider>
-                <ProfileButton />
-                <ToastProvider>
-                  <PostHogConsentWrapper>
-                    <main id="main-content">
-                      {children}
-                    </main>
-                  </PostHogConsentWrapper>
-                </ToastProvider>
-                <InstallPrompt />
-                <CookieBanner />
-              </ThemeProvider>
-            </Suspense>
-          </SplashScreen>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <SplashScreen>
+              <Suspense fallback={null}>
+                <GlassOrbEffect />
+                <GlobalScrollReveal />
+                <SkipToContent />
+                <OfflineIndicator />
+                <GlobalShortcuts />
+                <ThemeProvider>
+                  <ProfileButton />
+                  <ToastProvider>
+                    <PostHogConsentWrapper>
+                      <main id="main-content">
+                        {children}
+                      </main>
+                    </PostHogConsentWrapper>
+                  </ToastProvider>
+                  <InstallPrompt />
+                  <CookieBanner />
+                  <ToastContainer />
+                </ThemeProvider>
+              </Suspense>
+            </SplashScreen>
+          </NextIntlClientProvider>
         </ClerkProvider>
         <Script
           id="register-sw"

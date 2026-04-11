@@ -31,7 +31,7 @@ import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { meshGenerateSchema, parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
-import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { aiMeshRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import {
   downloadAndUpload,
   downloadAndUploadTexture,
@@ -942,9 +942,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const tierDenied = await requireTier(userId, 'FREE')
     if (tierDenied) return tierDenied
 
-    // Rate limit: 20 AI requests per minute per user
+    // Rate limit: 3 mesh requests per minute per user (expensive generation)
     try {
-      const rl = await aiRateLimit(userId)
+      const rl = await aiMeshRateLimit(userId)
       if (!rl.allowed) {
         return NextResponse.json(
           { error: 'Too many requests. Please wait before generating another mesh.' },
@@ -1175,8 +1175,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       rbxTextureIds: rbxTextureIds ?? null,
     })
   } catch (err) {
+    // BUG 9: Log the full error loudly and surface the real message to the
+    // client so the user can see WHY mesh generation failed (missing API key,
+    // quota exhausted, prompt rejected, etc.) instead of a generic 502.
     const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[mesh POST] Generation failed:', message)
-    return NextResponse.json({ error: 'Mesh generation failed' }, { status: 502 })
+    const stack = err instanceof Error ? err.stack : undefined
+    console.error('[mesh POST] Generation failed:', message, stack)
+    return NextResponse.json(
+      {
+        error: 'Mesh generation failed',
+        detail: message,
+        hint: message.toLowerCase().includes('api key') || message.toLowerCase().includes('unauthorized')
+          ? 'Check MESHY_API_KEY / FAL_KEY in your environment.'
+          : message.toLowerCase().includes('quota') || message.toLowerCase().includes('rate')
+          ? 'Meshy / Fal quota or rate limit hit. Try again in a few minutes.'
+          : undefined,
+      },
+      { status: 502 },
+    )
   }
 }

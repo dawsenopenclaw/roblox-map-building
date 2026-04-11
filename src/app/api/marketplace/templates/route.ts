@@ -293,7 +293,11 @@ export async function GET(req: NextRequest) {
         ? { priceCents: 'asc' }
         : sort === 'price-desc'
         ? { priceCents: 'desc' }
-        : { downloads: 'desc' } // trending
+        : sort === 'most-liked'
+        ? { likeCount: 'desc' }
+        : sort === 'most-forked'
+        ? { forkCount: 'desc' }
+        : { trending: 'desc' } // trending (uses calculated score column)
 
     const [templates, total] = await Promise.all([
       db.template.findMany({
@@ -314,22 +318,54 @@ export async function GET(req: NextRequest) {
           downloads: true,
           tags: true,
           createdAt: true,
+          likeCount: true,
+          forkCount: true,
+          viewCount: true,
           screenshots: {
             orderBy: { sortOrder: 'asc' },
             take: 1,
             select: { id: true, url: true, altText: true },
           },
           creator: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+          forkedFrom: {
+            take: 1,
+            select: {
+              originalItem: {
+                select: { id: true, title: true, slug: true },
+              },
+            },
+          },
           _count: { select: { reviews: true } },
         },
       }),
       db.template.count({ where }),
     ])
 
-    return NextResponse.json({
-      templates,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    })
+    // PERF: Cache the "cold" default browse (no search, no custom filters,
+    // first page) at the edge for 60s. This is by far the most-hit variant
+    // — the marketplace landing page, trending previews, etc. Filtered or
+    // paginated queries stay uncached because their result set is
+    // user-specific enough that the cache hit rate would be low.
+    const isCacheable =
+      !search.trim() &&
+      !category &&
+      minPrice === 0 &&
+      maxPrice === 999999 &&
+      minRating === 0 &&
+      page === 1
+    const headers: Record<string, string> = {}
+    if (isCacheable) {
+      headers['Cache-Control'] =
+        'public, s-maxage=60, stale-while-revalidate=120'
+    }
+
+    return NextResponse.json(
+      {
+        templates,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      },
+      { headers },
+    )
   } catch (err) {
     // Return demo data so the page renders instead of crashing
     let filtered = DEMO_TEMPLATES.filter((t) => {

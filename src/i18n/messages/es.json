@@ -1,0 +1,40 @@
+{
+  "nav": {
+    "features": "Funciones",
+    "showcase": "Galería",
+    "pricing": "Precios",
+    "download": "Descargar",
+    "openEditor": "Abrir editor"
+  },
+  "hero": {
+    "title": "Descríbelo. Fórjalo.",
+    "subtitle": "La IA que convierte palabras en juegos de Roblox completos y jugables. Sin programar. Sin buscar assets. Solo imaginación.",
+    "ctaPrimary": "Empieza gratis",
+    "ctaSecondary": "Ver demo"
+  },
+  "editor": {
+    "placeholder": "Describe lo que quieres construir...",
+    "send": "Enviar",
+    "newChat": "Nuevo chat",
+    "connectStudio": "Conectar Studio"
+  },
+  "modes": {
+    "build": "Construir",
+    "think": "Pensar",
+    "plan": "Planificar",
+    "image": "Imagen",
+    "script": "Script",
+    "terrain": "Terreno",
+    "mesh": "Modelo 3D",
+    "debug": "Depurar",
+    "idea": "Ideas"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "confirm": "Confirmar"
+  }
+}

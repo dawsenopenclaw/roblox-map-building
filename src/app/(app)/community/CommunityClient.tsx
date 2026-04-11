@@ -29,15 +29,31 @@ const FEATURES = [
 
 export default function CommunityClient() {
   const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!email || status !== 'idle') return
+    if (!email || status === 'loading' || status === 'done') return
     setStatus('loading')
-    setTimeout(() => {
+    setErrorMsg('')
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json() as { success?: boolean; message?: string }
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.message ?? 'Something went wrong. Please try again.')
+        setStatus('error')
+        return
+      }
       setStatus('done')
-    }, 400)
+    } catch {
+      setErrorMsg('Network error — please try again.')
+      setStatus('error')
+    }
   }
 
   return (
@@ -103,11 +119,13 @@ export default function CommunityClient() {
           return (
             <div
               key={feat.title}
-              className="group rounded-2xl p-5 transition-all duration-200 hover:scale-[1.02]"
+              className="group rounded-xl p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#D4AF37]/35"
               style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.06)',
-                backdropFilter: 'blur(8px)',
+                background: 'rgba(10, 14, 32, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
               }}
             >
               <div
@@ -128,11 +146,13 @@ export default function CommunityClient() {
 
       {/* Email signup */}
       <div
-        className="rounded-2xl p-6 sm:p-8 text-center"
+        className="rounded-xl p-6 sm:p-8 text-center"
         style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(10, 14, 32, 0.6)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
         }}
       >
         <div
@@ -151,28 +171,33 @@ export default function CommunityClient() {
             You&apos;re on the list. We&apos;ll reach out soon.
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-sm mx-auto">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="flex-1 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-[#D4AF37]/40 transition-all"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={status === 'loading'}
-              className="shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-[#050810] transition-all hover:scale-[1.03] active:scale-100 disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #F5D878 50%, #B8962E 100%)' }}
-            >
-              {status === 'loading' ? 'Sending…' : 'Notify Me'}
-            </button>
-          </form>
+          <div className="max-w-sm mx-auto">
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (status === 'error') setStatus('idle') }}
+                placeholder="your@email.com"
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-[#D4AF37]/40 transition-all"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${status === 'error' ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                }}
+              />
+              <button
+                type="submit"
+                disabled={status === 'loading'}
+                className="shrink-0 rounded-[10px] px-5 py-2.5 text-sm font-bold text-white transition-all hover:brightness-110 active:scale-[0.97] disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)' }}
+              >
+                {status === 'loading' ? 'Sending…' : 'Notify Me'}
+              </button>
+            </form>
+            {status === 'error' && errorMsg && (
+              <p className="mt-2 text-red-400 text-xs text-left">{errorMsg}</p>
+            )}
+          </div>
         )}
       </div>
     </div>

@@ -1,12 +1,46 @@
 'use client'
 
-import React, { useRef, useEffect, useState, useCallback } from 'react'
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { GlassPanel } from './GlassPanel'
 import type { ChatMessage, MeshResult, ModelId, ModelOption } from '@/app/(app)/editor/hooks/useChat'
 import { MODELS } from '@/app/(app)/editor/hooks/useChat'
 import { McpToolCard, type McpToolResult } from './McpToolCard'
 import { McpToolbar } from './McpToolbar'
 import { ModelPreview } from './ModelPreview'
+import { VoiceInputButton } from './VoiceInputButton'
+import { CheckpointPanel } from './CheckpointPanel'
+import { CheckpointTimeline } from './CheckpointTimeline'
+import { computeLineDiff, hasDiff } from '@/lib/simple-diff'
+import {
+  AIModeSelector,
+  ThinkingIndicator,
+  PlanDisplay,
+  CreativitySlider,
+  StyleReferenceUpload,
+  ImageStylePresetSelector,
+  getModeConfig,
+  type AIMode,
+  type AIModeConfig,
+} from './AIModeSelector'
+import { PlaytestToggle } from './PlaytestToggle'
+import { EnhanceToggle } from './EnhanceToggle'
+import { PlaytestIndicator } from './PlaytestIndicator'
+import { ManualBuildPanel } from './ManualBuildPanel'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+
+// ─── Empty-state rotating headline (matches marketing site) ───────────────────
+// Cycled by EmptyState every 2.4s. Intentionally a different word set than the
+// marketing hero so editor users see a curated, action-oriented vocabulary.
+
+const EDITOR_ROTATING_WORDS = [
+  'Game',
+  'Map',
+  'World',
+  'Obby',
+  'Tycoon',
+  'Sim',
+  'Quest',
+] as const
 
 // ─── Showcase example prompts (empty state) ───────────────────────────────────
 
@@ -622,9 +656,14 @@ function SignupPromptCard() {
   )
 }
 
-function MessageBubble({
+// PERF: MessageBubble is wrapped in React.memo at the bottom of its definition.
+// Before the memo, typing in the ChatPanel textarea (setInput) caused EVERY
+// bubble to re-render on every keystroke. Memoization keeps stable bubbles
+// untouched and lets React reconcile only the newly-streaming one.
+function MessageBubbleImpl({
   msg,
   userPrompt,
+  previousCode,
   onRetry,
   onBuildDifferently,
   onDismiss,
@@ -634,6 +673,7 @@ function MessageBubble({
 }: {
   msg: ChatMessage
   userPrompt?: string
+  previousCode?: string
   onRetry?: () => void
   onBuildDifferently?: () => void
   onDismiss?: (id: string) => void
@@ -1055,7 +1095,7 @@ function MessageBubble({
                   borderRadius: '14px 14px 4px 14px',
                   background: 'rgba(10,10,26,0.85)',
                   border: '1.5px solid #D4AF37',
-                  color: 'white',
+                  color: 'var(--text-primary, rgba(255,255,255,0.9))',
                   fontSize: 14,
                   fontFamily: 'Inter, sans-serif',
                   lineHeight: 1.5,
@@ -1124,7 +1164,7 @@ function MessageBubble({
                 WebkitBackdropFilter: 'blur(12px)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 14, color: 'white', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary, rgba(255,255,255,0.9))', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                 {displayContent}
               </p>
             </div>
@@ -1226,9 +1266,18 @@ function MessageBubble({
         {!msg.streaming && msg.meshResult && (
           <MeshResultCard mesh={msg.meshResult} onSendToStudio={onSendToStudio} />
         )}
+        {/*
+          Manual build fallback: when Studio isn't connected and the AI
+          generated code, show the copy/paste + .rbxmx download safety net.
+          This is the non-negotiable path that ensures every user can use
+          ForjeGames regardless of plugin status.
+        */}
+        {!msg.streaming && !studioConnected && msg.luauCode && msg.role === 'assistant' && (
+          <ManualBuildPanel luauCode={msg.luauCode} prompt={userPrompt} />
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           {msg.hasCode && (
-            <CodePreviewBadge luauCode={msg.luauCode} />
+            <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} />
           )}
           {msg.hasCode && !msg.streaming && (
             <ShareBuildButton prompt={userPrompt} />
@@ -1295,6 +1344,11 @@ function MessageBubble({
     </div>
   )
 }
+
+// Memoized wrapper: re-renders only when msg identity/content or the
+// callback refs change. The parent passes stable callbacks from useChat
+// (all wrapped in useCallback) so this delivers a real win.
+const MessageBubble = React.memo(MessageBubbleImpl)
 
 // ─── Mesh Result Card ────────────────────────────────────────────────────────
 
@@ -1617,9 +1671,13 @@ function ShareBuildButton({ prompt }: { prompt?: string }) {
 
 // ─── Code Preview Badge ──────────────────────────────────────────────────────
 
-function CodePreviewBadge({ luauCode }: { luauCode?: string }) {
+function CodePreviewBadge({ luauCode, previousCode }: { luauCode?: string; previousCode?: string }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showDiff, setShowDiff] = useState(false)
+
+  const diffLines = previousCode && luauCode ? computeLineDiff(previousCode, luauCode) : null
+  const diffAvailable = diffLines !== null && hasDiff(diffLines)
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -1677,9 +1735,35 @@ function CodePreviewBadge({ luauCode }: { luauCode?: string }) {
               borderBottom: '1px solid rgba(255,255,255,0.04)',
             }}
           >
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono', monospace" }}>
-              Luau
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono', monospace" }}>
+                Luau
+              </span>
+              {diffAvailable && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowDiff((v) => !v) }}
+                  style={{
+                    fontSize: 10,
+                    padding: '1px 6px',
+                    borderRadius: 4,
+                    border: showDiff
+                      ? '1px solid rgba(212,175,55,0.4)'
+                      : '1px solid rgba(255,255,255,0.1)',
+                    background: showDiff
+                      ? 'rgba(212,175,55,0.12)'
+                      : 'rgba(255,255,255,0.04)',
+                    color: showDiff
+                      ? 'rgba(212,175,55,0.9)'
+                      : 'rgba(255,255,255,0.35)',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {showDiff ? 'Show code' : 'Show changes'}
+                </button>
+              )}
+            </div>
             <button
               onClick={handleCopy}
               style={{
@@ -1695,27 +1779,83 @@ function CodePreviewBadge({ luauCode }: { luauCode?: string }) {
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          {/* Code */}
-          <pre
-            style={{
-              margin: 0,
-              padding: '8px 10px',
-              fontSize: 11,
-              lineHeight: 1.5,
-              color: 'rgba(255,255,255,0.6)',
-              fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-              overflowX: 'auto',
-              maxHeight: 200,
-              overflowY: 'auto',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'rgba(255,255,255,0.06) transparent',
-            }}
-          >
-            {luauCode.slice(0, 2000)}
-            {luauCode.length > 2000 && '\n... (truncated)'}
-          </pre>
+          {/* Diff view */}
+          {showDiff && diffLines && (
+            <pre
+              style={{
+                margin: 0,
+                padding: '8px 0',
+                fontSize: 11,
+                lineHeight: 1.5,
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                overflowX: 'auto',
+                maxHeight: 200,
+                overflowY: 'auto',
+                whiteSpace: 'pre',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255,255,255,0.06) transparent',
+              }}
+            >
+              {diffLines.map((line, i) => {
+                const bg =
+                  line.type === 'added'
+                    ? 'rgba(74,222,128,0.08)'
+                    : line.type === 'removed'
+                      ? 'rgba(239,68,68,0.08)'
+                      : 'transparent'
+                const color =
+                  line.type === 'added'
+                    ? 'rgba(74,222,128,0.85)'
+                    : line.type === 'removed'
+                      ? 'rgba(248,113,113,0.85)'
+                      : 'rgba(255,255,255,0.35)'
+                const prefix =
+                  line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'block',
+                      padding: '0 10px',
+                      background: bg,
+                      color,
+                      borderLeft: line.type === 'added'
+                        ? '2px solid rgba(74,222,128,0.4)'
+                        : line.type === 'removed'
+                          ? '2px solid rgba(239,68,68,0.4)'
+                          : '2px solid transparent',
+                    }}
+                  >
+                    <span style={{ opacity: 0.5, userSelect: 'none', marginRight: 8 }}>{prefix}</span>
+                    {line.content}
+                  </div>
+                )
+              })}
+            </pre>
+          )}
+          {/* Code (normal view) */}
+          {!showDiff && (
+            <pre
+              style={{
+                margin: 0,
+                padding: '8px 10px',
+                fontSize: 11,
+                lineHeight: 1.5,
+                color: 'rgba(255,255,255,0.6)',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                overflowX: 'auto',
+                maxHeight: 200,
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'rgba(255,255,255,0.06) transparent',
+              }}
+            >
+              {luauCode.slice(0, 2000)}
+              {luauCode.length > 2000 && '\n... (truncated)'}
+            </pre>
+          )}
         </div>
       )}
       <style>{`
@@ -1855,6 +1995,17 @@ function ShowcaseCard({
 // ─── Empty state / showcase ────────────────────────────────────────────────────
 
 function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void }) {
+  // Cycle the rotating word in the heading every 2.4s — matches the marketing
+  // site's hero. We re-key the rotating span on every change so the CSS
+  // @keyframe `forge-word-roll-in` (defined in globals.css) re-fires.
+  const [rotIndex, setRotIndex] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setRotIndex(i => (i + 1) % EDITOR_ROTATING_WORDS.length), 2400)
+    return () => clearInterval(t)
+  }, [])
+  const currentWord = EDITOR_ROTATING_WORDS[rotIndex]
+  const longestWord = EDITOR_ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
+
   return (
     <div
       style={{
@@ -1863,17 +2014,105 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-end',
-        gap: 20,
+        gap: 24,
         padding: '0 20px 28px',
+        animation: 'msgFadeUp 0.4s ease-out forwards',
       }}
     >
-      {/* Heading */}
+      {/* Animated forge icon */}
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle at 30% 30%, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.06) 60%, transparent 100%)',
+          border: '1px solid rgba(212,175,55,0.25)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 0 32px rgba(212,175,55,0.18), inset 0 0 16px rgba(212,175,55,0.06)',
+          marginBottom: -4,
+        }}
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2v3M12 19v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </div>
+
+      {/* Heading — matches marketing site rotating "Forge your X" pattern */}
       <div style={{ textAlign: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#fafafa', letterSpacing: '-0.02em' }}>
-          What do you want to build?
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 30,
+            fontWeight: 700,
+            color: '#fafafa',
+            letterSpacing: '-0.02em',
+            display: 'inline-flex',
+            alignItems: 'baseline',
+            gap: '0.3em',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            // 3D context for the rotating word's wheel transform
+            perspective: '600px',
+            perspectiveOrigin: '50% 50%',
+          }}
+        >
+          <span>Forge your</span>
+          <span
+            aria-live="polite"
+            style={{
+              position: 'relative',
+              display: 'inline-block',
+              minWidth: `${longestWord.length}ch`,
+              height: '1.15em',
+              verticalAlign: 'baseline',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            <span aria-hidden="true" style={{ visibility: 'hidden', display: 'inline-block' }}>
+              {longestWord}
+            </span>
+            <span
+              key={`leaving-${rotIndex}`}
+              aria-hidden="true"
+              className="forge-word forge-word-leaving"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                transformOrigin: '50% 50% -0.55em',
+                backfaceVisibility: 'hidden',
+                willChange: 'transform, opacity',
+              }}
+            >
+              {EDITOR_ROTATING_WORDS[(rotIndex - 1 + EDITOR_ROTATING_WORDS.length) % EDITOR_ROTATING_WORDS.length]}
+            </span>
+            <span
+              key={`active-${rotIndex}`}
+              className="forge-word forge-word-entering"
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: '100%',
+                textAlign: 'center',
+                whiteSpace: 'nowrap',
+                transformOrigin: '50% 50% -0.55em',
+                backfaceVisibility: 'hidden',
+                willChange: 'transform, opacity',
+              }}
+            >
+              {currentWord}
+            </span>
+          </span>
         </h2>
-        <p style={{ margin: '8px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
-          Describe anything — terrain, buildings, cities, props
+        <p style={{ margin: '10px 0 0', fontSize: 14, color: 'rgba(255,255,255,0.45)' }}>
+          Describe anything — or pick a starting point below
         </p>
       </div>
 
@@ -2374,6 +2613,58 @@ interface ChatPanelProps {
   onSendToStudio?: (luauCode: string) => void
   /** Whether Roblox Studio is currently connected — enables "Run in Studio" on code blocks */
   studioConnected?: boolean
+  /** Epoch-ms timestamp from useChat.savedAt — bumped each time messages are persisted. Drives the "Saved" flash. */
+  savedAt?: number
+  /** Currently attached image file (for Image-to-Map / vision) */
+  imageFile?: File | null
+  /** Called when user attaches or removes an image */
+  onImageFile?: (file: File | null) => void
+  /** Active AI mode (build, think, plan, image, script, etc.) */
+  aiMode?: AIMode
+  /** Called when user switches AI mode */
+  onAIModeChange?: (mode: AIMode) => void
+  /** Text from AI reasoning/thinking step — shown during Think/Debug modes */
+  thinkingText?: string
+  /** Whether AI is currently in the thinking/reasoning phase */
+  isThinking?: boolean
+  /** Plan text returned by Plan mode — shown for user approval before building */
+  planText?: string | null
+  /** Called when user approves the plan */
+  onApprovePlan?: () => void
+  /** Called when user wants to edit the plan */
+  onEditPlan?: () => void
+  /** Called when user cancels the plan */
+  onCancelPlan?: () => void
+  /** Auto-playtest state */
+  autoPlaytestEnabled?: boolean
+  onAutoPlaytestToggle?: (enabled: boolean) => void
+  playtestState?: { running: boolean; currentStep: string; iteration: number; result: 'idle' | 'running' | 'passed' | 'failed'; steps: Array<{ action: string; details: string; timestamp: number }> }
+  onCancelPlaytest?: () => void
+  /** Auto-enhance toggle */
+  autoEnhanceEnabled?: boolean
+  onAutoEnhanceToggle?: (enabled: boolean) => void
+  /** Current session ID for checkpoints */
+  sessionId?: string
+  /** Called when user restores to a checkpoint — truncates messages to this index */
+  onRestoreCheckpoint?: (messageIndex: number) => void
+  /** Checkpoint data and handlers */
+  checkpoints?: import('@/lib/checkpoints').Checkpoint[]
+  onSaveCheckpoint?: (label?: string) => void
+  onRestoreToCheckpoint?: (checkpointId: string) => void
+  onDeleteCheckpoint?: (checkpointId: string) => void
+  /**
+   * Image mode options (BUG 9). When present, these drive the style preset
+   * selector and background-removal / upscale toggles shown under the mode
+   * pill when `aiMode === 'image'`. Plumbed through from useChat.
+   */
+  imageOptions?: { style: string; removeBackground: boolean; upscale: boolean }
+  onImageOptionsChange?: (opts: { style: string; removeBackground: boolean; upscale: boolean }) => void
+  /**
+   * BUG 2: Build direction — lets the user choose whether the next prompt
+   * continues the current build, pivots direction, or starts fresh.
+   */
+  buildDirection?: 'continue' | 'pivot' | 'start-over'
+  onBuildDirectionChange?: (dir: 'continue' | 'pivot' | 'start-over') => void
 }
 
 export function ChatPanel({
@@ -2396,11 +2687,60 @@ export function ChatPanel({
   onEditAndResend,
   onSendToStudio,
   studioConnected = false,
+  savedAt = 0,
+  imageFile = null,
+  onImageFile,
+  aiMode = 'build',
+  onAIModeChange,
+  thinkingText,
+  isThinking = false,
+  planText = null,
+  onApprovePlan,
+  onEditPlan,
+  autoPlaytestEnabled = false,
+  onAutoPlaytestToggle,
+  playtestState,
+  onCancelPlaytest,
+  autoEnhanceEnabled = true,
+  onAutoEnhanceToggle,
+  onCancelPlan,
+  sessionId,
+  onRestoreCheckpoint,
+  checkpoints = [],
+  onSaveCheckpoint,
+  onRestoreToCheckpoint,
+  onDeleteCheckpoint,
+  imageOptions,
+  onImageOptionsChange,
+  buildDirection = 'continue',
+  onBuildDirectionChange,
 }: ChatPanelProps) {
+  const isMobile = useIsMobile()
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // On mobile the textarea is allowed to grow up to 40% of viewport height;
+  // on desktop it caps at 120px. `textareaMaxHeight` is read in both the
+  // initial style and the onInput auto-grow handler.
+  const [textareaMaxHeight, setTextareaMaxHeight] = useState<number>(120)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const compute = () => {
+      setTextareaMaxHeight(isMobile ? Math.round(window.innerHeight * 0.4) : 120)
+    }
+    compute()
+    window.addEventListener('resize', compute)
+    return () => window.removeEventListener('resize', compute)
+  }, [isMobile])
+  // AI Mode config for current mode
+  const modeConfig = getModeConfig(aiMode)
+  // Creativity slider for Idea mode
+  const [creativity, setCreativity] = useState(50)
+  // Style references for Image mode
+  const [styleRefs, setStyleRefs] = useState<File[]>([])
+  // Style preset for Image mode (12 presets)
+  const [stylePreset, setStylePreset] = useState<string | null>(null)
   // Model selector visibility — hidden behind gear by default, shown after first message
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   // Extra input controls (image + voice) — hidden until user has messages or expands
@@ -2410,21 +2750,50 @@ export function ChatPanel({
   const [unreadCount, setUnreadCount] = useState(0)
   const [isPulsing, setIsPulsing] = useState(false)
   const isScrolledUpRef = useRef(false)
+  // "Saved" flash indicator — visible briefly after each persistence write
+  const [showSaved, setShowSaved] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleVoiceResult = useCallback((text: string) => {
-    setInput(input ? `${input} ${text}` : text)
-  }, [setInput, input])
+  useEffect(() => {
+    if (savedAt === 0) return
+    setShowSaved(true)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setShowSaved(false), 1200)
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
+  }, [savedAt])
 
-  const { listening, supported: speechSupported, toggle: toggleSpeech } = useSpeech(handleVoiceResult)
+  // Voice: auto-submit transcript directly as a message (same UX as VoiceInputButton)
+  const handleVoiceSubmit = useCallback((text: string) => {
+    if (text.trim()) onSend(text.trim())
+  }, [onSend])
 
-  // Track scroll position to show/hide scroll-to-bottom button
+  // Image preview URL for the attached file
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  useEffect(() => {
+    if (!imageFile) { setImagePreviewUrl(null); return }
+    const url = URL.createObjectURL(imageFile)
+    setImagePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [imageFile])
+
+  // BUG 8: track both a "scrolled up" state (for the FAB visibility) and an
+  // "is near bottom" state (for auto-scroll decisions). Near-bottom threshold
+  // is tighter (~100px) so we only snap the user down when they're already at
+  // the tail of the conversation. If they've deliberately scrolled up to read
+  // history we leave them alone — previously ANY message update (including
+  // mid-stream content appends) would scrollIntoView() and fight the user.
+  const isNearBottomRef = useRef(true)
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
     const scrolledUp = distFromBottom > 200
+    const nearBottom = distFromBottom < 100
     setShowScrollBtn(scrolledUp)
     isScrolledUpRef.current = scrolledUp
+    isNearBottomRef.current = nearBottom
     // Reset unread count when user scrolls back to bottom
     if (!scrolledUp) setUnreadCount(0)
   }, [])
@@ -2451,20 +2820,79 @@ export function ChatPanel({
     requestAnimationFrame(step)
   }, [])
 
-  // Scroll to bottom on new message — or increment unread count if scrolled up
+  // BUG 8: only auto-scroll when a NEW message is appended (message count
+  // changes) AND the user is near the bottom. Mid-stream content edits (which
+  // mutate the last assistant message in place) must NOT yank the user back
+  // to the bottom if they've scrolled up to read history.
+  const prevMessageCountRef = useRef(messages.length)
   useEffect(() => {
-    if (isScrolledUpRef.current) {
-      // New message arrived while scrolled up — show badge + pulse
-      const lastMsg = messages[messages.length - 1]
-      if (lastMsg && lastMsg.role === 'assistant') {
-        setUnreadCount((n) => n + 1)
-        setIsPulsing(true)
-        setTimeout(() => setIsPulsing(false), 900)
-      }
-    } else {
+    const prevCount = prevMessageCountRef.current
+    const nextCount = messages.length
+    prevMessageCountRef.current = nextCount
+
+    // Only react to NEW messages, not in-place content edits
+    if (nextCount <= prevCount) return
+
+    if (isNearBottomRef.current) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      return
+    }
+
+    // User is scrolled up — show badge + pulse instead of yanking them back
+    const lastMsg = messages[messages.length - 1]
+    if (lastMsg && lastMsg.role === 'assistant') {
+      setUnreadCount((n) => n + 1)
+      setIsPulsing(true)
+      setTimeout(() => setIsPulsing(false), 900)
     }
   }, [messages])
+
+  // PERF: Build MessageBubble elements in a single forward pass so we can O(1)
+  // look up each message's nearest preceding user message and the most recent
+  // prior assistant luau code. This replaces an O(n²) per-render scan that
+  // allocated fresh arrays for every message on every keystroke (setInput
+  // triggers a full ChatPanel render).
+  //
+  // Only depends on `messages` + the stable callbacks — so typing in the
+  // textarea no longer forces the entire bubble list to be recomputed.
+  const renderedMessages = useMemo(() => {
+    let lastUserContent: string | undefined = undefined
+    let lastAssistantLuau: string | undefined = undefined
+    const out: React.ReactNode[] = []
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
+      const precedingUser = lastUserContent
+      const precedingCode =
+        msg.role === 'assistant' && msg.hasCode ? lastAssistantLuau : undefined
+      out.push(
+        <MessageBubble
+          key={msg.id}
+          msg={msg}
+          userPrompt={precedingUser}
+          previousCode={precedingCode}
+          onRetry={onRetry}
+          onBuildDifferently={onBuildDifferently}
+          onDismiss={onDismiss}
+          onEditAndResend={onEditAndResend}
+          onSendToStudio={onSendToStudio}
+          studioConnected={studioConnected}
+        />,
+      )
+      // Advance trailing state AFTER rendering so the current message sees
+      // strictly-prior history (matches original semantics of slice(0, idx)).
+      if (msg.role === 'user') lastUserContent = msg.content
+      if (msg.role === 'assistant' && msg.luauCode) lastAssistantLuau = msg.luauCode
+    }
+    return out
+  }, [
+    messages,
+    onRetry,
+    onBuildDifferently,
+    onDismiss,
+    onEditAndResend,
+    onSendToStudio,
+    studioConnected,
+  ])
 
   // Once messages appear, keep extras accessible
   const hasMessages = messages.length > 0
@@ -2473,6 +2901,31 @@ export function ChatPanel({
   }, [hasMessages])
 
   const [sendPressed, setSendPressed] = useState(false)
+
+  // Clipboard image paste — Ctrl+V with an image on clipboard
+  const [pastedImagePreview, setPastedImagePreview] = useState<string | null>(null)
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault()
+        const file = item.getAsFile()
+        if (file && onImageFile) {
+          onImageFile(file)
+          // Show a brief preview flash
+          const url = URL.createObjectURL(file)
+          setPastedImagePreview(url)
+          setTimeout(() => {
+            setPastedImagePreview(null)
+            URL.revokeObjectURL(url)
+          }, 3000)
+        }
+        return
+      }
+    }
+  }, [onImageFile])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const mod = e.ctrlKey || e.metaKey
@@ -2513,6 +2966,7 @@ export function ChatPanel({
         onScroll={handleScroll}
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: 'auto',
           padding: compact ? '0' : hasMessages ? '20px 16px' : '0',
           display: compact ? 'none' : 'flex',
@@ -2527,23 +2981,12 @@ export function ChatPanel({
         {!hasMessages ? (
           <EmptyState onQuickAction={(prompt) => onSend(prompt)} />
         ) : (
-          messages.map((msg, idx) => {
-            // Find the nearest preceding user message to use as the share prompt
-            const precedingUser = [...messages.slice(0, idx)].reverse().find((m) => m.role === 'user')
-            return (
-              <MessageBubble
-                key={msg.id}
-                msg={msg}
-                userPrompt={precedingUser?.content}
-                onRetry={onRetry}
-                onBuildDifferently={onBuildDifferently}
-                onDismiss={onDismiss}
-                onEditAndResend={onEditAndResend}
-                onSendToStudio={onSendToStudio}
-                studioConnected={studioConnected}
-              />
-            )
-          })
+          // PERF: Single forward pass computes both "nearest preceding user message"
+          // and "previous assistant luau code" for every message. Previous impl did
+          // `[...messages.slice(0, idx)].reverse().find(...)` TWICE per message which
+          // is O(n²) and was allocating/copying arrays for every message on every
+          // re-render (e.g. every keystroke in the textarea).
+          renderedMessages
         )}
 
         {/* MCP tool result card — appears after messages when a tool completes/fails */}
@@ -2559,6 +3002,29 @@ export function ChatPanel({
             <McpToolIndicator toolName={activeMcpTool} />
           </div>
         )}
+        {/* Thinking/Reasoning indicator — shown during Think/Debug modes */}
+        {isThinking && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+            <div style={{ maxWidth: 460, width: '100%' }}>
+              <ThinkingIndicator mode={aiMode} thinkingText={thinkingText} />
+            </div>
+          </div>
+        )}
+
+        {/* Plan display — shown when Plan mode returns a plan for review */}
+        {planText && onApprovePlan && onEditPlan && onCancelPlan && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 38 }}>
+            <div style={{ maxWidth: 520, width: '100%' }}>
+              <PlanDisplay
+                planText={planText}
+                onApprove={onApprovePlan}
+                onEdit={onEditPlan}
+                onCancel={onCancelPlan}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Suggestion chips — clickable next actions */}
         {suggestions.length > 0 && !loading && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4 }}>
@@ -2667,12 +3133,35 @@ export function ChatPanel({
         </button>
       )}
 
+      {/* Checkpoint panel — save/restore conversation state */}
+      {sessionId && onSaveCheckpoint && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && (
+        <CheckpointPanel
+          checkpoints={checkpoints}
+          messageCount={messages.length}
+          onSave={onSaveCheckpoint}
+          onRestore={onRestoreToCheckpoint}
+          onDelete={onDeleteCheckpoint}
+          loading={loading}
+        />
+      )}
+
+      {/* Checkpoint timeline — visual dot timeline */}
+      {checkpoints.length > 0 && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && (
+        <CheckpointTimeline
+          checkpoints={checkpoints}
+          currentMessageCount={messages.length}
+          onRestore={onRestoreToCheckpoint}
+          onDelete={onDeleteCheckpoint}
+          loading={loading}
+        />
+      )}
+
       {/* Input bar */}
       <div
         style={{
           flexShrink: 0,
           borderTop: '1px solid rgba(255,255,255,0.05)',
-          padding: '12px 14px',
+          padding: '12px 16px',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -2698,27 +3187,228 @@ export function ChatPanel({
         {/* Tip of the day — dismissable, shown for first 10 sessions */}
         <TipOfTheDay />
 
+        {/* AI Mode Selector — ChatGPT-style mode pills */}
+        {onAIModeChange && (
+          <AIModeSelector
+            activeMode={aiMode}
+            onModeChange={onAIModeChange}
+            compact={compact}
+          />
+        )}
+
+        {/* Mode-specific controls */}
+        {aiMode === 'idea' && (
+          <CreativitySlider value={creativity} onChange={setCreativity} />
+        )}
+        {aiMode === 'image' && (
+          <>
+            <ImageStylePresetSelector
+              // Drive the preset selector from useChat's imageOptions when
+              // available so the chosen style actually reaches /api/ai/image
+              // (BUG 9). Falls back to local state for older callers.
+              selectedStyle={
+                imageOptions && imageOptions.style !== 'auto'
+                  ? imageOptions.style
+                  : stylePreset ?? ''
+              }
+              onStyleChange={(key) => {
+                setStylePreset(key)
+                if (onImageOptionsChange) {
+                  onImageOptionsChange({
+                    style: key,
+                    removeBackground: imageOptions?.removeBackground ?? false,
+                    upscale: imageOptions?.upscale ?? false,
+                  })
+                }
+              }}
+            />
+            {/* Background removal + HD upscale toggles (BUG 9) */}
+            {onImageOptionsChange && imageOptions && (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '4px 2px' }}>
+                <button
+                  type="button"
+                  onClick={() => onImageOptionsChange({
+                    ...imageOptions,
+                    removeBackground: !imageOptions.removeBackground,
+                  })}
+                  style={{
+                    fontSize: 11,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    border: `1px solid ${imageOptions.removeBackground ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: imageOptions.removeBackground ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: imageOptions.removeBackground ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  title="Run background removal on the generated image"
+                >
+                  {imageOptions.removeBackground ? '✓ ' : ''}Remove BG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onImageOptionsChange({
+                    ...imageOptions,
+                    upscale: !imageOptions.upscale,
+                  })}
+                  style={{
+                    fontSize: 11,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    border: `1px solid ${imageOptions.upscale ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                    background: imageOptions.upscale ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: imageOptions.upscale ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.6)',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  title="Upscale the generated image to 2x resolution"
+                >
+                  {imageOptions.upscale ? '✓ ' : ''}HD Upscale
+                </button>
+              </div>
+            )}
+            <StyleReferenceUpload
+              references={styleRefs}
+              onAdd={(f) => setStyleRefs(prev => [...prev, f])}
+              onRemove={(i) => setStyleRefs(prev => prev.filter((_, idx) => idx !== i))}
+            />
+          </>
+        )}
+
+        {/* Playtest indicator — shows autonomous test progress */}
+        {playtestState && playtestState.result !== 'idle' && (
+          <PlaytestIndicator
+            running={playtestState.running}
+            currentStep={playtestState.currentStep}
+            iteration={playtestState.iteration}
+            result={playtestState.result}
+            steps={playtestState.steps}
+            onCancel={onCancelPlaytest}
+          />
+        )}
+
+        {/* Auto toggles row */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {onAutoPlaytestToggle && studioConnected && (
+            <PlaytestToggle
+              enabled={autoPlaytestEnabled}
+              onToggle={onAutoPlaytestToggle}
+              studioConnected={studioConnected}
+            />
+          )}
+          {onAutoEnhanceToggle && (
+            <EnhanceToggle
+              enabled={autoEnhanceEnabled}
+              onToggle={onAutoEnhanceToggle}
+            />
+          )}
+        </div>
+
+        {/* BUG 2: Build direction chips — lets the user pick how the next
+            prompt should relate to the current build. Only shown when we have
+            existing messages AND a change handler is wired; chips are
+            one-shot (the hook resets to "continue" after each send). */}
+        {onBuildDirectionChange && hasMessages && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              fontFamily: 'Inter, sans-serif',
+            }}
+            role="radiogroup"
+            aria-label="Build direction"
+          >
+            {(['continue', 'pivot', 'start-over'] as const).map((dir) => {
+              const label = dir === 'start-over' ? 'Start over' : dir.charAt(0).toUpperCase() + dir.slice(1)
+              const active = buildDirection === dir
+              return (
+                <button
+                  key={dir}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => onBuildDirectionChange(dir)}
+                  title={
+                    dir === 'continue'
+                      ? 'Refine or add to the current build (default)'
+                      : dir === 'pivot'
+                      ? 'Change direction — prepends "Change direction:" to your prompt'
+                      : 'Clear chat history and start fresh'
+                  }
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 9px',
+                    borderRadius: 999,
+                    border: `1px solid ${active ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.10)'}`,
+                    background: active ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.03)',
+                    color: active ? 'rgba(212,175,55,0.95)' : 'rgba(255,255,255,0.55)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Textarea + actions */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
             gap: 6,
-            background: 'rgba(0,0,0,0.15)',
-            border: '1px solid rgba(255,255,255,0.03)',
+            background: 'rgba(0,0,0,0.55)',
+            border: `1px solid ${modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.18') : 'rgba(255,255,255,0.10)'}`,
             borderRadius: 14,
-            padding: '10px 12px',
+            padding: '10px 14px',
             transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
           }}
           onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
-            e.currentTarget.style.boxShadow = '0 0 0 1px rgba(212,175,55,0.15), 0 0 16px rgba(212,175,55,0.08)'
+            // Use modeConfig.borderColor directly — it's already an rgba
+            // string. The previous string-munging only worked for colours
+            // already in rgb(...) form and produced garbage output for hex
+            // values, so non-build modes never got their focus tint.
+            e.currentTarget.style.borderColor = modeConfig.borderColor
+            e.currentTarget.style.boxShadow = `0 0 0 1px ${modeConfig.bgColor}, 0 0 16px ${modeConfig.bgColor}`
           }}
           onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+            e.currentTarget.style.borderColor = modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.12') : 'rgba(255,255,255,0.06)'
             e.currentTarget.style.boxShadow = 'none'
           }}
         >
+          {/* Pasted image preview thumbnail */}
+          {pastedImagePreview && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 0',
+              animation: 'msgFadeUp 0.15s ease-out forwards',
+            }}>
+              <img
+                src={pastedImagePreview}
+                alt="Pasted image"
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 6,
+                  objectFit: 'cover',
+                  border: '1px solid rgba(212,175,55,0.3)',
+                }}
+              />
+              <span style={{
+                fontSize: 10,
+                color: 'rgba(212,175,55,0.7)',
+                fontFamily: 'Inter, sans-serif',
+              }}>
+                Image pasted from clipboard
+              </span>
+            </div>
+          )}
+
           {/* Textarea row */}
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
 
@@ -2755,14 +3445,14 @@ export function ChatPanel({
           {/* Image upload — only shown when extras open */}
           {inputExtrasOpen && (
             <label
-              title="Upload an image"
+              title={imageFile ? `Image attached: ${imageFile.name} (click to change)` : 'Attach image for Image-to-Map'}
               style={{
                 width: 32,
                 height: 32,
                 borderRadius: 9,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.03)',
-                color: 'rgba(255,255,255,0.4)',
+                border: imageFile ? '1px solid rgba(212,175,55,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                background: imageFile ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.03)',
+                color: imageFile ? '#D4AF37' : 'rgba(255,255,255,0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2770,65 +3460,92 @@ export function ChatPanel({
                 flexShrink: 0,
                 transition: 'all 0.15s',
                 animation: 'msgFadeUp 0.15s ease-out forwards',
+                position: 'relative',
+                overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
-                if (!loading) {
+                if (!loading && !imageFile) {
                   e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
                   e.currentTarget.style.color = '#D4AF37'
                 }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
+                if (!imageFile) {
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.4)'
+                }
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
-                <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
-                <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {imagePreviewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={imagePreviewUrl}
+                  alt="Attached"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <rect x="1" y="2" width="12" height="10" rx="2" stroke="currentColor" strokeWidth="1.3"/>
+                  <circle cx="4.5" cy="5.5" r="1.25" stroke="currentColor" strokeWidth="1.1"/>
+                  <path d="M1.5 10l3-3.5 2.5 2.5 2-1.5L13 10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 style={{ display: 'none' }}
                 disabled={loading}
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
-                  setInput(input ? `${input}\n[Uploaded: ${file.name}]` : `[Uploaded: ${file.name}] Describe what to build from this image`)
+                  onImageFile?.(file)
+                  if (!input.trim()) {
+                    setInput('Build a Roblox map based on this image')
+                  }
                   e.target.value = ''
                 }}
               />
             </label>
           )}
 
-          {/* Voice button — only shown when extras open */}
-          {inputExtrasOpen && speechSupported && (
+          {/* Remove image button — shown when an image is attached */}
+          {inputExtrasOpen && imageFile && (
             <button
-              onClick={toggleSpeech}
-              title={listening ? 'Stop listening' : 'Voice input'}
+              onClick={() => onImageFile?.(null)}
+              title="Remove attached image"
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 9,
-                border: `1px solid ${listening ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                background: listening ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)',
-                color: listening ? '#F87171' : 'rgba(255,255,255,0.4)',
+                width: 18,
+                height: 18,
+                borderRadius: '50%',
+                border: '1px solid rgba(239,68,68,0.4)',
+                background: 'rgba(239,68,68,0.12)',
+                color: '#F87171',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 flexShrink: 0,
+                marginLeft: -6,
+                marginBottom: 14,
+                zIndex: 1,
                 transition: 'all 0.15s',
                 animation: 'msgFadeUp 0.15s ease-out forwards',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="4.5" y="1" width="5" height="8" rx="2.5" stroke="currentColor" strokeWidth="1.3"/>
-                <path d="M2 7.5a5 5 0 0010 0" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                <path d="M7 12.5v1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1 1l6 6M7 1L1 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
               </svg>
             </button>
+          )}
+
+          {/* Voice button — uses VoiceInputButton for waveform + transcript overlay */}
+          {inputExtrasOpen && (
+            <div style={{ animation: 'msgFadeUp 0.15s ease-out forwards', flexShrink: 0 }}>
+              <VoiceInputButton
+                onSubmit={handleVoiceSubmit}
+                disabled={loading}
+              />
+            </div>
           )}
 
           <textarea
@@ -2836,7 +3553,8 @@ export function ChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe what you want to build..."
+            onPaste={handlePaste}
+            placeholder={imageFile ? `Describe what to build from "${imageFile.name}"...` : modeConfig.placeholder}
             rows={1}
             disabled={loading}
             data-no-palette="true"
@@ -2847,40 +3565,46 @@ export function ChatPanel({
               outline: 'none',
               resize: 'none',
               color: 'rgba(255,255,255,0.85)',
-              fontSize: 14,
+              // 16px on mobile to prevent iOS Safari from auto-zooming on focus
+              fontSize: isMobile ? 16 : 14,
               fontFamily: 'Inter, sans-serif',
               lineHeight: 1.5,
-              maxHeight: 120,
+              maxHeight: textareaMaxHeight,
               overflowY: 'auto',
               opacity: loading ? 0.5 : 1,
+              // Larger minimum tap area on mobile for accessibility
+              minHeight: isMobile ? 44 : undefined,
             }}
             onInput={(e) => {
               const el = e.currentTarget
               el.style.height = 'auto'
-              el.style.height = `${Math.min(el.scrollHeight, 120)}px`
+              el.style.height = `${Math.min(el.scrollHeight, textareaMaxHeight)}px`
             }}
           />
 
-          {/* Send button */}
+          {/* Send button — enabled when there's text OR an image attached */}
           <button
             onClick={handleSend}
-            disabled={!input.trim() || loading}
+            disabled={(!input.trim() && !imageFile) || loading}
+            aria-label="Send message"
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 9,
+              width: isMobile ? 44 : 32,
+              height: isMobile ? 44 : 32,
+              minWidth: isMobile ? 44 : 32,
+              minHeight: isMobile ? 44 : 32,
+              borderRadius: isMobile ? 12 : 9,
               border: 'none',
               background:
-                !input.trim() || loading
+                (!input.trim() && !imageFile) || loading
                   ? 'rgba(255,255,255,0.05)'
-                  : 'linear-gradient(135deg, #D4AF37 0%, #D4AF37 100%)',
-              color: !input.trim() || loading ? 'rgba(255,255,255,0.2)' : '#030712',
+                  : `linear-gradient(135deg, ${modeConfig.color} 0%, ${modeConfig.color} 100%)`,
+              color: (!input.trim() && !imageFile) || loading ? 'rgba(255,255,255,0.2)' : '#030712',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
+              cursor: (!input.trim() && !imageFile) || loading ? 'not-allowed' : 'pointer',
               flexShrink: 0,
-              boxShadow: !input.trim() || loading ? 'none' : '0 0 12px rgba(212,175,55,0.3)',
+              boxShadow: (!input.trim() && !imageFile) || loading ? 'none' : `0 0 12px ${modeConfig.bgColor.replace('0.08', '0.3')}`,
               transition: 'all 0.12s ease-out',
               transform: sendPressed ? 'scale(0.92)' : 'scale(1)',
             }}
@@ -2898,16 +3622,28 @@ export function ChatPanel({
           </div>
 
           {/* Bottom row: gear (model) + hints + char count */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: 6 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+            paddingTop: 6,
+            flexWrap: isMobile ? 'wrap' : 'nowrap',
+            gap: isMobile ? 6 : 0,
+            rowGap: isMobile ? 4 : 0,
+          }}>
             {/* Left: gear icon opens model selector inline */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
               <button
                 onClick={() => setModelSelectorOpen((v) => !v)}
                 title="Model settings"
+                aria-label="Model settings"
                 style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 6,
+                  width: isMobile ? 44 : 24,
+                  height: isMobile ? 44 : 24,
+                  minWidth: isMobile ? 44 : 24,
+                  minHeight: isMobile ? 44 : 24,
+                  borderRadius: isMobile ? 10 : 6,
                   border: modelSelectorOpen ? '1px solid rgba(212,175,55,0.35)' : '1px solid rgba(255,255,255,0.07)',
                   background: modelSelectorOpen ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
                   color: modelSelectorOpen ? '#D4AF37' : 'rgba(255,255,255,0.3)',
@@ -2931,8 +3667,30 @@ export function ChatPanel({
               )}
             </div>
 
-            {/* Right: hints + char count */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Right: saved indicator + hints + char count */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: isMobile ? 'wrap' : 'nowrap',
+              justifyContent: 'flex-end',
+              minWidth: 0,
+            }}>
+              {/* "Saved" flash — appears briefly after messages are persisted */}
+              <span
+                style={{
+                  fontSize: 10,
+                  color: 'rgba(74,222,128,0.55)',
+                  fontFamily: 'Inter, sans-serif',
+                  opacity: showSaved ? 1 : 0,
+                  transition: 'opacity 0.35s ease',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+                aria-hidden="true"
+              >
+                Saved
+              </span>
               {/* Estimated cost */}
               {input.trim().length > 20 && (
                 <span style={{
@@ -2951,8 +3709,28 @@ export function ChatPanel({
                   color: 'rgba(139,92,246,0.8)',
                   fontFamily: 'Inter, sans-serif',
                   animation: 'msgFadeUp 0.15s ease-out forwards',
+                  whiteSpace: isMobile ? 'normal' : 'nowrap',
+                  lineHeight: 1.4,
+                  maxWidth: isMobile ? '100%' : undefined,
+                  wordBreak: 'break-word',
                 }}>
-                  /build · /script · /terrain
+                  /build · /script · /terrain · /think · /plan · /debug
+                </span>
+              )}
+              {/* Active mode indicator (when not build) */}
+              {aiMode !== 'build' && !showCharCount && !showSlashHint && (
+                <span style={{
+                  fontSize: 10,
+                  color: modeConfig.color,
+                  fontFamily: 'Inter, sans-serif',
+                  opacity: 0.6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                  <span style={{ display: 'flex', alignItems: 'center', transform: 'scale(0.75)' }}>{modeConfig.icon}</span>
+                  {modeConfig.label} mode
+                  {modeConfig.creditMultiplier > 1 && <span style={{ opacity: 0.6 }}>· {modeConfig.creditMultiplier}x credits</span>}
                 </span>
               )}
               {/* Char count — appears when typing */}

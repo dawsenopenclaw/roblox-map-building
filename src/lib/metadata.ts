@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 export const BASE_URL = 'https://forjegames.com'
 export const SITE_NAME = 'ForjeGames'
 export const DEFAULT_DESCRIPTION =
-  'Build Roblox games with AI. Generate terrain, assets, and scripts from voice or image prompts — no Studio plugins required. The fastest way to ship Roblox maps.'
+  'The #1 AI Roblox game builder. Generate terrain, buildings, scripts, and 3D assets from text or voice — synced live to Roblox Studio. Build 10x faster. Free to start.'
 export const OG_IMAGE = `${BASE_URL}/api/og` // Dynamic OG image endpoint
 
 /**
@@ -50,11 +50,21 @@ export function createMetadata({
       canonical,
     },
     keywords: [
-      'Roblox AI',
+      'AI Roblox game builder',
+      'Roblox AI builder',
+      'build Roblox games with AI',
+      'Roblox game builder',
       'Roblox map builder',
+      'Roblox Studio AI plugin',
+      'Roblox AI',
       'Roblox game development',
       'AI terrain generation',
-      'Roblox Studio AI',
+      'Roblox terrain generator',
+      'Roblox script generator',
+      'voice to game',
+      'image to map Roblox',
+      'Luau script generator',
+      'Roblox asset generator',
       ...keywords,
     ],
     authors: [{ name: 'ForjeGames' }],

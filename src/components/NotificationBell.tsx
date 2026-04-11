@@ -409,7 +409,7 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
                 animation: 'fj-badge-pulse 2.4s ease-in-out infinite',
                 fontSize: '9px',
                 fontWeight: 700,
-                color: '#000',
+                color: 'var(--background, #000)',
                 lineHeight: 1,
               }}
               aria-label={`${unreadCount} unread`}

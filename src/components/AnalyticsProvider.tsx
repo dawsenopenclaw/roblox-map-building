@@ -19,6 +19,7 @@
 
 import { createContext, useEffect, useMemo, useRef } from 'react'
 import type { UserContext } from '@/lib/analytics-client'
+import { safePostHog, denyTracking } from '@/lib/posthog-safe'
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -84,30 +85,32 @@ export function AnalyticsProvider({
     // Skip initial undefined → undefined (provider mounted but no user yet)
     if (prevUserId === undefined && !userId) return
 
-    import('posthog-js').then(({ default: posthog }) => {
-      if (!userId) {
-        // Logged out — reset distinct_id to anonymous
-        posthog.reset()
-        return
-      }
+    if (!userId) {
+      // Logged out — reset distinct_id to anonymous. safePostHog.reset()
+      // is a no-op if PostHog was never initialised (e.g. under-13 session).
+      safePostHog.reset()
+      return
+    }
 
-      // COPPA: never track under-13 users
-      if (isUnder13 === true) {
-        posthog.opt_out_capturing()
-        return
-      }
+    // COPPA: never track under-13 users. denyTracking() opts out any already-
+    // loaded PostHog instance AND prevents future re-initialisation.
+    if (isUnder13 === true) {
+      denyTracking()
+      return
+    }
 
-      // Identify with full user properties — email intentionally excluded (PII)
-      posthog.identify(userId, {
-        $app: 'ForjeGames',
-        ...(tier && { tier }),
-        ...(role && { role }),
-        ...(streak !== undefined && { streak }),
-        ...(isUnder13 !== undefined && { is_under_13: isUnder13 }),
-        ...(createdAt && { created_at: createdAt }),
-        ...(displayName && { display_name: displayName }),
-      })
-    }).catch(() => {/* silent */})
+    // safePostHog.identify no-ops unless the age-verified flag is set AND
+    // cookie consent is 'accepted' AND PostHog has been initialised.
+    // Email intentionally excluded (PII).
+    safePostHog.identify(userId, {
+      $app: 'ForjeGames',
+      ...(tier && { tier }),
+      ...(role && { role }),
+      ...(streak !== undefined && { streak }),
+      ...(isUnder13 !== undefined && { is_under_13: isUnder13 }),
+      ...(createdAt && { created_at: createdAt }),
+      ...(displayName && { display_name: displayName }),
+    })
   }, [userId, tier, role, streak, isUnder13, email, createdAt, displayName])
 
   // ── Session tracking ──────────────────────────────────────────────────────
@@ -117,26 +120,23 @@ export function AnalyticsProvider({
 
     sessionStartRef.current = Date.now()
 
-    import('posthog-js').then(({ default: posthog }) => {
-      posthog.capture('session_start', {
-        $app: 'ForjeGames',
-        user_tier: tier,
-        user_role: role,
-      })
-    }).catch(() => {/* silent */})
+    // safePostHog enforces age-verified + consent gates before touching network.
+    safePostHog.capture('session_start', {
+      $app: 'ForjeGames',
+      user_tier: tier,
+      user_role: role,
+    })
 
     return () => {
       const durationMs = Date.now() - sessionStartRef.current
-      import('posthog-js').then(({ default: posthog }) => {
-        posthog.capture('session_end', {
-          $app: 'ForjeGames',
-          // Read via refs so cleanup always has the current value, not a stale closure
-          user_tier: tierRef.current,
-          user_role: roleRef.current,
-          duration_ms: durationMs,
-          duration_minutes: Math.round(durationMs / 60000),
-        })
-      }).catch(() => {/* silent */})
+      safePostHog.capture('session_end', {
+        $app: 'ForjeGames',
+        // Read via refs so cleanup always has the current value, not a stale closure
+        user_tier: tierRef.current,
+        user_role: roleRef.current,
+        duration_ms: durationMs,
+        duration_minutes: Math.round(durationMs / 60000),
+      })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])

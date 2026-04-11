@@ -2,11 +2,23 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
+import { useWebSocket } from '@/hooks/useWebSocket'
+import { playCompletionSound } from '@/lib/sounds'
+import {
+  createCheckpoint as createCp,
+  restoreCheckpoint as restoreCp,
+  getCheckpoints as getCps,
+  deleteCheckpoint as deleteCp,
+  type Checkpoint,
+} from '@/lib/checkpoints'
 
 // ─── Chat Session Persistence ─────────────────────────────────────────────────
 
 const LS_SESSIONS_KEY = 'fg_chat_sessions'
 const MAX_SESSIONS = 20
+/** Active-conversation key: always holds the last 50 non-streaming messages */
+const LS_ACTIVE_KEY = 'fg_chat_messages_v1'
+const MAX_ACTIVE_MESSAGES = 50
 
 export interface ChatSession {
   id: string
@@ -23,6 +35,17 @@ export interface ChatSessionMeta {
   updatedAt: string
   messageCount: number
   firstAiPreview: string | null
+}
+
+/** Metadata returned by the cloud GET /api/sessions endpoint. */
+export interface CloudSessionMeta {
+  id: string
+  title: string
+  aiMode: string
+  model: string
+  createdAt: string
+  updatedAt: string
+  _count: { messages: number }
 }
 
 export function loadSessions(): ChatSession[] {
@@ -61,9 +84,10 @@ function persistSession(sessionId: string, messages: ChatMessage[]): void {
   const sessions = loadSessions()
   const existingIdx = sessions.findIndex((s) => s.id === sessionId)
   const now = new Date().toISOString()
+  const title = makeSessionTitle(messages)
   const session: ChatSession = {
     id: sessionId,
-    title: makeSessionTitle(messages),
+    title,
     messages,
     createdAt: existingIdx >= 0 ? sessions[existingIdx].createdAt : now,
     updatedAt: now,
@@ -76,6 +100,8 @@ function persistSession(sessionId: string, messages: ChatMessage[]): void {
     while (sessions.length > MAX_SESSIONS) sessions.pop()
   }
   saveSessions(sessions)
+  // Cloud persistence is now handled by debouncedCloudSave() in the hook,
+  // called after each AI response with a 2-second debounce delay.
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -87,6 +113,9 @@ export type ModelId =
   | 'claude-3-5'
   | 'gemini-2'
   | 'gpt-4o'
+  | 'gpt-4o-mini'
+  | 'o1-preview'
+  | 'gpt-4o-codex'
   | 'grok-3'
   | 'custom-anthropic'
   | 'custom-openai'
@@ -134,8 +163,14 @@ export interface ChatMessage {
 
 export const MODELS: ModelOption[] = [
   { id: 'gemini-2',         label: 'Forje AI',          provider: 'Free',      color: '#D4AF37', badge: 'FREE' },
+  { id: 'gpt-4o',           label: 'GPT-4o',            provider: 'OpenAI',    color: '#10A37F' },
+  { id: 'gpt-4o-mini',      label: 'GPT-4o Mini',       provider: 'OpenAI',    color: '#10A37F', badge: 'FAST' },
+  { id: 'o1-preview',       label: 'o1-preview',        provider: 'OpenAI',    color: '#10A37F', badge: 'THINK' },
+  // BUG 11: Codex — OpenAI's code-focused model, routed via the existing
+  // OpenAI integration in /api/ai/chat. Good for code review / Luau audit.
+  { id: 'gpt-4o-codex',     label: 'Codex',             provider: 'OpenAI',    color: '#10A37F', badge: 'CODE' },
   { id: 'custom-anthropic', label: 'Claude 4',          provider: 'Your Key',  color: '#CC785C', badge: 'PRO' },
-  { id: 'custom-openai',    label: 'GPT-4o',            provider: 'Your Key',  color: '#10A37F', badge: 'PRO' },
+  { id: 'custom-openai',    label: 'GPT (Your Key)',    provider: 'Your Key',  color: '#10A37F', badge: 'PRO' },
   { id: 'custom-google',    label: 'Gemini Pro',        provider: 'Your Key',  color: '#4285F4', badge: 'PRO' },
 ]
 
@@ -310,9 +345,14 @@ interface UseChatOptions {
   studioContext?: StudioContextForChat
 }
 
+export type { AIMode } from '@/components/editor/AIModeSelector'
+import type { AIMode } from '@/components/editor/AIModeSelector'
+export type { Checkpoint } from '@/lib/checkpoints'
+
 export function useChat(options: UseChatOptions = {}) {
   const { user } = useUser()
   const { onBuildComplete, studioSessionId, studioConnected, studioContext } = options
+  const { connected: wsConnected, send: wsSend, on: wsOn } = useWebSocket()
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -324,8 +364,49 @@ export function useChat(options: UseChatOptions = {}) {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)
+  // AI Mode state — determines how prompts are processed
+  const [aiMode, setAIMode] = useState<AIMode>('build')
+  // Auto-playtest: when true, agentic playtest runs automatically after code is sent to Studio
+  const [autoPlaytest, setAutoPlaytest] = useState(true)
+  const autoPlaytestAbortRef = useRef<AbortController | null>(null)
+  // Thinking/reasoning display state
+  const [isThinking, setIsThinking] = useState(false)
+  const [thinkingText, setThinkingText] = useState('')
+  // Plan mode state
+  const [planText, setPlanText] = useState<string | null>(null)
+  // Prompt enhancement toggle — when true, prompts are enhanced via Groq before main AI
+  const [enhancePrompts, setEnhancePrompts] = useState(true)
+  /**
+   * Image-mode options (BUG 9). Surfaced in ChatPanel via a toggle row when
+   * aiMode === 'image'. `style` = 'auto' lets the keyword detector choose a
+   * preset; any other value is passed straight to /api/ai/image.
+   */
+  const [imageOptions, setImageOptions] = useState<{
+    style: string
+    removeBackground: boolean
+    upscale: boolean
+  }>({ style: 'auto', removeBackground: false, upscale: false })
+  /** Epoch-ms timestamp bumped each time messages are written to localStorage. Used by ChatPanel to flash the "Saved" indicator. */
+  const [savedAt, setSavedAt] = useState(0)
+  /** Cloud sessions fetched from GET /api/sessions — populated on mount and after sync. */
+  const [cloudSessions, setCloudSessions] = useState<CloudSessionMeta[]>([])
+  /** Debounce timer ref for cloud persistence — 2 second delay after last AI response. */
+  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // ─── Checkpoint state ─────────────────────────────────────────────────────
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
+  // Completion sound toggle — when true, a chime plays after each successful AI response
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const soundEnabledRef = useRef(true)
+  useEffect(() => { soundEnabledRef.current = soundEnabled }, [soundEnabled])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryListenerRef = useRef(false)
+
+  // Completion sound — delegates to the shared sounds utility (src/lib/sounds.ts)
+  // Respects the per-session sound toggle via soundEnabledRef.
+  const playCompletionSoundIfEnabled = useCallback(() => {
+    if (!soundEnabledRef.current) return
+    playCompletionSound()
+  }, [])
   // Stable ID for the current chat session — new id on each "new chat"
   const _initialSessionId = uid()
   const currentSessionIdRef = useRef<string>(_initialSessionId)
@@ -356,8 +437,116 @@ export function useChat(options: UseChatOptions = {}) {
   // Mark unmounted so in-flight async callbacks don't call setState after cleanup.
   useEffect(() => {
     mountedRef.current = true
-    return () => { mountedRef.current = false }
+    return () => {
+      mountedRef.current = false
+      // Clear any pending cloud save timer on unmount
+      if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current)
+    }
   }, [])
+
+  // ─── Cloud session helpers ──────────────────────────────────────────────────────
+
+  /** Fetch cloud sessions from GET /api/sessions and update state. */
+  const fetchCloudSessions = useCallback(async () => {
+    try {
+      const res = await fetch('/api/sessions')
+      if (!res.ok) return
+      const data = await res.json()
+      if (mountedRef.current && Array.isArray(data.sessions)) {
+        setCloudSessions(data.sessions as CloudSessionMeta[])
+      }
+    } catch {
+      // Cloud fetch failed — cloudSessions stays empty / stale
+    }
+  }, [])
+
+  /** Force-sync current session to cloud immediately (non-debounced). */
+  const syncToCloud = useCallback(async () => {
+    const msgs = messagesRef.current
+    if (msgs.filter((m) => m.role === 'user').length === 0) return
+    const cloudMessages = msgs
+      .filter((m) => m.role === 'user' || m.role === 'assistant' || m.role === 'system')
+      .map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        metadata: {
+          ...(m.tokensUsed ? { tokensUsed: m.tokensUsed } : {}),
+          ...(m.model ? { model: m.model } : {}),
+        },
+        timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
+      }))
+    if (cloudMessages.length === 0) return
+    try {
+      await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentSessionIdRef.current,
+          title: makeSessionTitle(msgs),
+          messages: cloudMessages,
+          // Persist the current AI mode so switching devices restores it
+          aiMode,
+          model: selectedModel,
+        }),
+      })
+      // Refresh cloud sessions list after successful sync
+      await fetchCloudSessions()
+    } catch {
+      // Cloud sync failed — localStorage is still the source of truth
+    }
+  }, [fetchCloudSessions, aiMode, selectedModel])
+
+  /** Debounced cloud save — schedules a cloud sync 2 seconds after the last call. */
+  const debouncedCloudSave = useCallback(() => {
+    if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current)
+    cloudSaveTimerRef.current = setTimeout(() => {
+      void syncToCloud()
+    }, 2000)
+  }, [syncToCloud])
+
+  // Fetch cloud sessions on mount (signed-in users only)
+  useEffect(() => {
+    if (user) {
+      void fetchCloudSessions()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  // ─── Restore active conversation on mount ─────────────────────────────────────
+  // Load the most-recently-updated session from fg_chat_sessions and hydrate
+  // messages state so a page refresh doesn't wipe the conversation.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const sessions = loadSessions()
+    if (sessions.length === 0) return
+    // Sessions are stored newest-first (unshift on create, sorted by updatedAt on load)
+    const latest = sessions[0]
+    if (!latest || latest.messages.length === 0) return
+    // Rehydrate timestamps from ISO strings back to Date objects
+    const rehydrated = latest.messages.map((m) => ({
+      ...m,
+      timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
+    }))
+    setMessagesSync(() => rehydrated)
+    setSessionId(latest.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // intentionally run once on mount only
+
+  // ─── Persist active messages to fg_chat_messages_v1 on every change ──────────
+  // Filters out still-streaming messages and caps at MAX_ACTIVE_MESSAGES.
+  // Also bumps savedAt so ChatPanel can flash the "Saved" indicator.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const persistable = messages
+      .filter((m) => !m.streaming)
+      .slice(-MAX_ACTIVE_MESSAGES)
+    if (persistable.length === 0) return
+    try {
+      localStorage.setItem(LS_ACTIVE_KEY, JSON.stringify(persistable))
+      setSavedAt(Date.now())
+    } catch { /* quota exceeded — silently ignore */ }
+  }, [messages])
 
   // Keep ref in sync with state
   const setMessagesSync = useCallback((updater: (prev: ChatMessage[]) => ChatMessage[]) => {
@@ -367,6 +556,196 @@ export function useChat(options: UseChatOptions = {}) {
       return next
     })
   }, [])
+
+  // ─── Agentic Auto-Playtest ─────────────────────────────────────────────────
+  // Triggers the autonomous build-test-fix loop after code is sent to Studio.
+  // Reads the SSE stream from /api/ai/playtest and adds status messages to chat.
+  const triggerAutoPlaytest = useCallback(
+    async (code: string, sessionId: string, assistantMsgId: string) => {
+      // Abort any prior in-flight playtest
+      autoPlaytestAbortRef.current?.abort()
+      const abort = new AbortController()
+      autoPlaytestAbortRef.current = abort
+
+      // Show initial status
+      const playtestStatusId = uid()
+      setMessagesSync((prev) => [
+        ...prev,
+        {
+          id: playtestStatusId,
+          role: 'status' as MessageRole,
+          content: 'Auto-playtest starting...',
+          timestamp: new Date(),
+        },
+      ])
+
+      try {
+        const res = await fetch('/api/ai/playtest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, sessionId, maxIterations: 3 }),
+          signal: abort.signal,
+        })
+
+        if (!res.ok || !res.body) {
+          setMessagesSync((prev) =>
+            prev.map((m) =>
+              m.id === playtestStatusId
+                ? { ...m, content: 'Auto-playtest failed to start.' }
+                : m,
+            ),
+          )
+          return
+        }
+
+        const reader = res.body.getReader()
+        const dec = new TextDecoder()
+        let buffer = ''
+        let finalResult: {
+          success?: boolean
+          finalCode?: string
+          errors?: string[]
+          iterations?: number
+          action?: string
+        } | null = null
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += dec.decode(value, { stream: true })
+
+          // Parse SSE events from buffer
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              const event = JSON.parse(line.slice(6))
+
+              if (event.action === 'complete' || event.action === 'failed') {
+                finalResult = event
+              }
+
+              // Update the running status message
+              const statusText =
+                event.action === 'execute'
+                  ? `Testing code (iteration ${event.details?.match(/Iteration (\d+)/)?.[1] || '?'})...`
+                  : event.action === 'playtest'
+                  ? 'Running playtest in Studio...'
+                  : event.action === 'screenshot'
+                  ? 'Capturing screenshot...'
+                  : event.action === 'analyze'
+                  ? 'Analyzing output log...'
+                  : event.action === 'fix'
+                  ? event.details || 'Fixing errors...'
+                  : event.action === 'complete'
+                  ? 'Playtest passed!'
+                  : event.action === 'failed'
+                  ? `Playtest failed: ${event.details || 'unknown error'}`
+                  : event.details || 'Testing...'
+
+              if (mountedRef.current) {
+                setMessagesSync((prev) =>
+                  prev.map((m) =>
+                    m.id === playtestStatusId
+                      ? { ...m, content: statusText }
+                      : m,
+                  ),
+                )
+              }
+            } catch {
+              // malformed SSE line — skip
+            }
+          }
+        }
+
+        if (!mountedRef.current) return
+
+        // If playtest produced fixed code, update the assistant message
+        if (finalResult?.finalCode && finalResult.finalCode !== code) {
+          setMessagesSync((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            if (idx === -1) return prev
+            const updated = [...prev]
+            updated[idx] = { ...updated[idx], luauCode: finalResult!.finalCode! }
+            messagesRef.current = updated
+            return updated
+          })
+          lastLuauRef.current = finalResult.finalCode
+          // Persist updated session
+          persistSession(currentSessionIdRef.current, messagesRef.current)
+          debouncedCloudSave()
+        }
+
+        // Final status message
+        if (mountedRef.current) {
+          const finalStatus = finalResult?.success
+            ? `Playtest passed after ${finalResult.iterations || 1} iteration(s).`
+            : `Playtest completed with errors after ${finalResult?.iterations || '?'} iteration(s).${
+                finalResult?.errors?.length ? ` Errors: ${finalResult.errors.join('; ')}` : ''
+              }`
+          setMessagesSync((prev) =>
+            prev.map((m) =>
+              m.id === playtestStatusId
+                ? { ...m, content: finalStatus }
+                : m,
+            ),
+          )
+        }
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return
+        if (mountedRef.current) {
+          setMessagesSync((prev) =>
+            prev.map((m) =>
+              m.id === playtestStatusId
+                ? { ...m, content: 'Auto-playtest error: ' + ((err as Error)?.message || 'unknown') }
+                : m,
+            ),
+          )
+        }
+      }
+    },
+    [setMessagesSync, debouncedCloudSave],
+  )
+
+  // ─── Checkpoint helpers ────────────────────────────────────────────────────
+
+  const reloadCheckpoints = useCallback(() => {
+    setCheckpoints(getCps(currentSessionIdRef.current))
+  }, [])
+
+  // Load checkpoints on mount and when session changes
+  useEffect(() => {
+    reloadCheckpoints()
+  }, [currentSessionId, reloadCheckpoints])
+
+  /** Create a checkpoint of the current conversation state. */
+  const saveCheckpoint = useCallback((label?: string) => {
+    const msgs = messagesRef.current
+    if (msgs.length === 0) return
+    createCp(currentSessionIdRef.current, msgs, aiMode, label)
+    reloadCheckpoints()
+  }, [aiMode, reloadCheckpoints])
+
+  /** Restore conversation to a checkpoint's saved state. */
+  const restoreToCheckpoint = useCallback((checkpointId: string) => {
+    const cps = getCps(currentSessionIdRef.current)
+    const cp = cps.find((c) => c.id === checkpointId)
+    if (!cp) return
+    const restored = restoreCp(cp)
+    setMessagesSync(() => restored)
+    setSuggestions([])
+    if (cp.aiMode) {
+      setAIMode(cp.aiMode as AIMode)
+    }
+  }, [setMessagesSync])
+
+  /** Delete a single checkpoint. */
+  const removeCheckpoint = useCallback((checkpointId: string) => {
+    deleteCp(checkpointId, currentSessionIdRef.current)
+    reloadCheckpoints()
+  }, [reloadCheckpoints])
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -391,11 +770,27 @@ export function useChat(options: UseChatOptions = {}) {
         timestamp: new Date(),
       }
       const statusMsgId = uid()
+      const modeLabels: Record<AIMode, string> = {
+        build: 'Forje is building...',
+        think: 'Forje is thinking deeply...',
+        plan: 'Forje is creating a build plan...',
+        image: 'Forje is generating your image...',
+        script: 'Forje is writing Luau code...',
+        terrain: 'Forje is sculpting terrain...',
+        mesh: 'Forje is creating a 3D model...',
+        debug: 'Forje is analyzing for bugs...',
+        idea: 'Forje is brainstorming ideas...',
+      }
       const statusMsg: ChatMessage = {
         id: statusMsgId,
         role: 'status',
-        content: 'Forje is building...',
+        content: modeLabels[aiMode] || 'Forje is working...',
         timestamp: new Date(),
+      }
+      // Set thinking state for modes that show reasoning
+      if (aiMode === 'think' || aiMode === 'debug') {
+        setIsThinking(true)
+        setThinkingText('')
       }
 
       setMessagesSync((prev) => [...prev, userMsg, statusMsg])
@@ -432,18 +827,161 @@ export function useChat(options: UseChatOptions = {}) {
           }
         }
 
+        // ── Specialized mode routing ─────────────────────────────────────────
+        // Image/Mesh/Clothing modes call dedicated APIs instead of chat
+        const SPECIALIZED_MODES = ['image', 'mesh'] as const
+        type SpecializedMode = (typeof SPECIALIZED_MODES)[number]
+        if (SPECIALIZED_MODES.includes(aiMode as SpecializedMode)) {
+          try {
+            let apiUrl = ''
+            let apiBody: Record<string, unknown> = {}
+
+            if (aiMode === 'image') {
+              // Route to /api/ai/image. Prefer the explicit imageOptions.style
+              // when set (BUG 9), else fall back to keyword-based detection so
+              // older flows keep working without UI interaction.
+              let style = imageOptions.style
+              if (!style || style === 'auto') {
+                const promptLower = trimmed.toLowerCase()
+                const imageMode = promptLower.includes('icon') ? 'icon'
+                  : promptLower.includes('thumbnail') || promptLower.includes('cover') ? 'thumbnail'
+                  : promptLower.includes('gfx') || promptLower.includes('character') ? 'gfx'
+                  : promptLower.includes('clothing') || promptLower.includes('shirt') || promptLower.includes('pants') ? 'clothing'
+                  : 'asset'
+                const styleMap: Record<string, string> = {
+                  'icon': 'roblox-icon',
+                  'thumbnail': 'game-thumbnail',
+                  'gfx': 'gfx-render',
+                  'clothing': 'clothing',
+                  'asset': 'roblox-icon',
+                }
+                style = styleMap[imageMode] || 'roblox-icon'
+              }
+              apiUrl = '/api/ai/image'
+              apiBody = {
+                prompt: trimmed,
+                style,
+                count: 1,
+                removeBackground: imageOptions.removeBackground,
+                upscale: imageOptions.upscale,
+              }
+            } else if (aiMode === 'mesh') {
+              apiUrl = '/api/ai/mesh'
+              apiBody = { prompt: trimmed.slice(0, 200), quality: 'draft', withTextures: true }
+            }
+
+            // First, call the free enhance-prompt endpoint to improve the prompt
+            let enhancedPrompt = trimmed
+            if (enhancePrompts) {
+              try {
+                const enhRes = await fetch('/api/ai/enhance-prompt', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ prompt: trimmed, mode: aiMode }),
+                })
+                if (enhRes.ok) {
+                  const enhanced = await enhRes.json()
+                  if (enhanced?.enhancedPrompt) {
+                    enhancedPrompt = enhanced.enhancedPrompt
+                    apiBody.prompt = enhancedPrompt
+                  }
+                }
+              } catch {
+                // Enhancement failed — use original prompt
+              }
+            }
+
+            // The client has already enhanced the prompt above (when
+            // enhancePrompts is on), so tell /api/ai/image to skip its own
+            // server-side enhancement to avoid a duplicate Groq call (BUG 12).
+            if (aiMode === 'image' && enhancePrompts) {
+              apiBody.skipEnhance = true
+            }
+
+            const specialRes = await fetch(apiUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify(apiBody),
+            })
+
+            const specialData = await specialRes.json()
+            const resultContent = aiMode === 'image'
+              ? `**Generated Image${specialData.images?.length > 1 ? 's' : ''}** (${apiBody.style || 'roblox-icon'} mode)\n\n${
+                  (specialData.images || []).map((img: { url: string }, i: number) =>
+                    `![Generated ${i + 1}](${img.url})`
+                  ).join('\n\n')
+                }${enhancedPrompt !== trimmed ? `\n\n*Enhanced prompt: "${enhancedPrompt}"*` : ''}`
+              : `**3D Model Generated**\n\n${specialData.meshUrl ? `[Download Model](${specialData.meshUrl})` : 'Generation in progress...'}\n\n${specialData.luauCode || ''}`
+
+            setMessagesSync((prev) => [
+              ...prev.filter((m) => m.id !== statusMsgId),
+              {
+                id: uid(),
+                role: 'assistant',
+                content: specialRes.ok ? resultContent : `Error: ${specialData.error || 'Generation failed'}`,
+                timestamp: new Date(),
+                model: selectedModel,
+              },
+            ])
+            setLoading(false)
+            setIsThinking(false)
+            return
+          } catch (err) {
+            // Fall through to chat API on error
+            console.error(`[useChat] Specialized ${aiMode} mode failed, falling back to chat:`, err)
+          }
+        }
+
         // Detect mesh intent for parallel generation
         const lowerTrimmed = trimmed.toLowerCase()
         const isBuildMeshIntent = BUILD_KEYWORDS.some((kw) => lowerTrimmed.includes(kw))
 
+        // ── FREE prompt enhancement (enhance-prompt endpoint) ──────────────
+        // When enhancePrompts is enabled, call the cheap Groq endpoint to rewrite
+        // the user's prompt with structured detail before sending to the main AI.
+        // This is free (Groq/Llama) and dramatically improves output quality.
+        let enhancedMessage = trimmed
+        if (enhancePrompts && !pendingLastErrorRef.current) {
+          try {
+            const enhRes = await fetch('/api/ai/enhance-prompt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: trimmed, mode: aiMode }),
+            })
+            if (enhRes.ok) {
+              const enhData = await enhRes.json()
+              if (enhData?.enhancedPrompt && enhData.enhancedPrompt !== trimmed) {
+                enhancedMessage = enhData.enhancedPrompt
+              }
+            }
+          } catch {
+            // Enhancement failed — use original prompt, non-fatal
+          }
+        }
+
         // Include Studio context so AI knows camera position + nearby objects
         const chatBody: Record<string, unknown> = {
-          message: trimmed,
+          message: enhancedMessage,
           model: selectedModel,
           stream: true,
+          aiMode: aiMode,
         }
         if (studioConnected && studioContext) {
           chatBody.studioContext = studioContext
+        }
+
+        // Include image data if user attached an image (Image-to-Map / vision)
+        const pendingImageFile = imageFile
+        if (pendingImageFile) {
+          try {
+            const arrayBuffer = await pendingImageFile.arrayBuffer()
+            const base64 = Buffer.from(arrayBuffer).toString('base64')
+            chatBody.imageBase64 = base64
+            chatBody.imageMimeType = pendingImageFile.type || 'image/jpeg'
+            chatBody.imageName = pendingImageFile.name
+          } catch {
+            // If we can't read the file, proceed without image — don't block the send
+          }
         }
         // Inject pending retry context (set by checkResult before calling sendMessage)
         if (pendingLastErrorRef.current) {
@@ -462,6 +1000,365 @@ export function useChat(options: UseChatOptions = {}) {
         if (studioConnected && studioSessionId) {
           headers['x-studio-session'] = studioSessionId
         }
+
+        // ── WebSocket streaming path (primary) ─────────────────────────────────
+        // When WS is connected, send via WebSocket for lower-latency streaming.
+        // Falls through to the HTTP fetch path below if WS is not available.
+        if (wsConnected) {
+          const assistantMsgId = uid()
+          let rawStreamBuffer = ''
+
+          // Insert the streaming assistant message (empty content to start)
+          setMessagesSync((prev) => [
+            ...prev.filter((m) => m.id !== statusMsgId),
+            {
+              id: assistantMsgId,
+              role: 'assistant',
+              content: '',
+              timestamp: new Date(),
+              model: selectedModel,
+              streaming: true,
+            },
+          ])
+
+          setStreaming(true)
+
+          // Detect mesh intent for parallel generation (same logic as HTTP path)
+          const wsLowerTrimmed = trimmed.toLowerCase()
+          const wsIsBuildMeshIntent = BUILD_KEYWORDS.some((kw) => wsLowerTrimmed.includes(kw))
+
+          type MeshAPIResponse = {
+            meshUrl?: string | null
+            luauCode?: string | null
+            taskId?: string | null
+            status: string
+          }
+
+          const wsMeshPromise: Promise<MeshAPIResponse | null> = wsIsBuildMeshIntent
+            ? fetch('/api/ai/mesh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  prompt: trimmed.slice(0, 200),
+                  quality: 'draft',
+                  withTextures: true,
+                }),
+              })
+                .then((r) => (r.ok ? (r.json() as Promise<MeshAPIResponse>) : null))
+                .catch(() => null)
+            : Promise.resolve(null)
+
+          // Send chat message over WebSocket
+          wsSend({
+            type: 'chat',
+            message: enhancedMessage,
+            model: selectedModel,
+            aiMode: aiMode,
+            studioContext: studioConnected && studioContext ? studioContext : undefined,
+            studioSessionId: studioConnected && studioSessionId ? studioSessionId : undefined,
+            ...(pendingLastErrorRef.current ? {
+              lastError: pendingLastErrorRef.current,
+              retryAttempt: pendingRetryAttemptRef.current,
+              previousCode: pendingPreviousCodeRef.current,
+            } : {}),
+          })
+
+          // Consume pending retry context
+          pendingLastErrorRef.current = null
+          pendingRetryAttemptRef.current = 0
+          pendingPreviousCodeRef.current = null
+
+          // Listen for WebSocket response events
+          const wsResult = await new Promise<{
+            meta: StreamMeta
+            meshData: MeshAPIResponse | null
+          }>((resolve) => {
+            let meta: StreamMeta = {}
+            let resolved = false
+
+            const cleanup: (() => void)[] = []
+
+            const finish = async () => {
+              if (resolved) return
+              resolved = true
+              cleanup.forEach((fn) => fn())
+              const meshData = await wsMeshPromise
+              resolve({ meta, meshData })
+            }
+
+            // Handle streaming text chunks
+            cleanup.push(wsOn('chat_chunk', (msg) => {
+              const data = msg as { content?: string }
+              if (!data.content) return
+              rawStreamBuffer += data.content
+              const displayChunk = data.content
+                .replace(/```(?:lua|luau|[a-z]*)?\s*[\s\S]*?```/g, '')
+                .replace(/```[\s\S]*$/g, '')
+              if (!displayChunk) return
+              setMessages((prev) => {
+                const idx = prev.findIndex((m) => m.id === assistantMsgId)
+                if (idx === -1) return prev
+                const updated = [...prev]
+                updated[idx] = {
+                  ...updated[idx],
+                  content: updated[idx].content + displayChunk,
+                }
+                messagesRef.current = updated
+                return updated
+              })
+            }))
+
+            // Handle stream completion
+            cleanup.push(wsOn('chat_done', (msg) => {
+              const data = msg as {
+                fullContent?: string
+                suggestions?: string[]
+                intent?: string
+                hasCode?: boolean
+                tokensUsed?: number
+                executedInStudio?: boolean
+                model?: string
+                mcpResult?: McpAgentResult
+                meshResult?: MeshResult
+              }
+              meta = {
+                suggestions: data.suggestions,
+                intent: data.intent,
+                hasCode: data.hasCode,
+                tokensUsed: data.tokensUsed,
+                executedInStudio: data.executedInStudio,
+                model: data.model,
+                mcpResult: data.mcpResult,
+                meshResult: data.meshResult,
+              }
+              void finish()
+            }))
+
+            // Handle errors
+            cleanup.push(wsOn('chat_error', (msg) => {
+              const data = msg as { error?: string }
+              meta = { error: data.error || 'WebSocket streaming error' }
+              void finish()
+            }))
+
+            // Safety timeout — fall through after 120s in case no done/error arrives
+            const timeout = setTimeout(() => {
+              if (!resolved) void finish()
+            }, 120000)
+            cleanup.push(() => clearTimeout(timeout))
+          })
+
+          const { meta, meshData } = wsResult
+
+          setStreaming(false)
+
+          const tokensUsed = meta.tokensUsed ?? estimateTokens(trimmed)
+          setTotalTokens((prev) => prev + tokensUsed)
+
+          // Track guest token usage in localStorage
+          if (!user && typeof window !== 'undefined') {
+            const prev = Number(localStorage.getItem('fg_guest_tokens') ?? '0')
+            localStorage.setItem('fg_guest_tokens', String(prev + tokensUsed))
+          }
+
+          // Handle API error in meta
+          if ((meta as Record<string, unknown>).error) {
+            const apiError = (meta as Record<string, unknown>).error as string
+            console.warn('[ForjeAI] WS API error:', apiError)
+            setMessagesSync((prev) => {
+              const filtered = prev.filter((m) => m.id !== assistantMsgId && m.id !== statusMsgId)
+              return [
+                ...filtered,
+                {
+                  id: uid(),
+                  role: 'assistant' as const,
+                  content: apiError,
+                  timestamp: new Date(),
+                  model: selectedModel,
+                },
+              ]
+            })
+            setLoading(false)
+            return
+          }
+
+          if (meta.suggestions && meta.suggestions.length > 0) {
+            setSuggestions(meta.suggestions)
+          }
+
+          if (meta.mcpResult) {
+            setLastMcpResult(meta.mcpResult)
+            setTimeout(() => setLastMcpResult(null), 5000)
+          }
+
+          // Finalize the assistant message with metadata
+          setMessages((prev) => {
+            const idx = prev.findIndex((m) => m.id === assistantMsgId)
+            if (idx === -1) return prev
+            const updated = [...prev]
+            const displayedContent = updated[idx].content || getDemoResponse(trimmed)
+            const finalContent = displayedContent
+              .replace(/\n{3,}/g, '\n\n')
+              .trim() || displayedContent
+            updated[idx] = {
+              ...updated[idx],
+              content: finalContent,
+              streaming: false,
+              tokensUsed,
+              suggestions: meta.suggestions,
+              intent: meta.intent,
+              hasCode: meta.hasCode,
+              ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
+            }
+            const result: ChatMessage[] = [...updated]
+            if (meshData) {
+              result.push({
+                id: uid(),
+                role: 'system',
+                content: meshData.status === 'complete'
+                  ? '3D mesh generated. MeshPart Luau ready — check Assets to copy it.'
+                  : meshData.status === 'pending'
+                  ? `3D mesh generating (task ${meshData.taskId ?? 'unknown'}). Check back shortly.`
+                  : '3D mesh: demo mode — add MESHY_API_KEY to generate real meshes.',
+                timestamp: new Date(),
+              })
+            }
+            // BUG 7: show an accurate Studio-status message based on actual
+            // connection state. Prior to this fix the same "Sent to Roblox
+            // Studio" text was shown on every build, including when Studio
+            // wasn't connected — which looked like an error to users.
+            if (meta.hasCode || meta.executedInStudio) {
+              let statusContent: string
+              if (meta.executedInStudio) {
+                statusContent = 'Sent to Roblox Studio ✓'
+              } else if (studioConnected) {
+                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+              } else {
+                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+              }
+              result.push({
+                id: uid(),
+                role: 'status',
+                content: statusContent,
+                timestamp: new Date(),
+              })
+            }
+            messagesRef.current = result
+            return result
+          })
+
+          // Extract code from raw stream buffer for preview + execution
+          let luauCode: string | null = null
+          if (meta.hasCode) {
+            const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+            if (codeBlockMatch?.[1]?.trim()) {
+              luauCode = codeBlockMatch[1].trim()
+            }
+          }
+          luauCode = luauCode ?? meshData?.luauCode ?? null
+
+          // Store luauCode on the message for build preview rendering
+          if (luauCode) {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === assistantMsgId)
+              if (idx === -1) return prev
+              const updated = [...prev]
+              updated[idx] = { ...updated[idx], luauCode }
+              messagesRef.current = updated
+              return updated
+            })
+          }
+
+          // Persist session after AI response is fully finalized
+          persistSession(currentSessionIdRef.current, messagesRef.current)
+          debouncedCloudSave()
+
+          // Client-side fallback execution (only if server didn't already execute)
+          if (studioConnected && luauCode && !meta.executedInStudio && onBuildComplete) {
+            lastLuauRef.current = luauCode
+            onBuildComplete(luauCode, trimmed, studioSessionId ?? null)
+
+            if (typeof window !== 'undefined' && !retryListenerRef.current) {
+              retryListenerRef.current = true
+              const retryAbort = new AbortController()
+              const checkResult = async () => {
+                await new Promise<void>((r) => setTimeout(r, 3000))
+                if (!mountedRef.current || retryAbort.signal.aborted) {
+                  retryListenerRef.current = false
+                  return
+                }
+                try {
+                  const statusRes = await fetch(`/api/studio/status?sessionId=${studioSessionId}`, { signal: retryAbort.signal })
+                  if (!statusRes.ok) return
+                  const statusData = await statusRes.json() as { lastCommandError?: string }
+                  if (!mountedRef.current || !statusData.lastCommandError || !statusData.lastCommandError.includes('ERROR')) return
+
+                  const MAX_RETRIES = 3
+                  retryCountRef.current += 1
+                  const attempt = retryCountRef.current
+
+                  if (attempt > MAX_RETRIES) {
+                    setMessagesSync((prev) => [
+                      ...prev,
+                      {
+                        id: uid(),
+                        role: 'build-error' as MessageRole,
+                        content: `Build failed after ${MAX_RETRIES} attempts.`,
+                        buildError: statusData.lastCommandError,
+                        retryAttempt: attempt,
+                        timestamp: new Date(),
+                      },
+                    ])
+                    retryCountRef.current = 0
+                    return
+                  }
+
+                  setMessagesSync((prev) => [
+                    ...prev,
+                    {
+                      id: uid(),
+                      role: 'status',
+                      content: `Auto-fixing (attempt ${attempt}/${MAX_RETRIES})...`,
+                      timestamp: new Date(),
+                    },
+                  ])
+
+                  const fixPrompt = lastBuildPromptRef.current || trimmed
+                  pendingLastErrorRef.current = statusData.lastCommandError
+                  pendingRetryAttemptRef.current = attempt
+                  pendingPreviousCodeRef.current = lastLuauRef.current
+
+                  retryListenerRef.current = false
+                  isAutoRetryRef.current = true
+                  void sendMessage(`[AUTO-RETRY attempt ${attempt}/${MAX_RETRIES}] ${fixPrompt}`)
+                } catch { /* silent — includes AbortError */ } finally {
+                  retryListenerRef.current = false
+                }
+              }
+              void checkResult()
+            }
+          }
+
+          // ── Auto-playtest: kick off the agentic test loop if code was executed ──
+          if (
+            autoPlaytest &&
+            luauCode &&
+            studioSessionId &&
+            studioConnected &&
+            (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
+            (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
+          ) {
+            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId)
+          }
+
+          setLoading(false)
+          playCompletionSoundIfEnabled()
+          saveCheckpoint()
+          setTimeout(() => textareaRef.current?.focus(), 50)
+          return // WebSocket path complete — skip HTTP fallback below
+        }
+
+        // ── HTTP fetch streaming path (fallback when WebSocket is not connected) ──
 
         const chatPromise = fetch('/api/ai/chat', {
           method: 'POST',
@@ -631,12 +1528,21 @@ export function useChat(options: UseChatOptions = {}) {
                 timestamp: new Date(),
               })
             }
-            // Show execution status to user
-            if (meta.executedInStudio) {
+            // BUG 7: accurate Studio-status message based on real connection
+            // state — see the WebSocket path above for the full rationale.
+            if (meta.hasCode || meta.executedInStudio) {
+              let statusContent: string
+              if (meta.executedInStudio) {
+                statusContent = 'Sent to Roblox Studio ✓'
+              } else if (studioConnected) {
+                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+              } else {
+                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+              }
               result.push({
                 id: uid(),
                 role: 'status',
-                content: 'Sent to Roblox Studio — check your viewport!',
+                content: statusContent,
                 timestamp: new Date(),
               })
             }
@@ -668,6 +1574,9 @@ export function useChat(options: UseChatOptions = {}) {
 
           // Persist session after AI response is fully finalized
           persistSession(currentSessionIdRef.current, messagesRef.current)
+          debouncedCloudSave()
+          playCompletionSoundIfEnabled()
+          saveCheckpoint()
 
           // Client-side fallback execution (only if server didn't already execute)
           if (studioConnected && luauCode && !meta.executedInStudio && onBuildComplete) {
@@ -739,6 +1648,18 @@ export function useChat(options: UseChatOptions = {}) {
               void checkResult()
             }
           }
+
+          // ── Auto-playtest: kick off the agentic test loop if code was executed ──
+          if (
+            autoPlaytest &&
+            luauCode &&
+            studioSessionId &&
+            studioConnected &&
+            (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
+            (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
+          ) {
+            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId)
+          }
         } else {
           // ── Non-streaming fallback (body is null / custom key) ────────────────
           const data = await chatRes.json() as {
@@ -799,6 +1720,9 @@ export function useChat(options: UseChatOptions = {}) {
 
           // Persist session after non-streaming AI response
           persistSession(currentSessionIdRef.current, messagesRef.current)
+          debouncedCloudSave()
+          playCompletionSoundIfEnabled()
+          saveCheckpoint()
 
           let luauCode = data.buildResult?.luauCode ?? meshData?.luauCode ?? null
 
@@ -909,7 +1833,7 @@ export function useChat(options: UseChatOptions = {}) {
     },
     // retryCountRef / isAutoRetryRef / lastLuauRef / lastBuildPromptRef are refs — intentionally omitted
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync],
+    [loading, selectedModel, user, guestMessageCount, studioConnected, studioSessionId, studioContext, onBuildComplete, setMessagesSync, wsConnected, wsSend, wsOn, playCompletionSoundIfEnabled, enhancePrompts, debouncedCloudSave, autoPlaytest, triggerAutoPlaytest, aiMode, saveCheckpoint, imageOptions],
   )
 
   /** Exposed so UI error actions ("Try again") can reset the retry counter */
@@ -948,37 +1872,77 @@ export function useChat(options: UseChatOptions = {}) {
     const current = messagesRef.current
     if (current.filter((m) => m.role === 'user').length > 0) {
       persistSession(currentSessionIdRef.current, current)
+      void syncToCloud()
+    }
+    // Clear the active-conversation key so refresh starts fresh
+    if (typeof window !== 'undefined') {
+      try { localStorage.removeItem(LS_ACTIVE_KEY) } catch { /* ignore */ }
     }
     setSessionId(uid())
     setMessagesSync(() => [])
     setSuggestions([])
     setTotalTokens(0)
     setInput('')
-  }, [setMessagesSync, setSessionId])
+  }, [setMessagesSync, setSessionId, syncToCloud])
 
-  /** Load a saved session by id, replacing current messages. */
-  const loadSession = useCallback((id: string) => {
-    const sessions = loadSessions()
-    const session = sessions.find((s) => s.id === id)
-    if (!session) return
+  /** Load a saved session by id — tries cloud first, falls back to localStorage. */
+  const loadSession = useCallback(async (id: string) => {
     // Save current chat before switching, if it has content
     const current = messagesRef.current
     if (current.filter((m) => m.role === 'user').length > 0) {
       persistSession(currentSessionIdRef.current, current)
+      void syncToCloud()
     }
+
+    // Try cloud first
+    try {
+      const res = await fetch(`/api/sessions/${id}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.session && Array.isArray(data.session.messages)) {
+          setSessionId(id)
+          const rehydrated = data.session.messages.map((m: { id: string; role: string; content: string; metadata?: Record<string, unknown> | null; timestamp: string }) => ({
+            id: m.id,
+            role: m.role as MessageRole,
+            content: m.content,
+            ...(m.metadata?.tokensUsed ? { tokensUsed: m.metadata.tokensUsed as number } : {}),
+            ...(m.metadata?.model ? { model: m.metadata.model as string } : {}),
+            timestamp: new Date(m.timestamp),
+          }))
+          setMessagesSync(() => rehydrated)
+          setSuggestions([])
+          // Restore persisted AI mode (BUG 1) — falls back to 'build' when absent
+          const restoredMode = (data.session.aiMode as string | undefined) || 'build'
+          setAIMode(restoredMode as AIMode)
+          return
+        }
+      }
+    } catch {
+      // Cloud load failed — fall through to localStorage
+    }
+
+    // Fall back to localStorage
+    const sessions = loadSessions()
+    const session = sessions.find((s) => s.id === id)
+    if (!session) return
     setSessionId(id)
-    // Rehydrate timestamps as Date objects (JSON serializes them as strings)
     const rehydrated = session.messages.map((m) => ({
       ...m,
       timestamp: new Date(m.timestamp),
     }))
     setMessagesSync(() => rehydrated)
     setSuggestions([])
-  }, [setMessagesSync, setSessionId])
+  }, [setMessagesSync, setSessionId, syncToCloud])
 
-  /** Return metadata for all saved sessions (no message payloads). */
+  /**
+   * Return metadata for all saved sessions (no message payloads).
+   * Merges localStorage (fast, offline) and cloud sessions (cross-device).
+   * Cloud entries win when ids collide. Result is sorted by updatedAt desc
+   * so the mobile history panel shows recent activity from both sources
+   * (BUG 8).
+   */
   const listSessions = useCallback((): ChatSessionMeta[] => {
-    return loadSessions().map(({ id, title, createdAt, updatedAt, messages }) => {
+    const local = loadSessions().map(({ id, title, createdAt, updatedAt, messages }) => {
       const firstAi = messages.find((m) => m.role === 'assistant')
       const firstAiPreview = firstAi
         ? firstAi.content.replace(/```[\s\S]*?```/g, '[code]').replace(/\s+/g, ' ').trim().slice(0, 60) || null
@@ -990,14 +1954,39 @@ export function useChat(options: UseChatOptions = {}) {
         updatedAt,
         messageCount: messages.length,
         firstAiPreview,
-      }
+      } as ChatSessionMeta
     })
-  }, [])
 
-  /** Delete a saved session by id. */
+    const cloudIds = new Set(cloudSessions.map((s) => s.id))
+    const cloudMeta: ChatSessionMeta[] = cloudSessions.map((c) => ({
+      id: c.id,
+      title: c.title,
+      createdAt: typeof c.createdAt === 'string' ? c.createdAt : new Date(c.createdAt as unknown as string).toISOString(),
+      updatedAt: typeof c.updatedAt === 'string' ? c.updatedAt : new Date(c.updatedAt as unknown as string).toISOString(),
+      messageCount: c._count?.messages ?? 0,
+      // Cloud list response omits message bodies, so preview is unavailable
+      // until the session is opened; null is fine — the panel handles it.
+      firstAiPreview: null,
+    }))
+
+    const merged: ChatSessionMeta[] = [
+      ...cloudMeta,
+      ...local.filter((l) => !cloudIds.has(l.id)),
+    ]
+    merged.sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
+    return merged
+  }, [cloudSessions])
+
+  /** Delete a saved session by id (localStorage + cloud). */
   const deleteSession = useCallback((id: string) => {
     const sessions = loadSessions().filter((s) => s.id !== id)
     saveSessions(sessions)
+    // Delete from cloud too (fire-and-forget)
+    fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+      .then(() => fetchCloudSessions())
+      .catch(() => { /* cloud delete failed — localStorage already updated */ })
     // If we deleted the active session, reset to a fresh one
     if (id === currentSessionIdRef.current) {
       setSessionId(uid())
@@ -1005,7 +1994,7 @@ export function useChat(options: UseChatOptions = {}) {
       setSuggestions([])
       setTotalTokens(0)
     }
-  }, [setMessagesSync, setSessionId])
+  }, [setMessagesSync, setSessionId, fetchCloudSessions])
 
   /** Clear all saved sessions and reset to a fresh chat. */
   const clearAllSessions = useCallback(() => {
@@ -1016,6 +2005,91 @@ export function useChat(options: UseChatOptions = {}) {
     setTotalTokens(0)
   }, [setMessagesSync, setSessionId])
 
+  /** Restore messages to a specific index — used by checkpoint restore. */
+  const restoreToMessageIndex = useCallback((messageIndex: number) => {
+    setMessagesSync((prev) => prev.slice(0, messageIndex))
+    setSuggestions([])
+  }, [setMessagesSync])
+
+  /** Inject externally-provided messages (e.g. from a saved project). */
+  const injectMessages = useCallback((msgs: ChatMessage[]) => {
+    setMessagesSync(() => msgs)
+    setSuggestions([])
+  }, [setMessagesSync])
+
+  // BUG 2: "Build direction" — lets the user explicitly tell the AI how to
+  // treat the next prompt relative to prior context. Stored as a ref so
+  // setting it doesn't trigger a re-render of the whole hook consumer.
+  const [buildDirection, setBuildDirection] = useState<'continue' | 'pivot' | 'start-over'>('continue')
+
+  // Slash command mode switching: /think, /plan, /build, etc.
+  const wrappedSendMessage = useCallback(
+    (text: string) => {
+      const slashMatch = text.trim().match(/^\/(\w+)\s*(.*)/)
+      if (slashMatch) {
+        const cmd = slashMatch[1].toLowerCase()
+        const rest = slashMatch[2]
+        const modeMap: Record<string, AIMode> = {
+          build: 'build', think: 'think', plan: 'plan', image: 'image',
+          script: 'script', terrain: 'terrain', mesh: 'mesh', debug: 'debug',
+          idea: 'idea', ideas: 'idea', fix: 'debug', code: 'script',
+        }
+        if (cmd in modeMap) {
+          setAIMode(modeMap[cmd])
+          if (rest.trim()) {
+            sendMessage(rest.trim())
+          }
+          return
+        }
+      }
+
+      // BUG 2: apply build-direction semantics before sending.
+      // - continue: default, just send as-is
+      // - pivot: prepend "Change direction:" so the AI knows to take the
+      //   conversation in a new direction instead of refining the last build
+      // - start-over: clear the chat history first, then send as a fresh build
+      let finalText = text
+      if (buildDirection === 'pivot') {
+        finalText = `Change direction: ${text}`
+      } else if (buildDirection === 'start-over') {
+        // Clear history synchronously so the next sendMessage sees empty state
+        if (typeof window !== 'undefined') {
+          try { localStorage.removeItem(LS_ACTIVE_KEY) } catch { /* ignore */ }
+        }
+        setSessionId(uid())
+        setMessagesSync(() => [])
+        setSuggestions([])
+        setTotalTokens(0)
+      }
+      // Reset to continue after each send so direction is one-shot
+      if (buildDirection !== 'continue') {
+        setBuildDirection('continue')
+      }
+      sendMessage(finalText)
+    },
+    [sendMessage, buildDirection, setMessagesSync, setSessionId],
+  )
+
+  // Plan mode approval
+  const approvePlan = useCallback(() => {
+    if (planText) {
+      setPlanText(null)
+      setAIMode('build')
+      sendMessage(`[APPROVED_PLAN] Execute this build plan:\n${planText}`)
+    }
+  }, [planText, sendMessage])
+
+  const editPlan = useCallback(() => {
+    if (planText) {
+      setInput(planText)
+      setPlanText(null)
+    }
+  }, [planText])
+
+  const cancelPlan = useCallback(() => {
+    setPlanText(null)
+  }, [])
+
   return {
     messages,
     input,
@@ -1023,7 +2097,7 @@ export function useChat(options: UseChatOptions = {}) {
     loading,
     streaming,
     suggestions,
-    sendMessage,
+    sendMessage: wrappedSendMessage,
     resetRetryCount,
     dismissMessage,
     editAndResend,
@@ -1034,12 +2108,47 @@ export function useChat(options: UseChatOptions = {}) {
     totalTokens,
     textareaRef,
     lastMcpResult,
+    // AI Mode
+    aiMode,
+    setAIMode,
+    // Auto-playtest
+    autoPlaytest,
+    setAutoPlaytest,
+    // Prompt enhancement toggle
+    enhancePrompts,
+    setEnhancePrompts,
+    isThinking,
+    thinkingText,
+    planText,
+    approvePlan,
+    editPlan,
+    cancelPlan,
+    // BUG 2: Build direction
+    buildDirection,
+    setBuildDirection,
     // Session persistence
     newChat,
     loadSession,
     listSessions,
     deleteSession,
     clearAllSessions,
+    injectMessages,
+    restoreToMessageIndex,
     currentSessionId,
+    savedAt,
+    // Checkpoints
+    checkpoints,
+    saveCheckpoint,
+    restoreToCheckpoint,
+    removeCheckpoint,
+    // Completion sound toggle
+    soundEnabled,
+    setSoundEnabled,
+    // Cloud session persistence
+    cloudSessions,
+    syncToCloud,
+    // Image mode options (BUG 9)
+    imageOptions,
+    setImageOptions,
   }
 }

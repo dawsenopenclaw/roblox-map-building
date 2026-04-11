@@ -1,13 +1,19 @@
 import type { MetadataRoute } from 'next'
 import { BASE_URL } from '@/lib/metadata'
 
+// PERF: Sitemap contents are entirely static — no DB calls, no dynamic inputs.
+// Without this, Next.js treats sitemap.ts as dynamic by default and re-executes
+// the function on every request. Setting revalidate forces ISR-style caching
+// so the sitemap is generated once per hour at most.
+export const revalidate = 3600 // 1 hour
+
 export default function sitemap(): MetadataRoute.Sitemap {
   // Strategic lastModified dates for SEO freshness signals
   const dates = {
-    homepage: new Date('2026-03-30'),
-    recent: new Date('2026-03-29'),
-    pricing: new Date('2026-03-28'),
-    docs: new Date('2026-03-25'),
+    homepage: new Date('2026-04-04'),
+    recent: new Date('2026-04-04'),
+    pricing: new Date('2026-04-04'),
+    docs: new Date('2026-04-04'),
     legal: new Date('2026-01-15'),
   }
 

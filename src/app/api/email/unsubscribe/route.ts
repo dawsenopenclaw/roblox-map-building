@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createHmac, timingSafeEqual } from 'crypto'
+import * as Sentry from '@sentry/nextjs'
 import { db } from '@/lib/db'
 import { emailUnsubscribeSchema, parseBody } from '@/lib/validations'
 
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (err) {
+    Sentry.captureException(err, { tags: { route: 'email/unsubscribe' } })
     console.error('[unsubscribe] error:', err instanceof Error ? err.message : 'unknown')
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

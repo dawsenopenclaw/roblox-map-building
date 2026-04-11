@@ -39,7 +39,7 @@ export default function SubscribeSection() {
         setState('success')
         setEmail('')
       } else {
-        setErrorMsg(json.message ?? 'Something went wrong. Please try again.')
+        setErrorMsg(json.message ?? "Couldn't subscribe. Check your email address and try again.")
         setState('error')
       }
     } catch {

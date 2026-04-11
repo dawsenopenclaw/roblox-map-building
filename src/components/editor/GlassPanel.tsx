@@ -24,9 +24,9 @@ const PADDING_MAP: Record<PaddingSize, string> = {
 }
 
 const VARIANT_BG: Record<PanelVariant, string> = {
-  default:  'rgba(10, 14, 32, 0.45)',
-  elevated: 'rgba(14, 20, 40, 0.5)',
-  sunken:   'rgba(6, 8, 22, 0.55)',
+  default:  'rgba(10, 14, 32, 0.88)',
+  elevated: 'rgba(14, 20, 40, 0.92)',
+  sunken:   'rgba(6, 8, 22, 0.92)',
 }
 
 const VARIANT_BORDER: Record<PanelVariant, string> = {

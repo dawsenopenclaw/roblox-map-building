@@ -21,6 +21,8 @@ import {
   Activity,
   PieChart,
   ArrowLeft,
+  Server,
+  KeyRound,
 } from 'lucide-react'
 // Profile handled by global ProfileButton in root layout
 
@@ -32,6 +34,7 @@ interface AdminUser {
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/admin/dashboard', label: 'Command Center', icon: Server },
   { href: '/admin/dev-board', label: 'Dev Board', icon: Kanban },
   { href: '/admin/metrics', label: 'Live Metrics', icon: Activity },
   { href: '/admin/users', label: 'Users', icon: Users },
@@ -42,6 +45,7 @@ const NAV_ITEMS = [
   { href: '/admin/charity', label: 'Charity', icon: Heart },
   { href: '/admin/links', label: 'All Links', icon: Link2 },
   { href: '/admin/studio', label: 'Studio', icon: Radio },
+  { href: '/admin/beta', label: 'Beta Invites', icon: KeyRound },
 ]
 
 export function AdminShell({

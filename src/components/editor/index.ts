@@ -43,3 +43,21 @@ export { SkeletonCard, SkeletonList, SkeletonProgress, EmptyState, ErrorState } 
 
 export { ModelPreview } from './ModelPreview'
 export type { ModelPreviewProps } from './ModelPreview'
+
+export { AIModeSelector, ThinkingIndicator, PlanDisplay, CreativitySlider, StyleReferenceUpload, ImageStylePresetSelector, getModeConfig } from './AIModeSelector'
+export type { AIMode, AIModeConfig } from './AIModeSelector'
+
+export { ImageCanvas } from './ImageCanvas'
+export type { ImageCanvasProps } from './ImageCanvas'
+
+export { PlaytestToggle } from './PlaytestToggle'
+export { EnhanceToggle } from './EnhanceToggle'
+export { PlaytestIndicator } from './PlaytestIndicator'
+
+export { ImageGeneratorPanel } from './ImageGeneratorPanel'
+
+export { CanvasEditor } from './CanvasEditor'
+export type { Layer, LayerType, ShapeKind, EditorState } from './CanvasEditor'
+
+export { CheckpointPanel } from './CheckpointPanel'
+export { CheckpointTimeline } from './CheckpointTimeline'

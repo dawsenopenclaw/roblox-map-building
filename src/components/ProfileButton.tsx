@@ -6,7 +6,7 @@ import { useAuth, useUser, useClerk } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
 import { useTheme } from '@/components/ThemeProvider'
 
-const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding', '/editor']
+const HIDDEN_PATHS = ['/sign-in', '/sign-up', '/onboarding']
 const ADMIN_EMAILS = ['dawsenporter@gmail.com']
 
 export function ProfileButton() {
@@ -142,11 +142,15 @@ export function ProfileButton() {
       {open && (
         <div
           ref={dropdownRef}
-          className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-[260px] sm:w-64 bg-[#111113] border border-white/10 rounded-xl shadow-2xl overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-[260px] sm:w-64 border border-white/[0.08] rounded-xl shadow-2xl overflow-hidden"
           style={{
-            animation: 'pb-drop-in 0.15s ease',
+            animation: 'pb-drop-in 0.15s ease-out',
             maxHeight: 'calc(100vh - 60px)',
             overflowY: 'auto',
+            background: 'rgba(10,12,20,0.88)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
           }}
         >
           {/* Profile header */}
@@ -201,7 +205,7 @@ export function ProfileButton() {
                   style={{
                     background: t.preview.accent,
                     boxShadow: theme.id === t.id
-                      ? '0 0 0 2px #111113, 0 0 0 3.5px #ffffff'
+                      ? '0 0 0 2px #0a0c14, 0 0 0 3.5px #D4AF37'
                       : '0 0 0 1px rgba(255,255,255,0.12)',
                   }}
                   aria-label={`Switch to ${t.name} theme`}

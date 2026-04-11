@@ -3,15 +3,18 @@ import { createMetadata } from '@/lib/metadata'
 import PricingClient from './PricingClient'
 
 export const metadata: Metadata = createMetadata({
-  title: 'Pricing',
+  title: 'Pricing — Free, Starter, Pro & Studio Plans',
   description:
-    'Simple, transparent pricing. Start free with 10 AI generations per day. Upgrade to Starter, Pro, or Studio plans when ready. No contracts, cancel anytime.',
+    'ForjeGames pricing: start free with 10 AI Roblox generations per day. Upgrade to Starter ($9.99/mo), Pro ($29.99/mo), or Studio for unlimited AI game building. No contracts, cancel anytime.',
   path: '/pricing',
   keywords: [
-    'Roblox AI pricing',
-    'Roblox game builder cost',
+    'ForjeGames pricing',
+    'AI Roblox game builder cost',
+    'Roblox AI builder plans',
+    'Roblox game builder price',
     'AI Roblox map generator price',
-    'ForjeGames plans',
+    'ForjeGames free plan',
+    'ForjeGames subscription',
   ],
   jsonLd: {
     '@context': 'https://schema.org',

@@ -1,0 +1,196 @@
+/**
+ * Viral loop tracking + attribution. Pure types and business rules; callers
+ * hook this into whichever storage they use (Postgres, Redis, Upstash…).
+ *
+ * The model:
+ *  1. A user shares a project. We call `recordShare` to mint a share record.
+ *  2. Visitors click the share link. `recordClick` attributes the click to
+ *     the share and the share's owner.
+ *  3. A visitor signs up. `recordSignup` credits the inviter and, if thresholds
+ *     are met, unlocks rewards (XP bonus, credits, badges).
+ */
+
+import { grantXp, type GrantResult } from './xp-engine'
+
+export interface ShareRecord {
+  /** Stable id of the share event. */
+  shareId: string
+  /** User who shared (inviter). */
+  inviterUserId: string
+  /** Target resource — usually a projectId or null for a generic invite. */
+  resourceId: string | null
+  /** Resource kind. */
+  resourceKind: 'project' | 'profile' | 'achievement' | 'generic'
+  /** Platform/channel. */
+  channel: string
+  /** Time of share. */
+  createdAt: string // ISO
+  /** Aggregates. */
+  clicks: number
+  signups: number
+  /** Whether this share has been rewarded (so we don't pay twice for the first). */
+  rewarded: boolean
+}
+
+export interface ClickEvent {
+  shareId: string
+  ts: string
+  /** Best-effort visitor fingerprint (cookie id, hashed IP, etc.). */
+  visitorKey: string
+  /** Referer or "direct". */
+  source?: string
+}
+
+export interface SignupEvent {
+  shareId: string
+  newUserId: string
+  ts: string
+}
+
+/**
+ * Reward ladder for successful referrals. When the inviter reaches a threshold
+ * count of converted signups they get a one-time reward.
+ */
+export interface ReferralRewardTier {
+  threshold: number
+  rewardKind: 'xp' | 'credits' | 'badge'
+  amount?: number
+  badgeId?: string
+  label: string
+}
+
+export const REFERRAL_REWARD_LADDER: ReadonlyArray<ReferralRewardTier> = [
+  { threshold: 1, rewardKind: 'xp', amount: 200, label: 'First referral' },
+  { threshold: 3, rewardKind: 'credits', amount: 100, label: '3 referrals' },
+  { threshold: 5, rewardKind: 'badge', badgeId: 'connector', label: 'Connector' },
+  { threshold: 10, rewardKind: 'credits', amount: 500, label: '10 referrals' },
+  { threshold: 25, rewardKind: 'badge', badgeId: 'ambassador', label: 'Ambassador' },
+  { threshold: 50, rewardKind: 'credits', amount: 2500, label: '50 referrals' },
+  { threshold: 100, rewardKind: 'badge', badgeId: 'legend', label: 'Referral Legend' },
+]
+
+export interface RewardUnlockResult {
+  tier: ReferralRewardTier
+  alreadyGranted: boolean
+}
+
+/**
+ * Given the inviter's new confirmed signup count, return any reward tiers that
+ * should be granted right now. `previousCount` is the count BEFORE this signup
+ * so callers can diff safely.
+ */
+export function unlockedReferralTiers(
+  previousCount: number,
+  newCount: number,
+): ReferralRewardTier[] {
+  if (newCount <= previousCount) return []
+  return REFERRAL_REWARD_LADDER.filter(
+    (t) => t.threshold > previousCount && t.threshold <= newCount,
+  )
+}
+
+export interface AttributionResult {
+  /** Is this visitor credited as a new referral? */
+  credited: boolean
+  /** Reasons the visitor was rejected — empty if credited. */
+  rejections: string[]
+  /** If credited, the XP grant for the inviter (awaiting persistence). */
+  inviterXpGrant?: GrantResult
+}
+
+export interface AttributionContext {
+  /** The visitor's existing account — null if the visitor is actually new. */
+  visitorExistingUserId: string | null
+  /** The inviter. */
+  inviterUserId: string
+  /** Inviter's current XP — used to compute the grant result. */
+  inviterCurrentXp: number
+  /** Has this inviter/visitor pair already been credited? */
+  alreadyCreditedPair: boolean
+  /** Minimum age in ms the visitor's account must have (fraud guard). */
+  minVisitorAgeMs?: number
+  /** Visitor account creation timestamp (ms since epoch). */
+  visitorCreatedAtMs?: number
+}
+
+/**
+ * Attribution rules for a signup. Does NOT write anything — returns what the
+ * caller should persist. This is the single source of truth for "who gets
+ * credit for a referral."
+ */
+export function attributeSignup(ctx: AttributionContext): AttributionResult {
+  const rejections: string[] = []
+
+  if (ctx.visitorExistingUserId != null) {
+    rejections.push('Visitor already has an account')
+  }
+  if (ctx.visitorExistingUserId === ctx.inviterUserId) {
+    rejections.push('Inviter cannot refer themselves')
+  }
+  if (ctx.alreadyCreditedPair) {
+    rejections.push('Pair already credited')
+  }
+  if (
+    ctx.minVisitorAgeMs != null &&
+    ctx.visitorCreatedAtMs != null &&
+    Date.now() - ctx.visitorCreatedAtMs < ctx.minVisitorAgeMs
+  ) {
+    rejections.push('Visitor account too new')
+  }
+
+  if (rejections.length > 0) {
+    return { credited: false, rejections }
+  }
+
+  const inviterXpGrant = grantXp(ctx.inviterCurrentXp, 'REFERRAL_CONVERTED')
+  return { credited: true, rejections: [], inviterXpGrant }
+}
+
+/**
+ * Compute the viral coefficient K for a cohort — the ratio of new signups
+ * generated by a cohort's shares. K > 1 means viral growth.
+ */
+export function viralCoefficient(
+  cohortSize: number,
+  sharesPerUser: number,
+  conversionsPerShare: number,
+): number {
+  if (cohortSize <= 0) return 0
+  const newUsers = cohortSize * sharesPerUser * conversionsPerShare
+  return newUsers / cohortSize
+}
+
+/**
+ * Build a share record skeleton. Callers should persist this and use the
+ * returned shareId as the key for later click/signup events.
+ */
+export function createShareRecord(params: {
+  shareId: string
+  inviterUserId: string
+  resourceId: string | null
+  resourceKind: ShareRecord['resourceKind']
+  channel: string
+  now?: Date
+}): ShareRecord {
+  return {
+    shareId: params.shareId,
+    inviterUserId: params.inviterUserId,
+    resourceId: params.resourceId,
+    resourceKind: params.resourceKind,
+    channel: params.channel,
+    createdAt: (params.now ?? new Date()).toISOString(),
+    clicks: 0,
+    signups: 0,
+    rewarded: false,
+  }
+}
+
+/** Apply a click event to a share record and return the updated record. */
+export function applyClick(record: ShareRecord, _event: ClickEvent): ShareRecord {
+  return { ...record, clicks: record.clicks + 1 }
+}
+
+/** Apply a signup event to a share record and return the updated record. */
+export function applySignup(record: ShareRecord, _event: SignupEvent): ShareRecord {
+  return { ...record, signups: record.signups + 1 }
+}

@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { generateReferralCode } from '@/lib/growth/referral'
+import { z } from 'zod'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,12 +91,14 @@ export async function GET() {
       // DB not connected — fall through to demo mode
     }
 
-    // Authenticated but DB unavailable — return empty state, not fake referrals
+    // Authenticated but DB unavailable — return empty state without a referral code
+    // so the client shows a placeholder rather than copying literal '...'
     return NextResponse.json({
       invitesSent:  0,
       signups:      0,
       tokensEarned: 0,
       referrals:    [],
+      referralCode: null,
       demo:         true,
     })
   } catch (error) {
@@ -104,7 +107,141 @@ export async function GET() {
       signups:      0,
       tokensEarned: 0,
       referrals:    [],
+      referralCode: null,
       demo:         true,
     })
+  }
+}
+
+// ─── POST /api/referrals ────────────────────────────────────────────────────
+// Apply a referral code — gives both users 500 bonus credits.
+// This is a convenience alias; the canonical endpoint is /api/referrals/redeem.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ApplySchema = z.object({
+  referralCode: z.string().min(1).max(20).trim(),
+})
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    const parsed = ApplySchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: parsed.error.flatten() },
+        { status: 422 },
+      )
+    }
+
+    const { referralCode: code } = parsed.data
+
+    const { db } = await import('@/lib/db')
+    const { earnTokens } = await import('@/lib/tokens-server')
+
+    const BONUS = 500
+
+    // Look up the current user
+    const currentUser = await db.user.findUnique({
+      where: { clerkId },
+      select: { id: true, referralReceived: { select: { id: true }, take: 1 } },
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Prevent duplicate redemption
+    if (currentUser.referralReceived.length > 0) {
+      return NextResponse.json(
+        { error: 'You have already redeemed a referral code.' },
+        { status: 409 },
+      )
+    }
+
+    // Find the referrer
+    const referrer = await db.user.findFirst({
+      where: { referralCode: code },
+      select: { id: true },
+    })
+
+    if (!referrer) {
+      return NextResponse.json(
+        { error: 'Invalid referral code. Please check and try again.' },
+        { status: 404 },
+      )
+    }
+
+    // Prevent self-referral
+    if (referrer.id === currentUser.id) {
+      return NextResponse.json(
+        { error: 'You cannot use your own referral code.' },
+        { status: 400 },
+      )
+    }
+
+    // Create referral record
+    await db.$transaction(async (tx) => {
+      const { randomBytes } = await import('crypto')
+      const referralRecordCode = randomBytes(8).toString('hex').toUpperCase()
+
+      await tx.referral.create({
+        data: {
+          referrerId: referrer.id,
+          referredId: currentUser.id,
+          code: referralRecordCode,
+          status: 'CONVERTED',
+          commissionCents: BONUS,
+          convertedAt: new Date(),
+        },
+      })
+    })
+
+    // Credit both users
+    await Promise.all([
+      earnTokens(
+        referrer.id,
+        BONUS,
+        'BONUS',
+        'Referral bonus: a friend signed up with your code',
+        { referredUserId: currentUser.id, referralCode: code },
+      ),
+      earnTokens(
+        currentUser.id,
+        BONUS,
+        'BONUS',
+        `Welcome bonus: signed up with referral code ${code}`,
+        { referrerId: referrer.id, referralCode: code },
+      ),
+    ])
+
+    return NextResponse.json({
+      success: true,
+      creditsEarned: BONUS,
+      message: `You and your friend each earned ${BONUS} credits!`,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Unique constraint')) {
+      return NextResponse.json(
+        { error: 'This referral has already been recorded.' },
+        { status: 409 },
+      )
+    }
+
+    console.error('[referrals] POST error:', error)
+    return NextResponse.json(
+      { error: 'Failed to apply referral code. Please try again.' },
+      { status: 500 },
+    )
   }
 }

@@ -11,8 +11,8 @@ coverage
 out/
 
 # production
-build
-dist
+/build
+/dist
 
 # misc
 .DS_Store
@@ -25,11 +25,16 @@ yarn-error.log*
 
 # env files (keep .env.example)
 .env
+.env.*
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 .env.production
+.env.prod
+.env.vercel
+.env.vercel.local
 
 # vercel
 .vercel
@@ -52,3 +57,6 @@ Thumbs.db
 
 .vercel
 .github/
+
+# clerk configuration (can include secrets)
+/.clerk/

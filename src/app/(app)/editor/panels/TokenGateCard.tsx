@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { showToast } from '@/lib/notifications'
 
 const TIERS = [
   {
@@ -27,6 +29,7 @@ const TIERS = [
 ]
 
 export default function TokenGateCard() {
+  const router = useRouter()
   return (
     <div
       style={{
@@ -175,7 +178,13 @@ export default function TokenGateCard() {
       {/* Free alternatives */}
       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
         <button
-          onClick={() => {}}
+          onClick={() =>
+            showToast({
+              type: 'info',
+              title: 'Coming soon',
+              message: 'Rewarded ads will be available in a future update.',
+            })
+          }
           style={{
             flex: 1,
             padding: '8px',
@@ -203,7 +212,7 @@ export default function TokenGateCard() {
           <span style={{ marginLeft: '4px', opacity: 0.5 }}>(+50 tokens)</span>
         </button>
         <button
-          onClick={() => {}}
+          onClick={() => router.push('/referrals')}
           style={{
             flex: 1,
             padding: '8px',

@@ -43,8 +43,72 @@ const PROJECTS_INDEX_KEY = 'forje_projects_index'
 const PROJECT_KEY_PREFIX = 'forje_project_'
 const CURRENT_PROJECT_KEY = 'forje_current_project_id'
 
+const MAX_PROJECTS = 20
+const MAX_MESSAGES_PER_PROJECT = 100
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
+
+// ─── Named project CRUD (exported standalone functions) ────────────────────────
+
+/**
+ * Save a named project explicitly. Trims messages to MAX_MESSAGES_PER_PROJECT.
+ * Returns the saved ProjectData.
+ */
+export function saveProject(
+  name: string,
+  messages: SerializedMessage[],
+  sceneBlocks: SerializedSceneBlock[],
+  existingId?: string,
+): ProjectData {
+  const id = existingId ?? generateId()
+  const now = new Date().toISOString()
+  const trimmedMessages = messages.slice(-MAX_MESSAGES_PER_PROJECT)
+  const data: ProjectData = {
+    id,
+    name: name.trim() || 'Untitled Project',
+    createdAt: (() => {
+      try {
+        const existing = loadProjectData(id)
+        return existing?.createdAt ?? now
+      } catch { return now }
+    })(),
+    updatedAt: now,
+    messages: trimmedMessages,
+    sceneBlocks,
+    messageCount: trimmedMessages.filter((m) => m.role === 'user' || m.role === 'assistant').length,
+    objectCount: sceneBlocks.length,
+  }
+  saveProjectData(data)
+  return data
+}
+
+/**
+ * Load a project by id. Returns the ProjectData or null if not found.
+ */
+export function loadProject(id: string): ProjectData | null {
+  return loadProjectData(id)
+}
+
+/**
+ * Get a single project's data without loading (alias for loadProject).
+ */
+export function getProject(id: string): ProjectData | null {
+  return loadProjectData(id)
+}
+
+/**
+ * Rename an existing project. No-op if the project doesn't exist.
+ */
+export function renameProject(id: string, newName: string): void {
+  const existing = loadProjectData(id)
+  if (!existing) return
+  saveProjectData({
+    ...existing,
+    name: newName.trim() || 'Untitled Project',
+    updatedAt: new Date().toISOString(),
+  })
 }
 
 export function listProjects(): ProjectData[] {
@@ -84,8 +148,18 @@ function saveProjectData(data: ProjectData): void {
     const index = localStorage.getItem(PROJECTS_INDEX_KEY)
     const ids: string[] = index ? JSON.parse(index) : []
     if (!ids.includes(data.id)) {
-      ids.push(data.id)
+      // Enforce MAX_PROJECTS: evict oldest if at cap
+      if (ids.length >= MAX_PROJECTS) {
+        const evictId = ids[ids.length - 1]
+        if (evictId) localStorage.removeItem(`${PROJECT_KEY_PREFIX}${evictId}`)
+        ids.pop()
+      }
+      ids.unshift(data.id)
       localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(ids))
+    } else {
+      // Re-sort: move updated project to front
+      const reordered = [data.id, ...ids.filter((i) => i !== data.id)]
+      localStorage.setItem(PROJECTS_INDEX_KEY, JSON.stringify(reordered))
     }
     localStorage.setItem(CURRENT_PROJECT_KEY, data.id)
   } catch { /* quota exceeded etc */ }

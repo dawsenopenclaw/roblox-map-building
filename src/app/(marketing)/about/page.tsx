@@ -127,7 +127,7 @@ export default function AboutPage() {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section
         className="relative overflow-hidden border-b px-6 pb-24 pt-32 text-center"
-        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0A0E27' }}
+        style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#050810' }}
       >
         {/* Radial glow */}
         <div
