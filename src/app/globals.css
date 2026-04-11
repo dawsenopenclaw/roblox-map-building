@@ -2,8 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── ForgeGames glitch text (5 variants, GPU-accelerated) ────────────────── */
-@import '../styles/forgegames-glitch-text.css';
+/* ForgeGames glitch text is inlined at the END of this file. It used to
+ * live in src/styles/forgegames-glitch-text.css and get @import-ed here,
+ * but postcss-import is not in postcss.config.mjs so the @import was
+ * left for the runtime CSS parser, which rejects it:
+ *   (a) @import rules must precede any other rules; and
+ *   (b) the separate file uses @layer components with @apply directives
+ *       that need @tailwind components in scope.
+ * Inlining sidesteps both issues without adding a new PostCSS plugin.
+ * That CSS-build failure is why the Vercel deploy of b9854d7 never
+ * served the new home page — don't reintroduce the @import without
+ * also wiring up postcss-import.
+ */
 
 /* ─── Anti-flash: lock dark background at CSS parse time ───────────────────── */
 /* Works alongside the inline <script> in layout.tsx for belt-and-suspenders    */
@@ -2258,4 +2268,336 @@ body {
   overflow:   visible;
   clip:       auto;
   white-space: normal;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ForgeGames Premium Glitch Text — 5 variants + loading state
+   Inlined from src/styles/forgegames-glitch-text.css (see note at top of
+   this file for why it can't be @import-ed with the current postcss setup).
+   Gold + Blue + White cyberpunk aesthetic. Pure CSS, GPU-accelerated,
+   respects prefers-reduced-motion.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+  /* ===== KEYFRAMES ===== */
+
+  @keyframes glitch-text {
+    0% {
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 10px rgba(212, 175, 55, 0.5);
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 58%);
+    }
+    15% {
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 10px rgba(96, 165, 250, 0.5);
+      clip-path: polygon(0 0, 100% 0, 100% 33%, 0 47%);
+    }
+    25% {
+      text-shadow:
+        3px 0 #D4AF37,
+        -3px 0 #60A5FA,
+        0 0 15px rgba(212, 175, 55, 0.6);
+      clip-path: polygon(0 0, 100% 0, 100% 22%, 0 35%);
+    }
+    40% {
+      text-shadow:
+        -2px 0 #60A5FA,
+        2px 0 #D4AF37,
+        0 0 10px rgba(212, 175, 55, 0.4);
+      clip-path: polygon(0 25%, 100% 25%, 100% 58%, 0 72%);
+    }
+    60% {
+      text-shadow:
+        2px 0 #D4AF37,
+        -2px 0 #60A5FA,
+        0 0 20px rgba(96, 165, 250, 0.7);
+      clip-path: polygon(0 42%, 100% 42%, 100% 64%, 0 80%);
+    }
+    75% {
+      text-shadow:
+        -3px 0 #60A5FA,
+        3px 0 #D4AF37,
+        0 0 15px rgba(212, 175, 55, 0.5);
+      clip-path: polygon(0 10%, 100% 10%, 100% 55%, 0 70%);
+    }
+    100% {
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 10px rgba(212, 175, 55, 0.5);
+      clip-path: polygon(0 0, 100% 0, 100% 45%, 0 58%);
+    }
+  }
+
+  @keyframes glitch-text-2 {
+    0% {
+      text-shadow:
+        2px 0 #60A5FA,
+        -2px 0 #D4AF37,
+        0 0 10px rgba(96, 165, 250, 0.5);
+      clip-path: polygon(0 58%, 100% 45%, 100% 100%, 0 100%);
+    }
+    15% {
+      text-shadow:
+        -2px 0 #60A5FA,
+        2px 0 #D4AF37,
+        0 0 10px rgba(212, 175, 55, 0.5);
+      clip-path: polygon(0 47%, 100% 33%, 100% 100%, 0 100%);
+    }
+    25% {
+      text-shadow:
+        -3px 0 #D4AF37,
+        3px 0 #60A5FA,
+        0 0 15px rgba(96, 165, 250, 0.6);
+      clip-path: polygon(0 35%, 100% 22%, 100% 100%, 0 100%);
+    }
+    40% {
+      text-shadow:
+        2px 0 #60A5FA,
+        -2px 0 #D4AF37,
+        0 0 10px rgba(96, 165, 250, 0.4);
+      clip-path: polygon(0 72%, 100% 58%, 100% 100%, 0 100%);
+    }
+    60% {
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 20px rgba(212, 175, 55, 0.7);
+      clip-path: polygon(0 80%, 100% 64%, 100% 100%, 0 100%);
+    }
+    75% {
+      text-shadow:
+        3px 0 #60A5FA,
+        -3px 0 #D4AF37,
+        0 0 15px rgba(96, 165, 250, 0.5);
+      clip-path: polygon(0 70%, 100% 55%, 100% 100%, 0 100%);
+    }
+    100% {
+      text-shadow:
+        2px 0 #60A5FA,
+        -2px 0 #D4AF37,
+        0 0 10px rgba(96, 165, 250, 0.5);
+      clip-path: polygon(0 58%, 100% 45%, 100% 100%, 0 100%);
+    }
+  }
+
+  @keyframes scanlines {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 2px; }
+  }
+
+  @keyframes chromatic-shift {
+    0% { filter: blur(0px); }
+    50% { filter: blur(0.5px); }
+    100% { filter: blur(0px); }
+  }
+
+  @keyframes text-scramble {
+    0% { letter-spacing: 0.05em; }
+    50% { letter-spacing: 0.15em; }
+    100% { letter-spacing: 0.05em; }
+  }
+
+  @keyframes glow-pulse {
+    0% {
+      text-shadow:
+        0 0 10px rgba(212, 175, 55, 0.3),
+        0 0 20px rgba(96, 165, 250, 0.2);
+    }
+    50% {
+      text-shadow:
+        0 0 20px rgba(212, 175, 55, 0.6),
+        0 0 40px rgba(96, 165, 250, 0.4),
+        0 0 60px rgba(255, 255, 255, 0.2);
+    }
+    100% {
+      text-shadow:
+        0 0 10px rgba(212, 175, 55, 0.3),
+        0 0 20px rgba(96, 165, 250, 0.2);
+    }
+  }
+
+  @keyframes loading-glitch {
+    0% {
+      opacity: 0.6;
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 10px rgba(212, 175, 55, 0.5);
+    }
+    50% {
+      opacity: 1;
+      text-shadow:
+        0 0 20px rgba(212, 175, 55, 0.8),
+        0 0 30px rgba(96, 165, 250, 0.6);
+    }
+    100% {
+      opacity: 0.6;
+      text-shadow:
+        -2px 0 #D4AF37,
+        2px 0 #60A5FA,
+        0 0 10px rgba(212, 175, 55, 0.5);
+    }
+  }
+
+  /* ===== COMPONENT STYLES ===== */
+
+  .glitch-text-premium {
+    @apply relative text-white font-black tracking-wider;
+    position: relative;
+    font-size: clamp(2rem, 10vw, 5rem);
+    letter-spacing: 0.05em;
+    text-shadow:
+      0 0 10px rgba(212, 175, 55, 0.3),
+      0 0 20px rgba(96, 165, 250, 0.2);
+  }
+
+  .glitch-text-premium::before {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+    z-index: -1;
+    animation: glitch-text 3s ease-in-out infinite;
+  }
+
+  .glitch-text-premium::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+    z-index: -2;
+    animation: glitch-text-2 3s ease-in-out infinite 0.1s;
+  }
+
+  .glitch-text-premium.with-scanlines::before {
+    background: linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px
+    );
+    background-size: 100% 2px;
+    animation:
+      glitch-text 3s ease-in-out infinite,
+      scanlines 0.1s linear infinite;
+    mix-blend-mode: overlay;
+  }
+
+  .glitch-text-scramble {
+    @apply glitch-text-premium;
+    animation: text-scramble 0.8s ease-in-out infinite;
+  }
+
+  .glitch-text-glow-intense {
+    @apply glitch-text-premium;
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .glitch-text-glow-intense::before,
+  .glitch-text-glow-intense::after {
+    animation-duration: 2s;
+    filter: blur(1px);
+  }
+
+  .glitch-container {
+    @apply relative;
+    perspective: 1000px;
+  }
+
+  .glitch-container .glitch-text-premium {
+    @apply mb-2;
+  }
+
+  .glitch-chromatic {
+    @apply relative text-white font-black;
+    font-size: clamp(2rem, 10vw, 5rem);
+    letter-spacing: 0.05em;
+    background: linear-gradient(
+      90deg,
+      rgba(212, 175, 55, 0.1),
+      rgba(96, 165, 250, 0.1)
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.4))
+            drop-shadow(0 0 15px rgba(96, 165, 250, 0.3));
+  }
+
+  .scanline-overlay::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 2px
+    );
+    pointer-events: none;
+    animation: scanlines 0.1s linear infinite;
+    z-index: 10;
+  }
+
+  .glitch-small  { @apply glitch-text-premium text-2xl md:text-3xl; }
+  .glitch-medium { @apply glitch-text-premium text-3xl md:text-4xl; }
+  .glitch-large  { @apply glitch-text-premium text-4xl md:text-5xl; }
+  .glitch-hero   { @apply glitch-text-premium text-5xl md:text-7xl; }
+
+  .glitch-on-dark {
+    @apply glitch-text-premium;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 1rem 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+  }
+
+  .glitch-blue-accent {
+    @apply glitch-text-premium;
+    color: #60A5FA;
+  }
+
+  .glitch-blue-accent::before { animation: glitch-text-2 3s ease-in-out infinite; }
+  .glitch-blue-accent::after  { animation: glitch-text 3s ease-in-out infinite 0.1s; }
+
+  .glitch-gold-accent {
+    @apply glitch-text-premium;
+    color: #D4AF37;
+  }
+
+  .glitch-loading {
+    @apply glitch-text-premium;
+    animation: loading-glitch 1.5s ease-in-out infinite;
+  }
+}
+
+/* ===== ACCESSIBILITY: respect prefers-reduced-motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  .glitch-text-premium,
+  .glitch-text-premium::before,
+  .glitch-text-premium::after {
+    animation: none !important;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+}
+
+/* GPU acceleration */
+.glitch-text-premium {
+  will-change: clip-path, text-shadow;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
 }
