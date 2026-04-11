@@ -109,7 +109,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    // Skip lint during `next build` — Next runs lint as a separate phase that
+    // shells out to ESLint with its own Node process. With ~200 components and
+    // many large files, the lint phase has been the OOM hog (8GB heap exhausted
+    // after the warning collection step). We run lint separately via
+    // `npm run lint` in CI/dev. See COMMIT-NOTES for full reasoning.
+    ignoreDuringBuilds: true,
   },
   experimental: {
     optimizePackageImports: [
