@@ -29,20 +29,10 @@ import { drainCommands, getSession, getSessionByToken, createSession } from '@/l
 import { studioSyncRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { getRedis } from '@/lib/redis'
 import { trackCommand } from '@/lib/studio-analytics'
+import { getStudioAuthSecret } from '@/lib/studio-auth-secret'
 
-// ── JWT helpers (mirrors auth/route.ts) ───────────────────────────────────────
-// STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
-// secret is generated — tokens issued in a previous process will be invalid
-// after a restart, which is the safe failure mode.
-const SECRET: string = (() => {
-  const s = process.env.STUDIO_AUTH_SECRET
-  if (!s) {
-    const fallback = crypto.randomBytes(32).toString('hex')
-    console.warn('[studio/sync] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')
-    return fallback
-  }
-  return s
-})()
+// JWT secret is resolved lazily via the shared helper so the three
+// studio routes can never disagree on the signing key.
 
 interface JwtPayload {
   sid: string   // sessionId
@@ -65,7 +55,7 @@ function verifyJwt(token: string): JwtPayload | null {
 
     // Verify HMAC — use timingSafeEqual to prevent timing-based side-channel attacks
     const expectedSig = crypto
-      .createHmac('sha256', SECRET)
+      .createHmac('sha256', getStudioAuthSecret())
       .update(payloadB64)
       .digest('base64url')
     const sigBuf = Buffer.from(sig)

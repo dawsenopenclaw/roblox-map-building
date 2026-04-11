@@ -30,24 +30,10 @@ import {
 } from '@/lib/studio-session'
 import { parseBody } from '@/lib/validations'
 import { studioExecuteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { getStudioAuthSecret } from '@/lib/studio-auth-secret'
 
-// ── JWT verification (same logic as sync/route.ts) ────────────────────────────
-// IMPORTANT: STUDIO_AUTH_SECRET must be set in production. The fallback is only
-// for local dev. Never rely on CLERK_SECRET_KEY for HMAC — it is a Clerk API key,
-// not a symmetric signing secret, and sharing it broadens the blast radius of
-// any credential leak. Set STUDIO_AUTH_SECRET to an independent 32-byte random value.
-// STUDIO_AUTH_SECRET must be set in .env. If missing, a per-process random
-// secret is generated — tokens issued in a previous process will be invalid
-// after a restart, which is the safe failure mode.
-const SECRET: string = (() => {
-  const s = process.env.STUDIO_AUTH_SECRET
-  if (!s) {
-    const fallback = crypto.randomBytes(32).toString('hex')
-    console.warn('[studio/execute] WARNING: STUDIO_AUTH_SECRET is not set. Using a per-process random secret — any tokens from a previous process will be rejected. Set STUDIO_AUTH_SECRET in your environment.')
-    return fallback
-  }
-  return s
-})()
+// JWT secret is resolved lazily via the shared helper so the three
+// studio routes can never disagree on the signing key.
 
 interface JwtPayload {
   sid: string
@@ -64,7 +50,7 @@ function verifyJwt(token: string): JwtPayload | null {
     const payloadB64 = token.slice(0, dot)
     const sig = token.slice(dot + 1)
     const expectedSig = crypto
-      .createHmac('sha256', SECRET)
+      .createHmac('sha256', getStudioAuthSecret())
       .update(payloadB64)
       .digest('base64url')
     // Use timingSafeEqual to prevent timing-based side-channel attacks

@@ -7,7 +7,7 @@
  * The user approves the plan in the UI before calling this endpoint.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { z } from 'zod'
 import { requireTier } from '@/lib/tier-guard'
@@ -15,7 +15,10 @@ import { parseBody } from '@/lib/validations'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { executeBuildPlan, retrievePlan } from '@/lib/ai/build-executor'
 
-export const maxDuration = 60
+// 300s is the Vercel Pro/Enterprise ceiling. The wave loop typically
+// finishes in well under 60s for small plans, but multi-wave builds
+// with terrain gen can legitimately run 2–4 minutes.
+export const maxDuration = 300
 
 const executeRequestSchema = z.object({
   planId: z.string().min(1, 'planId is required'),
@@ -61,8 +64,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let buildId: string
   try {
-    const result = await executeBuildPlan(plan, user.id, sessionId)
-    buildId = result.buildId
+    // `executeBuildPlan` writes the initial progress record and hands back a
+    // thunk that performs the actual wave-by-wave execution. We hand that
+    // thunk to `after()` so Vercel keeps the lambda alive for the work
+    // *after* the HTTP response is flushed. Previously the wave loop was
+    // fire-and-forget (`void (async () => ...)()`) and died with the lambda
+    // mid-build, leaving users with partial Luau output in Studio.
+    const { buildId: id, runInBackground } = await executeBuildPlan(
+      plan,
+      user.id,
+      sessionId,
+    )
+    buildId = id
+    after(runInBackground)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Build execution failed to start'
     console.error('[api/ai/build/execute] executeBuildPlan error:', err)

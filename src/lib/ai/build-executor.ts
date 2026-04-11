@@ -598,14 +598,20 @@ async function executeWave(
 // ── Main executor ─────────────────────────────────────────────────────────────
 
 /**
- * Starts executing a BuildPlan asynchronously.
- * Returns immediately with a buildId — poll getBuildProgress() for status.
+ * Prepares a BuildPlan for execution: writes the initial progress record
+ * and returns a `buildId` plus a `runInBackground` thunk. The caller route
+ * should hand `runInBackground()` to `after()` from `next/server` so the
+ * Vercel lambda keeps executing the wave loop after the HTTP response has
+ * been sent. Callers on long-running hosts can `await` the thunk directly.
+ *
+ * Splitting the thunk from the caller keeps the Redis-backed progress
+ * contract unchanged (client still polls `/api/ai/build/status?buildId=...`).
  */
 export async function executeBuildPlan(
   plan: BuildPlan,
   userId: string,
   sessionId: string,
-): Promise<{ buildId: string }> {
+): Promise<{ buildId: string; runInBackground: () => Promise<void> }> {
   const buildId = generateBuildId()
 
   const initialProgress: BuildProgress = {
@@ -628,15 +634,7 @@ export async function executeBuildPlan(
 
   await writeProgress(initialProgress)
 
-  // TODO(vercel-compat): This fire-and-forget background task will be killed
-  // when the Vercel lambda exits. The API contract returns `{ buildId }`
-  // immediately and the client polls via Redis, so we can't just await this.
-  // Proper fix: wire up `waitUntil()` from `@vercel/functions` in the
-  // caller route (src/app/api/ai/build/execute/route.ts) by passing it a
-  // promise returned from this function. Until then, rely on the Redis
-  // progress state being persisted eagerly so the client can recover.
-  // Run in background — do not await
-  void (async () => {
+  const runInBackground = async (): Promise<void> => {
     try {
       for (let wave = 0; wave <= plan.totalWaves - 1; wave++) {
         const progress = await readProgress(buildId)
@@ -663,9 +661,9 @@ export async function executeBuildPlan(
       }
       console.error(`[build-executor] Build ${buildId} crashed:`, err)
     }
-  })()
+  }
 
-  return { buildId }
+  return { buildId, runInBackground }
 }
 
 // ── Status poller ─────────────────────────────────────────────────────────────
