@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── ForgeGames glitch text (5 variants, GPU-accelerated) ────────────────── */
+@import '../styles/forgegames-glitch-text.css';
+
 /* ─── Anti-flash: lock dark background at CSS parse time ───────────────────── */
 /* Works alongside the inline <script> in layout.tsx for belt-and-suspenders    */
 /* coverage — prevents any white/light frame before Tailwind classes apply.     */

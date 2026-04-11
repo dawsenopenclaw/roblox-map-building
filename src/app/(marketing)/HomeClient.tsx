@@ -21,6 +21,9 @@ const ShowcasePreview = dynamic(
 const ComparisonSection = dynamic(
   () => import('@/components/marketing/ComparisonSection')
 )
+const ProductPreviewGallery = dynamic(
+  () => import('@/components/marketing/ProductPreviewGallery')
+)
 // Footer rendered by marketing layout
 
 /* ─── Scroll reveal hook ─────────────────────────────────────────────────── */
@@ -885,6 +888,11 @@ export default function HomeClient() {
             </div>
           </div>
         </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            PRODUCT PREVIEW — real product screenshots (editor, dashboard, pricing)
+        ══════════════════════════════════════════════════════════════════ */}
+        <ProductPreviewGallery />
 
         {/* ══════════════════════════════════════════════════════════════════
             BENTO GRID FEATURES
