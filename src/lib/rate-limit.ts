@@ -185,9 +185,27 @@ export async function checkRateLimit(
       remaining: result.remaining,
       resetAt: result.reset,
     }
-  } catch {
-    // Upstash unreachable — fall back to in-memory limiter
-    console.warn('[rate-limit] Upstash error — using memory fallback for', identifier)
+  } catch (err) {
+    // Upstash unreachable (quota exhausted, network error, service outage).
+    // Fall back to the per-instance in-memory limiter so the site stays up,
+    // but loudly report the failure to Sentry so ops can react — silent
+    // degradation previously masked the exhausted-quota incident on Apr 11.
+    console.error(
+      '[rate-limit] Upstash error — using memory fallback for',
+      identifier,
+      err,
+    )
+    // Lazy import so missing @sentry/nextjs never breaks rate limiting.
+    import('@sentry/nextjs')
+      .then((sentry) => {
+        sentry.captureException(err, {
+          tags: { component: 'rate-limit', fallback: 'memory' },
+          extra: { identifier, fallbackLimit, fallbackWindowSec },
+        })
+      })
+      .catch(() => {
+        /* Sentry not installed — nothing to do beyond console.error above. */
+      })
     return checkMemoryLimit(identifier, fallbackLimit, fallbackWindowSec)
   }
 }

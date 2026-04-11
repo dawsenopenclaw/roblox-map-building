@@ -81,6 +81,10 @@ const serverSchema = z.object({
   DEEPGRAM_API_KEY: z.string().optional(),
   ELEVENLABS_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  /** Groq is used by the free prompt-enhancement step — optional but
+      feature-degrading when absent. Declared here so runtime code can read
+      it via env.GROQ_API_KEY without falling back to process.env directly. */
+  GROQ_API_KEY: z.string().optional(),
 
   // ── Email ─────────────────────────────────────────────────────────────────
   RESEND_API_KEY: prodRequired('RESEND_API_KEY'),

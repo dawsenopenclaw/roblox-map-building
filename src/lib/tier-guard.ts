@@ -36,15 +36,27 @@ export async function requireTier(
         select: {
           tier: true,
           status: true,
+          currentPeriodEnd: true,
         },
       },
     },
   })
 
   const subscription = user?.subscription
+
+  // A subscription is only honored when:
+  //   1. Status is ACTIVE or TRIALING, AND
+  //   2. The current paid period has not ended (covers lapsed / PAST_DUE subs
+  //      whose Stripe webhook has not yet fired — we must not keep charging
+  //      tokens for a subscription that has actually expired upstream).
+  const now = new Date()
+  const periodValid =
+    !subscription?.currentPeriodEnd ||
+    new Date(subscription.currentPeriodEnd) > now
   const isActive =
-    subscription?.status === 'ACTIVE' ||
-    subscription?.status === 'TRIALING'
+    (subscription?.status === 'ACTIVE' ||
+      subscription?.status === 'TRIALING') &&
+    periodValid
 
   const currentTier: SubscriptionTier = isActive
     ? ((subscription?.tier as SubscriptionTier) ?? 'FREE')

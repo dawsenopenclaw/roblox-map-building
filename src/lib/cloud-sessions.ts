@@ -70,6 +70,26 @@ function indexKey(userId: string): string {
   return `sessions:${userId}`
 }
 
+/**
+ * Report a Redis failure to Sentry (lazy import so a missing Sentry install
+ * never breaks the caller) and emit a console error so the fallback is
+ * visible in Vercel logs. Used by every write/read in this module to prevent
+ * silent data loss when Upstash quota is exhausted or Redis is unreachable.
+ */
+function reportRedisFailure(op: string, err: unknown, ctx: Record<string, unknown> = {}): void {
+  console.error(`[cloud-sessions] Redis ${op} failed`, ctx, err)
+  import('@sentry/nextjs')
+    .then((sentry) => {
+      sentry.captureException(err, {
+        tags: { component: 'cloud-sessions', operation: op },
+        extra: ctx,
+      })
+    })
+    .catch(() => {
+      /* Sentry not installed — console.error above is the only signal. */
+    })
+}
+
 // ---------------------------------------------------------------------------
 // CRUD operations
 // ---------------------------------------------------------------------------
@@ -87,16 +107,27 @@ export async function saveSession(session: CloudSession): Promise<void> {
   const key = sessionKey(session.userId, session.id)
   const idxKey = indexKey(session.userId)
 
-  await Promise.all([
-    redis.set(key, JSON.stringify(session), { ex: SESSION_TTL }),
-    redis.zadd(idxKey, { score: Date.now(), member: session.id }),
-  ])
+  try {
+    await Promise.all([
+      redis.set(key, JSON.stringify(session), { ex: SESSION_TTL }),
+      redis.zadd(idxKey, { score: Date.now(), member: session.id }),
+    ])
 
-  // Trim index to prevent unbounded growth
-  const count = await redis.zcard(idxKey)
-  if (count > MAX_SESSIONS_PER_USER) {
-    // Remove oldest entries beyond the cap
-    await redis.zremrangebyrank(idxKey, 0, count - MAX_SESSIONS_PER_USER - 1)
+    // Trim index to prevent unbounded growth
+    const count = await redis.zcard(idxKey)
+    if (count > MAX_SESSIONS_PER_USER) {
+      // Remove oldest entries beyond the cap
+      await redis.zremrangebyrank(idxKey, 0, count - MAX_SESSIONS_PER_USER - 1)
+    }
+  } catch (err) {
+    // Upstash quota exhausted or network failure — do NOT throw up to the
+    // chat handler (which would surface as a 500 to the subscriber). The
+    // user's message is already in their local state; losing cloud persistence
+    // is degraded UX but not fatal.
+    reportRedisFailure('saveSession', err, {
+      userId: session.userId,
+      sessionId: session.id,
+    })
   }
 }
 
@@ -110,7 +141,13 @@ export async function loadSession(
 ): Promise<CloudSession | null> {
   if (!redis) return null
 
-  const data = await redis.get<string>(sessionKey(userId, sessionId))
+  let data: string | null = null
+  try {
+    data = await redis.get<string>(sessionKey(userId, sessionId))
+  } catch (err) {
+    reportRedisFailure('loadSession', err, { userId, sessionId })
+    return null
+  }
   if (!data) return null
 
   try {
@@ -131,18 +168,30 @@ export async function listSessions(
   if (!redis) return []
 
   // Fetch session IDs from sorted set, newest first
-  const sessionIds = await redis.zrange<string[]>(indexKey(userId), 0, limit - 1, {
-    rev: true,
-  })
+  let sessionIds: string[] | null = null
+  try {
+    sessionIds = await redis.zrange<string[]>(indexKey(userId), 0, limit - 1, {
+      rev: true,
+    })
+  } catch (err) {
+    reportRedisFailure('listSessions.zrange', err, { userId })
+    return []
+  }
 
   if (!sessionIds || sessionIds.length === 0) return []
 
   // Batch-fetch session data via pipeline
-  const pipeline = redis.pipeline()
-  for (const id of sessionIds) {
-    pipeline.get(sessionKey(userId, id))
+  let results: (string | null)[] = []
+  try {
+    const pipeline = redis.pipeline()
+    for (const id of sessionIds) {
+      pipeline.get(sessionKey(userId, id))
+    }
+    results = await pipeline.exec<(string | null)[]>()
+  } catch (err) {
+    reportRedisFailure('listSessions.pipeline', err, { userId, count: sessionIds.length })
+    return []
   }
-  const results = await pipeline.exec<(string | null)[]>()
 
   const sessions: SessionSummary[] = []
   const expiredIds: string[] = []
@@ -184,8 +233,12 @@ export async function deleteSession(
 ): Promise<void> {
   if (!redis) return
 
-  await Promise.all([
-    redis.del(sessionKey(userId, sessionId)),
-    redis.zrem(indexKey(userId), sessionId),
-  ])
+  try {
+    await Promise.all([
+      redis.del(sessionKey(userId, sessionId)),
+      redis.zrem(indexKey(userId), sessionId),
+    ])
+  } catch (err) {
+    reportRedisFailure('deleteSession', err, { userId, sessionId })
+  }
 }
