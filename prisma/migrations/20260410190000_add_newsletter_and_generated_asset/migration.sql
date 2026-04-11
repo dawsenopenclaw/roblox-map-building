@@ -30,6 +30,12 @@ EXCEPTION
 END $$;
 
 -- ─── GeneratedAsset ─────────────────────────────────────────────────────────
+-- The base table was created in 0_init. This block is dual-purpose:
+-- 1. CREATE TABLE IF NOT EXISTS — handles a fresh database (full table)
+-- 2. ALTER TABLE ADD COLUMN IF NOT EXISTS — handles existing databases by
+--    adding the new audio/generic provider fields without touching the base
+--    columns. CREATE TABLE IF NOT EXISTS alone is a no-op on existing tables
+--    and would silently leave them missing the new columns.
 
 CREATE TABLE IF NOT EXISTS "GeneratedAsset" (
     "id" TEXT NOT NULL,
@@ -76,6 +82,20 @@ CREATE TABLE IF NOT EXISTS "GeneratedAsset" (
 
     CONSTRAINT "GeneratedAsset_pkey" PRIMARY KEY ("id")
 );
+
+-- Additive ALTERs for existing databases (no-op on fresh DB where the table
+-- was just created with all columns above).
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "externalTaskId" TEXT;
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "sourceUrl" TEXT;
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "moderationState" TEXT;
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "durationMs" INTEGER;
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "metadata" JSONB;
+ALTER TABLE "GeneratedAsset" ADD COLUMN IF NOT EXISTS "completedAt" TIMESTAMP(3);
+
+-- The `style` column was originally NOT NULL with no default in 0_init.
+-- The Prisma schema now declares @default("default"). Add the default so new
+-- inserts that omit `style` (e.g. audio assets) succeed.
+ALTER TABLE "GeneratedAsset" ALTER COLUMN "style" SET DEFAULT 'default';
 
 -- Unique constraint on meshyTaskId
 DO $$ BEGIN
