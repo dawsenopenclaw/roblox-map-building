@@ -643,49 +643,11 @@ export default function HomeClient() {
   // headlines are intentional brand treatment. See TODO below.
   const tHero = useTranslations('hero')
 
-  // ─── Inline Stripe checkout for the home pricing section ────────────────
-  // Clicking a tier button on the home page posts directly to
-  // /api/billing/checkout and redirects to the Stripe Checkout Session URL
-  // that the server returns. No detour through /pricing. One card at a time
-  // is loading at most — tracked by tier key.
-  const [checkoutTier, setCheckoutTier] = useState<'HOBBY' | 'CREATOR' | 'STUDIO' | null>(null)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const handleHomeCheckout = async (tier: 'HOBBY' | 'CREATOR' | 'STUDIO') => {
-    setCheckoutTier(tier)
-    setCheckoutError(null)
-    try {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'subscription', tier, yearly: false }),
-      })
-      if (res.status === 401) {
-        // Not signed in — send them to sign-up with the plan pre-selected.
-        // The checkout flow will resume after auth if the sign-up flow is
-        // wired to carry the ?plan param through.
-        window.location.href = `/sign-up?plan=${tier.toLowerCase()}&next=/pricing`
-        return
-      }
-      const data = await res.json().catch(() => ({}))
-      if (res.ok && typeof data?.url === 'string') {
-        window.location.href = data.url
-        return
-      }
-      if (typeof data?.redirect === 'string') {
-        window.location.href = data.redirect
-        return
-      }
-      setCheckoutError(
-        typeof data?.error === 'string'
-          ? data.error
-          : 'Checkout failed. Please try again or visit /pricing.',
-      )
-    } catch (err) {
-      setCheckoutError(err instanceof Error ? err.message : 'Network error during checkout.')
-    } finally {
-      setCheckoutTier(null)
-    }
-  }
+  // Pricing section on the home page was briefly a 4-tier grid with inline
+  // Stripe checkout buttons, but the user asked for a single frictionless
+  // CTA that links to /pricing instead. The full plan comparison lives on
+  // the degated /pricing page, so the home page just needs a loud hook
+  // that routes users there — no inline checkout state needed.
 
   return (
     <>
@@ -1300,159 +1262,92 @@ export default function HomeClient() {
             }} />
           </div>
 
-          <div className="relative max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                Wanna generate a game? Look here.
-              </p>
-              <h2
-                className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
-                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
-              >
-                Pick a plan.
-                <br />
-                <span className="gradient-text">Start in under a minute.</span>
-              </h2>
-              <p className="reveal reveal-delay-2 text-lg" style={{ color: '#71717A' }}>
-                No credit card for Free. Paid tiers go straight to Stripe — no sign-up detour.
-              </p>
-            </div>
-
-            {checkoutError && (
-              <div
-                className="reveal mx-auto mb-6 max-w-xl px-4 py-3 rounded-xl text-sm text-center"
-                style={{
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.25)',
-                  color: '#FCA5A5',
-                }}
-                role="alert"
-              >
-                {checkoutError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
-              <PricingCard
-                name="Free"
-                price="$0"
-                period="/forever"
-                description="Try before you commit"
-                features={[
-                  '1,000 tokens / month',
-                  'Basic terrain generation',
-                  'Basic templates',
-                  'Live Studio sync',
-                  'Community support',
-                ]}
-                cta="Start free"
-                href="/editor"
-              />
-              <PricingCard
-                name="Starter"
-                price="$10"
-                period="/month"
-                description="For hobbyists leveling up"
-                features={[
-                  '5,000 tokens / month',
-                  '5 projects',
-                  'Voice-to-game',
-                  'Image-to-map',
-                  '3D asset generation',
-                  'Email support',
-                ]}
-                cta="Get Starter"
-                onCheckout={() => handleHomeCheckout('HOBBY')}
-                loading={checkoutTier === 'HOBBY'}
-              />
-              <PricingCard
-                name="Creator"
-                price="$50"
-                period="/month"
-                description="For serious Roblox creators"
-                features={[
-                  '30,000 tokens / month',
-                  'Voice-to-game + image-to-map',
-                  'Game DNA scanner',
-                  'Marketplace access + selling',
-                  'Team collaboration (3 members)',
-                  'Priority support',
-                ]}
-                cta="Get Creator"
-                onCheckout={() => handleHomeCheckout('CREATOR')}
-                loading={checkoutTier === 'CREATOR'}
-                recommended
-              />
-              <PricingCard
-                name="Studio"
-                price="$200"
-                period="/month"
-                description="For agencies &amp; studios"
-                features={[
-                  '150,000 tokens / month',
-                  'All Creator features',
-                  'Team collaboration (50 members)',
-                  'Full API access + SDKs',
-                  'White-label exports',
-                  'Dedicated support',
-                ]}
-                cta="Get Studio"
-                onCheckout={() => handleHomeCheckout('STUDIO')}
-                loading={checkoutTier === 'STUDIO'}
-                royalAccent
-              />
-            </div>
-
-            {/* Enterprise Contact Us strip — for anyone over $1k/month. */}
+          <div className="relative max-w-3xl mx-auto">
+            {/* Single frictionless CTA card — the full tier comparison
+                lives on the degated /pricing page so we don't duplicate it
+                on the home. One hook, one click, straight to plans. */}
             <div
-              className="reveal mt-10 mx-auto max-w-4xl rounded-2xl px-6 py-8 flex flex-col sm:flex-row items-center gap-6 justify-between"
+              className="reveal rounded-3xl px-8 sm:px-14 py-14 sm:py-16 text-center relative overflow-hidden"
               style={{
-                background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(124,58,237,0.06) 100%)',
-                border: '1px solid rgba(212,175,55,0.18)',
+                background:
+                  'linear-gradient(135deg, rgba(10,15,34,0.9) 0%, rgba(7,11,26,0.9) 100%)',
+                border: '1px solid rgba(212,175,55,0.25)',
+                boxShadow:
+                  '0 0 80px rgba(212,175,55,0.08), 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
               }}
             >
-              <div className="flex-1 text-center sm:text-left">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: '#D4AF37' }}>
-                  Enterprise &amp; Teams
-                </p>
-                <h3 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>
-                  Over $1,000 / month?
-                </h3>
-                <p className="text-sm" style={{ color: '#A1A1AA' }}>
-                  Unlimited seats, volume token pricing, SLA, dedicated support, SSO, invoicing.
-                </p>
-              </div>
-              <a
-                href="mailto:sales@forjegames.com?subject=Enterprise%20plan%20inquiry%20(%3E%20%241k%2Fmonth)&body=Team%20size%3A%20%0AEstimated%20monthly%20tokens%3A%20%0AUse%20case%3A%20"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 flex-shrink-0"
+              {/* Ambient gold orb */}
+              <div
+                aria-hidden="true"
+                className="absolute -top-32 left-1/2 -translate-x-1/2 w-[520px] h-[520px] pointer-events-none"
                 style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-                  color: '#0A0810',
-                  boxShadow: '0 10px 30px rgba(212,175,55,0.25)',
+                  background:
+                    'radial-gradient(circle, rgba(212,175,55,0.12) 0%, transparent 55%)',
+                  filter: 'blur(20px)',
                 }}
-              >
-                Contact sales →
-              </a>
-            </div>
+              />
 
-            <div className="reveal mt-10 text-center">
-              <p className="text-[13px] mb-3" style={{ color: '#71717A' }}>
-                10% of every payment goes to charity.{' '}
-                <Link href="/editor" className="link-subtle transition-colors duration-200" style={{ color: '#71717A' }}>
-                  Try it free
+              <div className="relative z-10">
+                <p
+                  className="reveal text-[12px] font-semibold uppercase tracking-[0.14em] mb-5"
+                  style={{ color: 'rgba(212,175,55,0.7)' }}
+                >
+                  Ready to build?
+                </p>
+                <h2
+                  className="reveal reveal-delay-1 font-bold tracking-tight mb-6"
+                  style={{
+                    fontSize: 'clamp(2rem, 5.5vw, 3.75rem)',
+                    lineHeight: 1.08,
+                    letterSpacing: '-0.02em',
+                    color: '#FAFAFA',
+                  }}
+                >
+                  Wanna generate a game?
+                  <br />
+                  <span className="gradient-text">Look here.</span>
+                </h2>
+                <p
+                  className="reveal reveal-delay-2 text-base sm:text-lg mb-10 mx-auto max-w-xl"
+                  style={{ color: '#A1A1AA' }}
+                >
+                  Plans start at $0. Upgrades take one click. Custom and
+                  enterprise options too.
+                </p>
+
+                <Link
+                  href="/pricing"
+                  className="reveal reveal-delay-3 inline-flex items-center gap-3 px-10 py-4 rounded-2xl text-base sm:text-lg font-bold transition-all duration-300 hover:-translate-y-0.5"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                    color: '#0A0810',
+                    boxShadow:
+                      '0 12px 40px rgba(212,175,55,0.35), 0 0 0 1px rgba(212,175,55,0.4)',
+                  }}
+                >
+                  View plans &amp; pricing
+                  <span aria-hidden="true">→</span>
                 </Link>
-              </p>
-              <div className="flex items-center justify-center gap-3 flex-wrap">
-                {[
-                  { icon: <IconCheck size={12} />, label: 'Cancel anytime' },
-                  { icon: <IconCheck size={12} />, label: 'No hidden fees' },
-                  { icon: <IconShield size={12} />, label: 'Secure payments' },
-                ].map(({ icon, label }) => (
-                  <span key={label} className="flex items-center gap-1.5 text-[12px]" style={{ color: '#71717A' }}>
-                    <span style={{ color: '#52525B' }}>{icon}</span>
-                    {label}
-                  </span>
-                ))}
+
+                <div className="reveal reveal-delay-4 mt-8 flex items-center justify-center gap-4 flex-wrap">
+                  {[
+                    { icon: <IconCheck size={12} />, label: 'Cancel anytime' },
+                    { icon: <IconCheck size={12} />, label: 'No credit card for Free' },
+                    { icon: <IconShield size={12} />, label: 'Secure payments' },
+                  ].map(({ icon, label }) => (
+                    <span
+                      key={label}
+                      className="flex items-center gap-1.5 text-[12px]"
+                      style={{ color: '#71717A' }}
+                    >
+                      <span style={{ color: '#52525B' }}>{icon}</span>
+                      {label}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
