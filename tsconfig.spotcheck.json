@@ -10,7 +10,8 @@
     "src/app/NotFoundClient.tsx",
     "src/app/error.tsx",
     "src/app/api/dashboard/stats/route.ts",
-    "src/app/api/community/creator-leaderboard/route.ts"
+    "src/app/api/community/creator-leaderboard/route.ts",
+    "src/app/api/studio/bridge-result/route.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }
