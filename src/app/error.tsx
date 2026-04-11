@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import Link from 'next/link'
 import * as Sentry from '@sentry/nextjs'
+import { GlitchText } from '@/components/GlitchText'
 
 export default function ErrorPage({
   error,
@@ -132,7 +133,13 @@ function ErrorShell({
             {icon}
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-3">{heading}</h1>
+          <GlitchText
+            text={heading}
+            variant="chromatic"
+            size="small"
+            as="h1"
+            className="!text-2xl mb-3"
+          />
           <p className="text-gray-300 text-sm leading-relaxed mb-2">{body}</p>
 
           {digest && (

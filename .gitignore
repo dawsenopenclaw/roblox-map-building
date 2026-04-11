@@ -60,3 +60,16 @@ Thumbs.db
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Planning dumps from parallel session windows. Large markdown briefs +
+# audit reports that get scattered into the working tree by other dev
+# sessions and shouldn't end up in the repo.
+# NOTE: Showcase PNGs under public/showcase/ ARE intentionally committed —
+# they're served via next/image at the marketing page. Do NOT blanket-
+# ignore them. If you need to exclude a WIP capture, add it by full path.
+/.planning/old-windows-assets/
+
+# Dev build logs and symlink workaround for OneDrive file-lock issues
+/build*.log
+/node_modules_link/
+/.stash-backups/

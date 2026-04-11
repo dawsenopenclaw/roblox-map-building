@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { GlitchText } from '@/components/GlitchText'
 
 const QUICK_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -41,19 +42,20 @@ export default function NotFoundClient() {
       </div>
 
       <div className="relative max-w-lg w-full text-center">
-        {/* Giant 404 watermark */}
-        <p
-          className="absolute -top-14 left-1/2 -translate-x-1/2 text-[140px] font-black leading-none select-none pointer-events-none"
-          style={{
-            background: 'linear-gradient(180deg, #D4AF37 0%, #FFD966 40%, rgba(212,175,55,0.04) 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
+        {/* Giant 404 watermark — glitch effect for thematic broken-page feel */}
+        <div
+          className="absolute -top-14 left-1/2 -translate-x-1/2 pointer-events-none select-none"
+          style={{ fontSize: '140px', lineHeight: 1 }}
           aria-hidden="true"
         >
-          404
-        </p>
+          <GlitchText
+            text="404"
+            variant="gold-accent"
+            size="hero"
+            as="span"
+            className="!text-[140px] !leading-none"
+          />
+        </div>
 
         <div className="relative bg-white/[0.025] border border-white/[0.07] rounded-2xl p-10 shadow-2xl backdrop-blur-sm">
 
