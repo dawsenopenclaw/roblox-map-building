@@ -11,7 +11,11 @@
     "src/app/error.tsx",
     "src/app/api/dashboard/stats/route.ts",
     "src/app/api/community/creator-leaderboard/route.ts",
-    "src/app/api/studio/bridge-result/route.ts"
+    "src/app/api/studio/bridge-result/route.ts",
+    "src/lib/ai/agents.ts",
+    "src/lib/ai/orchestrator.ts",
+    "src/lib/ai/agentic-playtest.ts",
+    "src/app/api/ai/orchestrate/route.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

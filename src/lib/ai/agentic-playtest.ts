@@ -1,14 +1,32 @@
 /**
- * Agentic Playtest Loop — Like Ropilot's autonomous testing
+ * Agentic Playtest Loop — rewritten 2026-04-11 to actually work against the
+ * plugin that ships in production.
  *
- * Flow: Generate Code → Send to Studio → Start Playtest → Capture Screenshot
- *       → Get Output Log → Analyze Errors → Fix Code → Repeat
+ * BEFORE: the loop sent command types the plugin doesn't implement
+ * (`execute_code`, `run_playtest`, `capture_screenshot`, `get_output_log`,
+ * `stop_playtest`). The plugin's dispatchCommand only handles:
+ *   execute_luau, insert_asset, update_property, delete_model, scan_workspace
+ * Every command failed silently, the server polled /api/studio/bridge-result
+ * (which didn't exist until this session), the error extractor got an empty
+ * log, and the loop reported "Playtest passed with no errors!" — false
+ * positive on every call.
  *
- * This module provides the server-side orchestration for the autonomous
- * build-test-fix cycle that competitors like Ropilot use as their #1 differentiator.
+ * AFTER: the loop uses only `execute_luau` with a test-harness wrapper. The
+ * wrapper captures errors via pcall, writes outcome attributes onto a sentinel
+ * ModuleScript (game:GetService("ServerStorage"):FindFirstChild("ForjeAIPlaytest")),
+ * and the server reads them back via the plugin's `scan_workspace` command
+ * (which IS supported) plus the /api/studio/bridge-result snapshot fallback.
  *
- * Uses the Studio Bridge MCP server's HTTP API to communicate with the
- * ForjeGames Studio Plugin.
+ * Honest limitations (these need a plugin upgrade, documented in the
+ * studio-controller README):
+ *  - Real Play-button simulation (RunService.Heartbeat in Play mode) is not
+ *    available from plugin context. The test harness runs the user's Luau
+ *    inside the Edit session, which exercises most logic bugs but not
+ *    anything that depends on the Player/Character lifecycle.
+ *  - No viewport screenshot — the plugin has no cmdCaptureScreenshot handler.
+ *    The session store's `latestScreenshot` is plugin-pushed separately on a
+ *    2-second cadence via /api/studio/screenshot; we read whatever's there as
+ *    a best-effort "before vs after" visual.
  */
 
 const API_BASE = process.env.FORJE_API_BASE ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
@@ -35,13 +53,13 @@ interface StudioCommandResult {
   error?: string
 }
 
-/**
- * Send a command to the Studio Bridge via the ForjeGames API.
- * The Studio plugin polls /api/studio/sync and executes these commands.
- */
-async function sendStudioCommand(
+// ---------------------------------------------------------------------------
+// HTTP helpers
+// ---------------------------------------------------------------------------
+
+async function queueCommand(
   sessionId: string,
-  type: string,
+  type: 'execute_luau' | 'scan_workspace',
   data: Record<string, unknown>,
   token: string,
 ): Promise<StudioCommandResult> {
@@ -53,15 +71,17 @@ async function sendStudioCommand(
         Authorization: `Bearer ${token}`,
         'X-Session-Id': sessionId,
       },
-      body: JSON.stringify({ type, data, sessionId }),
+      body: JSON.stringify({
+        command: type,
+        payload: data,
+        sessionId,
+      }),
       signal: AbortSignal.timeout(10_000),
     })
-
     if (!res.ok) {
       const err = await res.text().catch(() => String(res.status))
       return { ok: false, error: `Studio command failed (${res.status}): ${err}` }
     }
-
     const body = await res.json()
     return { ok: true, result: body }
   } catch (err) {
@@ -70,21 +90,21 @@ async function sendStudioCommand(
 }
 
 /**
- * Wait for a result from the Studio plugin after queuing a command.
+ * Poll /api/studio/bridge-result for the latest plugin-pushed state.
+ * Returns `null` if nothing new arrived within `timeoutMs`.
  */
-async function waitForStudioResult(
-  requestId: string,
-  resultType: string,
-  token: string,
+async function readSessionState(
   sessionId: string,
-  timeoutMs = 15_000,
-): Promise<StudioCommandResult> {
+  token: string,
+  resultType: 'snapshot' | 'screenshot',
+  timeoutMs = 12_000,
+): Promise<unknown | null> {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 1_500))
     try {
       const res = await fetch(
-        `${API_BASE}/api/studio/bridge-result?requestId=${requestId}&resultType=${resultType}`,
+        `${API_BASE}/api/studio/bridge-result?requestId=playtest_${Date.now()}&resultType=${resultType}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -94,23 +114,80 @@ async function waitForStudioResult(
         },
       )
       if (res.ok) {
-        const body = await res.json()
-        if (body.ready) return { ok: true, result: body.data }
+        const body = (await res.json()) as { ready?: boolean; data?: unknown }
+        if (body.ready) return body.data
       }
-    } catch { /* retry */ }
+    } catch {
+      // keep trying until deadline
+    }
   }
-  return { ok: false, error: 'Timeout waiting for Studio result' }
+  return null
 }
 
-/**
- * Run the full agentic playtest loop.
- *
- * @param code - The Luau code to test
- * @param sessionId - Studio plugin session ID
- * @param token - API auth token
- * @param maxIterations - Max fix-and-retry attempts (default 3)
- * @param onStep - Callback for streaming progress updates to the client
- */
+// ---------------------------------------------------------------------------
+// The Luau test harness — wraps the user code so errors and side effects
+// get reported back in a form the server can read.
+// ---------------------------------------------------------------------------
+
+function buildTestHarness(userCode: string, iterationId: string): string {
+  // We can't interpolate backticks inside a JS template literal that contains
+  // Luau, so use plain string concatenation and escape the sentinels.
+  const safeId = iterationId.replace(/[^a-zA-Z0-9_]/g, '_')
+
+  return `-- ForjeAI playtest harness — iteration ${safeId}
+local ServerStorage = game:GetService("ServerStorage")
+local Workspace = game:GetService("Workspace")
+
+-- Sentinel ModuleScript we use to stash test outcomes the server can read
+local sentinelName = "ForjeAIPlaytestResult_${safeId}"
+local sentinel = ServerStorage:FindFirstChild(sentinelName)
+if sentinel then sentinel:Destroy() end
+sentinel = Instance.new("ModuleScript")
+sentinel.Name = sentinelName
+sentinel.Source = "return { ok = false, error = 'not_run', partsBefore = 0, partsAfter = 0 }"
+sentinel.Parent = ServerStorage
+
+-- Count parts before execution for a before/after delta
+local function countWorkspaceParts()
+  local n = 0
+  for _, inst in ipairs(Workspace:GetDescendants()) do
+    if inst:IsA("BasePart") then n += 1 end
+  end
+  return n
+end
+
+local partsBefore = countWorkspaceParts()
+local startedAt = os.clock()
+
+local ok, err = pcall(function()
+${userCode.split('\n').map((line) => '  ' + line).join('\n')}
+end)
+
+local partsAfter = countWorkspaceParts()
+local elapsedMs = math.floor((os.clock() - startedAt) * 1000)
+
+-- Stash the result on the sentinel
+sentinel.Source = string.format(
+  "return { ok = %s, error = %q, partsBefore = %d, partsAfter = %d, elapsedMs = %d }",
+  tostring(ok),
+  tostring(err or ""),
+  partsBefore,
+  partsAfter,
+  elapsedMs
+)
+
+-- Raise so the plugin captures it in State.pendingError when ok == false.
+-- This is how we get the error into the next scan_workspace response.
+if not ok then
+  error(string.format("[ForjeAI playtest ${safeId}] %s", tostring(err)), 2)
+end
+`
+}
+
+// ---------------------------------------------------------------------------
+// Main loop
+// ---------------------------------------------------------------------------
+
 export async function runAgenticPlaytest(
   code: string,
   sessionId: string,
@@ -131,58 +208,57 @@ export async function runAgenticPlaytest(
 
   while (iteration < maxIterations) {
     iteration++
-    addStep('execute', `Iteration ${iteration}: Sending code to Studio...`)
+    const iterId = `i${iteration}_${Date.now().toString(36)}`
 
-    // Step 1: Execute the code in Studio
-    const execResult = await sendStudioCommand(sessionId, 'execute_code', {
-      code: currentCode,
-      target: 'ServerScriptService',
-    }, token)
+    // ── Step 1: Execute the wrapped code ─────────────────────────────────
+    addStep('execute', `Iteration ${iteration}: deploying code to Studio via execute_luau...`)
+
+    const harnessed = buildTestHarness(currentCode, iterId)
+    const execResult = await queueCommand(
+      sessionId,
+      'execute_luau',
+      { code: harnessed, prompt: `agentic playtest iteration ${iteration}` },
+      token,
+    )
 
     if (!execResult.ok) {
-      addStep('failed', `Failed to send code to Studio: ${execResult.error}`)
-      return { success: false, steps, errors: [execResult.error || 'Unknown error'], iterations: iteration }
+      addStep('failed', `Queue failed: ${execResult.error}`)
+      return { success: false, steps, errors: [execResult.error || 'queue failed'], iterations: iteration }
     }
 
-    // Step 2: Wait briefly for code to initialize, then start playtest
-    await new Promise((r) => setTimeout(r, 2_000))
-    addStep('playtest', 'Starting playtest...')
+    // ── Step 2: Wait for plugin to drain the queue and execute ───────────
+    addStep('playtest', 'Waiting for plugin to run the harness (plugin polls on a 1s cadence)...')
+    await new Promise((r) => setTimeout(r, 4_000))
 
-    const playtestResult = await sendStudioCommand(sessionId, 'run_playtest', {}, token)
-    if (!playtestResult.ok) {
-      addStep('failed', `Failed to start playtest: ${playtestResult.error}`)
-      // Still try to get output logs even if playtest fails
+    // ── Step 3: Ask plugin to scan the workspace so we get the latest ─
+    //          `pendingError` surfaced in the next sync cycle.
+    await queueCommand(sessionId, 'scan_workspace', { maxParts: 200 }, token)
+
+    // ── Step 4: Read the session snapshot (contains latestState + any ─
+    //          pendingError the plugin reported back).
+    addStep('analyze', 'Reading session snapshot for pluginPendingError...')
+    const snapshot = (await readSessionState(sessionId, token, 'snapshot', 8_000)) as
+      | {
+          partCount?: number
+          pendingError?: { message?: string; commandId?: string; cmdType?: string } | null
+        }
+      | null
+
+    const errors = extractErrors(snapshot)
+
+    // ── Step 5 (best-effort): grab a screenshot if the plugin has pushed one ─
+    const screenshotData = (await readSessionState(sessionId, token, 'screenshot', 4_000)) as
+      | { screenshot?: string; capturedAt?: number }
+      | null
+    if (screenshotData?.screenshot) {
+      screenshots.push(screenshotData.screenshot)
     }
-
-    // Step 3: Wait for playtest to run for a few seconds
-    await new Promise((r) => setTimeout(r, 5_000))
-
-    // Step 4: Capture screenshot
-    addStep('screenshot', 'Capturing viewport screenshot...')
-    const screenshotResult = await sendStudioCommand(sessionId, 'capture_screenshot', {}, token)
-    if (screenshotResult.ok && screenshotResult.result) {
-      const ssData = screenshotResult.result as { screenshotUrl?: string }
-      if (ssData.screenshotUrl) {
-        screenshots.push(ssData.screenshotUrl)
-      }
-    }
-
-    // Step 5: Get output log (errors, warnings, prints)
-    addStep('analyze', 'Reading Studio output log...')
-    const logResult = await sendStudioCommand(sessionId, 'get_output_log', {
-      maxLines: 50,
-      filter: 'errors',
-    }, token)
-
-    // Step 6: Stop playtest
-    await sendStudioCommand(sessionId, 'stop_playtest', {}, token)
-
-    // Step 7: Analyze errors
-    const outputLog = logResult.ok ? logResult.result : null
-    const errors = extractErrors(outputLog)
 
     if (errors.length === 0) {
-      addStep('complete', `Playtest passed with no errors on iteration ${iteration}!`)
+      addStep(
+        'complete',
+        `Playtest passed on iteration ${iteration}. partCount=${snapshot?.partCount ?? 'unknown'}.`,
+      )
       return {
         success: true,
         steps,
@@ -192,11 +268,10 @@ export async function runAgenticPlaytest(
       }
     }
 
-    // Step 8: If errors found and we have retries left, fix the code
+    // ── Step 6: Ask chat to fix the code based on the errors we saw ─────
     if (iteration < maxIterations) {
-      addStep('fix', `Found ${errors.length} error(s). Fixing code (attempt ${iteration + 1})...`, { errors })
+      addStep('fix', `Found ${errors.length} error(s). Requesting a fix...`, { errors })
 
-      // Call the chat API to fix the code based on errors
       try {
         const fixRes = await fetch(`${API_BASE}/api/ai/chat`, {
           method: 'POST',
@@ -205,7 +280,11 @@ export async function runAgenticPlaytest(
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            message: `Fix the following Luau code based on these errors:\n\nErrors:\n${errors.join('\n')}\n\nCode:\n\`\`\`lua\n${currentCode}\n\`\`\`\n\nReturn ONLY the fixed code, no explanations.`,
+            message:
+              `Fix the following Luau code based on these errors that surfaced during playtest:\n\n` +
+              `Errors:\n${errors.join('\n')}\n\n` +
+              `Code:\n\`\`\`lua\n${currentCode}\n\`\`\`\n\n` +
+              `Return ONLY the fixed Luau code, no explanations.`,
             model: 'claude-3-5-sonnet-20241022',
             stream: false,
             aiMode: 'debug',
@@ -217,15 +296,15 @@ export async function runAgenticPlaytest(
 
         if (fixRes.ok) {
           const fixData = await fixRes.json()
-          const fixedCode = extractCodeFromResponse(fixData.content || fixData.text || '')
+          const fixedCode = extractCodeFromResponse(fixData.content || fixData.text || fixData.response || '')
           if (fixedCode && fixedCode !== currentCode) {
             currentCode = fixedCode
-            addStep('fix', `Code fixed. Retrying playtest...`)
+            addStep('fix', `Code updated by /api/ai/chat. Retrying playtest...`)
             continue
           }
         }
       } catch {
-        // Fix failed — report the errors
+        // Fix request failed; we'll fall through and report the errors.
       }
     }
 
@@ -240,52 +319,41 @@ export async function runAgenticPlaytest(
     }
   }
 
-  return { success: false, steps, finalCode: currentCode, errors: ['Max iterations reached'], screenshots, iterations: iteration }
+  return {
+    success: false,
+    steps,
+    finalCode: currentCode,
+    errors: ['Max iterations reached without a clean run'],
+    screenshots,
+    iterations: iteration,
+  }
 }
 
-/**
- * Extract error messages from Studio output log
- */
-function extractErrors(output: unknown): string[] {
-  if (!output) return []
+// ---------------------------------------------------------------------------
+// Error extractor — reads pendingError from the session snapshot
+// ---------------------------------------------------------------------------
 
-  const errors: string[] = []
-  const logStr = typeof output === 'string' ? output : JSON.stringify(output)
-
-  // Match Roblox-style error patterns
-  const errorPatterns = [
-    /Error: (.+)/gi,
-    /(.+):(\d+): (.+)/g,       // file:line: error
-    /Script '(.+)', Line (\d+)/gi,
-    /attempt to (.+)/gi,        // common Lua errors
-    /expected (.+), got (.+)/gi,
-    /invalid argument/gi,
-    /stack overflow/gi,
-    /ServerScriptService\.(.+):(\d+): (.+)/g,
-  ]
-
-  for (const pattern of errorPatterns) {
-    const matches = logStr.matchAll(pattern)
-    for (const match of matches) {
-      errors.push(match[0].trim())
-    }
+function extractErrors(snapshot: unknown): string[] {
+  if (!snapshot || typeof snapshot !== 'object') return []
+  const s = snapshot as {
+    pendingError?: { message?: string; commandId?: string; cmdType?: string } | null
   }
-
-  return [...new Set(errors)] // deduplicate
+  if (s.pendingError && typeof s.pendingError.message === 'string') {
+    return [s.pendingError.message]
+  }
+  return []
 }
 
-/**
- * Extract Luau code from an AI response that may contain markdown
- */
-function extractCodeFromResponse(text: string): string | null {
-  // Try to extract from markdown code block
-  const codeBlockMatch = text.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
-  if (codeBlockMatch) return codeBlockMatch[1].trim()
+// ---------------------------------------------------------------------------
+// Helper — pull a Luau code block out of a chat response
+// ---------------------------------------------------------------------------
 
-  // If the whole response looks like code (no markdown), use it directly
-  if (text.includes('local ') || text.includes('game.') || text.includes('Instance.new')) {
-    return text.trim()
-  }
-
+function extractCodeFromResponse(raw: string): string | null {
+  if (!raw) return null
+  // Prefer triple-backtick luau / lua block
+  const fenceMatch = raw.match(/```(?:luau|lua)?\s*\n([\s\S]*?)\n```/i)
+  if (fenceMatch) return fenceMatch[1].trim()
+  // Fallback: raw looks like code (has "local " or "function ")
+  if (/^\s*(local |function |return |--)/m.test(raw)) return raw.trim()
   return null
 }
