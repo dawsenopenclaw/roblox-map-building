@@ -37,9 +37,10 @@ import { checkRateLimit, rateLimitResponse } from '@/lib/rate-limit'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
-// Up to 10 minutes for the full fan-out — Meshy tasks can run 3-5 minutes
-// each and we don't want the Vercel function to time out mid-pipeline.
-export const maxDuration = 600
+// Hobby plan caps Vercel serverless maxDuration at 300s. Meshy polling
+// longer than that needs to be handled client-side with a repoll — the
+// existing asset generation UI already has that pattern.
+export const maxDuration = 300
 
 // ── Rate limiter: 5/hour per user (local to this route) ──────────────────────
 
