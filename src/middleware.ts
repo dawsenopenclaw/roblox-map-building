@@ -115,6 +115,9 @@ const isPublicRoute = createRouteMatcher([
   '/connect(.*)',
   // Public API endpoints (unauthenticated reads only)
   '/api/og',
+  // Health check — the route itself decides public vs admin response shape
+  // based on Authorization header; middleware must not block it entirely.
+  '/api/health',
   // System / utility pages — must be reachable without auth
   '/blocked',
   '/maintenance(.*)',

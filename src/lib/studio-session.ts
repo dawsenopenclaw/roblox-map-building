@@ -115,10 +115,13 @@ if (!process.env.REDIS_URL) {
 // In-memory L1 store — survives Next.js hot-reload via globalThis
 // ---------------------------------------------------------------------------
 
-// @ts-expect-error — attach to globalThis to survive Next.js hot-reload
-const sessions: Map<string, StudioSession> = (globalThis.__fjStudioSessions ??= new Map())
-// @ts-expect-error
-globalThis.__fjStudioSessions = sessions
+// Attach to globalThis so the Map survives Next.js hot-reload. The index
+// signature on globalThis is `any`, so no type assertion is required — the
+// pragmas that used to sit here became "unused directive" errors after a
+// newer @types/node landed in npm audit fix.
+const globalStore = globalThis as unknown as { __fjStudioSessions?: Map<string, StudioSession> }
+const sessions: Map<string, StudioSession> = (globalStore.__fjStudioSessions ??= new Map())
+globalStore.__fjStudioSessions = sessions
 
 // ---------------------------------------------------------------------------
 // Redis helpers — all errors are silently swallowed

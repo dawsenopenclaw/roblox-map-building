@@ -6325,6 +6325,44 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const wantsStream = parsed.data.stream === true
 
+  // ── Optional auto-delegate to the 9-agent orchestrator ────────────────
+  // Clients that want the "Think → Ideas → Plan → Build/Terrain/Script/..."
+  // multi-agent experience can set `autoDelegate: true` in the body. We
+  // short-circuit here and return the final agent's output as a plain
+  // (non-streamed) chat response so existing UIs don't need to know about
+  // SSE. This is the "global auto-detect" path the user asked for — a
+  // single flag in the standard /api/ai/chat body. See
+  // src/lib/ai/agents.ts selectAgentsForPrompt for the dispatch logic.
+  const autoDelegate = ((parsed.data as Record<string, unknown>).autoDelegate as boolean | undefined) === true
+  if (autoDelegate && !wantsStream) {
+    try {
+      const { orchestrate } = await import('@/lib/ai/orchestrator')
+      const orchestrated = await orchestrate(message, {
+        sessionHint: ((parsed.data as Record<string, unknown>).sessionHint as string | undefined)?.slice(0, 2000),
+        timeoutMs: 240_000,
+      })
+      return NextResponse.json({
+        content: orchestrated.final.output,
+        text:    orchestrated.final.output,
+        response: orchestrated.final.output,
+        orchestrated: {
+          plan: orchestrated.plan,
+          steps: orchestrated.steps.map((s) => ({
+            agent: s.agent,
+            output: s.output,
+            durationMs: s.durationMs,
+            isTerminal: s.isTerminal,
+          })),
+          totalDurationMs: orchestrated.totalDurationMs,
+        },
+      })
+    } catch (err) {
+      // Orchestrator crashed — fall through to the legacy chat path rather
+      // than hard-fail the request. The error is surfaced in the logs.
+      console.error('[chat] auto-delegate orchestrator failed, falling through to legacy chat:', err)
+    }
+  }
+
   // Selected model from the frontend model selector (e.g. 'gpt-4o', 'gpt-4o-mini', 'o1-preview')
   const requestedModel = ((parsed.data as Record<string, unknown>).model as string | undefined) ?? ''
 
