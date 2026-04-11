@@ -30,7 +30,7 @@ local StudioService        = game:GetService("StudioService")
 local CoreGui              = game:GetService("CoreGui")
 
 -- ─── Constants ─────────────────────────────────────────────────────────────────
-local PLUGIN_VERSION      = "4.0.0"
+local PLUGIN_VERSION      = "4.6.0"
 local PLUGIN_TAG          = "ForjeAI"           -- CollectionService tag for all created instances
 local DEFAULT_API_BASE    = "https://forjegames.com"
 local POLL_INTERVAL_S     = 1                   -- normal poll cadence (seconds)
@@ -1039,12 +1039,42 @@ local function doSyncTick()
     if type(data.changes) == "table" then
         for _, cmd in ipairs(data.changes) do
             -- Dispatch each command in its own pcall so one bad command
-            -- doesn't stop the rest of the queue from executing
-            local cmdOk, cmdErr = pcall(function()
-                dispatchCommand(cmd)
+            -- doesn't stop the rest of the queue from executing.
+            -- We capture the return tuple (ok, err, extra) because some
+            -- commands (scan_workspace) return a structured result in
+            -- `extra` that the server needs to see. Previously this tuple
+            -- was discarded, leaving session.latestState.worldSnapshot
+            -- permanently null and breaking the agentic-loop scene check.
+            local dispatchOk, dispatchResult, dispatchErr, dispatchExtra = pcall(function()
+                return dispatchCommand(cmd)
             end)
-            if not cmdOk then
-                logActivity("DISPATCH ERROR: " .. tostring(cmdErr))
+            if not dispatchOk then
+                -- pcall itself threw (very rare — dispatchCommand is already
+                -- defensive). dispatchResult here holds the raised error.
+                logActivity("DISPATCH ERROR: " .. tostring(dispatchResult))
+            else
+                -- dispatchResult = ok (bool), dispatchErr = err, dispatchExtra = extra
+                local cmdType = tostring(cmd.type or "")
+                if dispatchResult and dispatchExtra ~= nil and cmdType == "scan_workspace" then
+                    -- POST the scan tree to /api/studio/update so the
+                    -- server can stash it on session.latestState.worldSnapshot
+                    -- and the agentic loop + vision/scene analyzer can read
+                    -- it back. Fire-and-forget so a network hiccup can't
+                    -- stall the command loop.
+                    task.spawn(function()
+                        pcall(function()
+                            httpRequest("POST", "/api/studio/update", {
+                                sessionId = State.sessionId,
+                                timestamp = math.floor(tick() * 1000),
+                                event     = "workspace_snapshot",
+                                snapshot  = dispatchExtra,
+                                source    = "plugin",
+                                placeId   = tostring(game.PlaceId),
+                                changes   = {},
+                            })
+                        end)
+                    end)
+                end
             end
         end
     end

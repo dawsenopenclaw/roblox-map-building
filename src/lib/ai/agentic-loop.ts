@@ -17,6 +17,7 @@ import { callAI, type AIMessage } from './provider'
 import { queueCommand, getSession } from '@/lib/studio-session'
 import { analyzeLuau, autoFixLuau } from './static-analysis'
 import { luauToStructuredCommands } from './structured-commands'
+import { analyzePlaytestScreenshot, analyzePlaytestScene } from './playtest-vision'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +33,8 @@ export interface AgenticStep {
   result?: string
   error?: string
   screenshot?: string
+  /** Workspace hierarchy snapshot captured via scan_workspace during observe */
+  worldSnapshot?: unknown
   outputLog?: string[]
   timestamp: number
   durationMs?: number
@@ -443,17 +446,34 @@ export async function runAgenticLoop(
     const outputLog = await captureOutputLog(sessionId)
     obsStep.outputLog = outputLog
 
-    // Capture screenshot if enabled
+    // Capture screenshot (if the plugin ever supports it) AND a workspace
+    // scan. The scan is the real production path: the plugin's
+    // `cmdScanWorkspace` returns a hierarchy of BaseParts with positions,
+    // sizes, materials, and colors — enough for a text-based LLM to judge
+    // whether the scene matches the user's prompt. Screenshot path is kept
+    // for forward-compat with a future plugin that can actually grab pixels.
     if (options.captureScreenshots) {
       await queueCommand(sessionId, {
         type: 'capture_screenshot',
         data: {},
       })
+      // Queue a real workspace scan — plugin handler exists and its tree
+      // will be POSTed to /api/studio/update → session.latestState.worldSnapshot
+      // (once the plugin fix that stops discarding the scan result ships).
+      await queueCommand(sessionId, {
+        type: 'scan_workspace',
+        data: { maxDepth: 4, maxNodes: 300 },
+      })
       await delay(COMMAND_QUEUE_DELAY_MS)
-      // Screenshot is stored in session.latestScreenshot
       const updatedSession = await getSession(sessionId)
       if (updatedSession?.latestScreenshot) {
         obsStep.screenshot = updatedSession.latestScreenshot
+      }
+      // Pull the freshest worldSnapshot from latestState for the scene check
+      const snapshot =
+        (updatedSession?.latestState as Record<string, unknown> | undefined)?.worldSnapshot
+      if (snapshot) {
+        obsStep.worldSnapshot = snapshot
       }
     }
 
@@ -463,17 +483,54 @@ export async function runAgenticLoop(
     // Analyze output
     const analysis2 = analyzeOutput(outputLog)
 
-    if (analysis2.hasErrors) {
-      lastErrors = analysis2.errors.join('\n')
+    // Semantic check — closes the Apr 9 audit gap where the loop captured
+    // snapshots but never read them back for decision-making, so
+    // visually-broken builds (parts fallen through the floor, missing assets,
+    // empty workspace) passed the loop as long as the console was clean.
+    // Two analyzers, tried in order:
+    //   1. Scene manifest via text LLM — WORKS TODAY (plugin provides
+    //      scan_workspace tree).
+    //   2. Pixel vision via Gemini — kept for the day Roblox exposes a
+    //      plugin screenshot API.
+    // Both fail soft: missing API key or an API error returns ok=true
+    // with a skippedReason, and the loop behaves exactly as before.
+    let visionIssues: string[] = []
+    if (!analysis2.hasErrors) {
+      // Prefer the scene path — it's the one that actually runs in prod
+      if (obsStep.worldSnapshot) {
+        const scene = await analyzePlaytestScene(obsStep.worldSnapshot, prompt)
+        if (!scene.ok) {
+          visionIssues = scene.issues
+        }
+      }
+      // Also run the pixel path if we somehow have a real screenshot AND the
+      // scene path didn't already surface issues — redundancy is cheap here,
+      // each analyzer catches different bug classes.
+      if (visionIssues.length === 0 && obsStep.screenshot) {
+        const vision = await analyzePlaytestScreenshot(obsStep.screenshot, prompt)
+        if (!vision.ok) {
+          visionIssues = vision.issues
+        }
+      }
+    }
+
+    if (analysis2.hasErrors || visionIssues.length > 0) {
+      const logPart = analysis2.errors.join('\n')
+      const visionPart =
+        visionIssues.length > 0
+          ? `Visual issues detected in playtest screenshot:\n- ${visionIssues.join('\n- ')}`
+          : ''
+      lastErrors = [logPart, visionPart].filter(Boolean).join('\n\n')
+      const totalIssues = analysis2.errors.length + visionIssues.length
       Object.assign(obsStep, completeStep(
         obsStep,
         'failed',
-        `Found ${analysis2.errors.length} error(s) in output`,
+        `Found ${totalIssues} issue(s) (${analysis2.errors.length} console, ${visionIssues.length} visual)`,
         lastErrors,
       ))
       // Loop continues to fix iteration
     } else {
-      Object.assign(obsStep, completeStep(obsStep, 'success', 'No errors detected in output'))
+      Object.assign(obsStep, completeStep(obsStep, 'success', 'No errors detected in output or screenshot'))
       success = true
       break
     }

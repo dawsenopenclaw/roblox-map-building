@@ -15,6 +15,8 @@
     "src/lib/ai/agents.ts",
     "src/lib/ai/orchestrator.ts",
     "src/lib/ai/agentic-playtest.ts",
+    "src/lib/ai/agentic-loop.ts",
+    "src/lib/ai/playtest-vision.ts",
     "src/app/api/ai/orchestrate/route.ts"
   ],
   "exclude": ["node_modules", ".next"]
