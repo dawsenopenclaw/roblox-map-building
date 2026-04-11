@@ -1,5 +1,17 @@
 packages/mcp/*/node_modules
+packages/*/node_modules
+apps/*/node_modules
 packages/sdk
 electron
 scripts/load-test-studio.py
 *.exe
+
+# Local workspace junk — never needs uploading
+node_modules_link
+.stash-backups
+.planning
+build*.log
+*.tsbuildinfo
+.vercel
+.next/cache
+.next/trace
