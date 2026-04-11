@@ -231,9 +231,15 @@ type CheckoutPayload =
   | { type: 'subscription'; tier: string; yearly: boolean }
   | { type: 'token_pack'; packSlug: string }
 
+// Discriminated union. The `never` stubs on the opposite arm of each
+// variant force TypeScript to narrow reliably even under strict mode —
+// without them, `result.redirect` in an `else` branch still reads as
+// "property does not exist on CheckoutResult" because TS loses the
+// narrow when property sets don't overlap. The `never` stubs give it
+// a full shape to intersect and narrowing becomes automatic.
 type CheckoutResult =
-  | { ok: true; url: string }
-  | { ok: false; error: string; redirect?: string }
+  | { ok: true;  url: string;  error?: never; redirect?: never }
+  | { ok: false; url?: never; error: string;  redirect?: string }
 
 async function postCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
   let res: Response
@@ -448,10 +454,15 @@ function TokenPacksSection({
       const result = await postCheckout({ type: 'token_pack', packSlug })
       if (result.ok) {
         window.location.href = result.url
-      } else if (result.redirect) {
-        window.location.href = result.redirect
       } else {
-        onError(result.error)
+        // Explicit nested else so TS narrows `result` to the error variant.
+        // The previous `else if (result.redirect)` chain confused narrowing
+        // in strict mode — TS saw `CheckoutResult` instead of the error arm.
+        if (result.redirect) {
+          window.location.href = result.redirect
+        } else {
+          onError(result.error)
+        }
       }
     } finally {
       setLoadingPack(null)
@@ -657,10 +668,15 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, p
       })
       if (result.ok) {
         window.location.href = result.url
-      } else if (result.redirect) {
-        window.location.href = result.redirect
       } else {
-        onError(result.error)
+        // Nested else so TS narrows `result` to the error variant (see the
+        // matching comment in handleBuyPack above — same discriminated-union
+        // narrowing gotcha).
+        if (result.redirect) {
+          window.location.href = result.redirect
+        } else {
+          onError(result.error)
+        }
       }
     } finally {
       setLoading(false)
