@@ -40,21 +40,13 @@ html {
   }
 }
 
-/* ─── Forge hero rotating word ─────────────────────────────────────────────── */
-/* Two-span pattern: `.forge-word-entering` rolls in from below, `.forge-word-
-   leaving` rolls out to above. React forces remount via `key` on every cycle,
-   which re-fires these `animation` properties. Pure CSS — no JS needed for the
-   rotation itself; React just swaps which word is mounted.                     */
-@keyframes forge-word-roll-in {
-  0%   { transform: translateY(50%) rotateX(-90deg); opacity: 0; }
-  60%  { opacity: 1; }
-  100% { transform: translateY(0%)  rotateX(0deg);   opacity: 1; }
-}
-@keyframes forge-word-roll-out {
-  0%   { transform: translateY(0%)   rotateX(0deg);  opacity: 1; }
-  40%  { opacity: 1; }
-  100% { transform: translateY(-50%) rotateX(90deg); opacity: 0; }
-}
+/* ─── Forge hero rotating word — vertical ring carousel ───────────────────── */
+/* React renders all N words at fixed angles around a 3D ring inside the
+   `.forge-ring` container (see RotatingHeroText in HomeClient.tsx). The
+   ring's transform is driven by inline style with a React-state-computed
+   angle, so there are no @keyframes for the rotation itself. The CSS below
+   handles the gold text treatment, the subtle "front" highlight, and the
+   reduced-motion fallback. */
 .forge-word {
   /* Solid gold gradient via background-clip — no shimmer keyframe collision */
   color: #FFD966;
@@ -65,11 +57,26 @@ html {
   filter: drop-shadow(0 0 1px rgba(255,225,150,0.55))
           drop-shadow(0 0 10px rgba(212,175,55,0.35));
 }
-.forge-word-entering {
-  animation: forge-word-roll-in 0.85s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+.forge-word-active {
+  /* The word at the front of the wheel pops a little brighter. */
+  filter: drop-shadow(0 0 2px rgba(255,235,180,0.8))
+          drop-shadow(0 0 16px rgba(212,175,55,0.5));
 }
-.forge-word-leaving {
-  animation: forge-word-roll-out 0.85s cubic-bezier(0.32, 0.72, 0.24, 1) both;
+/* Reduced-motion fallback: freeze the ring, hide inactive nodes, and let
+   React's state-driven active swap cycle the visible word without motion. */
+@media (prefers-reduced-motion: reduce) {
+  .forge-ring {
+    transform: none !important;
+    transition: none !important;
+  }
+  .forge-ring .forge-word {
+    opacity: 0 !important;
+    transform: none !important;
+  }
+  .forge-ring .forge-word-active {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* ─── Page fade-in on route change ─────────────────────────────────────────── */

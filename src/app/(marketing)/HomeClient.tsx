@@ -524,17 +524,32 @@ function HeroPromptInput() {
   )
 }
 
-/* ─── Rotating hero text — 3D vertical carousel ─────────────────────────── */
+/* ─── Rotating hero text — 3D vertical ring carousel ─────────────────────── */
 
 const ROTATING_WORDS = ['Game', 'Map', 'UI', 'Terrain', 'World', 'Scripts', 'Assets']
-const ROTATE_INTERVAL_MS = 2400
+const ROTATE_INTERVAL_MS = 2200
 
+/**
+ * A true ferris-wheel text carousel. All N words sit at fixed positions
+ * around a vertical (X-axis) 3D ring. On every tick we rotate the whole
+ * ring by (360/N)° so the next word arrives at the front. The word facing
+ * the camera gets full opacity + sharp text; words on the back half are
+ * hidden by backface-visibility. Because every word is positioned as a
+ * ring node, the motion is continuous circular vertical — not a
+ * slide-up-and-disappear.
+ *
+ * Layout math (radius):
+ *   - Each word ~1em tall
+ *   - Equal spacing of 360/N° between nodes
+ *   - To avoid adjacent nodes clipping, we use radius = 1em / (2 * tan(π/N))
+ *     which gives the circumscribed circle of a regular N-gon with side 1em.
+ *     For N=7 that's ~1.04em. We round up to 1.2em for breathing room.
+ *
+ * Reduced motion: we keep the ring static and just swap the visible word
+ * (display:block on the active node, display:none elsewhere). The
+ * prefers-reduced-motion branch is handled in globals.css.
+ */
 function RotatingHeroText() {
-  // Single-source-of-truth for the active word. React state guarantees the
-  // text changes regardless of whether CSS animations are enabled — even
-  // users with prefers-reduced-motion will at least see the words cycle.
-  // The wheel rotation visual is added on top via a CSS @keyframe that
-  // re-fires on every key change (key={index} forces remount).
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -544,7 +559,13 @@ function RotatingHeroText() {
     return () => clearInterval(timer)
   }, [])
 
-  // Find the longest word so the container reserves space (no layout shift)
+  const count = ROTATING_WORDS.length
+  const stepDeg = 360 / count
+  // Rotate the whole ring so the active word sits at angle 0 (front-facing).
+  // Negative so the ring rolls upward as index increases — matches the way
+  // a real ferris wheel pulls the top word down toward you.
+  const ringRotation = -index * stepDeg
+
   const longestWord = ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
   const currentWord = ROTATING_WORDS[index]
 
@@ -570,62 +591,71 @@ function RotatingHeroText() {
           display: 'inline-block',
           position: 'relative',
           height: '1.15em',
-          minWidth: `${longestWord.length}ch`,
+          // Reserve width for the longest word so the line doesn't reflow
+          // as the ring spins. Tiny extra padding to keep glow clear of edges.
+          minWidth: `${longestWord.length + 0.5}ch`,
           verticalAlign: 'bottom',
-          // 3D context — children are NOT flattened, perspective gives depth
-          perspective: '800px',
+          // 3D context for the ring
+          perspective: '1200px',
           perspectiveOrigin: '50% 50%',
-          transformStyle: 'preserve-3d',
         }}
       >
-        {/* Invisible spacer so width tracks the longest word — no layout jitter */}
-        <span aria-hidden="true" style={{ visibility: 'hidden', display: 'inline-block' }}>
+        {/* Invisible spacer so width stays locked to the longest word */}
+        <span
+          aria-hidden="true"
+          style={{
+            visibility: 'hidden',
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {longestWord}
         </span>
 
-        {/*
-          One visible word at a time. `key={index}` forces React to unmount the
-          old span and mount a fresh one each cycle, which in turn re-fires the
-          CSS @keyframe `forge-word-roll` defined in globals.css. That keyframe
-          rolls the new word IN from below; the previous word disappears (it's
-          unmounted instantly, which is fine because the new word covers it).
-          For a "leaving" effect we render a second span keyed to (index-1)
-          that runs the exit keyframe.
-        */}
+        {/* The ring itself — rotates on X axis. Each child word is
+            positioned at a fixed angle around the circumference via
+            rotateX(angle) translateZ(radius). */}
         <span
-          key={`leaving-${index}`}
-          aria-hidden="true"
-          className="forge-word forge-word-leaving"
+          className="forge-ring"
           style={{
             position: 'absolute',
-            left: 0,
-            top: 0,
-            width: '100%',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            transformOrigin: '50% 50% -0.55em',
-            backfaceVisibility: 'hidden',
-            willChange: 'transform, opacity',
+            inset: 0,
+            transformStyle: 'preserve-3d',
+            transform: `rotateX(${ringRotation}deg)`,
+            transition: 'transform 0.9s cubic-bezier(0.32, 0.72, 0.24, 1)',
+            willChange: 'transform',
           }}
         >
-          {ROTATING_WORDS[(index - 1 + ROTATING_WORDS.length) % ROTATING_WORDS.length]}
-        </span>
-        <span
-          key={`active-${index}`}
-          className="forge-word forge-word-entering"
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: '100%',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            transformOrigin: '50% 50% -0.55em',
-            backfaceVisibility: 'hidden',
-            willChange: 'transform, opacity',
-          }}
-        >
-          {currentWord}
+          {ROTATING_WORDS.map((word, i) => {
+            const angle = i * stepDeg
+            const isActive = i === index
+            return (
+              <span
+                key={word}
+                className={`forge-word${isActive ? ' forge-word-active' : ''}`}
+                aria-hidden={isActive ? undefined : 'true'}
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: '100%',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  // Position this node on the ring circumference. Radius
+                  // scales with font-size via `em` so the wheel stays
+                  // proportional across breakpoints.
+                  transform: `rotateX(${angle}deg) translateZ(1.2em)`,
+                  backfaceVisibility: 'hidden',
+                  // Dim non-active nodes slightly so the front word pops.
+                  opacity: isActive ? 1 : 0.35,
+                  transition: 'opacity 0.6s ease-out',
+                  willChange: 'transform, opacity',
+                }}
+              >
+                {word}
+              </span>
+            )
+          })}
         </span>
       </span>
     </h1>
