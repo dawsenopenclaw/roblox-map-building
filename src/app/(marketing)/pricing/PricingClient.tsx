@@ -701,7 +701,17 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, p
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function PricingClient() {
+interface PricingClientProps {
+  /**
+   * Billing config prerendered by the server component (pricing/page.tsx).
+   * Passed to SWR as fallbackData so the paid-tier CTAs render in their
+   * final state on first paint — without this, useSWR starts with
+   * EMPTY_CONFIG and briefly flashes "Contact us" before hydration.
+   */
+  initialBillingConfig?: BillingConfig
+}
+
+export default function PricingClient({ initialBillingConfig }: PricingClientProps = {}) {
   const [annual, setAnnual]     = useState(false)
   const [openFaq, setOpenFaq]   = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
@@ -721,11 +731,13 @@ export default function PricingClient() {
   )
   const currentTier: string | null = billingStatus?.tier ?? null
 
-  // Fetch which price IDs are configured — drives adaptive CTA rendering
+  // Fetch which price IDs are configured — drives adaptive CTA rendering.
+  // `fallbackData` is seeded from the server-prerendered config so first
+  // paint shows the real CTAs (no "Contact us" flash on hydration).
   const { data: billingConfig } = useSWR<BillingConfig>(
     '/api/billing/config',
     (url: string) => fetch(url).then(r => r.ok ? r.json() as Promise<BillingConfig> : EMPTY_CONFIG),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, fallbackData: initialBillingConfig ?? EMPTY_CONFIG }
   )
   const config = billingConfig ?? EMPTY_CONFIG
 

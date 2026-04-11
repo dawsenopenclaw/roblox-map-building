@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { createMetadata } from '@/lib/metadata'
+import { getBillingConfig } from '@/lib/billing-config'
 import PricingClient from './PricingClient'
 
 export const metadata: Metadata = createMetadata({
@@ -73,5 +74,9 @@ export const metadata: Metadata = createMetadata({
 })
 
 export default function PricingPage() {
-  return <PricingClient />
+  // Prerender billing config server-side so the paid-tier CTAs render in
+  // their final state on first paint — otherwise useSWR would start with
+  // EMPTY_CONFIG and briefly flash "Contact us" before hydration finishes.
+  const initialBillingConfig = getBillingConfig()
+  return <PricingClient initialBillingConfig={initialBillingConfig} />
 }
