@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v4.6.0 -->
-  <!-- Built by build-plugin.js on 2026-04-05T04:01:39.829Z -->
+  <!-- Built by build-plugin.js on 2026-04-11T23:57:18.680Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -10,7 +10,7 @@
 
   Auth flow: user enters 6-char code from forjegames.com/editor
   Sync loop: polls /api/studio/sync every 2-5s, applies server changes
-  execute_luau: handled inside Sync.lua via loadstring + pcall
+  execute_luau: handled inside Sync.lua via structured commands (no loadstring)
 --]]
 
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
@@ -479,23 +479,54 @@ local function init()
 
     if btns[1] then -- Generate Terrain
       btns[1].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("GenerateTerrain") end
-        if Sync then Sync.queueChange("generate_terrain", { placeId = game.PlaceId }) end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "generate_terrain",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("GenerateTerrain") end
       end)
     end
 
     if btns[2] then -- Generate City
       btns[2].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("GenerateCity") end
-        if Sync then Sync.queueChange("generate_city", { placeId = game.PlaceId }) end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "generate_city",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("GenerateCity") end
       end)
     end
 
     if btns[3] then -- Insert Asset
       btns[3].MouseButton1Click:Connect(function()
+        if not state.authenticated then
+          if uiRefs.showError then uiRefs.showError("Connect first — enter your code above") end
+          return
+        end
         if History then History.beginWaypoint("InsertAsset") end
+        if Sync then
+          Sync.queueChange("quick_action", {
+            action  = "insert_asset",
+            placeId = game.PlaceId,
+            placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+          })
+        end
         if History then History.endWaypoint("InsertAsset") end
       end)
     end
@@ -2009,11 +2040,16 @@ return UI
   - Dedicated heartbeat keepalive POST every 30s (prevents session timeout)
   - Graceful degradation: retries silently, never crashes plugin
   - Change queue: batches local changes before pushing
-  - execute_luau command handler with loadstring + pcall
+  - execute_luau / structured_commands handler (no loadstring — Creator Store safe)
+  - Completion sound on successful AI deploy
 --]]
 
-local HttpService = game:GetService("HttpService")
-local RunService  = game:GetService("RunService")
+local HttpService  = game:GetService("HttpService")
+local RunService   = game:GetService("RunService")
+local LogService   = game:GetService("LogService")
+local Selection    = game:GetService("Selection")
+local SoundService = game:GetService("SoundService")
+local Debris       = game:GetService("Debris")
 
 local Sync = {}
 
@@ -2167,55 +2203,603 @@ local function httpPost(path, body)
 end
 
 -- ============================================================
--- execute_luau handler
+-- Completion sound — plays when AI commands finish deploying
 -- ============================================================
-local function executeStructuredCommand(data)
-  local action = data.action
-  if action == "create_part" then
-    local part = Instance.new("Part")
-    part.Name     = data.name or "FJ_Part"
-    part.Size     = Vector3.new(
-      data.sizeX or 4,
-      data.sizeY or 4,
-      data.sizeZ or 4
-    )
-    part.CFrame   = CFrame.new(
-      data.posX or 0,
-      data.posY or 5,
-      data.posZ or 0
-    )
-    part.Anchored = true
-    part:SetAttribute("fj_generated", true)
-    part.Parent   = workspace
-  elseif action == "delete_named" then
-    local inst = workspace:FindFirstChild(data.name or "", true)
-    if inst then inst:Destroy() end
-  elseif action == "set_property" then
-    local inst = workspace:FindFirstChild(data.instancePath or "", true)
-    if inst and data.property and data.value ~= nil then
-      pcall(function()
-        inst[data.property] = data.value
-      end)
+local function playCompletionSound()
+  pcall(function()
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+    sound.Volume = 0.3
+    sound.Parent = SoundService
+    sound:Play()
+    Debris:AddItem(sound, 2)
+  end)
+end
+
+-- ============================================================
+-- Structured command value parser
+-- Converts typed value tables from JSON into Roblox datatypes
+-- ============================================================
+local function parseStructuredValue(v)
+  if type(v) ~= "table" then return v end
+
+  local vType = v.type
+  if vType == "Vector3" then
+    return Vector3.new(v.x or 0, v.y or 0, v.z or 0)
+  elseif vType == "CFrame" then
+    return CFrame.new(v.x or 0, v.y or 0, v.z or 0)
+  elseif vType == "Color3" then
+    return Color3.fromRGB(v.r or 0, v.g or 0, v.b or 0)
+  elseif vType == "BrickColor" then
+    return BrickColor.new(v.name or "Medium stone grey")
+  elseif vType == "UDim2" then
+    return UDim2.new(v.sx or 0, v.ox or 0, v.sy or 0, v.oy or 0)
+  elseif vType == "Enum" then
+    local enumOk, enumVal = pcall(function()
+      return Enum[v.enumType][v.enumValue]
+    end)
+    if enumOk then return enumVal end
+  end
+
+  -- If it has r/g/b keys but no type, treat as Color3
+  if v.r and v.g and v.b and not vType then
+    return Color3.fromRGB(v.r, v.g, v.b)
+  end
+  -- If it has x/y/z keys but no type, treat as Vector3
+  if v.x and v.y and v.z and not vType then
+    return Vector3.new(v.x, v.y, v.z)
+  end
+
+  return v
+end
+
+-- ============================================================
+-- Resolve instance path for structured commands
+-- Supports: "Workspace.Model.Part", "game.Workspace.Part", etc.
+-- ============================================================
+local function resolveStructuredPath(path)
+  if not path or path == "" then return nil end
+
+  -- Handle both "." and "/" separators (web side uses "/" sometimes)
+  local normalized = path:gsub("/", ".")
+  local parts = {}
+  for segment in string.gmatch(normalized, "[^%.]+") do
+    table.insert(parts, segment)
+  end
+  if #parts == 0 then return nil end
+
+  local root
+  local startIdx = 1
+  local first = parts[1]
+  if first == "game" then
+    root = game
+    startIdx = 2
+  elseif first == "Workspace" or first == "workspace" then
+    root = workspace
+    startIdx = 2
+  else
+    -- Try as service
+    local svcOk, svc = pcall(function() return game:GetService(first) end)
+    if svcOk and svc then
+      root = svc
+      startIdx = 2
+    else
+      root = workspace
+    end
+  end
+
+  local current = root
+  for i = startIdx, #parts do
+    local child = current:FindFirstChild(parts[i])
+    if not child then return nil end
+    current = child
+  end
+  return current
+end
+
+-- ============================================================
+-- Structured commands executor
+-- Handles the typed command array from luauToStructuredCommands()
+-- Command types: create_part, create_model, create_instance,
+--   create_script, create_folder, delete_named, delete_instance,
+--   set_property, move_instance, clone_instance, insert_asset,
+--   execute_script
+-- ============================================================
+local function executeStructuredCommands(commands)
+  if not commands or type(commands) ~= "table" then return end
+
+  -- Track created instances by name for parent resolution within a batch
+  local createdByName = {}
+
+  for _, cmd in ipairs(commands) do
+    local cmdOk, cmdErr = pcall(function()
+      local cmdType = cmd.type
+
+      if cmdType == "create_part" then
+        local part = Instance.new("Part")
+        part.Name = cmd.name or "FJ_Part"
+        part.Anchored = (cmd.anchored ~= false)
+        part:SetAttribute("fj_generated", true)
+
+        -- Size
+        if cmd.size then
+          part.Size = Vector3.new(
+            tonumber(cmd.size.x) or 4,
+            tonumber(cmd.size.y) or 1.2,
+            tonumber(cmd.size.z) or 2
+          )
+        elseif cmd.sizeX then
+          part.Size = Vector3.new(
+            tonumber(cmd.sizeX) or 4,
+            tonumber(cmd.sizeY) or 4,
+            tonumber(cmd.sizeZ) or 4
+          )
+        end
+
+        -- Position
+        if cmd.position then
+          part.CFrame = CFrame.new(
+            tonumber(cmd.position.x) or 0,
+            tonumber(cmd.position.y) or 5,
+            tonumber(cmd.position.z) or 0
+          )
+        elseif cmd.posX then
+          part.CFrame = CFrame.new(
+            tonumber(cmd.posX) or 0,
+            tonumber(cmd.posY) or 5,
+            tonumber(cmd.posZ) or 0
+          )
+        end
+
+        -- Color
+        if cmd.color then
+          pcall(function()
+            part.Color = Color3.fromRGB(
+              tonumber(cmd.color.r) or 163,
+              tonumber(cmd.color.g) or 162,
+              tonumber(cmd.color.b) or 165
+            )
+          end)
+        end
+
+        -- Material
+        if cmd.material then
+          pcall(function()
+            part.Material = Enum.Material[cmd.material] or Enum.Material.SmoothPlastic
+          end)
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() part[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        -- Parent resolution
+        local parent = workspace
+        if cmd.parentName then
+          local resolved = createdByName[cmd.parentName]
+            or resolveStructuredPath(cmd.parentName)
+            or workspace:FindFirstChild(cmd.parentName, true)
+          if resolved then parent = resolved end
+        elseif cmd.parent then
+          local resolved = resolveStructuredPath(cmd.parent)
+          if resolved then parent = resolved end
+        end
+        part.Parent = parent
+        createdByName[part.Name] = part
+
+      elseif cmdType == "create_model" then
+        local model = Instance.new("Model")
+        model.Name = cmd.name or "FJ_Model"
+        model:SetAttribute("fj_generated", true)
+
+        local parent = workspace
+        if cmd.parentName then
+          local resolved = createdByName[cmd.parentName]
+            or resolveStructuredPath(cmd.parentName)
+            or workspace:FindFirstChild(cmd.parentName, true)
+          if resolved then parent = resolved end
+        elseif cmd.parent then
+          local resolved = resolveStructuredPath(cmd.parent)
+          if resolved then parent = resolved end
+        end
+        model.Parent = parent
+        createdByName[model.Name] = model
+
+      elseif cmdType == "create_instance" then
+        local className = cmd.className
+        if not className then return end
+        local inst = Instance.new(className)
+        inst.Name = cmd.name or className
+        inst:SetAttribute("fj_generated", true)
+
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() inst[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        inst.Parent = parent
+        createdByName[inst.Name] = inst
+
+      elseif cmdType == "create_script" then
+        local scriptType = cmd.scriptType or "Script"
+        local scriptInst = Instance.new(scriptType)
+        scriptInst.Name = cmd.name or "FJ_Script"
+        if cmd.source then
+          scriptInst.Source = cmd.source
+        end
+        scriptInst:SetAttribute("fj_generated", true)
+
+        local parent = workspace
+        if cmd.parent then
+          local resolved = resolveStructuredPath(cmd.parent)
+          if resolved then parent = resolved end
+        end
+        scriptInst.Parent = parent
+
+      elseif cmdType == "delete_named" then
+        local inst = workspace:FindFirstChild(cmd.name or "", true)
+        if inst then inst:Destroy() end
+
+      elseif cmdType == "delete_instance" then
+        local inst = resolveStructuredPath(cmd.path or cmd.instancePath or "")
+        if not inst then
+          inst = workspace:FindFirstChild(cmd.path or cmd.instancePath or "", true)
+        end
+        if inst then inst:Destroy() end
+
+      elseif cmdType == "set_property" then
+        local inst = resolveStructuredPath(cmd.path or cmd.instancePath or "")
+        if not inst then
+          inst = workspace:FindFirstChild(cmd.path or cmd.instancePath or "", true)
+        end
+        if inst and cmd.property then
+          pcall(function()
+            inst[cmd.property] = parseStructuredValue(cmd.value)
+          end)
+        end
+
+      elseif cmdType == "move_instance" then
+        local inst = resolveStructuredPath(cmd.path or "")
+        if inst then
+          local newParent = resolveStructuredPath(cmd.newParent or "")
+          if newParent then
+            inst.Parent = newParent
+          end
+        end
+
+      elseif cmdType == "clone_instance" then
+        local source = resolveStructuredPath(cmd.sourcePath or "")
+        if source then
+          local clone = source:Clone()
+          if cmd.newName then
+            clone.Name = cmd.newName
+          end
+          clone:SetAttribute("fj_generated", true)
+          local parent = resolveStructuredPath(cmd.parentPath or "") or workspace
+          clone.Parent = parent
+          createdByName[clone.Name] = clone
+        end
+
+      elseif cmdType == "create_folder" then
+        local folder = Instance.new("Folder")
+        folder.Name = cmd.name or "FJ_Folder"
+        folder:SetAttribute("fj_generated", true)
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        folder.Parent = parent
+        createdByName[folder.Name] = folder
+
+      elseif cmdType == "insert_asset" then
+        -- Insert a Roblox marketplace asset by ID within structured commands
+        local robloxAssetId = cmd.assetId or cmd.robloxAssetId
+        if robloxAssetId then
+          local assetOk, assetResult = pcall(function()
+            local InsertService = game:GetService("InsertService")
+            local model = InsertService:LoadAsset(tonumber(robloxAssetId))
+            if model then
+              model.Name = cmd.name or ("FJ_Asset_" .. tostring(robloxAssetId))
+              model:SetAttribute("fj_generated", true)
+
+              if cmd.position then
+                pcall(function()
+                  local cf = CFrame.new(
+                    tonumber(cmd.position.x) or 0,
+                    tonumber(cmd.position.y) or 0,
+                    tonumber(cmd.position.z) or 0
+                  )
+                  -- PivotTo works on any PVInstance without requiring a
+                  -- PrimaryPart, unlike the deprecated SetPrimaryPartCFrame.
+                  if model.PivotTo then
+                    model:PivotTo(cf)
+                  elseif model:IsA("Model") and model.PrimaryPart then
+                    model:SetPrimaryPartCFrame(cf)
+                  end
+                end)
+              end
+
+              local parent = workspace
+              if cmd.parentName or cmd.parent then
+                local pPath = cmd.parentName or cmd.parent
+                local resolved = createdByName[pPath]
+                  or resolveStructuredPath(pPath)
+                  or workspace:FindFirstChild(pPath, true)
+                if resolved then parent = resolved end
+              end
+
+              -- LoadAsset wraps in a Model; move children out if single child
+              local children = model:GetChildren()
+              if #children == 1 then
+                children[1].Parent = parent
+                createdByName[children[1].Name] = children[1]
+                model:Destroy()
+              else
+                model.Parent = parent
+                createdByName[model.Name] = model
+              end
+            end
+          end)
+          if not assetOk then
+            warn("[ForjeGames] insert_asset command failed: " .. tostring(assetResult))
+          end
+        end
+
+      elseif cmdType == "execute_script" then
+        -- Parents a freshly-created Script/LocalScript containing arbitrary
+        -- Luau source into ServerScriptService. This is functionally
+        -- equivalent to loadstring() from a Creator Store policy standpoint
+        -- (both run untrusted AI-generated code inside the game), so it is
+        -- gated behind the same dev-only setting toggle. Store builds ship
+        -- with the setting OFF and should route through structured commands
+        -- instead.
+        local allowExec = false
+        pcall(function()
+          allowExec = plugin and plugin:GetSetting("ForjeGames_AllowLoadstring") == true
+        end)
+        if not allowExec then
+          warn("[ForjeGames] execute_script requires ForjeGames_AllowLoadstring (dev only). "
+            .. "Use structured commands in Creator Store builds.")
+          notifyMessage(
+            "execute_script is disabled. Use structured commands or enable dev loadstring in plugin settings.",
+            "warn"
+          )
+        else
+        local scriptSource = cmd.source or cmd.code or ""
+        if scriptSource ~= "" then
+          local tempScript = Instance.new("Script")
+          tempScript.Name = cmd.name or "FJ_TempExec_" .. tostring(tick())
+          tempScript:SetAttribute("fj_generated", true)
+          tempScript:SetAttribute("fj_temp_exec", true)
+
+          -- Wrap in pcall for safety + auto-cleanup after execution
+          local wrappedSource = string.format([[
+-- ForjeGames auto-generated execution wrapper
+local ok, err = pcall(function()
+%s
+end)
+if not ok then
+  warn("[ForjeGames TempExec] Error: " .. tostring(err))
+end
+-- Self-cleanup after execution
+task.defer(function()
+  script:Destroy()
+end)
+]], scriptSource)
+
+          tempScript.Source = wrappedSource
+          tempScript.Parent = cmd.runContext == "server" and game:GetService("ServerScriptService")
+            or workspace
+        end
+        end -- end of allowExec else-branch
+      end
+    end)
+
+    if not cmdOk then
+      warn("[ForjeGames] Structured command error (" .. tostring(cmd.type) .. "): " .. tostring(cmdErr))
     end
   end
 end
 
+-- ============================================================
+-- execute_luau handler (Creator Store safe — no loadstring)
+-- Receives code from the server and converts to structured commands.
+-- The web side already translates Luau to structured_commands for
+-- store-edition plugins. For direct execute_luau with raw code,
+-- we parse it into simple structured commands here.
+-- ============================================================
 local function handleExecuteLuau(data)
-  if not data or not data.code then return end
+  if not data then return end
 
-  local fn, parseErr = loadstring(data.code)
-  if fn then
-    local ok, execErr = pcall(fn)
-    if not ok then
-      warn("[ForjeGames] Execution error: " .. tostring(execErr))
-    end
-  else
-    warn("[ForjeGames] Parse error: " .. tostring(parseErr))
-    -- Fall back to structured command when code cannot be parsed
-    if data.structured then
-      pcall(executeStructuredCommand, data.structured)
-    end
+  -- Prefer structured commands if provided alongside code
+  if data.commands and type(data.commands) == "table" then
+    executeStructuredCommands(data.commands)
+    playCompletionSound()
+    return
   end
+
+  -- If the server sent a structured field (legacy format), use it
+  if data.structured then
+    local action = data.structured.action
+    if action == "create_part" then
+      executeStructuredCommands({{ type = "create_part", name = data.structured.name, size = { x = data.structured.sizeX, y = data.structured.sizeY, z = data.structured.sizeZ }, position = { x = data.structured.posX, y = data.structured.posY, z = data.structured.posZ } }})
+    elseif action == "delete_named" then
+      executeStructuredCommands({{ type = "delete_named", name = data.structured.name }})
+    elseif action == "set_property" then
+      executeStructuredCommands({{ type = "set_property", instancePath = data.structured.instancePath, property = data.structured.property, value = data.structured.value }})
+    end
+    playCompletionSound()
+    return
+  end
+
+  -- If raw code is sent, attempt to parse simple Instance.new() patterns
+  -- into structured commands (best-effort, no loadstring)
+  if data.code and type(data.code) == "string" then
+    local code = data.code
+    local commands = {}
+    local hasComplexCode = false
+
+    -- Check for constructs we cannot handle
+    if code:find("for ") or code:find("while ") or code:find("repeat ")
+      or code:find("function ") or code:find("coroutine%.") or code:find("task%.spawn")
+      or code:find("require%(") or code:find("pcall%(") then
+      hasComplexCode = true
+    end
+
+    -- Parse Instance.new("ClassName") patterns
+    local varMap = {} -- varName -> { className, props }
+    for varName, className in code:gmatch('local%s+(%w+)%s*=%s*Instance%.new%(%s*["\'](%w+)["\']%s*%)') do
+      varMap[varName] = { className = className, props = {} }
+    end
+
+    -- Parse property assignments: varName.Property = value
+    for varName, prop, value in code:gmatch('(%w+)%.(%w+)%s*=%s*(.-)%s*\n') do
+      if varMap[varName] then
+        varMap[varName].props[prop] = value
+      end
+    end
+
+    -- Convert parsed instances to structured commands
+    for varName, info in pairs(varMap) do
+      local className = info.className
+      local props = info.props
+
+      if className == "Part" or className == "WedgePart" or className == "TrussPart" then
+        local cmd = { type = "create_part", name = props.Name and props.Name:gsub('["\']', '') or varName }
+
+        -- Parse position from Vector3.new(x, y, z) or CFrame.new(x, y, z)
+        local posStr = props.Position or props.CFrame
+        if posStr then
+          local x, y, z = posStr:match("%.new%(%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)")
+          if x then cmd.position = { x = tonumber(x), y = tonumber(y), z = tonumber(z) } end
+        end
+
+        -- Parse size
+        local sizeStr = props.Size
+        if sizeStr then
+          local x, y, z = sizeStr:match("%.new%(%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)%s*,%s*(-?[%d%.]+)")
+          if x then cmd.size = { x = tonumber(x), y = tonumber(y), z = tonumber(z) } end
+        end
+
+        -- Parse color
+        local colorStr = props.Color or props.BrickColor
+        if colorStr then
+          local r, g, b = colorStr:match("fromRGB%(%s*(%d+)%s*,%s*(%d+)%s*,%s*(%d+)")
+          if r then cmd.color = { r = tonumber(r), g = tonumber(g), b = tonumber(b) } end
+        end
+
+        -- Material
+        local matStr = props.Material
+        if matStr then
+          local mat = matStr:match("Enum%.Material%.(%w+)")
+          if mat then cmd.material = mat end
+        end
+
+        -- Anchored
+        if props.Anchored then
+          cmd.anchored = props.Anchored:find("true") ~= nil
+        end
+
+        -- Parent
+        if props.Parent then
+          local parentName = props.Parent:gsub('%s+', '')
+          if parentName ~= "workspace" and parentName ~= "game.Workspace" then
+            cmd.parentName = parentName
+          end
+        end
+
+        table.insert(commands, cmd)
+
+      elseif className == "Model" then
+        local cmd = { type = "create_model", name = props.Name and props.Name:gsub('["\']', '') or varName }
+        if props.Parent then
+          local parentName = props.Parent:gsub('%s+', '')
+          if parentName ~= "workspace" and parentName ~= "game.Workspace" then
+            cmd.parentName = parentName
+          end
+        end
+        table.insert(commands, cmd)
+      else
+        -- Generic instance creation
+        local cmd = { type = "create_instance", className = className, name = props.Name and props.Name:gsub('["\']', '') or varName }
+        table.insert(commands, cmd)
+      end
+    end
+
+    if #commands > 0 then
+      executeStructuredCommands(commands)
+      playCompletionSound()
+    elseif hasComplexCode then
+      -- FALLBACK: loadstring behind a dev-only setting toggle.
+      -- This is OFF by default and must be explicitly enabled in
+      -- plugin settings. The Creator Store edition ships with this
+      -- disabled — only direct-download / sideloaded builds should
+      -- enable it.
+      local allowLoadstring = false
+      pcall(function()
+        allowLoadstring = plugin and plugin:GetSetting("ForjeGames_AllowLoadstring") == true
+      end)
+
+      if allowLoadstring then
+        warn("[ForjeGames] DEV MODE: Executing code via loadstring (not Creator Store safe)")
+        local loadOk, loadErr = pcall(function()
+          local fn, compileErr = loadstring(code)
+          if fn then
+            fn()
+          else
+            warn("[ForjeGames] loadstring compile error: " .. tostring(compileErr))
+          end
+        end)
+        if loadOk then
+          playCompletionSound()
+        else
+          warn("[ForjeGames] loadstring runtime error: " .. tostring(loadErr))
+          notifyMessage("Script execution failed: " .. tostring(loadErr), "error")
+        end
+      else
+        warn("[ForjeGames] Cannot execute complex Luau code in Creator Store mode. "
+          .. "This plugin edition uses structured commands only. "
+          .. "Use the direct-download plugin for advanced scripts, "
+          .. "or enable ForjeGames_AllowLoadstring in plugin settings (dev only).")
+        notifyMessage("Complex code requires the direct-download plugin (or enable dev loadstring in settings)", "warn")
+      end
+    else
+      warn("[ForjeGames] No executable commands found in code payload")
+    end
+    return
+  end
+
+  warn("[ForjeGames] execute_luau received with no code or commands")
+end
+
+-- ============================================================
+-- Handle structured_commands change type
+-- Receives pre-translated commands from the web side
+-- ============================================================
+local function handleStructuredCommands(data)
+  if not data or not data.commands then
+    warn("[ForjeGames Sync] structured_commands: missing commands array")
+    return
+  end
+  executeStructuredCommands(data.commands)
+  playCompletionSound()
 end
 
 -- ============================================================
@@ -2283,6 +2867,576 @@ local function handleInsertAsset(change)
 end
 
 -- ============================================================
+-- Studio Bridge command handlers
+-- ============================================================
+
+-- Resolve a dotted instance path like "Workspace.MyModel.Part1"
+local function resolveInstancePath(path)
+  if not path or path == "" then return nil end
+  local parts = {}
+  for segment in string.gmatch(path, "[^%.]+") do
+    table.insert(parts, segment)
+  end
+  if #parts == 0 then return nil end
+
+  -- Start from game or a known root
+  local root
+  local startIdx = 1
+  local firstPart = parts[1]
+  if firstPart == "game" then
+    root = game
+    startIdx = 2
+  elseif firstPart == "Workspace" or firstPart == "workspace" then
+    root = workspace
+    startIdx = 2
+  else
+    -- Try as a service name first
+    local svcOk, svc = pcall(function() return game:GetService(firstPart) end)
+    if svcOk and svc then
+      root = svc
+      startIdx = 2
+    else
+      root = game
+    end
+  end
+
+  local current = root
+  for i = startIdx, #parts do
+    local child = current:FindFirstChild(parts[i])
+    if not child then return nil end
+    current = child
+  end
+  return current
+end
+
+-- Build the full dotted path for an Instance
+local function getInstancePath(instance)
+  local pathParts = {}
+  local current = instance
+  while current and current ~= game do
+    table.insert(pathParts, 1, current.Name)
+    current = current.Parent
+  end
+  return table.concat(pathParts, ".")
+end
+
+-- Recursively serialize a hierarchy tree
+local function serializeHierarchy(instance, depth, maxDepth)
+  if depth > maxDepth then return nil end
+  local node = {
+    name = instance.Name,
+    className = instance.ClassName,
+    children = {},
+  }
+  for _, child in ipairs(instance:GetChildren()) do
+    local childNode = serializeHierarchy(child, depth + 1, maxDepth)
+    if childNode then
+      table.insert(node.children, childNode)
+    end
+  end
+  return node
+end
+
+-- Read serializable properties of an instance
+local function serializeProperties(instance)
+  local props = {
+    Name = instance.Name,
+    ClassName = instance.ClassName,
+  }
+  -- Common properties that are safe to read
+  local commonProps = {
+    "Anchored", "CanCollide", "Transparency", "Reflectance",
+    "Material", "BrickColor", "Color", "Size", "CFrame",
+    "Position", "Orientation", "Visible", "Enabled",
+    "Value", "Text", "MaxHealth", "Health", "WalkSpeed",
+    "JumpPower", "Parent",
+  }
+  for _, propName in ipairs(commonProps) do
+    pcall(function()
+      local val = instance[propName]
+      if val ~= nil then
+        if typeof(val) == "Vector3" then
+          props[propName] = { x = val.X, y = val.Y, z = val.Z }
+        elseif typeof(val) == "CFrame" then
+          props[propName] = { position = { x = val.Position.X, y = val.Position.Y, z = val.Position.Z } }
+        elseif typeof(val) == "Color3" then
+          props[propName] = { r = val.R, g = val.G, b = val.B }
+        elseif typeof(val) == "BrickColor" then
+          props[propName] = tostring(val)
+        elseif typeof(val) == "EnumItem" then
+          props[propName] = tostring(val)
+        elseif typeof(val) == "Instance" then
+          props[propName] = val:GetFullName()
+        elseif type(val) == "string" or type(val) == "number" or type(val) == "boolean" then
+          props[propName] = val
+        end
+      end
+    end)
+  end
+  return props
+end
+
+-- Decode a typed value from the MCP bridge
+local function decodeTypedValue(value, valueType)
+  if valueType == "number" then
+    return tonumber(value) or 0
+  elseif valueType == "boolean" then
+    if type(value) == "boolean" then return value end
+    return value == "true" or value == true
+  elseif valueType == "Color3" then
+    -- Expect "R,G,B" with 0-1 floats
+    local parts = {}
+    for v in string.gmatch(tostring(value), "[^,]+") do
+      table.insert(parts, tonumber(v) or 0)
+    end
+    return Color3.new(parts[1] or 0, parts[2] or 0, parts[3] or 0)
+  elseif valueType == "Vector3" then
+    local parts = {}
+    for v in string.gmatch(tostring(value), "[^,]+") do
+      table.insert(parts, tonumber(v) or 0)
+    end
+    return Vector3.new(parts[1] or 0, parts[2] or 0, parts[3] or 0)
+  elseif valueType == "BrickColor" then
+    return BrickColor.new(tostring(value))
+  elseif valueType == "Enum" then
+    -- Expect "Enum.Material.Grass" format
+    local enumVal = nil
+    pcall(function()
+      -- Walk the Enum path
+      local parts = {}
+      for v in string.gmatch(tostring(value), "[^%.]+") do
+        table.insert(parts, v)
+      end
+      if #parts >= 3 and parts[1] == "Enum" then
+        enumVal = Enum[parts[2]][parts[3]]
+      end
+    end)
+    return enumVal or value
+  else
+    return value
+  end
+end
+
+-- Collect all scripts under a root
+local function collectScripts(root, maxResults)
+  local scripts = {}
+  local function recurse(inst)
+    if #scripts >= maxResults then return end
+    if inst:IsA("LuaSourceContainer") then
+      local src = ""
+      pcall(function() src = inst.Source end)
+      table.insert(scripts, {
+        path = getInstancePath(inst),
+        className = inst.ClassName,
+        source = src,
+      })
+    end
+    for _, child in ipairs(inst:GetChildren()) do
+      recurse(child)
+    end
+  end
+  recurse(root)
+  return scripts
+end
+
+-- Push a bridge result back to the server
+local function pushBridgeResult(resultType, requestId, resultData)
+  Sync.queueChange("bridge_result", {
+    resultType = resultType,
+    _requestId = requestId,
+    data = resultData,
+  })
+end
+
+-- Handle: get_hierarchy
+local function handleGetHierarchy(data)
+  local rootName = data.root or "Workspace"
+  local maxDepth = data.maxDepth or 10
+  local requestId = data._requestId
+
+  local root
+  if rootName == "Workspace" or rootName == "workspace" then
+    root = workspace
+  elseif rootName == "game" then
+    root = game
+  else
+    local svcOk, svc = pcall(function() return game:GetService(rootName) end)
+    root = svcOk and svc or workspace
+  end
+
+  local tree = serializeHierarchy(root, 1, maxDepth)
+  if requestId then
+    pushBridgeResult("hierarchy_result", requestId, tree)
+  end
+end
+
+-- Handle: get_properties
+local function handleGetProperties(data)
+  local inst = resolveInstancePath(data.instancePath)
+  local requestId = data._requestId
+  if not inst then
+    if requestId then
+      pushBridgeResult("properties_result", requestId, { error = "Instance not found: " .. tostring(data.instancePath) })
+    end
+    return
+  end
+  local props = serializeProperties(inst)
+  if requestId then
+    pushBridgeResult("properties_result", requestId, props)
+  end
+end
+
+-- Handle: set_property (bridge version with typed values)
+local function handleSetProperty(data)
+  local inst = resolveInstancePath(data.instancePath)
+  if not inst then
+    warn("[ForjeGames Sync] set_property: instance not found: " .. tostring(data.instancePath))
+    return
+  end
+  if not data.property then return end
+  local decoded = decodeTypedValue(data.value, data.valueType or "string")
+  pcall(function()
+    inst[data.property] = decoded
+  end)
+end
+
+-- Handle: create_instance
+local function handleCreateInstance(data)
+  local className = data.className
+  if not className then return end
+  local parentPath = data.parentPath or "Workspace"
+  local parent = resolveInstancePath(parentPath) or workspace
+
+  local instOk, inst = pcall(function()
+    return Instance.new(className)
+  end)
+  if not instOk or not inst then
+    warn("[ForjeGames Sync] create_instance: failed to create " .. tostring(className))
+    return
+  end
+
+  inst.Name = data.name or className
+  inst:SetAttribute("fj_generated", true)
+
+  -- Apply initial properties
+  if data.properties and type(data.properties) == "table" then
+    for propName, propValue in pairs(data.properties) do
+      pcall(function()
+        inst[propName] = propValue
+      end)
+    end
+  end
+
+  inst.Parent = parent
+end
+
+-- Handle: delete_instance
+local function handleDeleteInstance(data)
+  local inst = resolveInstancePath(data.instancePath)
+  if not inst then
+    -- Fallback: recursive search
+    inst = game:FindFirstChild(data.instancePath, true)
+  end
+  if inst then
+    inst:Destroy()
+  end
+end
+
+-- Handle: get_scripts
+local function handleGetScripts(data)
+  local rootName = data.root or "game"
+  local maxResults = data.maxResults or 50
+  local requestId = data._requestId
+
+  local root
+  if rootName == "game" then
+    root = game
+  elseif rootName == "Workspace" or rootName == "workspace" then
+    root = workspace
+  else
+    local svcOk, svc = pcall(function() return game:GetService(rootName) end)
+    root = svcOk and svc or game
+  end
+
+  local scripts = collectScripts(root, maxResults)
+  if requestId then
+    pushBridgeResult("scripts_result", requestId, scripts)
+  end
+end
+
+-- ============================================================
+-- Playtest / screenshot handlers
+--
+-- Roblox Studio does NOT expose plugin APIs for:
+--   * Starting a playtest (there is no Plugin:StartPlaySolo, and
+--     TestService:Run / StudioService:PromptPlaySolo do not work
+--     from a normal plugin in edit context).
+--   * Stopping a playtest (no Plugin:StopPlaySolo either).
+--   * Capturing the viewport (ScreenshotHud is not a capture API;
+--     CaptureService is player-only).
+--
+-- Rather than silently swallowing failures inside pcalls and lying
+-- to the caller, these handlers surface `user_action_required`
+-- results so the MCP layer can tell the AI exactly what happened.
+-- ============================================================
+
+local function handleStartPlaytest(data)
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot start playtests programmatically. Press F5 to start a playtest manually.",
+    "warn"
+  )
+  if requestId then
+    pushBridgeResult("start_playtest_result", requestId, {
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic playtest start. User must press F5 in Studio.",
+    })
+  end
+end
+
+local function handleStopPlaytest(data)
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot stop playtests programmatically. Press Shift+F5 to stop the current playtest manually.",
+    "warn"
+  )
+  if requestId then
+    pushBridgeResult("stop_playtest_result", requestId, {
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic playtest stop. User must press Shift+F5 in Studio.",
+    })
+  end
+end
+
+local function handleCaptureScreenshot(data)
+  local requestId = data and data._requestId
+  notifyMessage(
+    "ForjeGames: Roblox plugins cannot capture the Studio viewport. Use the session screenshot uploader on the web app, or take a screenshot via Studio's built-in tools.",
+    "warn"
+  )
+  if requestId then
+    pushBridgeResult("screenshot_result", requestId, {
+      status = "user_action_required",
+      message = "Roblox plugin API does not support programmatic viewport capture. User must upload a screenshot manually, or the AI should rely on read_scene / get_output_log instead.",
+    })
+  end
+end
+
+-- Handle: simulate_input
+local function handleSimulateInput(data)
+  pcall(function()
+    local VIM = game:GetService("VirtualInputManager")
+    if not VIM then
+      warn("[ForjeGames Sync] VirtualInputManager not available")
+      return
+    end
+
+    local inputType = data.inputType or "keyboard"
+    local action = data.action or "tap"
+    local duration = data.duration or 0.1
+
+    if inputType == "keyboard" then
+      local keyName = data.key or "W"
+      local keyCode = Enum.KeyCode[keyName]
+      if not keyCode then
+        warn("[ForjeGames Sync] Invalid KeyCode: " .. tostring(keyName))
+        return
+      end
+
+      if action == "press" then
+        VIM:SendKeyEvent(true, keyCode, false, game)
+      elseif action == "release" then
+        VIM:SendKeyEvent(false, keyCode, false, game)
+      else -- tap
+        VIM:SendKeyEvent(true, keyCode, false, game)
+        task.delay(duration, function()
+          VIM:SendKeyEvent(false, keyCode, false, game)
+        end)
+      end
+
+    elseif inputType == "mouse_click" then
+      local x = data.x or 0
+      local y = data.y or 0
+      VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
+      task.delay(duration, function()
+        VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
+      end)
+
+    elseif inputType == "mouse_move" then
+      local x = data.x or 0
+      local y = data.y or 0
+      VIM:SendMouseMoveEvent(x, y, game)
+    end
+  end)
+end
+
+-- Handle: get_output (read LogService history)
+local function handleGetOutput(data)
+  local maxEntries = data.maxEntries or data.limit or 100
+  local filter = data.filter or "all"
+  local requestId = data._requestId
+
+  local entries = {}
+  pcall(function()
+    local logs = LogService:GetLogHistory()
+    local startIdx = math.max(1, #logs - maxEntries + 1)
+    for i = startIdx, #logs do
+      local entry = logs[i]
+      if entry then
+        local messageType = "info"
+        if entry.messageType == Enum.MessageType.MessageError then
+          messageType = "error"
+        elseif entry.messageType == Enum.MessageType.MessageWarning then
+          messageType = "warning"
+        elseif entry.messageType == Enum.MessageType.MessageInfo then
+          messageType = "info"
+        elseif entry.messageType == Enum.MessageType.MessageOutput then
+          messageType = "output"
+        end
+
+        local include = (filter == "all")
+          or (filter == "errors" and messageType == "error")
+          or (filter == "warnings" and (messageType == "warning" or messageType == "error"))
+          or (filter == "info" and messageType ~= "error")
+
+        if include then
+          -- Plugin format matches agentic-loop's captureOutputLog reader:
+          -- it flattens to `[TYPE] text` strings.
+          table.insert(entries, {
+            text = entry.message,
+            type = messageType,
+            time = entry.timestamp,
+          })
+        end
+      end
+    end
+  end)
+
+  if requestId then
+    pushBridgeResult("output_result", requestId, entries)
+  end
+
+  -- ALSO mirror the entries to /api/studio/update with event=output_log so
+  -- the agentic-loop observe phase (src/lib/ai/agentic-loop.ts) can read
+  -- them via getSession().latestState.outputLog without correlating by
+  -- requestId. Fire-and-forget.
+  task.spawn(function()
+    pcall(function()
+      httpPost("/api/studio/update", {
+        sessionId = _sessionId,
+        timestamp = os.time() * 1000,
+        event     = "output_log",
+        outputLog = entries,
+        source    = "plugin",
+        placeId   = tostring(game.PlaceId),
+        changes   = {},
+      })
+    end)
+  end)
+end
+
+-- Handle: scan_workspace — walk the workspace tree and POST a structured
+-- snapshot to /api/studio/update. This is what the agentic-loop scene-
+-- manifest vision check (src/lib/ai/playtest-vision.ts analyzePlaytestScene)
+-- reads via session.latestState.worldSnapshot. Without this handler the
+-- scene check always sees null and the loop rides entirely on the console
+-- log (which can miss visually-broken-but-cleanly-compiling builds).
+local function handleScanWorkspace(data)
+  local maxDepth = math.min(tonumber(data.maxDepth or 4) or 4, 6)
+  local maxNodes = math.min(tonumber(data.maxNodes or 300) or 300, 600)
+  local requestId = data._requestId
+  local nodeCount = 0
+
+  local function collectTree(instance, depth)
+    if nodeCount >= maxNodes then return nil end
+    nodeCount += 1
+
+    local node = {
+      name      = instance.Name,
+      className = instance.ClassName,
+    }
+
+    if instance:IsA("BasePart") then
+      local pos = instance.Position
+      node.position = { X = pos.X, Y = pos.Y, Z = pos.Z }
+      local sz = instance.Size
+      node.size = { X = sz.X, Y = sz.Y, Z = sz.Z }
+      node.material = tostring(instance.Material)
+      node.color = {
+        R = instance.Color.R,
+        G = instance.Color.G,
+        B = instance.Color.B,
+      }
+    end
+
+    if depth < maxDepth then
+      local children = {}
+      for _, child in ipairs(instance:GetChildren()) do
+        local childNode = collectTree(child, depth + 1)
+        if childNode then
+          table.insert(children, childNode)
+        end
+        if nodeCount >= maxNodes then break end
+      end
+      if #children > 0 then
+        node.children = children
+      end
+    end
+
+    return node
+  end
+
+  local tree = {}
+  pcall(function()
+    for _, child in ipairs(workspace:GetChildren()) do
+      local node = collectTree(child, 1)
+      if node then table.insert(tree, node) end
+      if nodeCount >= maxNodes then break end
+    end
+  end)
+
+  -- Correlated read for MCP tools
+  if requestId then
+    pushBridgeResult("snapshot", requestId, tree)
+  end
+
+  -- Uncorrelated fallback for agentic-loop (reads session.latestState.worldSnapshot)
+  task.spawn(function()
+    pcall(function()
+      httpPost("/api/studio/update", {
+        sessionId = _sessionId,
+        timestamp = os.time() * 1000,
+        event     = "workspace_snapshot",
+        snapshot  = tree,
+        source    = "plugin",
+        placeId   = tostring(game.PlaceId),
+        changes   = {},
+      })
+    end)
+  end)
+end
+
+-- Handle: get_selection
+local function handleGetSelection(data)
+  local requestId = data._requestId
+  local selected = {}
+  pcall(function()
+    local sel = Selection:Get()
+    for _, inst in ipairs(sel) do
+      table.insert(selected, {
+        name = inst.Name,
+        className = inst.ClassName,
+        path = getInstancePath(inst),
+      })
+    end
+  end)
+
+  if requestId then
+    pushBridgeResult("selection_result", requestId, selected)
+  end
+end
+
+-- ============================================================
 -- Apply incoming changes from the server
 -- ============================================================
 local function applyChanges(changes)
@@ -2295,6 +3449,9 @@ local function applyChanges(changes)
 
       if changeType == "execute_luau" then
         handleExecuteLuau(data)
+
+      elseif changeType == "structured_commands" and data then
+        handleStructuredCommands(data)
 
       elseif changeType == "insert_asset" and data then
         handleInsertAsset(change)
@@ -2319,6 +3476,89 @@ local function applyChanges(changes)
             instance[data.property] = data.value
           end)
         end
+
+      elseif changeType == "create_sound" and data then
+        -- Audio pipeline: insert a Sound instance with a Roblox audio asset id.
+        -- Data shape:
+        --   { assetId, name?, parent?, looped?, volume?, playbackSpeed?, autoPlay? }
+        local soundOk, soundErr = pcall(function()
+          if not data.assetId then
+            warn("[ForjeGames Sync] create_sound: missing assetId")
+            return
+          end
+
+          local sound = Instance.new("Sound")
+          sound.Name = data.name or "ForjeAI_Sound"
+          sound.SoundId = "rbxassetid://" .. tostring(data.assetId)
+          sound:SetAttribute("fj_generated", true)
+          if data.kind then sound:SetAttribute("fj_audio_kind", tostring(data.kind)) end
+
+          if data.looped ~= nil then sound.Looped = data.looped and true or false end
+          if data.volume ~= nil then
+            local v = tonumber(data.volume)
+            if v then sound.Volume = math.clamp(v, 0, 10) end
+          end
+          if data.playbackSpeed ~= nil then
+            local s = tonumber(data.playbackSpeed)
+            if s then sound.PlaybackSpeed = s end
+          end
+
+          local parent = workspace
+          if data.parent and data.parent ~= "" then
+            local found = workspace:FindFirstChild(tostring(data.parent), true)
+            if found then
+              parent = found
+            end
+          end
+          sound.Parent = parent
+
+          if data.autoPlay then
+            pcall(function() sound:Play() end)
+          end
+        end)
+        if not soundOk then
+          warn("[ForjeGames Sync] create_sound failed: " .. tostring(soundErr))
+        end
+
+      -- Studio Bridge commands
+      elseif changeType == "get_hierarchy" and data then
+        handleGetHierarchy(data)
+
+      elseif changeType == "get_properties" and data then
+        handleGetProperties(data)
+
+      elseif changeType == "set_property" and data then
+        handleSetProperty(data)
+
+      elseif changeType == "create_instance" and data then
+        handleCreateInstance(data)
+
+      elseif changeType == "delete_instance" and data then
+        handleDeleteInstance(data)
+
+      elseif changeType == "get_scripts" and data then
+        handleGetScripts(data)
+
+      elseif changeType == "start_playtest" and data then
+        handleStartPlaytest(data)
+
+      elseif changeType == "stop_playtest" then
+        handleStopPlaytest(data or {})
+
+      elseif changeType == "capture_screenshot" then
+        handleCaptureScreenshot(data or {})
+
+      elseif changeType == "simulate_input" and data then
+        handleSimulateInput(data)
+
+      elseif changeType == "get_output" and data then
+        handleGetOutput(data)
+
+      elseif changeType == "get_selection" then
+        handleGetSelection(data or {})
+
+      elseif changeType == "scan_workspace" then
+        handleScanWorkspace(data or {})
       end
     end)
 

@@ -1248,7 +1248,7 @@ end
 
 -- Handle: get_output (read LogService history)
 local function handleGetOutput(data)
-  local maxEntries = data.maxEntries or 100
+  local maxEntries = data.maxEntries or data.limit or 100
   local filter = data.filter or "all"
   local requestId = data._requestId
 
@@ -1276,10 +1276,12 @@ local function handleGetOutput(data)
           or (filter == "info" and messageType ~= "error")
 
         if include then
+          -- Plugin format matches agentic-loop's captureOutputLog reader:
+          -- it flattens to `[TYPE] text` strings.
           table.insert(entries, {
-            message = entry.message,
-            messageType = messageType,
-            timestamp = entry.timestamp,
+            text = entry.message,
+            type = messageType,
+            time = entry.timestamp,
           })
         end
       end
@@ -1289,6 +1291,105 @@ local function handleGetOutput(data)
   if requestId then
     pushBridgeResult("output_result", requestId, entries)
   end
+
+  -- ALSO mirror the entries to /api/studio/update with event=output_log so
+  -- the agentic-loop observe phase (src/lib/ai/agentic-loop.ts) can read
+  -- them via getSession().latestState.outputLog without correlating by
+  -- requestId. Fire-and-forget.
+  task.spawn(function()
+    pcall(function()
+      httpPost("/api/studio/update", {
+        sessionId = _sessionId,
+        timestamp = os.time() * 1000,
+        event     = "output_log",
+        outputLog = entries,
+        source    = "plugin",
+        placeId   = tostring(game.PlaceId),
+        changes   = {},
+      })
+    end)
+  end)
+end
+
+-- Handle: scan_workspace — walk the workspace tree and POST a structured
+-- snapshot to /api/studio/update. This is what the agentic-loop scene-
+-- manifest vision check (src/lib/ai/playtest-vision.ts analyzePlaytestScene)
+-- reads via session.latestState.worldSnapshot. Without this handler the
+-- scene check always sees null and the loop rides entirely on the console
+-- log (which can miss visually-broken-but-cleanly-compiling builds).
+local function handleScanWorkspace(data)
+  local maxDepth = math.min(tonumber(data.maxDepth or 4) or 4, 6)
+  local maxNodes = math.min(tonumber(data.maxNodes or 300) or 300, 600)
+  local requestId = data._requestId
+  local nodeCount = 0
+
+  local function collectTree(instance, depth)
+    if nodeCount >= maxNodes then return nil end
+    nodeCount += 1
+
+    local node = {
+      name      = instance.Name,
+      className = instance.ClassName,
+    }
+
+    if instance:IsA("BasePart") then
+      local pos = instance.Position
+      node.position = { X = pos.X, Y = pos.Y, Z = pos.Z }
+      local sz = instance.Size
+      node.size = { X = sz.X, Y = sz.Y, Z = sz.Z }
+      node.material = tostring(instance.Material)
+      node.color = {
+        R = instance.Color.R,
+        G = instance.Color.G,
+        B = instance.Color.B,
+      }
+    end
+
+    if depth < maxDepth then
+      local children = {}
+      for _, child in ipairs(instance:GetChildren()) do
+        local childNode = collectTree(child, depth + 1)
+        if childNode then
+          table.insert(children, childNode)
+        end
+        if nodeCount >= maxNodes then break end
+      end
+      if #children > 0 then
+        node.children = children
+      end
+    end
+
+    return node
+  end
+
+  local tree = {}
+  pcall(function()
+    for _, child in ipairs(workspace:GetChildren()) do
+      local node = collectTree(child, 1)
+      if node then table.insert(tree, node) end
+      if nodeCount >= maxNodes then break end
+    end
+  end)
+
+  -- Correlated read for MCP tools
+  if requestId then
+    pushBridgeResult("snapshot", requestId, tree)
+  end
+
+  -- Uncorrelated fallback for agentic-loop (reads session.latestState.worldSnapshot)
+  task.spawn(function()
+    pcall(function()
+      httpPost("/api/studio/update", {
+        sessionId = _sessionId,
+        timestamp = os.time() * 1000,
+        event     = "workspace_snapshot",
+        snapshot  = tree,
+        source    = "plugin",
+        placeId   = tostring(game.PlaceId),
+        changes   = {},
+      })
+    end)
+  end)
 end
 
 -- Handle: get_selection
@@ -1431,6 +1532,9 @@ local function applyChanges(changes)
 
       elseif changeType == "get_selection" then
         handleGetSelection(data or {})
+
+      elseif changeType == "scan_workspace" then
+        handleScanWorkspace(data or {})
       end
     end)
 
