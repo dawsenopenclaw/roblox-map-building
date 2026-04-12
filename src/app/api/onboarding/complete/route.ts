@@ -40,13 +40,56 @@ export async function POST(req: NextRequest) {
 
   // Always store DOB in Clerk metadata so the middleware age-gate check passes.
   // This works even without a database (local dev without PostgreSQL).
+  //
+  // We write to BOTH publicMetadata and unsafeMetadata. Clerk's default JWT
+  // template includes unsafeMetadata but not publicMetadata, so writing to
+  // unsafeMetadata guarantees the middleware sees the dateOfBirth claim even
+  // on deployments that haven't set up a custom JWT template with
+  // publicMetadata exposed. Without this, the user completes the age gate
+  // -> metadata saved on Clerk's server -> middleware JWT has no
+  // publicMetadata claim -> user is redirected back to the age gate in an
+  // infinite loop.
+  //
+  // We also read `externalAccounts` off the Clerk user and extract the
+  // Roblox user ID + username if the user signed in via the Roblox custom
+  // OAuth provider. Those fields then flow to the DB below so the Studio
+  // plugin can connect the player to their ForjeGames account automatically.
+  let robloxUserIdFromClerk: string | null = null
+  let robloxUsernameFromClerk: string | null = null
   try {
     const client = await clerkClient()
     const clerkUser = await client.users.getUser(clerkId)
-    const existing = (clerkUser.publicMetadata ?? {}) as Record<string, unknown>
+    const existingPublic = (clerkUser.publicMetadata ?? {}) as Record<string, unknown>
+    const existingUnsafe = (clerkUser.unsafeMetadata ?? {}) as Record<string, unknown>
+
+    // Find the Roblox external account. Clerk custom OAuth providers appear
+    // with `provider: 'oauth_custom_<slug>'` so we match any slug containing
+    // 'roblox' to be tolerant of slug rename.
+    const robloxAccount = clerkUser.externalAccounts?.find((acc) => {
+      const provider = (acc as { provider?: string }).provider ?? ''
+      return provider.toLowerCase().includes('roblox')
+    })
+    if (robloxAccount) {
+      // providerUserId is the OAuth subject — for Roblox this is the numeric
+      // Roblox user ID. username is the Roblox username.
+      robloxUserIdFromClerk =
+        (robloxAccount as { providerUserId?: string; externalId?: string }).providerUserId ??
+        (robloxAccount as { externalId?: string }).externalId ??
+        null
+      robloxUsernameFromClerk =
+        (robloxAccount as { username?: string | null }).username ?? null
+    }
+
     await client.users.updateUserMetadata(clerkId, {
       publicMetadata: {
-        ...existing,
+        ...existingPublic,
+        dateOfBirth: dob.toISOString(),
+        isUnder13: under13,
+        ...(robloxUserIdFromClerk ? { robloxUserId: robloxUserIdFromClerk } : {}),
+        ...(robloxUsernameFromClerk ? { robloxUsername: robloxUsernameFromClerk } : {}),
+      },
+      unsafeMetadata: {
+        ...existingUnsafe,
         dateOfBirth: dob.toISOString(),
         isUnder13: under13,
       },
@@ -60,10 +103,21 @@ export async function POST(req: NextRequest) {
   try {
     const existingUser = await db.user.findUnique({ where: { clerkId } })
 
+    // Only set robloxUserId/username on the existing user if we actually
+    // read them from Clerk this turn — otherwise we'd clobber a manually
+    // linked account (e.g. via /api/payments/robux/link).
+    const robloxUpdate: { robloxUserId?: string; robloxUsername?: string } = {}
+    if (robloxUserIdFromClerk) robloxUpdate.robloxUserId = robloxUserIdFromClerk
+    if (robloxUsernameFromClerk) robloxUpdate.robloxUsername = robloxUsernameFromClerk
+
     if (existingUser) {
       await db.user.update({
         where: { clerkId },
-        data: { dateOfBirth: dob, isUnder13: under13 },
+        data: {
+          dateOfBirth: dob,
+          isUnder13: under13,
+          ...robloxUpdate,
+        },
       })
     } else {
       // Webhook hasn't created the user yet — create inline
@@ -83,7 +137,15 @@ export async function POST(req: NextRequest) {
 
       await db.$transaction(async (tx) => {
         const user = await tx.user.create({
-          data: { clerkId, email, displayName, avatarUrl, dateOfBirth: dob, isUnder13: under13 },
+          data: {
+            clerkId,
+            email,
+            displayName,
+            avatarUrl,
+            dateOfBirth: dob,
+            isUnder13: under13,
+            ...robloxUpdate,
+          },
         })
         await tx.subscription.create({
           data: { userId: user.id, stripeCustomerId: `pending_${user.id}`, tier: 'FREE', status: 'ACTIVE' },

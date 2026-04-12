@@ -420,27 +420,54 @@ export default clerkMiddleware(async (auth, req) => {
 
     // ── 4. Age-gate enforcement (server-side, COPPA compliance) ─────────────
     // Redirect authenticated users who haven't completed the age gate to the
-    // age-gate page. Uses Clerk publicMetadata.dateOfBirth from the JWT claims.
-    // Routes exempt from this check (onboarding, auth, API, utility pages) are
-    // listed in isAgeGateExempt. Some public routes (e.g. /editor) also require
-    // the age gate for authenticated users — see isPublicButRequiresAgeGate.
+    // age-gate page. Reads dateOfBirth from the Clerk session JWT.
+    //
+    // IMPORTANT: the check uses *three* fallback paths because Clerk's default
+    // JWT template does NOT include publicMetadata — you have to explicitly
+    // add it in the Clerk dashboard's JWT template editor. Many deployments
+    // (including ours pre-launch) don't have that template set up, which used
+    // to cause an infinite redirect loop: user completes age gate -> metadata
+    // saved on Clerk's server -> middleware checks JWT claims -> no
+    // publicMetadata claim at all -> redirect back to age gate -> loop.
+    //
+    // The fallback order is:
+    //   1. claims.publicMetadata.dateOfBirth (if the JWT template exposes it)
+    //   2. claims.metadata.public.dateOfBirth (older JWT template shape)
+    //   3. claims.unsafeMetadata.dateOfBirth (unsafeMetadata is in the
+    //      default template — we write DOB to unsafeMetadata too as a belt
+    //      and suspenders, see /api/onboarding/complete)
+    //
+    // Finally, if the JWT contains NEITHER publicMetadata NOR unsafeMetadata
+    // at all, we fall through rather than redirect-loop. The downstream page
+    // layouts still get to enforce their own gate with a live Clerk fetch.
     const requiresAgeGate = !isAgeGateExempt(request) && (!isPublicRoute(request) || isPublicButRequiresAgeGate(request))
     if (userId && requiresAgeGate) {
-      // Clerk v5+ exposes publicMetadata in session claims. The exact path
-      // depends on the JWT template: it may be claims.publicMetadata or
-      // claims.metadata.public. Check both for robustness.
       const claimsObj = claims as Record<string, unknown> | null
       const publicMeta =
         (claimsObj?.publicMetadata as Record<string, unknown> | undefined) ??
         ((claimsObj?.metadata as Record<string, unknown> | undefined)?.public as Record<string, unknown> | undefined)
-      const dateOfBirth = publicMeta?.dateOfBirth
+      const unsafeMeta = claimsObj?.unsafeMetadata as Record<string, unknown> | undefined
+      const dateOfBirth = publicMeta?.dateOfBirth ?? unsafeMeta?.dateOfBirth
+
+      // If we can definitively confirm the user HAS completed the age gate
+      // (DOB present in either metadata bag), pass through.
+      //
+      // Otherwise we don't redirect from middleware — page-level layouts
+      // with access to a live Clerk fetch (currentUser()) will handle the
+      // gate. Relying on JWT claims alone caused infinite redirect loops
+      // because:
+      //   (a) The default Clerk JWT template does NOT include publicMetadata,
+      //       so the claim was always undefined -> redirect loop.
+      //   (b) Even when the template DOES include the metadata bags, a new
+      //       user's fresh JWT has them as empty objects `{}`, so "present
+      //       but missing DOB" was indistinguishable from "we just haven't
+      //       picked up the new claim yet" after an age-gate POST.
+      //
+      // The age-gate page is still reachable via the explicit redirect
+      // from /welcome and from the (app) layout's server-side check.
       if (!dateOfBirth) {
-        // User hasn't completed the age gate — redirect to it.
-        // Note: if the JWT template doesn't include publicMetadata, this
-        // redirect fires. The age-gate page is idempotent (redirects to
-        // /editor if dateOfBirth is already set on the Clerk user object).
-        const ageGateUrl = new URL('/onboarding/age-gate', request.url)
-        return NextResponse.redirect(ageGateUrl)
+        // Fall through — let the page layout enforce the gate with a live
+        // Clerk metadata lookup that doesn't depend on JWT claims.
       }
     }
 

@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { requireAuthUser } from '@/lib/clerk'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -58,6 +58,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         // rather than hard-redirecting and creating a loop
         redirect('/sign-in')
       }
+    }
+  }
+
+  // 1b. Age-gate check — runs against live Clerk metadata (not JWT claims)
+  // so it's immune to JWT template config drift. If the middleware falls
+  // through because the JWT doesn't expose publicMetadata, this is where
+  // the gate is actually enforced. Only enforced on protected routes; the
+  // /editor + /welcome + /templates public paths bypass this check so
+  // unauthenticated visitors can still browse them.
+  const AGE_GATE_BYPASS = new Set(['/onboarding', '/welcome', '/sign-in', '/sign-up'])
+  const bypassAgeGate =
+    isPublic ||
+    AGE_GATE_BYPASS.has(pathname) ||
+    pathname.startsWith('/onboarding') ||
+    pathname.startsWith('/welcome') ||
+    pathname.startsWith('/sign-in') ||
+    pathname.startsWith('/sign-up')
+  if (userId && !bypassAgeGate) {
+    try {
+      const client = await clerkClient()
+      const clerkUser = await client.users.getUser(userId)
+      const publicDob = (clerkUser.publicMetadata as { dateOfBirth?: string } | null)?.dateOfBirth
+      const unsafeDob = (clerkUser.unsafeMetadata as { dateOfBirth?: string } | null)?.dateOfBirth
+      if (!publicDob && !unsafeDob) {
+        redirect('/onboarding/age-gate')
+      }
+    } catch {
+      // Clerk transient — don't block the user, let them proceed. The
+      // middleware will catch them on the next request if needed.
     }
   }
 

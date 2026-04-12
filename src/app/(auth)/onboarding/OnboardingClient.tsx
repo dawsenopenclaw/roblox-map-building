@@ -349,13 +349,17 @@ export default function OnboardingWizardPage() {
     } catch {
       // Non-fatal — proceed to editor regardless so the user is never stuck.
     } finally {
-      // Always land the user in /editor, with or without a pre-queued prompt.
-      if (prompt) {
-        const encoded = encodeURIComponent(prompt)
-        router.push(`/editor?prompt=${encoded}`)
-      } else {
-        router.push('/editor')
-      }
+      // Use a HARD navigation (window.location.href) instead of router.push
+      // so Clerk reissues the JWT with the latest publicMetadata claims and
+      // the middleware re-evaluates against fresh claims. router.push() only
+      // triggers a client-side transition and middleware may still see the
+      // stale JWT, causing /editor -> /onboarding redirect loops after users
+      // finished the wizard. Hard navigation is bullet-proof and costs one
+      // extra page load — acceptable at the end of a 5-step wizard.
+      const target = prompt
+        ? `/editor?prompt=${encodeURIComponent(prompt)}`
+        : '/editor'
+      window.location.href = target
     }
   }
 
