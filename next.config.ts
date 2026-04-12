@@ -145,6 +145,18 @@ const nextConfig: NextConfig = {
       'date-fns',
     ],
   },
+  // Force the Studio plugin .rbxmx files into the /api/studio/plugin route
+  // bundle. Next's file tracer doesn't reliably follow
+  // `fs.readFileSync(process.cwd() + "public/...")` because the path is
+  // constructed at runtime. Without this, Vercel deploys serve a stale
+  // copy of public/plugin/ForjeGames.rbxmx from an older build cache —
+  // which is exactly what was happening before this fix.
+  outputFileTracingIncludes: {
+    '/api/studio/plugin': [
+      './public/plugin/ForjeGames.rbxmx',
+      './public/plugin/ForjeGames-store.rbxmx',
+    ],
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     // Limit generated size variants — reduces cold-start work on the image endpoint
