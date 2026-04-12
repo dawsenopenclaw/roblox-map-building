@@ -2180,6 +2180,19 @@ export function useChat(options: UseChatOptions = {}) {
           }
           return
         }
+
+        // /game <prompt> — triggers the step-by-step game builder
+        if (cmd === 'game' && rest.trim()) {
+          if (studioConnected && studioSessionId) {
+            void triggerStepByStepBuild(rest.trim(), studioSessionId)
+          } else {
+            // No Studio connected — fall back to normal chat with a
+            // build-mode system prompt so the AI still tries its best
+            setAIMode('build')
+            sendMessage(`Build a complete playable Roblox game: ${rest.trim()}`)
+          }
+          return
+        }
       }
 
       // BUG 2: apply build-direction semantics before sending.
