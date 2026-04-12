@@ -29,6 +29,12 @@ local Debris       = game:GetService("Debris")
 
 local Sync = {}
 
+-- Plugin version is exported on the Sync module so Plugin.lua can detect
+-- direct-download vs Creator Store builds without hardcoding the string in
+-- two places. Store builds suffix this with "-store" at build time; the
+-- loadstring auto-enable logic in Plugin.lua:init() checks for that suffix.
+Sync.PLUGIN_VERSION = "4.6.0"
+
 -- ============================================================
 -- Config
 -- ============================================================

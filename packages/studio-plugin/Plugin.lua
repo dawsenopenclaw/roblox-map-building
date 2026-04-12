@@ -435,6 +435,31 @@ end
 -- Build UI
 -- ============================================================
 local function init()
+  -- Enable loadstring execution for direct-download builds. The
+  -- ForjeGames_AllowLoadstring setting controls whether the plugin will
+  -- run raw AI-generated Luau code (functions, loops, pcall) via a
+  -- temporary Script inserted into ServerScriptService. Creator Store
+  -- builds MUST keep this off (policy). Direct-download plugins were
+  -- shipping with it defaulted to off, which meant new users would ask
+  -- the AI to build a castle, the AI would emit a `for` loop, and the
+  -- plugin would silently reject it as "complex code" — producing the
+  -- reported "AI says Built! but nothing appears" failure mode.
+  --
+  -- The direct-download plugin is identified by a PLUGIN_VERSION string
+  -- that does NOT end in "-store". For those builds we auto-enable the
+  -- setting on first run so the out-of-box experience is "builds just
+  -- work". Users can still disable it manually via the plugin settings
+  -- if they want a stricter sandbox.
+  pcall(function()
+    if Sync and Sync.PLUGIN_VERSION and not tostring(Sync.PLUGIN_VERSION):match("%-store$") then
+      local existing = plugin:GetSetting("ForjeGames_AllowLoadstring")
+      if existing == nil then
+        plugin:SetSetting("ForjeGames_AllowLoadstring", true)
+        print("[ForjeGames] First-run: enabled ForjeGames_AllowLoadstring (direct-download build)")
+      end
+    end
+  end)
+
   if UI then
     uiRefs = UI.build(widget, state, COLORS, plugin)
   end
