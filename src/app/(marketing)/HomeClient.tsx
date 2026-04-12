@@ -825,6 +825,24 @@ export default function HomeClient() {
             <p className="reveal reveal-delay-4 text-[13px]" style={{ color: '#52525B' }}>
               No account needed &middot; Free forever &middot; Works with Roblox Studio
             </p>
+
+            {/* Model transparency strip — competitor research showed this is a
+                trust lever (only Ropilot discloses providers). Listing the
+                real models powering the editor below the hero converts
+                skeptical visitors who want to know what's under the hood. */}
+            <p
+              className="reveal reveal-delay-5 mt-4 text-[11px] uppercase tracking-[0.14em]"
+              style={{ color: '#3F3F46' }}
+            >
+              Powered by{' '}
+              <span style={{ color: '#A1A1AA' }}>Claude Sonnet 4.6</span>
+              <span className="mx-2 opacity-40">·</span>
+              <span style={{ color: '#A1A1AA' }}>GPT-5</span>
+              <span className="mx-2 opacity-40">·</span>
+              <span style={{ color: '#A1A1AA' }}>Flux</span>
+              <span className="mx-2 opacity-40">·</span>
+              <span style={{ color: '#A1A1AA' }}>Meshy 3D</span>
+            </p>
           </div>
         </section>
 
@@ -851,10 +869,16 @@ export default function HomeClient() {
 
             <div className="flex flex-wrap items-center justify-center gap-x-8 sm:gap-x-16 gap-y-8 text-center">
               {[
-                { value: 9,   suffix: '',    label: '9 AI Agents',           color: '#D4AF37'  },
-                { value: 55,  suffix: '+',   label: 'Roblox asset types',    color: '#60A5FA'  },
-                { value: 6,   suffix: '',    label: 'AI models',             color: '#7C3AED'  },
-                { value: 10,  suffix: 'min', label: 'Time to first map',     color: '#10B981'  },
+                // Only list numbers we can defend to a skeptical user at
+                // launch. "Agents", "asset types", "models" are inherent
+                // product facts. Avoid fabricating usage counts ("50k users",
+                // "12k maps") until /api/dashboard/stats can bind to real
+                // values — competitor analysis recommended the pattern but
+                // honest stats are a stronger long-term trust signal.
+                { value: 9,   suffix: '',    label: 'AI agents on every build', color: '#D4AF37'  },
+                { value: 55,  suffix: '+',   label: 'Roblox asset types',       color: '#60A5FA'  },
+                { value: 6,   suffix: '',    label: 'Frontier AI models',       color: '#7C3AED'  },
+                { value: 1000, suffix: '',   label: 'Free tokens on sign-up',   color: '#10B981'  },
               ].map(({ value, suffix, label, color }, i) => (
                 <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
                   <p
