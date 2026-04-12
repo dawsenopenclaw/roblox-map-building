@@ -809,8 +809,14 @@ function MessageBubbleImpl({
   }
 
   if (isStatus) {
-    const isSuccess = msg.content.toLowerCase().includes('studio') && !msg.content.toLowerCase().includes('thinking')
-    const isBuildSent = msg.content.toLowerCase().includes('check your viewport')
+    const contentLower = msg.content.toLowerCase()
+    const isSuccess = contentLower.includes('studio') && !contentLower.includes('thinking') && !contentLower.includes('failed') && !contentLower.includes('connect')
+    const isBuildSent = contentLower.includes('check your viewport') || contentLower.includes('sent to roblox studio')
+    // Two states that should include an action CTA:
+    //   - "Failed to push to Studio" — offer a retry
+    //   - "Connect Studio plugin to push" — offer a pair-studio link
+    const isStudioNotConnected = contentLower.includes('connect studio plugin')
+    const isStudioPushFailed = contentLower.includes('failed to push to studio')
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 10, padding: '4px 0' }}>
         <style>{PULSE_STYLE}</style>
@@ -879,7 +885,7 @@ function MessageBubbleImpl({
             </span>
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
             <span
               style={{
                 fontSize: 12,
@@ -889,7 +895,47 @@ function MessageBubbleImpl({
             >
               {msg.content}
             </span>
-            <TypingDots />
+            {/* Inline CTAs — only shown for the two "Studio didn't receive
+                the code" states. Everything else falls through to the
+                default typing-dots indicator so normal status messages
+                keep their pending look. */}
+            {isStudioNotConnected && (
+              <a
+                href="/connect"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#D4AF37',
+                  background: 'rgba(212,175,55,0.1)',
+                  border: '1px solid rgba(212,175,55,0.32)',
+                  borderRadius: 6,
+                  padding: '3px 10px',
+                  textDecoration: 'none',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Pair Studio →
+              </a>
+            )}
+            {isStudioPushFailed && onRetry && (
+              <button
+                onClick={onRetry}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#D4AF37',
+                  background: 'rgba(212,175,55,0.1)',
+                  border: '1px solid rgba(212,175,55,0.32)',
+                  borderRadius: 6,
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                Retry push
+              </button>
+            )}
+            {!isStudioNotConnected && !isStudioPushFailed && <TypingDots />}
           </div>
         )}
       </div>
@@ -916,7 +962,9 @@ function MessageBubbleImpl({
           You&apos;re out of tokens
         </p>
         <p style={{ margin: 0, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
-          {msg.content || 'Your AI token balance is empty. Get more tokens to keep building.'}
+          {typeof msg.tokenBalance === 'number' && typeof msg.tokenRequired === 'number'
+            ? `This message needs ${msg.tokenRequired.toLocaleString()} tokens — you have ${msg.tokenBalance.toLocaleString()}. Top up or upgrade to continue.`
+            : msg.content || 'Your AI token balance is empty. Get more tokens to keep building.'}
         </p>
         <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
           <a

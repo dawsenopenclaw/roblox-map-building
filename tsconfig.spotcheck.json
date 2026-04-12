@@ -28,6 +28,7 @@
     "src/app/verify-email/page.tsx",
     "src/app/status/page.tsx",
     "src/components/Footer.tsx",
+    "src/components/editor/ChatPanel.tsx",
     "src/app/(app)/editor/hooks/useChat.ts"
   ],
   "exclude": ["node_modules", ".next"]
