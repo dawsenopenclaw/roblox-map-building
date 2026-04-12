@@ -63,6 +63,16 @@ async function fetchWithTimeout(url: string, timeoutMs = 2000, headers?: Record<
 
 async function checkMcp(url: string): Promise<CheckStatus> {
   if (!url) return 'unconfigured'
+  // A localhost MCP URL is a dev default — in production it will always fail
+  // and cause the top-level status to flip to "degraded" / "unhealthy" for no
+  // real reason. Treat localhost URLs as unconfigured so the status reflects
+  // what is actually serving users.
+  if (
+    process.env.NODE_ENV === 'production' &&
+    (url.startsWith('http://localhost') || url.startsWith('http://127.0.0.1'))
+  ) {
+    return 'unconfigured'
+  }
   try {
     const res = await fetchWithTimeout(`${url}/health`)
     return res.ok ? 'ok' : 'degraded'

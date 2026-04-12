@@ -3,16 +3,30 @@ import Link from 'next/link'
 // Server Component — no interactivity
 const PRODUCT_LINKS = [
   { href: '/editor', label: 'Editor' },
-  { href: '/#showcase', label: 'Showcase' },
+  { href: '/showcase', label: 'Showcase' },
   { href: '/pricing', label: 'Pricing' },
+  { href: '/templates', label: 'Templates' },
+  { href: '/download', label: 'Studio Plugin' },
+  { href: '/whats-new', label: "What's New" },
+]
+
+const RESOURCES_LINKS = [
+  { href: '/docs', label: 'Docs' },
+  { href: '/docs/getting-started', label: 'Getting Started' },
+  { href: '/help', label: 'Help Center' },
+  { href: '/changelog', label: 'Changelog' },
+  { href: '/status', label: 'Status' },
 ]
 
 const LEGAL_LINKS = [
   { href: '/terms', label: 'Terms' },
   { href: '/privacy', label: 'Privacy' },
+  { href: '/dmca', label: 'DMCA' },
+  { href: '/acceptable-use', label: 'Acceptable Use' },
 ]
 
 const COMPANY_LINKS = [
+  { href: '/about', label: 'About' },
   { href: 'mailto:support@forjegames.com', label: 'Support' },
   { href: 'https://discord.gg/forjegames', label: 'Discord' },
   { href: 'https://twitter.com/forjegames', label: 'Twitter / X' },
@@ -160,11 +174,12 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* 3-column link grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-8 mb-10 sm:mb-12">
-          <FooterColumn id="footer-product" title="Product" links={PRODUCT_LINKS} />
-          <FooterColumn id="footer-legal" title="Legal" links={LEGAL_LINKS} />
-          <FooterColumn id="footer-company" title="Company" links={COMPANY_LINKS} />
+        {/* 4-column link grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 mb-10 sm:mb-12">
+          <FooterColumn id="footer-product"   title="Product"   links={PRODUCT_LINKS} />
+          <FooterColumn id="footer-resources" title="Resources" links={RESOURCES_LINKS} />
+          <FooterColumn id="footer-legal"     title="Legal"     links={LEGAL_LINKS} />
+          <FooterColumn id="footer-company"   title="Company"   links={COMPANY_LINKS} />
         </div>
 
         {/* Bottom bar */}
