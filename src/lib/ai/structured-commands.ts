@@ -320,6 +320,8 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   const partStates = new Map<string, PartState>()
   // Track variable name → class for models
   const modelStates = new Map<string, { name: string; parentName: string }>()
+  // Track generic instances (lights, sounds, effects, folders) for create_instance commands
+  const genericInstances = new Map<string, { className: string; name: string; parentName: string; properties: Record<string, unknown> }>()
 
   // Flag lines we can't handle — but skip known template boilerplate
   // from the CODE_GENERATION_PROMPT (P/getFolder/vc/pcall wrapper, etc.)
@@ -355,6 +357,19 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       })
     } else if (className === 'Model') {
       modelStates.set(varName, { name: varName, parentName: 'Workspace' })
+    } else if (
+      className === 'PointLight' || className === 'SpotLight' ||
+      className === 'SurfaceLight' || className === 'Sound' ||
+      className === 'Folder' || className === 'Decal' ||
+      className === 'Texture' || className === 'SurfaceGui' ||
+      className === 'BillboardGui' || className === 'Fire' ||
+      className === 'Smoke' || className === 'Sparkles'
+    ) {
+      // Generic instance — emitted as create_instance with properties
+      // collected in Pass 2. The plugin's executeStructuredCommands handles
+      // create_instance for any Roblox className.
+      // We track them so Pass 2 can accumulate property assignments.
+      genericInstances.set(varName, { className, name: varName, parentName: 'Workspace', properties: {} })
     } else {
       warnings.push(`Skipped unsupported Instance.new class: ${className}`)
     }
@@ -477,6 +492,28 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       else if (prop === 'Parent') ms.parentName = resolveParent(rawVal)
       continue
     }
+
+    // ── Generic instance property assignments (lights, sounds, effects) ──
+    const gi = genericInstances.get(varName)
+    if (gi) {
+      if (prop === 'Name') gi.name = rawVal.replace(/^["']|["']$/g, '')
+      else if (prop === 'Parent') gi.parentName = resolveParent(rawVal)
+      else {
+        // Store raw property value — the plugin resolves types at execution time
+        const cleaned = rawVal.replace(/^["']|["']$/g, '').trim()
+        // Try parsing common value types
+        const numVal = parseFloat(cleaned)
+        const boolVal = parseBoolean(cleaned)
+        const colorVal = parseColor(rawVal)
+        const vecVal = parseVector3(rawVal)
+        if (colorVal) gi.properties[prop] = colorVal
+        else if (vecVal) gi.properties[prop] = vecVal
+        else if (boolVal !== null) gi.properties[prop] = boolVal
+        else if (!isNaN(numVal) && /^-?[\d.]+$/.test(cleaned)) gi.properties[prop] = numVal
+        else gi.properties[prop] = cleaned
+      }
+      continue
+    }
   }
 
   // Flush accumulated part states → create_part commands
@@ -504,8 +541,20 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     })
   }
 
+  // Flush generic instances → create_instance commands (lights, sounds, effects)
+  const genericCommands: CreateInstanceCommand[] = []
+  for (const gi of genericInstances.values()) {
+    genericCommands.push({
+      type: 'create_instance',
+      className: gi.className,
+      name: gi.name,
+      parentName: gi.parentName,
+      properties: Object.keys(gi.properties).length > 0 ? gi.properties : undefined,
+    })
+  }
+
   return {
-    commands: [...modelCommands, ...commands],
+    commands: [...modelCommands, ...commands, ...genericCommands],
     hasUntranslatableCode,
     warnings,
   }
