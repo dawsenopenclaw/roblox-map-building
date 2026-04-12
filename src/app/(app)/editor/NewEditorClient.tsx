@@ -2999,6 +2999,28 @@ function EditorInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Auto-start the Studio connect flow for ANY signed-in user who isn't
+  // already connected. Previously the connect code was only generated when
+  // the user explicitly clicked "Connect Studio" in the top bar — most
+  // first-time users never found that button, typed build prompts anyway,
+  // and wondered why nothing appeared in Studio. Starting the flow on mount
+  // means the top connect banner is populated from the moment they land in
+  // the editor, so installing + pairing the plugin is the obvious next
+  // action. Safe to call repeatedly — useStudioConnection's generateCode()
+  // is idempotent when a code is already in-flight.
+  useEffect(() => {
+    if (!isSignedIn || !authLoaded) return
+    if (studio.isConnected) return
+    if (studio.connectFlow !== 'idle') return
+    void studio.generateCode()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, authLoaded, studio.isConnected, studio.connectFlow])
+
+  // Persistent "Studio not connected" banner — dismissible per session so
+  // users who are working without a plugin (e.g., browsing the chat UI
+  // before installing) don't get nagged, but it comes back on next visit.
+  const [studioBannerDismissed, setStudioBannerDismissed] = useState(false)
+
   // When Studio actually connects, record that the user has connected before
   useEffect(() => {
     if (studio.isConnected) {
@@ -3184,6 +3206,111 @@ function EditorInner() {
         fontFamily: 'Inter, sans-serif',
       }}
     >
+      {/* Persistent Studio-not-connected banner — visible on every editor
+          load until the user either connects the plugin or dismisses it.
+          Renders the 6-char pairing code inline so users don't have to
+          hunt for the "Connect Studio" button in the top bar. First-time
+          users see this within milliseconds of the editor mounting. */}
+      {!studio.isConnected && !studioBannerDismissed && (
+        <div
+          style={{
+            flex: '0 0 auto',
+            background: 'linear-gradient(180deg, rgba(212,175,55,0.12) 0%, rgba(15,20,45,0.92) 100%)',
+            borderBottom: '1px solid rgba(212,175,55,0.25)',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            fontSize: 12,
+            color: '#FAFAFA',
+            flexWrap: 'wrap',
+          }}
+          role="status"
+          aria-label="Roblox Studio not connected"
+        >
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontWeight: 700, color: '#D4AF37', whiteSpace: 'nowrap',
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: '#D4AF37', boxShadow: '0 0 8px rgba(212,175,55,0.6)',
+            }} />
+            Studio not connected
+          </span>
+          <span style={{ color: '#A1A1AA' }}>
+            — build code will queue instead of appearing in Studio.
+          </span>
+          <div style={{ flex: 1, minWidth: 12 }} />
+          <a
+            href="/plugin/ForjeGames.rbxmx"
+            download="ForjeGames.rbxmx"
+            style={{
+              fontWeight: 600, color: '#D4AF37',
+              textDecoration: 'underline', textUnderlineOffset: 3,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            1. Install plugin
+          </a>
+          {studio.connectFlow === 'code' && studio.connectCode ? (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 6,
+              background: 'rgba(212,175,55,0.1)',
+              border: '1px solid rgba(212,175,55,0.3)',
+              fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+              fontWeight: 800, fontSize: 13,
+              color: '#FFD966', letterSpacing: '0.1em',
+              whiteSpace: 'nowrap',
+            }}>
+              2. Code:&nbsp;
+              <button
+                onClick={() => {
+                  if (studio.connectCode) {
+                    navigator.clipboard.writeText(studio.connectCode).catch(() => {})
+                    toast('Code copied')
+                  }
+                }}
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: 'inherit', font: 'inherit', cursor: 'pointer',
+                  padding: 0,
+                }}
+                title="Click to copy"
+              >
+                {studio.connectCode}
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => { void studio.generateCode() }}
+              style={{
+                padding: '4px 10px', borderRadius: 6,
+                background: 'rgba(212,175,55,0.1)',
+                border: '1px solid rgba(212,175,55,0.3)',
+                color: '#D4AF37', fontWeight: 700, fontSize: 12,
+                cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              2. Get pairing code
+            </button>
+          )}
+          <button
+            onClick={() => setStudioBannerDismissed(true)}
+            style={{
+              background: 'transparent', border: 'none',
+              color: '#71717A', cursor: 'pointer', padding: '4px 6px',
+              fontSize: 14, lineHeight: 1,
+            }}
+            aria-label="Dismiss Studio connection banner"
+            title="Dismiss"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Onboarding — page-aware: adapts steps to the user's current editor state */}
       {showOnboarding && (
         <OnboardingOverlay
