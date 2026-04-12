@@ -22,7 +22,7 @@ import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
 import { db } from '@/lib/db'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
-import { queueCommand, getSession, createSession } from '@/lib/studio-session'
+import { queueCommand, getSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import Anthropic from '@anthropic-ai/sdk'
@@ -472,6 +472,40 @@ async function sendMultipleScriptsToStudio(
   return allOk
 }
 
+// Strip AI false-positive "I built X" / "I've created X" / "placed in your
+// game" phrases from model output when the Studio plugin was NOT connected.
+// The model is trained to say things like "Built it!" because that was the
+// happy path in fine-tuning data, but when the plugin isn't live those
+// phrases are lies to the user. Regex replaces common false-success
+// openings with a neutral "generated the code" framing and prepends a
+// clear disclaimer banner so users know they still need to import the
+// code into Studio (or install the plugin).
+function correctAiClaimsWhenNotExecuted(text: string): string {
+  if (!text) return text
+  let out = text
+
+  // Softeners — neutralize the strongest false claims first.
+  const falseSuccessPatterns: Array<[RegExp, string]> = [
+    [/\bi(?:'ve| have)? (?:just )?built (?:it|that|the|this)\b/gi, "I've generated the code for that"],
+    [/\bbuilt it(?:!| for you!?| and placed it in your (?:studio|game|workspace))\.?/gi, 'generated the build code for you.'],
+    [/\b(?:built|added|placed|created) (?:it|that|the [a-z]+) in (?:your )?(?:studio|game|workspace)(?:!|\.)?/gi, 'generated the code — import it into Studio to place it.'],
+    [/\bcheck your studio[^.\n]*\./gi, 'Click "Import to Studio" in the chat above, or install the plugin from /download if you haven\'t yet.'],
+    [/\b(?:it should|it'll|it will) appear (?:near your camera|in your workspace)[^.\n]*\./gi, 'Once the plugin is connected, it\'ll appear near your camera.'],
+  ]
+  for (const [pattern, replacement] of falseSuccessPatterns) {
+    out = out.replace(pattern, replacement)
+  }
+
+  return out
+}
+
+function prependStudioDisconnectedBanner(text: string, hadCode: boolean): string {
+  if (!hadCode) return text
+  const banner =
+    '> ⚠️ **Studio plugin not connected.** The code below is ready — click **"Import to Studio"** in the chat to paste it, or [install the plugin](/download) first if you haven\'t.'
+  return `${banner}\n\n${text}`
+}
+
 // Strip code blocks from response — user only sees friendly text
 function stripCodeBlocks(text: string | null | undefined): string {
   if (!text) return ''
@@ -659,7 +693,28 @@ _G._forje_state.lastBuild = m
 if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
 }
 
-// Queue extracted code to Studio plugin for execution
+// Queue extracted code to Studio plugin for execution.
+//
+// Returns true ONLY when we have real evidence that a plugin is connected
+// and the command was queued to a live session. Returns false (and does NOT
+// queue) when:
+//   - sessionId or code is empty
+//   - no session exists in L1 or Redis (no plugin anywhere in the fleet)
+//   - session exists but `connected === false` (plugin disconnected,
+//     heartbeat stale for > SESSION_TTL_MS)
+//
+// Previously this function CREATED an ephemeral session and queued commands
+// whenever `getSession` returned undefined — the rationale being that on
+// Vercel the chat Lambda might be a different instance from the auth Lambda
+// and the session hadn't hit Redis yet. But `getSession` already reads
+// Redis, so `undefined` really does mean "no plugin connected" — creating a
+// fake session meant the chat route would report `executedInStudio: true`
+// and tell the user "Built it! Check your Studio" even when the user had
+// never installed the Studio plugin. That's the exact false-success bug the
+// user reported. Real plugins hit /api/studio/sync within seconds of
+// connecting, so the first request from a freshly-connected plugin is the
+// correct "first queue" point — not a speculative ephemeral session from a
+// chat handler that has no evidence a plugin exists.
 async function sendCodeToStudio(sessionId: string | null, code: string): Promise<boolean> {
   if (!sessionId || !code) {
     console.log('[sendCodeToStudio] Skipped: sessionId=' + (sessionId ?? 'null') + ' codeLen=' + (code?.length ?? 0))
@@ -668,24 +723,21 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
   try {
     console.log('[sendCodeToStudio] Attempting for session:', sessionId, 'codeLen:', code.length)
 
-    // Try to find the session — memory first, then Redis
-    let session = await getSession(sessionId)
-
-    // On Vercel, the chat Lambda is often a different instance from the auth Lambda.
-    // If the session isn't found (no Redis, or cold start), create a minimal one
-    // so the command can be queued. The plugin's next /sync poll will find it.
+    // Look up the session in L1 + Redis. If it doesn't exist anywhere, the
+    // user does not have a Studio plugin connected — do not queue commands.
+    const session = await getSession(sessionId)
     if (!session) {
-      console.log('[sendCodeToStudio] Session not found, creating ephemeral for:', sessionId)
-      session = createSession({
-        placeId: 'unknown',
-        placeName: 'Unknown',
-        pluginVersion: 'unknown',
-        authToken: '',
-        sessionId,
-      })
-    } else {
-      console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
+      console.log('[sendCodeToStudio] No session found — plugin not connected, skipping queue')
+      return false
     }
+
+    // Session exists but plugin hasn't poll'd recently — don't pretend it's live.
+    if (!session.connected) {
+      console.log('[sendCodeToStudio] Session exists but disconnected (stale heartbeat), skipping queue')
+      return false
+    }
+
+    console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
 
     // Store edition: cannot use loadstring() — translate Luau to structured commands
     const isStoreEdition = session.pluginVersion.endsWith('-store')
@@ -7192,8 +7244,17 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const { message: cleanMessage, suggestions } = extractSuggestions(stripped)
         const hasCode = luauScripts.length > 0
 
+        // Scrub AI false-success claims and prepend a connection banner when
+        // the plugin isn't actually hooked up. Prevents the "AI says it built
+        // something but nothing is in Studio" bug subscribers reported.
+        let finalMessage = cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : result.text)
+        if (!executedInStudio && hasCode) {
+          finalMessage = correctAiClaimsWhenNotExecuted(finalMessage)
+          finalMessage = prependStudioDisconnectedBanner(finalMessage, hasCode)
+        }
+
         return NextResponse.json({
-          message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : result.text),
+          message: finalMessage,
           tokensUsed: result.tokensUsed,
           intent,
           hasCode,
@@ -7550,8 +7611,17 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         return undefined
       })()
 
+      // Scrub AI false-success claims when plugin isn't connected and
+      // prepend a "plugin not connected" banner so users know they still
+      // need to import / install.
+      let finalMessage = cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : responseText)
+      if (!executedInStudio && hasCode) {
+        finalMessage = correctAiClaimsWhenNotExecuted(finalMessage)
+        finalMessage = prependStudioDisconnectedBanner(finalMessage, hasCode)
+      }
+
       return NextResponse.json({
-        message: cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : responseText),
+        message: finalMessage,
         tokensUsed,
         intent,
         hasCode,
@@ -7812,7 +7882,12 @@ Set m.PrimaryPart to the base part. No explanation.`,
         if (sessionId) {
           executedInStudio = await sendCodeToStudio(sessionId, luau)
         }
-        const buildMsg = `I built that for you! ${executedInStudio ? 'Check your Studio — it should appear near your camera.' : 'Click "Import to Studio" to paste the code.'}\n\nWhat would you like to change or add next?`
+        // Honest success messages — don't claim we built anything in Studio
+        // when the plugin isn't connected. If executedInStudio is false, the
+        // code lives in the chat as a one-click "Import to Studio" action.
+        const buildMsg = executedInStudio
+          ? 'Built it! Check your Studio — it should appear near your camera.\n\nWhat would you like to change or add next?'
+          : 'Here\'s the build code! Click **"Import to Studio"** to paste it into your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven\'t.\n\nWhat would you like to change or add next?'
         if (wantsStream) {
           return toStreamResponse(buildMsg, {
             intent,
@@ -7843,7 +7918,7 @@ Set m.PrimaryPart to the base part. No explanation.`,
     }
     const fbMsg = fbExecuted
       ? `Built it! Check your Studio — it should appear near your camera. What would you like to change or add?`
-      : `Here's the build code! Click "Import to Studio" to place it in your game.`
+      : `Here's the build code! Click **"Import to Studio"** to place it in your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven't.`
     if (wantsStream) {
       return toStreamResponse(fbMsg, {
         intent,
