@@ -561,6 +561,102 @@ export function useChat(options: UseChatOptions = {}) {
     })
   }, [])
 
+  // ─── Step-by-Step Game Builder ──────────────────────────────────────────────
+  // Breaks a full game prompt into 5 discrete steps and executes each
+  // independently in Studio, streaming progress to the chat as status messages.
+  // Triggered when the user picks a game preset or types "build me a full game."
+  const triggerStepByStepBuild = useCallback(
+    async (prompt: string, sessionId: string) => {
+      const buildStatusId = uid()
+      setMessagesSync((prev) => [
+        ...prev,
+        {
+          id: buildStatusId,
+          role: 'status' as MessageRole,
+          content: 'Building your game step by step...',
+          timestamp: new Date(),
+        },
+      ])
+
+      try {
+        const res = await fetch('/api/ai/build-game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, sessionId }),
+        })
+
+        if (!res.ok || !res.body) {
+          setMessagesSync((prev) =>
+            prev.map((m) =>
+              m.id === buildStatusId
+                ? { ...m, content: 'Step-by-step build failed to start.' }
+                : m,
+            ),
+          )
+          return
+        }
+
+        const reader = res.body.getReader()
+        const dec = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += dec.decode(value, { stream: true })
+
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              const event = JSON.parse(line.slice(6))
+
+              if (event.action === 'complete' || event.action === 'failed') {
+                const finalText = event.success
+                  ? `Game built in ${event.steps?.length ?? '?'} steps! Check your Studio viewport.`
+                  : `Build finished with some issues: ${(event.errors ?? []).slice(0, 2).join('; ')}`
+                setMessagesSync((prev) =>
+                  prev.map((m) =>
+                    m.id === buildStatusId
+                      ? { ...m, content: finalText }
+                      : m,
+                  ),
+                )
+              } else if (event.index && event.title) {
+                const icon = event.status === 'done' ? '✅' : event.status === 'failed' ? '❌' : '⏳'
+                setMessagesSync((prev) =>
+                  prev.map((m) =>
+                    m.id === buildStatusId
+                      ? { ...m, content: `${icon} Step ${event.index}/${event.total}: ${event.title}` }
+                      : m,
+                  ),
+                )
+              }
+            } catch {
+              /* malformed SSE line — skip */
+            }
+          }
+        }
+      } catch {
+        setMessagesSync((prev) =>
+          prev.map((m) =>
+            m.id === buildStatusId
+              ? { ...m, content: 'Step-by-step build encountered an error.' }
+              : m,
+          ),
+        )
+      }
+
+      setLoading(false)
+      playCompletionSoundIfEnabled()
+      saveCheckpoint()
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setMessagesSync, setLoading, playCompletionSoundIfEnabled],
+  )
+
   // ─── Agentic Auto-Playtest ─────────────────────────────────────────────────
   // Triggers the autonomous build-test-fix loop after code is sent to Studio.
   // Reads the SSE stream from /api/ai/playtest and adds status messages to chat.
@@ -2193,5 +2289,7 @@ export function useChat(options: UseChatOptions = {}) {
     // Image mode options (BUG 9)
     imageOptions,
     setImageOptions,
+    // Step-by-step game builder
+    triggerStepByStepBuild,
   }
 }

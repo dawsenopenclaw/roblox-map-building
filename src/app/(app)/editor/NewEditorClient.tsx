@@ -2870,7 +2870,19 @@ function EditorInner() {
 
         // Small delay so chat + imageFile state is settled before sending
         setTimeout(() => {
-          void chat.sendMessage(initialPrompt.trim())
+          const trimmedPrompt = initialPrompt.trim()
+
+          // Game preset detection: if the prompt is > 500 chars AND Studio is
+          // connected, it's a full-game blueprint from the onboarding genre
+          // picker. Use the step-by-step builder for dramatically better
+          // results — 5 focused Luau blocks instead of one giant one.
+          const isGamePreset = trimmedPrompt.length > 500 && trimmedPrompt.includes('fj_generated')
+          if (isGamePreset && studio.isConnected && studio.sessionId) {
+            void chat.triggerStepByStepBuild(trimmedPrompt, studio.sessionId)
+          } else {
+            void chat.sendMessage(trimmedPrompt)
+          }
+
           // Clean all known query params so refresh doesn't re-fire
           const url = new URL(window.location.href)
           url.searchParams.delete('prompt')
