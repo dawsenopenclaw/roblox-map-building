@@ -666,7 +666,7 @@ function RotatingHeroText() {
                   // Hide nodes that are > 90° off-axis so we don't show
                   // mirrored/upside-down words peeking from the sides when
                   // the browser ignores backface-visibility (Safari bug).
-                  opacity: isActive ? 1 : 0.25,
+                  opacity: isActive ? 1 : 0,
                   transition: 'opacity 0.6s ease-out',
                   willChange: 'transform, opacity',
                 }}
