@@ -16,6 +16,12 @@ interface NavLink {
   Icon: LucideIcon
   /** Optional pulsing "New" badge next to the label. */
   badge?: 'New'
+  /**
+   * Hide this link at the md breakpoint (768-1023px) to prevent the nav
+   * from crowding into the logo + CTA at tablet widths. Showcased at lg
+   * (>=1024px) where there's room. The top 5 links stay visible at md.
+   */
+  lgOnly?: boolean
 }
 
 /**
@@ -24,6 +30,14 @@ interface NavLink {
  * absolute homepage anchors (`/#features`) and disable the smooth-scroll
  * interception so Next.js does a full navigation. `#pricing` gets rewritten to
  * the dedicated `/pricing` page so the CTA keeps working.
+ *
+ * Some links are marked lgOnly: at the md breakpoint (768-1023px) showing all
+ * 8 links caused the nav row to overflow its flex container and visually
+ * collide with the logo + right-side Sign-in button ("ForjeGamess" and
+ * "atus Sign in" text overlap reported by automated browser test). Hiding the
+ * less-critical items (What's New, Download, Help, Status) until >=1024px
+ * keeps tablet nav readable; users on tablet can reach those routes through
+ * the mobile hamburger anyway.
  */
 function buildNavLinks(pathname: string | null): NavLink[] {
   const onHome = pathname === '/' || pathname === ''
@@ -31,11 +45,11 @@ function buildNavLinks(pathname: string | null): NavLink[] {
     { href: onHome ? '#features' : '/#features',  label: 'Features',  scroll: onHome,  Icon: Sparkles     },
     { href: onHome ? '#showcase' : '/showcase',   label: 'Showcase',  scroll: onHome,  Icon: Layout       },
     { href: onHome ? '#pricing'  : '/pricing',    label: 'Pricing',   scroll: onHome,  Icon: CreditCard   },
-    { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New' },
     { href: '/docs',      label: 'Docs',      scroll: false, Icon: BookOpen     },
-    { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon },
-    { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy     },
-    { href: '/status',    label: 'Status',    scroll: false, Icon: Activity     },
+    { href: '/whats-new', label: "What's New", scroll: false, Icon: Rocket,      badge: 'New', lgOnly: true },
+    { href: '/download',  label: 'Download',  scroll: false, Icon: DownloadIcon, lgOnly: true },
+    { href: '/help',      label: 'Help',      scroll: false, Icon: LifeBuoy,     lgOnly: true },
+    { href: '/status',    label: 'Status',    scroll: false, Icon: Activity,     lgOnly: true },
   ]
 }
 
@@ -119,7 +133,7 @@ function MarketingNav() {
               key={link.href}
               href={link.href}
               onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
-              className="relative inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-2 text-[13px] lg:text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] whitespace-nowrap"
+              className={`relative inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-2 text-[13px] lg:text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] whitespace-nowrap${link.lgOnly ? ' hidden lg:inline-flex' : ''}`}
             >
               <link.Icon size={14} aria-hidden="true" />
               {link.label}

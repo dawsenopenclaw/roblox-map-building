@@ -1,17 +1,19 @@
 import { ImageResponse } from 'next/og'
 import { SHOWCASE_GAMES } from '@/lib/showcase-data'
 
-// Generated on-demand at request time instead of at build time. See the
-// matching opengraph-image.tsx for details — avoids a Satori prerender bug
-// where nested flex columns occasionally fail the build-time layout check.
-export const dynamic = 'force-dynamic'
-export const size = { width: 400, height: 300 }
-export const contentType = 'image/png'
+// Route handler for /showcase/{slug}/thumbnail — returns a 400x300 PNG.
+//
+// Previously this lived at src/app/(marketing)/showcase/[slug]/thumbnail.tsx
+// which was NOT a Next.js-recognised special file name (the recognised ones
+// are page/layout/route/opengraph-image/etc.), so the file was silently
+// ignored and every request to /showcase/<id>/thumbnail returned 404. The
+// home page and /showcase gallery reference these URLs via
+// buildShowcaseThumbnailSrc(), so every card produced an orphan 404 in the
+// browser console. Moving the code into a proper route handler at
+// .../thumbnail/route.tsx is the minimum-diff fix.
 
-/**
- * Per-genre background/accent palettes. Kept in sync with opengraph-image.tsx
- * so the small card thumbnail matches the large OG image.
- */
+export const dynamic = 'force-dynamic'
+
 const GENRE_COLORS: Record<string, { bg: string; accent: string }> = {
   RPG: { bg: '#1a0033', accent: '#9333ea' },
   Tycoon: { bg: '#003319', accent: '#10b981' },
@@ -23,18 +25,13 @@ const GENRE_COLORS: Record<string, { bg: string; accent: string }> = {
   Adventure: { bg: '#001a00', accent: '#84cc16' },
 }
 
-/**
- * 400x300 card thumbnail — a compact version of the OG image used by
- * `ShowcaseCard`. Same template as the 1200x630 variant but tighter
- * typography and no footer stats row.
- */
-export default async function ShowcaseThumbnail({
-  params,
-}: {
-  params: { slug: string }
-}) {
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params
   const game =
-    SHOWCASE_GAMES.find((g) => g.id === params.slug) ?? SHOWCASE_GAMES[0]
+    SHOWCASE_GAMES.find((g) => g.id === slug) ?? SHOWCASE_GAMES[0]
   const colors = GENRE_COLORS[game.genre] ?? { bg: '#0a0a0f', accent: '#D4AF37' }
 
   return new ImageResponse(
@@ -63,9 +60,7 @@ export default async function ShowcaseThumbnail({
           >
             FORJEGAMES
           </div>
-          <div
-            style={{ width: 2, height: 12, background: '#fff', opacity: 0.3 }}
-          />
+          <div style={{ width: 2, height: 12, background: '#fff', opacity: 0.3 }} />
           <div
             style={{
               fontSize: 11,
@@ -123,9 +118,6 @@ export default async function ShowcaseThumbnail({
         </div>
       </div>
     ),
-    size,
+    { width: 400, height: 300 }
   )
 }
-
-// Intentionally no generateStaticParams — see `dynamic = 'force-dynamic'`
-// above. Thumbnails are rendered at request time and CDN-cached.
