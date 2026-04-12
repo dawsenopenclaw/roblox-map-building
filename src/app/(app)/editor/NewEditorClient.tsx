@@ -2708,7 +2708,7 @@ function EditorInner() {
               chat.injectMessages([{
                 id: `first-build-${Date.now()}`,
                 role: 'system' as const,
-                content: '🎉 Your first build just landed in Studio! You built a real Roblox game with AI.\n\nFree plan includes 10 builds/day. Upgrade to Starter for 100/day, or Pro for unlimited + 3D meshes.\n\n[Get more builds →](/pricing)',
+                content: '🎉 Your first build just landed in Studio! You built a real Roblox game with AI.\n\nFree plan includes 10 builds/day. Upgrade to Starter for 100/day, or Pro for unlimited + 3D meshes.\n\n[Get more builds →](/pricing)  ·  [Share & earn 500 tokens →](/referrals)',
                 timestamp: new Date(),
               }])
             }, 2000)
