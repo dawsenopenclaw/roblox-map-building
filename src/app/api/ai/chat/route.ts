@@ -775,6 +775,31 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       console.log('[sendCodeToStudio] Translation warnings:', warnings)
     }
 
+    // Offset structured command positions by the camera's spawn point so
+    // parts appear near the user, not at the world origin. The AI's Luau
+    // template calculates `sp = cam.CFrame.Position + LookVector * 30`
+    // but the translator only extracts the Vector3 offset from P() calls
+    // which is relative to `sp`. We add the camera's actual position here
+    // so the structured commands place parts in the same location the raw
+    // Luau would. If no camera data is available, parts go to origin — the
+    // plugin's own camera-relative placement handles it at execution time.
+    if (commands.length > 0 && session.camera) {
+      const cam = session.camera
+      // sp = cam position + look * 30 (matches the Luau template)
+      const spawnX = cam.posX + cam.lookX * 30
+      const spawnY = cam.posY + cam.lookY * 30
+      const spawnZ = cam.posZ + cam.lookZ * 30
+      for (const cmd of commands) {
+        if ('position' in cmd && cmd.position) {
+          const pos = cmd.position as { x: number; y: number; z: number }
+          pos.x += spawnX
+          pos.y += spawnY
+          pos.z += spawnZ
+        }
+      }
+      console.log(`[sendCodeToStudio] Offset ${commands.length} commands by camera spawn (${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}, ${spawnZ.toFixed(1)})`)
+    }
+
     const isStoreEdition = session.pluginVersion.endsWith('-store')
 
     if (isStoreEdition && commands.length === 0) {
