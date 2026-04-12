@@ -1327,6 +1327,54 @@ function MessageBubbleImpl({
           {msg.hasCode && (
             <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} />
           )}
+          {/*
+            Replay-to-Studio button — appears on any assistant message that
+            has luauCode stored AND Studio is connected. This is the escape
+            hatch for users who typed build prompts before connecting their
+            plugin — once they connect, they can click this to send the old
+            code to Studio without re-running the AI (saves tokens, keeps
+            iteration tight). Hidden while streaming, and hidden entirely
+            when Studio isn't connected (ManualBuildPanel handles that
+            case with copy + download options).
+          */}
+          {msg.hasCode && !msg.streaming && studioConnected && msg.luauCode && msg.role === 'assistant' && (
+            <button
+              onClick={() => {
+                if (msg.luauCode && onSendToStudio) {
+                  onSendToStudio(msg.luauCode)
+                }
+              }}
+              title="Send this code to Studio"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '3px 8px',
+                borderRadius: 5,
+                border: '1px solid rgba(212,175,55,0.25)',
+                background: 'rgba(212,175,55,0.08)',
+                color: '#D4AF37',
+                fontSize: 10,
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.15)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.25)'
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Send to Studio
+            </button>
+          )}
           {msg.hasCode && !msg.streaming && (
             <ShareBuildButton prompt={userPrompt} />
           )}
