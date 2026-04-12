@@ -173,9 +173,9 @@ export async function GET() {
       status: database,
     },
     {
-      id: 'studio-bridge',
-      name: 'Studio Plugin Bridge',
-      description: 'Realtime sync between the web editor and Roblox Studio',
+      id: 'studio-sync',
+      name: 'Studio Plugin Sync',
+      description: 'HTTP queue between the web editor and Roblox Studio plugin (/api/studio/sync)',
       status: studioBridge,
     },
     {
