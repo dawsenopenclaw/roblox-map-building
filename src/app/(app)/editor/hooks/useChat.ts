@@ -159,6 +159,10 @@ export interface ChatMessage {
   retryAttempt?: number
   /** 3D mesh generated alongside this response */
   meshResult?: MeshResult
+  /** Set on 'upgrade' messages — current token balance (for "X left") display */
+  tokenBalance?: number
+  /** Set on 'upgrade' messages — tokens the failed request required (for "needed Y" display) */
+  tokenRequired?: number
 }
 
 export const MODELS: ModelOption[] = [
@@ -352,7 +356,7 @@ export type { Checkpoint } from '@/lib/checkpoints'
 export function useChat(options: UseChatOptions = {}) {
   const { user } = useUser()
   const { onBuildComplete, studioSessionId, studioConnected, studioContext } = options
-  const { connected: wsConnected, send: wsSend, on: wsOn } = useWebSocket()
+  const { connected: wsConnected, send: wsSend, on: wsOn, ws: wsInstance } = useWebSocket()
 
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -1141,6 +1145,22 @@ export function useChat(options: UseChatOptions = {}) {
               void finish()
             }))
 
+            // Mid-stream disconnect guard — if the WebSocket drops while we
+            // are waiting for chat_chunk / chat_done, bail out immediately
+            // with a connection_lost error instead of sitting through the
+            // full 120s timeout. Without this, a transient network blip
+            // freezes the chat UI for two minutes.
+            if (wsInstance) {
+              const unsubState = wsInstance.onStateChange((state) => {
+                if (resolved) return
+                if (state === 'disconnected' || state === 'reconnecting') {
+                  meta = { error: 'Connection lost while receiving the AI response. Retrying when back online…' }
+                  void finish()
+                }
+              })
+              cleanup.push(unsubState)
+            }
+
             // Safety timeout — fall through after 120s in case no done/error arrives
             const timeout = setTimeout(() => {
               if (!resolved) void finish()
@@ -1391,11 +1411,31 @@ export function useChat(options: UseChatOptions = {}) {
 
         const [chatRes, meshData] = await Promise.all([chatPromise, meshPromise])
 
-        // Token exhaustion — any 402 means tokens are depleted
+        // Token exhaustion — any 402 means tokens are depleted. Try to
+        // parse the response body for the exact balance/required numbers so
+        // the upgrade card can tell the user "Need 500 more" instead of a
+        // generic "Upgrade your plan" message. The route returns JSON with
+        // { error, balance, required } on 402.
         if (chatRes.status === 402) {
+          let balance: number | undefined
+          let required: number | undefined
+          try {
+            const errBody = await chatRes.clone().json() as { balance?: number; required?: number }
+            if (typeof errBody.balance === 'number') balance = errBody.balance
+            if (typeof errBody.required === 'number') required = errBody.required
+          } catch {
+            /* body not JSON or already consumed — fall back to generic card */
+          }
           setMessagesSync((prev) => [
             ...prev.filter((m) => m.id !== statusMsgId),
-            { id: uid(), role: 'upgrade', content: '', timestamp: new Date() },
+            {
+              id: uid(),
+              role: 'upgrade',
+              content: '',
+              timestamp: new Date(),
+              tokenBalance: balance,
+              tokenRequired: required,
+            },
           ])
           setLoading(false)
           setStreaming(false)
