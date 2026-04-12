@@ -562,12 +562,15 @@ function RotatingHeroText() {
   const count = ROTATING_WORDS.length
   const stepDeg = 360 / count
   // Rotate the whole ring so the active word sits at angle 0 (front-facing).
-  // Negative so the ring rolls upward as index increases — matches the way
-  // a real ferris wheel pulls the top word down toward you.
-  const ringRotation = -index * stepDeg
+  // Positive ringRotation combined with negative per-word angles below makes
+  // the ring roll "up and over the top": the outgoing word lifts up and
+  // exits over the top of the container while the next word rises into the
+  // front position from below. This is the direction the product asked for
+  // ("one goes up and out, new one comes from under and comes in").
 
   const longestWord = ROTATING_WORDS.reduce((a, b) => (a.length > b.length ? a : b))
   const currentWord = ROTATING_WORDS[index]
+  const ringRotation = index * stepDeg
 
   return (
     <h1
@@ -627,7 +630,13 @@ function RotatingHeroText() {
           }}
         >
           {ROTATING_WORDS.map((word, i) => {
-            const angle = i * stepDeg
+            // Per-word angle is NEGATED so that, combined with the positive
+            // ringRotation, the outgoing word exits over the top and the
+            // incoming word rises from below. Total on-screen angle for
+            // word i = ringRotation + (-i * stepDeg) = (index - i) * stepDeg,
+            // which is 0 for the active word, negative (below center) for
+            // the next word, and positive (above center) for the previous.
+            const angle = -i * stepDeg
             const isActive = i === index
             return (
               <span
@@ -639,15 +648,25 @@ function RotatingHeroText() {
                   left: 0,
                   top: 0,
                   width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                   // Position this node on the ring circumference. Radius
                   // scales with font-size via `em` so the wheel stays
-                  // proportional across breakpoints.
+                  // proportional across breakpoints. height: 100% +
+                  // flex-center guarantee the element's transform-origin
+                  // (50% 50%) is the RING's center so the wheel pivots
+                  // cleanly instead of wobbling off its baseline.
                   transform: `rotateX(${angle}deg) translateZ(1.2em)`,
+                  transformOrigin: '50% 50%',
                   backfaceVisibility: 'hidden',
-                  // Dim non-active nodes slightly so the front word pops.
-                  opacity: isActive ? 1 : 0.35,
+                  // Hide nodes that are > 90° off-axis so we don't show
+                  // mirrored/upside-down words peeking from the sides when
+                  // the browser ignores backface-visibility (Safari bug).
+                  opacity: isActive ? 1 : 0.25,
                   transition: 'opacity 0.6s ease-out',
                   willChange: 'transform, opacity',
                 }}
