@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
 import { useAnalytics } from '@/hooks/useAnalytics'
+import { PRIMARY_PRESETS, SECONDARY_PRESETS, type GamePreset } from '@/lib/game-presets'
 
 // Steps rendered by this page: 3 (profile), 4 (game type), 5 (first build)
 // Steps 1-2 (age gate + parental consent) happen at /onboarding/age-gate
@@ -14,37 +15,14 @@ const TOTAL_STEPS = 5
 // Popular-first (Simulators + Tycoons are the top two Roblox genres by CCU on
 // any given day). The 6 "headline" genres always show; "Explore more" reveals
 // the long tail so users never feel boxed in.
-interface GameType {
-  id: string
-  label: string
-  icon: string
-  // Prompt that gets sent to the AI when the user clicks this card
-  prompt: string
-}
+//
+// Prompts come from src/lib/game-presets.ts — each one is a full game
+// BLUEPRINT (~1000 chars) not a 1-line prompt. The AI generates a complete
+// playable simulator/tycoon/obby rather than a random collection of parts.
+type GameType = GamePreset
 
-const PRIMARY_GAME_TYPES: GameType[] = [
-  { id: 'simulator',      label: 'Simulator',     icon: '🎮', prompt: 'Build me a Roblox simulator game where players collect upgrades, level up, and earn coins from an automatic loop.' },
-  { id: 'tycoon',         label: 'Tycoon',        icon: '💰', prompt: 'Build me a Roblox tycoon with droppers, conveyors, upgrade buttons, and a pad to claim the base.' },
-  { id: 'obby',           label: 'Obby',          icon: '🧗', prompt: 'Build me a 20-stage Roblox obby with increasing difficulty, checkpoints, and a leaderboard.' },
-  { id: 'tower_defense',  label: 'Tower Defense', icon: '🏹', prompt: 'Build me a Roblox tower defense game with 10 waves of enemies, placeable towers, and a base to defend.' },
-  { id: 'rpg',            label: 'RPG',           icon: '⚔️', prompt: 'Build me a Roblox RPG with quests, NPCs, a combat system, and gear that drops from enemies.' },
-  { id: 'horror',         label: 'Horror',        icon: '😱', prompt: 'Build me a Roblox horror game with a dark atmospheric map, jump scares, and an escape objective.' },
-]
-
-const MORE_GAME_TYPES: GameType[] = [
-  { id: 'racing',    label: 'Racing',     icon: '🏎️', prompt: 'Build me a Roblox racing game with multiple tracks, selectable cars, power-ups, and a lap timer.' },
-  { id: 'fighting',  label: 'Fighting',   icon: '🥊', prompt: 'Build me a Roblox fighting game with 5 fighters, special moves, health bars, and a KO system.' },
-  { id: 'roleplay',  label: 'Roleplay',   icon: '🏙️', prompt: 'Build me a Roblox roleplay city with jobs, houses, shops, and vehicles.' },
-  { id: 'survival',  label: 'Survival',   icon: '🔥', prompt: 'Build me a Roblox survival game with hunger, crafting, monsters at night, and a shelter to build.' },
-  { id: 'shooter',   label: 'Shooter',    icon: '🔫', prompt: 'Build me a Roblox PvP shooter with weapons, spawn points, a kill feed, and a battle map.' },
-  { id: 'kart',      label: 'Kart Race',  icon: '🏁', prompt: 'Build me a Roblox kart racing game with 4 tracks, power-ups, and shortcut jumps.' },
-  { id: 'adventure', label: 'Adventure',  icon: '🗺️', prompt: 'Build me a Roblox adventure game with hidden treasures, puzzles, and story NPCs.' },
-  { id: 'sandbox',   label: 'Sandbox',    icon: '🏗️', prompt: 'Build me a Roblox sandbox building game where players place blocks and share creations.' },
-  { id: 'city',      label: 'City Map',   icon: '🌆', prompt: 'Build me a modern Roblox city map with roads, skyscrapers, parks, and traffic.' },
-  { id: 'castle',    label: 'Castle',     icon: '🏰', prompt: 'Build me a Roblox medieval castle with a moat, towers, drawbridge, and a throne room.' },
-  { id: 'island',    label: 'Island',     icon: '🌴', prompt: 'Build me a Roblox tropical island with a beach, palm trees, hidden caves, and a dock.' },
-  { id: 'space',     label: 'Space',      icon: '🚀', prompt: 'Build me a Roblox space station with docking bays, zero-gravity sections, and an airlock.' },
-]
+const PRIMARY_GAME_TYPES: GameType[] = PRIMARY_PRESETS
+const MORE_GAME_TYPES: GameType[] = SECONDARY_PRESETS
 
 function ProgressBar({ currentStep }: { currentStep: number }) {
   const pct = Math.round((currentStep / TOTAL_STEPS) * 100)
@@ -156,7 +134,14 @@ function GameTypeStep({
             <div className="text-sm font-semibold text-white group-hover:text-[#D4AF37]">
               {g.label}
             </div>
-            <div className="text-[11px] text-gray-500 mt-1">Click to start building →</div>
+            {g.tagline && (
+              <div className="text-[11px] text-gray-400 mt-1 leading-snug">
+                {g.tagline}
+              </div>
+            )}
+            <div className="text-[10px] text-[#D4AF37]/70 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              Click to build →
+            </div>
           </button>
         ))}
       </div>
