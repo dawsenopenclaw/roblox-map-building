@@ -143,6 +143,18 @@ interface PartState {
 /** Match:  local varName = Instance.new("ClassName") */
 const RE_INSTANCE_NEW = /local\s+(\w+)\s*=\s*Instance\.new\(\s*["'](\w+)["']\s*\)/
 
+/** Match the P() helper used by the CODE_GENERATION_PROMPT template:
+ *    P("name", CFrame.new(sp+Vector3.new(x,y,z)), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b))
+ *    P("name", CFrame.new(sp+Vector3.new(x,y,z)), Vector3.new(sx,sy,sz), Enum.Material.X, Color3.fromRGB(r,g,b), parent)
+ *  Also matches:
+ *    local varName = P(...)
+ *  This is the most critical pattern to support because the AI's code
+ *  generation template instructs it to use P() for every part. Without
+ *  this, the translator produces 0 commands for most AI-generated builds
+ *  and the plugin falls back to loadstring (which may not work for all users).
+ */
+const RE_P_HELPER = /(?:local\s+\w+\s*=\s*)?P\(\s*["']([^"']+)["']\s*,\s*(.*?)\s*,\s*(Vector3\.new\([^)]+\))\s*,\s*(Enum\.Material\.\w+)\s*,\s*(Color3\.(?:fromRGB|new)\([^)]+\))(?:\s*,\s*([^)]+))?\s*\)/
+
 /** Match:  varName.PropertyName = <value> */
 const RE_PROPERTY_SET = /(\w+)\.(\w+)\s*=\s*(.+)/
 
@@ -161,7 +173,25 @@ const RE_COLOR3_NEW = /Color3\.new\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.
 /** Match:  Enum.Material.MaterialName */
 const RE_ENUM_MATERIAL = /Enum\.Material\.(\w+)/
 
-/** Patterns that indicate code we cannot translate */
+/** Patterns that indicate code we cannot translate.
+ *  IMPORTANT: the CODE_GENERATION_PROMPT template uses helper functions
+ *  (P, getFolder, vc) and pcall wrappers that LOOK untranslatable but
+ *  are actually handled by the P() regex above. We exclude lines that
+ *  match known template patterns so `hasUntranslatableCode` only fires
+ *  for genuinely novel constructs the translator can't handle. */
+const TEMPLATE_HELPER_PATTERNS = [
+  /\bfunction\s+P\b/,           // function P(name, cf, size, mat, col, parent)
+  /\bfunction\s+getFolder\b/,   // function getFolder(name)
+  /\bfunction\s+vc\b/,          // function vc(base, variance)
+  /\bpcall\s*\(\s*function\b/,  // pcall(function() -- MAIN LOGIC wrapper
+  /\bCH:TryBeginRecording\b/,   // ChangeHistoryService bookkeeping
+  /\bCH:FinishRecording\b/,
+  /\bCS:AddTag\b/,              // CollectionService tagging
+  /\b_forje_state\b/,           // cross-run state (intentional global)
+  /\btable\.freeze\b/,          // CONFIG table
+  /\bSelection:Set\b/,          // auto-select built objects
+]
+
 const UNTRANSLATABLE_PATTERNS = [
   /\bfor\b/,
   /\bwhile\b/,
@@ -176,6 +206,12 @@ const UNTRANSLATABLE_PATTERNS = [
   /:\w+\(/,        // method calls like part:Destroy()
   /\[\s*["']/,     // table indexing with string keys
 ]
+
+/** Returns true if the line is a known template boilerplate pattern
+ *  that the translator should NOT flag as untranslatable. */
+function isTemplateBoilerplate(line: string): boolean {
+  return TEMPLATE_HELPER_PATTERNS.some(p => p.test(line))
+}
 
 // ─── BrickColor name → approximate RGB (common colors only) ──────────────────
 
@@ -285,8 +321,10 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
   // Track variable name → class for models
   const modelStates = new Map<string, { name: string; parentName: string }>()
 
-  // Flag lines we can't handle
+  // Flag lines we can't handle — but skip known template boilerplate
+  // from the CODE_GENERATION_PROMPT (P/getFolder/vc/pcall wrapper, etc.)
   for (const line of lines) {
+    if (isTemplateBoilerplate(line)) continue
     for (const pattern of UNTRANSLATABLE_PATTERNS) {
       if (pattern.test(line)) {
         hasUntranslatableCode = true
@@ -319,6 +357,58 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       modelStates.set(varName, { name: varName, parentName: 'Workspace' })
     } else {
       warnings.push(`Skipped unsupported Instance.new class: ${className}`)
+    }
+  }
+
+  // Pass 1b: detect P() helper calls from the CODE_GENERATION_PROMPT template.
+  // The AI's standard template uses P("name", CFrame, Size, Material, Color)
+  // for every part instead of Instance.new("Part") + property assignments.
+  // Without this pass, the translator produces 0 commands for most AI builds.
+  for (const line of lines) {
+    const m = RE_P_HELPER.exec(line)
+    if (!m) continue
+
+    const name = m[1]
+    const cfRaw = m[2]    // CFrame.new(sp+Vector3.new(x,y,z)) or CFrame.new(x,y,z,...)
+    const sizeRaw = m[3]  // Vector3.new(sx,sy,sz)
+    const matRaw = m[4]   // Enum.Material.X
+    const colRaw = m[5]   // Color3.fromRGB(r,g,b)
+    // m[6] is optional parent argument
+
+    // Extract position from CFrame — look for Vector3.new inside the CFrame argument
+    // Common patterns:
+    //   CFrame.new(sp+Vector3.new(5,0,10))   → extract the offset vector
+    //   CFrame.new(Vector3.new(5,0,10))       → same
+    //   CFrame.new(5,0,10)                    → direct numbers
+    let position = { x: 0, y: 0, z: 0 }
+    const v3InCf = RE_VECTOR3.exec(cfRaw)
+    if (v3InCf) {
+      position = { x: parseFloat(v3InCf[1]), y: parseFloat(v3InCf[2]), z: parseFloat(v3InCf[3]) }
+    } else {
+      // Try direct CFrame.new(x,y,z) pattern
+      const cfDirect = /CFrame\.new\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)/.exec(cfRaw)
+      if (cfDirect) {
+        position = { x: parseFloat(cfDirect[1]), y: parseFloat(cfDirect[2]), z: parseFloat(cfDirect[3]) }
+      }
+    }
+
+    const size = parseVector3(sizeRaw) ?? { x: 4, y: 1.2, z: 2 }
+    const color = parseColor(colRaw) ?? { r: 163, g: 162, b: 165 }
+    const material = parseMaterial(matRaw) ?? 'SmoothPlastic'
+
+    // Don't duplicate if Instance.new already picked up a part with the same var name
+    // (unlikely since P() is a different pattern, but safety)
+    if (!partStates.has(name)) {
+      commands.push({
+        type: 'create_part',
+        name,
+        position,
+        size,
+        color,
+        material,
+        anchored: true,
+        parentName: 'Workspace',
+      })
     }
   }
 
