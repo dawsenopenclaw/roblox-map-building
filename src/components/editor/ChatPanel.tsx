@@ -3857,6 +3857,17 @@ export function ChatPanel({
               >
                 Saved
               </span>
+              {/* Session token counter — visible reminder of usage */}
+              {totalTokens > 0 && (
+                <span style={{
+                  fontSize: 10,
+                  color: totalTokens > 800 ? 'rgba(239,68,68,0.7)' : totalTokens > 400 ? 'rgba(245,158,11,0.6)' : 'rgba(255,255,255,0.3)',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  ⚡ {totalTokens.toLocaleString()} tokens
+                </span>
+              )}
               {/* Estimated cost */}
               {input.trim().length > 20 && (
                 <span style={{
