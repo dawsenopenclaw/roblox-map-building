@@ -469,10 +469,257 @@ export const SECONDARY_PRESETS: GamePreset[] = [
 ]
 
 // ---------------------------------------------------------------------------
+// Simulator variants — the #1 Roblox genre. Each is a complete game blueprint.
+// ---------------------------------------------------------------------------
+
+export const SIMULATOR_PRESETS: GamePreset[] = [
+  {
+    id: 'sim_mining',
+    label: 'Mining Simulator',
+    icon: '⛏️',
+    tagline: 'Click to mine → upgrade pickaxes → rebirth for multipliers.',
+    prompt: `Build a COMPLETE Roblox mining simulator.
+
+## World
+- Floating 80x80 stud stone platform at y=50 with a cave entrance (dark rock arch)
+- Inside the cave: 5 different ore veins (Coal=grey, Iron=silver, Gold=yellow, Diamond=cyan, Emerald=green) as large Parts with ClickDetectors
+- Each ore has a BillboardGui showing its name + value per click
+- Outside the cave: Shop building with ProximityPrompt "Upgrades", Sell pad (yellow Part) with ProximityPrompt "Sell Ores"
+- Backpack display: SurfaceGui sign near spawn showing capacity
+- Lighting: ClockTime=14, warm ambient for the outside, dark Ambient inside cave
+
+## Leaderstats
+Coins (IntValue), OresMined (IntValue), Rebirths (IntValue)
+
+## Player attributes
+BackpackCapacity (default 20), PickaxeLevel (default 1), MultiplierFromRebirths (default 1)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded creates leaderstats + attributes
+2. **OreMining** — ClickDetector on each ore: check backpack not full, add 1 to a player attribute BackpackCount, award OresMined. Each ore type gives different value (Coal=1, Iron=5, Gold=20, Diamond=100, Emerald=500). Play pick sound.
+3. **SellPad** — ProximityPrompt on sell pad: converts BackpackCount × ore values into Coins, resets BackpackCount to 0, plays cash register sound.
+4. **UpgradeShop** — ProximityPrompt on shop with 3 tiers: Bigger Backpack (doubles capacity, costs 100/500/2000), Better Pickaxe (doubles ore value, costs 200/1000/5000), Auto-Miner (passive income 1 coin/sec, costs 10000).
+5. **RebirthHandler** — ProximityPrompt at a special golden portal: requires 50K coins, resets coins+ores+upgrades to 0, increments Rebirths, permanent 2x multiplier on everything.
+6. **HUDClient** (LocalScript) — ScreenGui: top-left "⛏ Coins: X | Backpack: Y/Z | Rebirths: R"${COMMON_RULES}`,
+  },
+  {
+    id: 'sim_pet',
+    label: 'Pet Simulator',
+    icon: '🐾',
+    tagline: 'Hatch eggs → collect pets → evolve rare ones.',
+    prompt: `Build a COMPLETE Roblox pet simulator.
+
+## World
+- Grassy 100x100 stud island with 3 zones: Starter Meadow, Lava Jungle (red tint), Ice Mountain (blue tint)
+- Each zone has: coin spawners (small yellow spinning Parts that respawn every 5 sec), an Egg pedestal (egg-shaped Part with ProximityPrompt "Hatch — $cost")
+- Starter eggs cost 100, Lava eggs cost 1000, Ice eggs cost 10000
+- Central pet display area with 6 pedestals showing "rarest pets" as colored spheres with BillboardGui names
+- Lighting: bright ClockTime=12
+
+## Leaderstats
+Coins (IntValue), Pets (IntValue), BestPetRarity (StringValue = "Common")
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded creates leaderstats
+2. **CoinSpawner** — Heartbeat loop: every 5 sec spawn small gold spinning Part at random positions within each zone. Touched by player → award 1/10/100 coins depending on zone, destroy coin, play ding.
+3. **PetCollecting** — players walk over coins automatically (Touched event). Pets follow the player: on hatch, spawn a small colored sphere that uses BodyPosition to hover near the player's HumanoidRootPart + offset.
+4. **EggHatching** — ProximityPrompt on each egg pedestal: deduct coins, roll rarity (Common 60%, Uncommon 25%, Rare 10%, Legendary 4%, Mythic 1%), create pet sphere with rarity-based color (white/green/blue/purple/gold) + BillboardGui showing name + rarity. Increment Pets leaderstat. Play hatch animation (TweenService scale 0→1).
+5. **PetFollow** — Module: each pet sphere follows player at 2-stud offset using Heartbeat + BodyPosition. Multiple pets orbit in a circle around the player.
+6. **AutoCollect** — pets auto-collect nearby coins (check distance < 15 studs every Heartbeat, if pet exists → collect coins in range automatically). Better rarity = larger range.
+7. **HUDClient** (LocalScript) — ScreenGui: "🐾 Coins: X | Pets: Y | Best: Z"${COMMON_RULES}`,
+  },
+  {
+    id: 'sim_clicking',
+    label: 'Clicking Simulator',
+    icon: '👆',
+    tagline: 'Click the button → buy upgrades → prestige.',
+    prompt: `Build a COMPLETE Roblox clicking simulator.
+
+## World
+- Small floating platform 40x40 at y=50 with a GIANT red button in the center (6-stud cylinder Part with ClickDetector)
+- Button has a BillboardGui showing total global clicks (shared counter)
+- 4 upgrade shops around the button as small kiosks with ProximityPrompts
+- Prestige portal (golden archway) on the north edge
+- Leaderboard sign showing top 5 players by clicks
+- Lighting: neon-style with Bloom PostEffect, ClockTime=0, colorful Neon accent parts
+
+## Leaderstats
+Clicks (IntValue), ClickPower (IntValue, default 1), AutoClickers (IntValue, default 0), Prestiges (IntValue)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded creates leaderstats
+2. **BigButton** — ClickDetector.MouseClick: add ClickPower.Value × (2^Prestiges.Value) to Clicks, play satisfying click sound, TweenService scale the button 1.1→1.0 for visual feedback.
+3. **UpgradeShops** — 4 ProximityPrompts:
+   - "+1 Click Power" costs 50 clicks (doubles each purchase)
+   - "Auto Clicker" costs 500 (adds 1 click/sec passive, max 10)
+   - "Click Multiplier x2" costs 5000 (one-time)
+   - "Super Click x10 for 30s" costs 1000 (temporary boost)
+4. **AutoClickLoop** — Heartbeat: every 1 sec, add AutoClickers.Value to Clicks for each player
+5. **PrestigeHandler** — ProximityPrompt at golden arch: requires 100K clicks, resets everything, adds 1 Prestige (permanent 2x on all earnings).
+6. **GlobalCounter** — shared IntValue in ReplicatedStorage, incremented on every click by any player, displayed on the button's BillboardGui
+7. **LeaderboardDisplay** — SurfaceGui on a sign, updates every 2 sec with top 5 players sorted by Clicks
+8. **HUDClient** — ScreenGui: "👆 Clicks: X | Power: Y | Auto: Z/sec | Prestige: P"${COMMON_RULES}`,
+  },
+  {
+    id: 'sim_farming',
+    label: 'Farming Simulator',
+    icon: '🌾',
+    tagline: 'Plant crops → harvest → sell → expand your farm.',
+    prompt: `Build a COMPLETE Roblox farming simulator.
+
+## World
+- 120x120 stud green farm field divided into a 4x4 grid of 20x20 "plots" (dirt-colored Parts)
+- Each plot has a ProximityPrompt "Plant Seed — $10"
+- Central Barn building (red + white Parts) with ProximityPrompt "Sell Crops"
+- Seed shop kiosk with 4 seed types: Wheat ($10, grows 15s, sells $20), Corn ($50, grows 30s, sells $120), Pumpkin ($200, grows 60s, sells $500), Golden Apple ($1000, grows 120s, sells $3000)
+- Water well with ProximityPrompt "Water All Crops" (halves grow time)
+- Lighting: ClockTime=10, bright farm morning feel
+
+## Leaderstats
+Gold (IntValue, starts 100), CropsHarvested (IntValue), FarmLevel (IntValue, starts 1)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded
+2. **PlotManager** — Tracks which plots are planted/growing/ready. On plant: deduct gold, change plot color to brown+green, start timer. On timer complete: change to golden color + add ProximityPrompt "Harvest". On harvest: award crop value × FarmLevel to Gold, increment CropsHarvested, reset plot.
+3. **SeedShop** — ProximityPrompt with 4 options (use multiple prompts or cycle through). Sets player attribute SelectedSeed.
+4. **CropGrowth** — Visual: TweenService scales a small green Part (the "crop") from 0.5→2 studs over the grow time. When ready, Part turns golden.
+5. **SellBarn** — ProximityPrompt auto-sells all harvested crops in the player's inventory attribute, plays cash sound.
+6. **WaterWell** — ProximityPrompt halves remaining grow time on all player's active plots. Costs $50 per use. Plays splash sound.
+7. **FarmExpansion** — At 50 crops harvested, unlock row 3-4 of plots (Parts become visible). FarmLevel increments.
+8. **HUDClient** — ScreenGui: "🌾 Gold: X | Crops: Y | Farm Level: Z"${COMMON_RULES}`,
+  },
+]
+
+// ---------------------------------------------------------------------------
+// Tycoon variants — the #2 Roblox genre.
+// ---------------------------------------------------------------------------
+
+export const TYCOON_PRESETS: GamePreset[] = [
+  {
+    id: 'tyc_factory',
+    label: 'Factory Tycoon',
+    icon: '🏭',
+    tagline: 'Droppers → conveyors → upgraders → $$$.',
+    prompt: `Build a COMPLETE Roblox factory tycoon.
+
+## World
+- 60x60 stud base pad with green "Claim Base" ProximityPrompt
+- Dropper 1: metal pipe structure that spawns colored cash blocks every 2 sec
+- Conveyor belt: 4 grey Parts with scrolling TextureId leading from dropper to collector
+- Collector: yellow pad that converts cash blocks into money on Touched
+- 3 Upgrader gates along the conveyor (arches that double the value of blocks passing through)
+- Wall blocking a "Premium Zone" with ProximityPrompt "Unlock — $5000"
+- Premium Zone has: Dropper 2 (faster, higher value), Dropper 3 behind a $20K wall
+- Lighting ClockTime=12
+
+## Leaderstats
+Money (IntValue)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded
+2. **ClaimBase** — ProximityPrompt sets owner, hides prompt, enables dropper
+3. **DropperLoop** — while loop: spawn 1x1x1 neon Part at dropper position with attribute Value=1 and Owner, give slight velocity toward conveyor. Color by value (green=$1, blue=$10, purple=$100).
+4. **ConveyorMove** — Heartbeat: move all Parts on conveyor belt toward collector at 5 studs/sec using CFrame
+5. **Upgrader** — Touched event on each arch: doubles the block's Value attribute, changes color to next tier, plays upgrade sound
+6. **Collector** — Touched: add block.Value to owner Money leaderstat, destroy block, play ding
+7. **UpgradeButtons** — 5 ProximityPrompt pedestals: Faster Dropper ($100), Double Value ($500), Auto-Collect ($1000), Unlock Premium Zone ($5000), Unlock Dropper 3 ($20000)
+8. **HUDClient** — ScreenGui: "🏭 Money: $X"${COMMON_RULES}`,
+  },
+  {
+    id: 'tyc_restaurant',
+    label: 'Restaurant Tycoon',
+    icon: '🍕',
+    tagline: 'Build restaurant → cook food → serve customers → expand.',
+    prompt: `Build a COMPLETE Roblox restaurant tycoon.
+
+## World
+- 50x50 stud restaurant plot with "Claim Restaurant" ProximityPrompt
+- Kitchen area (10x10): stove Part with ProximityPrompt "Cook Food ($5)", counter Part, prep table
+- Dining area: 4 table+chair sets (2-seat each), each table has a SurfaceGui showing order status
+- Customer spawn door on the street side — NPC Humanoids walk in and sit
+- Cash register near the door with ProximityPrompt "Collect Earnings"
+- Menu board (SurfaceGui) showing available dishes and prices
+- Expansion wall: unlock outdoor seating ($2000), VIP room ($10000)
+- Lighting ClockTime=18 for cozy evening restaurant feel
+
+## Leaderstats
+Cash (IntValue, starts 50), CustomersServed (IntValue), RestaurantLevel (IntValue, starts 1)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded
+2. **ClaimRestaurant** — ProximityPrompt sets owner
+3. **CustomerSpawner** — every 15 sec, spawn NPC Humanoid at door, MoveTo random empty table, wait 10 sec (eating), then MoveTo exit door, then destroy. Each customer leaves $10 × RestaurantLevel at their table.
+4. **CookFood** — ProximityPrompt on stove: 3-sec cook timer (progress bar via BillboardGui), produces "food" attribute on player. Costs $5 ingredients.
+5. **ServeCustomer** — ProximityPrompt on a table with a seated customer: transfers food to customer, customer eats (wait 8 sec), leaves tip on table.
+6. **CollectEarnings** — ProximityPrompt on register: sums all tips from tables, adds to Cash, plays cash register sound.
+7. **Upgrades** — 4 ProximityPrompt pedestals: Better Stove (cook 2x faster, $200), More Tables (unhide tables 5-8, $500), Outdoor Seating (unlock patio, $2000), VIP Room (unlock premium area, $10000, 3x customer tips).
+8. **HUDClient** — ScreenGui: "🍕 Cash: $X | Served: Y | Level: Z"${COMMON_RULES}`,
+  },
+  {
+    id: 'tyc_military',
+    label: 'Military Tycoon',
+    icon: '🎖️',
+    tagline: 'Build base → recruit soldiers → defend from waves.',
+    prompt: `Build a COMPLETE Roblox military base tycoon.
+
+## World
+- 80x80 stud military base plot with concrete ground, chain-link fence perimeter
+- "Claim Base" ProximityPrompt at the gate
+- Barracks building (spawn soldiers), Armory building (upgrade weapons), Command Center (start waves)
+- Training ground: 3 target dummies (red Parts)
+- Defense walls along one edge (enemies attack from the east)
+- Vehicle bay with a static tank prop and a static helicopter prop (decorative until unlocked)
+- Lighting ClockTime=7, morning military feel
+
+## Leaderstats
+Funds (IntValue, starts 500), Soldiers (IntValue), WavesCleared (IntValue)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded
+2. **ClaimBase** — ProximityPrompt sets owner, enables buildings
+3. **PassiveIncome** — every 10 sec: earn $50 × WavesCleared
+4. **RecruitSoldiers** — ProximityPrompt on barracks: spend $200, spawn friendly green Humanoid NPC that patrols the east wall. Max 10 soldiers. Each has 100 HP and attacks nearby enemies.
+5. **StartWave** — ProximityPrompt on Command Center "Start Wave N": spawns (5+N×3) red enemy Humanoids from the east edge. Enemies MoveTo the Command Center. Each killed enemy gives $50. Wave cleared when all enemies dead → Funds += 500 × N, WavesCleared++.
+6. **SoldierCombat** — Heartbeat: each friendly soldier checks for nearest enemy within 20 studs, deals 10 damage/sec. Enemies deal 5 damage/sec to soldiers on Touched.
+7. **Upgrades** — 4 ProximityPrompts: Stronger Soldiers (+50 HP, $1000), Turret (auto-attacks, $2000), Tank (mobile turret, $5000), Airstrike (kills all enemies once, $3000 per use).
+8. **HUDClient** — ScreenGui: "🎖 Funds: $X | Soldiers: Y/10 | Wave: Z"${COMMON_RULES}`,
+  },
+  {
+    id: 'tyc_theme_park',
+    label: 'Theme Park Tycoon',
+    icon: '🎢',
+    tagline: 'Build rides → attract visitors → earn tickets.',
+    prompt: `Build a COMPLETE Roblox theme park tycoon.
+
+## World
+- 100x100 stud grassy park plot with a fancy entrance arch (decorative)
+- "Claim Park" ProximityPrompt at entrance
+- 4 ride slots: empty pads with ProximityPrompts to buy rides
+- Ride types: Ferris Wheel ($500, earns $5/visitor), Roller Coaster ($2000, earns $20/visitor), Drop Tower ($5000, earns $50/visitor), Haunted House ($10000, earns $100/visitor)
+- Each ride is a distinctive set of Parts (wheel = cylinder, coaster = track Parts, tower = tall cylinder, haunted = dark house)
+- Visitor NPCs spawn at the entrance every 10 sec, walk to a random ride, "ride it" (wait 5 sec), pay, walk to the next ride or exit
+- Food stand slot: buy for $1000, earns $10/visitor who stops
+- Lighting ClockTime=16, golden afternoon
+
+## Leaderstats
+Tickets (IntValue, starts 1000), Visitors (IntValue), ParkRating (IntValue, starts 1)
+
+## Scripts
+1. **LeaderstatsSetup** — PlayerAdded
+2. **ClaimPark** — ProximityPrompt sets owner
+3. **BuyRide** — ProximityPrompt on each slot: deduct cost, spawn the ride Parts, enable the slot for visitors
+4. **VisitorSpawner** — every 10 sec: spawn NPC at entrance (max 20 active). NPC walks to a random active ride, waits 5 sec, pays Tickets to owner, walks to next or exits. Each ride visited increases ParkRating.
+5. **PassiveIncome** — every 30 sec: earn Tickets = sum of all ride earnings × ParkRating
+6. **Upgrades** — Faster Visitors ($2000, visitors spend less time), Park Expansion ($5000, enables 4 more ride slots), VIP Entrance ($8000, visitors pay 2x), Fireworks Show ($3000, triggers particle effect + ParkRating×2 for 60s)
+7. **HUDClient** — ScreenGui: "🎢 Tickets: X | Visitors: Y | Rating: ⭐Z"${COMMON_RULES}`,
+  },
+]
+
+// ---------------------------------------------------------------------------
 // Combined export for the onboarding picker
 // ---------------------------------------------------------------------------
 
-export const ALL_GAME_PRESETS: GamePreset[] = [...PRIMARY_PRESETS, ...SECONDARY_PRESETS]
+export const ALL_GAME_PRESETS: GamePreset[] = [...PRIMARY_PRESETS, ...SECONDARY_PRESETS, ...SIMULATOR_PRESETS, ...TYCOON_PRESETS]
 
 /**
  * Find a preset by id. Returns undefined if not found.

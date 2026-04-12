@@ -44,9 +44,26 @@ const EDITOR_ROTATING_WORDS = [
 
 // ─── Full game presets (empty state — "Build a Full Game" section) ─────────────
 // These use the step-by-step builder for complete playable games.
-import { PRIMARY_PRESETS } from '@/lib/game-presets'
+import { PRIMARY_PRESETS, SIMULATOR_PRESETS, TYCOON_PRESETS } from '@/lib/game-presets'
 
 const FULL_GAME_CARDS = PRIMARY_PRESETS.map((p) => ({
+  id: p.id,
+  emoji: p.icon,
+  label: p.label,
+  tagline: p.tagline,
+  prompt: p.prompt,
+}))
+
+// Simulator and Tycoon sub-genres — shown when user wants something specific
+const SIM_CARDS = SIMULATOR_PRESETS.map((p) => ({
+  id: p.id,
+  emoji: p.icon,
+  label: p.label,
+  tagline: p.tagline,
+  prompt: p.prompt,
+}))
+
+const TYC_CARDS = TYCOON_PRESETS.map((p) => ({
   id: p.id,
   emoji: p.icon,
   label: p.label,
@@ -2264,6 +2281,65 @@ function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: st
                 </span>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Simulator + Tycoon variant grids ─────────────────────────── */}
+      {onBuildGame && (
+        <div style={{ width: '100%', maxWidth: 560 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {/* Simulators column */}
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'rgba(139,92,246,0.8)', marginBottom: 6, textAlign: 'center' }}>
+                Simulators
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                {SIM_CARDS.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => onBuildGame(g.prompt)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8,
+                      border: '1px solid rgba(139,92,246,0.15)', background: 'rgba(139,92,246,0.04)',
+                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter, sans-serif',
+                      cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' as const,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(139,92,246,0.04)'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.15)' }}
+                  >
+                    <span style={{ fontSize: 16 }}>{g.emoji}</span>
+                    <span>{g.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tycoons column */}
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'rgba(34,197,94,0.8)', marginBottom: 6, textAlign: 'center' }}>
+                Tycoons
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                {TYC_CARDS.map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => onBuildGame(g.prompt)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', borderRadius: 8,
+                      border: '1px solid rgba(34,197,94,0.15)', background: 'rgba(34,197,94,0.04)',
+                      color: 'rgba(255,255,255,0.7)', fontSize: 11, fontFamily: 'Inter, sans-serif',
+                      cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' as const,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.12)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.4)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.04)'; e.currentTarget.style.borderColor = 'rgba(34,197,94,0.15)' }}
+                  >
+                    <span style={{ fontSize: 16 }}>{g.emoji}</span>
+                    <span>{g.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
