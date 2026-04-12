@@ -163,6 +163,8 @@ export interface ChatMessage {
   tokenBalance?: number
   /** Set on 'upgrade' messages — tokens the failed request required (for "needed Y" display) */
   tokenRequired?: number
+  /** Whether this message's code was successfully sent to and executed in Roblox Studio */
+  executedInStudio?: boolean
 }
 
 export const MODELS: ModelOption[] = [
