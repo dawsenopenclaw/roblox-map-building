@@ -16,7 +16,7 @@ import fs from 'fs'
 import path from 'path'
 import { getRedis } from '@/lib/redis'
 
-const PLUGIN_VERSION = '4.4.0'
+const PLUGIN_VERSION = '4.6.0'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +24,11 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
-// Read the pre-built .rbxmx once at startup (cached in module scope)
+// Read the pre-built .rbxmx once at startup (cached in module scope).
+// ETag is derived from a content hash so a new build invalidates caches
+// at the CDN edge automatically — the previous version used a static
+// string which meant a new .rbxmx served with the same etag would never
+// be re-fetched by Studio or by Vercel's edge cache.
 let _rbxmxCache: string | null = null
 let _etag: string | null = null
 
@@ -34,8 +38,10 @@ function getRbxmx(): string {
   const filePath = path.join(process.cwd(), 'public', 'plugin', 'ForjeGames.rbxmx')
   _rbxmxCache = fs.readFileSync(filePath, 'utf8')
 
-  const etagInput = `${PLUGIN_VERSION}:${_rbxmxCache.length}`
-  _etag = `"${crypto.createHash('sha256').update(etagInput).digest('hex').slice(0, 16)}"`
+  // Content-hash-based etag: any byte change in the file yields a new etag,
+  // breaking the stale-while-revalidate loop that was serving old builds
+  // to both Studio and the Vercel CDN.
+  _etag = `"${crypto.createHash('sha256').update(_rbxmxCache).digest('hex').slice(0, 16)}"`
 
   return _rbxmxCache
 }
