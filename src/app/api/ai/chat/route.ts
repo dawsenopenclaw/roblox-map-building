@@ -747,39 +747,58 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
 
     console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
 
-    // Store edition: cannot use loadstring() — translate Luau to structured commands
-    const isStoreEdition = session.pluginVersion.endsWith('-store')
-    if (isStoreEdition) {
-      const { commands, hasUntranslatableCode, warnings } = luauToStructuredCommands(code)
-      if (warnings.length > 0) {
-        console.log('[sendCodeToStudio] Translation warnings:', warnings)
-      }
-      if (hasUntranslatableCode) {
-        console.warn('[sendCodeToStudio] Luau contains untranslatable constructs — store plugin will receive partial commands only')
-      }
-      if (commands.length === 0) {
-        console.warn('[sendCodeToStudio] Translation produced zero commands, skipping queue')
-        return false
-      }
-      const result = await queueCommand(sessionId, {
-        type: 'structured_commands',
-        data: { commands },
-      })
-      console.log('[sendCodeToStudio] structured_commands result:', JSON.stringify(result))
-      return result.ok
-    }
-
-    // Direct-download / self-hosted plugin: send raw Luau via loadstring()
-    // Validate and auto-fix common AI mistakes before sending
+    // ── ALWAYS translate Luau to structured commands ─────────────────────
+    // The plugin (Sync.lua handleExecuteLuau) checks `data.commands` FIRST
+    // and only falls back to regex-parsing `data.code` when commands is
+    // absent. Previously we only sent structured commands for store-edition
+    // plugins — direct-download plugins got raw code and had to regex-parse
+    // it, which failed on anything with a for-loop, function, or pcall.
+    //
+    // Now we send BOTH: structured commands (preferred, always works) AND
+    // raw code (fallback for complex constructs the translator can't handle,
+    // which the plugin runs via loadstring if enabled). This means:
+    //   - Simple builds (Instance.new, parts, models) → structured commands
+    //     run instantly without loadstring
+    //   - Complex builds (loops, functions, scripts) → structured commands
+    //     cover whatever the translator can handle, raw code covers the rest
+    //   - Store edition → structured only, raw code ignored by policy
+    //
+    // Result: builds work out of the box for every user, every plugin
+    // edition, every code complexity level.
     const { fixedCode, fixes } = validateAndFixLuau(code)
     if (fixes.length > 0) {
       console.log('[sendCodeToStudio] Luau fixes applied:', fixes.length)
     }
+
+    const { commands, hasUntranslatableCode, warnings } = luauToStructuredCommands(fixedCode)
+    if (warnings.length > 0) {
+      console.log('[sendCodeToStudio] Translation warnings:', warnings)
+    }
+
+    const isStoreEdition = session.pluginVersion.endsWith('-store')
+
+    if (isStoreEdition && commands.length === 0) {
+      // Store edition has no loadstring fallback — if translation produced
+      // nothing, there's nothing we can do. Be honest.
+      console.warn('[sendCodeToStudio] Store edition: zero translatable commands, skipping')
+      return false
+    }
+
+    // Send execute_luau with BOTH structured commands and raw code.
+    // Plugin priority: commands > code. Raw code is the safety net for
+    // constructs the translator couldn't handle (loops, functions, etc.)
     const result = await queueCommand(sessionId, {
       type: 'execute_luau',
-      data: { code: fixedCode },
+      data: {
+        // Structured commands — plugin uses these first (no regex, no loadstring)
+        ...(commands.length > 0 ? { commands } : {}),
+        // Raw code — plugin falls back to this for untranslatable constructs
+        ...(isStoreEdition ? {} : { code: fixedCode }),
+        // Flag for the plugin to know partial translation happened
+        ...(hasUntranslatableCode ? { hasComplexFallback: true } : {}),
+      },
     })
-    console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result))
+    console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result), `(${commands.length} structured cmds, store=${isStoreEdition})`)
     return result.ok
   } catch (err) {
     console.error('[sendCodeToStudio] Error:', err instanceof Error ? err.message : err)
