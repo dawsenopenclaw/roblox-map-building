@@ -565,7 +565,7 @@ export function useChat(options: UseChatOptions = {}) {
   // Triggers the autonomous build-test-fix loop after code is sent to Studio.
   // Reads the SSE stream from /api/ai/playtest and adds status messages to chat.
   const triggerAutoPlaytest = useCallback(
-    async (code: string, sessionId: string, assistantMsgId: string) => {
+    async (code: string, sessionId: string, assistantMsgId: string, userPrompt?: string) => {
       // Abort any prior in-flight playtest
       autoPlaytestAbortRef.current?.abort()
       const abort = new AbortController()
@@ -587,7 +587,10 @@ export function useChat(options: UseChatOptions = {}) {
         const res = await fetch('/api/ai/playtest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, sessionId, maxIterations: 3 }),
+          // Pass userPrompt through so the scene-manifest vision check can
+          // judge whether the built workspace matches what the user asked
+          // for (not just detect empty scenes).
+          body: JSON.stringify({ code, sessionId, maxIterations: 3, userPrompt }),
           signal: abort.signal,
         })
 
@@ -1368,7 +1371,7 @@ export function useChat(options: UseChatOptions = {}) {
             (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
             (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
           ) {
-            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId)
+            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId, trimmed)
           }
 
           setLoading(false)
@@ -1698,7 +1701,7 @@ export function useChat(options: UseChatOptions = {}) {
             (meta.executedInStudio || (onBuildComplete && lastLuauRef.current)) &&
             (aiMode === 'build' || aiMode === 'debug' || aiMode === 'script')
           ) {
-            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId)
+            void triggerAutoPlaytest(luauCode, studioSessionId, assistantMsgId, trimmed)
           }
         } else {
           // ── Non-streaming fallback (body is null / custom key) ────────────────

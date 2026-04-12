@@ -29,7 +29,9 @@
     "src/app/status/page.tsx",
     "src/components/Footer.tsx",
     "src/components/editor/ChatPanel.tsx",
-    "src/app/(app)/editor/hooks/useChat.ts"
+    "src/app/(app)/editor/hooks/useChat.ts",
+    "src/lib/ai/agentic-playtest.ts",
+    "src/app/api/ai/playtest/route.ts"
   ],
   "exclude": ["node_modules", ".next"]
 }

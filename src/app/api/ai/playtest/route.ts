@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Parse body
-  let body: { code?: string; sessionId?: string; maxIterations?: number }
+  let body: { code?: string; sessionId?: string; maxIterations?: number; userPrompt?: string }
   try {
     body = await req.json()
   } catch {
@@ -46,6 +46,11 @@ export async function POST(req: NextRequest) {
   const code = body.code?.trim()
   const sessionId = body.sessionId?.trim()
   const maxIterations = Math.min(body.maxIterations ?? 3, 5)
+  // The original user prompt — used by the scene-manifest vision check to
+  // decide whether the built workspace matches what the user asked for.
+  // Without this, the vision check can still detect empty-scene failures
+  // but can't judge "user asked for a castle, got a parking lot."
+  const userPrompt = typeof body.userPrompt === 'string' ? body.userPrompt.slice(0, 2000) : undefined
 
   if (!code) {
     return new Response(JSON.stringify({ error: 'code is required' }), {
@@ -84,6 +89,7 @@ export async function POST(req: NextRequest) {
             const data = JSON.stringify(step)
             controller.enqueue(encoder.encode(`data: ${data}\n\n`))
           },
+          userPrompt,
         )
 
         // Send final result

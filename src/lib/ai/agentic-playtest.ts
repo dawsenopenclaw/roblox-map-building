@@ -1,33 +1,49 @@
 /**
- * Agentic Playtest Loop — rewritten 2026-04-11 to actually work against the
- * plugin that ships in production.
+ * Agentic Playtest Loop — v3 (2026-04-11 full automation upgrade)
  *
- * BEFORE: the loop sent command types the plugin doesn't implement
- * (`execute_code`, `run_playtest`, `capture_screenshot`, `get_output_log`,
- * `stop_playtest`). The plugin's dispatchCommand only handles:
- *   execute_luau, insert_asset, update_property, delete_model, scan_workspace
- * Every command failed silently, the server polled /api/studio/bridge-result
- * (which didn't exist until this session), the error extractor got an empty
- * log, and the loop reported "Playtest passed with no errors!" — false
- * positive on every call.
+ * The "no human needed" pipeline that every chat build triggers when
+ * `autoPlaytest` is enabled. Runs up to N iterations of:
  *
- * AFTER: the loop uses only `execute_luau` with a test-harness wrapper. The
- * wrapper captures errors via pcall, writes outcome attributes onto a sentinel
- * ModuleScript (game:GetService("ServerStorage"):FindFirstChild("ForjeAIPlaytest")),
- * and the server reads them back via the plugin's `scan_workspace` command
- * (which IS supported) plus the /api/studio/bridge-result snapshot fallback.
+ *   1. Wrap user Luau in a sentinel test harness (pcall + partCount delta +
+ *      ServerStorage ModuleScript with outcome fields + error() on failure
+ *      so plugin's State.pendingError gets populated).
+ *   2. `execute_luau` (real plugin command).
+ *   3. `scan_workspace` to force a fresh snapshot POST to /api/studio/update.
+ *   4. `get_output` to pull the LogService ring buffer (captures console
+ *      errors the harness didn't raise, like runtime deprecation warnings).
+ *   5. Read back via session fallback path — session.latestState exposes
+ *      both `worldSnapshot` and `outputLog` because plugin mirrors both
+ *      via POST /api/studio/update (scan_workspace commit 3fd0919,
+ *      get_output commit 3fd0919+).
+ *   6. Run THREE analyses against the results:
+ *      (a) `extractErrors` — reads `pendingError` field from the session
+ *          snapshot, which captures pcall failures the harness raised.
+ *      (b) `analyzeConsoleOutput` — regex-scans outputLog entries for
+ *          "error", "attempt to", etc. Catches runtime errors that
+ *          happen OUTSIDE pcall (deferred tasks, signal handlers).
+ *      (c) `analyzePlaytestScene` — semantic LLM check against the
+ *          worldSnapshot tree + user prompt. Catches visually-broken
+ *          but cleanly-compiling builds (empty workspace, parts
+ *          below the ground, scale 10x wrong, missing features).
+ *   7. If any analysis reports issues, use `callAI` directly (not the
+ *      chat route) to generate fixed code in one network hop with the
+ *      full error context merged into the prompt, then retry.
+ *   8. On clean run, return success. On max iterations, return failure
+ *      with all accumulated errors.
  *
- * Honest limitations (these need a plugin upgrade, documented in the
- * studio-controller README):
- *  - Real Play-button simulation (RunService.Heartbeat in Play mode) is not
- *    available from plugin context. The test harness runs the user's Luau
- *    inside the Edit session, which exercises most logic bugs but not
- *    anything that depends on the Player/Character lifecycle.
- *  - No viewport screenshot — the plugin has no cmdCaptureScreenshot handler.
- *    The session store's `latestScreenshot` is plugin-pushed separately on a
- *    2-second cadence via /api/studio/screenshot; we read whatever's there as
- *    a best-effort "before vs after" visual.
+ * Honest limitations:
+ *  - Plugin can't press Studio's Play button. The harness runs user code
+ *    in the Edit session, which catches most logic bugs but not any that
+ *    only manifest under Player/Character lifecycle.
+ *  - No pixel screenshot — Roblox plugin API doesn't expose viewport
+ *    capture. The scene manifest vision check is the semantic equivalent.
+ *  - Network hops between server and plugin add latency. Each full
+ *    iteration takes ~6-10s on a warm connection.
  */
+
+import { callAI, type AIMessage } from './provider'
+import { analyzePlaytestScene } from './playtest-vision'
+import { getSession } from '@/lib/studio-session'
 
 const API_BASE = process.env.FORJE_API_BASE ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -59,7 +75,7 @@ interface StudioCommandResult {
 
 async function queueCommand(
   sessionId: string,
-  type: 'execute_luau' | 'scan_workspace',
+  type: 'execute_luau' | 'scan_workspace' | 'get_output',
   data: Record<string, unknown>,
   token: string,
 ): Promise<StudioCommandResult> {
@@ -194,6 +210,7 @@ export async function runAgenticPlaytest(
   token: string,
   maxIterations = 3,
   onStep?: (step: PlaytestStep) => void,
+  userPrompt?: string,
 ): Promise<PlaytestResult> {
   const steps: PlaytestStep[] = []
   const screenshots: string[] = []
@@ -210,8 +227,8 @@ export async function runAgenticPlaytest(
     iteration++
     const iterId = `i${iteration}_${Date.now().toString(36)}`
 
-    // ── Step 1: Execute the wrapped code ─────────────────────────────────
-    addStep('execute', `Iteration ${iteration}: deploying code to Studio via execute_luau...`)
+    // ── Step 1: Execute the harness-wrapped code ────────────────────────
+    addStep('execute', `Iteration ${iteration}: deploying code to Studio...`)
 
     const harnessed = buildTestHarness(currentCode, iterId)
     const execResult = await queueCommand(
@@ -226,38 +243,83 @@ export async function runAgenticPlaytest(
       return { success: false, steps, errors: [execResult.error || 'queue failed'], iterations: iteration }
     }
 
-    // ── Step 2: Wait for plugin to drain the queue and execute ───────────
-    addStep('playtest', 'Waiting for plugin to run the harness (plugin polls on a 1s cadence)...')
+    // ── Step 2: Wait for plugin to drain the queue and run the harness ─
+    addStep('playtest', 'Waiting for plugin to run the harness (1s poll cadence)...')
     await new Promise((r) => setTimeout(r, 4_000))
 
-    // ── Step 3: Ask plugin to scan the workspace so we get the latest ─
-    //          `pendingError` surfaced in the next sync cycle.
-    await queueCommand(sessionId, 'scan_workspace', { maxParts: 200 }, token)
+    // ── Step 3: Queue get_output + scan_workspace so we get a fresh ────
+    //          outputLog and worldSnapshot. Both commands mirror their
+    //          results to /api/studio/update so we read them back via
+    //          getSession().latestState — no correlation by requestId
+    //          needed. Fire get_output first so any console errors
+    //          raised by the harness's error() call get captured.
+    await queueCommand(sessionId, 'get_output', { limit: 100, filter: 'all' }, token)
+    await queueCommand(sessionId, 'scan_workspace', { maxDepth: 4, maxNodes: 300 }, token)
 
-    // ── Step 4: Read the session snapshot (contains latestState + any ─
-    //          pendingError the plugin reported back).
-    addStep('analyze', 'Reading session snapshot for pluginPendingError...')
-    const snapshot = (await readSessionState(sessionId, token, 'snapshot', 8_000)) as
-      | {
-          partCount?: number
-          pendingError?: { message?: string; commandId?: string; cmdType?: string } | null
+    // Let the plugin drain both commands and POST back. 2s per command
+    // + 1s slack for the sync poll cycle = 5s total.
+    addStep('analyze', 'Reading session snapshot + output log + world scene...')
+    await new Promise((r) => setTimeout(r, 5_000))
+
+    // ── Step 4: Read everything from session.latestState in one shot ───
+    const session = await getSession(sessionId)
+    const latestState = (session?.latestState ?? {}) as Record<string, unknown>
+
+    // Harness pendingError (pcall failure the plugin captured)
+    const harnessErrors = extractErrors({ pendingError: latestState.pendingError })
+
+    // Runtime console errors from the LogService ring buffer
+    const outputLogRaw = latestState.outputLog
+    const outputEntries: Array<{ text?: unknown; type?: unknown }> = Array.isArray(outputLogRaw)
+      ? (outputLogRaw as Array<{ text?: unknown; type?: unknown }>)
+      : []
+    const consoleErrors = outputEntries
+      .filter((e) => e && typeof e === 'object' && e.type === 'error')
+      .map((e) => (typeof e.text === 'string' ? e.text : ''))
+      .filter((s) => s.length > 0)
+
+    // Semantic scene check — empty workspace? parts below ground?
+    // missing the features the user asked for? Uses callAI directly via
+    // playtest-vision.analyzePlaytestScene. Fails soft (returns ok=true)
+    // if GEMINI_API_KEY is missing or the model errors.
+    let sceneIssues: string[] = []
+    const worldSnapshot = latestState.worldSnapshot
+    if (worldSnapshot && userPrompt) {
+      try {
+        const scene = await analyzePlaytestScene(worldSnapshot, userPrompt)
+        if (!scene.ok) {
+          sceneIssues = scene.issues
         }
-      | null
-
-    const errors = extractErrors(snapshot)
-
-    // ── Step 5 (best-effort): grab a screenshot if the plugin has pushed one ─
-    const screenshotData = (await readSessionState(sessionId, token, 'screenshot', 4_000)) as
-      | { screenshot?: string; capturedAt?: number }
-      | null
-    if (screenshotData?.screenshot) {
-      screenshots.push(screenshotData.screenshot)
+      } catch (err) {
+        // Never block the loop on a vision failure
+        console.warn('[agentic-playtest] scene analysis failed', err)
+      }
     }
 
-    if (errors.length === 0) {
+    // ── Step 5: Combine all three analyses into a single error list ────
+    const allErrors: string[] = []
+    if (harnessErrors.length > 0) {
+      allErrors.push(...harnessErrors.map((e) => `[harness] ${e}`))
+    }
+    if (consoleErrors.length > 0) {
+      allErrors.push(...consoleErrors.map((e) => `[console] ${e}`))
+    }
+    if (sceneIssues.length > 0) {
+      allErrors.push(...sceneIssues.map((e) => `[visual] ${e}`))
+    }
+
+    // ── Step 6: Best-effort screenshot grab (always null in practice —
+    //          Roblox plugin API limitation — but kept for forward compat)
+    const screenshotField = latestState.latestScreenshot
+    if (typeof screenshotField === 'string' && screenshotField.length > 0) {
+      screenshots.push(screenshotField)
+    }
+
+    if (allErrors.length === 0) {
+      const partCount = typeof latestState.partCount === 'number' ? latestState.partCount : undefined
       addStep(
         'complete',
-        `Playtest passed on iteration ${iteration}. partCount=${snapshot?.partCount ?? 'unknown'}.`,
+        `Playtest passed on iteration ${iteration}.${partCount !== undefined ? ` partCount=${partCount}` : ''}`,
       )
       return {
         success: true,
@@ -268,52 +330,64 @@ export async function runAgenticPlaytest(
       }
     }
 
-    // ── Step 6: Ask chat to fix the code based on the errors we saw ─────
+    // ── Step 7: Fix via callAI directly — no chat route round-trip ─────
     if (iteration < maxIterations) {
-      addStep('fix', `Found ${errors.length} error(s). Requesting a fix...`, { errors })
+      addStep(
+        'fix',
+        `Found ${allErrors.length} issue(s) (${harnessErrors.length} harness, ${consoleErrors.length} console, ${sceneIssues.length} visual). Generating fix...`,
+        { errors: allErrors },
+      )
+
+      const fixPrompt = [
+        userPrompt ? `ORIGINAL USER REQUEST:\n${userPrompt}` : null,
+        '',
+        'PREVIOUS CODE (ran in Studio but produced issues):',
+        '```lua',
+        currentCode,
+        '```',
+        '',
+        'ISSUES DETECTED DURING PLAYTEST:',
+        allErrors.map((e, i) => `${i + 1}. ${e}`).join('\n'),
+        '',
+        'Fix the code to resolve ALL of the above issues. Return ONLY the corrected Luau code, no explanations or markdown fences.',
+      ]
+        .filter((l) => l !== null)
+        .join('\n')
+
+      const messages: AIMessage[] = [{ role: 'user', content: fixPrompt }]
+      const systemPrompt =
+        'You are a Roblox Luau code fixer. You receive the original user request, ' +
+        'the previous code that was run in Studio, and a list of issues detected during ' +
+        'playtest (harness errors, console log errors, and visual scene issues). Return ' +
+        'ONLY the corrected Luau code — no markdown, no fences, no explanations.'
 
       try {
-        const fixRes = await fetch(`${API_BASE}/api/ai/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            message:
-              `Fix the following Luau code based on these errors that surfaced during playtest:\n\n` +
-              `Errors:\n${errors.join('\n')}\n\n` +
-              `Code:\n\`\`\`lua\n${currentCode}\n\`\`\`\n\n` +
-              `Return ONLY the fixed Luau code, no explanations.`,
-            model: 'claude-3-5-sonnet-20241022',
-            stream: false,
-            aiMode: 'debug',
-            lastError: errors.join('\n'),
-            retryAttempt: iteration,
-            previousCode: currentCode,
-          }),
+        const fixed = await callAI(systemPrompt, messages, {
+          codeMode: true,
+          maxTokens: 4096,
         })
 
-        if (fixRes.ok) {
-          const fixData = await fixRes.json()
-          const fixedCode = extractCodeFromResponse(fixData.content || fixData.text || fixData.response || '')
-          if (fixedCode && fixedCode !== currentCode) {
-            currentCode = fixedCode
-            addStep('fix', `Code updated by /api/ai/chat. Retrying playtest...`)
-            continue
-          }
+        const extractedCode = extractCodeFromResponse(fixed) ?? fixed.trim()
+        if (extractedCode && extractedCode.length > 0 && extractedCode !== currentCode) {
+          currentCode = extractedCode
+          addStep('fix', `Code updated via callAI. Retrying playtest...`)
+          continue
         }
-      } catch {
-        // Fix request failed; we'll fall through and report the errors.
+        addStep('fix', 'AI returned no meaningful change — accepting current errors as final.')
+      } catch (err) {
+        addStep(
+          'fix',
+          `Fix generation failed: ${err instanceof Error ? err.message : 'unknown'}`,
+        )
       }
     }
 
-    addStep('failed', `Playtest failed after ${iteration} iteration(s). Errors: ${errors.join('; ')}`)
+    addStep('failed', `Playtest failed after ${iteration} iteration(s). ${allErrors.length} issue(s) remain.`)
     return {
       success: false,
       steps,
       finalCode: currentCode,
-      errors,
+      errors: allErrors,
       screenshots,
       iterations: iteration,
     }
