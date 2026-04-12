@@ -1325,7 +1325,7 @@ function MessageBubbleImpl({
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
           {msg.hasCode && (
-            <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} />
+            <CodePreviewBadge luauCode={msg.luauCode} previousCode={previousCode} executedInStudio={msg.executedInStudio} />
           )}
           {/*
             Replay-to-Studio button — appears on any assistant message that
@@ -1767,7 +1767,7 @@ function ShareBuildButton({ prompt }: { prompt?: string }) {
 
 // ─── Code Preview Badge ──────────────────────────────────────────────────────
 
-function CodePreviewBadge({ luauCode, previousCode }: { luauCode?: string; previousCode?: string }) {
+function CodePreviewBadge({ luauCode, previousCode, executedInStudio }: { luauCode?: string; previousCode?: string; executedInStudio?: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showDiff, setShowDiff] = useState(false)
@@ -1794,8 +1794,8 @@ function CodePreviewBadge({ luauCode, previousCode }: { luauCode?: string; previ
           fontSize: 10,
           padding: '2px 6px',
           borderRadius: 4,
-          background: 'rgba(34,197,94,0.15)',
-          color: 'rgba(34,197,94,0.8)',
+          background: executedInStudio ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+          color: executedInStudio ? 'rgba(34,197,94,0.8)' : 'rgba(255,255,255,0.5)',
           fontFamily: 'Inter, sans-serif',
           border: 'none',
           cursor: luauCode ? 'pointer' : 'default',
@@ -1807,7 +1807,7 @@ function CodePreviewBadge({ luauCode, previousCode }: { luauCode?: string; previ
             style={{ transform: expanded ? 'rotate(180deg)' : 'none', transformOrigin: 'center', transition: 'transform 0.15s' }}
           />
         </svg>
-        Built in Studio
+        {executedInStudio ? 'Built in Studio' : 'View code'}
       </button>
 
       {expanded && luauCode && (

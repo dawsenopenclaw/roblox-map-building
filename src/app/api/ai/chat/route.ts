@@ -489,6 +489,7 @@ function correctAiClaimsWhenNotExecuted(text: string): string {
     [/\bi(?:'ve| have)? (?:just )?built (?:it|that|the|this)\b/gi, "I've generated the code for that"],
     [/\bbuilt it(?:!| for you!?| and placed it in your (?:studio|game|workspace))\.?/gi, 'generated the build code for you.'],
     [/\b(?:built|added|placed|created) (?:it|that|the [a-z]+) in (?:your )?(?:studio|game|workspace)(?:!|\.)?/gi, 'generated the code — import it into Studio to place it.'],
+    [/\bbuilt in (?:roblox )?studio\b/gi, 'Code ready — import it into Studio to place it.'],
     [/\bcheck your studio[^.\n]*\./gi, 'Click "Import to Studio" in the chat above, or install the plugin from /download if you haven\'t yet.'],
     [/\b(?:it should|it'll|it will) appear (?:near your camera|in your workspace)[^.\n]*\./gi, 'Once the plugin is connected, it\'ll appear near your camera.'],
   ]
@@ -732,8 +733,15 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     }
 
     // Session exists but plugin hasn't poll'd recently — don't pretend it's live.
-    if (!session.connected) {
-      console.log('[sendCodeToStudio] Session exists but disconnected (stale heartbeat), skipping queue')
+    // The session library uses a 5-min TTL for `connected`, but for the
+    // chat route we use a much tighter 30-second window. The plugin polls
+    // every 2-5 seconds, so if there's been no heartbeat for 30s the plugin
+    // is definitely gone. The 5-min TTL is fine for the status page (shows
+    // "recently connected") but too generous for claiming "Built in Studio".
+    const heartbeatAgeMs = Date.now() - (session.lastHeartbeat ?? 0)
+    const CHAT_CONNECTED_TTL_MS = 30_000 // 30 seconds
+    if (!session.connected || heartbeatAgeMs > CHAT_CONNECTED_TTL_MS) {
+      console.log(`[sendCodeToStudio] Session stale (heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago), skipping queue`)
       return false
     }
 
