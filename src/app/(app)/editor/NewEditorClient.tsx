@@ -2694,6 +2694,27 @@ function EditorInner() {
         }
         studio.addActivity('Build sent to Studio — check your viewport!')
         toast('Build executed in Studio', 'success')
+
+        // First-build celebration — show upgrade nudge once, ever.
+        // This is the #1 conversion lever for free→paid: strike while
+        // the user is excited about their first working build.
+        try {
+          const FB_KEY = 'forje_first_build_celebrated'
+          if (typeof window !== 'undefined' && !localStorage.getItem(FB_KEY)) {
+            localStorage.setItem(FB_KEY, 'true')
+            // Insert a special "celebration" message in chat after a short delay
+            // so it appears AFTER the build-success status message.
+            setTimeout(() => {
+              chat.injectMessages([{
+                id: `first-build-${Date.now()}`,
+                role: 'system' as const,
+                content: '🎉 Your first build just landed in Studio! You built a real Roblox game with AI.\n\nFree plan includes 10 builds/day. Upgrade to Starter for 100/day, or Pro for unlimited + 3D meshes.\n\n[Get more builds →](/pricing)',
+                timestamp: new Date(),
+              }])
+            }, 2000)
+          }
+        } catch { /* localStorage unavailable — skip */ }
+
         buildHistory.addEntry({
           timestamp: Date.now(),
           prompt,
