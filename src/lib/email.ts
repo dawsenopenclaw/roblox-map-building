@@ -376,6 +376,52 @@ export async function sendPaymentActionRequiredEmail({
 
 // ─── Re-engagement ────────────────────────────────────────────────────────────
 
+// ─── Drip Campaign — Day 3 ────────────────────────────────────────────────────
+
+export async function sendDripDay3Email({
+  email,
+  name,
+  buildsCompleted,
+}: {
+  email: string
+  name: string
+  buildsCompleted: number
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `${name}, here's what other creators built this week`,
+      react: DripDay3Email({ name, buildsCompleted }),
+    })
+  )
+}
+
+// ─── Drip Campaign — Day 7 ────────────────────────────────────────────────────
+
+export async function sendDripDay7Email({
+  email,
+  name,
+  buildsCompleted,
+  tokensRemaining,
+}: {
+  email: string
+  name: string
+  buildsCompleted: number
+  tokensRemaining: number
+}): Promise<EmailResult> {
+  return guardedSend(() =>
+    getResend().emails.send({
+      from: FROM,
+      to: email,
+      subject: `You've built ${buildsCompleted} things in a week — what's next, ${name}?`,
+      react: DripDay7Email({ name, buildsCompleted, tokensRemaining }),
+    })
+  )
+}
+
+// ─── Re-engagement ────────────────────────────────────────────────────────────
+
 export async function sendReEngagementEmail({
   email,
   name,
