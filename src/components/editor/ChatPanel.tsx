@@ -42,12 +42,24 @@ const EDITOR_ROTATING_WORDS = [
   'Quest',
 ] as const
 
-// ─── Showcase example prompts (empty state) ───────────────────────────────────
+// ─── Full game presets (empty state — "Build a Full Game" section) ─────────────
+// These use the step-by-step builder for complete playable games.
+import { PRIMARY_PRESETS } from '@/lib/game-presets'
+
+const FULL_GAME_CARDS = PRIMARY_PRESETS.map((p) => ({
+  id: p.id,
+  emoji: p.icon,
+  label: p.label,
+  tagline: p.tagline,
+  prompt: p.prompt,
+}))
+
+// ─── Quick build examples (empty state — single-block prompts) ────────────────
 
 const SHOWCASE_EXAMPLES = [
   {
     emoji: '🏰',
-    label: 'Medieval Castle',
+    label: 'Castle',
     desc: 'Towers, moat & drawbridge',
     prompt: 'Build me a medieval castle with towers, iron portcullis, and a water moat with drawbridge',
     color: '#8B5CF6',
@@ -74,30 +86,12 @@ const SHOWCASE_EXAMPLES = [
   },
   {
     emoji: '☕',
-    label: 'Cozy Cafe',
+    label: 'Cafe',
     desc: 'Interior with furniture',
     prompt: 'Design a cozy cafe interior with tables, chairs, a coffee counter, and warm lighting',
     color: '#D4AF37',
     bg: 'rgba(212,175,55,0.08)',
     border: 'rgba(212,175,55,0.25)',
-  },
-  {
-    emoji: '🚀',
-    label: 'Space Station',
-    desc: 'Sci-fi orbital base',
-    prompt: 'Build a space station with docking bays, corridors, control rooms, and starfield windows',
-    color: '#4ADE80',
-    bg: 'rgba(74,222,128,0.08)',
-    border: 'rgba(74,222,128,0.2)',
-  },
-  {
-    emoji: '🌲',
-    label: 'Forest & Lake',
-    desc: 'Paths, trees & water',
-    prompt: 'Create a forest with winding paths, tall trees, a peaceful lake, and a small wooden dock',
-    color: '#22C55E',
-    bg: 'rgba(34,197,94,0.08)',
-    border: 'rgba(34,197,94,0.2)',
   },
 ] as const
 
@@ -2090,7 +2084,7 @@ function ShowcaseCard({
 
 // ─── Empty state / showcase ────────────────────────────────────────────────────
 
-function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void }) {
+function EmptyState({ onQuickAction, onBuildGame }: { onQuickAction: (prompt: string) => void; onBuildGame?: (prompt: string) => void }) {
   // Cycle the rotating word in the heading every 2.4s — matches the marketing
   // site's hero. We re-key the rotating span on every change so the CSS
   // @keyframe `forge-word-roll-in` (defined in globals.css) re-fires.
@@ -2212,7 +2206,80 @@ function EmptyState({ onQuickAction }: { onQuickAction: (prompt: string) => void
         </p>
       </div>
 
-      {/* Template cards — one click sends immediately */}
+      {/* ── Build a Full Game section ────────────────────────────────── */}
+      {onBuildGame && (
+        <div style={{ width: '100%', maxWidth: 560 }}>
+          <p style={{
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '0.08em',
+            color: '#D4AF37',
+            marginBottom: 8,
+            textAlign: 'center',
+          }}>
+            Build a Full Game
+          </p>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 6,
+            marginBottom: 16,
+          }}>
+            {FULL_GAME_CARDS.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => onBuildGame(g.prompt)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column' as const,
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '10px 6px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(212,175,55,0.2)',
+                  background: 'rgba(212,175,55,0.04)',
+                  color: '#D4AF37',
+                  fontSize: 11,
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.12)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.45)'
+                  e.currentTarget.style.transform = 'translateY(-2px)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(212,175,55,0.04)'
+                  e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'
+                  e.currentTarget.style.transform = 'translateY(0)'
+                }}
+              >
+                <span style={{ fontSize: 22 }}>{g.emoji}</span>
+                <span>{g.label}</span>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 400, lineHeight: 1.3, textAlign: 'center' as const }}>
+                  {g.tagline}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick build cards ─────────────────────────────────────────── */}
+      <p style={{
+        fontSize: 10,
+        fontWeight: 600,
+        textTransform: 'uppercase' as const,
+        letterSpacing: '0.06em',
+        color: 'rgba(255,255,255,0.25)',
+        marginBottom: 6,
+        textAlign: 'center',
+      }}>
+        or try a quick build
+      </p>
       <div
         style={{
           display: 'flex',
@@ -2761,6 +2828,8 @@ interface ChatPanelProps {
    */
   buildDirection?: 'continue' | 'pivot' | 'start-over'
   onBuildDirectionChange?: (dir: 'continue' | 'pivot' | 'start-over') => void
+  /** Step-by-step game builder — triggers /api/ai/build-game with a full preset */
+  onBuildGame?: (prompt: string) => void
 }
 
 export function ChatPanel({
@@ -2810,6 +2879,7 @@ export function ChatPanel({
   onImageOptionsChange,
   buildDirection = 'continue',
   onBuildDirectionChange,
+  onBuildGame,
 }: ChatPanelProps) {
   const isMobile = useIsMobile()
   const internalRef = useRef<HTMLTextAreaElement>(null)
@@ -3075,7 +3145,7 @@ export function ChatPanel({
         }}
       >
         {!hasMessages ? (
-          <EmptyState onQuickAction={(prompt) => onSend(prompt)} />
+          <EmptyState onQuickAction={(prompt) => onSend(prompt)} onBuildGame={onBuildGame} />
         ) : (
           // PERF: Single forward pass computes both "nearest preceding user message"
           // and "previous assistant luau code" for every message. Previous impl did

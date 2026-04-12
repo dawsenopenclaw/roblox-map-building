@@ -3458,6 +3458,13 @@ function EditorInner() {
               setInput={chat.setInput}
               loading={chat.loading}
               onSend={chat.sendMessage}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  void chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  void chat.sendMessage(prompt)
+                }
+              }}
               selectedModel={chat.selectedModel}
               setSelectedModel={chat.setSelectedModel}
               totalTokens={chat.totalTokens}
@@ -3543,6 +3550,13 @@ function EditorInner() {
                     setInput={chat.setInput}
                     loading={chat.loading}
                     onSend={chat.sendMessage}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  void chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  void chat.sendMessage(prompt)
+                }
+              }}
                     selectedModel={chat.selectedModel}
                     setSelectedModel={chat.setSelectedModel}
                     totalTokens={chat.totalTokens}
@@ -3666,6 +3680,13 @@ function EditorInner() {
                       setInput={chat.setInput}
                       loading={chat.loading}
                       onSend={chat.sendMessage}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  void chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  void chat.sendMessage(prompt)
+                }
+              }}
                       selectedModel={chat.selectedModel}
                       setSelectedModel={chat.setSelectedModel}
                       totalTokens={chat.totalTokens}
@@ -3698,6 +3719,13 @@ function EditorInner() {
                         setInput={chat.setInput}
                         loading={chat.loading}
                         onSend={chat.sendMessage}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  void chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  void chat.sendMessage(prompt)
+                }
+              }}
                         selectedModel={chat.selectedModel}
                         setSelectedModel={chat.setSelectedModel}
                         totalTokens={chat.totalTokens}
@@ -3753,6 +3781,13 @@ function EditorInner() {
                         setInput={chat.setInput}
                         loading={chat.loading}
                         onSend={chat.sendMessage}
+              onBuildGame={(prompt) => {
+                if (studio.isConnected && studio.sessionId) {
+                  void chat.triggerStepByStepBuild(prompt, studio.sessionId)
+                } else {
+                  void chat.sendMessage(prompt)
+                }
+              }}
                         selectedModel={chat.selectedModel}
                         setSelectedModel={chat.setSelectedModel}
                         totalTokens={chat.totalTokens}
