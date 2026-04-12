@@ -3243,13 +3243,15 @@ function EditorInner() {
           </span>
           <div style={{ flex: 1, minWidth: 12 }} />
           <a
-            href="/plugin/ForjeGames.rbxmx"
-            download="ForjeGames.rbxmx"
+            href="/download"
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               fontWeight: 600, color: '#D4AF37',
               textDecoration: 'underline', textUnderlineOffset: 3,
               whiteSpace: 'nowrap',
             }}
+            title="Opens the full install walkthrough in a new tab — includes a one-line PowerShell / curl command that installs the plugin automatically"
           >
             1. Install plugin
           </a>
