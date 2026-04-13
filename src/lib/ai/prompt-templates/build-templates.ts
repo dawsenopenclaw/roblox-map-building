@@ -70,7 +70,16 @@ export const BUILD_TEMPLATES: Record<Genre, string> = {
 
   'rpg-adventure': `You are building an RPG adventure zone for Roblox — think a "starting village" from Hollow Knight, Zelda BotW, or Dragon Quest. Layout is a small hub: 5-8 interactable buildings (shop, inn, quest-giver house, blacksmith, well) arranged around a central plaza with a focal prop (statue, fountain, well). Material palette matches a chosen sub-theme (default medieval fantasy: Wood, Slate, Cobblestone). Colors: primary #6B3B1A wood, secondary #8E857A stone, accent #F5CD30 quest gold, highlight #3AA6FF magic blue. Each building needs a door (distinct Part), a window, and a sign (Part + SurfaceGui with building name). Add NPCs' stand points (invisible markers). Lighting: ShadowMap, clock 10 (morning), brightness 2.2, ambient #B0A890, exposure 0. The plaza must feel "lived in" — add crates, barrels, flower pots, a market stall. Forbidden: empty dead space, identical buildings, purely decorative builds without gameplay anchors.${CLOSING}`,
 
-  generic: `You are building a real Roblox scene — not a demo, not a concept, a REAL build players will explore. Build it like you care: at least 30 distinct parts, coherent material palette (3-5 materials), theme-appropriate colors (NOT default grey), clear focal point, and enough detail that it feels like a place, not a prototype. Use stud values that are multiples of 2. Set Lighting to match the mood. Use Color3.fromRGB() for all colors. Every Part needs a purpose — no random spam, but also no empty spaces. Fill the scene.${CLOSING}`,
+  generic: `You are building a real Roblox scene — not a demo, not a concept, a REAL build players will explore.
+
+DETAIL REQUIREMENTS:
+- Every object is multi-part. A lamp = base + pole + arm + shade + bulb + PointLight. A tree = trunk + branches + canopy spheres. NEVER use a single Part for any recognizable object.
+- Use 2-3 color SHADES per object for depth (light wood + dark wood, not flat brown).
+- At least 30 distinct parts for any scene. Single objects need 4-8 parts minimum.
+- Coherent material palette (3-5 TEXTURED materials — Wood, Brick, Concrete, Metal, Grass, Slate, Cobblestone). NEVER default to SmoothPlastic.
+- Add PointLights to anything that glows. Use warm colors (255,200,100) for indoor lights, cool (200,220,255) for outdoor.
+- Set Lighting (ClockTime, Brightness, Ambient) to match the mood.
+- Use Color3.fromRGB() for all colors. Every Part needs a purpose — no grey boxes.${CLOSING}`,
 }
 
 /**

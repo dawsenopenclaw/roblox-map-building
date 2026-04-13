@@ -863,15 +863,36 @@ RULE #3 — BE CONVERSATIONAL, NOT ROBOTIC.
 - NEVER list technical specs robotically. NEVER say "as requested" or "specified components".
 - DO use casual language: "check this out", "here's what I did", "oh and I added", "want me to".
 
-RULE #4 — BUILD EXACTLY THE SCALE REQUESTED.
-- "light pole" = one small object, maybe 3-5 parts. Not a city.
-- "house" = one house. Not a neighborhood.
-- "map" = a full map. THEN go big.
-- Match the scope of the request. Small request = small build. Big request = big build.
+RULE #4 — EVERY OBJECT NEEDS DETAIL. NO SINGLE-PART BUILDS.
+- A "light pole" is NOT one tall Part. It's 5-6 parts:
+  * Base plate (short wide cylinder, Concrete, dark grey)
+  * Pole shaft (tall thin cylinder, Metal, dark grey)
+  * Lamp arm (short horizontal Part, Metal)
+  * Lamp shade (small WedgePart or Part, Metal, angled down)
+  * Bulb (small sphere or Part, Neon, warm yellow)
+  * PointLight (Range 20, Brightness 1.5, warm color) parented to the bulb
+- A "tree" is NOT one trunk + one sphere. It's:
+  * Trunk (cylinder, Wood, brown with bark texture)
+  * 2-3 branch cylinders at angles
+  * Main canopy (large sphere, Grass, dark green)
+  * 1-2 smaller canopy spheres offset for organic shape
+  * Leaves at different green shades for depth
+- A "house" needs: walls, floor, roof (WedgeParts), door (different color), windows (Glass, Transparency 0.3), chimney, interior light, welcome mat
+- A "rock" needs: main boulder (irregular size), 1-2 smaller rocks nearby, slightly different grey shades, moss-colored patch on one side
+- MINIMUM PARTS: small object = 4-8 parts. Medium object = 10-20 parts. Building = 20-40 parts. Full scene = 40-100+ parts.
+- Use 2-3 SHADES of each color for depth (not one flat color). A wood pole has light wood AND dark wood. A stone wall has light grey AND dark grey.
+- Add PointLights to anything that would glow. Add SurfaceGui signs to any shop/building. Add ProximityPrompts to anything interactive.
 
-RULE #5 — WHEN THEY SAY "NO" OR CORRECT YOU:
+RULE #5 — BUILD EXACTLY THE SCALE REQUESTED.
+- "light pole" = one detailed object (5-6 parts). Not a city.
+- "house" = one detailed house (20-30 parts). Not a neighborhood.
+- "map" or "city" or "game" = go BIG (50-100+ parts).
+- Match scope but ALWAYS add detail within that scope.
+
+RULE #6 — WHEN THEY SAY "NO" OR CORRECT YOU:
 - Don't repeat the same mistake. Actually change what they asked you to change.
 - If they say "no smooth plastic" → use Wood, Brick, Cobblestone, or another textured material.
+- If they say "more detail" → add more parts, more color variation, more lighting, more props.
 - If they say "not a castle" → build something completely different. Don't just rename the castle.
 
 ROBLOX SCALE REFERENCE (a character is ~5 studs tall):
@@ -6511,8 +6532,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // Selected model from the frontend model selector (e.g. 'gpt-4o', 'gpt-4o-mini', 'o1-preview')
-  const requestedModel = ((parsed.data as Record<string, unknown>).model as string | undefined) ?? ''
+  // Selected model from the frontend model selector.
+  // New IDs: 'auto' (cascade), 'claude-sonnet-4', 'gpt-4o', 'gemini-flash', 'groq-llama'
+  // Legacy IDs (e.g. 'gpt-4o-mini', 'o1-preview') still work for backward compat.
+  const rawRequestedModel = ((parsed.data as Record<string, unknown>).model as string | undefined) ?? ''
+
+  // 'auto' or empty string means use the existing cascade (Claude -> Gemini -> Groq).
+  // Specific model IDs skip the cascade and route directly to that provider.
+  const isAutoMode = !rawRequestedModel || rawRequestedModel === 'auto'
+
+  // Map new user-facing IDs to the internal routing values the downstream code expects.
+  // 'claude-sonnet-4' -> '' (falls through to the Anthropic path naturally)
+  // 'gemini-flash' -> 'gemini-flash' (handled by new direct-routing block below)
+  // 'groq-llama' -> 'groq-llama' (handled by new direct-routing block below)
+  // 'gpt-4o' stays as-is (already handled by isOpenAIModel check)
+  const requestedModel = rawRequestedModel === 'claude-sonnet-4' ? '' : rawRequestedModel
 
   // AI Mode — determines how the prompt is processed and what system prompt modifiers to inject
   const aiMode = ((parsed.data as Record<string, unknown>).aiMode as string | undefined) || 'build'
@@ -7185,6 +7219,92 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       // Fall through to server key / demo on error
     }
   }
+
+  // ── Direct Gemini Flash path (user explicitly selected 'gemini-flash') ─────
+  // Bypasses the cascade and goes straight to Gemini. Free tier, no token cost.
+  if (rawRequestedModel === 'gemini-flash' && !isAutoMode) {
+    const historyForGemini = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
+    const twoPassResult = await freeModelTwoPass(message, intent, historyForGemini, cameraContext, sessionId)
+    if (twoPassResult) {
+      if (wantsStream) {
+        return toStreamResponse(twoPassResult.conversationText, {
+          suggestions: twoPassResult.suggestions,
+          intent,
+          hasCode: twoPassResult.luauCode !== null,
+          tokensUsed: 0,
+          executedInStudio: twoPassResult.executedInStudio,
+          model: 'gemini-flash',
+        }) as unknown as NextResponse
+      }
+      return NextResponse.json({
+        message: twoPassResult.conversationText,
+        tokensUsed: 0,
+        intent,
+        hasCode: twoPassResult.luauCode !== null,
+        model: 'gemini-flash',
+        executedInStudio: twoPassResult.executedInStudio,
+        suggestions: twoPassResult.suggestions,
+      })
+    }
+    // If Gemini failed, fall through to cascade
+  }
+
+  // ── Direct Groq Llama path (user explicitly selected 'groq-llama') ────────
+  // Bypasses the cascade and goes straight to Groq. Free tier, no token cost.
+  if (rawRequestedModel === 'groq-llama' && !isAutoMode) {
+    const historyForGroq = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
+    const isBuildIntentGroq = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh',
+      'script', 'debug', 'datasave', 'networking', 'gamesystem', 'multiscript',
+      'vehicle', 'particle', 'weather', 'ui', 'animate', 'combat', 'quest',
+      'performance', 'cleanup', 'default'].includes(intent)
+    const recentCtxGroq = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
+    const gameKnowledgeGroq = buildGameKnowledgePrompt(recentCtxGroq)
+    const sysPromptGroq = (isBuildIntentGroq
+      ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
+      : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix
+
+    const groqResult = await callGroq(sysPromptGroq, message, historyForGroq, 4096)
+    if (groqResult) {
+      const luau = extractLuauCode(groqResult)
+      let executedInStudio = false
+      if (luau && sessionId) {
+        executedInStudio = await sendCodeToStudio(sessionId, luau)
+      }
+      const stripped = luau ? stripCodeBlocks(groqResult) : groqResult
+      const { message: cleanMsg, suggestions: sug } = extractSuggestions(stripped)
+      let finalMsg = cleanMsg || groqResult
+      if (!executedInStudio && luau) {
+        finalMsg = correctAiClaimsWhenNotExecuted(finalMsg)
+        finalMsg = prependStudioDisconnectedBanner(finalMsg, true)
+      }
+      if (wantsStream) {
+        return toStreamResponse(finalMsg, {
+          suggestions: sug,
+          intent,
+          hasCode: luau !== null,
+          tokensUsed: 0,
+          executedInStudio,
+          model: 'groq-llama',
+        }) as unknown as NextResponse
+      }
+      return NextResponse.json({
+        message: finalMsg,
+        tokensUsed: 0,
+        intent,
+        hasCode: luau !== null,
+        model: 'groq-llama',
+        executedInStudio,
+        suggestions: sug,
+      })
+    }
+    // If Groq failed, fall through to cascade
+  }
+
+  // ── Direct Claude Sonnet 4 path (user explicitly selected 'claude-sonnet-4') ─
+  // When specifically requested, skip OpenAI and go straight to Anthropic.
+  // requestedModel is '' for claude-sonnet-4 so it will naturally fall through
+  // to the Anthropic block below. The isAutoMode check above ensures 'auto'
+  // also reaches the cascade. No extra code needed here — just a comment for clarity.
 
   // ── Server-side OpenAI path (gpt-4o / gpt-4o-mini / o1-preview) ────────────
   // When the user selects an OpenAI model from the dropdown and OPENAI_API_KEY
