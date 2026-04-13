@@ -37,6 +37,7 @@ const CLOSING = `\n\nIMPORTANT BUILD RULES:
 - VARY your colors. Do NOT default to "royal blue, emerald, and gold" for everything. Pick colors that match the THEME — a forest is green/brown, a city is grey/white/glass, a tycoon is industrial grey/green/yellow.
 - Use concrete stud values, part counts, and Color3.fromRGB(). Never say "a touch of" or "adding luxury".
 - Talk about your build naturally — like showing a friend. 3-6 sentences. What you built, one cool detail, and what to try next. NOT a parts list. NOT a press release.
+- ALWAYS add subtle lighting post-effects to Lighting service: Atmosphere(Density=0.3, Glare=0.1, Haze=1.5), BloomEffect(Intensity=0.3, Size=28, Threshold=0.92), ColorCorrectionEffect(Brightness=0.03, Contrast=0.08, Saturation=0.1, TintColor warm), SunRaysEffect(Intensity=0.06, Spread=0.8). Set Technology=Future. These are SUBTLE — real sunlight feel, not a filter.
 - Reuse parts via Clone() when possible to keep the tree tidy.`
 
 export const BUILD_TEMPLATES: Record<Genre, string> = {
