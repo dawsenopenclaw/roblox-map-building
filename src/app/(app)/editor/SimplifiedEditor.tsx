@@ -131,9 +131,9 @@ function EditorInner() {
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        background: '#050810',
+        background: 'linear-gradient(180deg, #050810 0%, #070B1A 50%, #050810 100%)',
         color: '#FAFAFA',
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: 'var(--font-inter, Inter, sans-serif)',
       }}
     >
       {/* Top bar */}
@@ -156,7 +156,7 @@ function EditorInner() {
         />
       ) : (
         // When messages exist, ChatPanel fills the space (messages + input)
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
           <ChatPanel
             simplified
             messages={chat.messages}
