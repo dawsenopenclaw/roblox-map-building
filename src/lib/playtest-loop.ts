@@ -29,10 +29,75 @@
 
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import {
+  analyzePlaytestScreenshot,
+  analyzeVisualQuality,
+  type VisualQualityResult,
+} from './ai/playtest-vision'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** A single simulated input step for automated playtest interaction. */
+export interface InputSimulationStep {
+  /** Type of input to simulate. */
+  inputType: 'keyboard' | 'mouse_click' | 'mouse_move' | 'mouse_scroll' | 'text'
+  /** Key name for keyboard inputs (e.g. "W", "Space", "E"). */
+  key?: string
+  /** Action: "press" (down only), "release" (up only), "tap" (down+up), "hold" (down, wait duration, up). */
+  action?: 'press' | 'release' | 'tap' | 'hold'
+  /** Duration in seconds for tap/hold actions (default: 0.1). */
+  duration?: number
+  /** Whether shift is held during keyboard input. */
+  shift?: boolean
+  /** X coordinate for mouse inputs. */
+  x?: number
+  /** Y coordinate for mouse inputs. */
+  y?: number
+  /** Mouse button: 0=left, 1=right, 2=middle (default: 0). */
+  button?: number
+  /** Scroll delta for mouse_scroll (negative = down). */
+  delta?: number
+  /** Text string for "text" inputType — types each character. */
+  text?: string
+  /** Delay between characters for text input (seconds, default: 0.05). */
+  charDelay?: number
+  /** Seconds to wait BEFORE executing this step (default: 0). */
+  wait?: number
+}
+
+/** Preset input sequences for common playtest scenarios. */
+export const INPUT_PRESETS = {
+  /** WASD movement test — walks forward, strafes, and jumps. */
+  walkAround: [
+    { inputType: 'keyboard', key: 'W', action: 'hold', duration: 1.5, wait: 0.5 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'D', action: 'hold', duration: 0.8, wait: 0.2 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'Space', action: 'tap', duration: 0.1, wait: 0.1 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'A', action: 'hold', duration: 0.8, wait: 0.2 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'S', action: 'hold', duration: 1.0, wait: 0.2 } as InputSimulationStep,
+  ],
+  /** Interaction test — walks forward and presses E to interact. */
+  walkAndInteract: [
+    { inputType: 'keyboard', key: 'W', action: 'hold', duration: 2.0, wait: 0.5 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'E', action: 'tap', duration: 0.1, wait: 0.3 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'W', action: 'hold', duration: 1.0, wait: 0.5 } as InputSimulationStep,
+    { inputType: 'keyboard', key: 'E', action: 'tap', duration: 0.1, wait: 0.3 } as InputSimulationStep,
+  ],
+  /** UI click test — clicks center of screen and a few common UI positions. */
+  clickUI: [
+    { inputType: 'mouse_click', x: 512, y: 384, wait: 1.0 } as InputSimulationStep,
+    { inputType: 'mouse_click', x: 512, y: 50, wait: 0.5 } as InputSimulationStep,
+    { inputType: 'mouse_click', x: 100, y: 700, wait: 0.5 } as InputSimulationStep,
+  ],
+  /** Camera look-around — moves mouse to rotate the camera view. */
+  lookAround: [
+    { inputType: 'mouse_move', x: 600, y: 400, wait: 0.5 } as InputSimulationStep,
+    { inputType: 'mouse_move', x: 400, y: 300, wait: 0.3 } as InputSimulationStep,
+    { inputType: 'mouse_move', x: 700, y: 350, wait: 0.3 } as InputSimulationStep,
+    { inputType: 'mouse_move', x: 500, y: 400, wait: 0.3 } as InputSimulationStep,
+  ],
+} as const
 
 export interface PlaytestLoopOptions {
   /** The generated Luau code to test */
@@ -52,16 +117,32 @@ export interface PlaytestLoopOptions {
   onFixCode?: (currentCode: string, errors: string[]) => Promise<string | null>
   /** Callback for progress updates */
   onProgress?: (phase: PlaytestPhase, iteration: number, detail?: string) => void
+  /** Input simulation configuration. When provided, the loop simulates player inputs
+   *  during the playtest before capturing screenshots/output. */
+  simulateInputs?: {
+    /** Ordered sequence of input steps to execute during playtest. */
+    steps: InputSimulationStep[]
+    /** Seconds to wait after input simulation completes before capturing (default: 1). */
+    postInputDelaySec?: number
+  }
+  /** Enable AI visual analysis of playtest screenshots.
+   *  Requires GEMINI_API_KEY to be set. When enabled, the loop sends
+   *  captured screenshots to Gemini Vision for quality analysis. */
+  enableVisualAnalysis?: boolean
+  /** User's original prompt describing what was built — used for visual analysis context. */
+  codeDescription?: string
 }
 
 export type PlaytestPhase =
   | 'write-script'
   | 'start-playtest'
   | 'waiting'
+  | 'simulate-inputs'
   | 'capture-screenshot'
   | 'read-output'
   | 'stop-playtest'
   | 'analyzing'
+  | 'visual-analysis'
   | 'fixing'
   | 'done'
 
@@ -76,6 +157,10 @@ export interface PlaytestLoopResult {
   screenshotUrl?: string
   /** The final version of the code (may have been fixed) */
   finalCode?: string
+  /** Visual quality analysis result from the last iteration (if enableVisualAnalysis was true). */
+  visualAnalysis?: VisualQualityResult
+  /** Input simulation result from the last iteration. */
+  inputSimulationResult?: { stepsExecuted: number; stepsFailed: number; totalSteps: number }
 }
 
 /** Shape of an output-log entry returned by the plugin's get_output handler */
@@ -276,11 +361,16 @@ export async function runPlaytestLoop(
     onProgress,
     maxIterations = 3,
     playtestDurationSec = 5,
+    simulateInputs,
+    enableVisualAnalysis = false,
+    codeDescription,
   } = options
 
   let currentCode = options.code
   const allErrors: string[] = []
   let screenshotUrl: string | undefined
+  let visualAnalysis: VisualQualityResult | undefined
+  let inputSimulationResult: PlaytestLoopResult['inputSimulationResult']
   let iteration = 0
 
   for (iteration = 0; iteration < maxIterations; iteration++) {
@@ -324,9 +414,45 @@ export async function runPlaytestLoop(
       allErrors.push(`Playtest start failed: ${ptResult.error}`)
     }
 
-    // ---- Step 3: Wait for the playtest to run ----
+    // ---- Step 3: Wait for the playtest to initialize ----
     onProgress?.('waiting', iteration, `Waiting ${playtestDurationSec}s for playtest...`)
     await delay(playtestDurationSec * 1_000)
+
+    // ---- Step 3.5: Simulate player inputs (if configured) ----
+    if (simulateInputs && simulateInputs.steps.length > 0) {
+      onProgress?.('simulate-inputs', iteration, `Simulating ${simulateInputs.steps.length} input steps...`)
+
+      const simResult = await studioCommand(
+        apiBaseUrl,
+        sessionId,
+        'simulate_input',
+        { sequence: simulateInputs.steps },
+        authToken,
+      )
+
+      if (simResult.ok && simResult.data) {
+        const d = simResult.data as Record<string, unknown>
+        inputSimulationResult = {
+          stepsExecuted: (d.stepsExecuted as number) || simulateInputs.steps.length,
+          stepsFailed: (d.stepsFailed as number) || 0,
+          totalSteps: simulateInputs.steps.length,
+        }
+      } else {
+        inputSimulationResult = {
+          stepsExecuted: 0,
+          stepsFailed: simulateInputs.steps.length,
+          totalSteps: simulateInputs.steps.length,
+        }
+        // Non-fatal: input simulation failure doesn't block the test
+        console.warn(`[playtest-loop] Input simulation failed: ${simResult.error}`)
+      }
+
+      // Wait for inputs to take effect before capturing
+      const postInputDelay = simulateInputs.postInputDelaySec ?? 1
+      if (postInputDelay > 0) {
+        await delay(postInputDelay * 1_000)
+      }
+    }
 
     // ---- Step 4: Capture a screenshot ----
     onProgress?.('capture-screenshot', iteration, 'Capturing screenshot...')
@@ -373,6 +499,31 @@ export async function runPlaytestLoop(
 
     const iterationErrors = parseOutputForErrors(logEntries)
 
+    // ---- Step 7.5: AI visual analysis of screenshot (if enabled) ----
+    if (enableVisualAnalysis && screenshotUrl) {
+      onProgress?.('visual-analysis', iteration, 'Running AI visual quality analysis...')
+
+      // Build context string from log entries for richer analysis
+      const logContext = logEntries
+        .slice(-20)
+        .map((e) => `[${e.messageType}] ${e.message}`)
+        .join('\n')
+
+      visualAnalysis = await analyzeVisualQuality(
+        screenshotUrl,
+        codeDescription || currentCode.slice(0, 500),
+        logContext || undefined,
+      )
+
+      // If visual analysis found high-severity issues, add them to errors
+      if (!visualAnalysis.passed && visualAnalysis.issues.length > 0) {
+        const visualErrors = visualAnalysis.issues
+          .filter((i) => i.severity === 'high' || i.severity === 'medium')
+          .map((i) => `[Visual:${i.category}] ${i.description}`)
+        iterationErrors.push(...visualErrors)
+      }
+    }
+
     if (iterationErrors.length === 0) {
       // Clean run!
       onProgress?.('done', iteration, 'Playtest completed without errors.')
@@ -382,6 +533,8 @@ export async function runPlaytestLoop(
         errors: [],
         screenshotUrl,
         finalCode: currentCode,
+        visualAnalysis,
+        inputSimulationResult,
       }
     }
 
@@ -414,6 +567,8 @@ export async function runPlaytestLoop(
     errors: allErrors,
     screenshotUrl,
     finalCode: currentCode,
+    visualAnalysis,
+    inputSimulationResult,
   }
 }
 
@@ -608,6 +763,12 @@ export interface PlaytestWithAIOptions {
   codeDescription?: string
   /** Callback for progress updates. */
   onProgress?: (phase: PlaytestPhase, iteration: number, detail?: string) => void
+  /** Input simulation — simulate player interactions during playtest.
+   *  Use `INPUT_PRESETS.walkAround` for a default movement test, or provide custom steps. */
+  simulateInputs?: PlaytestLoopOptions['simulateInputs']
+  /** Enable AI visual quality analysis of playtest screenshots (default: false).
+   *  Requires GEMINI_API_KEY. Visual issues are included in the fix prompt. */
+  enableVisualAnalysis?: boolean
 }
 
 /**
@@ -633,6 +794,8 @@ export async function playtestWithAI(
     playtestDurationSec = 5,
     codeDescription,
     onProgress,
+    simulateInputs,
+    enableVisualAnalysis = false,
   } = options
 
   const onFixCode = async (
@@ -710,5 +873,8 @@ export async function playtestWithAI(
     playtestDurationSec,
     onFixCode,
     onProgress,
+    simulateInputs,
+    enableVisualAnalysis,
+    codeDescription,
   })
 }

@@ -23,6 +23,9 @@ export type IdeaGenre =
   | 'Racing'
   | 'Combat'
   | 'Sandbox'
+  | 'Puzzle'
+  | 'Survival'
+  | 'Adventure'
 
 export type IdeaDifficulty = 'easy' | 'medium' | 'hard'
 
@@ -616,6 +619,72 @@ export const IDEA_SEEDS: IdeaSeed[] = [
     difficulty: 'medium',
     estimatedRevenuePotential: 'medium',
   },
+
+  // ── Puzzle patterns ──────────────────────────────────────────────────────
+  {
+    id: 'puzzle-escape-room',
+    pattern: 'Co-op escape room with riddles + hidden clues + timer',
+    examples: ['Escape Room', 'Flood Escape 2', 'The Impossible Puzzle'],
+    genre: 'Puzzle',
+    monetizationHook: 'Hint tokens, skip puzzle gamepass, new room packs',
+    viralHook: 'Speedrun clears, brain-teaser reaction clips',
+    difficulty: 'medium',
+    estimatedRevenuePotential: 'medium',
+  },
+  {
+    id: 'puzzle-logic-maze',
+    pattern: 'Logic puzzle maze + shifting walls + color code matching',
+    examples: ['Color or Die', 'Maze Runner', 'The Impossible Quiz Roblox'],
+    genre: 'Puzzle',
+    monetizationHook: 'Hint compass, 2x coins, cosmetic maze trails',
+    viralHook: 'Insane solution clips, rage compilations',
+    difficulty: 'easy',
+    estimatedRevenuePotential: 'medium',
+  },
+
+  // ── Survival patterns ────────────────────────────────────────────────────
+  {
+    id: 'survival-zombie',
+    pattern: 'Zombie wave survival + barricade + weapon upgrade',
+    examples: ['Zombie Strike', 'Those Who Remain', 'Project Lazarus'],
+    genre: 'Survival',
+    monetizationHook: 'Weapon crates, revive tokens, base blueprints',
+    viralHook: 'Last-alive clutch clips, wave 100+ records',
+    difficulty: 'medium',
+    estimatedRevenuePotential: 'high',
+  },
+  {
+    id: 'survival-natural-disaster',
+    pattern: 'Survive random natural disasters + shelter building',
+    examples: ['Natural Disaster Survival', 'Survive the Disasters 2', 'Tornado Alley'],
+    genre: 'Survival',
+    monetizationHook: 'Premium shelters, 2x coins, cosmetic hard hats',
+    viralHook: 'Dramatic disaster clips, impossible survival moments',
+    difficulty: 'easy',
+    estimatedRevenuePotential: 'medium',
+  },
+
+  // ── Adventure patterns ───────────────────────────────────────────────────
+  {
+    id: 'adventure-quest',
+    pattern: 'Story-driven quest line + NPC villages + boss fights + lore',
+    examples: ['Vesteria', 'Loomian Legacy', 'World // Zero'],
+    genre: 'Adventure',
+    monetizationHook: 'DLC quest packs, mount gamepass, cosmetic armor',
+    viralHook: 'Boss-kill cinematics, lore theory videos, secret areas',
+    difficulty: 'hard',
+    estimatedRevenuePotential: 'high',
+  },
+  {
+    id: 'adventure-treasure-hunt',
+    pattern: 'Open-world treasure hunt + map clues + rival crews',
+    examples: ['Treasure Quest', 'Build a Boat for Treasure', 'Pirate Wars'],
+    genre: 'Adventure',
+    monetizationHook: 'Map gamepass, treasure radar, crew ship upgrades',
+    viralHook: 'Legendary loot reveals, crew PvP battles',
+    difficulty: 'medium',
+    estimatedRevenuePotential: 'high',
+  },
 ]
 
 /** Quick lookup by id. */
@@ -645,4 +714,7 @@ export const IDEA_GENRES: IdeaGenre[] = [
   'Racing',
   'Combat',
   'Sandbox',
+  'Puzzle',
+  'Survival',
+  'Adventure',
 ]

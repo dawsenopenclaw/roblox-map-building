@@ -45,6 +45,177 @@ export interface PlaytestVisionResult {
   skippedReason?: 'no_api_key' | 'no_screenshot' | 'fetch_failed' | 'parse_failed' | 'api_error'
 }
 
+// ---------------------------------------------------------------------------
+// Visual quality analysis — post-playtest screenshot AI evaluation
+// ---------------------------------------------------------------------------
+
+/** Categories of visual issues the AI checks for. */
+export type VisualIssueCategory =
+  | 'rendering_glitch'
+  | 'ui_broken'
+  | 'lighting_issue'
+  | 'missing_content'
+  | 'scale_problem'
+  | 'collision_issue'
+  | 'z_fighting'
+  | 'empty_scene'
+  | 'other'
+
+export interface VisualQualityIssue {
+  category: VisualIssueCategory
+  description: string
+  severity: 'low' | 'medium' | 'high'
+}
+
+export interface VisualQualityResult {
+  /** Overall quality score 0-100. 80+ is considered passing. */
+  score: number
+  /** Whether the scene passes visual QA (score >= 80 and no high-severity issues). */
+  passed: boolean
+  /** List of visual issues found. */
+  issues: VisualQualityIssue[]
+  /** Summary string suitable for feeding back to the AI fix step. */
+  summary: string
+  /** Reason the check was skipped, if it was. */
+  skippedReason?: PlaytestVisionResult['skippedReason']
+}
+
+const VISUAL_QUALITY_PROMPT = (userPrompt: string, context?: string) => `You are a Roblox QA visual inspector. Analyze this screenshot from an automated playtest and evaluate visual quality.
+
+The user asked the AI to build:
+"""
+${userPrompt.slice(0, 800)}
+"""
+${context ? `\nAdditional context from the test run:\n${context}\n` : ''}
+Evaluate the screenshot for these categories:
+1. rendering_glitch — Z-fighting, flickering textures, parts clipping through each other
+2. ui_broken — UI elements overlapping, text cut off, missing HUD elements, buttons out of bounds
+3. lighting_issue — Scene too dark to see, blown-out white, missing shadows where expected
+4. missing_content — Key objects from the prompt are absent, placeholder grey cubes
+5. scale_problem — Objects wildly wrong size (player inside a wall, building fits in your hand)
+6. collision_issue — Objects overlapping, parts sunk into the floor, floating in air unexpectedly
+7. z_fighting — Surfaces at exactly the same position causing visual flickering
+8. empty_scene — Nothing was built when objects were expected
+9. other — Anything else visually wrong
+
+Return ONLY a JSON object, no markdown:
+{
+  "score": number,
+  "issues": [
+    { "category": string, "description": string, "severity": "low"|"medium"|"high" }
+  ],
+  "summary": string
+}
+
+Where:
+- score = 0-100 visual quality rating (100 = perfect, 80+ = acceptable, <50 = clearly broken)
+- issues = array of found issues (empty if scene looks good)
+- summary = 1-2 sentence overall assessment`
+
+/**
+ * Perform AI-powered visual quality analysis on a playtest screenshot.
+ *
+ * Uses Gemini Vision to evaluate the screenshot against the user's prompt
+ * and return a structured quality report with scores and categorized issues.
+ *
+ * Fail-soft: any error returns a passing result with skippedReason.
+ */
+export async function analyzeVisualQuality(
+  screenshotUrl: string | undefined | null,
+  userPrompt: string,
+  context?: string,
+): Promise<VisualQualityResult> {
+  if (!screenshotUrl) {
+    return { score: 100, passed: true, issues: [], summary: 'No screenshot available for analysis.', skippedReason: 'no_screenshot' }
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    return { score: 100, passed: true, issues: [], summary: 'No Gemini API key — visual analysis skipped.', skippedReason: 'no_api_key' }
+  }
+
+  const loaded = await loadScreenshotAsBase64(screenshotUrl)
+  if (!loaded) {
+    return { score: 100, passed: true, issues: [], summary: 'Failed to load screenshot.', skippedReason: 'fetch_failed' }
+  }
+
+  const body = {
+    contents: [
+      {
+        parts: [
+          {
+            inline_data: {
+              mime_type: loaded.mimeType,
+              data: loaded.base64,
+            },
+          },
+          { text: VISUAL_QUALITY_PROMPT(userPrompt, context) },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      topK: 32,
+      topP: 1,
+      maxOutputTokens: 1024,
+    },
+  }
+
+  try {
+    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30_000),
+    })
+    if (!res.ok) {
+      console.warn('[playtest-vision] Visual quality analysis Gemini API error', res.status)
+      return { score: 100, passed: true, issues: [], summary: 'Gemini API error during visual analysis.', skippedReason: 'api_error' }
+    }
+
+    const json = await res.json() as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[]
+      error?: { message: string }
+    }
+
+    if (!json || json.error) {
+      return { score: 100, passed: true, issues: [], summary: 'Gemini returned error.', skippedReason: 'api_error' }
+    }
+
+    const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+    const cleaned = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/```\s*$/, '')
+      .trim()
+
+    const parsed = JSON.parse(cleaned) as {
+      score?: number
+      issues?: Array<{ category?: string; description?: string; severity?: string }>
+      summary?: string
+    }
+
+    const score = typeof parsed.score === 'number' ? Math.max(0, Math.min(100, parsed.score)) : 80
+    const issues: VisualQualityIssue[] = Array.isArray(parsed.issues)
+      ? parsed.issues
+          .filter((i) => i && typeof i.description === 'string')
+          .map((i) => ({
+            category: (i.category as VisualIssueCategory) || 'other',
+            description: i.description!,
+            severity: (['low', 'medium', 'high'].includes(i.severity || '') ? i.severity : 'medium') as 'low' | 'medium' | 'high',
+          }))
+          .slice(0, 10)
+      : []
+    const hasHighSeverity = issues.some((i) => i.severity === 'high')
+    const passed = score >= 80 && !hasHighSeverity
+    const summary = typeof parsed.summary === 'string' ? parsed.summary : `Visual quality score: ${score}/100`
+
+    return { score, passed, issues, summary }
+  } catch (err) {
+    console.warn('[playtest-vision] Visual quality analysis failed', err)
+    return { score: 100, passed: true, issues: [], summary: 'Visual analysis error.', skippedReason: 'api_error' }
+  }
+}
+
 const VISION_PROMPT_TEMPLATE = (userPrompt: string) => `You are a Roblox QA agent looking at a screenshot of a game the user asked the AI to build.
 
 The user's original prompt was:

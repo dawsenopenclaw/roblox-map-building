@@ -120,31 +120,37 @@ Guidelines:
 - Include atmosphere/lighting settings in styleDirective
 - Note vegetation and prop placement zones`,
 
-  idea: `You are a Roblox game design consultant and market analyst. Given a user's game idea,
-enhance it with market research context, trending patterns, monetization strategies, and
-competitive analysis.
+  idea: `You are a senior Roblox game design consultant, market analyst, and growth hacker who has helped ship multiple top-100 Roblox experiences. Given a user's game idea (even if vague), enhance it into a comprehensive, actionable game concept document that rivals what professional game studios produce.
 
 Respond ONLY with valid JSON matching this schema:
 {
-  "enhancedPrompt": "Comprehensive game design document with market context, core loops, monetization, and differentiation strategy",
+  "enhancedPrompt": "Comprehensive viral game concept document: game title, one-line hook, 2-3 sentence pitch, genre classification, the unique selling point, detailed core gameplay loop (micro/session/meta), mechanics list, full monetization plan, viral hooks, target demographic, trend analysis, competitive landscape, retention strategy, social features, and development roadmap.",
   "plan": {
-    "assetCount": 4,
+    "assetCount": 7,
     "assets": [
-      { "name": "CoreGameLoop", "subPrompt": "Primary gameplay loop: Collect resources (30s) -> Upgrade tools (instant) -> Unlock new areas (milestone). Session target: 15-20 minutes. Retention hook: daily login streaks with escalating multipliers." },
-      { "name": "MonetizationSystem", "subPrompt": "Gamepass: 2x Speed (199R$), VIP Area (499R$), Auto-Collect (99R$). DevProduct: 1000 Coins (49R$), Skip Timer (19R$). Free-to-play friendly: all content earnable, passes only accelerate." },
-      { "name": "TrendingMechanics", "subPrompt": "Incorporate: pet collection system (top trending Q1 2026), merge mechanics for tool upgrades, social trading hub. Avoid: pay-to-win gates, excessive timer walls." }
+      { "name": "CoreGameLoop", "subPrompt": "MICRO-LOOP (30s): [specific action]. SESSION LOOP (5-15min): [progression cycle]. META-LOOP (days/weeks): [long-term goals]. Session target: 15-20 minutes. Core hook: [what makes the loop addictive]." },
+      { "name": "UniqueSellingPoint", "subPrompt": "The ONE thing that makes this different: [specific differentiator]. Why no one else has done this: [gap analysis]. How it shows up in gameplay: [concrete example]." },
+      { "name": "MonetizationPlan", "subPrompt": "GAMEPASSES: [Name] ([price]R$) - [what it does], [Name] ([price]R$) - [what it does], [Name] ([price]R$) - [what it does]. DEVPRODUCTS: [Name] ([price]R$) - [consumable], [Name] ([price]R$) - [consumable]. PHILOSOPHY: Free-to-play friendly, passes accelerate but never gate content." },
+      { "name": "ViralStrategy", "subPrompt": "SCREENSHOT MOMENTS: [2-3 specific shareable moments]. STREAM HOOKS: [what makes this watchable]. TIKTOK CLIPS: [15-second clip ideas]. SOCIAL DRAMA: [organic conflict/trading/competition that generates content]." },
+      { "name": "TrendAlignment", "subPrompt": "CAPITALIZES ON: [2-3 specific 2026 Roblox trends]. TRENDING SCORE: [X/100]. SIMILAR SUCCESSFUL GAMES: [2-4 real Roblox games that prove this market]. COMPETITION LEVEL: [low/medium/high/saturated]." },
+      { "name": "RetentionMechanics", "subPrompt": "DAILY: [login rewards, daily challenges]. WEEKLY: [seasonal events, tournaments]. FOMO: [limited-time items, expiring content]. SOCIAL: [guilds, trading, leaderboards]. PROGRESSION: [prestige/rebirth system, unlockable areas]." },
+      { "name": "DevelopmentRoadmap", "subPrompt": "MVP (Week 1-2): [core loop + basic monetization]. ALPHA (Week 3-4): [social features + first content drop]. BETA (Week 5-6): [polish + retention systems]. LAUNCH: [marketing push + influencer outreach]. POST-LAUNCH: [seasonal content cadence]." }
     ],
-    "styleDirective": "Target audience: ages 8-14. Bright, inviting UI with large touch targets. Satisfying SFX on every interaction. Visual feedback: particles on collection, screen shake on upgrades. Lobby showcase area for social flex."
+    "styleDirective": "Target audience: [age range] [platform]. Visual style: [art direction]. UI: [design principles — large mobile touch targets, satisfying feedback]. Audio: [SFX philosophy — juicy sounds on every interaction]. Performance: [mobile optimization requirements]."
   }
 }
 
 Guidelines:
-- Reference current Roblox trending game patterns and mechanics
-- Include monetization strategy (Gamepasses + DevProducts) with price points in Robux
-- Analyze the competitive landscape (similar games on Roblox)
-- Suggest retention mechanics (daily rewards, streaks, seasons)
-- Plan social features (trading, guilds, leaderboards)
-- styleDirective should cover target audience, UX principles, and engagement patterns`,
+- Transform even vague ideas ("make me a fun game") into specific, buildable concepts
+- Reference current 2026 Roblox trending patterns: pet/merge systems, anime TD + gacha, fashion/social, horror chapters with ARG, UGC creation, idle/AFK hybrid, trading economies
+- Include SPECIFIC monetization with Robux prices (GamePasses: 99-999R$, DevProducts: 19-199R$)
+- Analyze competitive landscape with REAL Roblox game names that prove the market
+- Include a trending score (1-100) reflecting alignment with current trends
+- Plan retention mechanics that drive daily active users (DAU)
+- Plan social features that drive organic growth and content creation
+- Include a realistic development roadmap with milestones
+- styleDirective must cover: target age + platform, art direction, UI/UX principles, audio design, mobile optimization
+- The enhancedPrompt should read like a pitch deck — exciting, specific, and actionable`,
 }
 
 // ─── Groq model cascade ─────────────────────────────────────────────────────

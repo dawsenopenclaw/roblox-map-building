@@ -214,7 +214,7 @@ export const AI_MODES: AIModeConfig[] = [
     id: 'idea',
     label: 'Ideas',
     shortLabel: 'Ideas',
-    description: 'Brainstorm viral game concepts with hooks and monetization',
+    description: 'Generate viral game concepts with monetization, trends & development plans',
     icon: (
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M7 1.5a4 4 0 013 6.7V10a1 1 0 01-1 1H5a1 1 0 01-1-1V8.2A4 4 0 017 1.5z" stroke="currentColor" strokeWidth="1.3"/>
@@ -224,8 +224,33 @@ export const AI_MODES: AIModeConfig[] = [
     color: '#FBBF24',
     bgColor: 'rgba(251,191,36,0.08)',
     borderColor: 'rgba(251,191,36,0.25)',
-    placeholder: 'What kind of game are you thinking about?',
-    systemPrefix: '[IDEA_MODE] Brainstorm viral Roblox game concepts. For each idea, include: 1) Hook (what draws players in), 2) Core Loop (what keeps them playing), 3) Monetization (how it makes Robux), 4) Unique Twist (what makes it stand out).',
+    placeholder: 'Describe a game idea, or just say "surprise me" for viral concepts...',
+    systemPrefix: `[IDEA_MODE] You are a viral Roblox game idea generator — the best in the industry.
+For each idea, structure your response with these sections:
+## [Game Title]
+**Genre**: [genre tag] | **Trending Score**: [X/100] | **Complexity**: [Easy/Medium/Hard] | **Revenue Potential**: [Low/Medium/High/Mega]
+
+**Viral Hook**: [the ONE thing that makes players share this]
+**Unique Selling Point**: [what makes it different from every competitor]
+
+**Core Gameplay Loop**:
+- Micro (30s): [what players do every 30 seconds]
+- Session (5-15min): [the progression cycle per session]
+- Meta (days/weeks): [long-term goals that keep them coming back]
+
+**Key Mechanics**: [4-6 specific mechanics]
+
+**Monetization**:
+- GamePasses: [name] ([price]R$), [name] ([price]R$), [name] ([price]R$)
+- DevProducts: [name] ([price]R$), [name] ([price]R$)
+
+**Target Audience**: [age range, platform, player type]
+**Similar Games**: [2-3 real Roblox games that prove this market]
+**Trend Alignment**: [what 2026 trends this capitalizes on]
+**Retention Hooks**: [daily rewards, streaks, FOMO, social features]
+**Development Roadmap**: MVP -> Alpha -> Beta -> Launch milestones
+
+Generate 3 ideas unless asked for a different number. Be specific and creative — combine 2-3 proven patterns in unexpected ways.`,
     creditMultiplier: 1,
     shortcut: '9',
   },
@@ -634,8 +659,8 @@ export function AIModeSelector({
   const activeConfig = getModeConfig(activeMode)
 
   // Primary modes shown as pills, rest in dropdown
-  const primaryModes: AIMode[] = ['build', 'think', 'plan', 'script', 'image']
-  const moreModes: AIMode[] = ['terrain', 'mesh', 'debug', 'idea']
+  const primaryModes: AIMode[] = ['build', 'think', 'plan', 'script', 'image', 'idea']
+  const moreModes: AIMode[] = ['terrain', 'mesh', 'debug']
 
   // Keyboard shortcut: Alt+number to switch modes
   // PERF: bail out BEFORE doing the map lookup on non-Alt keys so the common

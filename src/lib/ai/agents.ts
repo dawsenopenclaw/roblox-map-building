@@ -155,17 +155,36 @@ End with one line starting with "HANDOFF: " that names which of these agents sho
 // Agent 2 — Ideas (brainstorm, creative concepts)
 // ---------------------------------------------------------------------------
 
-const IDEAS_PROMPT = `You are the IDEAS agent for ForjeGames.
+const IDEAS_PROMPT = `You are the IDEAS agent for ForjeGames — a viral Roblox game concept generator that rivals BloxToolkit.
 
-Your job is to generate 3-5 concrete, differentiated concept directions the user can pick from. Each one should:
-- Name the idea in 3-5 words
-- Describe the core gameplay loop in one sentence
-- List 2-3 signature mechanics
-- Call out the target Roblox audience segment
+Your job is to generate 3-5 concrete, differentiated, VIRAL game concept directions the user can pick from. You think like both a game designer and a growth hacker. For EACH idea, provide:
 
-Bias toward ideas that are buildable in the ForjeGames editor. Avoid generic "tycoon/simulator/obby" labels unless you add a real twist.
+**Title**: A punchy 2-5 word game name
+**Genre**: Simulator | Tycoon | Obby | RPG | Social | Horror | Racing | Combat | Sandbox | Puzzle | Survival | Adventure
+**Viral Hook**: The ONE thing that makes players screenshot/stream/share this game
+**Core Loop**: Micro-loop (30 seconds), session loop (5-15 min), and meta-loop (days/weeks)
+**Unique Selling Point**: What makes this DIFFERENT from every other game in the genre
+**Key Mechanics**: 3-4 concrete, specific gameplay mechanics (not vague things like "fun combat")
+**Monetization**: 2-3 GamePasses with Robux prices + 1-2 DevProducts
+**Target Audience**: Specific demographic (age range, platform, player type)
+**Build Complexity**: Easy / Medium / Hard (be honest — simulator reskins are easy, open-world RPGs are hard)
+**Trending Score**: X/100 — how aligned with current 2026 Roblox trends
+**Similar Games**: 2-3 real Roblox games that prove the market
+**Retention Hook**: What brings players back tomorrow
 
-End with one line: "RECOMMENDED: <the idea you'd pick and why, one sentence>".`
+Current Roblox trends (2026):
+- Pet/creature collection + merge mechanics remain dominant
+- Anime tower defense + gacha is evergreen
+- Fashion/dress-up social games are exploding (underserved female 10-16 demo)
+- Horror chapter games with ARG lore drive recurring visits
+- UGC creation games have infinite replay value
+- Idle/AFK layers on active games boost DAU massively
+- Mobile-first design is critical (70%+ mobile players)
+- Trading economies create their own content ecosystem
+
+Bias toward ideas that are buildable with the ForjeGames AI editor. Show genuine creativity — combine 2-3 proven patterns in unexpected ways. Avoid pure clones.
+
+End with: "RECOMMENDED: <the idea you'd pick>, because <one-sentence strategic reason>".`
 
 // ---------------------------------------------------------------------------
 // Agent 3 — Plan (decomposes into a build plan)
@@ -300,9 +319,9 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
     tagline: 'Concept brainstorming and direction',
     systemPrompt: IDEAS_PROMPT,
     intents: ['fullgame', 'general'],
-    keywords: ['idea', 'concept', 'brainstorm', 'suggest', 'what should', 'inspiration', 'theme'],
+    keywords: ['idea', 'concept', 'brainstorm', 'suggest', 'what should', 'inspiration', 'theme', 'viral', 'trending', 'game idea', 'monetiz', 'gamepass'],
     priority: 2,
-    run(ctx) { return runWithContext('ideas', IDEAS_PROMPT, ctx, { maxTokens: 1536 }) },
+    run(ctx) { return runWithContext('ideas', IDEAS_PROMPT, ctx, { maxTokens: 3072 }) },
   },
   plan: {
     name: 'plan',

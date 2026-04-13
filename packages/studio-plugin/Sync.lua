@@ -1233,51 +1233,149 @@ local function handleCaptureScreenshot(data)
 end
 
 -- Handle: simulate_input
+-- Supports single actions and sequenced input arrays for automated playtesting.
+-- Single action shape:
+--   { inputType: "keyboard"|"mouse_click"|"mouse_move"|"mouse_scroll",
+--     key?: string, action?: "press"|"release"|"tap", duration?: number,
+--     x?: number, y?: number, delta?: number }
+-- Sequence shape:
+--   { sequence: [ { inputType, key, action, duration, x, y, wait }, ... ] }
+-- Each step in a sequence can include a "wait" (seconds) to pause before the next step.
 local function handleSimulateInput(data)
-  pcall(function()
-    local VIM = game:GetService("VirtualInputManager")
-    if not VIM then
-      warn("[ForjeGames Sync] VirtualInputManager not available")
-      return
-    end
-
-    local inputType = data.inputType or "keyboard"
-    local action = data.action or "tap"
-    local duration = data.duration or 0.1
-
-    if inputType == "keyboard" then
-      local keyName = data.key or "W"
-      local keyCode = Enum.KeyCode[keyName]
-      if not keyCode then
-        warn("[ForjeGames Sync] Invalid KeyCode: " .. tostring(keyName))
-        return
-      end
-
-      if action == "press" then
-        VIM:SendKeyEvent(true, keyCode, false, game)
-      elseif action == "release" then
-        VIM:SendKeyEvent(false, keyCode, false, game)
-      else -- tap
-        VIM:SendKeyEvent(true, keyCode, false, game)
-        task.delay(duration, function()
-          VIM:SendKeyEvent(false, keyCode, false, game)
-        end)
-      end
-
-    elseif inputType == "mouse_click" then
-      local x = data.x or 0
-      local y = data.y or 0
-      VIM:SendMouseButtonEvent(x, y, 0, true, game, 1)
-      task.delay(duration, function()
-        VIM:SendMouseButtonEvent(x, y, 0, false, game, 1)
-      end)
-
-    elseif inputType == "mouse_move" then
-      local x = data.x or 0
-      local y = data.y or 0
-      VIM:SendMouseMoveEvent(x, y, game)
-    end
+  local requestId = data and data._requestId
+  local VIM
+  local vimOk = pcall(function()
+    VIM = game:GetService("VirtualInputManager")
   end)
+
+  if not vimOk or not VIM then
+    warn("[ForjeGames Sync] VirtualInputManager not available — input simulation requires Studio playtest mode")
+    if requestId then
+      pushBridgeResult("simulate_input_result", requestId, {
+        status = "error",
+        message = "VirtualInputManager not available. Input simulation only works during an active playtest (F5).",
+      })
+    end
+    return
+  end
+
+  -- Execute a single input step. Returns true on success.
+  local function executeStep(step)
+    local stepOk, stepErr = pcall(function()
+      local inputType = step.inputType or "keyboard"
+      local action = step.action or "tap"
+      local duration = tonumber(step.duration) or 0.1
+
+      if inputType == "keyboard" then
+        local keyName = step.key or "W"
+        local keyCode = Enum.KeyCode[keyName]
+        if not keyCode then
+          warn("[ForjeGames Sync] Invalid KeyCode: " .. tostring(keyName))
+          return
+        end
+
+        local isShift = step.shift and true or false
+
+        if action == "press" then
+          VIM:SendKeyEvent(true, keyCode, isShift, game)
+        elseif action == "release" then
+          VIM:SendKeyEvent(false, keyCode, isShift, game)
+        elseif action == "hold" then
+          -- Hold key for `duration` seconds then release
+          VIM:SendKeyEvent(true, keyCode, isShift, game)
+          task.wait(duration)
+          VIM:SendKeyEvent(false, keyCode, isShift, game)
+        else -- tap (press + release with brief gap)
+          VIM:SendKeyEvent(true, keyCode, isShift, game)
+          task.wait(duration)
+          VIM:SendKeyEvent(false, keyCode, isShift, game)
+        end
+
+      elseif inputType == "mouse_click" then
+        local x = tonumber(step.x) or 0
+        local y = tonumber(step.y) or 0
+        local button = tonumber(step.button) or 0 -- 0=left, 1=right, 2=middle
+        VIM:SendMouseButtonEvent(x, y, button, true, game, 1)
+        task.wait(duration)
+        VIM:SendMouseButtonEvent(x, y, button, false, game, 1)
+
+      elseif inputType == "mouse_move" then
+        local x = tonumber(step.x) or 0
+        local y = tonumber(step.y) or 0
+        VIM:SendMouseMoveEvent(x, y, game)
+
+      elseif inputType == "mouse_scroll" then
+        local x = tonumber(step.x) or 0
+        local y = tonumber(step.y) or 0
+        local delta = tonumber(step.delta) or -120 -- negative = scroll down
+        VIM:SendMouseWheelEvent(x, y, delta, game)
+
+      elseif inputType == "text" then
+        -- Type a string character by character with a small delay between keys
+        local text = step.text or ""
+        local charDelay = tonumber(step.charDelay) or 0.05
+        for i = 1, #text do
+          local ch = text:sub(i, i)
+          local charKeyCode = Enum.KeyCode[string.upper(ch)]
+          if charKeyCode then
+            local needsShift = ch:match("[A-Z]") ~= nil
+            VIM:SendKeyEvent(true, charKeyCode, needsShift, game)
+            task.wait(charDelay)
+            VIM:SendKeyEvent(false, charKeyCode, needsShift, game)
+            task.wait(charDelay)
+          end
+        end
+      end
+    end)
+
+    if not stepOk then
+      warn("[ForjeGames Sync] simulate_input step error: " .. tostring(stepErr))
+    end
+    return stepOk
+  end
+
+  -- Sequence mode: execute an ordered list of input steps with optional waits
+  if data.sequence and type(data.sequence) == "table" then
+    task.spawn(function()
+      local stepsExecuted = 0
+      local stepsFailed = 0
+      for _, step in ipairs(data.sequence) do
+        -- Pre-step wait (pause before this action)
+        local preWait = tonumber(step.wait) or 0
+        if preWait > 0 then
+          task.wait(math.min(preWait, 10)) -- cap at 10s to avoid hanging
+        end
+
+        if executeStep(step) then
+          stepsExecuted += 1
+        else
+          stepsFailed += 1
+        end
+      end
+
+      if requestId then
+        pushBridgeResult("simulate_input_result", requestId, {
+          status = "completed",
+          stepsExecuted = stepsExecuted,
+          stepsFailed = stepsFailed,
+          totalSteps = #data.sequence,
+        })
+      end
+    end)
+    return
+  end
+
+  -- Single action mode (backward compatible)
+  executeStep(data)
+
+  if requestId then
+    pushBridgeResult("simulate_input_result", requestId, {
+      status = "completed",
+      stepsExecuted = 1,
+      stepsFailed = 0,
+      totalSteps = 1,
+    })
+  end
 end
 
 -- Handle: get_output (read LogService history)

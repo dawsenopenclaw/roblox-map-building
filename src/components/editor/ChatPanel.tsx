@@ -2577,6 +2577,9 @@ function useSpeech(onResult: (text: string) => void) {
 }
 
 // ─── Model selector dropdown ──────────────────────────────────────────────────
+// User-facing AI model picker. Shows Auto (default), Claude Sonnet 4, GPT-4o,
+// Gemini Flash (free), and Groq Llama (free). Premium models show a lock icon
+// for free-tier users. Selection is persisted in localStorage as forje_preferred_model.
 
 function ModelSelector({
   selected,
@@ -2587,6 +2590,81 @@ function ModelSelector({
 }) {
   const [open, setOpen] = useState(false)
   const current = MODELS.find((m) => m.id === selected) ?? MODELS[0]
+
+  // Provider icon SVGs (inline, tiny)
+  const providerIcon = (modelId: string) => {
+    switch (modelId) {
+      case 'auto':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        )
+      case 'claude-sonnet-4':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z" fill="currentColor" opacity="0.8"/>
+          </svg>
+        )
+      case 'gpt-4o':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+            <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        )
+      case 'gemini-flash':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor" opacity="0.8"/>
+          </svg>
+        )
+      case 'groq-llama':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="currentColor" opacity="0.8"/>
+          </svg>
+        )
+      default:
+        return <div style={{ width: 14, height: 14 }} />
+    }
+  }
+
+  const badgeStyle = (model: (typeof MODELS)[number]): React.CSSProperties => {
+    if (model.free) {
+      return {
+        padding: '1px 6px',
+        borderRadius: 4,
+        background: 'rgba(34,197,94,0.15)',
+        color: '#4ade80',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+      }
+    }
+    if (model.premium) {
+      return {
+        padding: '1px 6px',
+        borderRadius: 4,
+        background: 'rgba(212,175,55,0.15)',
+        color: '#D4AF37',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.04em',
+      }
+    }
+    return {
+      padding: '1px 6px',
+      borderRadius: 4,
+      background: 'rgba(255,255,255,0.08)',
+      color: 'rgba(255,255,255,0.5)',
+      fontSize: 9,
+      fontWeight: 700,
+      letterSpacing: '0.04em',
+    }
+  }
 
   return (
     <div style={{ position: 'relative' }}>
@@ -2611,17 +2689,7 @@ function ModelSelector({
         <div style={{ width: 6, height: 6, borderRadius: '50%', background: current.color, flexShrink: 0 }} />
         {current.label}
         {current.badge && (
-          <span
-            style={{
-              padding: '1px 5px',
-              borderRadius: 4,
-              background: 'rgba(212,175,55,0.15)',
-              color: '#D4AF37',
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-            }}
-          >
+          <span style={badgeStyle(current)}>
             {current.badge}
           </span>
         )}
@@ -2646,10 +2714,23 @@ function ModelSelector({
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 12,
               padding: 6,
-              minWidth: 180,
+              minWidth: 260,
               boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             }}
           >
+            {/* Header */}
+            <div style={{
+              padding: '6px 10px 8px',
+              fontSize: 10,
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.35)',
+              fontFamily: 'Inter, sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}>
+              AI Model
+            </div>
+
             {MODELS.map((model) => (
               <button
                 key={model.id}
@@ -2671,15 +2752,64 @@ function ModelSelector({
                   transition: 'all 0.1s',
                 }}
               >
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: model.color, flexShrink: 0 }} />
-                <span style={{ flex: 1 }}>{model.label}</span>
+                {/* Provider icon */}
+                <div style={{ color: model.color, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                  {providerIcon(model.id)}
+                </div>
+
+                {/* Label + description */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontWeight: selected === model.id ? 600 : 400 }}>{model.label}</span>
+                    {selected === model.id && (
+                      <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8l3.5 3.5L13 5" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </div>
+                  {model.description && (
+                    <div style={{
+                      fontSize: 10,
+                      color: 'rgba(255,255,255,0.3)',
+                      marginTop: 1,
+                      lineHeight: 1.3,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {model.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Badge */}
                 {model.badge && (
-                  <span style={{ padding: '1px 5px', borderRadius: 4, background: 'rgba(212,175,55,0.15)', color: '#D4AF37', fontSize: 9, fontWeight: 700 }}>
-                    {model.badge}
+                  <span style={badgeStyle(model)}>
+                    {model.premium ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+                          <rect x="3" y="5" width="6" height="5" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                          <path d="M4.5 5V3.5a1.5 1.5 0 013 0V5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                        </svg>
+                        {model.badge}
+                      </span>
+                    ) : model.badge}
                   </span>
                 )}
               </button>
             ))}
+
+            {/* Footer hint */}
+            <div style={{
+              padding: '8px 10px 4px',
+              fontSize: 10,
+              color: 'rgba(255,255,255,0.2)',
+              fontFamily: 'Inter, sans-serif',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              marginTop: 4,
+            }}>
+              Free models have rate limits. Premium models use your token balance.
+            </div>
           </div>
         </>
       )}

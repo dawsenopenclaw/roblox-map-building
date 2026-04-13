@@ -109,10 +109,15 @@ function persistSession(sessionId: string, messages: ChatMessage[]): void {
 export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error'
 
 export type ModelId =
+  | 'auto'
+  | 'claude-sonnet-4'
+  | 'gpt-4o'
+  | 'gemini-flash'
+  | 'groq-llama'
+  // Legacy IDs kept for backward compat with persisted sessions
   | 'claude-4'
   | 'claude-3-5'
   | 'gemini-2'
-  | 'gpt-4o'
   | 'gpt-4o-mini'
   | 'o1-preview'
   | 'gpt-4o-codex'
@@ -127,6 +132,12 @@ export interface ModelOption {
   provider: string
   color: string
   badge?: string
+  /** Whether this model is available on the free tier */
+  free?: boolean
+  /** Whether this model requires a paid subscription */
+  premium?: boolean
+  /** Short description shown in the selector */
+  description?: string
 }
 
 export interface MeshResult {
@@ -167,17 +178,53 @@ export interface ChatMessage {
   executedInStudio?: boolean
 }
 
+/** Primary user-facing model options shown in the model selector dropdown. */
 export const MODELS: ModelOption[] = [
-  { id: 'gemini-2',         label: 'Forje AI',          provider: 'Free',      color: '#D4AF37', badge: 'FREE' },
-  { id: 'gpt-4o',           label: 'GPT-4o',            provider: 'OpenAI',    color: '#10A37F' },
-  { id: 'gpt-4o-mini',      label: 'GPT-4o Mini',       provider: 'OpenAI',    color: '#10A37F', badge: 'FAST' },
-  { id: 'o1-preview',       label: 'o1-preview',        provider: 'OpenAI',    color: '#10A37F', badge: 'THINK' },
-  // BUG 11: Codex — OpenAI's code-focused model, routed via the existing
-  // OpenAI integration in /api/ai/chat. Good for code review / Luau audit.
-  { id: 'gpt-4o-codex',     label: 'Codex',             provider: 'OpenAI',    color: '#10A37F', badge: 'CODE' },
-  { id: 'custom-anthropic', label: 'Claude 4',          provider: 'Your Key',  color: '#CC785C', badge: 'PRO' },
-  { id: 'custom-openai',    label: 'GPT (Your Key)',    provider: 'Your Key',  color: '#10A37F', badge: 'PRO' },
-  { id: 'custom-google',    label: 'Gemini Pro',        provider: 'Your Key',  color: '#4285F4', badge: 'PRO' },
+  {
+    id: 'auto',
+    label: 'Auto',
+    provider: 'Forje',
+    color: '#D4AF37',
+    badge: 'DEFAULT',
+    free: true,
+    description: 'Smart routing — picks the best available model',
+  },
+  {
+    id: 'claude-sonnet-4',
+    label: 'Claude Sonnet 4',
+    provider: 'Anthropic',
+    color: '#CC785C',
+    badge: 'PRO',
+    premium: true,
+    description: 'Best quality — complex builds & reasoning',
+  },
+  {
+    id: 'gpt-4o',
+    label: 'GPT-4o',
+    provider: 'OpenAI',
+    color: '#10A37F',
+    badge: 'PRO',
+    premium: true,
+    description: 'Fast & capable — great for code generation',
+  },
+  {
+    id: 'gemini-flash',
+    label: 'Gemini Flash',
+    provider: 'Google',
+    color: '#4285F4',
+    badge: 'FREE',
+    free: true,
+    description: 'Free tier — good for simple builds',
+  },
+  {
+    id: 'groq-llama',
+    label: 'Groq Llama',
+    provider: 'Groq',
+    color: '#F55036',
+    badge: 'FREE',
+    free: true,
+    description: 'Free tier — ultra-fast responses',
+  },
 ]
 
 const GUEST_TOKEN_LIMIT = 100 // guests get 100 free tokens before signup required
@@ -366,7 +413,17 @@ export function useChat(options: UseChatOptions = {}) {
   const [streaming, setStreaming] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [lastMcpResult, setLastMcpResult] = useState<McpAgentResult | null>(null)
-  const [selectedModel, setSelectedModel] = useState<ModelId>('claude-4')
+  const [selectedModel, setSelectedModelRaw] = useState<ModelId>(() => {
+    if (typeof window === 'undefined') return 'auto'
+    const stored = localStorage.getItem('forje_preferred_model')
+    // Validate that stored value is a known model ID
+    if (stored && MODELS.some((m) => m.id === stored)) return stored as ModelId
+    return 'auto'
+  })
+  const setSelectedModel = useCallback((id: ModelId) => {
+    setSelectedModelRaw(id)
+    try { localStorage.setItem('forje_preferred_model', id) } catch { /* quota exceeded */ }
+  }, [])
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [guestMessageCount, setGuestMessageCount] = useState(0)

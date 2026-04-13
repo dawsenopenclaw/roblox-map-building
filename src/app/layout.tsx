@@ -126,7 +126,7 @@ export const metadata: Metadata = {
       '@type': 'Organization',
       name: 'ForjeGames',
       url: BASE_URL,
-      logo: `${BASE_URL}/favicon.svg`,
+      logo: `${BASE_URL}/logo.png`,
       description: DEFAULT_DESCRIPTION,
       sameAs: [
         'https://twitter.com/forjegames',
