@@ -6360,6 +6360,7 @@ interface StreamResponseMeta {
   suggestions?: string[]
   intent?: string
   hasCode?: boolean
+  luauCode?: string | null
   tokensUsed?: number
   executedInStudio?: boolean
   model?: string
@@ -7277,6 +7278,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
+          luauCode: twoPassResult.luauCode,
           tokensUsed: 0,
           executedInStudio: twoPassResult.executedInStudio,
           model: 'gemini-flash',
@@ -7287,6 +7289,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         tokensUsed: 0,
         intent,
         hasCode: twoPassResult.luauCode !== null,
+        luauCode: twoPassResult.luauCode,
         model: 'gemini-flash',
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
@@ -7328,6 +7331,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           suggestions: sug,
           intent,
           hasCode: luau !== null,
+          luauCode: luau,
           tokensUsed: 0,
           executedInStudio,
           model: 'groq-llama',
@@ -7338,6 +7342,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         tokensUsed: 0,
         intent,
         hasCode: luau !== null,
+        luauCode: luau,
         model: 'groq-llama',
         executedInStudio,
         suggestions: sug,
@@ -7930,13 +7935,14 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         return undefined
       })()
       if (wantsStream) {
-        // Stream only conversation text — code is already sent to Studio via sendCodeToStudio.
-        // Including code blocks in the stream causes the frontend code-stripping regex to
-        // sometimes strip the entire response, leaving the chat bubble empty.
+        // Stream conversation text — code is sent to Studio via sendCodeToStudio
+        // but also included in meta so frontend can show "Import to Studio" button
+        // when plugin isn't connected.
         return toStreamResponse(twoPassResult.conversationText, {
           suggestions: twoPassResult.suggestions,
           intent,
           hasCode: twoPassResult.luauCode !== null,
+          luauCode: twoPassResult.luauCode,
           tokensUsed: tokenCost,
           executedInStudio: twoPassResult.executedInStudio,
           model: twoPassResult.model,
@@ -7948,6 +7954,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         tokensUsed: tokenCost,
         intent,
         hasCode: twoPassResult.luauCode !== null,
+        luauCode: twoPassResult.luauCode,
         model: twoPassResult.model,
         executedInStudio: twoPassResult.executedInStudio,
         suggestions: twoPassResult.suggestions,
