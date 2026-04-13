@@ -3197,11 +3197,15 @@ export function ChatPanel({
   const charCountWarning = input.length > MAX_INPUT * 0.85
   const showSlashHint = input === '/'
 
+  // In simplified mode, skip GlassPanel (its overflow:hidden + blur fights
+  // the flex scroll chain). Use a plain div that participates in flex layout.
+  const Wrapper = simplified ? 'div' : GlassPanel
+  const wrapperProps = simplified
+    ? { style: { flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' as const, position: 'relative' as const } }
+    : { padding: 'none' as const, style: { flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' as const, position: 'relative' as const } }
+
   return (
-    <GlassPanel
-      padding="none"
-      style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
-    >
+    <Wrapper {...wrapperProps}>
       {/* MCP Toolbar — always visible at the top */}
       {/* McpToolbar hidden — keep UI clean */}
 
@@ -4114,6 +4118,6 @@ export function ChatPanel({
           to   { transform: rotate(360deg); }
         }
       `}</style>
-    </GlassPanel>
+    </Wrapper>
   )
 }
