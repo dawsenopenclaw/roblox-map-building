@@ -3689,15 +3689,17 @@ export function ChatPanel({
             <div style={{
               display: 'flex',
               gap: 4,
+              flexWrap: 'wrap',
               animation: 'msgFadeUp 0.15s ease-out forwards',
             }}>
+              {/* AI Modes */}
               {[
-                { mode: 'build' as const, icon: '🏗️', label: 'Build', color: '#D4AF37' },
-                { mode: 'plan' as const, icon: '📋', label: 'Plan', color: '#60A5FA' },
-                { mode: 'script' as const, icon: '📝', label: 'Script', color: '#7C3AED' },
-                { mode: 'image' as const, icon: '🎨', label: 'Image', color: '#10B981' },
-                { mode: 'mesh' as const, icon: '🧊', label: '3D', color: '#F59E0B' },
-                { mode: 'think' as const, icon: '🧠', label: 'Think', color: '#EC4899' },
+                { mode: 'build' as const, icon: '🏗️', label: 'Build', color: '#D4AF37', prompt: '' },
+                { mode: 'plan' as const, icon: '📋', label: 'Plan', color: '#60A5FA', prompt: '' },
+                { mode: 'script' as const, icon: '📝', label: 'Script', color: '#7C3AED', prompt: '' },
+                { mode: 'image' as const, icon: '🎨', label: 'Image', color: '#10B981', prompt: '' },
+                { mode: 'mesh' as const, icon: '🧊', label: '3D', color: '#F59E0B', prompt: '' },
+                { mode: 'think' as const, icon: '🧠', label: 'Think', color: '#EC4899', prompt: '' },
               ].map(({ mode, icon, label, color }) => (
                 <button
                   key={mode}
@@ -3718,6 +3720,61 @@ export function ChatPanel({
                     transition: 'all 0.15s',
                     fontFamily: 'Inter, sans-serif',
                     flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+
+              {/* Separator */}
+              <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.06)', margin: '0 2px', flexShrink: 0 }} />
+
+              {/* Quick prompts — one-click actions that send pre-filled prompts */}
+              {[
+                { icon: '📍', label: 'Spawn Area', prompt: 'Build a spawn area with a lobby, teleporters, and a welcome sign' },
+                { icon: '🎯', label: 'Cursor Place', prompt: 'Place a new object exactly where my camera is looking in Studio' },
+                { icon: '✨', label: 'Enhance', prompt: 'Enhance what I just built — add more detail, better materials, lighting, and polish' },
+                { icon: '🌍', label: 'Terrain', prompt: 'Generate natural terrain with hills, water, trees, and a path system' },
+                { icon: '💡', label: 'Lighting', prompt: 'Add atmospheric lighting — ambient light, point lights, fog, and a skybox' },
+                { icon: '🎮', label: 'Game Loop', prompt: '/plan Design a complete gameplay loop with currency, upgrades, and progression' },
+                { icon: '🏪', label: 'Shop', prompt: 'Build an in-game shop with 6 items, a purchase system, and UI' },
+                { icon: '🧹', label: 'Clean Up', prompt: 'Clean up my workspace — organize parts into folders, remove duplicates, anchor everything' },
+                { icon: '🐛', label: 'Debug', prompt: '/think Look at my current build and find any bugs, missing parts, or things that could break' },
+                { icon: '🔊', label: 'Sounds', prompt: 'Add ambient sounds — background music, footstep sounds, and UI click sounds' },
+              ].map(({ icon, label, prompt }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    onSend(prompt)
+                    setInputExtrasOpen(false)
+                  }}
+                  title={prompt}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.02)',
+                    color: '#A1A1AA',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    fontFamily: 'Inter, sans-serif',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
+                    e.currentTarget.style.color = '#D4AF37'
+                    e.currentTarget.style.background = 'rgba(212,175,55,0.06)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.color = '#A1A1AA'
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
                   }}
                 >
                   <span style={{ fontSize: 11 }}>{icon}</span>
