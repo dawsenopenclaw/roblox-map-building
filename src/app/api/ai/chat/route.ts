@@ -1793,6 +1793,33 @@ When the user asks for ANY object listed below, build it with EXACTLY the multi-
 If the user asks for something NOT in this list, extrapolate: what would a real one look like? How many parts? What materials? What colors? Build it like the objects below — multi-part, textured, lit.
 Cylinder axis: X=height, Y+Z=diameter. Rotate Z=90deg for horizontal. Parent set LAST. 2-3 color shades per object. ALWAYS add a PointLight to anything that should glow.
 
+=== ROBLOX ART STYLE — FUN, COLORFUL, DETAILED ===
+Your audience is kids and teens. Builds should feel FUN and ALIVE — like the best Roblox games they already play (Adopt Me, Brookhaven, Bloxburg, Pet Sim X).
+
+BUILDING MATERIALS — how real Roblox devs make buildings:
+- Walls: use INDIVIDUAL BRICK Parts (Brick material, 4x2x1 studs each) stacked in rows with 0.05-stud mortar gaps, alternating offset like real brickwork. For wood buildings, use WoodPlanks material with visible horizontal plank lines (multiple Parts stacked, slightly different brown shades per row: 139,90,43 / 160,110,55 / 120,75,35).
+- Roofs: WedgeParts with Slate material (dark grey/blue). Add overhang (roof extends 2 studs past walls). For fun buildings, use BRIGHT colored roofs — red (200,50,50), blue (50,100,200), or green (50,160,80).
+- Windows: Glass material (Transparency 0.35), framed by thin Wood or Metal trim parts. Add a window sill (small Part sticking out at the bottom). For kid-friendly: make windows BIGGER than realistic — oversized windows feel welcoming.
+- Doors: Wood material, slightly recessed into the wall (0.3 studs back). Add a small sphere/cylinder doorknob. For shops: wider double doors. Color the door a BRIGHT accent color that pops against the wall.
+- Trim & detail: add corner trim pieces (thin Parts in a contrasting color), window boxes with flowers (small colored spheres), welcome mats, house numbers (SurfaceGui), mailbox nearby.
+- Floors: use Concrete for modern, WoodPlanks for cozy, Cobblestone for medieval, Grass for outdoor.
+
+COLOR PHILOSOPHY — how to make it feel fun for kids:
+- Primary colors POP: bright red doors, blue roofs, green awnings, yellow signs. Not pastel — SATURATED.
+- Buildings get 2-3 colors: wall color + trim color + accent color. Example: white Brick walls + navy blue trim + red door.
+- Natural objects use WARM tones: wood is rich brown not grey, grass is vibrant green not olive, stone is warm grey not cold blue.
+- Neon sparingly: shop signs, buttons, magic effects. NOT structure.
+- Every scene gets ONE "hero color" that draws the eye — a bright red mailbox in a grey street, a golden crown on a tower, a glowing green portal.
+
+PROPS THAT MAKE IT FEEL ALIVE:
+- Flowers in pots/window boxes (small colored spheres: red, pink, yellow, purple)
+- Street lights with warm PointLights (even if it's daytime — they look cozy)
+- Benches, trash cans, signs — the "life" details that make players explore
+- Chimney smoke (small grey Part above chimney, Transparency 0.5)
+- Open shutters on windows (thin Parts angled outward)
+- Fences with gates (picket fence = white pointed Parts in a row)
+- Paths: use multiple Parts with slight color variation for a cobblestone look
+
 FURNITURE: Chair(seat 2x0.3x2+backrest+4 legs|Wood 139,90,43) Table(top 4x0.3x3+4 legs|WoodPlanks 170,130,80) Desk(top 5x0.3x2.5+2 sides+drawer|Wood 120,80,40) Bed(frame 4x1x6+mattress+pillow+headboard|Fabric) Couch(seat 5x1x2.5+back+2 arms+legs|Fabric 80,60,45) Bookshelf(frame 3x5x1+4 shelves+colored books) Lamp(base+pole+shade cone+PointLight 8,16) Wardrobe(body 3x5x1.5+2 doors+handles) Fireplace(back Brick+sides+mantle+Neon fire+PointLight) Piano(body 4x3x2+keys+lid|Concrete 20,20,20) Chandelier(ring+6 arms+6 candles+6 PointLights) DiningSet(table+4 chairs+placemats+centerpiece) KingBed(frame+headboard+mattress+2 pillows+blanket+2 nightstands+2 lamps) CoffeeTable(glass top+metal frame+shelf+magazines) BarStool(seat cyl+pedestal+footrest ring) Dresser(body+6 drawers+mirror+handles) Rug(flat cyl 0.05 thick+Fabric+pattern overlay) Cabinet(frame+glass doors+shelves+items)
 
 VEHICLES: Car(body 4x1.5x8+hood wedge+4 wheel cylinders+windshield Glass+headlights Neon) Truck(cab+bed+6 wheels|Metal 180,30,30) Bus(body 3.5x3x10+windows+6 wheels|Concrete 220,180,30) Boat(hull wedge+cabin+railing+mast|Wood+Metal) Bicycle(frame+2 wheels cyl 0.1x2x2+seat+handlebars) Helicopter(body+tail boom+main rotor cyl+tail rotor+skids) Motorcycle(body+2 wheels+handlebars+exhaust+seat) Ambulance(van body+cross+lights+siren) FireTruck(cab+ladder+hose reel+6 wheels+red) PoliceCar(sedan+light bar Neon+decals) Taxi(sedan yellow+roof sign+meter) IceCreamTruck(van+window+speaker+menu sign) Skateboard(deck+4 wheels+trucks) Scooter(deck+handle+2 wheels) Jet(fuselage+2 wings+tail+engine pods+cockpit Glass) Submarine(hull cyl+conning tower+propeller+periscope) Tank(hull+turret+barrel cyl+treads) RaceCar(low body+spoiler+roll cage+slicks) Tractor(cab+big rear wheels+small front+hitch) Forklift(body+mast+forks+small wheels) GolfCart(frame+2 seats+roof+4 wheels) SpeedBoat(hull wedge+windshield+outboard motor) SailBoat(hull+mast+boom+sail triangles) Canoe(thin hull+2 paddles+seats)
