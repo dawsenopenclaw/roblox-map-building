@@ -118,16 +118,14 @@ function EditorInner() {
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
+        width: '100%',
+        height: '100vh',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         background: '#050810',
         color: '#FAFAFA',
         fontFamily: 'Inter, sans-serif',
-        zIndex: 9999,
-        isolation: 'isolate',
       }}
     >
       {/* Top bar */}
