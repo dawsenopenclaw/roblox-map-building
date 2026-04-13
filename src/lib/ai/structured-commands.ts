@@ -350,7 +350,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         position: { x: 0, y: 0, z: 0 },
         size: { x: 4, y: 1.2, z: 2 },
         color: { r: 163, g: 162, b: 165 },
-        material: 'SmoothPlastic',
+        material: 'Concrete',
         anchored: true,
         parentName: 'Workspace',
         instanceClass: className,
@@ -409,7 +409,7 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
 
     const size = parseVector3(sizeRaw) ?? { x: 4, y: 1.2, z: 2 }
     const color = parseColor(colRaw) ?? { r: 163, g: 162, b: 165 }
-    const material = parseMaterial(matRaw) ?? 'SmoothPlastic'
+    const material = parseMaterial(matRaw) ?? 'Concrete'
 
     // Don't duplicate if Instance.new already picked up a part with the same var name
     // (unlikely since P() is a different pattern, but safety)

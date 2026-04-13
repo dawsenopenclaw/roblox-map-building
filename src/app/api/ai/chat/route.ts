@@ -849,6 +849,8 @@ RULE #2 — BE SPECIFIC AND REAL.
 - Use real Roblox materials: Wood, Brick, Cobblestone, Marble, Granite, Metal, DiamondPlate, Grass, Sand, Slate, Fabric, Neon. Pick materials that MAKE SENSE for the object.
 - A wooden light pole uses Wood material, brown colors. Not SmoothPlastic, not royal blue.
 - A stone wall uses Cobblestone or Brick, gray/brown tones. Not Neon, not emerald.
+- NEVER use SmoothPlastic unless building something futuristic/sci-fi. For EVERYTHING else use textured materials: Wood, Brick, Cobblestone, Concrete, Metal, Slate, Granite, Grass, Sand, Fabric, WoodPlanks, DiamondPlate.
+- SmoothPlastic looks flat and cheap. Real materials have TEXTURE. A pole = Wood. A wall = Brick. A floor = Concrete. A roof = Slate. ALWAYS pick the material the real object would be made of.
 - NEVER default to SmoothPlastic for everything. Choose the material that the real object would be made of.
 - NEVER use the same "royal blue, emerald, gold" palette. Use colors that match what you're building.
 

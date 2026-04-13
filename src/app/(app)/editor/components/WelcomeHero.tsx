@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { PRIMARY_PRESETS } from '@/lib/game-presets'
 
 // ─── Rotating words — same pattern as the homepage hero ────────────────────
 const WORDS = ['Game', 'Tycoon', 'Obby', 'Simulator', 'RPG', 'Map', 'World']
@@ -45,9 +46,20 @@ const QUICK_ACTIONS: QuickAction[] = [
   },
 ]
 
+// ─── Full game genre cards ──────────────────────────────────────────────────
+const GENRE_CARDS = PRIMARY_PRESETS.map((p) => ({
+  id: p.id,
+  icon: p.icon,
+  label: p.label,
+  tagline: p.tagline,
+  prompt: p.prompt,
+}))
+
 interface WelcomeHeroProps {
   visible: boolean
   onQuickAction: (prompt: string, autoSend: boolean) => void
+  /** Build a full game via the step-by-step builder */
+  onBuildGame?: (prompt: string) => void
 }
 
 function RotatingWord() {
@@ -72,7 +84,7 @@ function RotatingWord() {
   )
 }
 
-export function WelcomeHero({ visible, onQuickAction }: WelcomeHeroProps) {
+export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHeroProps) {
   if (!visible) return null
 
   return (
@@ -171,6 +183,35 @@ export function WelcomeHero({ visible, onQuickAction }: WelcomeHeroProps) {
           )
         })}
       </div>
+
+      {/* Full game genre cards */}
+      {onBuildGame && (
+        <div style={{ width: '100%', maxWidth: 480 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D4AF37', marginBottom: 8, textAlign: 'center' }}>
+            Or build a complete game
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {GENRE_CARDS.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => onBuildGame(g.prompt)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                  padding: '8px 4px', borderRadius: 8,
+                  border: '1px solid rgba(212,175,55,0.2)', background: 'rgba(212,175,55,0.04)',
+                  color: '#D4AF37', fontSize: 11, fontWeight: 600,
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.12)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.04)'; e.currentTarget.style.transform = 'translateY(0)' }}
+              >
+                <span style={{ fontSize: 20 }}>{g.icon}</span>
+                <span>{g.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Slash command hint */}
       <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center' }}>

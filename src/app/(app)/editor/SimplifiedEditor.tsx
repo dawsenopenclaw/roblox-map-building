@@ -169,6 +169,14 @@ function EditorInner() {
         <WelcomeHero
           visible={!hasMessages}
           onQuickAction={handleQuickAction}
+          onBuildGame={(prompt) => {
+            if (studio.isConnected && studio.sessionId) {
+              chat.triggerStepByStepBuild(prompt, studio.sessionId)
+            } else {
+              // Fall back to regular chat when Studio isn't connected
+              chat.sendMessage(prompt)
+            }
+          }}
         />
       ) : (
         // When messages exist, ChatPanel fills the space (messages + input)
@@ -212,7 +220,13 @@ function EditorInner() {
             onImageOptionsChange={chat.setImageOptions}
             buildDirection={chat.buildDirection}
             onBuildDirectionChange={chat.setBuildDirection}
-            onBuildGame={(prompt) => { if (studio.sessionId) chat.triggerStepByStepBuild(prompt, studio.sessionId) }}
+            onBuildGame={(prompt) => {
+              if (studio.isConnected && studio.sessionId) {
+                chat.triggerStepByStepBuild(prompt, studio.sessionId)
+              } else {
+                chat.sendMessage(prompt)
+              }
+            }}
           />
         </div>
       )}
