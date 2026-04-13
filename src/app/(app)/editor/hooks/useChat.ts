@@ -2183,6 +2183,14 @@ export function useChat(options: UseChatOptions = {}) {
           return
         }
 
+        // /place <description> — place an object at camera position
+        if (cmd === 'place' && rest.trim()) {
+          const placePrompt = `Place the following at my current camera position in Studio, anchored, tagged fj_generated: ${rest.trim()}`
+          setAIMode('build')
+          sendMessage(placePrompt)
+          return
+        }
+
         // /game <prompt> — triggers the step-by-step game builder
         if (cmd === 'game' && rest.trim()) {
           if (studioConnected && studioSessionId) {

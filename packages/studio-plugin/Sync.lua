@@ -26,6 +26,16 @@ local LogService   = game:GetService("LogService")
 local Selection    = game:GetService("Selection")
 local SoundService = game:GetService("SoundService")
 local Debris       = game:GetService("Debris")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+
+-- Auto-enable HttpService on first run so the plugin can reach the
+-- ForjeGames API. Without this, the plugin silently fails to poll.
+pcall(function()
+  if not HttpService.HttpEnabled then
+    HttpService.HttpEnabled = true
+    warn("[ForjeGames] Auto-enabled HttpService.HttpEnabled for API communication")
+  end
+end)
 
 local Sync = {}
 
@@ -33,7 +43,7 @@ local Sync = {}
 -- direct-download vs Creator Store builds without hardcoding the string in
 -- two places. Store builds suffix this with "-store" at build time; the
 -- loadstring auto-enable logic in Plugin.lua:init() checks for that suffix.
-Sync.PLUGIN_VERSION = "4.6.0"
+Sync.PLUGIN_VERSION = "4.7.0"
 
 -- ============================================================
 -- Config
@@ -289,6 +299,15 @@ end
 -- ============================================================
 local function executeStructuredCommands(commands)
   if not commands or type(commands) ~= "table" then return end
+
+  -- Scoped undo: wrap the entire AI build in a single ChangeHistory
+  -- recording so the user can Ctrl+Z the whole batch without affecting
+  -- their manual work. This is the #1 UX feature from Metain that no
+  -- other competitor had — now ForjeGames has it too.
+  local recording = nil
+  pcall(function()
+    recording = ChangeHistoryService:TryBeginRecording("ForjeAI Build", "ForjeAI batch command execution")
+  end)
 
   -- Track created instances by name for parent resolution within a batch
   local createdByName = {}
@@ -598,6 +617,15 @@ end)
       warn("[ForjeGames] Structured command error (" .. tostring(cmd.type) .. "): " .. tostring(cmdErr))
     end
   end
+
+  -- Finish the scoped undo recording. All parts created in this batch
+  -- are now grouped into a single Ctrl+Z action. The user can undo the
+  -- entire AI build without affecting their manual work.
+  pcall(function()
+    if recording then
+      ChangeHistoryService:FinishRecording(recording, Enum.FinishRecordingOperation.Commit)
+    end
+  end)
 end
 
 -- ============================================================
