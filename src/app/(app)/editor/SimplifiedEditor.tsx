@@ -70,6 +70,21 @@ function EditorInner() {
     ),
   })
 
+  // ── Auto-clear chat on ?new=1 URL param ──
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('new')) {
+        chat.newChat()
+        // Clean the param so refresh doesn't re-clear
+        const url = new URL(window.location.href)
+        url.searchParams.delete('new')
+        window.history.replaceState({}, '', url.toString())
+      }
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ── Load session list for drawer ──
   useEffect(() => {
     setSessions(loadSessions())
