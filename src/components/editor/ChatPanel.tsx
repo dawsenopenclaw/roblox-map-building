@@ -3684,6 +3684,49 @@ export function ChatPanel({
             </svg>
           </button>
 
+          {/* AI quick actions — shown when extras open in simplified mode */}
+          {simplified && inputExtrasOpen && (
+            <div style={{
+              display: 'flex',
+              gap: 4,
+              animation: 'msgFadeUp 0.15s ease-out forwards',
+            }}>
+              {[
+                { mode: 'build' as const, icon: '🏗️', label: 'Build', color: '#D4AF37' },
+                { mode: 'plan' as const, icon: '📋', label: 'Plan', color: '#60A5FA' },
+                { mode: 'script' as const, icon: '📝', label: 'Script', color: '#7C3AED' },
+                { mode: 'image' as const, icon: '🎨', label: 'Image', color: '#10B981' },
+                { mode: 'mesh' as const, icon: '🧊', label: '3D', color: '#F59E0B' },
+                { mode: 'think' as const, icon: '🧠', label: 'Think', color: '#EC4899' },
+              ].map(({ mode, icon, label, color }) => (
+                <button
+                  key={mode}
+                  onClick={() => { if (onAIModeChange) onAIModeChange(mode) }}
+                  title={`Switch to ${label} mode`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '4px 8px',
+                    borderRadius: 7,
+                    border: `1px solid ${aiMode === mode ? `${color}55` : 'rgba(255,255,255,0.06)'}`,
+                    background: aiMode === mode ? `${color}15` : 'rgba(255,255,255,0.02)',
+                    color: aiMode === mode ? color : '#71717A',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    fontFamily: 'Inter, sans-serif',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontSize: 11 }}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Image upload — only shown when extras open */}
           {inputExtrasOpen && (
             <label
