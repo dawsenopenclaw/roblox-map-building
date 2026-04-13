@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import NewEditorClient from './NewEditorClient'
+import SimplifiedEditor from './SimplifiedEditor'
 import { withBetaGuard } from '@/lib/beta-guard'
 
 export const metadata: Metadata = {
@@ -12,5 +12,5 @@ export default async function EditorPage() {
   // When BETA_REQUIRED=true, bounce non-beta users to the invite page.
   // No-op in the default (public) deployment.
   await withBetaGuard()
-  return <NewEditorClient />
+  return <SimplifiedEditor />
 }
