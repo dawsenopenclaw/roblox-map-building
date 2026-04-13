@@ -103,8 +103,8 @@ export function EditorTopBar({ onOpenDrawer, onOpenApiKeys }: EditorTopBarProps)
         API Keys
       </button>
 
-      {/* Token balance */}
-      <TokenBalanceWidget />
+      {/* Token balance — compact pill for top bar */}
+      <TokenBalanceWidget compact />
 
       {/* Profile avatar */}
       {user?.imageUrl && (
