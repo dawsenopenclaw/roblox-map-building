@@ -153,7 +153,13 @@ function Starfield() {
 
 export function GlassOrbEffect() {
   const [ready, setReady] = useState(false)
-  useEffect(() => { setReady(true) }, [])
-  if (!ready) return null
+  const [pathname, setPathname] = useState('')
+  useEffect(() => {
+    setReady(true)
+    setPathname(window.location.pathname)
+  }, [])
+  // Hide on /editor — the simplified editor has its own solid background
+  // and the stars render on top of it, hiding the UI
+  if (!ready || pathname.startsWith('/editor')) return null
   return createPortal(<Starfield />, document.body)
 }

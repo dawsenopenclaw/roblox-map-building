@@ -305,7 +305,10 @@ export function SplashScreen({ children }: { children: React.ReactNode }) {
       }
     } catch { /* storage unavailable — show splash */ }
 
-    if (seen || rm) {
+    // Skip splash on /editor — the simplified editor has its own welcome
+    // screen and the splash just adds friction + hides the UI with stars.
+    const isEditor = window.location.pathname.startsWith('/editor')
+    if (seen || rm || isEditor) {
       setSplashState('done')
     } else {
       try {
