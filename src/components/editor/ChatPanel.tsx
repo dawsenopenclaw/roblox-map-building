@@ -228,6 +228,39 @@ function highlightLuau(code: string): React.ReactNode[] {
 
 // ─── LuauCodeBlock component ──────────────────────────────────────────────────
 
+// Robust clipboard copy — tries navigator.clipboard first, falls back to
+// the legacy execCommand approach for cases where the Clipboard API fails
+// silently (e.g. iframe sandboxing, focus issues, permission denied).
+function copyToClipboard(text: string): boolean {
+  // Try modern API first
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {
+      // Fallback below
+      fallbackCopy(text)
+    })
+    return true
+  }
+  return fallbackCopy(text)
+}
+
+function fallbackCopy(text: string): boolean {
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.left = '-9999px'
+    ta.style.top = '-9999px'
+    document.body.appendChild(ta)
+    ta.focus()
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 function LuauCodeBlock({
   code,
   onSendToStudio,
@@ -241,7 +274,7 @@ function LuauCodeBlock({
   const [sent, setSent] = useState(false)
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code).catch(() => {})
+    copyToClipboard(code)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -3217,16 +3250,22 @@ export function ChatPanel({
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
-          padding: compact ? '0' : hasMessages ? '20px 16px' : '0',
-          display: compact ? 'none' : 'flex',
-          flexDirection: 'column',
-          gap: 16,
+          display: compact ? 'none' : 'block',
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.06) transparent',
           background: 'linear-gradient(180deg, rgba(12,16,36,0.15) 0%, rgba(8,12,28,0.35) 100%)',
           position: 'relative',
         }}
       >
+        {/* Inner wrapper: flex-column for gap spacing, flexShrink:0 so content
+            overflows the scroll container instead of being compressed by flex. */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16,
+          padding: compact ? '0' : hasMessages ? '20px 16px' : '0',
+          minHeight: '100%',
+        }}>
         {!hasMessages ? (
           <EmptyState onQuickAction={(prompt) => onSend(prompt)} onBuildGame={onBuildGame} />
         ) : (
@@ -3315,6 +3354,7 @@ export function ChatPanel({
           </div>
         )}
         <div ref={messagesEndRef} />
+        </div>{/* end inner wrapper */}
       </div>
 
       {/* Scroll-to-bottom button */}
