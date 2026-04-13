@@ -3200,7 +3200,7 @@ export function ChatPanel({
   return (
     <GlassPanel
       padding="none"
-      style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
+      style={{ flex: '1 1 0%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
     >
       {/* MCP Toolbar — always visible at the top */}
       {/* McpToolbar hidden — keep UI clean */}
