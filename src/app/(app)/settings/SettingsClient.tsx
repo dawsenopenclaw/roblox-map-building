@@ -5,7 +5,7 @@ import { useToast } from '@/components/ui/toast-notification'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
+import { useUser, UserProfile } from '@clerk/nextjs'
 import useSWR from 'swr'
 import { NotificationPreferences } from '@/components/NotificationPreferences'
 import RobloxLinkCard from '@/components/settings/RobloxLinkCard'
@@ -1331,7 +1331,63 @@ function ConnectedTab() {
   ]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Clerk-managed sign-in methods — Google, Apple, phone, email.
+          Users can add/remove sign-in methods, connect social accounts,
+          and manage their phone number all from this embedded profile.
+          The appearance overrides match ForjeGames' dark theme. */}
+      <div className="card-premium rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center flex-shrink-0">
+            <Link2 size={20} className="text-[#D4AF37]" />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-sm">Sign-in Methods</p>
+            <p className="text-gray-400 text-xs">Add Google, phone, or other sign-in options to your account</p>
+          </div>
+        </div>
+        <UserProfile
+          routing="hash"
+          appearance={{
+            variables: {
+              colorPrimary: '#D4AF37',
+              colorBackground: 'transparent',
+              colorText: '#FAFAFA',
+              colorTextSecondary: '#A1A1AA',
+              colorInputBackground: 'rgba(255,255,255,0.03)',
+              colorInputText: '#FAFAFA',
+              borderRadius: '0.625rem',
+            },
+            elements: {
+              rootBox: 'w-full',
+              card: 'shadow-none border-0 bg-transparent p-0',
+              navbar: 'hidden',
+              navbarMobileMenuButton: 'hidden',
+              headerTitle: 'hidden',
+              headerSubtitle: 'hidden',
+              pageScrollBox: 'p-0',
+              page: 'gap-4',
+              profileSection__connectedAccounts: '',
+              profileSection__danger: 'hidden',
+              profileSection__activeDevices: 'hidden',
+              profileSection__profile: 'hidden',
+              profileSection__emailAddresses: '',
+              profileSection__phoneNumbers: '',
+              profileSection__password: 'hidden',
+              profileSection__username: 'hidden',
+              profileSectionTitle: 'text-xs text-zinc-400 uppercase tracking-wider font-bold',
+              profileSectionContent: 'border border-white/[0.06] rounded-lg bg-white/[0.02]',
+              formButtonPrimary: 'bg-[#D4AF37] hover:bg-[#E6A619] text-black font-semibold',
+              formFieldInput: 'bg-white/[0.03] border border-white/[0.08] text-white',
+              badge: 'bg-green-500/10 text-green-400 border-green-500/20',
+              menuButton: 'text-zinc-400 hover:text-white',
+              menuList: 'bg-[#111] border border-white/10',
+              menuItem: 'text-zinc-300 hover:bg-white/5',
+            },
+          }}
+        />
+      </div>
+
       {/* Verified Roblox account linking (with bio-phrase verification) */}
       <RobloxLinkCard />
 
