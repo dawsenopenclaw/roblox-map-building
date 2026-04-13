@@ -112,59 +112,109 @@ function maybeCleanup(): void {
   }
 }
 
-// ── Redis helpers ─────────────────────────────────────────────────────────────
+// ── Database helpers (replaces Redis for auth codes) ──────────────────────────
+// Auth codes MUST be shared across all Vercel Lambda instances. Redis was used
+// for this but the Upstash free tier (500K req/month) is exhausted, causing
+// the code claim to fail silently when generate and claim hit different Lambdas.
+//
+// Fix: use the Postgres database (Neon) which is always available, free, and
+// shared. No migration needed — we create the table on first use via raw SQL.
+// Competitors (Rebirth, Lemonade, Metain) all use their database for this.
 
-function getRedisInstance() {
+async function getDb() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('@/lib/redis') as { getRedis?: () => import('ioredis').Redis | null }
-    return mod.getRedis ? mod.getRedis() : null
+    const { db } = await import('@/lib/db')
+    return db
   } catch {
     return null
   }
 }
 
-async function redisSavePending(code: string, expiresAt: number): Promise<void> {
-  const r = getRedisInstance()
-  if (!r) return
+let _tableEnsured = false
+async function ensureAuthCodeTable(): Promise<void> {
+  if (_tableEnsured) return
+  const prisma = await getDb()
+  if (!prisma) return
   try {
-    await r.set(`fj:studio:pending:${code}`, String(expiresAt), 'EX', CODE_TTL_SECS)
-  } catch { /* ignore */ }
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "StudioAuthCode" (
+        "code" TEXT PRIMARY KEY,
+        "status" TEXT NOT NULL DEFAULT 'pending',
+        "expiresAt" BIGINT NOT NULL,
+        "claimedData" TEXT,
+        "claimedAt" BIGINT,
+        "createdAt" TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    // Clean up old codes (older than 10 min)
+    await prisma.$executeRawUnsafe(`
+      DELETE FROM "StudioAuthCode" WHERE "expiresAt" < ${Date.now() - 600000}
+    `)
+    _tableEnsured = true
+  } catch {
+    // Table might already exist or DB unavailable — fall through to memory
+  }
 }
 
-async function redisGetPending(code: string): Promise<PendingCode | null> {
-  const r = getRedisInstance()
-  if (!r) return null
+async function dbSavePending(code: string, expiresAt: number): Promise<void> {
+  await ensureAuthCodeTable()
+  const prisma = await getDb()
+  if (!prisma) return
   try {
-    const raw = await r.get(`fj:studio:pending:${code}`)
-    if (!raw) return null
-    return { expiresAt: parseInt(raw, 10) }
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "StudioAuthCode" ("code", "status", "expiresAt") VALUES ($1, 'pending', $2) ON CONFLICT ("code") DO UPDATE SET "status" = 'pending', "expiresAt" = $2`,
+      code, expiresAt
+    )
+  } catch { /* ignore — memory fallback still works */ }
+}
+
+async function dbGetPending(code: string): Promise<PendingCode | null> {
+  await ensureAuthCodeTable()
+  const prisma = await getDb()
+  if (!prisma) return null
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ expiresAt: bigint }>>(
+      `SELECT "expiresAt" FROM "StudioAuthCode" WHERE "code" = $1 AND "status" = 'pending'`,
+      code
+    )
+    if (!rows || rows.length === 0) return null
+    return { expiresAt: Number(rows[0].expiresAt) }
   } catch {
     return null
   }
 }
 
-async function redisDeletePending(code: string): Promise<void> {
-  const r = getRedisInstance()
-  if (!r) return
-  try { await r.del(`fj:studio:pending:${code}`) } catch { /* ignore */ }
-}
-
-async function redisSaveClaimed(code: string, data: ClaimedCode): Promise<void> {
-  const r = getRedisInstance()
-  if (!r) return
+async function dbDeletePending(code: string): Promise<void> {
+  const prisma = await getDb()
+  if (!prisma) return
   try {
-    await r.set(`fj:studio:claimed:${code}`, JSON.stringify(data), 'EX', CODE_TTL_SECS)
+    await prisma.$executeRawUnsafe(`DELETE FROM "StudioAuthCode" WHERE "code" = $1`, code)
   } catch { /* ignore */ }
 }
 
-async function redisGetClaimed(code: string): Promise<ClaimedCode | null> {
-  const r = getRedisInstance()
-  if (!r) return null
+async function dbSaveClaimed(code: string, data: ClaimedCode): Promise<void> {
+  await ensureAuthCodeTable()
+  const prisma = await getDb()
+  if (!prisma) return
   try {
-    const raw = await r.get(`fj:studio:claimed:${code}`)
-    if (!raw) return null
-    return JSON.parse(raw) as ClaimedCode
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "StudioAuthCode" ("code", "status", "expiresAt", "claimedData", "claimedAt") VALUES ($1, 'claimed', $2, $3, $4) ON CONFLICT ("code") DO UPDATE SET "status" = 'claimed', "claimedData" = $3, "claimedAt" = $4`,
+      code, Date.now() + CODE_TTL_MS, JSON.stringify(data), Date.now()
+    )
+  } catch { /* ignore */ }
+}
+
+async function dbGetClaimed(code: string): Promise<ClaimedCode | null> {
+  await ensureAuthCodeTable()
+  const prisma = await getDb()
+  if (!prisma) return null
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ claimedData: string }>>(
+      `SELECT "claimedData" FROM "StudioAuthCode" WHERE "code" = $1 AND "status" = 'claimed'`,
+      code
+    )
+    if (!rows || rows.length === 0) return null
+    return JSON.parse(rows[0].claimedData) as ClaimedCode
   } catch {
     return null
   }
@@ -179,29 +229,30 @@ async function getPendingCode(code: string): Promise<PendingCode | null> {
     if (Date.now() > mem.expiresAt) { pendingCodes.delete(code); return null }
     return mem
   }
-  // Redis fallback (different Lambda instance)
-  const fromRedis = await redisGetPending(code)
-  if (!fromRedis) return null
-  if (Date.now() > fromRedis.expiresAt) return null
-  pendingCodes.set(code, fromRedis) // hydrate
-  return fromRedis
+  // Database fallback (works across ALL Lambda instances, no Redis needed)
+  const fromDb = await dbGetPending(code)
+  if (!fromDb) return null
+  if (Date.now() > fromDb.expiresAt) return null
+  pendingCodes.set(code, fromDb) // hydrate L1 cache
+  return fromDb
 }
 
 async function markCodeClaimed(code: string, data: ClaimedCode): Promise<void> {
   claimedCodes.set(code, data)
   pendingCodes.delete(code) // no longer pending
-  // Persist so other Lambdas can see the claim
-  await redisSaveClaimed(code, data)
-  await redisDeletePending(code)
+  // Persist to database so other Lambdas can see the claim
+  await dbSaveClaimed(code, data)
+  await dbDeletePending(code)
 }
 
 async function getCodeClaim(code: string): Promise<ClaimedCode | null> {
   const mem = claimedCodes.get(code)
   if (mem) return mem
-  const fromRedis = await redisGetClaimed(code)
-  if (!fromRedis) return null
-  claimedCodes.set(code, fromRedis) // hydrate
-  return fromRedis
+  // Database fallback
+  const fromDb = await dbGetClaimed(code)
+  if (!fromDb) return null
+  claimedCodes.set(code, fromDb) // hydrate L1 cache
+  return fromDb
 }
 
 // ── Misc helpers ──────────────────────────────────────────────────────────────
@@ -277,7 +328,7 @@ export async function GET(req: NextRequest) {
 
     // Store in memory (same Lambda) and Redis (cross-Lambda)
     pendingCodes.set(code, { expiresAt })
-    await redisSavePending(code, expiresAt)
+    await dbSavePending(code, expiresAt)
 
     return NextResponse.json(
       { code, token, expiresInSeconds: CODE_TTL_MS / 1000, expiresAt },
