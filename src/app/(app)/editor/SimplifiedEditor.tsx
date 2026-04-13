@@ -155,6 +155,8 @@ function EditorInner() {
             totalTokens={chat.totalTokens}
             textareaRef={chat.textareaRef}
             suggestions={chat.suggestions}
+            onRetry={chat.resetRetryCount}
+            onDismiss={chat.dismissMessage}
             onEditAndResend={chat.editAndResend}
             onSendToStudio={handleSendToStudio}
             studioConnected={studio.isConnected}
