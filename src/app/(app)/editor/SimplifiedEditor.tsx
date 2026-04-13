@@ -36,8 +36,16 @@ function EditorInner() {
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const [sessions, setSessions] = useState<ChatSession[]>([])
 
-  // ── Studio connection (lazy — drives Send to Studio button in chat) ──
+  // ── Studio connection — auto-generate pairing code on mount ──
   const studio = useStudioConnection()
+
+  // Auto-start Studio connect flow so the pairing code is ready in the top bar
+  React.useEffect(() => {
+    if (isSignedIn && !studio.isConnected && studio.connectFlow === 'idle') {
+      studio.generateCode()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn, studio.isConnected, studio.connectFlow])
 
   // ── Chat hook — the core of everything ──
   const chat = useChat({
@@ -132,6 +140,12 @@ function EditorInner() {
       <EditorTopBar
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenApiKeys={() => setApiKeysOpen(true)}
+        studioConnected={studio.isConnected}
+        studioPlaceName={studio.placeName}
+        onConnectStudio={() => {
+          if (studio.connectFlow === 'idle') studio.generateCode()
+        }}
+        connectCode={studio.connectCode}
       />
 
       {/* Main content — either welcome hero OR chat messages */}

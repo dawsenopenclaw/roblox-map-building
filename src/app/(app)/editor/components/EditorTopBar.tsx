@@ -2,15 +2,25 @@
 
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
-import { useState } from 'react'
 import { TokenBalanceWidget } from '@/components/TokenBalanceWidget'
 
 interface EditorTopBarProps {
   onOpenDrawer: () => void
   onOpenApiKeys: () => void
+  studioConnected: boolean
+  studioPlaceName?: string | null
+  onConnectStudio: () => void
+  connectCode?: string
 }
 
-export function EditorTopBar({ onOpenDrawer, onOpenApiKeys }: EditorTopBarProps) {
+export function EditorTopBar({
+  onOpenDrawer,
+  onOpenApiKeys,
+  studioConnected,
+  studioPlaceName,
+  onConnectStudio,
+  connectCode,
+}: EditorTopBarProps) {
   const { user } = useUser()
 
   return (
@@ -18,8 +28,8 @@ export function EditorTopBar({ onOpenDrawer, onOpenApiKeys }: EditorTopBarProps)
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        padding: '0 16px',
+        gap: 8,
+        padding: '0 12px',
         height: 48,
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         background: 'rgba(5,8,16,0.8)',
@@ -69,6 +79,52 @@ export function EditorTopBar({ onOpenDrawer, onOpenApiKeys }: EditorTopBarProps)
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
+      {/* Studio connection status / connect button */}
+      {studioConnected ? (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 8,
+            background: 'rgba(34,197,94,0.08)',
+            border: '1px solid rgba(34,197,94,0.2)',
+            fontSize: 11,
+            fontWeight: 600,
+            color: '#22C55E',
+          }}
+        >
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22C55E', display: 'inline-block' }} />
+          Studio{studioPlaceName ? ` — ${studioPlaceName}` : ''}
+        </div>
+      ) : (
+        <button
+          onClick={onConnectStudio}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 8,
+            border: '1px solid rgba(212,175,55,0.25)',
+            background: 'rgba(212,175,55,0.06)',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#D4AF37',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            fontFamily: 'Inter, sans-serif',
+          }}
+          title={connectCode ? `Pairing code: ${connectCode}` : 'Connect Roblox Studio'}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+          </svg>
+          {connectCode ? `Code: ${connectCode}` : 'Connect Studio'}
+        </button>
+      )}
+
       {/* BYOK button */}
       <button
         onClick={onOpenApiKeys}
@@ -103,7 +159,7 @@ export function EditorTopBar({ onOpenDrawer, onOpenApiKeys }: EditorTopBarProps)
         API Keys
       </button>
 
-      {/* Token balance — compact pill for top bar */}
+      {/* Token balance */}
       <TokenBalanceWidget compact />
 
       {/* Profile avatar */}
