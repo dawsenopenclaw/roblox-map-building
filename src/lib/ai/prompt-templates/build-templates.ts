@@ -36,7 +36,7 @@ const CLOSING = `\n\nIMPORTANT BUILD RULES:
 - NEVER describe the build in marketing language. No "stunning", "captivating", "sleek", "vibrant", "touch of warmth", "sophistication", "grandeur", "luxurious". Talk like a real person showing a friend what they built.
 - VARY your colors. Do NOT default to "royal blue, emerald, and gold" for everything. Pick colors that match the THEME — a forest is green/brown, a city is grey/white/glass, a tycoon is industrial grey/green/yellow.
 - Use concrete stud values, part counts, and Color3.fromRGB(). Never say "a touch of" or "adding luxury".
-- Keep your text response SHORT (2-3 sentences max). The CODE is what matters, not the description.
+- Talk about your build naturally — like showing a friend. 3-6 sentences. What you built, one cool detail, and what to try next. NOT a parts list. NOT a press release.
 - Reuse parts via Clone() when possible to keep the tree tidy.`
 
 export const BUILD_TEMPLATES: Record<Genre, string> = {
