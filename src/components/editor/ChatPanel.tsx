@@ -2956,7 +2956,10 @@ export function ChatPanel({
   buildDirection = 'continue',
   onBuildDirectionChange,
   onBuildGame,
-}: ChatPanelProps) {
+  /** When true, hides mode tabs, checkpoints, enhance, build direction —
+   *  used by SimplifiedEditor for a clean chat-first experience. */
+  simplified = false,
+}: ChatPanelProps & { simplified?: boolean }) {
   const isMobile = useIsMobile()
   const internalRef = useRef<HTMLTextAreaElement>(null)
   const taRef = externalRef ?? internalRef
@@ -3388,7 +3391,7 @@ export function ChatPanel({
       )}
 
       {/* Checkpoint timeline — visual dot timeline */}
-      {checkpoints.length > 0 && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && (
+      {checkpoints.length > 0 && onRestoreToCheckpoint && onDeleteCheckpoint && !compact && !simplified && (
         <CheckpointTimeline
           checkpoints={checkpoints}
           currentMessageCount={messages.length}
@@ -3426,11 +3429,11 @@ export function ChatPanel({
           />
         )}
 
-        {/* Tip of the day — dismissable, shown for first 10 sessions */}
-        <TipOfTheDay />
+        {/* Tip of the day — hidden in simplified mode */}
+        {!simplified && <TipOfTheDay />}
 
-        {/* AI Mode Selector — ChatGPT-style mode pills */}
-        {onAIModeChange && (
+        {/* AI Mode Selector — hidden in simplified mode (icons are in the editor shell) */}
+        {!simplified && onAIModeChange && (
           <AIModeSelector
             activeMode={aiMode}
             onModeChange={onAIModeChange}
@@ -3531,14 +3534,14 @@ export function ChatPanel({
 
         {/* Auto toggles row */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {onAutoPlaytestToggle && studioConnected && (
+          {!simplified && onAutoPlaytestToggle && studioConnected && (
             <PlaytestToggle
               enabled={autoPlaytestEnabled}
               onToggle={onAutoPlaytestToggle}
               studioConnected={studioConnected}
             />
           )}
-          {onAutoEnhanceToggle && (
+          {!simplified && onAutoEnhanceToggle && (
             <EnhanceToggle
               enabled={autoEnhanceEnabled}
               onToggle={onAutoEnhanceToggle}
@@ -3546,11 +3549,8 @@ export function ChatPanel({
           )}
         </div>
 
-        {/* BUG 2: Build direction chips — lets the user pick how the next
-            prompt should relate to the current build. Only shown when we have
-            existing messages AND a change handler is wired; chips are
-            one-shot (the hook resets to "continue" after each send). */}
-        {onBuildDirectionChange && hasMessages && (
+        {/* BUG 2: Build direction chips — hidden in simplified mode */}
+        {!simplified && onBuildDirectionChange && hasMessages && (
           <div
             style={{
               display: 'flex',

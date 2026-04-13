@@ -158,6 +158,7 @@ function EditorInner() {
         // When messages exist, ChatPanel fills the space (messages + input)
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <ChatPanel
+            simplified
             messages={chat.messages}
             input={chat.input}
             setInput={chat.setInput}
