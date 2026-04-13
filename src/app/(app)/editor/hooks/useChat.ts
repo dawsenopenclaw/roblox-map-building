@@ -1425,12 +1425,18 @@ export function useChat(options: UseChatOptions = {}) {
             return result
           })
 
-          // Extract code from raw stream buffer for preview + execution
+          // Extract code: prefer luauCode from meta (server generates separately),
+          // fall back to extracting from code blocks in stream text
           let luauCode: string | null = null
           if (meta.hasCode) {
-            const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
-            if (codeBlockMatch?.[1]?.trim()) {
-              luauCode = codeBlockMatch[1].trim()
+            if ((meta as Record<string, unknown>).luauCode) {
+              luauCode = (meta as Record<string, unknown>).luauCode as string
+            }
+            if (!luauCode) {
+              const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+              if (codeBlockMatch?.[1]?.trim()) {
+                luauCode = codeBlockMatch[1].trim()
+              }
             }
           }
           luauCode = luauCode ?? meshData?.luauCode ?? null
@@ -1748,12 +1754,18 @@ export function useChat(options: UseChatOptions = {}) {
             return result
           })
 
-          // Extract code from raw stream buffer for preview + execution
+          // Extract code: prefer luauCode from meta (server generates separately),
+          // fall back to extracting from code blocks in stream text
           let luauCode: string | null = null
           if (meta.hasCode) {
-            const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
-            if (codeBlockMatch?.[1]?.trim()) {
-              luauCode = codeBlockMatch[1].trim()
+            if ((meta as Record<string, unknown>).luauCode) {
+              luauCode = (meta as Record<string, unknown>).luauCode as string
+            }
+            if (!luauCode) {
+              const codeBlockMatch = rawStreamBuffer.match(/```(?:lua|luau)?\s*\n([\s\S]*?)```/)
+              if (codeBlockMatch?.[1]?.trim()) {
+                luauCode = codeBlockMatch[1].trim()
+              }
             }
           }
           luauCode = luauCode ?? meshData?.luauCode ?? null
