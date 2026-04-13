@@ -126,7 +126,8 @@ function EditorInner() {
         background: '#050810',
         color: '#FAFAFA',
         fontFamily: 'Inter, sans-serif',
-        zIndex: 50,
+        zIndex: 9999,
+        isolation: 'isolate',
       }}
     >
       {/* Top bar */}
