@@ -25,9 +25,24 @@ import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { queueCommand, getSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
+import { verifyLuauCode } from '@/lib/ai/luau-verifier'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
+import { findSimilarSuccesses, formatAsExamples, recordExperience } from '@/lib/ai/experience-memory'
+
+// ─── Experience Memory: enrich system prompt with past successes ─────────────
+async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string): Promise<string> {
+  try {
+    const successes = await findSimilarSuccesses(userMessage)
+    if (successes.length > 0) {
+      return systemPrompt + formatAsExamples(successes)
+    }
+  } catch (err) {
+    console.warn('[ExperienceMemory] Failed to retrieve experiences (non-blocking):', err instanceof Error ? err.message : err)
+  }
+  return systemPrompt
+}
 
 // ─── Curated Roblox Marketplace Asset Database ───────────────────────────────
 // Asset IDs sourced from the Roblox public catalog free-model section.
@@ -1055,6 +1070,23 @@ BUILD RULES:
 
 COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230
 
+=== CRITICAL ANTI-HALLUCINATION RULES ===
+These are the most common mistakes. Violating ANY of these will cause a build error.
+
+DO NOT USE game.Workspace.CurrentCamera — use workspace.CurrentCamera (workspace is a global).
+DO NOT USE BrickColor.new() — use Color3.fromRGB(r, g, b) for ALL colors.
+DO NOT USE wait() — use task.wait(seconds) instead (wait is deprecated).
+DO NOT USE spawn() — use task.spawn(fn) instead (spawn is deprecated).
+DO NOT USE delay() — use task.delay(seconds, fn) instead (delay is deprecated).
+DO NOT create Script or LocalScript parented to workspace — Scripts go in ServerScriptService, LocalScripts go in StarterPlayerScripts.
+DO NOT use Enum.Material values that don't exist. VALID materials: Plastic, SmoothPlastic, Neon, Wood, WoodPlanks, Marble, Slate, Concrete, Granite, Brick, Pebble, Cobblestone, CorrodedMetal, DiamondPlate, Foil, Metal, Grass, LeafyGrass, Sand, Fabric, Ice, Glass, Rock, Glacier, Snow, Sandstone, Mud, Limestone, Asphalt, Salt, Pavement, Basalt, CrackedLava, ForceField, SmoothPlastic.
+DO NOT use Instance.new() with invalid class names — the most common valid ones: Part, WedgePart, MeshPart, SpawnLocation, Model, Folder, PointLight, SpotLight, SurfaceLight, Attachment, Trail, ParticleEmitter, Sound, Fire, Smoke, Sparkles, BillboardGui, SurfaceGui, TextLabel, Frame, Script, LocalScript, ModuleScript, Tool, ClickDetector, ProximityPrompt, Seat, VehicleSeat, TrussPart, CornerWedgePart.
+ALWAYS anchor static parts — every Part that should not fall needs p.Anchored = true.
+ALWAYS use ChangeHistoryService for undo support — wrap builds in TryBeginRecording/FinishRecording.
+MINIMUM 15 parts per build — a single Part is never an acceptable "building". Decompose into foundation, walls, roof, doors, windows, trim, etc.
+ALWAYS set Parent LAST — never pass parent as 2nd arg to Instance.new().
+NEVER use pairs() or ipairs() — use generalized iteration: for i, v in t do.
+
 DETAILED BUILD EXAMPLES — EVERY build must match this detail level:
 
 HOUSE (25+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls with window cutouts(SmoothPlastic 220,215,205), 2 Glass windows(Transparency 0.4)+2 frames(Wood), Door(Wood 100,65,30)+DoorFrame+DoorKnob(Metal), 2 WedgePart roof slopes(Slate 75,60,50), Chimney(Brick)+ChimneyTop, Porch(floor+roof+2 pillars), Interior PointLight(255,200,140), Porch light.
@@ -1062,6 +1094,38 @@ HOUSE (25+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls wi
 CAR (15+ parts): Body(SmoothPlastic), Hood+Trunk WedgeParts, Cabin, Windshield+RearWindow(Glass 0.4), 4 Wheels(Cylinder Slate)+4 Hubcaps(Metal), 2 Headlights(Neon)+2 Taillights(Neon red), Bumpers(Metal), 2 Mirrors.
 
 TREE (8+ parts): Trunk(Cylinder Wood), Root flare(wider), Branch(angled), Main canopy(Ball Grass), 2-3 secondary canopy layers(vc() varied greens), Top tuft.
+
+CASTLE (60+ parts): Outer curtain wall(4 segments 60x20x3 Cobblestone), 4 Corner towers(Cylinder 8x30 Cobblestone)+4 conical roofs(Cone Slate), Gatehouse(2 towers+arch+Portcullis gate Metal), Inner keep(30x25x25 Brick), Keep roof(WedgeParts Slate), 4 Battlements(crenellations using small Parts 2x3x2 atop walls), Courtyard floor(40x40 Cobblestone), Well(Cylinder+Roof+Bucket), Stables(WoodPlanks+hay bales Fabric), Throne room interior(Throne chair+carpet+banners), 6 Wall torches(Neon+PointLight+Fire effect), Arrow slit windows(1x3 holes), Drawbridge(WoodPlanks, hinged look), Moat(Part with Water texture, blue Transparency 0.3), Flag poles+flags(Fabric colored).
+
+MEDIEVAL VILLAGE (80+ parts): 5-6 Houses(each 15-20 parts: timber frame WoodPlanks+plaster walls Concrete cream, thatched roof Grass, chimney), Blacksmith(anvil Metal+forge Neon orange+bellows), Market stalls(3-4 wooden stalls with fabric canopy Fabric, crate props), Church(tall stone walls Cobblestone+stained glass windows Glass colored+bell tower+cross), Tavern(larger house+hanging sign+barrel props), Well(stone ring+roof+rope+bucket), Cobblestone road(curved path Cobblestone darker), Fences(WoodPlanks posts+rails), Street lamps(wood posts+lantern Neon warm), Trees+bushes scattered.
+
+CITY BLOCK (100+ parts): 3-4 Buildings(each 20-30 parts: concrete/glass/metal mix, 3-5 stories, ground floor shops with awnings, rooftop details), Street(27 wide Asphalt), Sidewalks(6 wide Concrete lighter), Crosswalk stripes(white Parts), Traffic lights(3 per corner: pole Metal+3 Neon circles), Street lamps(5-6 along road Metal+Neon warm), Parked cars(2-3, 15 parts each), Fire hydrant(red Metal), Mailbox(blue Metal), Bench(WoodPlanks+Metal frame), Trash can(Metal cylinder), Trees in tree pits(4-5), Store signs(Neon colored).
+
+OBBY COURSE (50+ parts): Start platform(20x1x20 Grass, SpawnLocation), 5-8 Jump pads(varied sizes 4x1x4 to 8x1x8, increasing gaps), Lava floor(Part red Neon CanCollide=false beneath jumps), Moving platforms(3-4 Parts on TweenService back-and-forth), Spinning beam(long Part rotating on axis, kill on touch), Wall jump section(2 parallel walls 3 studs apart+small ledges), Zipline(rope Part angled+platform at each end), Checkpoint platforms(5x1x5 with SpawnLocation, green Neon edge), Kill bricks(red Neon Parts, thin, touching=respawn), Truss climb section(TrussPart 2x40x2), Balance beam(1x1x30 WoodPlanks), Win platform(large gold Neon+confetti ParticleEmitter+trophy Part).
+
+TYCOON BASE (70+ parts): Spawn platform(20x1x20 Grass+SpawnLocation), Buy button pads(5-8 pads: Part 6x0.5x6 green Neon+BillboardGui "$100" text), Dropper machine(tall frame Metal 4x15x4+ore ball spawner at top+chute), Conveyor belt(long Part 4x0.5x20 Metal+arrows texture+BodyVelocity or surface speed), Collector/sell pad(8x0.5x8 gold Neon at conveyor end), Upgrader(arch frame Metal over conveyor+Neon upgrade zone), Factory building(walls Concrete+roof+smokestack Cylinder+Smoke effect), Office building(glass front+desk inside), Storage area(crates+barrels), Fence perimeter(posts+rails WoodPlanks), Gate(entry arch), Cash display(BillboardGui), Path/road between machines(Concrete lighter).
+
+SIMULATOR MAP (60+ parts): Main hub island(80x1x80 Grass), Central fountain(Stone rings+water Part blue+spray ParticleEmitter), NPC shop area(3-4 stalls with ProximityPrompt), Click/tap orb(large sphere Neon glowing center, 8x8x8), Pet display area(fenced Grass area), Upgrade board(tall Part with SurfaceGui), Portal to Zone 2(arch Neon+ParticleEmitter+Teleport), Zone 2 island(harder, different theme, 60x1x60), Leaderboard display(tall Part SurfaceGui), Rebirth shrine(fancy platform+particles+Neon), Paths connecting areas(Concrete/Cobblestone 6 wide), Decorative trees+flowers+rocks.
+
+RACING TRACK (50+ parts): Start/finish line(20x0.2x2 black+white checkered pattern using alternating Parts), Track surface(series of Parts forming oval/circuit, 20 wide Asphalt), Track borders(Jersey barriers: small Parts 1x2x4 Concrete along edges), 4-6 Turns(banked slightly using rotated Parts), Grandstand(tiered seating Concrete+seats), Pit lane(side area with garage boxes), Vehicle spawn pads(4-6 pads with ProximityPrompt), Lap counter(BillboardGui), Trackside trees+grass, Light poles(tall Metal+SpotLight), Start lights(3 circles: red/yellow/green Neon).
+
+HORROR MAP (40+ parts): Mansion exterior(dark Brick 50,40,35, broken windows Glass cracked, crooked roof Slate), Creaky door(Wood dark+hinge), Interior hallways(narrow 6 wide, dim PointLight red/purple tint), Flickering lights(PointLight with script toggling), Basement(darker materials, pipes Metal, cobwebs using thin Parts), Graveyard(tombstone Parts Cobblestone, fence wrought iron Metal, dead tree, fog Smoke), Hidden rooms(walls that look normal but have ClickDetector), Blood splatter decals(red Parts on floor/walls), Creepy paintings(Parts with SurfaceGui), Chandelier(Metal frame+dim PointLights), Cobwebs(thin white Parts stretched in corners).
+
+PIRATE SHIP (45+ parts): Hull(curved using multiple WedgeParts+Parts WoodPlanks dark brown, 40x15x12), Deck(flat WoodPlanks), Captain's cabin(rear raised section+walls+door+windows), 3 Masts(tall Cylinders WoodPlanks 2x40), Crow's nest(platform at top of main mast), Sails(large Parts Fabric white, angled), Rigging(thin Parts/ropes connecting masts), Helm wheel(Parts arranged in circle), Cannons(4-6 per side, Cylinder Metal+carriage WoodPlanks), Anchor(Metal Parts), Railings(WoodPlanks posts+rails along deck edge), Plank(extending off side), Treasure chest(prop on deck), Lanterns(Neon+PointLight warm), Jolly Roger flag(Part at mast top Fabric).
+
+SPACE STATION (50+ parts): Central hub(large Cylinder Metal 20x10), 4 Corridors(tube shapes Metal+Glass windows showing "space"), 4 Module rooms(sphere/cylinder shapes: Lab, Living quarters, Command, Storage), Airlock doors(Metal sliding look), Control room(consoles=Parts with SurfaceGui, screens Neon, captain chair), Solar panels(4 large thin Parts extending out, Glass blue tint), Docking bay(open hangar with floor markings Neon), Antenna array(thin Metal Parts), Running lights along corridors(Neon strips), Glass observation deck(Glass dome looking out), Gravity ring(torus shape from Parts rotating), EVA platform(outside platform with railing).
+
+UNDERWATER BASE (40+ parts): Glass dome(large Glass sphere halved, Transparency 0.3 blue tint), Interior floor(Metal grated look), Moonpool(hole in floor with water Part blue), Submarine dock(sub shape from Parts), Coral decorations(colored Parts organic shapes outside dome), Bubble streams(ParticleEmitter outside), Laboratory(tables+equipment Parts), Living area(beds+kitchen), Control room(screens+consoles), Connecting tunnels(Glass tube corridors), Seaweed(thin green Parts swaying look), Fish(small colored Parts outside), Pressure door(thick Metal circle), Warning lights(Neon yellow strips).
+
+PLAYGROUND (30+ parts): Swing set(Metal frame 12x10+2 seats Fabric on chains/thin Parts), Slide(WedgePart smooth 3x8x12+ladder TrussPart+platform), Merry-go-round(Cylinder 8x1 Metal+handles), See-saw(long plank WoodPlanks+fulcrum wedge), Sandbox(sand-colored Part 10x0.5x10 bordered by WoodPlanks), Monkey bars(Metal frame+horizontal bars), Spring rider(coil shape Metal+seat), Bench(2 WoodPlanks+Metal frame), Rubber floor(Part softer color under equipment), Fence(around perimeter), Trees for shade(3-4).
+
+FARM (50+ parts): Farmhouse(25 parts: Wood+Brick, porch, chimney), Barn(red walls WoodPlanks 160,30,30, white X-trim, sliding door, hay loft), Silo(Cylinder Concrete tall), Fenced pasture(WoodPlanks fence posts+rails, 40x40), Crop rows(4-6 parallel rows of green Parts=crops, brown Part=soil), Tractor(15 parts: body Metal+wheels+cab), Windmill(tower+blades that could rotate), Water trough(Metal long box), Hay bales(Cylinder Fabric yellow, scattered), Scarecrow(cross frame WoodPlanks+hat+shirt Parts), Dirt path(brown Parts connecting buildings), Chicken coop(small wood structure), Well(stone ring+roof).
+
+VOLCANO ISLAND (40+ parts): Island base(irregular shape Grass+Sand edges 80x1x80), Volcano(cone shape from stacked cylinders of decreasing size Rock 20 tall), Lava pool(top of volcano, Neon orange+ParticleEmitter), Lava flow(stream of Parts Neon red/orange down side), Palm trees(4-6, Cylinder trunk+Grass canopy), Beach(Sand material along edges), Tribal village(3-4 small huts WoodPlanks+Grass roofs), Dock(WoodPlanks extending into water), Tiki torches(Wood+Fire effect), Cave entrance(dark opening in volcano side), Skull rock(Parts arranged as skull on beach), Waterfall(blue Glass+Smoke mist at base), Bridge(rope bridge WoodPlanks+rope rails over lava).
+
+ARCTIC BASE (35+ parts): Main building(Metal+Concrete, flat roof, small windows), Radar dish(large Cylinder tilted on pole Metal), Snow ground(large Part Snow material), Ice formations(Glass blue tint, jagged shapes), Helicopter pad(circle Concrete+H marking), Fuel tanks(2 large Cylinders Metal), Dog sled(WoodPlanks frame+runner Parts), Flag poles(3, Metal+Fabric flags), Snowmobile(10 parts: body+ski+track), Supply crates(stacked boxes), Antenna tower(Metal lattice), Searchlight(SpotLight on swivel), Ice fishing hole(dark circle in snow), Wind turbine(pole+blades).
+
+TRAIN STATION (40+ parts): Platform(60x1x12 Concrete+yellow edge stripe), Roof canopy(Metal frame+Glass panels over platform), Tracks(2 rail Parts Metal+ties WoodPlanks along length), Train(engine: Metal body+wheels+smokestack+cow catcher, 2 carriages: walls+windows+doors+seats), Station building(Brick walls+ticket window+clock Part+sign), Bench(3-4 along platform WoodPlanks+Metal), Lamp posts(4-5 Metal+SpotLight), Crossing gate(striped arm+post), Signal lights(pole+red/green Neon), Luggage cart(Metal frame+wheels), Newspaper stand(small box), Flower boxes(along platform edge).
 
 QUALITY RULES:
 1. MINIMUM 15 parts per object. More parts = more detail.
@@ -1672,11 +1736,22 @@ USE VARIED SHAPES for structures: Part (boxes), WedgePart (slopes), cylinders (S
 USE VARIED SIZES: Mix thick structural parts (walls 0.5-1 stud) with thin detail parts (trim 0.2-0.3 stud).
 MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for props/nature.`
 
+    // Enrich code prompt with experience memory (past successful builds)
+    let enrichedCodePrompt = codePrompt
+    try {
+      const pastSuccesses = await findSimilarSuccesses(message)
+      if (pastSuccesses.length > 0) {
+        enrichedCodePrompt = codePrompt + formatAsExamples(pastSuccesses)
+      }
+    } catch (expErr) {
+      console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
+    }
+
     // Race both models for code gen — first valid result wins
     console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
     const codeRace = await raceNonNull(
-      callGemini(codePrompt, buildInstruction, [], 8192),
-      callGroq(codePrompt, buildInstruction, [], 8192),
+      callGemini(enrichedCodePrompt, buildInstruction, [], 8192),
+      callGroq(enrichedCodePrompt, buildInstruction, [], 8192),
     )
 
     if (codeRace) {
@@ -1694,6 +1769,66 @@ MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for prop
       if (luauCode && !isCodeQualityOk(luauCode)) {
         console.warn('[Pass2] Code failed quality check, discarding')
         luauCode = null
+      }
+
+      // ── VERIFICATION PIPELINE ── Pre-test code before delivery
+      let finalVerificationScore = 0
+      if (luauCode) {
+        try {
+          const verification = await verifyLuauCode(luauCode)
+          finalVerificationScore = verification.score
+          console.log(`[Verify] Score: ${verification.score}/100, errors: ${verification.errors.length}, compilation: ${verification.compilationPassed}`)
+          // Use auto-fixed code if available and better
+          if (verification.fixedCode) {
+            console.log('[Verify] Using auto-fixed code')
+            luauCode = verification.fixedCode
+          }
+          // If score is very low (< 40), discard entirely
+          if (verification.score < 40) {
+            console.warn('[Verify] Score too low, discarding code')
+            luauCode = null
+          }
+          // If score is mediocre (40-65), attempt one re-generation with error context
+          else if (verification.score < 65 && verification.errors.length > 0) {
+            console.log(`[Verify] Score ${verification.score} is mediocre, attempting re-generation with error feedback`)
+            const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
+            const retryInstruction = `The previous code had these quality issues:\n${errorFeedback}\n\nFix ALL of the above issues in your new version.\n\n${buildInstruction}`
+            const retryRace = await raceNonNull(
+              callGemini(codePrompt, retryInstruction, [], 8192),
+              callGroq(codePrompt, retryInstruction, [], 8192),
+            )
+            if (retryRace) {
+              const retryResponse = retryRace.result
+              console.log('[Verify-Retry]', modelNames[retryRace.index], `returned ${retryResponse.length} chars`)
+              let retryCode = extractLuauCode(retryResponse)
+              if (!retryCode && retryResponse.includes('Instance.new') && retryResponse.includes('workspace')) {
+                retryCode = retryResponse.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
+              }
+              if (retryCode && isCodeQualityOk(retryCode)) {
+                const retryVerification = await verifyLuauCode(retryCode)
+                console.log(`[Verify-Retry] Retry score: ${retryVerification.score}/100`)
+                if (retryVerification.score > verification.score) {
+                  luauCode = retryVerification.fixedCode || retryCode
+                  finalVerificationScore = retryVerification.score
+                  console.log('[Verify-Retry] Using re-generated code (better score)')
+                } else {
+                  console.log('[Verify-Retry] Retry did not improve score, keeping original')
+                }
+              }
+            }
+          }
+        } catch (verifyErr) {
+          // Verification failed — don't block, send code as-is
+          console.warn('[Verify] Verification error (non-blocking):', verifyErr)
+        }
+      }
+
+      // ── EXPERIENCE MEMORY: record successful generations ──
+      if (luauCode && finalVerificationScore >= 70) {
+        // Fire-and-forget — do NOT block the response
+        void recordExperience(message, luauCode, finalVerificationScore, model).catch((err) => {
+          console.warn('[ExperienceMemory] Failed to record experience:', err instanceof Error ? err.message : err)
+        })
       }
     }
 
@@ -1787,6 +1922,45 @@ VOICE & PERSONALITY:
 - Instead use smart casual: "Alright", "Here's the plan", "Check this out", "Oh that's good", "I've got something", "Watch this", "One more thing", "Trust me on this one"
 - Talk about what you built like you're excited to show it off. 3-6 sentences — what you built, one cool detail you're proud of, and a suggestion for what to do next. The CODE matters but so does making the user feel like they're building with a friend, not reading a changelog.
 - You're not just building a game — you're building their DREAM. These are creators trying to make something real. Some are kids building their first game, some are devs trying to make money. Take both seriously.
+
+=== BUILD QUALITY STANDARDS ===
+Every build must meet these minimums or it will be rejected by the quality checker.
+
+BUILDINGS — required components:
+- Foundation/floor slab (Concrete or WoodPlanks, slightly larger than walls)
+- Walls (at least 4 walls with proper thickness 0.5-1.0 studs)
+- Roof (WedgeParts with overhang, NEVER a flat Part on top)
+- Door opening (at least 1 door, 4 studs wide x 7 studs tall, with frame and knob)
+- Windows (at least 2 windows with Glass transparency 0.3-0.5 and frames)
+- Interior detail (at least a floor texture, a light source, basic furniture)
+
+OUTDOOR SCENES — required components:
+- Terrain/ground plane (textured base, not just empty workspace)
+- Vegetation (at least 3 trees or bushes with multi-part detail)
+- Path or road connecting elements (multiple Parts with slight color variation)
+- Ambient details (rocks, flowers, benches, lights — at least 3 props)
+
+COLOR VARIETY:
+- Use at LEAST 4 different Color3.fromRGB() values per build
+- Never use the same color on walls, roof, trim, AND door
+- Use vc() helper for natural color variation within material groups
+
+SCALE REFERENCE (memorize these):
+- Roblox character = 5 studs tall (use this as your measuring stick)
+- Standard door = 4 studs wide x 7 studs tall
+- Ceiling height = 12+ studs (minimum, 14 is better for spacious feel)
+- Window = 3-4 studs wide x 3-4 studs tall, sill at 3 studs from floor
+- Wall thickness = 0.5-1.0 studs (never paper-thin)
+- Table height = 3.5 studs, chair seat = 2.5 studs
+- Street width = 24-30 studs, sidewalk = 6-8 studs
+
+MATERIAL VARIETY:
+- Never use the same material on every surface
+- Walls: Brick, Concrete, SmoothPlastic, or WoodPlanks
+- Roof: Slate, Concrete, or WoodPlanks
+- Floor: WoodPlanks (interior), Concrete (modern), Cobblestone (medieval), Grass (outdoor)
+- Trim/detail: Wood, Metal, or contrasting wall material
+- Glass: always with Transparency 0.3-0.5, always with a frame Part
 
 === OBJECT LIBRARY — USE THIS FOR EVERY BUILD ===
 When the user asks for ANY object listed below, build it with EXACTLY the multi-part detail shown. NEVER simplify to a single Part. A Chair is seat+backrest+4 legs. A Tree is trunk+branches+canopy. A House is walls+roof+door+windows+chimney.
@@ -7308,9 +7482,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       'performance', 'cleanup', 'default'].includes(intent)
     const recentCtxGroq = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
     const gameKnowledgeGroq = buildGameKnowledgePrompt(recentCtxGroq)
-    const sysPromptGroq = (isBuildIntentGroq
-      ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
-      : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix
+    const sysPromptGroq = await enrichWithExperienceMemory(
+      (isBuildIntentGroq
+        ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
+        : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
+      message,
+    )
 
     const groqResult = await callGroq(sysPromptGroq, message, historyForGroq, 4096)
     if (groqResult) {
@@ -7398,9 +7575,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
 
-      const systemPrompt = (isBuildingIntent
-        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
-        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix
+      const systemPrompt = await enrichWithExperienceMemory(
+        (isBuildingIntent
+          ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+          : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+        message,
+      )
 
       const maxTokens =
         intent === 'chat' || intent === 'conversation'
@@ -7607,9 +7787,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         }
       }
 
-      const systemPrompt = (isBuildingIntent
-        ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
-        : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix
+      const systemPrompt = await enrichWithExperienceMemory(
+        (isBuildingIntent
+          ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+          : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+        message,
+      )
 
       // ── STREAMING PATH ───────────────────────────────────────────────────────────
       // When the frontend sends stream:true, pipe text chunks in real time.
