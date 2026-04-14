@@ -19,6 +19,7 @@
 import 'server-only'
 import { callAI, type AIMessage } from './provider'
 import { classifyIntent, type Intent } from './intent-classifier'
+import { createMeshyTask, pollMeshyTask, downloadMeshyAsset } from './meshy'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -272,15 +273,157 @@ Return a single Luau code block, nothing else.`
 
 const THREED_PROMPT = `You are the THREED agent for ForjeGames.
 
-Your job is to produce specifications that feed into the Meshy 3D generation pipeline. Output:
+Your job is to produce a JSON specification for the Meshy 3D generation pipeline. You MUST output valid JSON and nothing else — no markdown, no explanation, no code fences.
 
-Prompt: <clear subject description, max 20 words>
-Art style: <"low-poly", "realistic PBR", "stylized", "voxel">
-Polycount target: <low | mid | high>
-Wanted textures: <base color, normal, metallic-roughness>
-Negative: <what to avoid>
+Output this exact JSON structure:
+{
+  "models": [
+    {
+      "prompt": "<clear subject description optimized for 3D generation, max 30 words, be specific about shape/material/detail>",
+      "artStyle": "low-poly",
+      "polyTarget": 5000,
+      "type": "prop"
+    }
+  ]
+}
 
-If the user asks for multiple models, produce one block per model. If they want it placed in Studio, also return a small Luau snippet that uses InsertService:LoadAsset on the produced asset (use <RBX_ASSET_ID> as a placeholder for the async asset id).`
+Rules for the prompt field:
+- Be specific about physical appearance: materials, colors, proportions, surface detail
+- Include the object type and context (e.g. "medieval stone castle tower with crenellated battlements" not just "tower")
+- Never use abstract or emotional language — describe what the camera would see
+
+Valid artStyle values: "low-poly", "realistic", "cartoon"
+Valid type values: "building", "character", "vehicle", "weapon", "furniture", "terrain", "prop", "effect", "custom"
+polyTarget: 3000 for simple props, 5000 for mid, 8000 for detailed, 15000 for complex characters/buildings
+
+If the user asks for multiple models, include multiple objects in the models array.`
+
+// Custom run function for ThreeD that actually calls Meshy
+async function runThreeD(ctx: AgentContext): Promise<AgentResult> {
+  const started = Date.now()
+
+  // Step 1: Use AI to generate structured mesh specs from the user's prompt
+  const messages: AIMessage[] = []
+
+  if (ctx.history.length > 0) {
+    const priorSummary = ctx.history
+      .map((h) => `## ${h.agent.toUpperCase()} said\n${truncate(h.output, 1200)}`)
+      .join('\n\n')
+    messages.push({
+      role: 'system',
+      content: `Prior agent chain (for reference):\n\n${priorSummary}`,
+    })
+  }
+
+  messages.push({ role: 'user', content: ctx.userPrompt })
+
+  let specOutput = ''
+  try {
+    specOutput = await callAI(THREED_PROMPT, messages, {
+      maxTokens: 1024,
+      temperature: 0.3,
+      jsonMode: true,
+    })
+  } catch (err) {
+    return {
+      agent: 'threed',
+      output: `⚠ ThreeD agent failed to generate specs: ${err instanceof Error ? err.message : String(err)}`,
+      durationMs: Date.now() - started,
+      isTerminal: false,
+    }
+  }
+
+  // Step 2: Parse the specs and call Meshy for each model
+  const apiKey = process.env.MESHY_API_KEY
+  if (!apiKey) {
+    return {
+      agent: 'threed',
+      output: `## 3D Model Specs (Demo Mode)\n\nMESHY_API_KEY is not configured — showing specs only.\n\n\`\`\`json\n${specOutput}\n\`\`\`\n\nSet MESHY_API_KEY in your environment to generate real 3D models.`,
+      durationMs: Date.now() - started,
+      isTerminal: false,
+    }
+  }
+
+  let specs: { models: Array<{ prompt: string; artStyle: string; polyTarget: number; type: string }> }
+  try {
+    specs = JSON.parse(specOutput)
+    if (!specs.models || !Array.isArray(specs.models)) {
+      specs = { models: [{ prompt: ctx.userPrompt, artStyle: 'low-poly', polyTarget: 5000, type: 'prop' }] }
+    }
+  } catch {
+    specs = { models: [{ prompt: ctx.userPrompt, artStyle: 'low-poly', polyTarget: 5000, type: 'prop' }] }
+  }
+
+  const results: string[] = []
+
+  for (const model of specs.models.slice(0, 3)) {
+    try {
+      // Map artStyle to Meshy format
+      const meshyStyle = model.artStyle === 'realistic' ? 'pbr'
+        : model.artStyle === 'cartoon' ? 'cartoon'
+        : 'low-poly'
+
+      const taskId = await createMeshyTask({
+        prompt: model.prompt,
+        polyTarget: model.polyTarget || 5000,
+        artStyle: meshyStyle,
+        apiKey,
+      })
+
+      // Poll for completion (up to ~2 min)
+      const task = await pollMeshyTask({ taskId, apiKey, maxAttempts: 30, intervalMs: 4000 })
+
+      if (task.status === 'SUCCEEDED' && task.model_urls?.glb) {
+        const dims = model.type === 'building' ? '20, 20, 20'
+          : model.type === 'character' ? '4, 6, 4'
+          : model.type === 'vehicle' ? '12, 6, 20'
+          : model.type === 'weapon' ? '1, 8, 1'
+          : '6, 6, 6'
+
+        results.push(
+          `### ✅ ${model.prompt}\n` +
+          `- **Status:** Generated successfully\n` +
+          `- **GLB URL:** ${task.model_urls.glb}\n` +
+          `- **Polygons:** ${task.polygon_count?.toLocaleString() ?? 'unknown'}\n` +
+          `- **Thumbnail:** ${task.thumbnail_url ?? 'none'}\n` +
+          `- **Task ID:** ${taskId}\n\n` +
+          `\`\`\`lua\n` +
+          `-- Insert this 3D model into your game\n` +
+          `local meshPart = Instance.new("MeshPart")\n` +
+          `meshPart.Name = "${model.prompt.slice(0, 40).replace(/"/g, '')}"\n` +
+          `-- Upload the GLB to Roblox and replace YOUR_ASSET_ID\n` +
+          `meshPart.MeshId = "rbxassetid://YOUR_ASSET_ID"\n` +
+          `meshPart.Size = Vector3.new(${dims})\n` +
+          `meshPart.Anchored = true\n` +
+          `meshPart.Parent = workspace\n` +
+          `\`\`\``
+        )
+      } else if (task.status === 'IN_PROGRESS') {
+        results.push(
+          `### ⏳ ${model.prompt}\n` +
+          `- **Status:** Still generating (task ${taskId})\n` +
+          `- Poll GET /api/ai/mesh/status/${taskId} for updates`
+        )
+      } else {
+        results.push(`### ❌ ${model.prompt}\n- **Status:** ${task.status}`)
+      }
+    } catch (err) {
+      results.push(
+        `### ❌ ${model.prompt}\n` +
+        `- **Error:** ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+  }
+
+  const output = `## 3D Model Generation Results\n\n${results.join('\n\n')}`
+
+  return {
+    agent: 'threed',
+    output,
+    durationMs: Date.now() - started,
+    isTerminal: false,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Agent 9 — Debug (error diagnosis + fix)
@@ -318,7 +461,7 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
     title: 'Ideas',
     tagline: 'Concept brainstorming and direction',
     systemPrompt: IDEAS_PROMPT,
-    intents: ['fullgame', 'general'],
+    intents: ['fullgame', 'tycoon', 'obby', 'general'],
     keywords: ['idea', 'concept', 'brainstorm', 'suggest', 'what should', 'inspiration', 'theme', 'viral', 'trending', 'game idea', 'monetiz', 'gamepass'],
     priority: 2,
     run(ctx) { return runWithContext('ideas', IDEAS_PROMPT, ctx, { maxTokens: 3072 }) },
@@ -328,7 +471,7 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
     title: 'Plan',
     tagline: 'Ordered build plan by agent',
     systemPrompt: PLAN_PROMPT,
-    intents: ['fullgame', 'building', 'terrain'],
+    intents: ['fullgame', 'tycoon', 'obby', 'building', 'terrain'],
     keywords: ['plan', 'roadmap', 'steps', 'order', 'how do i build'],
     priority: 3,
     run(ctx) { return runWithContext('plan', PLAN_PROMPT, ctx, { maxTokens: 1536 }) },
@@ -366,20 +509,20 @@ export const AGENTS: Record<AgentName, AgentDefinition> = {
   threed: {
     name: 'threed',
     title: '3D',
-    tagline: 'Meshy-ready 3D model specs',
+    tagline: 'Real 3D mesh generation via Meshy AI',
     systemPrompt: THREED_PROMPT,
     intents: ['mesh'],
     keywords: ['3d', 'mesh', 'model', 'meshy', 'sculpt', 'asset', 'part', 'prop', 'weapon', 'vehicle'],
     priority: 5,
-    run(ctx) { return runWithContext('threed', THREED_PROMPT, ctx, { maxTokens: 1024 }) },
+    run: runThreeD,
   },
   build: {
     name: 'build',
     title: 'Build',
     tagline: 'Autonomous full-game builder',
     systemPrompt: BUILD_PROMPT,
-    intents: ['fullgame', 'building'],
-    keywords: ['build', 'make me', 'generate', 'create a game', 'construct', 'assemble'],
+    intents: ['fullgame', 'tycoon', 'obby', 'building'],
+    keywords: ['build', 'make me', 'generate', 'create a game', 'construct', 'assemble', 'tycoon', 'obby', 'simulator'],
     priority: 6,
     run(ctx) { return runWithContext('build', BUILD_PROMPT, ctx, { codeMode: true, maxTokens: 4096 }) },
   },

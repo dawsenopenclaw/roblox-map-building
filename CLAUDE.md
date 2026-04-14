@@ -160,6 +160,51 @@ Phases: **generate → deploy → playtest → observe → fix**, capped at `max
 - **Orphan routes.** `/changelog` is public but was missing from nav until commit `04efdac`. Other app routes (`/achievements`, `/business`, `/community`, etc.) are protected and only reachable via the dashboard grid.
 <!-- GSD:architecture-end -->
 
+### Obsidian Knowledge Vault — `C:\Users\Dawse\Documents\ForjeVault\`
+
+Read vault docs on-demand for deep context. Key knowledge distilled below:
+
+#### Launch Readiness (source: Business/Launch Readiness Matrix.md)
+READY (27): Clerk auth, Stripe tiers, 9-agent AI, multi-provider, image gen, 3D mesh, plugin v4.6.0, cloud sessions, age gate, prompt enhancement, structured commands, canvas editor, bridge-result, PNG compression, footer, health, WS disconnect guard, 402 balance, plugin auto-loadstring, rate limiting.
+MUST-FIX (4): smoke test, Roblox env vars, Vercel deploy check, Clerk social providers.
+NICE-TO-HAVE (10): email drip, post-build CTA, Sentry server token, Upstash upgrade, WS heartbeat, token refund, playtest screenshots, PostHog, Roblox account linking, gallery.
+
+#### AI Quality (source: Business/The 90% Plan.md + Engineering/AI_Quality_Pipeline.md)
+Current success rate ~55%. Path to 90%: Roblox Knowledge Brain (5K+ scripts) → Verification Machine (Lune syntax) → Learning Loop (user feedback) → Fine-tuned model. Pipeline: prompt → enhancement (Groq) → RAG → AI gen → Luau verify → quality score → auto-fix → structured commands. Score <40 discard, 40-65 retry, 65+ send. 30+ error→fix patterns. Templates: tycoon, obby, simulator.
+
+#### Competitive Landscape (source: Competitors/*.md)
+- **Rebirth** ($8.99, 50K users, TikTok, Rewardful affiliates, 6 SEO posts) — cheapest, no 3D/images
+- **Lemonade** ($20, 100K users, Roblox OAuth genius, $0.20/prompt expensive, boilerplate quality)
+- **Ropilot** (BYOK $40-300+/mo total, desktop app, MCP CLI, playtest input sim)
+- **ForgeGUI** (bolt.new, images only, remix gallery worth copying)
+- **BloxToolkit** (fake testimonials, 0/100 ScamAdviser trust)
+- **Our edge:** only all-inclusive (9 agents, 3D mesh, canvas, one price, no BYOK)
+
+#### Revenue Path (source: Business/Revenue Playbook.md + Zero Budget Launch Strategy.md)
+Target $30K/mo. Tiers: Free / Hobby $9.99 / Creator $24.99 / Studio $49.99. Zero budget channels: Twitter/X, YouTube Shorts, TikTok, SEO, DevForum, influencers, affiliates. 90-day plan: Week 1 fix AI+Stripe+smoke test → Week 2 build first game → Week 3 post everywhere → Week 4 first revenue ($50/mo from 5 users).
+
+#### TODO Priority (source: Engineering/TODO.md)
+P0: Studio plugin e2e, AI builds in Studio, Luau verify, chat scroll, copy button.
+P1: editor +icon options, pre-publish testing, full game building, iterative building, deploy cff39fb.
+P2: neon orbs animation, hero text, dark theme, mobile responsive.
+P3: Stripe e2e, Robux payments, token system, free tier limits.
+
+#### Known Bugs (source: Engineering/Known Bugs & Blockers.md)
+Active blockers: pgvector not installed (RAG disabled), Upstash quota (falls back L1), Clerk social email-only, Vercel deploy may be behind master. Pending: WS heartbeat, token refund (5 sites), playtest screenshots, Sentry server token, PostHog, Roblox account linking.
+
+#### AI Prompt Rules (source: Engineering/AI Prompt System.md)
+7 rules: structured commands output, NEVER SmoothPlastic (Concrete default), conversational (3-6 sentences), multi-part detail (5-6 parts per object), match scale, realistic lighting (Atmosphere/Bloom/ColorCorrection/SunRays), change when told. 400+ object library across 20 categories REQUIRED. Art style: brick walls, wood planks, bright colors, oversized windows. Banned words: stunning, captivating, vibrant, sleek, sophistication, grandeur, luxurious.
+
+### Crash Prevention (IMPORTANT)
+
+Claude Code crashes when context fills up. To stay stable:
+- **NO parallel screenshot agents** — screenshots are 100K+ tokens each
+- **Max 2 background agents at once** — not 5+
+- **Keep bash output short** — use `| head -20` or `| tail -10` on long commands
+- **Don't re-read files you just wrote** — the harness tracks state
+- **Save session handoffs every 30 minutes** — write to memory so crashes don't lose work
+- **Prefer grep/glob over agent for simple searches**
+
 <!-- GSD:workflow-start source:GSD defaults -->
 ## GSD Workflow Enforcement
 
