@@ -96,6 +96,69 @@ export interface CreateInstanceCommand {
   properties?: Record<string, unknown>
 }
 
+export interface CreateTweenCommand {
+  type: 'create_tween'
+  targetPath: string
+  tweenInfo: {
+    time: number
+    easingStyle?: string
+    easingDirection?: string
+    repeatCount?: number
+    reverses?: boolean
+    delayTime?: number
+  }
+  properties: Record<string, unknown>
+  autoPlay: boolean
+}
+
+export interface CreateSoundCommand {
+  type: 'create_sound'
+  name: string
+  soundId: string
+  parentName: string
+  properties?: Record<string, unknown>
+}
+
+export interface CreateLightCommand {
+  type: 'create_light'
+  className: 'PointLight' | 'SpotLight' | 'SurfaceLight'
+  name: string
+  parentName: string
+  properties?: Record<string, unknown>
+}
+
+export interface CreateUIModifierCommand {
+  type: 'create_ui_modifier'
+  className: 'UICorner' | 'UIStroke' | 'UIGradient' | 'UIPadding' | 'UIListLayout' | 'UIGridLayout' | 'UITableLayout' | 'UIPageLayout' | 'UIAspectRatioConstraint' | 'UISizeConstraint' | 'UITextSizeConstraint' | 'UIScale' | 'UIFlexItem'
+  name: string
+  parentName: string
+  properties?: Record<string, unknown>
+}
+
+export interface CreateProximityPromptCommand {
+  type: 'create_proximity_prompt'
+  name: string
+  parentName: string
+  properties?: Record<string, unknown>
+}
+
+export interface CreateWeldCommand {
+  type: 'create_weld'
+  name: string
+  parentName: string
+  part0Path?: string
+  part1Path?: string
+  properties?: Record<string, unknown>
+}
+
+export interface CreateDecalCommand {
+  type: 'create_decal'
+  className: 'Decal' | 'Texture'
+  name: string
+  parentName: string
+  properties?: Record<string, unknown>
+}
+
 export type StructuredCommand =
   | CreatePartCommand
   | CreateModelCommand
@@ -109,6 +172,13 @@ export type StructuredCommand =
   | CloneInstanceCommand
   | InsertAssetCommand
   | ExecuteScriptCommand
+  | CreateTweenCommand
+  | CreateSoundCommand
+  | CreateLightCommand
+  | CreateUIModifierCommand
+  | CreateProximityPromptCommand
+  | CreateWeldCommand
+  | CreateDecalCommand
 
 // ─── Translation result ───────────────────────────────────────────────────────
 
@@ -173,6 +243,38 @@ const RE_COLOR3_NEW = /Color3\.new\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.
 /** Match:  Enum.Material.MaterialName */
 const RE_ENUM_MATERIAL = /Enum\.Material\.(\w+)/
 
+/** Match:  TweenService:Create(target, TweenInfo.new(...), {prop = val, ...})
+ *  or:  local tween = TweenService:Create(...)
+ *  Captures: (1) target var, (2) TweenInfo args, (3) property table */
+const RE_TWEEN_CREATE = /(?:local\s+(\w+)\s*=\s*)?(?:\w+):Create\(\s*(\w+)\s*,\s*TweenInfo\.new\(([^)]*)\)\s*,\s*\{([^}]*)\}\s*\)/
+
+/** Match:  tween:Play()  — captures the tween variable name */
+const RE_TWEEN_PLAY = /(\w+):Play\(\)/
+
+/** Match:  Enum.EasingStyle.X */
+const RE_ENUM_EASING_STYLE = /Enum\.EasingStyle\.(\w+)/
+
+/** Match:  Enum.EasingDirection.X */
+const RE_ENUM_EASING_DIRECTION = /Enum\.EasingDirection\.(\w+)/
+
+/** Match:  Enum.NormalId.X or Enum.SurfaceType.X (for decals) */
+const RE_ENUM_FACE = /Enum\.NormalId\.(\w+)/
+
+/** Match:  UDim2.new(sx, ox, sy, oy)  or  UDim2.fromScale(sx, sy)  or  UDim2.fromOffset(ox, oy) */
+const RE_UDIM2_NEW = /UDim2\.new\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/
+const RE_UDIM2_SCALE = /UDim2\.fromScale\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/
+const RE_UDIM2_OFFSET = /UDim2\.fromOffset\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)/
+
+/** Match:  Enum.EnumType.Value  — generic enum parser */
+const RE_ENUM_GENERIC = /Enum\.(\w+)\.(\w+)/
+
+/** Match: placeAsset(assetId, position, scale, folder)
+ *  The AI's MARKETPLACE_ASSET_RULES prompt template uses this helper for trees,
+ *  lamps, furniture, etc. Without this, marketplace assets are untranslatable
+ *  on store builds (no loadstring). Captures: (1) assetId, (2) position expr,
+ *  (3) scale number, (4) folder expr */
+const RE_PLACE_ASSET = /placeAsset\(\s*(\d+)\s*,\s*((?:[^,()]|\([^)]*\))+)\s*,\s*(-?[\d.]+)\s*,\s*((?:[^,()]|\([^)]*\))+)\s*\)/
+
 /** Patterns that indicate code we cannot translate.
  *  IMPORTANT: the CODE_GENERATION_PROMPT template uses helper functions
  *  (P, getFolder, vc) and pcall wrappers that LOOK untranslatable but
@@ -190,6 +292,21 @@ const TEMPLATE_HELPER_PATTERNS = [
   /\b_forje_state\b/,           // cross-run state (intentional global)
   /\btable\.freeze\b/,          // CONFIG table
   /\bSelection:Set\b/,          // auto-select built objects
+  /\bTweenService:Create\b/,    // TweenService:Create() — handled by tween translator
+  /\b\w+:Play\(\)/,             // tween:Play() — handled by tween translator
+  /\b\w+:Destroy\(\)/,          // instance:Destroy() — cleanup, safe to skip
+  /\bfunction\s+placeAsset\b/,  // placeAsset() helper definition
+  /\bIS:LoadAsset\b/,           // InsertService:LoadAsset — handled by placeAsset translator
+  /\bInsertService:LoadAsset\b/, // same, long form
+  /\bplaceAsset\(\s*\d+/,       // placeAsset() call — translated to insert_asset
+  /\blocal\s+IS\s*=/,           // local IS = game:GetService("InsertService")
+  /\b\w+:FindFirstChildWhichIsA\b/, // common in placeAsset helper body
+  /\b\w+:GetChildren\b/,        // common in placeAsset helper body
+  /\b\w+:PivotTo\b/,            // model:PivotTo() — common in placeAsset
+  /\b\w+:ScaleTo\b/,            // model:ScaleTo() — common in placeAsset
+  /\b\w+:IsA\b/,                // type checking in helpers
+  /\b\w+:Raycast\b/,            // workspace:Raycast — used in ground detection
+  /\b\w+\.Position\.Y\b/,       // reading position — not a translatable line
 ]
 
 const UNTRANSLATABLE_PATTERNS = [
@@ -287,14 +404,117 @@ function parseBoolean(raw: string): boolean | null {
   return null
 }
 
+/** Parse UDim2.new / UDim2.fromScale / UDim2.fromOffset → typed object for plugin */
+function parseUDim2(raw: string): { type: 'UDim2'; sx: number; ox: number; sy: number; oy: number } | null {
+  const full = RE_UDIM2_NEW.exec(raw)
+  if (full) return { type: 'UDim2', sx: parseFloat(full[1]), ox: parseFloat(full[2]), sy: parseFloat(full[3]), oy: parseFloat(full[4]) }
+
+  const scale = RE_UDIM2_SCALE.exec(raw)
+  if (scale) return { type: 'UDim2', sx: parseFloat(scale[1]), ox: 0, sy: parseFloat(scale[2]), oy: 0 }
+
+  const offset = RE_UDIM2_OFFSET.exec(raw)
+  if (offset) return { type: 'UDim2', sx: 0, ox: parseFloat(offset[1]), sy: 0, oy: parseFloat(offset[2]) }
+
+  return null
+}
+
+/** Parse generic Enum.X.Y → typed object for plugin */
+function parseEnum(raw: string): { type: 'Enum'; enum: string; value: string } | null {
+  const m = RE_ENUM_GENERIC.exec(raw)
+  if (!m) return null
+  return { type: 'Enum', enum: m[1], value: m[2] }
+}
+
+/** Parse any Roblox value type from a raw Luau string.
+ *  Returns a typed object the plugin's parseStructuredValue() can handle,
+ *  or a primitive (number/boolean/string) for simple values. */
+function parseAnyValue(raw: string): unknown {
+  // Try typed values in order of specificity
+  const udim2 = parseUDim2(raw)
+  if (udim2) return udim2
+
+  const color = parseColor(raw)
+  if (color) return color
+
+  const vec = parseVector3(raw)
+  if (vec) return vec
+
+  const enumVal = parseEnum(raw)
+  if (enumVal) return enumVal
+
+  const boolVal = parseBoolean(raw)
+  if (boolVal !== null) return boolVal
+
+  const cleaned = raw.replace(/^["']|["']$/g, '').trim()
+  const numVal = parseFloat(cleaned)
+  if (!isNaN(numVal) && /^-?[\d.]+$/.test(cleaned)) return numVal
+
+  return cleaned
+}
+
 function resolveParent(raw: string): string {
   const t = raw.trim()
   // workspace / game:GetService("Workspace") → "Workspace"
   if (t === 'workspace' || t === 'game.Workspace' || /GetService\(["']Workspace["']\)/.test(t))
     return 'Workspace'
+  // Service references for GUI, environment, scripts
+  const serviceMatch = /GetService\(["'](\w+)["']\)/.exec(t)
+  if (serviceMatch) return `game:GetService("${serviceMatch[1]}")`
+  if (t === 'game.StarterGui') return 'game:GetService("StarterGui")'
+  if (t === 'game.Lighting') return 'game:GetService("Lighting")'
+  if (t === 'game.ReplicatedStorage') return 'game:GetService("ReplicatedStorage")'
+  if (t === 'game.ServerScriptService') return 'game:GetService("ServerScriptService")'
+  if (t === 'game.StarterPlayer') return 'game:GetService("StarterPlayer")'
   // local variable reference — use as-is (the plugin resolves by name)
   return t
 }
+
+// ─── Known class names handled as generic instances ──────────────────────────
+// Everything in this set goes through Pass 1 → generic accumulator → Pass 2
+// property collection → flush as specialized or create_instance commands.
+
+const KNOWN_GENERIC_CLASSES = new Set([
+  // Lights
+  'PointLight', 'SpotLight', 'SurfaceLight',
+  // Audio
+  'Sound',
+  // Organization
+  'Folder',
+  // Decals / textures
+  'Decal', 'Texture',
+  // GUI containers
+  'ScreenGui', 'Frame', 'ScrollingFrame', 'ViewportFrame', 'CanvasGroup',
+  // GUI elements
+  'TextLabel', 'TextButton', 'TextBox', 'ImageLabel', 'ImageButton',
+  // GUI 3D
+  'SurfaceGui', 'BillboardGui',
+  // UI modifiers (also handled as specialized create_ui_modifier)
+  'UICorner', 'UIStroke', 'UIGradient', 'UIPadding',
+  'UIListLayout', 'UIGridLayout', 'UITableLayout', 'UIPageLayout',
+  'UIAspectRatioConstraint', 'UISizeConstraint', 'UITextSizeConstraint', 'UIScale', 'UIFlexItem',
+  // VFX
+  'ParticleEmitter', 'Fire', 'Smoke', 'Sparkles', 'Highlight',
+  // Constraints / welds
+  'ProximityPrompt', 'WeldConstraint',
+  'Beam', 'Trail', 'Attachment',
+  // Environment
+  'Atmosphere', 'Sky', 'Clouds', 'BloomEffect', 'BlurEffect',
+  'ColorCorrectionEffect', 'DepthOfFieldEffect', 'SunRaysEffect',
+  // Gameplay
+  'SpawnLocation', 'Seat', 'VehicleSeat', 'ClickDetector',
+  'BodyVelocity', 'BodyGyro', 'BodyPosition', 'BodyForce',
+  'RopeConstraint', 'SpringConstraint', 'HingeConstraint', 'AlignPosition', 'AlignOrientation',
+  // Mesh
+  'SpecialMesh', 'BlockMesh', 'CylinderMesh',
+  // Values
+  'IntValue', 'StringValue', 'BoolValue', 'NumberValue', 'ObjectValue', 'Color3Value',
+  // Communication
+  'RemoteEvent', 'RemoteFunction', 'BindableEvent', 'BindableFunction',
+  // Other
+  'Tool', 'Humanoid', 'Animation', 'AnimationController',
+  'SelectionBox', 'SelectionSphere',
+  'SurfaceAppearance',
+])
 
 // ─── Main translator ──────────────────────────────────────────────────────────
 
@@ -357,21 +577,17 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       })
     } else if (className === 'Model') {
       modelStates.set(varName, { name: varName, parentName: 'Workspace' })
-    } else if (
-      className === 'PointLight' || className === 'SpotLight' ||
-      className === 'SurfaceLight' || className === 'Sound' ||
-      className === 'Folder' || className === 'Decal' ||
-      className === 'Texture' || className === 'SurfaceGui' ||
-      className === 'BillboardGui' || className === 'Fire' ||
-      className === 'Smoke' || className === 'Sparkles'
-    ) {
-      // Generic instance — emitted as create_instance with properties
-      // collected in Pass 2. The plugin's executeStructuredCommands handles
-      // create_instance for any Roblox className.
-      // We track them so Pass 2 can accumulate property assignments.
+    } else if (KNOWN_GENERIC_CLASSES.has(className)) {
+      // Generic instance — emitted as a specialized command type (create_sound,
+      // create_light, create_ui_modifier, create_proximity_prompt, create_weld,
+      // create_decal) or as create_instance for other classes. Properties are
+      // collected in Pass 2.
       genericInstances.set(varName, { className, name: varName, parentName: 'Workspace', properties: {} })
     } else {
-      warnings.push(`Skipped unsupported Instance.new class: ${className}`)
+      // Unknown class — still create it as a generic instance rather than dropping it.
+      // The plugin's create_instance handler can instantiate any valid Roblox class.
+      warnings.push(`Unknown class "${className}" — emitting as create_instance`)
+      genericInstances.set(varName, { className, name: varName, parentName: 'Workspace', properties: {} })
     }
   }
 
@@ -425,6 +641,117 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
         parentName: 'Workspace',
       })
     }
+  }
+
+  // Pass 1c: detect TweenService:Create() calls.
+  // Pattern: local tween = TweenService:Create(target, TweenInfo.new(time, style, dir, repeat, reverses, delay), {Prop = val})
+  // Also detects tween:Play() to set autoPlay.
+  const tweenVars = new Map<string, CreateTweenCommand>()
+  for (const line of lines) {
+    const m = RE_TWEEN_CREATE.exec(line)
+    if (!m) continue
+
+    const tweenVar = m[1] // may be undefined if no local assignment
+    const targetVar = m[2]
+    const tweenInfoArgs = m[3]
+    const propsRaw = m[4]
+
+    // Parse TweenInfo arguments: time, easingStyle, easingDirection, repeatCount, reverses, delayTime
+    const tiParts = tweenInfoArgs.split(',').map(s => s.trim())
+    const time = parseFloat(tiParts[0]) || 1
+    const easingStyle = tiParts[1] ? (RE_ENUM_EASING_STYLE.exec(tiParts[1])?.[1] ?? 'Quad') : 'Quad'
+    const easingDirection = tiParts[2] ? (RE_ENUM_EASING_DIRECTION.exec(tiParts[2])?.[1] ?? 'Out') : 'Out'
+    const repeatCount = tiParts[3] ? (parseInt(tiParts[3], 10) || 0) : 0
+    const reverses = tiParts[4] ? tiParts[4] === 'true' : false
+    const delayTime = tiParts[5] ? (parseFloat(tiParts[5]) || 0) : 0
+
+    // Parse property table: {Position = Vector3.new(x,y,z), Transparency = 0.5}
+    const properties: Record<string, unknown> = {}
+    // Split on commas that are NOT inside parentheses (to handle Vector3.new(x,y,z))
+    const propEntries = propsRaw.split(/,(?![^(]*\))/).map(s => s.trim()).filter(s => s.length > 0)
+    for (const entry of propEntries) {
+      const eqIdx = entry.indexOf('=')
+      if (eqIdx === -1) continue
+      const key = entry.slice(0, eqIdx).trim()
+      const val = entry.slice(eqIdx + 1).trim()
+      const colorVal = parseColor(val)
+      const vecVal = parseVector3(val)
+      const numVal = parseFloat(val)
+      if (colorVal) properties[key] = colorVal
+      else if (vecVal) properties[key] = vecVal
+      else if (!isNaN(numVal) && /^-?[\d.]+$/.test(val)) properties[key] = numVal
+      else if (val === 'true' || val === 'false') properties[key] = val === 'true'
+      else properties[key] = val.replace(/^["']|["']$/g, '')
+    }
+
+    // Resolve target path — use the variable name, the plugin resolves by name
+    const targetPath = targetVar
+
+    const cmd: CreateTweenCommand = {
+      type: 'create_tween',
+      targetPath,
+      tweenInfo: { time, easingStyle, easingDirection, repeatCount, reverses, delayTime },
+      properties,
+      autoPlay: false,
+    }
+
+    if (tweenVar) {
+      tweenVars.set(tweenVar, cmd)
+    } else {
+      // No variable assignment — assume auto-play
+      cmd.autoPlay = true
+      commands.push(cmd)
+    }
+  }
+
+  // Detect tween:Play() calls to set autoPlay on tracked tween variables
+  for (const line of lines) {
+    const m = RE_TWEEN_PLAY.exec(line)
+    if (!m) continue
+    const tweenCmd = tweenVars.get(m[1])
+    if (tweenCmd) tweenCmd.autoPlay = true
+  }
+
+  // Flush tween commands
+  for (const cmd of tweenVars.values()) {
+    commands.push(cmd)
+  }
+
+  // Pass 1d: detect placeAsset() calls from the MARKETPLACE_ASSET_RULES template.
+  // Pattern: placeAsset(assetId, sp+Vector3.new(x,y,z), scale, getFolder("Name"))
+  // Emits insert_asset commands so marketplace assets work on store builds.
+  for (const line of lines) {
+    const m = RE_PLACE_ASSET.exec(line)
+    if (!m) continue
+
+    const assetId = parseInt(m[1], 10)
+    const posExpr = m[2].trim()
+    // const scale = parseFloat(m[3]) // scale handled by plugin's insert_asset
+    const folderExpr = m[4].trim()
+
+    // Extract position from the position expression (usually sp+Vector3.new(x,y,z))
+    let position: { x: number; y: number; z: number } | undefined
+    const v3 = RE_VECTOR3.exec(posExpr)
+    if (v3) {
+      position = { x: parseFloat(v3[1]), y: parseFloat(v3[2]), z: parseFloat(v3[3]) }
+    }
+
+    // Extract folder name from getFolder("Name") pattern
+    let parentName = 'Workspace'
+    const folderMatch = /getFolder\(\s*["']([^"']+)["']\s*\)/.exec(folderExpr)
+    if (folderMatch) parentName = folderMatch[1]
+
+    // Extract name from comment at end of line (-- Oak Tree)
+    const commentMatch = /--\s*(.+)/.exec(line)
+    const name = commentMatch ? commentMatch[1].trim() : `Asset_${assetId}`
+
+    commands.push({
+      type: 'insert_asset',
+      assetId,
+      name,
+      position,
+      parentName,
+    })
   }
 
   // Pass 2: resolve property assignments
@@ -499,18 +826,8 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
       if (prop === 'Name') gi.name = rawVal.replace(/^["']|["']$/g, '')
       else if (prop === 'Parent') gi.parentName = resolveParent(rawVal)
       else {
-        // Store raw property value — the plugin resolves types at execution time
-        const cleaned = rawVal.replace(/^["']|["']$/g, '').trim()
-        // Try parsing common value types
-        const numVal = parseFloat(cleaned)
-        const boolVal = parseBoolean(cleaned)
-        const colorVal = parseColor(rawVal)
-        const vecVal = parseVector3(rawVal)
-        if (colorVal) gi.properties[prop] = colorVal
-        else if (vecVal) gi.properties[prop] = vecVal
-        else if (boolVal !== null) gi.properties[prop] = boolVal
-        else if (!isNaN(numVal) && /^-?[\d.]+$/.test(cleaned)) gi.properties[prop] = numVal
-        else gi.properties[prop] = cleaned
+        // Parse all Roblox value types — UDim2, Color3, Vector3, Enum, etc.
+        gi.properties[prop] = parseAnyValue(rawVal)
       }
       continue
     }
@@ -541,16 +858,108 @@ export function luauToStructuredCommands(luauCode: string): TranslationResult {
     })
   }
 
-  // Flush generic instances → create_instance commands (lights, sounds, effects)
-  const genericCommands: CreateInstanceCommand[] = []
+  // Flush generic instances → specialized command types where applicable,
+  // otherwise fall back to create_instance.
+  const LIGHT_CLASSES = new Set(['PointLight', 'SpotLight', 'SurfaceLight'])
+  const UI_MODIFIER_CLASSES = new Set([
+    'UICorner', 'UIStroke', 'UIGradient', 'UIPadding',
+    'UIListLayout', 'UIGridLayout', 'UITableLayout', 'UIPageLayout',
+    'UIAspectRatioConstraint', 'UISizeConstraint', 'UITextSizeConstraint',
+    'UIScale', 'UIFlexItem',
+  ])
+  const DECAL_CLASSES = new Set(['Decal', 'Texture'])
+  // Classes that should auto-parent to Lighting if no explicit parent set
+  const LIGHTING_CLASSES = new Set([
+    'Atmosphere', 'Sky', 'Clouds', 'BloomEffect', 'BlurEffect',
+    'ColorCorrectionEffect', 'DepthOfFieldEffect', 'SunRaysEffect',
+  ])
+
+  const genericCommands: StructuredCommand[] = []
   for (const gi of genericInstances.values()) {
-    genericCommands.push({
-      type: 'create_instance',
-      className: gi.className,
-      name: gi.name,
-      parentName: gi.parentName,
-      properties: Object.keys(gi.properties).length > 0 ? gi.properties : undefined,
-    })
+    const props = Object.keys(gi.properties).length > 0 ? gi.properties : undefined
+
+    if (gi.className === 'Sound') {
+      // Emit specialized create_sound command
+      const soundId = (gi.properties.SoundId as string) ?? ''
+      const soundProps = { ...gi.properties }
+      delete soundProps.SoundId // SoundId is a top-level field
+      genericCommands.push({
+        type: 'create_sound',
+        name: gi.name,
+        soundId,
+        parentName: gi.parentName,
+        properties: Object.keys(soundProps).length > 0 ? soundProps : undefined,
+      })
+    } else if (LIGHT_CLASSES.has(gi.className)) {
+      // Emit specialized create_light command
+      genericCommands.push({
+        type: 'create_light',
+        className: gi.className as CreateLightCommand['className'],
+        name: gi.name,
+        parentName: gi.parentName,
+        properties: props,
+      })
+    } else if (UI_MODIFIER_CLASSES.has(gi.className)) {
+      // Emit specialized create_ui_modifier command
+      genericCommands.push({
+        type: 'create_ui_modifier',
+        className: gi.className as CreateUIModifierCommand['className'],
+        name: gi.name,
+        parentName: gi.parentName,
+        properties: props,
+      })
+    } else if (gi.className === 'ProximityPrompt') {
+      // Emit specialized create_proximity_prompt command
+      genericCommands.push({
+        type: 'create_proximity_prompt',
+        name: gi.name,
+        parentName: gi.parentName,
+        properties: props,
+      })
+    } else if (gi.className === 'WeldConstraint') {
+      // Emit specialized create_weld command
+      const part0 = (gi.properties.Part0 as string) ?? undefined
+      const part1 = (gi.properties.Part1 as string) ?? undefined
+      const weldProps = { ...gi.properties }
+      delete weldProps.Part0 // Part0/Part1 are top-level fields
+      delete weldProps.Part1
+      genericCommands.push({
+        type: 'create_weld',
+        name: gi.name,
+        parentName: gi.parentName,
+        part0Path: part0,
+        part1Path: part1,
+        properties: Object.keys(weldProps).length > 0 ? weldProps : undefined,
+      })
+    } else if (DECAL_CLASSES.has(gi.className)) {
+      // Emit specialized create_decal command
+      genericCommands.push({
+        type: 'create_decal',
+        className: gi.className as CreateDecalCommand['className'],
+        name: gi.name,
+        parentName: gi.parentName,
+        properties: props,
+      })
+    } else {
+      // Smart parent defaults — if no explicit parent was set (still "Workspace"),
+      // route to the correct Roblox service based on class type
+      let parentName = gi.parentName
+      if (parentName === 'Workspace') {
+        if (LIGHTING_CLASSES.has(gi.className)) {
+          parentName = 'game:GetService("Lighting")'
+        } else if (gi.className === 'ScreenGui') {
+          parentName = 'game:GetService("StarterGui")'
+        }
+      }
+      // Fallback: generic create_instance
+      genericCommands.push({
+        type: 'create_instance',
+        className: gi.className,
+        name: gi.name,
+        parentName,
+        properties: props,
+      })
+    }
   }
 
   return {

@@ -1089,7 +1089,7 @@ NEVER use pairs() or ipairs() — use generalized iteration: for i, v in t do.
 
 DETAILED BUILD EXAMPLES — EVERY build must match this detail level:
 
-HOUSE (25+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls with window cutouts(SmoothPlastic 220,215,205), 2 Glass windows(Transparency 0.4)+2 frames(Wood), Door(Wood 100,65,30)+DoorFrame+DoorKnob(Metal), 2 WedgePart roof slopes(Slate 75,60,50), Chimney(Brick)+ChimneyTop, Porch(floor+roof+2 pillars), Interior PointLight(255,200,140), Porch light.
+HOUSE (40+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls with window cutouts(Concrete 220,215,205), 2 Glass windows(Transparency 0.4)+2 frames(Wood), Door(Wood 100,65,30)+DoorFrame+DoorKnob(Metal), 2 WedgePart roof slopes(Slate 75,60,50), Chimney(Brick)+ChimneyTop, Porch(floor+roof+2 pillars), Baseboards(thin trim along floor edges), Crown molding(thin trim along ceiling). INTERIOR: Living room(sofa Parts+coffee table+rug+bookshelf+wall art+ceiling light+floor lamp), Kitchen(counter+cabinet row+sink basin+stove top Neon), Bedroom(bed frame+mattress+nightstand+wardrobe+window curtains), Bathroom(tub+toilet+sink+mirror Part reflective). Each room separated by interior walls with doorways. PointLights in every room(255,200,140). Window sills on all windows.
 
 CAR (15+ parts): Body(SmoothPlastic), Hood+Trunk WedgeParts, Cabin, Windshield+RearWindow(Glass 0.4), 4 Wheels(Cylinder Slate)+4 Hubcaps(Metal), 2 Headlights(Neon)+2 Taillights(Neon red), Bumpers(Metal), 2 Mirrors.
 
@@ -1127,6 +1127,13 @@ ARCTIC BASE (35+ parts): Main building(Metal+Concrete, flat roof, small windows)
 
 TRAIN STATION (40+ parts): Platform(60x1x12 Concrete+yellow edge stripe), Roof canopy(Metal frame+Glass panels over platform), Tracks(2 rail Parts Metal+ties WoodPlanks along length), Train(engine: Metal body+wheels+smokestack+cow catcher, 2 carriages: walls+windows+doors+seats), Station building(Brick walls+ticket window+clock Part+sign), Bench(3-4 along platform WoodPlanks+Metal), Lamp posts(4-5 Metal+SpotLight), Crossing gate(striped arm+post), Signal lights(pole+red/green Neon), Luggage cart(Metal frame+wheels), Newspaper stand(small box), Flower boxes(along platform edge).
 
+SHOP WITH GUI (35+ parts building + full UI): BUILDING: Storefront(walls Brick, large display window Glass 0.3+frame, door+bell, awning WedgePart Fabric colored, sign SurfaceGui on Part above door). INTERIOR: Counter(L-shaped Wood+Metal top), Cash register(small Parts Metal+Neon screen), Display shelves(3-4 wall-mounted WoodPlanks+items), Product display table(center, items on top), Floor(checkered pattern alternating color tiles), Ceiling lights(3 recessed PointLight), Potted plants(2 in corners), Wall art/posters(thin Parts), Back room door, Storage shelves(behind counter). GUI: ScreenGui in StarterGui→MainFrame(Frame BackgroundColor3=30,30,30 Size=UDim2.new(0.3,0,0.5,0) AnchorPoint=0.5,0.5 Position=UDim2.new(0.5,0,0.5,0))→UICorner(CornerRadius=12)+UIStroke(Color=white Thickness=1)→TitleBar(Frame height 40px+TextLabel "Shop" Font=GothamBold 18pt white)+CloseButton(TextButton "X" top-right)→ScrollingFrame(item list)→ItemRow(Frame per item: ImageLabel+NameLabel+PriceLabel+BuyButton with UICorner+hover color). ProximityPrompt on counter to open shop GUI.
+
+INTERIOR DETAIL EXAMPLES — apply to ALL buildings:
+CAFE: Counter with espresso machine(Parts Metal+Neon indicator), display case(Glass+pastry items), 4 tables(round Wood+2 chairs each), menu board(SurfaceGui chalkboard), pendant lights(3 hanging), floor mat at entrance, tip jar on counter, plant in corner, coat hooks on wall.
+OFFICE: Reception desk(L-shape+computer monitor Part), waiting area(sofa+coffee table+magazines), 3 desk cubicles(desk+chair+monitor+keyboard+mouse pad), water cooler, filing cabinet, whiteboard(SurfaceGui), ceiling tiles pattern, carpet floor.
+BEDROOM: Bed(frame+mattress+pillow+blanket layers), nightstand(+lamp+book+alarm clock), wardrobe(double door), desk(+chair+monitor), rug(under bed), curtains(2 Parts flanking window), wall shelf(+trophies/photos), ceiling fan.
+
 QUALITY RULES:
 1. MINIMUM 15 parts per object. More parts = more detail.
 2. Use vc() for 2-3 color shades — never uniform color.
@@ -1137,6 +1144,10 @@ QUALITY RULES:
 7. Glass ALWAYS gets Transparency=0.3-0.5 and a separate frame Part.
 8. Group in Model with PrimaryPart set.
 9. NEVER build a single cube. Decompose into real components.
+10. ALWAYS include interiors — empty buildings are unacceptable. Every building needs: floor, interior walls/dividers, furniture, lighting, counter/desk/shelves as appropriate. A shop needs shelves+counter+register+display items. A house needs rooms+furniture+kitchen+bathroom fixtures.
+11. SPACE-EFFICIENT DESIGN — buildings should use their interior space well. No huge empty rooms. Fill corners with props, add detail items (potted plants, rugs, wall art, ceiling fans, light fixtures). Think like a real architect furnishing a space.
+12. GUI/UI — when building shops, games, or interactive elements, include ScreenGui with styled frames. Use UICorner(8px) for rounded edges, UIStroke(1-2px) for outlines, UIGradient for depth. Size with UDim2, not magic numbers. Every GUI needs: BackgroundColor3, BorderSizePixel=0, proper hierarchy (ScreenGui→Frame→elements).
+13. PRODUCTION QUALITY — builds should look like finished Roblox games, not prototypes. Add edge trim (thin Parts along roof edges, window sills, door frames, baseboards). Add ambient detail (wall sconces, ceiling beams, floor patterns with alternating colors, awnings over windows).
 
 === WEAPON & TOOL SYSTEMS ===
 SWORD TOOL: Tool in StarterPack, Handle Part, Grip CFrame, Activated event → raycast forward, damage on hit, cooldown, swing animation (play Animation on Humanoid), slash trail (Attachment + Trail)
