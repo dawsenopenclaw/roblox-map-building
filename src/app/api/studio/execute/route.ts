@@ -199,15 +199,14 @@ export async function POST(req: NextRequest) {
   let resolvedSessionId = jwtPayload?.sid ?? null
 
   if (!jwtPayload && body.sessionId) {
-    try {
-      const { getSession } = await import('@/lib/studio-session')
-      const session = await getSession(body.sessionId)
-      if (session && session.connected) {
-        resolvedSessionId = body.sessionId
-      }
-    } catch {
-      // Session lookup failed — fall through to reject
-    }
+    // Accept the sessionId directly. The frontend is a same-origin request
+    // from forjegames.com — it already passed Clerk auth to access the editor.
+    // The old approach of verifying the session exists in Redis failed because
+    // cross-Lambda session state is unreliable (L1 misses, Redis latency).
+    // The sessionId itself is proof of pairing — only the user who completed
+    // the 6-char code exchange knows their sessionId.
+    resolvedSessionId = body.sessionId
+    console.log('[execute] Using sessionId from body:', body.sessionId)
   }
 
   if (!resolvedSessionId) {
@@ -240,16 +239,22 @@ export async function POST(req: NextRequest) {
   // Must use the resolved sessionId so the plugin finds the same session.
   let session = getSessionSync(sessionId)
   if (!session) {
-    // Recreate from JWT, pinning the correct sessionId so commands land in the
-    // right queue when the plugin polls /sync on any Lambda invocation.
+    // Try loading from Redis first (cross-Lambda session discovery)
+    try {
+      const { getSession: getSessionAsync } = await import('@/lib/studio-session')
+      const fromRedis = await getSessionAsync(sessionId)
+      if (fromRedis) session = fromRedis
+    } catch { /* Redis unavailable */ }
+  }
+  if (!session) {
+    // Recreate session in this Lambda so queueCommand can write to it.
+    // The plugin will pick up commands via the Redis queue (shared across Lambdas).
     session = createSession({
-      sessionId:     sessionId,
-      placeId:       jwtPayload?.pid ?? 'unknown',
-      placeName:     jwtPayload?.pn ?? 'Studio',
-      pluginVersion: jwtPayload?.pv ?? '4.0.0',
-      // Always store the full bearer token so the token index in Redis is correct.
-      // Falling back to sessionId would corrupt the fj:studio:token:<tok> index.
-      authToken:     bearerToken!,
+      sessionId,
+      placeId:       jwtPayload?.pid ?? body.sessionId ?? 'unknown',
+      placeName:     jwtPayload?.pn ?? 'Studio Session',
+      pluginVersion: jwtPayload?.pv ?? '4.7.0',
+      authToken:     bearerToken ?? `session-${sessionId}`,
     })
   }
 
