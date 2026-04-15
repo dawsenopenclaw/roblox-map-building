@@ -1884,9 +1884,10 @@ USE THIS DATA:
 
     const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}
 
-OUTPUT ONLY a \`\`\`lua code block. Use the REQUIRED PATTERN (P() helper, vc(), sp placement).
+First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
+Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN (P() helper, vc(), sp placement).
 
-THINK STEP BY STEP — decompose "${message}" into physical components:
+Decompose "${message}" into physical components:
 1. What is the BASE/FOUNDATION? (floor slab, ground plate, platform) → build from Parts
 2. What are the WALLS/STRUCTURE? (exterior walls, interior dividers, columns) → build from Parts
 3. What are the OPENINGS? (door frames, window frames, glass panes with transparency) → build from Parts
