@@ -1663,32 +1663,40 @@ async function freeModelTwoPass(
   model: string
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
-
-  // Pass 1: Race both models in parallel — use whichever responds first
-  const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
   const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b']
-  const convRace = await raceNonNull(
-    callGemini(convPrompt, message, history, 512),
-    callGroq(convPrompt, message, history, 512),
-  )
 
-  if (!convRace) return null
-  const conversationText = convRace.result
-  const model = modelNames[convRace.index]
+  // Non-build intents: conversation only (no code generation)
+  if (!isBuildIntent) {
+    const convPrompt = CONVERSATION_PROMPT + (cameraContext ? '\n\n' + cameraContext : '')
+    const convRace = await raceNonNull(
+      callGemini(convPrompt, message, history, 512),
+      callGroq(convPrompt, message, history, 512),
+    )
+    if (!convRace) return null
+    const { message: cleanConv, suggestions } = extractSuggestions(convRace.result)
+    return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index] }
+  }
 
-  // Extract suggestions from conversation
-  const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
-
-  // Pass 2: Code generation (only for build intents)
+  // ── BUILD INTENTS: Single-pass — generate description + code in ONE call ──
+  // The old two-pass system was fundamentally broken: Pass 1 described "oak
+  // counters with warm PointLights" while Pass 2 independently generated
+  // SmoothPlastic boxes. The description and code were guaranteed to diverge.
+  // Now: one prompt, one model call, one coherent response.
   let luauCode: string | null = null
-  let executedInStudio = false
+  let executedInStudio: boolean | string = false
 
-  if (isBuildIntent) {
-    // Use a SHORT focused prompt for Pass 2 — the full CODE_GENERATION_PROMPT is 2900+ lines
-    // which overwhelms free models. This compact version gets reliable code output.
-    // MARKETPLACE_ASSET_RULES is prepended so the free model uses real asset IDs instead
-    // of building trees/lamps/benches from primitive Parts.
-    const codePrompt = MARKETPLACE_ASSET_RULES + `\n\nYou are a Roblox Luau code generator. Output ONLY code inside \`\`\`lua fences. No other text.
+  const codePrompt = MARKETPLACE_ASSET_RULES + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
+
+RESPONSE FORMAT (follow EXACTLY):
+1. First, write 4-6 sentences describing what you're creating. Paint the experience — what a player walking through would see and feel. Mention ONE specific detail you're proud of. End with a suggestion for what to do next.
+2. Then output the Luau code inside \`\`\`lua fences.
+
+NEVER say "I built" or "I've built" — say "Here's what I'm setting up" or "Generating" or "Putting together".
+Describe the MOOD, not a parts list. "Warm amber light spilling through oak-framed windows" NOT "Added PointLight and Glass".
+
+RULES FOR CODE:
+- Output ONLY Luau code inside the \`\`\`lua block
+- No JavaScript, no pseudocode, no Python
 
 ENVIRONMENT: Roblox Studio Edit Mode plugin. No Players, no LocalPlayer, no Character, no runtime events.
 
@@ -1855,23 +1863,43 @@ MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for prop
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
     }
 
-    // Race both models for code gen — first valid result wins
-    console.log('[Pass2] Racing code gen for:', message.slice(0, 50))
-    const codeRace = await raceNonNull(
-      callGemini(enrichedCodePrompt, buildInstruction, [], 8192),
-      callGroq(enrichedCodePrompt, buildInstruction, [], 8192),
+    // Single-pass: race both models — first valid result wins
+    console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
+    const buildRace = await raceNonNull(
+      callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 8192),
+      callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 8192),
     )
 
-    if (codeRace) {
-      const codeResponse = codeRace.result
-      console.log('[Pass2]', modelNames[codeRace.index], `returned ${codeResponse.length} chars`)
-      luauCode = extractLuauCode(codeResponse)
+    // Extract conversation text (everything before the ```lua block) and code
+    let conversationText = ''
+    let model = 'gemini-2.0-flash'
+
+    if (buildRace) {
+      const fullResponse = buildRace.result
+      model = modelNames[buildRace.index]
+      console.log('[SinglePass]', model, `returned ${fullResponse.length} chars`)
+      luauCode = extractLuauCode(fullResponse)
       // Fallback: if no ```lua block found but response contains Luau code, use it raw
-      if (!luauCode && codeResponse.includes('Instance.new') && codeResponse.includes('workspace')) {
-        luauCode = codeResponse
+      if (!luauCode && fullResponse.includes('Instance.new') && fullResponse.includes('workspace')) {
+        luauCode = fullResponse
           .replace(/^```\w*\s*/gm, '')
           .replace(/^```\s*$/gm, '')
           .trim()
+      }
+
+      // Extract conversation text — everything BEFORE the first ```lua block
+      const codeBlockStart = fullResponse.indexOf('```lua')
+      if (codeBlockStart > 0) {
+        conversationText = fullResponse.slice(0, codeBlockStart).trim()
+      } else if (codeBlockStart === -1) {
+        // No code block — entire response is conversation
+        conversationText = fullResponse.trim()
+      }
+      // Strip any trailing ``` from conversation text
+      conversationText = conversationText.replace(/```\s*$/, '').trim()
+      // Fallback: if conversation is empty, generate a generic description
+      if (!conversationText || conversationText.length < 20) {
+        conversationText = `Here's what I'm setting up for "${message}". Check your Studio — the build should appear near your camera. Let me know what you'd like to change!`
       }
       // Quality gate — reject low-quality code and tell user
       if (luauCode && !isCodeQualityOk(luauCode)) {
@@ -1942,17 +1970,29 @@ MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for prop
 
     // Auto-execute in Studio
     if (luauCode && sessionId) {
-      executedInStudio = await sendCodeToStudio(sessionId, luauCode)
+      try {
+        executedInStudio = await sendCodeToStudio(sessionId, luauCode)
+      } catch (studioErr) {
+        console.error('[SinglePass] sendCodeToStudio error:', studioErr instanceof Error ? studioErr.message : studioErr)
+      }
+    } else {
+      // Both models failed — return a generic message
+      conversationText = `I'm having trouble generating that build right now. Try again in a moment, or try describing it differently.`
     }
-  }
 
-  return {
-    conversationText: cleanConv,
-    luauCode,
-    executedInStudio,
-    suggestions,
-    model,
-  }
+    // Fallback conversation text if still empty
+    if (!conversationText || conversationText.length < 10) {
+      conversationText = `Here's what I'm setting up for "${message}". Check your Studio!`
+    }
+
+    const { message: cleanConv, suggestions } = extractSuggestions(conversationText)
+    return {
+      conversationText: cleanConv,
+      luauCode,
+      executedInStudio,
+      suggestions,
+      model,
+    }
 }
 
 // ─── Lazy Anthropic client (only created when API key is present) ──────────────
