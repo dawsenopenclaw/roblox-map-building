@@ -1067,7 +1067,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                   {/* Trial / free notice */}
                   <p className="text-center text-[11px] text-[#3D4A6A] mb-1 leading-relaxed">
                     {(tier.priceMonthly as number) > 0
-                      ? '14-day free trial · No credit card required'
+                      ? 'Free for your first two weeks · No credit card required'
                       : (
                         <span className="text-[#6B9A6B] font-semibold">
                           No credit card required — free forever
@@ -1192,7 +1192,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
             { label: 'No contracts' },
             { label: 'Cancel anytime' },
             { label: 'SSL encrypted' },
-            { label: '14-day free trial' },
+            { label: 'Free for your first two weeks' },
           ].map(({ label, icon: TrustIcon }) => (
             <span key={label} className="flex items-center gap-2 text-sm text-[#4A5580]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
