@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-15T04:05:39.596Z -->
+  <!-- Built by build-plugin.js on 2026-04-15T04:08:53.448Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -4518,7 +4518,11 @@ local function connectLiveSSE()
   local url = resolveBaseUrl() .. "/api/studio/live?sessionId=" .. HttpService:UrlEncode(_sessionId)
 
   local ok, client = pcall(function()
-    return HttpService:CreateWebStreamClient(Enum.WebStreamClientType.SSE, url, authHeaders())
+    local headers = authHeaders()
+    return HttpService:CreateWebStreamClient(Enum.WebStreamClientType.SSE, {
+      Url = url,
+      Headers = headers,
+    })
   end)
 
   if not ok or not client then
