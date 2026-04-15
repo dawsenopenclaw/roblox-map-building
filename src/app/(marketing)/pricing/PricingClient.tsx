@@ -473,10 +473,10 @@ function TokenPacksSection({
     <section className="mb-24">
       <div className="text-center mb-10">
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-          Need more tokens?
+          Choose your token pack
         </h2>
         <p className="text-[#6B7699] text-sm max-w-md mx-auto leading-relaxed">
-          Top up any plan with a one-time token pack. Packs never expire — they roll over until used.
+          One-time purchase. No subscriptions. Tokens never expire — use them whenever you want.
         </p>
       </div>
 
@@ -862,9 +862,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
           </h1>
 
           <p className="text-lg text-[#6B7699] mb-6 max-w-lg mx-auto leading-relaxed">
-            Start free. No credit card required.
-            <br />
-            Upgrade when you&apos;re ready.
+            Buy tokens. Build games. No subscriptions.
           </p>
 
           {/* Competitor differentiation */}
@@ -884,52 +882,13 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
             </p>
           </div>
 
-          {/* Billing toggle */}
-          <div className="inline-flex items-center bg-[#0A0F1E] border border-[#141C35] rounded-full p-1.5 gap-1">
-            <button
-              onClick={() => setAnnual(false)}
-              className={`px-7 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                !annual ? 'text-[#0A0810] shadow-lg' : 'text-[#6B7699] hover:text-white'
-              }`}
-              style={
-                !annual
-                  ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
-                  : {}
-              }
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              className={`px-7 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2.5 ${
-                annual ? 'text-[#0A0810] shadow-lg' : 'text-[#6B7699] hover:text-white'
-              }`}
-              style={
-                annual
-                  ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
-                  : {}
-              }
-            >
-              Annual
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors ${
-                  annual
-                    ? 'bg-black/20 text-black'
-                    : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
-                }`}
-              >
-                Save 20%
-              </span>
-            </button>
-          </div>
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Tier Cards — always visible. The gate state was removed.           */}
-        {/* All 5 tiers shown: Free, Starter, Creator, Studio, and Custom      */}
-        {/* (the CustomPricingCalculator below counts as the 5th tier).        */}
-        {/* ------------------------------------------------------------------ */}
-        {(() => {
+        {/* Token Packs — main pricing content */}
+        <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
+
+        {/* Hidden: subscription tier cards removed — tokens only */}
+        {false && (() => {
           const visibleTiers = TIERS
           return (
         <>
@@ -1128,40 +1087,6 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         })()}
 
         {/* ------------------------------------------------------------------ */}
-        {/* Enterprise Contact Us strip — for teams over $1k/month              */}
-        {/* ------------------------------------------------------------------ */}
-        <div
-          className="mt-16 mb-4 mx-auto max-w-4xl rounded-2xl px-6 py-8 flex flex-col sm:flex-row items-center gap-6 justify-between"
-          style={{
-            background: 'linear-gradient(135deg, rgba(212,175,55,0.06) 0%, rgba(124,58,237,0.06) 100%)',
-            border: '1px solid rgba(212,175,55,0.18)',
-          }}
-        >
-          <div className="flex-1 text-center sm:text-left">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: '#D4AF37' }}>
-              Enterprise &amp; Teams
-            </p>
-            <h3 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: '#FAFAFA' }}>
-              Over $1,000 / month?
-            </h3>
-            <p className="text-sm" style={{ color: '#A1A1AA' }}>
-              Unlimited seats, volume token pricing, SLA, dedicated support, SSO, invoicing.
-            </p>
-          </div>
-          <a
-            href="mailto:sales@forjegames.com?subject=Enterprise%20plan%20inquiry%20(%3E%20%241k%2Fmonth)&body=Team%20size%3A%20%0AEstimated%20monthly%20tokens%3A%20%0AUse%20case%3A%20"
-            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 flex-shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
-              color: '#0A0810',
-              boxShadow: '0 10px 30px rgba(212,175,55,0.25)',
-            }}
-          >
-            Contact sales →
-          </a>
-        </div>
-
-        {/* ------------------------------------------------------------------ */}
         {/* Pay with Robux                                                      */}
         {/* ------------------------------------------------------------------ */}
         <div className="mb-24 mt-24">
@@ -1198,116 +1123,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
           ))}
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Comparison table                                                    */}
-        {/* ------------------------------------------------------------------ */}
-        <div className="mb-24">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Compare plans</h2>
-            <p className="text-[#6B7699] text-sm">Everything you need to pick the right plan.</p>
-          </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-[#141C35]">
-            <table className="w-full min-w-[640px] border-collapse">
-              <thead>
-                <tr
-                  className="border-b border-[#141C35]"
-                  style={{ background: 'linear-gradient(90deg, #0D1020 0%, #0A0E1A 100%)' }}
-                >
-                  <th className="text-left py-5 px-6 text-[15px] font-semibold text-[#6B7699] w-[30%]">
-                    Feature
-                  </th>
-                  {TIERS.map((tier) => (
-                    <th
-                      key={tier.key}
-                      className={`text-center py-5 px-4 text-[15px] font-bold ${
-                        tier.highlight ? 'text-[#D4AF37]' : 'text-white'
-                      }`}
-                      style={tier.highlight ? { background: 'rgba(212,175,55,0.07)' } : {}}
-                    >
-                      <div className="flex flex-col items-center gap-1">
-                        <span>{tier.name}</span>
-                        <span className="text-sm font-normal text-[#4A5580]">
-                          {annual
-                            ? tier.priceYearly === 0
-                              ? 'Free'
-                              : `${formatPrice(tier.priceYearly as number)}/mo`
-                            : tier.priceMonthly === 0
-                            ? 'Free'
-                            : `${formatPrice(tier.priceMonthly as number)}/mo`}
-                        </span>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE_FEATURES.map((row, i) => (
-                  <tr
-                    key={row.label}
-                    className={`border-b border-[#0E1428] transition-colors hover:bg-white/[0.015] ${
-                      i % 2 === 0 ? 'bg-[#080C1A]' : 'bg-[#0A0F1E]'
-                    }`}
-                  >
-                    <td className="py-4 px-6 text-[15px] text-[#8B95B0]">{row.label}</td>
-                    <td className="py-4 px-4 text-center">
-                      <CompareCell value={row.free} />
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <CompareCell value={row.starter} />
-                    </td>
-                    <td
-                      className="py-4 px-4 text-center"
-                      style={{
-                        background: i % 2 === 0
-                          ? 'rgba(212,175,55,0.04)'
-                          : 'rgba(212,175,55,0.025)',
-                      }}
-                    >
-                      <CompareCell value={row.creator} isCreator />
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <CompareCell value={row.studio} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-[#141C35]">
-                  <td className="py-6 px-6 bg-[#0A0F1E]" />
-                  {TIERS.map((tier) => (
-                    <td
-                      key={tier.key}
-                      className="py-6 px-4 text-center"
-                      style={tier.highlight ? { background: 'rgba(212,175,55,0.06)' } : { background: '#0A0F1E' }}
-                    >
-                      <Link
-                        href={tier.ctaHref}
-                        className={`inline-block text-sm font-bold py-3 px-6 rounded-xl transition-all duration-200 ${
-                          tier.highlight
-                            ? 'text-[#0A0810] hover:opacity-90 shadow-[0_4px_18px_rgba(212,175,55,0.4)]'
-                            : 'border border-[#1E2A4A] text-[#CBD2E8] hover:border-[#2A3870] hover:bg-white/[0.04]'
-                        }`}
-                        style={
-                          tier.highlight
-                            ? { background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }
-                            : {}
-                        }
-                      >
-                        {tier.cta}
-                      </Link>
-                    </td>
-                  ))}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        {/* ------------------------------------------------------------------ */}
-        {/* Token Packs Section                                                 */}
-        {/* ------------------------------------------------------------------ */}
-        <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
+        {/* Comparison table and duplicate token packs removed — tokens-only model */}
 
         {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}
