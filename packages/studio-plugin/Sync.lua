@@ -2469,7 +2469,7 @@ local function connectLiveSSE()
   local url = resolveBaseUrl() .. "/api/studio/live?sessionId=" .. HttpService:UrlEncode(_sessionId)
 
   local ok, client = pcall(function()
-    return HttpService:CreateWebStreamClient(Enum.WebStreamClientType.Sse, url, {
+    return HttpService:CreateWebStreamClient(Enum.WebStreamClientType.ServerSentEvents, url, {
       Headers = authHeaders(),
     })
   end)
