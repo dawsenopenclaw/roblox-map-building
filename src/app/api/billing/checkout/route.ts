@@ -113,7 +113,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid checkout type' }, { status: 400 })
   } catch (err) {
     Sentry.captureException(err, { tags: { route: 'billing/checkout' } })
-    console.error('[billing/checkout] Unhandled error', err)
-    return NextResponse.json({ error: 'Service temporarily unavailable — please try again later' }, { status: 503 })
+    const errMsg = err instanceof Error ? err.message : String(err)
+    console.error('[billing/checkout] Unhandled error', errMsg, err)
+    return NextResponse.json({
+      error: process.env.NODE_ENV === 'production'
+        ? `Checkout failed: ${errMsg.slice(0, 200)}`
+        : `Checkout failed: ${errMsg}`,
+    }, { status: 503 })
   }
 }
