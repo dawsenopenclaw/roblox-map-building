@@ -2483,14 +2483,11 @@ local function connectLiveSSE()
 
   _sseClient = client
 
-  -- Handle incoming messages (SSE events)
-  client.OnMessage:Connect(function(message)
-    -- SSE format: "event: command\ndata: {...}"
-    -- CreateWebStreamClient gives us just the data portion
+  -- Handle incoming SSE messages
+  client.MessageReceived:Connect(function(message)
     local dataStr = message
     if not dataStr or dataStr == "" then return end
 
-    -- Try to parse as JSON
     local parseOk, parsed = pcall(function()
       return HttpService:JSONDecode(dataStr)
     end)
@@ -2522,7 +2519,7 @@ local function connectLiveSSE()
     end
   end)
 
-  client.OnOpen:Connect(function()
+  client.Opened:Connect(function()
     _sseConnected = true
     warn("[ForjeGames] Live SSE connected — commands will arrive instantly")
     if _onStatusMessage then
@@ -2533,20 +2530,19 @@ local function connectLiveSSE()
     end
   end)
 
-  client.OnClose:Connect(function()
+  client.Closed:Connect(function()
     _sseConnected = false
     _sseClient = nil
     warn("[ForjeGames] SSE disconnected — falling back to polling")
     if _onStatusMessage then
       _onStatusMessage("Live connection lost, using polling", "warn")
     end
-    -- Auto-reconnect after 5 seconds
     if _running then
       task.delay(5, connectLiveSSE)
     end
   end)
 
-  client.OnError:Connect(function(err)
+  client.Error:Connect(function(err)
     warn("[ForjeGames] SSE error: " .. tostring(err))
     _sseConnected = false
   end)
