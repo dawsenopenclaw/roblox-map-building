@@ -2469,7 +2469,9 @@ local function connectLiveSSE()
   local url = resolveBaseUrl() .. "/api/studio/live?sessionId=" .. HttpService:UrlEncode(_sessionId)
 
   local ok, client = pcall(function()
-    return HttpService:CreateWebStreamClient(url)
+    return HttpService:CreateWebStreamClient(url, {
+      Headers = authHeaders(),
+    })
   end)
 
   if not ok or not client then
