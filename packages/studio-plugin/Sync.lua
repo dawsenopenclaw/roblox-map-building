@@ -61,6 +61,8 @@ local MAX_RECONNECT      = 10   -- give up after this many consecutive reconnect
 -- ============================================================
 local _running             = false
 local _heartbeatConn       = nil
+local _sseClient           = nil    -- WebStreamClient for live SSE
+local _sseConnected        = false  -- true when SSE is receiving events
 local _token               = nil
 local _sessionId           = nil
 local _onStatusChange      = nil
@@ -2451,6 +2453,102 @@ function Sync.queueChange(changeType, data)
 end
 
 -- ============================================================
+-- Live SSE connection (replaces polling when available)
+-- Uses CreateWebStreamClient (shipped Oct 2025) for instant
+-- command delivery. Falls back to polling if not supported.
+-- ============================================================
+local function connectLiveSSE()
+  if not _sessionId or not _token then return end
+
+  -- Check if CreateWebStreamClient is available (Roblox 2025.10+)
+  if not HttpService.CreateWebStreamClient then
+    warn("[ForjeGames] CreateWebStreamClient not available — using polling fallback")
+    return
+  end
+
+  local url = resolveBaseUrl() .. "/api/studio/live?sessionId=" .. HttpService:UrlEncode(_sessionId)
+
+  local ok, client = pcall(function()
+    return HttpService:CreateWebStreamClient(url)
+  end)
+
+  if not ok or not client then
+    warn("[ForjeGames] SSE connection failed — using polling fallback: " .. tostring(client))
+    return
+  end
+
+  _sseClient = client
+
+  -- Handle incoming messages (SSE events)
+  client.OnMessage:Connect(function(message)
+    -- SSE format: "event: command\ndata: {...}"
+    -- CreateWebStreamClient gives us just the data portion
+    local dataStr = message
+    if not dataStr or dataStr == "" then return end
+
+    -- Try to parse as JSON
+    local parseOk, parsed = pcall(function()
+      return HttpService:JSONDecode(dataStr)
+    end)
+    if not parseOk or not parsed then return end
+
+    -- Handle command events — same dispatch as applyChanges
+    if parsed.type then
+      _sseConnected = true
+      local changeType = parsed.type
+      local data = parsed.data
+
+      if _onStatusChange then
+        _onStatusChange(true, os.time())
+      end
+
+      local dispatchOk, dispatchErr = pcall(function()
+        if changeType == "execute_luau" then
+          handleExecuteLuau(data, parsed.id)
+        elseif changeType == "structured_commands" and data then
+          executeStructuredCommands(data.commands, parsed.id)
+        elseif changeType == "insert_asset" and data then
+          handleInsertAsset(parsed)
+        end
+      end)
+
+      if not dispatchOk then
+        warn("[ForjeGames SSE] Command dispatch error: " .. tostring(dispatchErr))
+      end
+    end
+  end)
+
+  client.OnOpen:Connect(function()
+    _sseConnected = true
+    warn("[ForjeGames] Live SSE connected — commands will arrive instantly")
+    if _onStatusMessage then
+      _onStatusMessage("Live connection active", "info")
+    end
+    if _onStatusChange then
+      _onStatusChange(true, os.time())
+    end
+  end)
+
+  client.OnClose:Connect(function()
+    _sseConnected = false
+    _sseClient = nil
+    warn("[ForjeGames] SSE disconnected — falling back to polling")
+    if _onStatusMessage then
+      _onStatusMessage("Live connection lost, using polling", "warn")
+    end
+    -- Auto-reconnect after 5 seconds
+    if _running then
+      task.delay(5, connectLiveSSE)
+    end
+  end)
+
+  client.OnError:Connect(function(err)
+    warn("[ForjeGames] SSE error: " .. tostring(err))
+    _sseConnected = false
+  end)
+end
+
+-- ============================================================
 -- Public: start sync loop
 --
 -- opts:
@@ -2478,6 +2576,9 @@ function Sync.start(opts)
   task.spawn(function()
     resolveBaseUrl()
     sendConnect()
+    -- Try live SSE connection (instant command delivery)
+    -- Falls back to polling if CreateWebStreamClient isn't available
+    task.delay(2, connectLiveSSE)
   end)
 
   _heartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
@@ -2493,6 +2594,11 @@ function Sync.stop()
   if _heartbeatConn then
     _heartbeatConn:Disconnect()
     _heartbeatConn = nil
+  end
+  if _sseClient then
+    pcall(function() _sseClient:Close() end)
+    _sseClient = nil
+    _sseConnected = false
   end
 end
 

@@ -929,6 +929,26 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       // Flag for the plugin to know partial translation happened
       ...(hasUntranslatableCode ? { hasComplexFallback: true } : {}),
     }
+
+    // ── Try live SSE push first (instant, no queue) ──────────────────────
+    // If the plugin has a live SSE connection via /api/studio/live, push
+    // the command directly down that connection. Sub-second delivery.
+    try {
+      const { pushCommandToPlugin } = await import('@/app/api/studio/live/route')
+      const commandId = `live_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      const pushed = pushCommandToPlugin(sessionId, {
+        id: commandId,
+        type: 'execute_luau',
+        data: commandData,
+        timestamp: Date.now(),
+      })
+      if (pushed) {
+        console.log(`[sendCodeToStudio] Pushed LIVE via SSE (${commands.length} cmds)`)
+        return true
+      }
+    } catch { /* SSE not available — fall through to queue */ }
+
+    // ── Fall back to Redis/Postgres queue ─────────────────────────────────
     const result = await queueCommand(sessionId, { type: 'execute_luau', data: commandData })
     console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result), `(${commands.length} structured cmds, store=${isStoreEdition})`)
 
