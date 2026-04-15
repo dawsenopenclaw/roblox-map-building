@@ -32,7 +32,7 @@ export default function SignInClient() {
   const redirectUrl = searchParams?.get('redirect_url') ?? undefined
 
   return (
-    <div className="w-full flex justify-center">
+    <div className="w-full">
       <SignIn
         routing="path"
         path="/sign-in"
@@ -45,36 +45,38 @@ export default function SignInClient() {
             colorBackground: 'transparent',
             colorText: '#FAFAFA',
             colorTextSecondary: '#A1A1AA',
-            colorInputBackground: 'rgba(255,255,255,0.03)',
+            colorInputBackground: 'rgba(255,255,255,0.04)',
             colorInputText: '#FAFAFA',
-            borderRadius: '0.625rem',
+            borderRadius: '0.75rem',
             fontFamily: 'var(--font-inter, Inter, sans-serif)',
+            fontSize: '1rem',
+            spacingUnit: '1.1rem',
           },
           elements: {
             rootBox: 'w-full',
-            card: 'shadow-none border-0 bg-transparent p-0',
-            headerTitle: 'text-xl font-bold text-white',
-            headerSubtitle: 'text-sm text-zinc-500',
+            card: 'shadow-none border-0 bg-transparent p-0 gap-6',
+            headerTitle: 'text-2xl sm:text-3xl font-bold text-white mb-1',
+            headerSubtitle: 'text-base text-zinc-400',
             socialButtonsBlockButton:
-              'border border-white/[0.08] bg-transparent hover:bg-white/5 text-white text-sm font-medium transition-colors',
-            socialButtonsBlockButtonText: 'text-white font-medium',
-            dividerLine: 'bg-white/[0.06]',
-            dividerText: 'text-zinc-600 text-xs',
-            formFieldLabel: 'text-zinc-300 text-xs font-medium',
+              'border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.07] text-white text-base font-medium transition-colors py-3.5 rounded-xl',
+            socialButtonsBlockButtonText: 'text-white font-medium text-base',
+            dividerLine: 'bg-white/[0.08]',
+            dividerText: 'text-zinc-500 text-sm',
+            formFieldLabel: 'text-zinc-300 text-sm font-medium mb-1.5',
             formFieldInput:
-              'bg-white/[0.03] border border-white/[0.08] text-white placeholder:text-zinc-600 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/20',
+              'bg-white/[0.04] border border-white/[0.1] text-white text-base placeholder:text-zinc-600 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/20 py-3 px-4 rounded-xl',
             formButtonPrimary:
-              'bg-[#D4AF37] hover:bg-[#E6A619] text-black font-semibold transition-colors',
+              'bg-[#D4AF37] hover:bg-[#E6A619] text-black text-base font-bold transition-colors py-3.5 rounded-xl',
             footer: 'hidden',
-            footerAction: 'text-zinc-500 text-sm',
-            footerActionLink: 'text-[#D4AF37] hover:text-[#E6A619] font-semibold',
-            identityPreviewText: 'text-zinc-300',
-            identityPreviewEditButton: 'text-[#D4AF37] hover:text-[#E6A619]',
-            formResendCodeLink: 'text-[#D4AF37] hover:text-[#E6A619]',
+            footerAction: 'text-zinc-400 text-base mt-4',
+            footerActionLink: 'text-[#D4AF37] hover:text-[#E6A619] font-semibold text-base',
+            identityPreviewText: 'text-zinc-300 text-base',
+            identityPreviewEditButton: 'text-[#D4AF37] hover:text-[#E6A619] text-sm',
+            formResendCodeLink: 'text-[#D4AF37] hover:text-[#E6A619] text-sm',
             alertText: 'text-red-400 text-sm',
-            alert: 'bg-red-500/10 border border-red-500/30 rounded-md',
+            alert: 'bg-red-500/10 border border-red-500/30 rounded-xl p-4',
             otpCodeFieldInput:
-              'bg-white/[0.03] border border-white/[0.08] text-white focus:border-[#D4AF37]/50',
+              'bg-white/[0.04] border border-white/[0.1] text-white text-lg focus:border-[#D4AF37]/50 w-12 h-12',
           },
           layout: {
             socialButtonsPlacement: 'top',

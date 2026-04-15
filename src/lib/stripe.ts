@@ -66,7 +66,7 @@ export async function createSubscriptionCheckoutSession({
     {
       customer: customerId,
       mode: 'subscription',
-      payment_method_types: ['card'],
+      payment_method_types: undefined, // Let Stripe show all enabled methods (card, Apple Pay, Google Pay, PayPal, Cash App, etc.)
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -102,7 +102,7 @@ export async function createTokenPackCheckoutSession({
     {
       customer: customerId,
       mode: 'payment',
-      payment_method_types: ['card'],
+      payment_method_types: undefined, // Let Stripe show all enabled methods (card, Apple Pay, Google Pay, PayPal, Cash App, etc.)
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: successUrl,
       cancel_url: cancelUrl,
@@ -149,7 +149,7 @@ export async function createCustomPlanCheckoutSession({
     {
       customer: customerId,
       mode: 'subscription',
-      payment_method_types: ['card'],
+      payment_method_types: undefined, // Let Stripe show all enabled methods (card, Apple Pay, Google Pay, PayPal, Cash App, etc.)
       line_items: [
         {
           quantity: 1,
