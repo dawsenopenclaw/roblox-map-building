@@ -78,7 +78,7 @@ export async function createSubscriptionCheckoutSession({
       customer_update: { address: 'auto' },
       metadata: { userId, type: 'subscription' },
     },
-    { idempotencyKey: `checkout_subscription_${userId}_${priceId}_${today}` },
+    { idempotencyKey: `checkout_sub_v2_${userId}_${priceId}_${today}_${Date.now()}` },
   )
 }
 
@@ -110,7 +110,7 @@ export async function createTokenPackCheckoutSession({
       customer_update: { address: 'auto' },
       metadata: { userId, type: 'token_pack', tokenPackSlug },
     },
-    { idempotencyKey: `checkout_tokenpack_${userId}_${tokenPackSlug}_${today}` },
+    { idempotencyKey: `checkout_tp_v2_${userId}_${tokenPackSlug}_${today}_${Date.now()}` },
   )
 }
 
