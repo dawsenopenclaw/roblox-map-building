@@ -255,6 +255,62 @@ const RULES: Rule[] = [
     message: '"import" is not valid Luau — use require() for modules',
     skipComments: true,
   },
+
+  // ── Deprecated APIs (additional) ──────��────────────────────────────────
+  {
+    id: 'deprecated-brickcolor',
+    pattern: /\bBrickColor\.new\s*\(/,
+    severity: 'warning',
+    category: 'deprecated',
+    message: 'BrickColor is deprecated — use Color3.fromRGB(r, g, b) instead',
+    skipComments: true,
+  },
+  {
+    id: 'deprecated-setprimarypartcframe',
+    pattern: /\bSetPrimaryPartCFrame\s*\(/,
+    severity: 'error',
+    category: 'deprecated',
+    message: 'SetPrimaryPartCFrame() is deprecated — use :PivotTo(cframe) instead',
+    fix: (_m, line) => line.replace(/(:?)SetPrimaryPartCFrame\s*\(/, '$1PivotTo('),
+    skipComments: true,
+  },
+
+  // ── Correctness (additional) ──────────────���────────────────────────────
+  {
+    id: 'wrong-type-brickcolor-assign',
+    pattern: /\.Color\s*=\s*BrickColor/,
+    severity: 'error',
+    category: 'correctness',
+    message: '.Color expects Color3, not BrickColor — use Color3.fromRGB() or BrickColor.Color',
+    fix: (_m, line) => line.replace(/\.Color\s*=\s*BrickColor\.new\s*\(\s*["']([^"']+)["']\s*\)/, '.Color = BrickColor.new("$1").Color'),
+    skipComments: true,
+  },
+  {
+    id: 'correctness-instance-new-parent',
+    pattern: /Instance\.new\s*\(\s*["']\w+["']\s*,/,
+    severity: 'warning',
+    category: 'correctness',
+    message: 'Instance.new(class, parent) is an anti-pattern — set Parent LAST after all properties',
+    skipComments: true,
+  },
+
+  // ── Style (additional JS/TS syntax leaks) ─────────���────────────────────
+  {
+    id: 'style-arrow-function',
+    pattern: /=>\s*\{/,
+    severity: 'error',
+    category: 'style',
+    message: 'Arrow functions (=>) are JavaScript — use "function" in Luau',
+    skipComments: true,
+  },
+  {
+    id: 'style-template-literal',
+    pattern: /`[^`]*\$\{/,
+    severity: 'error',
+    category: 'style',
+    message: 'Template literals (`${...}`) are JavaScript — use string concatenation (..) in Luau',
+    skipComments: true,
+  },
 ]
 
 // ── Multi-line Checks ──────────────────────────────────────────────────────
@@ -625,6 +681,61 @@ function checkMissingPcallDataStore(lines: string[]): StaticIssue[] {
   return issues
 }
 
+/**
+ * Detect hallucinated (non-existent) Roblox services in game:GetService() calls.
+ */
+const VALID_ROBLOX_SERVICES = new Set([
+  'Players', 'Workspace', 'Lighting', 'ReplicatedStorage', 'ServerScriptService',
+  'ServerStorage', 'StarterGui', 'StarterPlayer', 'StarterPack', 'SoundService',
+  'TweenService', 'RunService', 'UserInputService', 'ContextActionService',
+  'HttpService', 'MarketplaceService', 'DataStoreService', 'InsertService',
+  'TeleportService', 'Chat', 'Teams', 'BadgeService', 'GamePassService',
+  'GroupService', 'PolicyService', 'TextService', 'LocalizationService',
+  'PathfindingService', 'PhysicsService', 'CollectionService', 'Debris',
+  'ProximityPromptService', 'GuiService', 'HapticService', 'VRService',
+  'ContentProvider', 'ChangeHistoryService', 'Selection', 'StudioService',
+  'CoreGui', 'TestService', 'MemoryStoreService', 'MessagingService',
+  'AssetService', 'AnimationClipProvider', 'KeyframeSequenceProvider',
+  'SocialService', 'VoiceChatService', 'AvatarEditorService',
+  'ExperienceNotificationService', 'TextChatService', 'MaterialService',
+  'ReplicatedFirst',
+])
+
+function checkHallucinatedServices(lines: string[]): StaticIssue[] {
+  const issues: StaticIssue[] = []
+  const pattern = /game:GetService\s*\(\s*["'](\w+)["']\s*\)/g
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+    if (trimmed.startsWith('--')) continue
+
+    // Check if match is after a comment marker
+    const commentIdx = line.indexOf('--')
+
+    let match: RegExpExecArray | null
+    pattern.lastIndex = 0
+    while ((match = pattern.exec(line)) !== null) {
+      // Skip if inside a comment
+      if (commentIdx >= 0 && match.index >= commentIdx) continue
+
+      const serviceName = match[1]
+      if (!VALID_ROBLOX_SERVICES.has(serviceName)) {
+        issues.push({
+          line: i + 1,
+          column: match.index,
+          severity: 'error',
+          category: 'correctness',
+          message: `"${serviceName}" is not a real Roblox service — check spelling or use a valid service name`,
+          suggestedFix: `Remove game:GetService("${serviceName}") and use a valid Roblox service instead`,
+          rule: 'hallucinated-service',
+        })
+      }
+    }
+  }
+  return issues
+}
+
 // ── Analyzer ────────────────────────────────────────────────────────────────
 
 /**
@@ -718,6 +829,7 @@ export function analyzeLuau(code: string): AnalysisResult {
   issues.push(...checkUnusedVariables(code, lines))
   issues.push(...checkLargePartCount(code))
   issues.push(...checkMissingPcallDataStore(lines))
+  issues.push(...checkHallucinatedServices(lines))
 
   // Sort issues by line number for readability
   issues.sort((a, b) => a.line - b.line)

@@ -26,6 +26,7 @@ import { queueCommand, getSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import { verifyLuauCode } from '@/lib/ai/luau-verifier'
+import { tycoonGame, obbyGame, simulatorGame } from '@/lib/ai/luau-templates'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
@@ -1876,10 +1877,92 @@ USE THIS DATA:
       ? `\n\nCONTEXT — The user previously asked about this and you described it. Now BUILD IT:\n${lastAssistantMsg.slice(0, 600)}`
       : ''
 
+    // ── Fullgame template detection ─────────────────────────────────────────
+    // Detects what TYPE of game the user wants and returns a pre-built template
+    // as a few-shot reference so the AI adapts a working skeleton instead of
+    // inventing from scratch (which fails ~98% of the time).
+    function detectFullGameType(msg: string): { type: 'tycoon' | 'obby' | 'simulator' | null; templateCode: string | null } {
+      const lower = msg.toLowerCase()
+
+      if (/\b(tycoon|factory|idle|clicker|money|millionaire|billionaire)\b/.test(lower)) {
+        const code = tycoonGame({
+          plotSize: 60,
+          dropperInterval: 2,
+          baseIncome: 5,
+          upgradeCosts: [100, 500, 2000, 10000],
+        })
+        return { type: 'tycoon', templateCode: code }
+      }
+
+      if (/\b(obby|obstacle|parkour|jump|platformer)\b/.test(lower)) {
+        const code = obbyGame({
+          checkpointCount: 8,
+          difficulty: 'medium',
+          includeTimer: true,
+        })
+        return { type: 'obby', templateCode: code }
+      }
+
+      if (/\b(simulator|sim|collect|grinding|grind|pet simulator|mining simulator|clicking simulator)\b/.test(lower)) {
+        const code = simulatorGame({
+          collectibleName: 'Gems',
+          backpackSize: 100,
+          sellMultiplier: 1,
+          rebirthCost: 10000,
+        })
+        return { type: 'simulator', templateCode: code }
+      }
+
+      return { type: null, templateCode: null }
+    }
+
+    // Detect specific game type and get pre-built template as few-shot reference
+    const fullGameDetection = intent === 'fullgame' ? detectFullGameType(message) : null
+    const templateReference = fullGameDetection?.templateCode
+      ? `\n\n=== REFERENCE TEMPLATE (adapt and customize, do NOT copy verbatim) ===\nThis is a working ${fullGameDetection.type} game skeleton. Use its STRUCTURE and PATTERNS as a guide, but customize names, values, and layout to match the user's specific request:\n\`\`\`lua\n${fullGameDetection.templateCode.slice(0, 3000)}\n\`\`\`\n=== END REFERENCE ===`
+      : ''
+
     // For fullgame intent, force a single executable world-building Luau script
     // (NOT a multi-file game design — that can't be executed in Studio directly)
+    // Detect game sub-type for template guidance
+    const lowerMsg = message.toLowerCase()
+    let gameTypeGuidance = ''
+    if (/tycoon/i.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nTYCOON STRUCTURE — build these components:
+- Spawn pad with clear path to tycoon plot
+- Buy buttons (ProximityPrompt) with visible price tags (BillboardGui)
+- Dropper machine that spawns items on a timer
+- Conveyor belt (moving Parts) carrying items from dropper to collector
+- Collection bin / sell area with cash counter display
+- At least 1 upgrader machine between dropper and collector
+- Factory/machine building housing the dropper (detailed, 15+ parts)
+- Plot boundary walls with expandable gates
+- Rebirth portal (ornate, glowing, with cost display)`
+    } else if (/obby/i.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nOBBY STRUCTURE — build these components:
+- Start platform with spawn point and clear "GO" indicator
+- At least 10 jump platforms with varying gaps and heights
+- 2+ moving platforms (TweenService back-and-forth)
+- Checkpoints every 3-4 stages (glowing pad that sets spawn)
+- Kill bricks (red Neon, Touched->Humanoid:TakeDamage)
+- Wall jumps or tightrope sections for variety
+- Win platform at the end with celebration effects (particles, confetti)
+- Themed decoration along the course (lava, clouds, space, etc.)
+- Safety rails or visual guides for the path`
+    } else if (/simulator/i.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nSIMULATOR STRUCTURE — build these components:
+- Hub/spawn island with clear paths to each zone
+- Click orb / interaction target in the starter zone
+- Shop area with buy buttons for tools, pets, upgrades (BillboardGui prices)
+- Portal/gate to Zone 2 with unlock cost display
+- At least 3 distinct zones (easy/medium/hard) with different themes
+- Leaderboard display (SurfaceGui on a Part or BillboardGui)
+- Rebirth area with multiplier display
+- Pet egg pedestals with rarity indicators (glow, particles)
+- Each zone should have distinct terrain, colors, and props`
+    }
     const fullgameOverride = intent === 'fullgame'
-      ? `\n\nIMPORTANT: Output ONE single executable Luau script that builds the game WORLD in Studio (terrain, spawn area, key buildings, atmosphere). Do NOT output multiple files or game system code — just the buildable environment that sets the scene. Keep it to 40-80 Parts so it executes instantly.`
+      ? `\n\nIMPORTANT: Output ONE single executable Luau script that builds the game WORLD in Studio (terrain, spawn area, key buildings, atmosphere). Do NOT output multiple files or game system code — just the buildable environment that sets the scene. Keep it to 40-80 Parts so it executes instantly.${gameTypeGuidance}${templateReference}`
       : ''
 
     const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}
@@ -4902,6 +4985,22 @@ Protected spawn: ForceField duration=5 seconds on spawn (Humanoid.ForceField).
 Death screen: ScreenGui overlay with "You Died" text + respawn timer countdown (5s default).
 Custom respawn: Players.RespawnTime=5. CharacterAdded resets UI/camera.
 First spawn vs respawn: flag in _G or attribute, first spawn triggers tutorial/cutscene.
+
+=== VALID ROBLOX SERVICES (ONLY use these with game:GetService) ===
+Players, Workspace, Lighting, ReplicatedStorage, ServerScriptService, ServerStorage, StarterGui, StarterPlayer, StarterPack, SoundService, TweenService, RunService, UserInputService, ContextActionService, HttpService, MarketplaceService, DataStoreService, InsertService, TeleportService, Chat, Teams, BadgeService, CollectionService, Debris, ProximityPromptService, GuiService, ContentProvider, ChangeHistoryService, Selection, MemoryStoreService, MessagingService, TextService, PathfindingService, PhysicsService, TextChatService, MaterialService, ReplicatedFirst
+
+DO NOT INVENT services. If you need functionality, use an existing service.
+DO NOT use game:GetService("GamePassService") — use MarketplaceService instead.
+DO NOT use game:GetService("PointsService") — it was removed.
+DO NOT use game:GetService("FriendService") — use Players:GetFriendsAsync().
+
+=== COMMON AI MISTAKES TO AVOID ===
+- Setting .Position on a PointLight/SpotLight/Fire/Smoke — these inherit position from parent Part
+- Using Color3.new(255, 0, 0) — Color3.new uses 0-1 range, use Color3.fromRGB(255, 0, 0) instead
+- Forgetting to set .Anchored = true on static parts — they will fall through the world
+- Using Instance.new("Part", parent) — ALWAYS set Parent last, after all other properties
+- Missing ChangeHistoryService recording — builds without it can't be undone
+- Creating a single giant Part as a "building" — MINIMUM 15 parts, decompose into components
 
 ${MARKETPLACE_ASSET_RULES}`
 
