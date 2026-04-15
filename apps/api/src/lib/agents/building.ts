@@ -313,6 +313,13 @@ async function generateMeshAndTextures(params: {
   const meshResult = meshSettled.status === 'fulfilled' ? meshSettled.value : null
   const textureResult = textureSettled.status === 'fulfilled' ? textureSettled.value : null
 
+  if (meshSettled.status === 'rejected') {
+    console.error('[Meshy] Mesh generation failed:', meshSettled.reason)
+  }
+  if (textureSettled.status === 'rejected') {
+    console.error('[FAL] Texture generation failed:', textureSettled.reason)
+  }
+
   const meshUrl = (meshResult?.modelUrls?.glb ?? meshResult?.modelUrls?.fbx) as string | undefined ?? null
   const fbxUrl = (meshResult?.modelUrls?.fbx) as string | undefined ?? null
   const textures = textureResult
@@ -464,7 +471,8 @@ export async function runBuildingAgent(command: AgentCommand): Promise<AgentResu
           theme: imageAnalysis?.theme ?? null,
           targetPolycount: polycount,
         })
-      } catch {
+      } catch (err) {
+        console.error(`[Meshy] Structure "${sName}" mesh failed:`, err)
         return null
       }
     })

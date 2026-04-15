@@ -7358,13 +7358,19 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
         if (!text) throw new Error('Empty response from Gemini')
         const tokensUsed = geminiData.usageMetadata?.totalTokenCount ?? estimateTokens(message)
+        const geminiLuau = extractLuauCode(text)
+        let geminiExecuted = false
+        if (geminiLuau && sessionId) { geminiExecuted = await sendCodeToStudio(sessionId, geminiLuau) }
         if (wantsStream) {
-          return toStreamResponse(text, { intent, tokensUsed, model: 'gemini-1.5-flash (custom key)' }) as unknown as NextResponse
+          return toStreamResponse(text, { intent, tokensUsed, hasCode: geminiLuau !== null, luauCode: geminiLuau, executedInStudio: geminiExecuted, model: 'gemini-1.5-flash (custom key)' }) as unknown as NextResponse
         }
         return NextResponse.json({
           message: text,
           tokensUsed,
           intent,
+          hasCode: geminiLuau !== null,
+          luauCode: geminiLuau,
+          executedInStudio: geminiExecuted,
           model: 'gemini-1.5-flash (custom key)',
         } satisfies ChatResponsePayload & { model: string })
       }
@@ -7401,13 +7407,19 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         const text = openaiData.choices?.[0]?.message?.content ?? ''
         if (!text) throw new Error('Empty response from OpenAI')
         const tokensUsed = openaiData.usage?.total_tokens ?? estimateTokens(message)
+        const openaiLuau = extractLuauCode(text)
+        let openaiExecuted = false
+        if (openaiLuau && sessionId) { openaiExecuted = await sendCodeToStudio(sessionId, openaiLuau) }
         if (wantsStream) {
-          return toStreamResponse(text, { intent, tokensUsed, model: 'gpt-4o (custom key)' }) as unknown as NextResponse
+          return toStreamResponse(text, { intent, tokensUsed, hasCode: openaiLuau !== null, luauCode: openaiLuau, executedInStudio: openaiExecuted, model: 'gpt-4o (custom key)' }) as unknown as NextResponse
         }
         return NextResponse.json({
           message: text,
           tokensUsed,
           intent,
+          hasCode: openaiLuau !== null,
+          luauCode: openaiLuau,
+          executedInStudio: openaiExecuted,
           model: 'gpt-4o (custom key)',
         } satisfies ChatResponsePayload & { model: string })
       }
@@ -7438,13 +7450,19 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const textBlock = aiResponse.content.find((b) => b.type === 'text')
       const responseText = textBlock && textBlock.type === 'text' ? textBlock.text : ''
       const tokensUsed = aiResponse.usage.input_tokens + aiResponse.usage.output_tokens
+      const anthropicLuau = extractLuauCode(responseText)
+      let anthropicExecuted = false
+      if (anthropicLuau && sessionId) { anthropicExecuted = await sendCodeToStudio(sessionId, anthropicLuau) }
       if (wantsStream) {
-        return toStreamResponse(responseText, { intent, tokensUsed, model: aiResponse.model + ' (custom key)' }) as unknown as NextResponse
+        return toStreamResponse(responseText, { intent, tokensUsed, hasCode: anthropicLuau !== null, luauCode: anthropicLuau, executedInStudio: anthropicExecuted, model: aiResponse.model + ' (custom key)' }) as unknown as NextResponse
       }
       return NextResponse.json({
         message: responseText,
         tokensUsed,
         intent,
+        hasCode: anthropicLuau !== null,
+        luauCode: anthropicLuau,
+        executedInStudio: anthropicExecuted,
         model: aiResponse.model + ' (custom key)',
       } satisfies ChatResponsePayload & { model: string })
     } catch {
@@ -7914,6 +7932,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                 suggestions,
                 intent,
                 hasCode,
+                luauCode: luau || null,
                 tokensUsed,
                 executedInStudio,
                 model: finalMsg.model,
@@ -7940,6 +7959,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
                     suggestions: fallback.suggestions.length > 0 ? fallback.suggestions : fallbackSuggestions,
                     intent,
                     hasCode: fallback.luauCode !== null,
+                    luauCode: fallback.luauCode || null,
                     tokensUsed: tokenCost,
                     executedInStudio: fallback.executedInStudio,
                     model: fallback.model,
@@ -8086,6 +8106,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         tokensUsed,
         intent,
         hasCode,
+        luauCode: luau || null,
         model: aiResponse.model,
         executedInStudio,
         suggestions,

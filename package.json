@@ -61,6 +61,7 @@
     "groq-sdk": "^1.1.2",
     "ioredis": "^5.4.1",
     "jose": "^6.2.2",
+    "luau-web": "^1.4.0",
     "lucide-react": "^0.460.0",
     "next": "^15.0.0",
     "next-intl": "^3.26.0",

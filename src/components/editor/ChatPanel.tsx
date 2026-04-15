@@ -261,6 +261,156 @@ function fallbackCopy(text: string): boolean {
   }
 }
 
+// ─── Simple hash for feedback dedup ───────────────────────────────────────────
+function simpleHash(str: string): string {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0
+  }
+  return (h >>> 0).toString(16).padStart(8, '0')
+}
+
+// ─── Code feedback buttons ───────────────────────────────────────────────────
+function CodeFeedbackButtons({ code }: { code: string }) {
+  const [feedbackState, setFeedbackState] = useState<'idle' | 'submitting' | 'done'>('idle')
+
+  const submitFeedback = async (worked: boolean) => {
+    if (feedbackState !== 'idle') return
+    setFeedbackState('submitting')
+    try {
+      await fetch('/api/ai/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messageId: `code-${simpleHash(code)}`,
+          thumbsUp: worked,
+        }),
+      })
+    } catch {
+      // Swallow — feedback is best-effort
+    }
+    setFeedbackState('done')
+  }
+
+  if (feedbackState === 'done') {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 10px',
+          borderTop: '1px solid rgba(255,255,255,0.05)',
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            color: 'rgba(74,222,128,0.7)',
+            fontFamily: 'Inter, sans-serif',
+          }}
+        >
+          Thanks for the feedback!
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+      }}
+    >
+      <span
+        style={{
+          fontSize: 10,
+          color: 'rgba(255,255,255,0.3)',
+          fontFamily: 'Inter, sans-serif',
+          marginRight: 2,
+        }}
+      >
+        Did this work?
+      </span>
+      <button
+        onClick={() => submitFeedback(true)}
+        disabled={feedbackState === 'submitting'}
+        title="This code worked"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          fontSize: 10,
+          padding: '2px 7px',
+          borderRadius: 4,
+          border: '1px solid rgba(74,222,128,0.2)',
+          background: 'rgba(74,222,128,0.06)',
+          color: 'rgba(74,222,128,0.7)',
+          cursor: feedbackState === 'submitting' ? 'wait' : 'pointer',
+          fontFamily: 'Inter, sans-serif',
+          transition: 'all 0.15s',
+          opacity: feedbackState === 'submitting' ? 0.5 : 1,
+        }}
+        onMouseEnter={(e) => {
+          if (feedbackState === 'idle') {
+            e.currentTarget.style.background = 'rgba(74,222,128,0.12)'
+            e.currentTarget.style.borderColor = 'rgba(74,222,128,0.35)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(74,222,128,0.06)'
+          e.currentTarget.style.borderColor = 'rgba(74,222,128,0.2)'
+        }}
+      >
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="2 8 6 12 14 4" />
+        </svg>
+        Worked
+      </button>
+      <button
+        onClick={() => submitFeedback(false)}
+        disabled={feedbackState === 'submitting'}
+        title="This code broke"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          fontSize: 10,
+          padding: '2px 7px',
+          borderRadius: 4,
+          border: '1px solid rgba(239,68,68,0.2)',
+          background: 'rgba(239,68,68,0.06)',
+          color: 'rgba(239,68,68,0.7)',
+          cursor: feedbackState === 'submitting' ? 'wait' : 'pointer',
+          fontFamily: 'Inter, sans-serif',
+          transition: 'all 0.15s',
+          opacity: feedbackState === 'submitting' ? 0.5 : 1,
+        }}
+        onMouseEnter={(e) => {
+          if (feedbackState === 'idle') {
+            e.currentTarget.style.background = 'rgba(239,68,68,0.12)'
+            e.currentTarget.style.borderColor = 'rgba(239,68,68,0.35)'
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(239,68,68,0.06)'
+          e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)'
+        }}
+      >
+        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="4" y1="4" x2="12" y2="12" />
+          <line x1="12" y1="4" x2="4" y2="12" />
+        </svg>
+        Broke
+      </button>
+    </div>
+  )
+}
+
 function LuauCodeBlock({
   code,
   onSendToStudio,
@@ -373,6 +523,7 @@ function LuauCodeBlock({
       >
         <code>{highlightLuau(code)}</code>
       </pre>
+      <CodeFeedbackButtons code={code} />
     </div>
   )
 }

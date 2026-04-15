@@ -25,6 +25,7 @@ local RunService   = game:GetService("RunService")
 local LogService   = game:GetService("LogService")
 local Selection    = game:GetService("Selection")
 local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 local Debris       = game:GetService("Debris")
 local ChangeHistoryService = game:GetService("ChangeHistoryService")
 
@@ -295,10 +296,12 @@ end
 -- Command types: create_part, create_model, create_instance,
 --   create_script, create_folder, delete_named, delete_instance,
 --   set_property, move_instance, clone_instance, insert_asset,
---   execute_script
+--   execute_script, create_tween, create_sound, create_light,
+--   create_ui_modifier, create_proximity_prompt, create_weld,
+--   create_decal
 -- ============================================================
-local function executeStructuredCommands(commands)
-  if not commands or type(commands) ~= "table" then return end
+local function executeStructuredCommands(commands, commandId)
+  if not commands or type(commands) ~= "table" then return 0, 0 end
 
   -- Scoped undo: wrap the entire AI build in a single ChangeHistory
   -- recording so the user can Ctrl+Z the whole batch without affecting
@@ -311,6 +314,8 @@ local function executeStructuredCommands(commands)
 
   -- Track created instances by name for parent resolution within a batch
   local createdByName = {}
+  local successCount = 0
+  local failCount = 0
 
   for _, cmd in ipairs(commands) do
     local cmdOk, cmdErr = pcall(function()
@@ -562,6 +567,435 @@ local function executeStructuredCommands(commands)
             warn("[ForjeGames] insert_asset command failed: " .. tostring(assetResult))
           end
         end
+
+      elseif cmdType == "create_tween" then
+        -- Animate an existing instance's properties over time using TweenService.
+        -- Data shape:
+        --   { target (path/name), duration?, easingStyle?, easingDirection?,
+        --     repeatCount?, reverses?, delayTime?, properties: {prop: value} }
+        local target = nil
+        if cmd.target then
+          target = createdByName[cmd.target]
+            or resolveStructuredPath(cmd.target)
+            or workspace:FindFirstChild(cmd.target, true)
+        end
+        if target and cmd.properties and type(cmd.properties) == "table" then
+          local tweenInfo = TweenInfo.new(
+            tonumber(cmd.duration) or 1,
+            Enum.EasingStyle[cmd.easingStyle or "Quad"] or Enum.EasingStyle.Quad,
+            Enum.EasingDirection[cmd.easingDirection or "Out"] or Enum.EasingDirection.Out,
+            tonumber(cmd.repeatCount) or 0,
+            cmd.reverses == true,
+            tonumber(cmd.delayTime) or 0
+          )
+          local goalProps = {}
+          for prop, value in pairs(cmd.properties) do
+            goalProps[prop] = parseStructuredValue(value)
+          end
+          local tween = TweenService:Create(target, tweenInfo, goalProps)
+          tween:Play()
+        end
+
+      elseif cmdType == "create_sound" then
+        -- Insert a Sound instance with SoundId and optional properties.
+        -- Data shape:
+        --   { assetId, name?, parent?, parentName?, looped?, volume?,
+        --     playbackSpeed?, autoPlay?, rollOffMaxDistance?, rollOffMinDistance? }
+        if cmd.assetId then
+          local sound = Instance.new("Sound")
+          sound.Name = cmd.name or "FJ_Sound"
+          sound.SoundId = "rbxassetid://" .. tostring(cmd.assetId)
+          sound:SetAttribute("fj_generated", true)
+
+          if cmd.looped ~= nil then sound.Looped = cmd.looped == true end
+          if cmd.volume ~= nil then
+            local v = tonumber(cmd.volume)
+            if v then sound.Volume = math.clamp(v, 0, 10) end
+          end
+          if cmd.playbackSpeed ~= nil then
+            local s = tonumber(cmd.playbackSpeed)
+            if s then sound.PlaybackSpeed = s end
+          end
+          if cmd.rollOffMaxDistance ~= nil then
+            local d = tonumber(cmd.rollOffMaxDistance)
+            if d then sound.RollOffMaxDistance = d end
+          end
+          if cmd.rollOffMinDistance ~= nil then
+            local d = tonumber(cmd.rollOffMinDistance)
+            if d then sound.RollOffMinDistance = d end
+          end
+
+          -- Extra properties
+          if cmd.properties and type(cmd.properties) == "table" then
+            for prop, value in pairs(cmd.properties) do
+              pcall(function() sound[prop] = parseStructuredValue(value) end)
+            end
+          end
+
+          local parent = workspace
+          if cmd.parentName or cmd.parent then
+            local pPath = cmd.parentName or cmd.parent
+            local resolved = createdByName[pPath]
+              or resolveStructuredPath(pPath)
+              or workspace:FindFirstChild(pPath, true)
+            if resolved then parent = resolved end
+          end
+          sound.Parent = parent
+          createdByName[sound.Name] = sound
+
+          if cmd.autoPlay then
+            pcall(function() sound:Play() end)
+          end
+        end
+
+      elseif cmdType == "create_light" then
+        -- Insert a PointLight, SpotLight, or SurfaceLight on a part.
+        -- Data shape:
+        --   { lightType?, parent?, parentName?, range?, brightness?, color?,
+        --     angle?, face?, shadows?, properties? }
+        local lightType = cmd.lightType or "PointLight"
+        if lightType ~= "PointLight" and lightType ~= "SpotLight" and lightType ~= "SurfaceLight" then
+          lightType = "PointLight"
+        end
+        local light = Instance.new(lightType)
+        light.Name = cmd.name or ("FJ_" .. lightType)
+        light:SetAttribute("fj_generated", true)
+
+        if cmd.range ~= nil then
+          local r = tonumber(cmd.range)
+          if r then light.Range = r end
+        end
+        if cmd.brightness ~= nil then
+          local b = tonumber(cmd.brightness)
+          if b then light.Brightness = b end
+        end
+        if cmd.color then
+          pcall(function()
+            if type(cmd.color) == "table" then
+              light.Color = Color3.fromRGB(
+                tonumber(cmd.color.r) or 255,
+                tonumber(cmd.color.g) or 255,
+                tonumber(cmd.color.b) or 255
+              )
+            end
+          end)
+        end
+        if cmd.shadows ~= nil then
+          light.Shadows = cmd.shadows == true
+        end
+        -- SpotLight-specific
+        if lightType == "SpotLight" and cmd.angle ~= nil then
+          local a = tonumber(cmd.angle)
+          if a then light.Angle = a end
+        end
+        -- SurfaceLight-specific
+        if (lightType == "SpotLight" or lightType == "SurfaceLight") and cmd.face then
+          pcall(function()
+            light.Face = Enum.NormalId[cmd.face] or Enum.NormalId.Front
+          end)
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() light[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        light.Parent = parent
+        createdByName[light.Name] = light
+
+      elseif cmdType == "create_ui_modifier" then
+        -- Insert a UICorner, UIStroke, UIGradient, UIPadding, or UIListLayout
+        -- on a GUI element (or any Instance).
+        -- Data shape:
+        --   { modifierType, parent?, parentName?, cornerRadius?,
+        --     thickness?, color?, transparency?, applyStrokeMode?,
+        --     rotation?, colorSequence?, transparencySequence?,
+        --     paddingLeft?, paddingRight?, paddingTop?, paddingBottom?,
+        --     properties? }
+        local modifierType = cmd.modifierType or "UICorner"
+        local validModifiers = {
+          UICorner = true, UIStroke = true, UIGradient = true,
+          UIPadding = true, UIListLayout = true, UIGridLayout = true,
+          UITableLayout = true, UIPageLayout = true, UIScale = true,
+          UIAspectRatioConstraint = true, UISizeConstraint = true,
+          UITextSizeConstraint = true,
+        }
+        if not validModifiers[modifierType] then
+          modifierType = "UICorner"
+        end
+
+        local modifier = Instance.new(modifierType)
+        modifier.Name = cmd.name or ("FJ_" .. modifierType)
+        modifier:SetAttribute("fj_generated", true)
+
+        -- UICorner
+        if modifierType == "UICorner" and cmd.cornerRadius ~= nil then
+          pcall(function()
+            local cr = tonumber(cmd.cornerRadius)
+            if cr then
+              modifier.CornerRadius = UDim.new(0, cr)
+            end
+          end)
+        end
+        -- UIStroke
+        if modifierType == "UIStroke" then
+          if cmd.thickness ~= nil then
+            local t = tonumber(cmd.thickness)
+            if t then modifier.Thickness = t end
+          end
+          if cmd.color then
+            pcall(function()
+              if type(cmd.color) == "table" then
+                modifier.Color = Color3.fromRGB(
+                  tonumber(cmd.color.r) or 0,
+                  tonumber(cmd.color.g) or 0,
+                  tonumber(cmd.color.b) or 0
+                )
+              end
+            end)
+          end
+          if cmd.transparency ~= nil then
+            local tr = tonumber(cmd.transparency)
+            if tr then modifier.Transparency = tr end
+          end
+          if cmd.applyStrokeMode then
+            pcall(function()
+              modifier.ApplyStrokeMode = Enum.ApplyStrokeMode[cmd.applyStrokeMode]
+                or Enum.ApplyStrokeMode.Contextual
+            end)
+          end
+        end
+        -- UIGradient
+        if modifierType == "UIGradient" then
+          if cmd.rotation ~= nil then
+            local rot = tonumber(cmd.rotation)
+            if rot then modifier.Rotation = rot end
+          end
+          if cmd.color then
+            pcall(function()
+              if type(cmd.color) == "table" then
+                -- Simple two-color gradient from color table with start/finish
+                if cmd.color.start and cmd.color.finish then
+                  local s = cmd.color.start
+                  local f = cmd.color.finish
+                  modifier.Color = ColorSequence.new(
+                    Color3.fromRGB(tonumber(s.r) or 255, tonumber(s.g) or 255, tonumber(s.b) or 255),
+                    Color3.fromRGB(tonumber(f.r) or 0, tonumber(f.g) or 0, tonumber(f.b) or 0)
+                  )
+                else
+                  -- Single color
+                  modifier.Color = ColorSequence.new(Color3.fromRGB(
+                    tonumber(cmd.color.r) or 255,
+                    tonumber(cmd.color.g) or 255,
+                    tonumber(cmd.color.b) or 255
+                  ))
+                end
+              end
+            end)
+          end
+          if cmd.transparency ~= nil then
+            pcall(function()
+              local tr = tonumber(cmd.transparency)
+              if tr then
+                modifier.Transparency = NumberSequence.new(tr)
+              end
+            end)
+          end
+        end
+        -- UIPadding
+        if modifierType == "UIPadding" then
+          pcall(function()
+            if cmd.paddingLeft ~= nil then modifier.PaddingLeft = UDim.new(0, tonumber(cmd.paddingLeft) or 0) end
+            if cmd.paddingRight ~= nil then modifier.PaddingRight = UDim.new(0, tonumber(cmd.paddingRight) or 0) end
+            if cmd.paddingTop ~= nil then modifier.PaddingTop = UDim.new(0, tonumber(cmd.paddingTop) or 0) end
+            if cmd.paddingBottom ~= nil then modifier.PaddingBottom = UDim.new(0, tonumber(cmd.paddingBottom) or 0) end
+          end)
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() modifier[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        modifier.Parent = parent
+        createdByName[modifier.Name] = modifier
+
+      elseif cmdType == "create_proximity_prompt" then
+        -- Insert a ProximityPrompt on a part for interactive triggers.
+        -- Data shape:
+        --   { parent?, parentName?, actionText?, objectText?, holdDuration?,
+        --     maxActivationDistance?, keyboardKeyCode?, requiresLineOfSight?,
+        --     enabled?, properties? }
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.Name = cmd.name or "FJ_ProximityPrompt"
+        prompt:SetAttribute("fj_generated", true)
+
+        if cmd.actionText then prompt.ActionText = tostring(cmd.actionText) end
+        if cmd.objectText then prompt.ObjectText = tostring(cmd.objectText) end
+        if cmd.holdDuration ~= nil then
+          local hd = tonumber(cmd.holdDuration)
+          if hd then prompt.HoldDuration = hd end
+        end
+        if cmd.maxActivationDistance ~= nil then
+          local mad = tonumber(cmd.maxActivationDistance)
+          if mad then prompt.MaxActivationDistance = mad end
+        end
+        if cmd.keyboardKeyCode then
+          pcall(function()
+            prompt.KeyboardKeyCode = Enum.KeyCode[cmd.keyboardKeyCode] or Enum.KeyCode.E
+          end)
+        end
+        if cmd.requiresLineOfSight ~= nil then
+          prompt.RequiresLineOfSight = cmd.requiresLineOfSight == true
+        end
+        if cmd.enabled ~= nil then
+          prompt.Enabled = cmd.enabled ~= false
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() prompt[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        prompt.Parent = parent
+        createdByName[prompt.Name] = prompt
+
+      elseif cmdType == "create_weld" then
+        -- Insert a WeldConstraint between two parts.
+        -- Data shape:
+        --   { part0 (path/name), part1 (path/name), parent?, parentName?, name? }
+        local weld = Instance.new("WeldConstraint")
+        weld.Name = cmd.name or "FJ_WeldConstraint"
+        weld:SetAttribute("fj_generated", true)
+
+        if cmd.part0 then
+          local p0 = createdByName[cmd.part0]
+            or resolveStructuredPath(cmd.part0)
+            or workspace:FindFirstChild(cmd.part0, true)
+          if p0 then weld.Part0 = p0 end
+        end
+        if cmd.part1 then
+          local p1 = createdByName[cmd.part1]
+            or resolveStructuredPath(cmd.part1)
+            or workspace:FindFirstChild(cmd.part1, true)
+          if p1 then weld.Part1 = p1 end
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() weld[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        -- Parent defaults to Part0 if available, else workspace
+        local parent = weld.Part0 or workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        weld.Parent = parent
+        createdByName[weld.Name] = weld
+
+      elseif cmdType == "create_decal" then
+        -- Insert a Decal or Texture on a part face.
+        -- Data shape:
+        --   { assetId, decalType?, face?, parent?, parentName?, name?,
+        --     transparency?, color3?, studPerTileU?, studPerTileV?, properties? }
+        local decalType = cmd.decalType or "Decal"
+        if decalType ~= "Decal" and decalType ~= "Texture" then
+          decalType = "Decal"
+        end
+
+        local decal = Instance.new(decalType)
+        decal.Name = cmd.name or ("FJ_" .. decalType)
+        decal:SetAttribute("fj_generated", true)
+
+        if cmd.assetId then
+          decal.Texture = "rbxassetid://" .. tostring(cmd.assetId)
+        end
+        if cmd.face then
+          pcall(function()
+            decal.Face = Enum.NormalId[cmd.face] or Enum.NormalId.Front
+          end)
+        end
+        if cmd.transparency ~= nil then
+          local tr = tonumber(cmd.transparency)
+          if tr then decal.Transparency = tr end
+        end
+        if cmd.color3 then
+          pcall(function()
+            if type(cmd.color3) == "table" then
+              decal.Color3 = Color3.fromRGB(
+                tonumber(cmd.color3.r) or 255,
+                tonumber(cmd.color3.g) or 255,
+                tonumber(cmd.color3.b) or 255
+              )
+            end
+          end)
+        end
+        -- Texture-specific tiling properties
+        if decalType == "Texture" then
+          if cmd.studPerTileU ~= nil then
+            local s = tonumber(cmd.studPerTileU)
+            if s then decal.StudsPerTileU = s end
+          end
+          if cmd.studPerTileV ~= nil then
+            local s = tonumber(cmd.studPerTileV)
+            if s then decal.StudsPerTileV = s end
+          end
+        end
+
+        -- Extra properties
+        if cmd.properties and type(cmd.properties) == "table" then
+          for prop, value in pairs(cmd.properties) do
+            pcall(function() decal[prop] = parseStructuredValue(value) end)
+          end
+        end
+
+        local parent = workspace
+        if cmd.parentName or cmd.parent then
+          local pPath = cmd.parentName or cmd.parent
+          local resolved = createdByName[pPath]
+            or resolveStructuredPath(pPath)
+            or workspace:FindFirstChild(pPath, true)
+          if resolved then parent = resolved end
+        end
+        decal.Parent = parent
+        createdByName[decal.Name] = decal
 
       elseif cmdType == "execute_script" then
         -- Parents a freshly-created Script/LocalScript containing arbitrary

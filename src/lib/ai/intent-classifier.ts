@@ -3,7 +3,7 @@
  * Keyword + pattern scoring classifier for ForjeGames AI chat.
  * No external dependencies. No AI calls. Pure in-process, zero latency.
  *
- * Supports 20 intents plus a 'general' fallback.
+ * Supports 22 intents plus a 'general' fallback.
  * Returns a confidence score (0-1) and any detected sub-intents.
  */
 
@@ -32,6 +32,8 @@ export type Intent =
   | 'team'
   | 'optimization'
   | 'fullgame'
+  | 'tycoon'
+  | 'obby'
   | 'general'
 
 export interface ClassificationResult {
@@ -65,16 +67,17 @@ const INTENT_DEFINITIONS: IntentDefinition[] = [
       /\b(mountain|hill|valley|cliff|cave|island|ocean|river|lake|waterfall|beach|desert|tundra|forest|jungle)\b/i,
       /\b(terrain:fill|writevoxels|fillball|fillblock)\b/i,
     ],
-    keywords: ['terrain', 'land', 'biome', 'grass', 'water', 'lake', 'river', 'mountain', 'hill', 'valley', 'forest', 'desert', 'island', 'flatten', 'raise', 'lower', 'sculpt', 'voxel', 'erosion'],
+    keywords: ['terrain', 'land', 'biome', 'grass', 'water', 'lake', 'river', 'mountain', 'hill', 'valley', 'forest', 'desert', 'island', 'flatten', 'raise', 'lower', 'sculpt', 'voxel', 'erosion', 'swamp', 'marsh', 'volcano', 'canyon', 'plateau', 'reef', 'snow', 'arctic', 'meadow', 'savanna', 'rainforest', 'creek', 'pond'],
   },
   {
     intent: 'building',
     weight: 2,
     patterns: [
       /\b(build|place|create|make|generate)\b.{0,25}\b(castle|house|tower|wall|bridge|shop|dungeon|arena|city|town|village|structure|building|base)\b/i,
-      /\b(exterior|interior|facade|floor plan|room|roof|door|window|staircase|corridor)\b/i,
+      /\b(exterior|interior|facade|floor plan|roof|door|window|staircase|corridor)\b/i,
+      /\b(build|create|make|add|design)\b.{0,20}\b(room|rooms)\b/i,
     ],
-    keywords: ['castle', 'house', 'tower', 'wall', 'bridge', 'shop', 'building', 'structure', 'arena', 'dungeon', 'base', 'interior', 'exterior', 'room', 'roof'],
+    keywords: ['castle', 'house', 'tower', 'wall', 'bridge', 'shop', 'building', 'structure', 'arena', 'dungeon', 'base', 'interior', 'exterior', 'room', 'roof', 'cabin', 'mansion', 'temple', 'pyramid', 'barn', 'fort', 'fortress', 'bunker', 'skyscraper', 'hut', 'cottage', 'church', 'cathedral', 'warehouse', 'garage', 'fence', 'gate', 'archway', 'pillar', 'column', 'balcony', 'porch'],
   },
   {
     intent: 'npc',
@@ -89,11 +92,12 @@ const INTENT_DEFINITIONS: IntentDefinition[] = [
     intent: 'script',
     weight: 2,
     patterns: [
-      /\b(write|create|generate|make|fix|debug)\b.{0,20}\b(script|code|function|module|system|handler)\b/i,
+      /\b(write|create|generate|make|fix|debug|add)\b.{0,20}\b(script|code|function|module|system|handler)\b/i,
+      /\b(add|write|make|create)\b\s+a\s+script\b/i,
       /\b(luau|lua|serverscript|localscript|modulescript|remoteevent|remotefunction|bindableevent)\b/i,
       /\b(datastore|profilestore|datastoreservice|players\.getplayerbyname)\b/i,
     ],
-    keywords: ['script', 'code', 'luau', 'lua', 'function', 'module', 'event', 'server', 'client', 'system', 'serverscript', 'localscript', 'modulescript', 'remoteevent', 'datastore', 'pcall', 'coroutine'],
+    keywords: ['script', 'code', 'luau', 'lua', 'function', 'module', 'event', 'server', 'client', 'system', 'serverscript', 'localscript', 'modulescript', 'remoteevent', 'datastore', 'pcall', 'coroutine', 'touched', 'bindable', 'variable', 'loop', 'debounce', 'require', 'workspace'],
   },
   {
     intent: 'ui',
@@ -102,8 +106,10 @@ const INTENT_DEFINITIONS: IntentDefinition[] = [
       /\b(ui|gui|hud|menu|screen|button|label|frame|panel|overlay|interface|leaderboard)\b/i,
       /\b(screengui|surfacegui|billboardgui|textlabel|textbutton|imagebutton|imagelabel|frame|scrollingframe)\b/i,
       /\b(tweenservice|tween).{0,20}\b(ui|gui|button|frame|label)\b/i,
+      /\b(create|make|build|design|add)\b.{0,30}\b(gui|ui|hud|menu|interface|screen|panel)\b/i,
+      /\b\w+\s+(gui|ui|hud)\b/i,
     ],
-    keywords: ['ui', 'gui', 'hud', 'menu', 'button', 'label', 'frame', 'screen', 'panel', 'overlay', 'leaderboard', 'screengui', 'billboard', 'interface'],
+    keywords: ['ui', 'gui', 'hud', 'menu', 'button', 'label', 'frame', 'screen', 'panel', 'overlay', 'leaderboard', 'screengui', 'billboard', 'interface', 'popup', 'modal', 'toolbar', 'sidebar', 'notification', 'tooltip', 'dropdown'],
   },
   {
     intent: 'audio',
@@ -234,6 +240,42 @@ const INTENT_DEFINITIONS: IntentDefinition[] = [
     ],
     keywords: ['optimize', 'performance', 'lag', 'fps', 'framerate', 'reduce', 'efficient', 'memory', 'lod', 'streaming', 'batch', 'pool'],
   },
+  // --- Genre-specific intents (high weight so they beat 'building') ---
+  {
+    intent: 'tycoon',
+    weight: 4,
+    patterns: [
+      /\b(build|create|make|generate)\b.{0,30}\b(tycoon|factory|dropper|conveyor|rebirth)\b/i,
+      /\btycoon\b/i,
+      /\b(dropper|conveyor|upgrader|collector|rebirth)\b.{0,30}\b(system|game|setup|tycoon)\b/i,
+      /\b(money|cash|income)\b.{0,20}\b(dropper|generator|collector)\b/i,
+    ],
+    keywords: ['tycoon', 'dropper', 'conveyor', 'upgrader', 'collector', 'rebirth', 'factory tycoon', 'idle tycoon'],
+  },
+  {
+    intent: 'obby',
+    weight: 4,
+    patterns: [
+      /\b(build|create|make|generate)\b.{0,30}\b(obby|obstacle.?course|parkour)\b/i,
+      /\bobby\b/i,
+      /\boby\b/i,  // common misspelling
+      /\bobstacle.?course\b/i,
+      /\b(checkpoint|killbrick|lava.?jump|wall.?jump|zipline|trampoline)\b.{0,20}\b(obby|course|stage|level)\b/i,
+    ],
+    keywords: ['obby', 'obstacle course', 'parkour', 'checkpoint', 'killbrick', 'lava jump', 'wall jump', 'trampoline', 'stages'],
+  },
+  {
+    intent: 'fullgame',
+    weight: 4,
+    patterns: [
+      /\b(build|create|make|generate|design)\b.{0,30}\b(game|complete game|full game|entire game)\b/i,
+      /\b(build|create|make|generate)\b.{0,10}\b(a|an|me a|me an)\b\s+(simulator|rpg|horror|survival|roleplay|fps|racing|tower.?defense|td|mmorpg|battle.?royale|story)\b/i,
+      /\b(simulator|rpg|horror|survival|roleplay|fps|racing|tower.?defense|battle.?royale)\s+(game|experience)\b/i,
+      /\bcomplete\s+(rpg|game|simulator|experience)\b/i,
+      /\b(make|build|create)\b.{0,10}\b(me\s+)?(a\s+)?(horror|survival|simulator|rpg|roleplay)\b/i,
+    ],
+    keywords: ['simulator', 'rpg', 'horror game', 'survival game', 'roleplay', 'tower defense', 'battle royale', 'fps game', 'racing game', 'mmorpg', 'full game', 'complete game', 'entire game'],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -294,10 +336,16 @@ export function classifyIntent(message: string): ClassificationResult {
   scores.sort((a, b) => b.score - a.score)
 
   const top = scores[0]
-  const totalScore = scores.reduce((s, x) => s + x.score, 0)
+  const runner = scores.length > 1 ? scores[1].score : 0
 
-  // Normalise confidence: primary share of total signal, clamped 0.3–1.0
-  const rawConf = totalScore > 0 ? top.score / totalScore : 0
+  // Confidence from two signals:
+  // 1. Absolute score — higher raw score = higher confidence
+  //    score 1→0.45, 2→0.6, 3→0.72, 4→0.8, 5→0.86, 6+→0.9+
+  const absConf = 1 - 1 / (1 + top.score * 0.6)
+  // 2. Separation — how far ahead of the runner-up (0-1)
+  const separation = runner > 0 ? (top.score - runner) / top.score : 1
+  // Blend: mostly absolute, boosted by separation
+  const rawConf = absConf * 0.7 + separation * 0.3
   const confidence = Math.min(1, Math.max(0.3, rawConf))
 
   const subIntents = scores

@@ -10,6 +10,14 @@
  *   2. `withParallelRace`     — race N generators, return the first success.
  *   3. `withFallbackChain`    — Sonnet → Haiku → GPT-4o → Gemini, driven by
  *                               a quality score, NOT just HTTP errors.
+ *   4. Error-context injection — when retrying, previous errors are fed back
+ *                               so the next model knows what to avoid.
+ *   5. Model-quality tracking — rolling average quality scores per model.
+ *   6. Fast retry path        — `isObviouslyBroken` skips the LLM judge.
+ *   7. Template fallback      — after 2 failed retries for known game types,
+ *                               falls back to pre-built templates from
+ *                               `luau-templates.ts`.
+ *   8. Retry metrics          — `getRetryMetrics()` for /api/health.
  *
  * A lightweight in-process `ModelFailureTracker` keeps per-model success
  * rates so `withSmartRetry` can prefer models that are currently healthy.
@@ -19,6 +27,14 @@
 
 import 'server-only'
 import { scoreOutput, isObviouslyBroken, type QualityMode, type QualityScore } from './quality-scorer'
+import {
+  tycoonGame,
+  obbyGame,
+  simulatorGame,
+  type TycoonGameParams,
+  type ObbyGameParams,
+  type SimulatorGameParams,
+} from './luau-templates'
 
 // ───────────────────────────────────────────────────────────────────────────
 // Model identifiers
@@ -49,6 +65,8 @@ interface ModelStats {
   recentOutcomes: Array<0 | 1> // last 50, 1 = success
   lastErrorMessage: string | null
   lastErrorAt: number | null
+  /** Rolling quality scores (last 50) for model-quality tracking. */
+  recentQualityScores: number[]
 }
 
 const _modelStats = new Map<ModelId, ModelStats>()
@@ -62,6 +80,7 @@ function getStats(model: ModelId): ModelStats {
       recentOutcomes: [],
       lastErrorMessage: null,
       lastErrorAt: null,
+      recentQualityScores: [],
     }
     _modelStats.set(model, s)
   }
@@ -99,8 +118,159 @@ export function getModelStatsSnapshot(): Record<ModelId, { rate: number; attempt
   return out as Record<ModelId, { rate: number; attempts: number; lastError: string | null }>
 }
 
+/** Record a quality score for a model (called after LLM judge scoring). */
+export function recordModelQuality(model: ModelId, qualityTotal: number): void {
+  const s = getStats(model)
+  s.recentQualityScores.push(qualityTotal)
+  if (s.recentQualityScores.length > 50) s.recentQualityScores.shift()
+}
+
+/** Get the rolling average quality score for a model (0-100). Returns -1 if no data. */
+export function getModelAverageQuality(model: ModelId): number {
+  const s = getStats(model)
+  if (s.recentQualityScores.length === 0) return -1
+  const sum = s.recentQualityScores.reduce((a, b) => a + b, 0)
+  return Math.round(sum / s.recentQualityScores.length)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Retry metrics — aggregated stats for /api/health
+// ───────────────────────────────────────────────────────────────────────────
+
+interface RetryMetrics {
+  totalRetries: number
+  totalAttempts: number
+  successAfterRetry: number
+  templateFallbacks: number
+  fastRetrySkips: number
+  retriesByModel: Record<string, number>
+}
+
+const _retryMetrics: RetryMetrics = {
+  totalRetries: 0,
+  totalAttempts: 0,
+  successAfterRetry: 0,
+  templateFallbacks: 0,
+  fastRetrySkips: 0,
+  retriesByModel: {},
+}
+
+function trackRetry(model: ModelId): void {
+  _retryMetrics.totalRetries += 1
+  _retryMetrics.retriesByModel[model] = (_retryMetrics.retriesByModel[model] ?? 0) + 1
+}
+
+function trackAttempt(): void {
+  _retryMetrics.totalAttempts += 1
+}
+
+function trackSuccessAfterRetry(): void {
+  _retryMetrics.successAfterRetry += 1
+}
+
+function trackTemplateFallback(): void {
+  _retryMetrics.templateFallbacks += 1
+}
+
+function trackFastRetrySkip(): void {
+  _retryMetrics.fastRetrySkips += 1
+}
+
+/** Get current retry metrics snapshot. Useful for /api/health. */
+export function getRetryMetrics(): RetryMetrics & {
+  successAfterRetryRate: number
+  modelQuality: Record<string, number>
+} {
+  const rate = _retryMetrics.totalRetries > 0
+    ? _retryMetrics.successAfterRetry / _retryMetrics.totalRetries
+    : 0
+  const modelQuality: Record<string, number> = {}
+  for (const model of _modelStats.keys()) {
+    modelQuality[model] = getModelAverageQuality(model)
+  }
+  return {
+    ..._retryMetrics,
+    successAfterRetryRate: Math.round(rate * 1000) / 1000,
+    modelQuality,
+  }
+}
+
 export function resetModelStatsForTest(): void {
   _modelStats.clear()
+  _retryMetrics.totalRetries = 0
+  _retryMetrics.totalAttempts = 0
+  _retryMetrics.successAfterRetry = 0
+  _retryMetrics.templateFallbacks = 0
+  _retryMetrics.fastRetrySkips = 0
+  _retryMetrics.retriesByModel = {}
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Error-context injection — build a system prompt addendum from prior errors
+// ───────────────────────────────────────────────────────────────────────────
+
+interface PriorAttemptError {
+  model: ModelId
+  error: string
+  qualityIssues?: string[]
+}
+
+function buildErrorContext(priorErrors: PriorAttemptError[]): string {
+  if (priorErrors.length === 0) return ''
+  const lines = [
+    '\n\n--- RETRY CONTEXT (previous attempts failed) ---',
+    'The following issues were found in prior attempts. AVOID repeating these mistakes:',
+  ]
+  for (const pe of priorErrors) {
+    lines.push(`  Model ${pe.model}: ${pe.error}`)
+    if (pe.qualityIssues && pe.qualityIssues.length > 0) {
+      for (const issue of pe.qualityIssues) {
+        lines.push(`    - ${issue}`)
+      }
+    }
+  }
+  lines.push('--- END RETRY CONTEXT ---')
+  return lines.join('\n')
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Template fallback — detect known game types and use pre-built templates
+// ───────────────────────────────────────────────────────────────────────────
+
+type KnownTemplate = 'tycoon' | 'obby' | 'simulator'
+
+function detectTemplate(prompt: string): KnownTemplate | null {
+  const lower = prompt.toLowerCase()
+  // Match common phrasing for each template type
+  if (/\btycoon\b/.test(lower)) return 'tycoon'
+  if (/\bobby\b|\bobstacle\s*course\b|\bparkour\b/.test(lower)) return 'obby'
+  if (/\bsimulator\b|\bsim\s*game\b|\bclick.*collect\b/.test(lower)) return 'simulator'
+  return null
+}
+
+function getTemplateFallbackCode(template: KnownTemplate): string {
+  switch (template) {
+    case 'tycoon':
+      return tycoonGame({
+        plotSize: 60,
+        dropperInterval: 2,
+        baseIncome: 5,
+        upgradeCosts: [100, 500, 2000, 10000],
+      } satisfies TycoonGameParams)
+    case 'obby':
+      return obbyGame({
+        checkpointCount: 10,
+        difficulty: 'medium',
+        includeTimer: true,
+      } satisfies ObbyGameParams)
+    case 'simulator':
+      return simulatorGame({
+        collectibleName: 'Gems',
+        sellMultiplier: 2,
+        rebirthCost: 1000,
+        backpackSize: 50,
+      } satisfies SimulatorGameParams)
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -284,6 +454,18 @@ export interface FallbackChainOptions {
   minQuality?: number
   /** Max attempts across the chain (default models.length). */
   maxAttempts?: number
+  /**
+   * If true, inject error context from previous failed attempts into
+   * the system prompt so the next model can avoid the same mistakes.
+   * Default: true.
+   */
+  injectErrorContext?: boolean
+  /**
+   * If true, allow falling back to pre-built templates for known game
+   * types (tycoon, obby, simulator) after 2 consecutive failures.
+   * Only applies when mode is 'build' or 'script'. Default: true.
+   */
+  allowTemplateFallback?: boolean
 }
 
 export interface FallbackChainResult {
@@ -293,6 +475,10 @@ export interface FallbackChainResult {
   attempts: number
   totalMs: number
   history: Array<{ model: ModelId; total: number; shouldRetry: boolean }>
+  /** Set to true if the response came from a pre-built template fallback. */
+  usedTemplateFallback?: boolean
+  /** Error context that was injected into retry prompts, if any. */
+  errorContextInjected?: string
 }
 
 /**
@@ -301,40 +487,68 @@ export interface FallbackChainResult {
  *   (a) the quality total >= minQuality, or
  *   (b) the chain is exhausted (returns the best-scoring response so far).
  *
- * This is the "quality > availability" strategy — even if Sonnet succeeds
- * we'll switch to Haiku if Sonnet's output scores below the threshold.
+ * Enhanced with:
+ * - Fast retry: if `isObviouslyBroken`, skips LLM judge and retries immediately
+ * - Error-context injection: previous errors/suggestions fed to next model
+ * - Template fallback: known game types fall back to pre-built templates after 2 failures
+ * - Model-quality tracking: quality scores recorded per model
+ * - Retry metrics: all retry activity tracked for /api/health
  */
 export async function withFallbackChain(
-  fn: (model: ModelId) => Promise<string>,
+  fn: (model: ModelId, errorContext?: string) => Promise<string>,
   opts: FallbackChainOptions,
 ): Promise<FallbackChainResult> {
   const models = opts.models && opts.models.length > 0 ? opts.models : DEFAULT_FALLBACK_CHAIN
   const maxAttempts = opts.maxAttempts ?? models.length
   const minQuality = opts.minQuality ?? 70
+  const injectErrorContext = opts.injectErrorContext ?? true
+  const allowTemplateFallback = opts.allowTemplateFallback ?? true
   const start = Date.now()
 
   const history: Array<{ model: ModelId; total: number; shouldRetry: boolean }> = []
+  const priorErrors: PriorAttemptError[] = []
   let best: {
     response: string
     model: ModelId
     quality: QualityScore
   } | null = null
+  let lastErrorContext = ''
+  let consecutiveFailures = 0
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const model = models[attempt % models.length]
     if (!model) continue
+
+    trackAttempt()
+
+    // Build error context from prior failures for this attempt
+    const errorContext = injectErrorContext ? buildErrorContext(priorErrors) : ''
+    if (errorContext) lastErrorContext = errorContext
+
     let response: string
     try {
-      response = await fn(model)
+      response = await fn(model, errorContext || undefined)
       recordModelOutcome(model, true)
     } catch (e) {
-      recordModelOutcome(model, false, e as Error)
+      const err = e as Error
+      recordModelOutcome(model, false, err)
       history.push({ model, total: 0, shouldRetry: true })
+      consecutiveFailures += 1
+      if (attempt > 0) trackRetry(model)
+      priorErrors.push({ model, error: err.message })
       continue
     }
 
+    // Fast retry path: if obviously broken, skip the LLM judge entirely
     if (isObviouslyBroken(response)) {
       history.push({ model, total: 0, shouldRetry: true })
+      consecutiveFailures += 1
+      if (attempt > 0) trackRetry(model)
+      trackFastRetrySkip()
+      priorErrors.push({
+        model,
+        error: 'Output was obviously broken (empty, too short, or error string)',
+      })
       continue
     }
 
@@ -346,11 +560,15 @@ export async function withFallbackChain(
     })
     history.push({ model, total: quality.total, shouldRetry: quality.shouldRetry })
 
+    // Record quality for model-quality tracking
+    recordModelQuality(model, quality.total)
+
     if (!best || quality.total > best.quality.total) {
       best = { response, model, quality }
     }
 
     if (quality.total >= minQuality) {
+      if (attempt > 0) trackSuccessAfterRetry()
       return {
         response,
         model,
@@ -358,6 +576,51 @@ export async function withFallbackChain(
         attempts: attempt + 1,
         totalMs: Date.now() - start,
         history,
+        errorContextInjected: lastErrorContext || undefined,
+      }
+    }
+
+    // Quality was below threshold — record as a retry-worthy failure
+    consecutiveFailures += 1
+    if (attempt > 0) trackRetry(model)
+    priorErrors.push({
+      model,
+      error: `Quality score ${quality.total} below threshold ${minQuality}`,
+      qualityIssues: quality.suggestions,
+    })
+
+    // Template fallback: after 2 consecutive failures on a known game type
+    if (
+      allowTemplateFallback &&
+      consecutiveFailures >= 2 &&
+      (opts.mode === 'build' || opts.mode === 'script')
+    ) {
+      const templateType = detectTemplate(opts.prompt)
+      if (templateType) {
+        const templateCode = getTemplateFallbackCode(templateType)
+        trackTemplateFallback()
+
+        // Score the template so the caller gets a real quality object
+        const templateQuality = await scoreOutput({
+          prompt: opts.prompt,
+          response: templateCode,
+          mode: opts.mode,
+          theme: opts.theme,
+        })
+
+        history.push({ model, total: templateQuality.total, shouldRetry: false })
+        recordModelQuality(model, templateQuality.total)
+
+        return {
+          response: templateCode,
+          model,
+          quality: templateQuality,
+          attempts: attempt + 1,
+          totalMs: Date.now() - start,
+          history,
+          usedTemplateFallback: true,
+          errorContextInjected: lastErrorContext || undefined,
+        }
       }
     }
   }
@@ -375,5 +638,6 @@ export async function withFallbackChain(
     attempts: history.length,
     totalMs: Date.now() - start,
     history,
+    errorContextInjected: lastErrorContext || undefined,
   }
 }

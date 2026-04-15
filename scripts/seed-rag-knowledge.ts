@@ -1385,6 +1385,832 @@ local ServerStorage = game:GetService("ServerStorage")
     tags: ['antipattern', 'mistakes', 'bugs', 'best-practices'],
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PHYSICS & CONSTRAINTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Physics Constraints — LinearVelocity, AlignPosition, SpringConstraint',
+    content: `Modern Roblox physics uses Constraint objects (NOT deprecated BodyVelocity/BodyForce).
+All constraints need Attachment objects on the parts they act on.
+
+-- Attachment (anchor point on a Part)
+local att = Instance.new("Attachment")
+att.Position = Vector3.new(0, 0, 0) -- local offset
+att.Parent = part
+
+-- LinearVelocity (replaces BodyVelocity)
+local lv = Instance.new("LinearVelocity")
+lv.Attachment0 = att
+lv.VectorVelocity = Vector3.new(0, 50, 0) -- direction + speed
+lv.MaxForce = 10000
+lv.RelativeTo = Enum.ActuatorRelativeTo.World
+lv.Parent = part
+
+-- AlignPosition (move part toward a target position)
+local ap = Instance.new("AlignPosition")
+ap.Attachment0 = att
+ap.Position = Vector3.new(100, 20, 50) -- target world position
+ap.MaxForce = 100000
+ap.Responsiveness = 10 -- higher = faster response
+ap.Parent = part
+
+-- AlignOrientation (rotate toward a target orientation)
+local ao = Instance.new("AlignOrientation")
+ao.Attachment0 = att
+ao.CFrame = CFrame.Angles(0, math.rad(90), 0)
+ao.Responsiveness = 10
+ao.Parent = part
+
+-- SpringConstraint (bouncy connection between two parts)
+local spring = Instance.new("SpringConstraint")
+spring.Attachment0 = att0
+spring.Attachment1 = att1
+spring.Stiffness = 100
+spring.Damping = 5
+spring.FreeLength = 10
+spring.Parent = part
+
+-- HingeConstraint (doors, levers)
+local hinge = Instance.new("HingeConstraint")
+hinge.Attachment0 = att0
+hinge.Attachment1 = att1
+hinge.ActuatorType = Enum.ActuatorType.Motor
+hinge.AngularVelocity = 5
+hinge.MotorMaxTorque = 1000
+hinge.Parent = part
+
+-- RopeConstraint (swinging, hanging objects)
+local rope = Instance.new("RopeConstraint")
+rope.Attachment0 = att0
+rope.Attachment1 = att1
+rope.Length = 20
+rope.Parent = part
+
+DEPRECATED (still work but avoid in new code):
+  BodyVelocity, BodyForce, BodyPosition, BodyGyro, BodyAngularVelocity
+  Use LinearVelocity, VectorForce, AlignPosition, AlignOrientation instead.`,
+    tags: ['physics', 'constraint', 'velocity', 'force', 'spring'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WORKSPACE & RAYCASTING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Workspace Raycast — Raycasting, spatial queries, GetPartBoundsInBox',
+    content: `-- Raycasting: cast a ray from origin along direction, find first hit
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+rayParams.FilterDescendantsInstances = {player.Character}
+rayParams.IgnoreWater = true
+
+local origin = Vector3.new(0, 10, 0)
+local direction = Vector3.new(0, -100, 0) -- downward
+local result = workspace:Raycast(origin, direction, rayParams)
+
+if result then
+  result.Instance  -- Part that was hit
+  result.Position  -- Vector3 hit point
+  result.Normal    -- Vector3 surface normal
+  result.Material  -- Enum.Material at hit point
+  result.Distance  -- number distance traveled
+end
+
+-- Spatial queries
+workspace:GetPartBoundsInBox(cframe, size, overlapParams)
+  -- Returns {BasePart} in a box region. Great for area damage.
+workspace:GetPartBoundsInRadius(position, radius, overlapParams)
+  -- Returns {BasePart} in a sphere region.
+
+local overlapParams = OverlapParams.new()
+overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+overlapParams.FilterDescendantsInstances = {player.Character}
+
+local parts = workspace:GetPartBoundsInRadius(explosionPos, 20, overlapParams)
+for _, part in parts do
+  local hum = part.Parent:FindFirstChildOfClass("Humanoid")
+  if hum then hum:TakeDamage(50) end
+end
+
+-- Blockcast / Shapecast (sweep a shape along a direction)
+workspace:Blockcast(cframe, size, direction, rayParams)
+workspace:Spherecast(origin, radius, direction, rayParams)`,
+    tags: ['raycast', 'spatial', 'detection', 'hitbox', 'workspace'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HUMANOID
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Humanoid — Health, WalkSpeed, Jump, States, Death',
+    content: `local humanoid = character:WaitForChild("Humanoid")
+
+-- Key properties
+humanoid.MaxHealth = 100
+humanoid.Health = 100
+humanoid.WalkSpeed = 16        -- default walk speed (studs/sec)
+humanoid.JumpPower = 50        -- legacy jump (set JumpHeight instead)
+humanoid.JumpHeight = 7.2      -- studs (UseJumpPower must be false)
+humanoid.UseJumpPower = false  -- set to false to use JumpHeight
+humanoid.AutoRotate = true     -- character faces movement direction
+
+-- Methods
+humanoid:TakeDamage(25)        -- respects ForceField
+humanoid:MoveTo(position)      -- walk to a point
+humanoid.MoveToFinished:Wait() -- yield until arrival
+humanoid:EquipTool(tool)
+humanoid:UnequipTools()
+
+-- Death handling
+humanoid.Died:Connect(function()
+  print("Player died")
+  -- Clean up, save data, respawn logic
+end)
+
+-- State detection
+humanoid.StateChanged:Connect(function(old, new)
+  if new == Enum.HumanoidStateType.Freefall then
+    print("Falling!")
+  end
+end)
+
+-- Disable states (e.g. prevent climbing)
+humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+
+-- Getting humanoid from a hit part
+local function getHumanoidFromPart(part: BasePart): Humanoid?
+  local model = part:FindFirstAncestorOfClass("Model")
+  return model and model:FindFirstChildOfClass("Humanoid")
+end
+
+-- Force fields (spawn protection)
+local ff = Instance.new("ForceField")
+ff.Parent = character
+task.delay(3, function() ff:Destroy() end)`,
+    tags: ['humanoid', 'health', 'walk', 'jump', 'character'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SCRIPTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Script Types — Script, LocalScript, ModuleScript patterns',
+    content: `THREE SCRIPT TYPES:
+
+1. Script (Server Script) — runs on server only
+   - Location: ServerScriptService, Workspace, or ServerStorage
+   - Has access to: DataStoreService, HttpService (outbound), server-side APIs
+   - Cannot access: LocalPlayer, UserInputService, Camera
+   - Use for: game logic, data persistence, RemoteEvent handlers
+
+2. LocalScript — runs on each client individually
+   - Location: StarterPlayerScripts, StarterCharacterScripts, StarterGui, or player's PlayerGui/Backpack
+   - Has access to: LocalPlayer, UserInputService, Camera, mouse input
+   - Cannot access: ServerStorage, ServerScriptService, DataStoreService
+   - Use for: UI, input handling, camera effects, client-side visuals
+
+3. ModuleScript — reusable code, imported with require()
+   - Location: ReplicatedStorage (shared), ServerStorage (server-only), anywhere
+   - Returns a single value (usually a table/function)
+   - Cached: require() returns same reference after first call
+
+-- ModuleScript example (ReplicatedStorage/Modules/Config)
+local Config = {}
+Config.MAX_HEALTH = 100
+Config.WALK_SPEED = 16
+Config.DAMAGE_COOLDOWN = 0.5
+return Config
+
+-- Using it:
+local Config = require(game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("Config"))
+print(Config.MAX_HEALTH) -- 100
+
+-- ModuleScript OOP pattern:
+local Enemy = {}
+Enemy.__index = Enemy
+
+function Enemy.new(name: string, health: number)
+  return setmetatable({name = name, health = health}, Enemy)
+end
+
+function Enemy:TakeDamage(amount: number)
+  self.health = math.max(0, self.health - amount)
+end
+
+return Enemy`,
+    tags: ['script', 'localscript', 'modulescript', 'require', 'code'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EFFECTS — PARTICLES, BEAMS, TRAILS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'ParticleEmitter, Beam, Trail — Visual effects',
+    content: `-- PARTICLE EMITTER (child of Part or Attachment)
+local emitter = Instance.new("ParticleEmitter")
+emitter.Texture = "rbxassetid://TEXTURE_ID" -- or default particle
+emitter.Rate = 20               -- particles per second
+emitter.Lifetime = NumberRange.new(1, 3)
+emitter.Speed = NumberRange.new(5, 10)
+emitter.SpreadAngle = Vector2.new(30, 30) -- cone spread
+emitter.RotSpeed = NumberRange.new(-180, 180)
+emitter.Size = NumberSequence.new({
+  NumberSequenceKeypoint.new(0, 1),   -- start size
+  NumberSequenceKeypoint.new(1, 0),   -- end size (shrink)
+})
+emitter.Transparency = NumberSequence.new({
+  NumberSequenceKeypoint.new(0, 0),   -- start opaque
+  NumberSequenceKeypoint.new(1, 1),   -- end transparent
+})
+emitter.Color = ColorSequence.new(Color3.fromRGB(255, 200, 0), Color3.fromRGB(255, 50, 0))
+emitter.LightEmission = 1       -- 0 = normal, 1 = additive glow
+emitter.Parent = part
+
+-- Burst (emit N particles instantly then stop)
+emitter.Enabled = false
+emitter:Emit(50) -- emit 50 particles once
+
+-- BEAM (connects two Attachments)
+local beam = Instance.new("Beam")
+beam.Attachment0 = att0
+beam.Attachment1 = att1
+beam.Color = ColorSequence.new(Color3.fromRGB(0, 170, 255))
+beam.Width0 = 2
+beam.Width1 = 0.5
+beam.LightEmission = 1
+beam.FaceCamera = true
+beam.Parent = part
+
+-- TRAIL (follows part movement)
+local trail = Instance.new("Trail")
+trail.Attachment0 = att0  -- two attachments on same part
+trail.Attachment1 = att1  -- define trail width between them
+trail.Lifetime = 0.5
+trail.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+trail.Transparency = NumberSequence.new(0, 1)
+trail.LightEmission = 0.5
+trail.Parent = part`,
+    tags: ['particle', 'beam', 'trail', 'effect', 'visual', 'vfx'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SERVICES REFERENCE
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'service',
+    title: 'Core Services Reference — GetService for all major services',
+    content: `game:GetService("ServiceName") — canonical way to access services.
+
+SERVER-SIDE SERVICES:
+  ServerScriptService — Server-only Scripts live here. Never visible to client.
+  ServerStorage — Server-only assets/modules. Clone to workspace when needed.
+  DataStoreService — Persistent player/game data (server only).
+  HttpService — HTTP requests to external APIs (server only).
+    HttpService:JSONEncode(data), HttpService:JSONDecode(str)
+    HttpService:RequestAsync({Url, Method, Headers, Body})
+  MessagingService — Cross-server communication.
+  MemoryStoreService — Temporary shared data (matchmaking, queues).
+
+SHARED SERVICES:
+  ReplicatedStorage — Shared assets, ModuleScripts, RemoteEvents/Functions.
+    Both server and client can access. Best place for shared code.
+  ReplicatedFirst — Assets that load before anything else (loading screen).
+
+CLIENT-SIDE SERVICES:
+  StarterGui — ScreenGuis placed here clone into each player's PlayerGui.
+  StarterPlayerScripts — LocalScripts that persist through death.
+  StarterCharacterScripts — LocalScripts that reload with each character spawn.
+  StarterPack — Tools placed here go into each player's Backpack.
+
+KEY SINGLETON SERVICES:
+  Players — PlayerAdded/Removing, LocalPlayer (client only).
+  Workspace — All visible 3D objects. workspace is a global shortcut.
+  Lighting — Visual settings, time of day, post-processing effects.
+  SoundService — Global audio settings and non-spatial sounds.
+  RunService — Heartbeat, RenderStepped (client), game loop.
+  UserInputService — Keyboard/mouse/touch/gamepad (client only).
+  TweenService — Animate any property smoothly.
+  Debris — Auto-destroy objects after a delay: Debris:AddItem(obj, 5).
+  Teams — Team management and team color assignment.`,
+    tags: ['service', 'getservice', 'server', 'client', 'reference'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TASK LIBRARY
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'luau',
+    title: 'task Library — task.spawn, task.wait, task.delay, task.defer',
+    content: `The task library replaces deprecated wait(), spawn(), delay() functions.
+
+task.wait(seconds?) -> number
+  Yields the current thread for at least 'seconds'. Returns actual elapsed time.
+  More precise than deprecated wait(). Minimum yield: ~1/60 sec.
+  Example: task.wait(2) -- waits 2 seconds
+
+task.spawn(func, ...args)
+  Runs func immediately in a new thread (resumes caller after func yields/returns).
+  Replacement for deprecated spawn().
+  Example: task.spawn(function() print("runs now") end)
+
+task.defer(func, ...args)
+  Like task.spawn but defers to next resumption cycle. Runs after current thread completes.
+  Useful to avoid stack overflow in recursive patterns.
+
+task.delay(seconds, func, ...args)
+  Calls func after 'seconds' in a new thread. Replacement for deprecated delay().
+  Example: task.delay(5, function() print("5 seconds later") end)
+
+task.cancel(thread)
+  Cancels a thread created by task.spawn/task.delay/task.defer.
+  local t = task.delay(10, func)
+  task.cancel(t) -- func will never run
+
+task.desynchronize()
+  Moves thread to parallel execution (for Parallel Luau).
+
+task.synchronize()
+  Returns thread to serial execution.
+
+COMMON PATTERNS:
+  -- Countdown timer
+  for i = 10, 1, -1 do
+    updateDisplay(i)
+    task.wait(1)
+  end
+
+  -- Delayed cleanup
+  task.delay(5, function()
+    if part and part.Parent then part:Destroy() end
+  end)
+
+  -- Non-blocking initialization
+  task.spawn(function()
+    heavySetup() -- doesn't block other scripts
+  end)`,
+    tags: ['task', 'wait', 'spawn', 'delay', 'defer', 'thread'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ATTRIBUTES API
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Attributes API — SetAttribute, GetAttribute, custom data on instances',
+    content: `Attributes store custom key-value data on any Instance. Preferred over ValueObjects.
+
+instance:SetAttribute(name: string, value: any)
+instance:GetAttribute(name: string) -> any?
+instance:GetAttributes() -> {[string]: any}
+
+-- Supported types: string, number, boolean, Vector3, CFrame, Color3,
+--   BrickColor, UDim, UDim2, NumberSequence, ColorSequence, NumberRange,
+--   Rect, Font, EnumItem
+
+-- Setting attributes
+part:SetAttribute("Health", 100)
+part:SetAttribute("Owner", "player_123")
+part:SetAttribute("IsActive", true)
+part:SetAttribute("SpawnPoint", Vector3.new(0, 10, 0))
+
+-- Reading attributes
+local health = part:GetAttribute("Health") -- 100
+local owner = part:GetAttribute("Owner")   -- "player_123"
+
+-- Remove attribute
+part:SetAttribute("Health", nil)
+
+-- Listen for changes
+part:GetAttributeChangedSignal("Health"):Connect(function()
+  local newHealth = part:GetAttribute("Health")
+  print("Health changed to", newHealth)
+end)
+
+-- Why use Attributes over ValueObjects?
+-- 1. No extra Instance children (cleaner Explorer tree)
+-- 2. Replicate automatically (server → client)
+-- 3. More types supported
+-- 4. Editable in Properties panel in Studio
+-- 5. Better performance than IntValue/StringValue objects
+
+-- Common usage: tag enemies with stats
+local enemy = Instance.new("Model")
+enemy:SetAttribute("MaxHealth", 50)
+enemy:SetAttribute("Damage", 10)
+enemy:SetAttribute("Speed", 12)
+enemy:SetAttribute("Loot", "coin")`,
+    tags: ['attribute', 'data', 'custom', 'property'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BILLBOARD GUI
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'BillboardGui — Floating UI above parts, name tags, health bars',
+    content: `BillboardGui attaches a 2D UI to a 3D position, always facing the camera.
+
+-- Name tag above a part/character head
+local bbg = Instance.new("BillboardGui")
+bbg.Adornee = head          -- or any Part
+bbg.Size = UDim2.new(0, 200, 0, 50)
+bbg.StudsOffset = Vector3.new(0, 2, 0) -- offset above adornee
+bbg.AlwaysOnTop = false     -- true = renders through walls
+bbg.MaxDistance = 50         -- hide beyond this distance (studs)
+bbg.Parent = head
+
+local nameLabel = Instance.new("TextLabel")
+nameLabel.Size = UDim2.new(1, 0, 1, 0)
+nameLabel.BackgroundTransparency = 1
+nameLabel.Text = "Enemy Boss"
+nameLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+nameLabel.TextScaled = true
+nameLabel.Font = Enum.Font.GothamBold
+nameLabel.Parent = bbg
+
+-- Health bar pattern
+local bbg = Instance.new("BillboardGui")
+bbg.Size = UDim2.new(0, 100, 0, 10)
+bbg.StudsOffset = Vector3.new(0, 3, 0)
+bbg.AlwaysOnTop = false
+bbg.Parent = head
+
+local bg = Instance.new("Frame")
+bg.Size = UDim2.new(1, 0, 1, 0)
+bg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+bg.BorderSizePixel = 0
+bg.Parent = bbg
+
+local fill = Instance.new("Frame")
+fill.Size = UDim2.new(1, 0, 1, 0) -- full = 100% health
+fill.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+fill.BorderSizePixel = 0
+fill.Parent = bg
+
+-- Update health bar:
+fill.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
+fill.BackgroundColor3 = if humanoid.Health / humanoid.MaxHealth > 0.5
+  then Color3.fromRGB(0, 200, 0) else Color3.fromRGB(200, 0, 0)`,
+    tags: ['billboard', 'gui', 'healthbar', 'nametag', 'floating'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WELDS & MOTOR6D
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'WeldConstraint, Motor6D, Attachments — Joining parts together',
+    content: `-- WeldConstraint: rigidly connects two parts (simplest)
+local weld = Instance.new("WeldConstraint")
+weld.Part0 = basePart    -- the anchor
+weld.Part1 = otherPart   -- moves with basePart
+weld.Parent = basePart
+-- Parts maintain relative position/rotation. No CFrame offset needed.
+-- Both parts must initially be positioned correctly before welding.
+
+-- Motor6D: animated joint (used for character limbs, doors)
+local motor = Instance.new("Motor6D")
+motor.Part0 = torso
+motor.Part1 = arm
+motor.C0 = CFrame.new(1.5, 0.5, 0)  -- offset from Part0
+motor.C1 = CFrame.new(0, 0.5, 0)    -- offset from Part1
+motor.Parent = torso
+-- Animate via motor.Transform in RenderStepped
+
+-- Attachment: defines a point + orientation on a Part
+local att = Instance.new("Attachment")
+att.Position = Vector3.new(0, 1, 0) -- local offset from Part center
+att.Orientation = Vector3.new(0, 0, 0) -- local rotation
+att.Parent = part
+-- Used by: Constraints, Beams, Trails, Particles
+
+-- Welding a hat/accessory to a character:
+local handle = accessory:FindFirstChild("Handle")
+local att0 = handle:FindFirstChildOfClass("Attachment")
+local att1 = character:FindFirstChild(att0.Name, true)
+if att1 then
+  local weld = Instance.new("WeldConstraint")
+  weld.Part0 = att1.Parent
+  weld.Part1 = handle
+  weld.Parent = handle
+  handle.CFrame = att1.WorldCFrame
+end
+
+-- Model:PivotTo() — move entire model at once
+model:PivotTo(CFrame.new(0, 10, 0))
+-- Sets the model's pivot (PrimaryPart CFrame if set, otherwise bounding box center)
+
+-- Building tip: Weld decorations to the base structure part, then only
+-- move the base — all welded parts follow automatically.`,
+    tags: ['weld', 'motor6d', 'attachment', 'joint', 'connect'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BINDABLE EVENTS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'BindableEvent and BindableFunction — Same-side communication',
+    content: `BindableEvent/Function are for communication WITHIN the same context
+(server-to-server or client-to-client). NOT for client-server — use Remote for that.
+
+-- BindableEvent (fire-and-forget, one-way)
+local event = Instance.new("BindableEvent")
+event.Name = "EnemyDied"
+event.Parent = game:GetService("ReplicatedStorage")
+
+-- Script A fires:
+event:Fire(enemyName, rewardAmount)
+
+-- Script B listens:
+event.Event:Connect(function(enemyName: string, reward: number)
+  print(enemyName .. " died, reward: " .. reward)
+end)
+
+-- BindableFunction (request-response, yields caller)
+local func = Instance.new("BindableFunction")
+func.Name = "GetPrice"
+func.Parent = game:GetService("ReplicatedStorage")
+
+-- Provider script sets the callback:
+func.OnInvoke = function(itemName: string): number
+  return prices[itemName] or 0
+end
+
+-- Consumer script calls:
+local price = func:Invoke("Sword") -- yields until callback returns
+
+WHEN TO USE WHAT:
+  RemoteEvent/Function  → Client ↔ Server (crosses network boundary)
+  BindableEvent/Function → Script ↔ Script on SAME side
+  ModuleScript require() → For shared state/functions (preferred over Bindable)
+
+Best practice: Prefer ModuleScripts for same-side communication.
+Use BindableEvents only when scripts need to be decoupled (plugin systems).`,
+    tags: ['bindable', 'event', 'function', 'signal', 'communication'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CAMERA
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'api',
+    title: 'Camera — CameraType, CFrame manipulation, cutscenes',
+    content: `local camera = workspace.CurrentCamera -- LocalScript only
+
+-- Camera types
+camera.CameraType = Enum.CameraType.Custom      -- default player-controlled
+camera.CameraType = Enum.CameraType.Scriptable   -- full manual control
+camera.CameraType = Enum.CameraType.Fixed        -- static position
+camera.CameraType = Enum.CameraType.Attach       -- attached to subject
+camera.CameraType = Enum.CameraType.Track        -- tracks subject
+
+-- Manual camera control (CameraType must be Scriptable)
+camera.CameraType = Enum.CameraType.Scriptable
+camera.CFrame = CFrame.lookAt(
+  Vector3.new(0, 50, 100),  -- camera position
+  Vector3.new(0, 0, 0)      -- look-at target
+)
+
+-- Camera field of view
+camera.FieldOfView = 70 -- default, degrees (lower = zoom in)
+
+-- Smooth camera movement (cutscene)
+local startCF = CFrame.lookAt(Vector3.new(0, 50, 100), Vector3.new(0, 0, 0))
+local endCF = CFrame.lookAt(Vector3.new(50, 20, 50), Vector3.new(0, 5, 0))
+
+camera.CameraType = Enum.CameraType.Scriptable
+local duration = 3
+local elapsed = 0
+local conn
+conn = game:GetService("RunService").RenderStepped:Connect(function(dt)
+  elapsed += dt
+  local alpha = math.min(elapsed / duration, 1)
+  camera.CFrame = startCF:Lerp(endCF, alpha)
+  if alpha >= 1 then
+    conn:Disconnect()
+    camera.CameraType = Enum.CameraType.Custom -- return control
+  end
+end)
+
+-- Screen shake effect
+task.spawn(function()
+  local original = camera.CFrame
+  for i = 1, 10 do
+    local offset = Vector3.new(math.random(-1,1), math.random(-1,1), 0) * 0.3
+    camera.CFrame = camera.CFrame + offset
+    task.wait(0.03)
+  end
+end)
+
+-- World to screen position
+local screenPos, onScreen = camera:WorldToScreenPoint(part.Position)`,
+    tags: ['camera', 'cutscene', 'view', 'fov', 'cinematic'],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMMON ERROR PATTERNS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  {
+    category: 'pattern',
+    title: 'Common Roblox Errors and Correct Solutions',
+    content: `ERROR: "attempt to index nil"
+CAUSE: Accessing a property on nil, usually from FindFirstChild returning nil.
+WRONG: part:FindFirstChild("Humanoid").Health
+FIX: local hum = part:FindFirstChild("Humanoid"); if hum then print(hum.Health) end
+ALT: part:FindFirstChildOfClass("Humanoid") -- type-safe
+
+ERROR: "cannot set property Parent on destroyed instance"
+CAUSE: Setting Parent after :Destroy() was called.
+FIX: Check if obj.Parent ~= nil before modifying. Store references carefully.
+
+ERROR: "script is not a LuaSandbox member"
+CAUSE: Accessing server services from client or vice versa.
+FIX: DataStoreService, ServerStorage, ServerScriptService are SERVER ONLY.
+     UserInputService, LocalPlayer, Camera are CLIENT ONLY.
+
+ERROR: "infinite yield possible on WaitForChild"
+CAUSE: Waiting for an object that may never exist.
+FIX: Use WaitForChild with timeout: local obj = parent:WaitForChild("Name", 5)
+     Returns nil after 5 seconds if not found.
+
+ERROR: RemoteEvent data arrives as nil
+CAUSE: Passing instances that don't exist on the other side, or tables with mixed keys.
+FIX: Only pass serializable data. Instances must exist in a replicated container.
+     Don't mix string and number keys in the same table.
+
+ERROR: Parts falling through floor
+CAUSE: Parts not Anchored, or spawned inside other parts.
+FIX: Set Anchored = true for static parts. Spawn physics parts above ground.
+     Use CollisionGroup to control which parts collide.
+
+ERROR: "Maximum event re-entrancy depth exceeded"
+CAUSE: Event handler triggers the same event recursively.
+FIX: Add a debounce flag: local processing = false; if processing then return end
+
+PERFORMANCE: Lag from too many Touched events
+FIX: Use workspace:GetPartBoundsInBox() on a timer instead of Touched.
+     Or use CollisionGroups to limit which parts trigger Touched.`,
+    tags: ['error', 'debug', 'fix', 'common', 'troubleshooting'],
+  },
+
+  {
+    category: 'pattern',
+    title: 'Debounce Pattern — Preventing duplicate triggers',
+    content: `Debounce prevents a function from firing multiple times in quick succession.
+Essential for Touched events, button clicks, remote events.
+
+-- Basic debounce (per-part)
+local debounce = false
+part.Touched:Connect(function(hit)
+  if debounce then return end
+  debounce = true
+
+  local hum = hit.Parent:FindFirstChildOfClass("Humanoid")
+  if hum then
+    hum:TakeDamage(10)
+  end
+
+  task.wait(1) -- cooldown period
+  debounce = false
+end)
+
+-- Per-player debounce (important for multiplayer)
+local playerDebounce: {[number]: boolean} = {}
+
+part.Touched:Connect(function(hit)
+  local player = game:GetService("Players"):GetPlayerFromCharacter(hit.Parent)
+  if not player then return end
+  if playerDebounce[player.UserId] then return end
+  playerDebounce[player.UserId] = true
+
+  giveReward(player)
+
+  task.delay(2, function()
+    playerDebounce[player.UserId] = nil
+  end)
+end)
+
+-- Button click debounce (UI)
+local clicking = false
+button.Activated:Connect(function()
+  if clicking then return end
+  clicking = true
+  button.BackgroundColor3 = Color3.fromRGB(100, 100, 100) -- visual feedback
+
+  purchaseItem()
+
+  task.wait(0.5)
+  button.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
+  clicking = false
+end)
+
+-- Remote event rate limiting (server-side)
+local lastFire: {[number]: number} = {}
+remote.OnServerEvent:Connect(function(player, ...)
+  local now = tick()
+  if now - (lastFire[player.UserId] or 0) < 0.1 then return end
+  lastFire[player.UserId] = now
+  -- handle event
+end)`,
+    tags: ['debounce', 'cooldown', 'rate-limit', 'touched', 'click'],
+  },
+
+  {
+    category: 'pattern',
+    title: 'Data Save/Load Pattern — Full PlayerData lifecycle',
+    content: `-- Complete pattern for saving/loading player data with DataStoreService.
+-- This is the standard production-ready approach.
+
+local DataStoreService = game:GetService("DataStoreService")
+local Players = game:GetService("Players")
+local store = DataStoreService:GetDataStore("PlayerData_v1")
+
+-- Default data template (new players get this)
+local DEFAULT_DATA = {
+  coins = 100,
+  level = 1,
+  xp = 0,
+  inventory = {},
+  settings = {musicVolume = 0.5, sfxVolume = 0.8},
+}
+
+-- In-memory cache (avoid repeated DataStore reads)
+local playerData: {[number]: typeof(DEFAULT_DATA)} = {}
+
+local function loadData(player: Player)
+  local key = "player_" .. player.UserId
+  local success, data = pcall(function()
+    return store:GetAsync(key)
+  end)
+
+  if success then
+    -- Merge with defaults (handles schema additions)
+    local merged = table.clone(DEFAULT_DATA)
+    if data then
+      for k, v in data do merged[k] = v end
+    end
+    playerData[player.UserId] = merged
+  else
+    warn("Failed to load data for " .. player.Name .. ": " .. tostring(data))
+    player:Kick("Data failed to load. Please rejoin.")
+  end
+end
+
+local function saveData(player: Player)
+  local data = playerData[player.UserId]
+  if not data then return end
+  local key = "player_" .. player.UserId
+  local success, err = pcall(function()
+    store:SetAsync(key, data)
+  end)
+  if not success then
+    warn("Failed to save data for " .. player.Name .. ": " .. err)
+  end
+end
+
+Players.PlayerAdded:Connect(loadData)
+Players.PlayerRemoving:Connect(function(player)
+  saveData(player)
+  playerData[player.UserId] = nil -- free memory
+end)
+
+-- Auto-save every 60 seconds
+task.spawn(function()
+  while true do
+    task.wait(60)
+    for _, player in Players:GetPlayers() do
+      task.spawn(saveData, player)
+    end
+  end
+end)
+
+-- Save all on server shutdown (game:BindToClose)
+game:BindToClose(function()
+  for _, player in Players:GetPlayers() do
+    saveData(player)
+  end
+end)`,
+    tags: ['datastore', 'save', 'load', 'persistence', 'playerdata'],
+  },
+
 ]
 
 // ── Main ────────────────────────────────────────────────────────────────────

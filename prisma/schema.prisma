@@ -1342,3 +1342,22 @@ model Newsletter {
 
   @@index([status, createdAt])
 }
+
+// ─── Build Feedback (Luau Verifier) ───────────────────────────────────────
+
+/// Persists user feedback on AI-generated Luau builds.
+/// Replaces the in-memory-only recentFeedback array in luau-verifier.ts
+/// so data survives lambda restarts and is queryable for quality metrics.
+model BuildFeedback {
+  id           String   @id @default(cuid())
+  promptHash   String
+  code         String   @db.Text
+  worked       Boolean
+  errorMessage String?
+  score        Int
+  model        String
+  createdAt    DateTime @default(now())
+
+  @@index([promptHash])
+  @@index([worked, score])
+}

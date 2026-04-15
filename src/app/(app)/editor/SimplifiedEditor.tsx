@@ -10,10 +10,11 @@
  * sync, persistence) stays in the existing hooks — this file is pure layout.
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { ChatPanel } from '@/components/editor/ChatPanel'
 import { CommandPalette } from '@/components/editor/CommandPalette'
+import { PublishPanel } from '@/components/editor/PublishPanel'
 import { useChat, loadSessions, type ChatSession } from './hooks/useChat'
 import { useStudioConnection } from './hooks/useStudioConnection'
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
@@ -34,6 +35,8 @@ function EditorInner() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [apiKeysOpen, setApiKeysOpen] = useState(false)
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [activeBuildId, setActiveBuildId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>([])
 
   // ── Studio connection — auto-generate pairing code on mount ──
@@ -119,7 +122,9 @@ function EditorInner() {
   const handleSendToStudio = useCallback(
     (luauCode: string) => {
       if (!studio.sessionId || !studio.isConnected) {
-        toast('Studio not connected — install the plugin from /download', 'warning')
+        // Pre-flight: open publish panel so user can connect
+        toast('Studio not connected — open the Publish panel to pair', 'warning')
+        setPublishOpen(true)
         return
       }
       fetch('/api/studio/execute', {
@@ -129,7 +134,7 @@ function EditorInner() {
       })
         .then(() => {
           studio.addActivity('Code sent to Studio')
-          toast('Sent to Studio', 'success')
+          toast('Deployed to Studio', 'success')
         })
         .catch(() => toast('Failed to send to Studio', 'error'))
     },
@@ -159,9 +164,13 @@ function EditorInner() {
         studioConnected={studio.isConnected}
         studioPlaceName={studio.placeName}
         onConnectStudio={() => {
+          if (studio.connectFlow === 'idle' || studio.connectFlow === 'code') {
+            setPublishOpen(true)
+          }
           if (studio.connectFlow === 'idle') studio.generateCode()
         }}
         connectCode={studio.connectCode}
+        onOpenPublish={() => setPublishOpen(true)}
       />
 
       {/* Main content — either welcome hero OR chat messages */}
@@ -173,7 +182,10 @@ function EditorInner() {
             if (studio.isConnected && studio.sessionId) {
               chat.triggerStepByStepBuild(prompt, studio.sessionId)
             } else {
-              // Fall back to regular chat when Studio isn't connected
+              // Pre-flight: prompt user to connect Studio for full builds
+              toast('Connect Studio first for direct deployment', 'warning')
+              setPublishOpen(true)
+              // Still send as chat so the AI generates the code
               chat.sendMessage(prompt)
             }
           }}
@@ -370,6 +382,28 @@ function EditorInner() {
       {apiKeysOpen && (
         <ApiKeysModal onClose={() => setApiKeysOpen(false)} />
       )}
+
+      {/* Publish to Studio panel */}
+      <PublishPanel
+        open={publishOpen}
+        onClose={() => setPublishOpen(false)}
+        studioConnected={studio.isConnected}
+        studioPlaceName={studio.placeName}
+        connectCode={studio.connectCode}
+        connectFlow={studio.connectFlow}
+        onGenerateCode={() => {
+          // Allow regenerate from idle or when current code expired
+          if (studio.connectFlow === 'idle' || (studio.connectFlow === 'code' && studio.connectTimer <= 0)) {
+            studio.generateCode()
+          }
+        }}
+        activeBuildId={activeBuildId}
+        onBuildComplete={() => {
+          setActiveBuildId(null)
+          toast('Build deployed to Studio', 'success')
+        }}
+        sessionId={studio.sessionId}
+      />
     </div>
   )
 }

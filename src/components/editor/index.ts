@@ -22,6 +22,8 @@ export { StudioConnectionBanner } from './StudioConnectionBanner'
 export { BuildProgressDashboard } from './BuildProgressDashboard'
 export type { BuildProgressProps } from './BuildProgressDashboard'
 
+export { PublishPanel, saveRecentBuild } from './PublishPanel'
+
 export { GameTypeSelector } from './GameTypeSelector'
 export type { GameTypeSelectorProps } from './GameTypeSelector'
 

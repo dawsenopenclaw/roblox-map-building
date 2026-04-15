@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pkg from '../../../../package.json'
 import { requireAdmin } from '../admin/_adminGuard'
+import { getMetrics, type AIMetrics } from '@/lib/ai/metrics'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ interface HealthResponse {
   status: 'healthy' | 'degraded' | 'unhealthy'
   version: string
   checks: HealthChecks
+  ai: AIMetrics
   timestamp: string
 }
 
@@ -260,6 +262,7 @@ export async function GET(req: NextRequest) {
     status: detailedStatus,
     version: pkg.version,
     checks,
+    ai: getMetrics(),
     timestamp,
   }
 

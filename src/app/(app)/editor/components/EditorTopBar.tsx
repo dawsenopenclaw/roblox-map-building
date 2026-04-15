@@ -11,6 +11,7 @@ interface EditorTopBarProps {
   studioPlaceName?: string | null
   onConnectStudio: () => void
   connectCode?: string
+  onOpenPublish?: () => void
 }
 
 export function EditorTopBar({
@@ -20,6 +21,7 @@ export function EditorTopBar({
   studioPlaceName,
   onConnectStudio,
   connectCode,
+  onOpenPublish,
 }: EditorTopBarProps) {
   const { user } = useUser()
 
@@ -122,6 +124,36 @@ export function EditorTopBar({
             <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
           </svg>
           {connectCode ? `Code: ${connectCode}` : 'Connect Studio'}
+        </button>
+      )}
+
+      {/* Publish to Studio button */}
+      {onOpenPublish && (
+        <button
+          onClick={onOpenPublish}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '4px 10px',
+            borderRadius: 8,
+            border: '1px solid rgba(212,175,55,0.3)',
+            background: 'linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04))',
+            fontSize: 11,
+            fontWeight: 700,
+            color: '#D4AF37',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            fontFamily: 'Inter, sans-serif',
+          }}
+          title="Publish to Studio"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+          Publish
         </button>
       )}
 

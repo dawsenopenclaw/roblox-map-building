@@ -3,7 +3,7 @@
 import { useCallback } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles, ExternalLink, Download } from 'lucide-react'
+import { CreditCard, Zap, TrendingUp, Bot, Package, Star, Crown, Building2, Sparkles, ExternalLink, Download, AlertTriangle } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,10 +112,17 @@ function getTierConfig(tier: string): TierConfig {
 
 // ─── Fetchers ─────────────────────────────────────────────────────────────────
 
-async function billingFetcher(url: string): Promise<BillingStatus | null> {
+async function billingFetcher(url: string): Promise<BillingStatus> {
   const res = await fetch(url)
-  if (!res.ok) return null
-  return res.json() as Promise<BillingStatus | null>
+  if (!res.ok) {
+    throw new Error(
+      res.status === 401 ? 'Please sign in to view billing.' : 'Unable to load billing data.'
+    )
+  }
+  const data = await res.json()
+  // API returns null when DB is unreachable — treat as free tier
+  if (!data || data.error) return FREE_DEFAULTS
+  return data as BillingStatus
 }
 
 async function invoicesFetcher(url: string): Promise<InvoicesResponse> {
@@ -184,7 +191,7 @@ function SkeletonBlock({ className }: { className?: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function BillingClient() {
-  const { data: rawBilling, isLoading } = useSWR<BillingStatus | null>(
+  const { data: billing, error: billingError, isLoading } = useSWR<BillingStatus>(
     '/api/billing/status',
     billingFetcher,
     { revalidateOnFocus: false }
@@ -196,27 +203,27 @@ export default function BillingClient() {
     { revalidateOnFocus: false }
   )
 
-  // Fall back to Free defaults if null response (DB not connected) or still loading
-  const billing: BillingStatus = rawBilling ?? FREE_DEFAULTS
+  // Use fetched data, or FREE_DEFAULTS only while loading (for derived values)
+  const activeBilling: BillingStatus = billing ?? FREE_DEFAULTS
 
-  const tokenPct = Math.min(100, Math.round((billing.tokensUsed / billing.tokenLimit) * 100))
-  const tokensRemaining = Math.max(0, billing.tokenLimit - billing.tokensUsed)
-  const tierConfig = getTierConfig(billing.tier)
+  const tokenPct = Math.min(100, Math.round((activeBilling.tokensUsed / activeBilling.tokenLimit) * 100))
+  const tokensRemaining = Math.max(0, activeBilling.tokenLimit - activeBilling.tokensUsed)
+  const tierConfig = getTierConfig(activeBilling.tier)
 
   const payments: PaymentRow[] = invoicesData?.invoices ?? []
 
   const usageStats: UsageStat[] = [
     {
       label: 'Tokens Used',
-      used: billing.tokensUsed,
-      limit: billing.tokenLimit,
+      used: activeBilling.tokensUsed,
+      limit: activeBilling.tokenLimit,
       icon: <Bot size={14} />,
       color: '#D4AF37',
       gradient: 'linear-gradient(90deg, #D4AF37 0%, #E6A519 100%)',
     },
     {
       label: 'Marketplace Searches',
-      used: billing.marketplaceSearches ?? 0,
+      used: activeBilling.marketplaceSearches ?? 0,
       limit: 500,
       icon: <Package size={14} />,
       color: '#60a5fa',
@@ -224,7 +231,7 @@ export default function BillingClient() {
     },
     {
       label: 'API Calls',
-      used: billing.apiCallsThisMonth ?? 0,
+      used: activeBilling.apiCallsThisMonth ?? 0,
       limit: 10_000,
       icon: <Zap size={14} />,
       color: '#a78bfa',
@@ -252,6 +259,19 @@ export default function BillingClient() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
 
+      {/* ── Error Banner ── */}
+      {billingError && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+          <AlertTriangle size={18} className="flex-shrink-0 text-red-400" />
+          <div>
+            <p className="font-semibold">Unable to load billing data</p>
+            <p className="text-red-400/80 text-xs mt-0.5">
+              {billingError instanceof Error ? billingError.message : 'Please try again later or contact support.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Gradient Header ── */}
       <div className="relative mb-10 pb-8">
         {/* Ambient glow behind header */}
@@ -267,7 +287,7 @@ export default function BillingClient() {
                   <SkeletonBlock className="h-10 w-32 inline-block" />
                 ) : (
                   <span className="bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent">
-                    {billing.plan} Plan
+                    {activeBilling.plan} Plan
                   </span>
                 )}
               </h1>
@@ -278,7 +298,7 @@ export default function BillingClient() {
             {!isLoading && (
               <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border ${tierConfig.badgeBg} ${tierConfig.badgeBorder}`}>
                 <span className="text-[#D4AF37]">{tierConfig.icon}</span>
-                <span className="text-sm font-bold text-white">{billing.tier}</span>
+                <span className="text-sm font-bold text-white">{activeBilling.tier}</span>
               </div>
             )}
           </div>
@@ -290,8 +310,7 @@ export default function BillingClient() {
       <div className="space-y-5">
 
         {/* ── Current Plan ── */}
-        {/* TODO: Replace FREE_DEFAULTS with real Stripe subscription data once Stripe integration is live */}
-        <div className={`relative overflow-hidden card-premium ${billing.status === 'ACTIVE' && billing.tier !== 'FREE' ? '!border-[#D4AF37]/30' : ''} rounded-xl p-7 ${tierConfig.glowColor}`}>
+        <div className={`relative overflow-hidden card-premium ${activeBilling.status === 'ACTIVE' && activeBilling.tier !== 'FREE' ? '!border-[#D4AF37]/30' : ''} rounded-xl p-7 ${tierConfig.glowColor}`}>
           {/* Tier gradient overlay */}
           <div className={`absolute inset-0 bg-gradient-to-br ${tierConfig.gradient} pointer-events-none`} />
           <div className="relative">
@@ -307,26 +326,26 @@ export default function BillingClient() {
                 ) : (
                   <>
                     <div className="flex items-center gap-3 mb-3">
-                      <span className="text-3xl font-bold text-white">{billing.plan}</span>
+                      <span className="text-3xl font-bold text-white">{activeBilling.plan}</span>
                       <span
                         className={`inline-flex items-center gap-1.5 ${tierConfig.badgeBg} border ${tierConfig.badgeBorder} text-[#D4AF37] text-xs font-bold px-3 py-1.5 rounded-full`}
                         style={{ textShadow: '0 0 8px rgba(212,175,55,0.5)' }}
                       >
                         <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] inline-block animate-pulse" />
-                        {billing.status === 'ACTIVE' || billing.status === 'TRIALING' ? 'Active' : billing.status}
+                        {activeBilling.status === 'ACTIVE' || activeBilling.status === 'TRIALING' ? 'Active' : activeBilling.status}
                       </span>
                     </div>
                     <p className="text-gray-400 text-sm leading-relaxed">
-                      {billing.tokenLimit.toLocaleString()} tokens/month
-                      {billing.tier !== 'FREE' ? ' · Full AI access · Priority builds' : ' · Basic AI access'}
+                      {activeBilling.tokenLimit.toLocaleString()} tokens/month
+                      {activeBilling.tier !== 'FREE' ? ' · Full AI access · Priority builds' : ' · Basic AI access'}
                     </p>
                     <p className="text-gray-500 text-xs mt-2.5">
                       <span className="text-white font-semibold text-sm">
-                        {billing.monthlyPrice}{billing.monthlyPrice !== 'Free' ? '/mo' : ''}
+                        {activeBilling.monthlyPrice}{activeBilling.monthlyPrice !== 'Free' ? '/mo' : ''}
                       </span>
-                      {billing.renewDate && (
+                      {activeBilling.renewDate && (
                         <span className="ml-1.5">
-                          · {billing.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} {billing.renewDate}
+                          · {activeBilling.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} {activeBilling.renewDate}
                         </span>
                       )}
                     </p>
@@ -340,7 +359,7 @@ export default function BillingClient() {
                   style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)' }}
                 >
                   <TrendingUp size={14} />
-                  {billing.tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
+                  {activeBilling.tier === 'FREE' ? 'Upgrade Plan' : 'Change Plan'}
                 </Link>
                 <button
                   onClick={openBillingPortal}
@@ -384,7 +403,7 @@ export default function BillingClient() {
                   <span className="text-gray-500 text-base mb-1.5">remaining</span>
                 </div>
                 <p className="text-gray-600 text-xs mb-5">
-                  of {billing.tokenLimit.toLocaleString()} total this month
+                  of {activeBilling.tokenLimit.toLocaleString()} total this month
                 </p>
 
                 {/* Progress bar — gradient */}
@@ -403,7 +422,7 @@ export default function BillingClient() {
                   />
                 </div>
                 <div className="flex justify-between text-xs text-gray-600 mb-6">
-                  <span>{billing.tokensUsed.toLocaleString()} used</span>
+                  <span>{activeBilling.tokensUsed.toLocaleString()} used</span>
                   <span>{tokenPct}%</span>
                 </div>
               </>
