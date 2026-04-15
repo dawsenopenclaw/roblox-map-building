@@ -273,6 +273,23 @@ export async function POST(req: NextRequest) {
     const result = await queueCommand(session.sessionId, { type: commandType, data: commandData })
 
     if (!result.ok) {
+      // Redis failed — try Postgres fallback before giving up
+      console.warn('[execute] Redis queue failed, trying Postgres:', result.error)
+      try {
+        const { pgQueueCommand, pgUpsertSession } = await import('@/lib/studio-queue-pg')
+        const pgCommandId = `pg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        await pgUpsertSession({ sessionId: session.sessionId })
+        const pgOk = await pgQueueCommand(session.sessionId, pgCommandId, commandType, commandData)
+        if (pgOk) {
+          console.log('[execute] Queued to Postgres fallback:', pgCommandId)
+          void incrementCommandCounters()
+          return NextResponse.json(
+            { ok: true, commandId: pgCommandId, queueDepth: 1, backend: 'postgres' },
+            { status: 200, headers: CORS_HEADERS },
+          )
+        }
+      } catch { /* Postgres also failed */ }
+
       return NextResponse.json(
         { ok: false, error: result.error },
         { status: result.error === 'queue_full' ? 429 : 503, headers: CORS_HEADERS },

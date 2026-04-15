@@ -246,13 +246,31 @@ async function handleSync(req: NextRequest) {
   const lastSync = lastSyncRaw ? parseInt(lastSyncRaw, 10) : 0
   const since    = Number.isFinite(lastSync) ? lastSync : 0
 
-  // ── drainCommands returns null when rate-limited ───────────────────────────
-  const commands = await drainCommands(sessionId, since)
+  // ── Drain commands: try Redis first, fall back to Postgres ──────────────
+  let commands = await drainCommands(sessionId, since)
   if (commands === null) {
+    // Rate-limited by Redis path
     return NextResponse.json(
       { serverTime: Date.now(), heartbeat: true, changes: [], rateLimited: true, retryAfterMs: 1000 },
       { status: 200, headers: CORS_HEADERS },
     )
+  }
+
+  // If Redis returned empty, also check Postgres (commands may have been
+  // queued there when Redis was down / quota exhausted)
+  if (commands.length === 0) {
+    try {
+      const { pgDrainCommands, pgTouchHeartbeat } = await import('@/lib/studio-queue-pg')
+      const pgCmds = await pgDrainCommands(sessionId)
+      if (pgCmds.length > 0) {
+        commands = pgCmds
+        console.log('[studio/sync] Drained', pgCmds.length, 'commands from Postgres fallback')
+      }
+      // Always touch heartbeat in Postgres (free, no limits)
+      await pgTouchHeartbeat(sessionId)
+    } catch {
+      // Postgres unavailable — continue with empty commands
+    }
   }
 
   // Track each delivered command by type (fire-and-forget)

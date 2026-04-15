@@ -897,20 +897,36 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     // Send execute_luau with BOTH structured commands and raw code.
     // Plugin priority: commands > code. Raw code is the safety net for
     // constructs the translator couldn't handle (loops, functions, etc.)
-    const result = await queueCommand(sessionId, {
-      type: 'execute_luau',
-      data: {
-        // Structured commands — plugin uses these first (no regex, no loadstring)
-        ...(commands.length > 0 ? { commands } : {}),
-        // Raw code — plugin falls back to this for untranslatable constructs
-        ...(isStoreEdition ? {} : { code: fixedCode }),
-        // Flag for the plugin to know partial translation happened
-        ...(hasUntranslatableCode ? { hasComplexFallback: true } : {}),
-      },
-    })
+    const commandData = {
+      // Structured commands — plugin uses these first (no regex, no loadstring)
+      ...(commands.length > 0 ? { commands } : {}),
+      // Raw code — plugin falls back to this for untranslatable constructs
+      ...(isStoreEdition ? {} : { code: fixedCode }),
+      // Flag for the plugin to know partial translation happened
+      ...(hasUntranslatableCode ? { hasComplexFallback: true } : {}),
+    }
+    const result = await queueCommand(sessionId, { type: 'execute_luau', data: commandData })
     console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result), `(${commands.length} structured cmds, store=${isStoreEdition})`)
 
-    if (!result.ok || !result.commandId) return false
+    // If Redis queue failed (quota exceeded), fall back to Postgres queue
+    if (!result.ok) {
+      console.warn('[sendCodeToStudio] Redis queue failed, trying Postgres fallback')
+      try {
+        const { pgQueueCommand, pgUpsertSession } = await import('@/lib/studio-queue-pg')
+        const commandId = `pg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+        await pgUpsertSession({ sessionId })
+        const pgOk = await pgQueueCommand(sessionId, commandId, 'execute_luau', commandData)
+        if (pgOk) {
+          console.log('[sendCodeToStudio] Queued to Postgres:', commandId)
+          return 'queued' as unknown as boolean
+        }
+      } catch (pgErr) {
+        console.error('[sendCodeToStudio] Postgres fallback also failed:', pgErr instanceof Error ? pgErr.message : pgErr)
+      }
+      return false
+    }
+
+    if (!result.commandId) return false
 
     // Wait for the plugin to confirm execution instead of lying about success.
     // The plugin POSTs command_result back via /api/studio/update after executing.

@@ -148,22 +148,35 @@ export async function POST(req: NextRequest) {
   if (extra.sceneTree !== undefined) s.sceneTree = extra.sceneTree
   if (extra.groundY !== undefined) s.groundY = extra.groundY
 
-  // Process command_result changes — store in Redis so sendCodeToStudio can poll
+  // Process command_result changes — store in Redis AND Postgres
   for (const change of safeChanges) {
     if (change.type === 'command_result' && change.data?.commandId) {
+      const resultData = {
+        success: change.data.success as boolean,
+        partsCreated: (change.data.partsCreated as number) ?? 0,
+        partsFailed: (change.data.partsFailed as number) ?? 0,
+        totalCommands: (change.data.totalCommands as number) ?? 0,
+        error: (change.data.error as string) ?? undefined,
+        method: (change.data.method as string) ?? undefined,
+      }
+      // Try Redis first
       try {
         const { storeCommandResult } = await import('@/lib/studio-session')
-        await storeCommandResult(change.data.commandId as string, {
-          success: change.data.success as boolean,
-          partsCreated: (change.data.partsCreated as number) ?? 0,
-          partsFailed: (change.data.partsFailed as number) ?? 0,
-          totalCommands: (change.data.totalCommands as number) ?? 0,
-          error: (change.data.error as string) ?? undefined,
-          method: (change.data.method as string) ?? undefined,
-        })
-      } catch { /* Redis unavailable — result lost but not critical */ }
+        await storeCommandResult(change.data.commandId as string, resultData)
+      } catch { /* Redis unavailable */ }
+      // Always store in Postgres (free, no limits)
+      try {
+        const { pgStoreCommandResult } = await import('@/lib/studio-queue-pg')
+        await pgStoreCommandResult(change.data.commandId as string, resultData)
+      } catch { /* Postgres unavailable */ }
     }
   }
+
+  // Touch heartbeat in Postgres (free, no limits — always works even when Redis is down)
+  try {
+    const { pgTouchHeartbeat } = await import('@/lib/studio-queue-pg')
+    await pgTouchHeartbeat(body.sessionId)
+  } catch { /* non-critical */ }
 
   // Push to SSE subscribers — instant browser updates, no polling needed
   try {
