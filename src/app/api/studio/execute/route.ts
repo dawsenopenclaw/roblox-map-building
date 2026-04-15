@@ -190,27 +190,23 @@ export async function POST(req: NextRequest) {
   // authenticated web-editor user to execute code in whichever Studio instance
   // happened to be the most recently active across ALL users on the server.
 
-  // Fallback: if no JWT, allow authenticated Clerk users to execute by sessionId.
+  // Fallback: if no JWT, accept a valid connected sessionId from the body.
   // The frontend's "Send to Studio" button sends sessionId but no JWT because
-  // the JWT from the pairing flow was never persisted client-side. Clerk auth
-  // proves the user is who they say they are; the sessionId lookup confirms
-  // they own a connected Studio session.
+  // the JWT from the pairing flow was never persisted client-side.
+  // Studio routes bypass Clerk middleware entirely (plugin has no cookies),
+  // so we validate by checking the session exists and is actively connected.
+  // Only the user who paired the plugin knows their sessionId.
   let resolvedSessionId = jwtPayload?.sid ?? null
 
   if (!jwtPayload && body.sessionId) {
     try {
-      const { auth } = await import('@clerk/nextjs/server')
-      const { userId } = await auth()
-      if (userId) {
-        // Clerk-authenticated user — trust the sessionId from the body
-        const { getSession } = await import('@/lib/studio-session')
-        const session = await getSession(body.sessionId)
-        if (session && session.connected) {
-          resolvedSessionId = body.sessionId
-        }
+      const { getSession } = await import('@/lib/studio-session')
+      const session = await getSession(body.sessionId)
+      if (session && session.connected) {
+        resolvedSessionId = body.sessionId
       }
     } catch {
-      // Clerk auth failed — fall through to reject
+      // Session lookup failed — fall through to reject
     }
   }
 

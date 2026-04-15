@@ -810,6 +810,56 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       console.log('[sendCodeToStudio] Translation warnings:', warnings)
     }
 
+    // ── Quality fixer: catch garbage patterns from weak free models ────────
+    // The free models (Gemini Flash, Groq Llama) ignore prompt instructions
+    // and generate 200x200 baseplates, SmoothPlastic everything, royal blue
+    // and emerald colors. This deterministic fixer catches and corrects the
+    // most common quality violations before commands reach the plugin.
+    let qualityFixes = 0
+    for (const cmd of commands) {
+      if (cmd.type !== 'create_part') continue
+
+      // Fix oversized baseplates — 200x200 is absurd, clamp to 60x60
+      if (cmd.size) {
+        const s = cmd.size as { x: number; y: number; z: number }
+        if (s.x > 80) { s.x = Math.min(s.x, 60); qualityFixes++ }
+        if (s.z > 80) { s.z = Math.min(s.z, 60); qualityFixes++ }
+      }
+
+      // Fix SmoothPlastic — replace with contextual material
+      if (cmd.material === 'SmoothPlastic' || cmd.material === 'Plastic') {
+        const name = (cmd.name || '').toLowerCase()
+        if (name.includes('wall') || name.includes('exterior')) cmd.material = 'Concrete'
+        else if (name.includes('floor') || name.includes('base')) cmd.material = 'WoodPlanks'
+        else if (name.includes('roof')) cmd.material = 'Slate'
+        else if (name.includes('door') || name.includes('table') || name.includes('chair') || name.includes('counter') || name.includes('shelf')) cmd.material = 'Wood'
+        else if (name.includes('window') || name.includes('glass')) cmd.material = 'Glass'
+        else cmd.material = 'Concrete'
+        qualityFixes++
+      }
+
+      // Fix garish colors — replace royal blue, emerald, bright green, pure primary
+      if (cmd.color) {
+        const c = cmd.color as { r: number; g: number; b: number }
+        // Royal blue (0-50, 0-50, 180+)
+        if (c.r < 60 && c.g < 60 && c.b > 170) { c.r = 160; c.g = 160; c.b = 165; qualityFixes++ }
+        // Emerald / bright green (0-50, 180+, 0-80)
+        else if (c.r < 60 && c.g > 170 && c.b < 90) { c.r = 100; c.g = 130; c.b = 90; qualityFixes++ }
+        // Pure red (200+, 0-30, 0-30) — unless it's a door/sign/fire element
+        else if (c.r > 200 && c.g < 40 && c.b < 40) {
+          const name = (cmd.name || '').toLowerCase()
+          if (!name.includes('door') && !name.includes('sign') && !name.includes('fire') && !name.includes('neon') && !name.includes('light')) {
+            c.r = 180; c.g = 150; c.b = 100; qualityFixes++
+          }
+        }
+        // Bright green baseplate (0-80, 200+, 0-80) — replace with natural grass
+        else if (c.r < 90 && c.g > 190 && c.b < 90) { c.r = 90; c.g = 140; c.b = 70; qualityFixes++ }
+      }
+    }
+    if (qualityFixes > 0) {
+      console.log(`[sendCodeToStudio] Quality fixer: ${qualityFixes} corrections applied`)
+    }
+
     // Offset structured command positions by the camera's spawn point so
     // parts appear near the user, not at the world origin. The AI's Luau
     // template calculates `sp = cam.CFrame.Position + LookVector * 30`
