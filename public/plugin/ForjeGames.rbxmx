@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-15T00:28:54.856Z -->
+  <!-- Built by build-plugin.js on 2026-04-15T02:55:20.897Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -2100,7 +2100,7 @@ Sync.PLUGIN_VERSION = "4.7.0"
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
 local PLUGIN_VERSION     = "4.6.0"
-local MIN_INTERVAL       = 2    -- seconds
+local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs
 local MAX_RECONNECT      = 10   -- give up after this many consecutive reconnect attempts

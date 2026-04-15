@@ -101,7 +101,8 @@ export interface StudioSession {
 export const SESSION_TTL_MS       = 300_000  // 5 min — connected threshold
 export const REDIS_TTL_SECS       = 600      // 10 min Redis key TTL
 export const COMMAND_QUEUE_MAX    = 50
-export const MIN_POLL_INTERVAL_MS = 800
+export const MIN_POLL_INTERVAL_MS = 3000     // 3s min between polls (was 800ms — burned Redis quota)
+const REDIS_HEARTBEAT_INTERVAL_MS = 30_000   // Only persist heartbeat to Redis every 30s (was every poll)
 
 // ---------------------------------------------------------------------------
 // Startup warning — surfaces misconfiguration early in Vercel logs
@@ -600,17 +601,20 @@ export async function drainCommands(
 
   const now = Date.now()
 
-  // Always touch heartbeat, even when rate-limited.
-  // Use awaitable Redis persist so other Lambdas (especially the chat
-  // Lambda running sendCodeToStudio) see fresh heartbeat timestamps.
-  // Without this, cross-Lambda session discovery fails and every build
-  // is silently dropped with "session stale".
+  // Always touch heartbeat in L1 (free, same Lambda)
+  const prevHeartbeat = session.lastHeartbeat
   touchHeartbeat(session)
+
+  // Only persist to Redis every 30s to stay within Upstash free tier.
+  // One plugin polling every 3s = 20 polls/min. Without throttling,
+  // each poll did 3+ Redis ops = 60 ops/min = 86K/day = 2.6M/month.
+  // With 30s throttle: 2 ops/min = 2.8K/day = 86K/month. 97% reduction.
+  const shouldPersistHeartbeat = (now - prevHeartbeat) >= REDIS_HEARTBEAT_INTERVAL_MS
 
   // Rate-limit check — use L1 lastPollAt as fast gate
   if (now - session.lastPollAt < MIN_POLL_INTERVAL_MS) {
     sessions.set(sessionId, session)
-    await redisPersistAwaited(session)
+    if (shouldPersistHeartbeat) await redisPersistAwaited(session)
     return null
   }
 
@@ -635,7 +639,7 @@ export async function drainCommands(
         // Clear L1 queue since Redis list is now authoritative and drained
         session.commandQueue = []
         sessions.set(sessionId, session)
-        await redisPersistAwaited(session)
+        if (shouldPersistHeartbeat || commands.length > 0) await redisPersistAwaited(session)
         return commands
       }
 
@@ -648,7 +652,7 @@ export async function drainCommands(
       // Clear L1 queue — Redis list is now drained
       session.commandQueue = []
       sessions.set(sessionId, session)
-      await redisPersistAwaited(session)
+      if (shouldPersistHeartbeat || commands.length > 0) await redisPersistAwaited(session)
       return commands
     } catch {
       // Redis error — fall through to L1 path
