@@ -1408,11 +1408,9 @@ export function useChat(options: UseChatOptions = {}) {
             if (meta.hasCode || meta.executedInStudio) {
               let statusContent: string
               if (meta.executedInStudio) {
-                statusContent = 'Sent to Roblox Studio ✓'
-              } else if (studioConnected) {
-                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+                statusContent = 'Sent to Studio — building now ✓'
               } else {
-                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+                statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
               }
               result.push({
                 id: uid(),
@@ -1737,11 +1735,9 @@ export function useChat(options: UseChatOptions = {}) {
             if (meta.hasCode || meta.executedInStudio) {
               let statusContent: string
               if (meta.executedInStudio) {
-                statusContent = 'Sent to Roblox Studio ✓'
-              } else if (studioConnected) {
-                statusContent = 'Failed to push to Studio. Check that the plugin is running and try again.'
+                statusContent = 'Sent to Studio — building now ✓'
               } else {
-                statusContent = 'Generated! Connect Studio plugin to push automatically, or copy code below.'
+                statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
               }
               result.push({
                 id: uid(),
