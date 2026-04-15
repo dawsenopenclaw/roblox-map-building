@@ -187,6 +187,17 @@ async function handleSync(req: NextRequest) {
         })
         sessionId = jwtPayload.sid
       }
+      // Always persist to Postgres so the chat Lambda can find this session
+      // even when Redis is down (Upstash quota exhausted).
+      try {
+        const { pgUpsertSession } = await import('@/lib/studio-queue-pg')
+        await pgUpsertSession({
+          sessionId: jwtPayload.sid,
+          placeId: jwtPayload.pid,
+          placeName: jwtPayload.pn,
+          pluginVersion: jwtPayload.pv || pluginVer,
+        })
+      } catch { /* Postgres write failed — non-critical */ }
     }
   }
 

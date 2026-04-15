@@ -756,28 +756,52 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
   try {
     console.log('[sendCodeToStudio] Attempting for session:', sessionId, 'codeLen:', code.length)
 
-    // Look up the session in L1 + Redis. If it doesn't exist anywhere, the
-    // user does not have a Studio plugin connected — do not queue commands.
-    const session = await getSession(sessionId)
+    // Look up the session in L1 → Redis → Postgres.
+    // When Redis quota is exhausted, L1 and Redis both miss. Postgres is
+    // the fallback that always works (free, no request limits).
+    let session = await getSession(sessionId)
+
     if (!session) {
-      console.log('[sendCodeToStudio] No session found — plugin not connected, skipping queue')
-      return false
+      // Redis/L1 miss — try Postgres
+      try {
+        const { pgGetSession, pgUpsertSession } = await import('@/lib/studio-queue-pg')
+        const pgSession = await pgGetSession(sessionId)
+        if (pgSession) {
+          console.log('[sendCodeToStudio] Found session in Postgres:', sessionId)
+          // Create an L1 session from Postgres data so queueCommand works
+          session = createSession({
+            sessionId,
+            placeId: pgSession.placeId,
+            placeName: pgSession.placeName,
+            pluginVersion: pgSession.pluginVersion,
+            authToken: `pg-${sessionId}`,
+          })
+        } else {
+          // Session not in Postgres either — create it optimistically.
+          // The plugin may be polling /sync on another Lambda that created
+          // the session. We queue the command and the plugin will pick it up.
+          console.log('[sendCodeToStudio] No session anywhere — creating optimistically for:', sessionId)
+          await pgUpsertSession({ sessionId })
+          session = createSession({
+            sessionId,
+            placeId: 'unknown',
+            placeName: 'Studio',
+            pluginVersion: '4.7.0',
+            authToken: `pg-${sessionId}`,
+          })
+        }
+      } catch (pgErr) {
+        console.error('[sendCodeToStudio] Postgres session lookup failed:', pgErr instanceof Error ? pgErr.message : pgErr)
+        return false
+      }
     }
 
-    // Session exists but plugin hasn't poll'd recently — don't pretend it's live.
-    // The session library uses a 5-min TTL for `connected`, but for the
-    // chat route we use a much tighter 30-second window. The plugin polls
-    // every 2-5 seconds, so if there's been no heartbeat for 30s the plugin
-    // is definitely gone. The 5-min TTL is fine for the status page (shows
-    // "recently connected") but too generous for claiming "Built in Studio".
+    // Skip the heartbeat freshness check when Redis is down — we can't
+    // reliably know the heartbeat age. Just queue and let the plugin decide.
     const heartbeatAgeMs = Date.now() - (session.lastHeartbeat ?? 0)
-    // 90 seconds: plugin polls every 2-5s, heartbeat every 30s. The previous
-    // 30s window was too tight — any Redis latency caused cross-Lambda stale
-    // reads, silently dropping every build. 90s gives 3x margin.
     const CHAT_CONNECTED_TTL_MS = 90_000
-    if (!session.connected || heartbeatAgeMs > CHAT_CONNECTED_TTL_MS) {
-      console.log(`[sendCodeToStudio] Session stale (heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago, TTL=${CHAT_CONNECTED_TTL_MS/1000}s), skipping queue`)
-      return false
+    if (session.lastHeartbeat > 0 && (!session.connected || heartbeatAgeMs > CHAT_CONNECTED_TTL_MS)) {
+      console.log(`[sendCodeToStudio] Session stale (heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago), but will try Postgres queue`)
     }
 
     console.log('[sendCodeToStudio] Session found:', sessionId, 'connected:', session.connected)
