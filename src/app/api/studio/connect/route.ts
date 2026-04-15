@@ -10,17 +10,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createSession, getSession, getSessionByToken } from '@/lib/studio-session'
+import crypto from 'crypto'
+import { createSession, getSession } from '@/lib/studio-session'
 import { studioConnectSchema, parseBody } from '@/lib/validations'
 import { trackConnect } from '@/lib/studio-analytics'
+import { getStudioAuthSecret } from '@/lib/studio-auth-secret'
 import * as Sentry from '@sentry/nextjs'
 
-interface ConnectBody {
-  /** Auth token — must match STUDIO_PLUGIN_SECRET env var */
-  token: string
-  placeId: string
-  placeName?: string
-  pluginVersion?: string
+interface JwtPayload {
+  sid: string   // sessionId
+  pid: string   // placeId
+  pn:  string   // placeName
+  pv:  string   // pluginVersion
+  iat: number   // issued-at (ms)
 }
 
 const CORS_HEADERS = {
@@ -30,17 +32,31 @@ const CORS_HEADERS = {
 }
 
 /**
- * Extract the sessionId (sid) claim from a JWT without full signature verification.
- * Used only to look up / pin the session — the JWT is fully verified by the
- * auth/route.ts and sync/route.ts before any privileged action is taken.
+ * Verify a JWT-style token produced by the auth/claim endpoint.
+ * Returns the decoded payload on success, null on any failure.
+ * Same logic as sync/route.ts — both routes MUST agree on verification.
  */
-function extractSessionIdFromJwt(token: string): string | null {
+function verifyJwt(token: string): JwtPayload | null {
   try {
     const dot = token.lastIndexOf('.')
     if (dot < 1) return null
     const payloadB64 = token.slice(0, dot)
-    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as { sid?: string }
-    return payload.sid ?? null
+    const sig = token.slice(dot + 1)
+
+    // Verify HMAC — use timingSafeEqual to prevent timing-based side-channel attacks
+    const expectedSig = crypto
+      .createHmac('sha256', getStudioAuthSecret())
+      .update(payloadB64)
+      .digest('base64url')
+    const sigBuf = Buffer.from(sig)
+    const expBuf = Buffer.from(expectedSig)
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) return null
+
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8')) as JwtPayload
+    if (!payload.sid || !payload.pid) return null
+    // Reject tokens older than 30 days
+    if (payload.iat && Date.now() - payload.iat > 30 * 24 * 60 * 60 * 1000) return null
+    return payload
   } catch {
     return null
   }
@@ -66,93 +82,55 @@ async function handleConnect(req: NextRequest) {
   }
   const body = parsedBody.data
 
-  // Token validation — accept either a static env secret OR a valid session JWT.
-  // The plugin sends its auth token (from code exchange) in body.token.
-  const secret = process.env.STUDIO_PLUGIN_SECRET
-  let existingSession = undefined
-
-  // SECURITY: If no STUDIO_PLUGIN_SECRET is set, we MUST still validate the token
-  // is either a valid JWT or matches a known session. Never accept arbitrary tokens.
-  if (!secret) {
-    // No static secret configured — token MUST be a valid JWT shape (payload.signature)
-    const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
-    if (!isJwtShape) {
-      return NextResponse.json(
-        { error: 'invalid_token', message: 'Token must be a valid JWT from the pairing flow' },
-        { status: 401, headers: CORS_HEADERS },
-      )
-    }
-    // Try to load an existing session from memory/Redis first.
-    const jwtSessionId = extractSessionIdFromJwt(body.token)
-    if (jwtSessionId) {
-      existingSession = await getSession(jwtSessionId) ?? await getSessionByToken(body.token) ?? undefined
-    }
-    // If session is gone (TTL expired or cold Lambda) but the JWT shape is valid,
-    // allow reconnect — the session will be recreated below with the same sessionId
-    // so the plugin's stored ID stays valid. The JWT signature is fully verified by
-    // sync/route.ts and execute/route.ts before any privileged action is taken.
-    // Not found in memory/Redis is not a security failure here — it just means the
-    // session TTL expired and needs to be recreated.
-    if (!existingSession && !jwtSessionId) {
-      // Cannot extract sessionId — truly invalid token structure
-      return NextResponse.json(
-        { error: 'invalid_token', message: 'Malformed token. Complete the pairing flow at forjegames.com/editor' },
-        { status: 401, headers: CORS_HEADERS },
-      )
-    }
-    // jwtPinnedId will be set below if existingSession is null
-  } else if (body.token !== secret) {
-    // Not the static secret — try memory lookup first (fast path), then Redis
-    existingSession = await getSessionByToken(body.token)
-
-    if (!existingSession) {
-      // Memory miss — try to reconstruct from JWT (cross-Lambda / cold-start safe)
-      try {
-        const jwtSessionId = extractSessionIdFromJwt(body.token)
-        if (jwtSessionId) {
-          existingSession = await getSession(jwtSessionId)
-        }
-      } catch { /* invalid JWT — handled below */ }
-    }
-
-    if (!existingSession) {
-      // Check whether the token looks like a valid JWT before rejecting.
-      // Our custom JWT is payload.signature (one dot), not standard 3-part JWT.
-      const isJwtShape = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(body.token)
-      if (!isJwtShape) {
-        return NextResponse.json(
-          { error: 'invalid_token' },
-          { status: 401, headers: CORS_HEADERS },
-        )
-      }
-      // JWT-shaped token but session not found anywhere — will be created below
-      // with the JWT's embedded sessionId so the plugin's stored ID stays valid.
-    }
-  }
-
-  // When no existing session was found, pin the sessionId from the JWT so the
-  // newly created session uses the same ID the plugin already has stored.
-  // Covers: no-secret path with expired TTL, with-secret cold Lambda, and
-  // JWT-shaped unknown tokens. Prevents the plugin from getting a stale sessionId.
-  let jwtPinnedId: string | undefined
-  if (!existingSession) {
-    jwtPinnedId = extractSessionIdFromJwt(body.token) ?? undefined
+  // ── Verify JWT signature ────────────────────────────────────────────────
+  // The plugin sends the JWT it received from auth/claim. We MUST verify
+  // the HMAC signature using the same secret that auth used to sign it.
+  // Previously this route only checked JWT shape (regex) which meant ANY
+  // payload.signature string was accepted — sync then rejected it, so
+  // commands never reached Studio.
+  const jwtPayload = verifyJwt(body.token)
+  if (!jwtPayload) {
+    return NextResponse.json(
+      { error: 'invalid_token', message: 'Invalid or expired token. Re-enter your connection code at forjegames.com/editor' },
+      { status: 401, headers: CORS_HEADERS },
+    )
   }
 
   const pluginVersion = body.pluginVersion ?? '0.0.0'
-  const session = existingSession ?? createSession({
-    sessionId: jwtPinnedId,
-    placeId: String(body.placeId),
-    placeName: body.placeName ?? 'Unknown Place',
-    pluginVersion,
-    authToken: body.token,
-  })
-  if (existingSession) {
+
+  // ── Resolve or create session ───────────────────────────────────────────
+  // Try to find an existing session by the JWT's embedded sessionId.
+  // If not found (TTL expired, cold Lambda), recreate it from the JWT
+  // payload — same pattern as sync/route.ts.
+  let session = await getSession(jwtPayload.sid)
+
+  if (session) {
     // Refresh heartbeat so the reconnect is reflected immediately
-    existingSession.lastHeartbeat  = Date.now()
-    existingSession.connected      = true
-    existingSession.pluginVersion  = pluginVersion
+    session.lastHeartbeat  = Date.now()
+    session.connected      = true
+    session.pluginVersion  = pluginVersion
+  } else {
+    // Recreate session from the self-contained JWT payload
+    session = createSession({
+      sessionId:     jwtPayload.sid,
+      placeId:       jwtPayload.pid,
+      placeName:     jwtPayload.pn || body.placeName || 'Unknown Place',
+      pluginVersion,
+      authToken:     body.token,
+    })
   }
+
+  // Persist to Postgres so the chat Lambda can find this session
+  // even when Redis is down (Upstash quota exhausted).
+  try {
+    const { pgUpsertSession } = await import('@/lib/studio-queue-pg')
+    await pgUpsertSession({
+      sessionId:     jwtPayload.sid,
+      placeId:       jwtPayload.pid,
+      placeName:     jwtPayload.pn || body.placeName || 'Unknown Place',
+      pluginVersion,
+    })
+  } catch { /* Postgres write failed — non-critical */ }
 
   // Track connection analytics (fire-and-forget)
   trackConnect(pluginVersion)
