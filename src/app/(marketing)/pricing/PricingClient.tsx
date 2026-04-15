@@ -1074,11 +1074,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                         </span>
                       )}
                   </p>
-                  {(tier.priceMonthly as number) > 0 && (
-                    <p className="text-center text-[11px] text-[#3D4A6A] mb-6 leading-relaxed">
-                      30-day money-back guarantee
-                    </p>
-                  )}
+                  {(tier.priceMonthly as number) > 0 && <div className="mb-6" />}
                   {(tier.priceMonthly as number) === 0 && <div className="mb-6" />}
 
                   {/* Divider */}
