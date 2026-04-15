@@ -55,8 +55,33 @@ export async function POST(req: NextRequest) {
     const { SUBSCRIPTION_TIERS, getTokenPackBySlug } = await import('@/lib/subscription-tiers')
     const { clientEnv } = await import('@/lib/env')
 
-    const user = await db.user.findUnique({ where: { clerkId }, include: { subscription: true } })
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    let user = await db.user.findUnique({ where: { clerkId }, include: { subscription: true } })
+
+    // Auto-create user if webhook never fired (e.g. webhook secret was misconfigured)
+    if (!user) {
+      const { clerkClient } = await import('@clerk/nextjs/server')
+      const clerk = await clerkClient()
+      const clerkUser = await clerk.users.getUser(clerkId)
+      const email = clerkUser.emailAddresses.find(
+        e => e.id === clerkUser.primaryEmailAddressId
+      )?.emailAddress ?? `${clerkId}@forjegames.com`
+      const displayName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email.split('@')[0]
+
+      user = await db.user.create({
+        data: {
+          clerkId,
+          email,
+          displayName,
+          avatarUrl: clerkUser.imageUrl,
+          ageVerified: true,
+          subscription: {
+            create: { tier: 'FREE', status: 'ACTIVE', tokensRemaining: 1000, stripeCustomerId: `pending_${clerkId}` },
+          },
+        },
+        include: { subscription: true },
+      })
+      console.log('[billing/checkout] Auto-created user from Clerk data:', { clerkId, email })
+    }
 
     const appUrl = clientEnv.NEXT_PUBLIC_APP_URL
 
