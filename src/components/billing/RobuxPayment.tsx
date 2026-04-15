@@ -44,18 +44,18 @@ const TIER_META: Record<RobuxTier, { label: string; description: string; icon: R
   },
   starter: {
     label: 'Starter',
-    description: '5,000 credits/mo with Starter features',
+    description: '5,000 tokens',
     icon: <Zap size={16} />,
   },
   pro: {
     label: 'Creator',
-    description: '30,000 credits/mo with Creator features',
+    description: '30,000 tokens',
     icon: <Crown size={16} />,
     featured: true,
   },
   studio: {
     label: 'Studio',
-    description: '150,000 credits/mo with full access',
+    description: '150,000 tokens',
     icon: <Building2 size={16} />,
   },
 }
@@ -172,9 +172,7 @@ export default function RobuxPayment() {
     setSelectedTier(null)
   }, [])
 
-  const planTiers: RobuxTier[] = ['starter', 'pro', 'studio']
-  const creditTiers: RobuxTier[] = ['credits_100', 'credits_500']
-  const displayedTiers = viewMode === 'plans' ? planTiers : creditTiers
+  const displayedTiers: RobuxTier[] = ['starter', 'pro', 'studio', 'credits_100', 'credits_500']
 
   return (
     <div className="space-y-6">
@@ -191,29 +189,7 @@ export default function RobuxPayment() {
         </div>
       </div>
 
-      {/* View mode toggle */}
-      <div className="flex gap-1 p-1 bg-white/[0.05] rounded-xl border border-white/[0.08]">
-        <button
-          onClick={() => setViewMode('plans')}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'plans'
-              ? 'bg-[#00A2FF]/15 text-[#00A2FF] border border-[#00A2FF]/30'
-              : 'text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Subscription Plans
-        </button>
-        <button
-          onClick={() => setViewMode('credits')}
-          className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'credits'
-              ? 'bg-[#00A2FF]/15 text-[#00A2FF] border border-[#00A2FF]/30'
-              : 'text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Credit Packs
-        </button>
-      </div>
+      {/* Token packs — no subscription toggle needed */}
 
       {/* Purchase complete state */}
       {purchaseComplete && selectedTier && (
