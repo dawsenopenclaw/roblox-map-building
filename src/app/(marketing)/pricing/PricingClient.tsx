@@ -669,14 +669,23 @@ function SubscribeCta({ tierKey, highlight, cta, ctaHref, annual, currentTier, p
       if (result.ok) {
         window.location.href = result.url
       } else {
-        // Nested else so TS narrows `result` to the error variant (see the
-        // matching comment in handleBuyPack above — same discriminated-union
-        // narrowing gotcha).
         if (result.redirect) {
           window.location.href = result.redirect
         } else {
+          console.error('[checkout] Error:', result.error)
           onError(result.error)
+          // Fallback alert in case toast is hidden
+          if (typeof window !== 'undefined') {
+            window.alert(`Checkout error: ${result.error}`)
+          }
         }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error'
+      console.error('[checkout] Unhandled:', msg)
+      onError(msg)
+      if (typeof window !== 'undefined') {
+        window.alert(`Checkout error: ${msg}`)
       }
     } finally {
       setLoading(false)
