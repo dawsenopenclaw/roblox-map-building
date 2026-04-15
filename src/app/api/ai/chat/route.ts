@@ -372,6 +372,23 @@ function extractLuauCode(text: string | null | undefined): string | null {
     const code = m[1]?.trim()
     if (code) blocks.push(code)
   }
+
+  // Fallback: if no complete fenced blocks found, check for truncated blocks
+  // (AI hit max_tokens and the closing ``` was cut off). Look for an opening
+  // fence with Luau-like content after it.
+  if (blocks.length === 0) {
+    const truncatedRe = /```(?:lua|luau)\s*\r?\n([\s\S]+)$/
+    const tm = truncatedRe.exec(text)
+    if (tm) {
+      const code = tm[1]?.trim()
+      // Only accept if it looks like actual Luau (has Instance.new or P() or game:GetService)
+      if (code && (code.includes('Instance.new') || code.includes('P(') || code.includes('GetService'))) {
+        console.warn('[extractLuauCode] Using truncated code block (no closing fence)')
+        blocks.push(code)
+      }
+    }
+  }
+
   if (blocks.length === 0) return null
   // Prefer the longest block — short blocks are often examples, long ones are the real build
   return blocks.reduce((a, b) => (a.length >= b.length ? a : b))
@@ -754,9 +771,12 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     // is definitely gone. The 5-min TTL is fine for the status page (shows
     // "recently connected") but too generous for claiming "Built in Studio".
     const heartbeatAgeMs = Date.now() - (session.lastHeartbeat ?? 0)
-    const CHAT_CONNECTED_TTL_MS = 30_000 // 30 seconds
+    // 90 seconds: plugin polls every 2-5s, heartbeat every 30s. The previous
+    // 30s window was too tight — any Redis latency caused cross-Lambda stale
+    // reads, silently dropping every build. 90s gives 3x margin.
+    const CHAT_CONNECTED_TTL_MS = 90_000
     if (!session.connected || heartbeatAgeMs > CHAT_CONNECTED_TTL_MS) {
-      console.log(`[sendCodeToStudio] Session stale (heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago), skipping queue`)
+      console.log(`[sendCodeToStudio] Session stale (heartbeat ${Math.round(heartbeatAgeMs / 1000)}s ago, TTL=${CHAT_CONNECTED_TTL_MS/1000}s), skipping queue`)
       return false
     }
 
@@ -7906,10 +7926,18 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
               }
             }
 
+            // Extract code and dispatch to Studio BEFORE any more writer
+            // operations. This ensures sendCodeToStudio runs even if the
+            // client disconnects mid-stream (which would cause writer.write
+            // to throw and skip everything after it).
             const luau = extractLuauCode(fullText)
-            let executedInStudio = false
+            let executedInStudio: boolean | string = false
             if (luau && sessionId) {
-              executedInStudio = await sendCodeToStudio(sessionId, luau)
+              try {
+                executedInStudio = await sendCodeToStudio(sessionId, luau)
+              } catch (studioErr) {
+                console.error('[chat] sendCodeToStudio failed:', studioErr instanceof Error ? studioErr.message : studioErr)
+              }
             }
             const stripped = luau ? stripCodeBlocks(fullText) : fullText
             const { suggestions } = extractSuggestions(stripped)

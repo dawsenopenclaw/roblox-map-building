@@ -215,6 +215,16 @@ function redisPersist(session: StudioSession): void {
   ).catch(() => { /* ignore */ })
 }
 
+/** Awaitable version — use when the write MUST land (heartbeat updates that
+ *  other Lambdas depend on for cross-isolate session discovery). */
+async function redisPersistAwaited(session: StudioSession): Promise<void> {
+  const r = getRedis()
+  if (!r) return
+  try {
+    await r.set(sessionKey(session.sessionId), serialize(session), 'EX', REDIS_TTL_SECS)
+  } catch { /* Redis unavailable — L1 is still updated */ }
+}
+
 /**
  * Write the secondary indexes for token and placeId.
  * Called once at session creation and after any field change that alters them.
@@ -590,14 +600,17 @@ export async function drainCommands(
 
   const now = Date.now()
 
-  // Always touch heartbeat, even when rate-limited
+  // Always touch heartbeat, even when rate-limited.
+  // Use awaitable Redis persist so other Lambdas (especially the chat
+  // Lambda running sendCodeToStudio) see fresh heartbeat timestamps.
+  // Without this, cross-Lambda session discovery fails and every build
+  // is silently dropped with "session stale".
   touchHeartbeat(session)
 
   // Rate-limit check — use L1 lastPollAt as fast gate
   if (now - session.lastPollAt < MIN_POLL_INTERVAL_MS) {
     sessions.set(sessionId, session)
-    // Persist heartbeat so other Lambdas see the session as live
-    redisPersist(session)
+    await redisPersistAwaited(session)
     return null
   }
 
@@ -622,7 +635,7 @@ export async function drainCommands(
         // Clear L1 queue since Redis list is now authoritative and drained
         session.commandQueue = []
         sessions.set(sessionId, session)
-        redisPersist(session)
+        await redisPersistAwaited(session)
         return commands
       }
 
@@ -635,7 +648,7 @@ export async function drainCommands(
       // Clear L1 queue — Redis list is now drained
       session.commandQueue = []
       sessions.set(sessionId, session)
-      redisPersist(session)
+      await redisPersistAwaited(session)
       return commands
     } catch {
       // Redis error — fall through to L1 path
