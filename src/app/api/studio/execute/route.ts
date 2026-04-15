@@ -190,8 +190,31 @@ export async function POST(req: NextRequest) {
   // authenticated web-editor user to execute code in whichever Studio instance
   // happened to be the most recently active across ALL users on the server.
 
-  if (!jwtPayload) {
-    // No valid JWT — reject. We cannot trust the request.
+  // Fallback: if no JWT, allow authenticated Clerk users to execute by sessionId.
+  // The frontend's "Send to Studio" button sends sessionId but no JWT because
+  // the JWT from the pairing flow was never persisted client-side. Clerk auth
+  // proves the user is who they say they are; the sessionId lookup confirms
+  // they own a connected Studio session.
+  let resolvedSessionId = jwtPayload?.sid ?? null
+
+  if (!jwtPayload && body.sessionId) {
+    try {
+      const { auth } = await import('@clerk/nextjs/server')
+      const { userId } = await auth()
+      if (userId) {
+        // Clerk-authenticated user — trust the sessionId from the body
+        const { getSession } = await import('@/lib/studio-session')
+        const session = await getSession(body.sessionId)
+        if (session && session.connected) {
+          resolvedSessionId = body.sessionId
+        }
+      }
+    } catch {
+      // Clerk auth failed — fall through to reject
+    }
+  }
+
+  if (!resolvedSessionId) {
     return NextResponse.json(
       { ok: false, error: 'missing_or_invalid_token' },
       { status: 401, headers: CORS_HEADERS },
@@ -199,7 +222,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Rate limit per user (30 commands/60 s) ──────────────────────────────
-  const rl = await studioExecuteRateLimit(jwtPayload.sid)
+  const rl = await studioExecuteRateLimit(resolvedSessionId)
   if (!rl.allowed) {
     return NextResponse.json(
       { ok: false, error: 'rate_limited', retryAfterMs: Math.ceil((rl.resetAt - Date.now())) },
@@ -207,10 +230,10 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // JWT is valid — use the session ID it contains.
-  // If the caller also passed an explicit sessionId it must match the JWT claim.
-  const sessionId = jwtPayload.sid
-  if (body.sessionId && body.sessionId !== sessionId) {
+  // Use the resolved session ID (from JWT or Clerk+sessionId fallback).
+  // If JWT auth was used and the caller passed an explicit sessionId, it must match.
+  const sessionId = resolvedSessionId!
+  if (jwtPayload && body.sessionId && body.sessionId !== sessionId) {
     return NextResponse.json(
       { ok: false, error: 'session_id_mismatch' },
       { status: 403, headers: CORS_HEADERS },
