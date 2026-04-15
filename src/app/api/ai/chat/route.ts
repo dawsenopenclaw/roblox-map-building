@@ -839,7 +839,29 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       },
     })
     console.log('[sendCodeToStudio] queueCommand result:', JSON.stringify(result), `(${commands.length} structured cmds, store=${isStoreEdition})`)
-    return result.ok
+
+    if (!result.ok || !result.commandId) return false
+
+    // Wait for the plugin to confirm execution instead of lying about success.
+    // The plugin POSTs command_result back via /api/studio/update after executing.
+    // Poll Redis for the result with a 12-second timeout (plugin polls every 2-5s
+    // + execution time + POST back = ~8-10s worst case).
+    const { waitForCommandResult } = await import('@/lib/studio-session')
+    const confirmation = await waitForCommandResult(result.commandId, 12000)
+
+    if (!confirmation) {
+      console.warn(`[sendCodeToStudio] No confirmation for command ${result.commandId} within 12s — plugin may not have received it`)
+      // Return 'queued' status — we queued it but can't confirm execution
+      return 'queued' as unknown as boolean
+    }
+
+    if (confirmation.success) {
+      console.log(`[sendCodeToStudio] Confirmed: ${confirmation.partsCreated} parts created (${confirmation.method ?? 'structured'})`)
+    } else {
+      console.warn(`[sendCodeToStudio] Build failed: ${confirmation.error ?? 'unknown'} (${confirmation.partsFailed} failed of ${confirmation.totalCommands})`)
+    }
+
+    return confirmation.success
   } catch (err) {
     console.error('[sendCodeToStudio] Error:', err instanceof Error ? err.message : err)
     return false
@@ -7723,7 +7745,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         // Scrub AI false-success claims and prepend a connection banner when
         // the plugin isn't actually hooked up. Prevents the "AI says it built
         // something but nothing is in Studio" bug subscribers reported.
-        let finalMessage = cleanMessage || (executedInStudio ? 'Done! Built and placed in your Studio.' : result.text)
+        let finalMessage = cleanMessage || (executedInStudio === true ? 'Built and confirmed in Studio!' : executedInStudio === ('queued' as unknown) ? 'Sent to Studio — building now...' : result.text)
         if (!executedInStudio && hasCode) {
           finalMessage = correctAiClaimsWhenNotExecuted(finalMessage)
           finalMessage = prependStudioDisconnectedBanner(finalMessage, hasCode)
@@ -8369,8 +8391,10 @@ Set m.PrimaryPart to the base part. No explanation.`,
         // Honest success messages — don't claim we built anything in Studio
         // when the plugin isn't connected. If executedInStudio is false, the
         // code lives in the chat as a one-click "Import to Studio" action.
-        const buildMsg = executedInStudio
-          ? 'Built it! Check your Studio — it should appear near your camera.\n\nWhat would you like to change or add next?'
+        const buildMsg = executedInStudio === true
+          ? 'Built and confirmed in Studio! Check your viewport — it should be right in front of your camera.\n\nWhat would you like to change or add next?'
+          : executedInStudio === ('queued' as unknown)
+          ? 'Sent to Studio — your plugin should be building it now. If nothing appears, make sure the ForjeGames plugin is active.\n\nWhat would you like to change or add next?'
           : 'Here\'s the build code! Click **"Import to Studio"** to paste it into your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven\'t.\n\nWhat would you like to change or add next?'
         if (wantsStream) {
           return toStreamResponse(buildMsg, {
@@ -8400,8 +8424,10 @@ Set m.PrimaryPart to the base part. No explanation.`,
     if (fallbackLuau && sessionId) {
       fbExecuted = await sendCodeToStudio(sessionId, fallbackLuau)
     }
-    const fbMsg = fbExecuted
-      ? `Built it! Check your Studio — it should appear near your camera. What would you like to change or add?`
+    const fbMsg = fbExecuted === true
+      ? `Built and confirmed in Studio! What would you like to change or add?`
+      : fbExecuted === ('queued' as unknown)
+      ? `Sent to Studio — building now. What would you like to change or add?`
       : `Here's the build code! Click **"Import to Studio"** to place it in your game. Make sure the Studio plugin is connected first — [install it here](/download) if you haven't.`
     if (wantsStream) {
       return toStreamResponse(fbMsg, {

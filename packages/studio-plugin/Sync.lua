@@ -1047,7 +1047,10 @@ end)
       end
     end)
 
-    if not cmdOk then
+    if cmdOk then
+      successCount = successCount + 1
+    else
+      failCount = failCount + 1
       warn("[ForjeGames] Structured command error (" .. tostring(cmd.type) .. "): " .. tostring(cmdErr))
     end
   end
@@ -1060,6 +1063,21 @@ end)
       ChangeHistoryService:FinishRecording(recording, Enum.FinishRecordingOperation.Commit)
     end
   end)
+
+  -- Report execution result back to the server so the web app knows
+  -- whether the build actually landed. Without this, the chat says
+  -- "Built!" after queueing without knowing if anything happened.
+  if commandId then
+    Sync.queueChange("command_result", {
+      commandId = commandId,
+      success = failCount == 0 and successCount > 0,
+      partsCreated = successCount,
+      partsFailed = failCount,
+      totalCommands = #commands,
+    })
+  end
+
+  return successCount, failCount
 end
 
 -- ============================================================
@@ -1069,12 +1087,12 @@ end
 -- store-edition plugins. For direct execute_luau with raw code,
 -- we parse it into simple structured commands here.
 -- ============================================================
-local function handleExecuteLuau(data)
+local function handleExecuteLuau(data, commandId)
   if not data then return end
 
   -- Prefer structured commands if provided alongside code
   if data.commands and type(data.commands) == "table" then
-    executeStructuredCommands(data.commands)
+    executeStructuredCommands(data.commands, commandId)
     playCompletionSound()
     return
   end
@@ -1188,7 +1206,7 @@ local function handleExecuteLuau(data)
     end
 
     if #commands > 0 then
-      executeStructuredCommands(commands)
+      executeStructuredCommands(commands, commandId)
       playCompletionSound()
     elseif hasComplexCode then
       -- FALLBACK: loadstring behind a dev-only setting toggle.
@@ -1209,13 +1227,28 @@ local function handleExecuteLuau(data)
             fn()
           else
             warn("[ForjeGames] loadstring compile error: " .. tostring(compileErr))
+            error(compileErr)
           end
         end)
         if loadOk then
           playCompletionSound()
+          if commandId then
+            Sync.queueChange("command_result", {
+              commandId = commandId, success = true,
+              partsCreated = -1, partsFailed = 0, totalCommands = 1,
+              method = "loadstring",
+            })
+          end
         else
           warn("[ForjeGames] loadstring runtime error: " .. tostring(loadErr))
           notifyMessage("Script execution failed: " .. tostring(loadErr), "error")
+          if commandId then
+            Sync.queueChange("command_result", {
+              commandId = commandId, success = false,
+              partsCreated = 0, partsFailed = 1, totalCommands = 1,
+              error = tostring(loadErr), method = "loadstring",
+            })
+          end
         end
       else
         warn("[ForjeGames] Cannot execute complex Luau code in Creator Store mode. "
@@ -1223,9 +1256,23 @@ local function handleExecuteLuau(data)
           .. "Use the direct-download plugin for advanced scripts, "
           .. "or enable ForjeGames_AllowLoadstring in plugin settings (dev only).")
         notifyMessage("Complex code requires the direct-download plugin (or enable dev loadstring in settings)", "warn")
+        if commandId then
+          Sync.queueChange("command_result", {
+            commandId = commandId, success = false,
+            partsCreated = 0, partsFailed = 0, totalCommands = 0,
+            error = "store_edition_no_loadstring", method = "none",
+          })
+        end
       end
     else
       warn("[ForjeGames] No executable commands found in code payload")
+      if commandId then
+        Sync.queueChange("command_result", {
+          commandId = commandId, success = false,
+          partsCreated = 0, partsFailed = 0, totalCommands = 0,
+          error = "no_executable_commands", method = "none",
+        })
+      end
     end
     return
   end
@@ -1990,10 +2037,10 @@ local function applyChanges(changes)
       local data       = change.data
 
       if changeType == "execute_luau" then
-        handleExecuteLuau(data)
+        handleExecuteLuau(data, change.id)
 
       elseif changeType == "structured_commands" and data then
-        handleStructuredCommands(data)
+        executeStructuredCommands(data.commands, change.id)
 
       elseif changeType == "insert_asset" and data then
         handleInsertAsset(change)

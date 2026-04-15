@@ -516,6 +516,59 @@ export async function queueCommand(
   return { ok: true, commandId: entry.id }
 }
 
+// ─── Command result confirmation ─────────────────────────────────────────────
+// The plugin POSTs command_result back via /api/studio/update after executing.
+// These functions let sendCodeToStudio poll for confirmation instead of lying.
+
+export interface CommandResult {
+  success: boolean
+  partsCreated: number
+  partsFailed: number
+  totalCommands: number
+  error?: string
+  method?: string
+}
+
+const RESULT_TTL_SECS = 60 // results expire after 1 minute
+
+export async function storeCommandResult(commandId: string, result: CommandResult): Promise<void> {
+  const r = getRedis()
+  if (!r) return
+  try {
+    await r.setex(`fj:cmd:result:${commandId}`, RESULT_TTL_SECS, JSON.stringify(result))
+  } catch { /* Redis unavailable */ }
+}
+
+export async function getCommandResult(commandId: string): Promise<CommandResult | null> {
+  const r = getRedis()
+  if (!r) return null
+  try {
+    const raw = await r.get(`fj:cmd:result:${commandId}`)
+    if (!raw) return null
+    return JSON.parse(raw as string) as CommandResult
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Poll for a command result with timeout.
+ * Returns null if no result arrives within the deadline.
+ */
+export async function waitForCommandResult(
+  commandId: string,
+  timeoutMs: number = 12000,
+  intervalMs: number = 800,
+): Promise<CommandResult | null> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const result = await getCommandResult(commandId)
+    if (result) return result
+    await new Promise(resolve => setTimeout(resolve, intervalMs))
+  }
+  return null
+}
+
 /**
  * Drain all pending commands from the queue.
  * Returns null when rate-limited.
