@@ -1,7 +1,7 @@
 /**
  * RAG (Retrieval-Augmented Generation) pipeline for ForjeGames.
  *
- * Uses Gemini's text-embedding-004 model (free tier, 1500 RPM) to embed prompts,
+ * Uses Gemini's gemini-embedding-001 model (free tier) to embed prompts,
  * then retrieves the most relevant Roblox documentation chunks from PostgreSQL
  * via pgvector cosine similarity search.
  *
@@ -38,7 +38,10 @@ export interface RAGContext {
 
 // ── Embedding via Gemini (free tier: 1500 RPM, 768 dimensions) ─────────────
 
-const EMBED_MODEL = 'text-embedding-004'
+// gemini-embedding-001 replaces the deprecated text-embedding-004 (Apr 2026).
+// Defaults to 3072 dims; we request 768 via Matryoshka outputDimensionality
+// to match the existing pgvector(768) column without a destructive migration.
+const EMBED_MODEL = 'gemini-embedding-001'
 const EMBED_DIMENSIONS = 768
 const EMBED_CACHE_TTL = 60 * 60 * 24 // 24h — same prompt = same vector
 
