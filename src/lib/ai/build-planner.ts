@@ -274,7 +274,17 @@ export async function generateBuildPlan(userPrompt: string): Promise<BuildPlan> 
         content: `Generate a complete build plan for this Roblox game idea:\n\n"${userPrompt.slice(0, 1000)}"`,
       },
     ],
-    { maxTokens: 6000, temperature: 0.3, jsonMode: true, useRAG: true, ragCategories: ['pattern', 'building', 'service'] },
+    {
+      maxTokens: 6000,
+      temperature: 0.3,
+      jsonMode: true,
+      useRAG: true,
+      // Include 'dev' (game-design wisdom) and 'blender' (3D asset workflow)
+      // so the planner has access to the full ingested tutorial corpus,
+      // not just Roblox-specific chunks. Apr 16: video-ingest pipeline
+      // fills all five categories from curated YouTube channels.
+      ragCategories: ['pattern', 'building', 'service', 'dev', 'blender'],
+    },
   )
 
   // Strip any accidental markdown fences free models might add

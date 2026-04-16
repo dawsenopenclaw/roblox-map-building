@@ -96,8 +96,14 @@ export async function embedText(text: string): Promise<number[]> {
 
 // ── Retrieval — pgvector cosine similarity search ──────────────────────────
 
-const DEFAULT_TOP_K = 6
-const SIMILARITY_THRESHOLD = 0.35
+// Bumped from 6 → 12 (Apr 16) so the AI sees more of the ingested video
+// library per build. With MAX_CONTEXT_TOKENS=6000 below, 12 chunks at
+// ~500 tokens each still fits comfortably in any modern LLM context.
+const DEFAULT_TOP_K = 12
+// 0.30 (was 0.35) admits slightly weaker matches — useful once the corpus
+// includes hundreds of videos and the per-prompt best chunk may not be
+// strictly category-aligned.
+const SIMILARITY_THRESHOLD = 0.30
 
 /**
  * Retrieve the most relevant documentation chunks for a given prompt.
@@ -146,7 +152,11 @@ export async function retrieveContext(
 
 // ── Prompt builder — injects retrieved context into system prompt ──────────
 
-const MAX_CONTEXT_TOKENS = 3000 // Don't blow up the context window
+// Bumped from 3000 → 6000 (Apr 16). With Gemini Flash at 1M-token context
+// and the orchestrator's prompts well under 30k tokens total, 6k for
+// retrieved tutorial context is comfortable and gives the AI dramatically
+// more concrete examples to draw from.
+const MAX_CONTEXT_TOKENS = 6000
 
 /**
  * Build an enriched system prompt by injecting relevant documentation.

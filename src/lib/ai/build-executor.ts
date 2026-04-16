@@ -434,7 +434,10 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
       maxTokens: 4096,
       codeMode: true,
       useRAG: true,
-      ragCategories: [task.type, 'api', 'luau', 'building', 'pattern'],
+      // Include 'service' + 'dev' + 'blender' alongside the task-specific
+      // hint so the executor can pull from the full ingested tutorial
+      // library — patterns, services, asset workflows, design wisdom.
+      ragCategories: [task.type, 'api', 'luau', 'service', 'building', 'pattern', 'dev', 'blender'],
     })
 
     // Strip any accidental markdown fences
