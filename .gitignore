@@ -74,3 +74,4 @@ Thumbs.db
 /node_modules_link/
 /.stash-backups/
 .env*.local
+.transcripts/
