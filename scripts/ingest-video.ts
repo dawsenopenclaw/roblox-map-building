@@ -33,6 +33,7 @@ dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 
 import { PrismaClient } from '@prisma/client'
+import { embedThrottled } from './lib/embed-throttled'
 
 // Force the Prisma client to use the prod URL (.env.production.local) when
 // available — the schema reads `env("DATABASE_URL")` which would otherwise
@@ -53,25 +54,7 @@ type Category = 'pattern' | 'building' | 'service' | 'blender' | 'dev'
 
 // ── Embedding (mirrors lib/ai/rag.ts to avoid server-only import) ──────────
 
-async function embedText(text: string): Promise<number[]> {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('GEMINI_API_KEY required')
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'models/gemini-embedding-001',
-        content: { parts: [{ text: text.slice(0, 2048) }] },
-        outputDimensionality: 768,
-      }),
-    },
-  )
-  if (!res.ok) throw new Error(`Embed failed: HTTP ${res.status}`)
-  const data = (await res.json()) as { embedding?: { values?: number[] } }
-  return data.embedding?.values ?? []
-}
+const embedText = embedThrottled
 
 // ── Video metadata via YouTube oEmbed (no API key needed) ──────────────────
 
@@ -350,7 +333,6 @@ async function main() {
       [...tags, 'video', 'youtube', meta.author.toLowerCase().replace(/\s+/g, '-')],
     )
     if (ok) stored++
-    if ((i + 1) % 50 === 0) await new Promise((r) => setTimeout(r, 1000))
   }
   console.log(`   ${stored}/${chunks.length} stored`)
 
