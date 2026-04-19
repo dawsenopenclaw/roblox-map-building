@@ -1,16 +1,14 @@
 /**
  * RAG (Retrieval-Augmented Generation) pipeline for ForjeGames.
  *
- * Uses Gemini's gemini-embedding-001 model (free tier) to embed prompts,
- * then retrieves the most relevant Roblox documentation chunks from PostgreSQL
- * via pgvector cosine similarity search.
- *
- * The retrieved context is injected into the system prompt before calling the LLM,
- * giving it up-to-date Roblox API knowledge instead of relying on training data.
+ * Uses BAAI/bge-base-en-v1.5 (768d) locally via @huggingface/transformers.
+ * No API quota, no cost, no rate limits. Model downloads once to HF cache
+ * (~438MB) and runs on CPU via ONNX/WASM. On Vercel lambdas, model is
+ * cached in /tmp and survives across warm invocations.
  *
  * Flow:
  *  1. User prompt comes in
- *  2. embedText() converts it to a 768-dim vector via Gemini
+ *  2. embedText() converts it to a 768-dim vector via local BGE model
  *  3. retrieveContext() finds top-K relevant doc chunks from the DB
  *  4. buildRAGSystemPrompt() combines base system prompt + retrieved docs
  *  5. callAI() uses this enriched prompt for generation
@@ -36,23 +34,29 @@ export interface RAGContext {
   totalTokensEstimate: number
 }
 
-// ── Embedding via Gemini (free tier: 1500 RPM, 768 dimensions) ─────────────
+// ── Embedding via local BGE model (no API, no quota) ─────────────────────
 
-// gemini-embedding-001 replaces the deprecated text-embedding-004 (Apr 2026).
-// Defaults to 3072 dims; we request 768 via Matryoshka outputDimensionality
-// to match the existing pgvector(768) column without a destructive migration.
-const EMBED_MODEL = 'gemini-embedding-001'
-const EMBED_DIMENSIONS = 768
 const EMBED_CACHE_TTL = 60 * 60 * 24 // 24h — same prompt = same vector
 
+let embeddingPipeline: any = null
+
+async function getEmbeddingPipeline() {
+  if (embeddingPipeline) return embeddingPipeline
+  const { pipeline } = await import('@huggingface/transformers')
+  console.log('[rag] Loading local embedding model (Xenova/bge-base-en-v1.5)...')
+  embeddingPipeline = await pipeline('feature-extraction', 'Xenova/bge-base-en-v1.5', {
+    device: 'cpu',
+  })
+  console.log('[rag] Embedding model loaded.')
+  return embeddingPipeline
+}
+
 /**
- * Generate a vector embedding for a text string.
- * Uses Redis cache to avoid re-embedding identical prompts.
+ * Generate a 768-dim vector embedding for a text string.
+ * Uses local BGE model — no API calls, no quotas, no cost.
+ * Redis cache still used to skip re-embedding identical prompts.
  */
 export async function embedText(text: string): Promise<number[]> {
-  const key = process.env.GEMINI_API_KEY
-  if (!key) throw new Error('[rag] GEMINI_API_KEY required for embeddings')
-
   // Check cache first
   const cacheKey = `embed:${hashText(text)}`
   try {
@@ -60,30 +64,12 @@ export async function embedText(text: string): Promise<number[]> {
     if (cached) return JSON.parse(cached) as number[]
   } catch { /* Redis unavailable — continue without cache */ }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: `models/${EMBED_MODEL}`,
-        content: { parts: [{ text: text.slice(0, 2048) }] },
-        outputDimensionality: EMBED_DIMENSIONS,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    },
-  )
+  const pipe = await getEmbeddingPipeline()
+  const output = await pipe(text.slice(0, 512), { pooling: 'cls', normalize: true })
+  const values = Array.from(output.data as Float32Array)
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '')
-    throw new Error(`[rag] Embedding failed: HTTP ${res.status} ${errText}`)
-  }
-
-  type EmbedRes = { embedding?: { values?: number[] } }
-  const data = (await res.json()) as EmbedRes
-  const values = data.embedding?.values
   if (!values || values.length === 0) {
-    throw new Error('[rag] Empty embedding response')
+    throw new Error('[rag] Empty embedding from local model')
   }
 
   // Cache the result

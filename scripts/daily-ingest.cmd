@@ -1,34 +1,34 @@
 @echo off
 REM ───────────────────────────────────────────────────────────────────────────
-REM  ForjeGames daily RAG ingestion — runs unattended via Task Scheduler.
-REM  Pulls top 8 discovered channels @ 10 videos each = ~80 videos/day,
-REM  staying just under Gemini's 1000 RPD free-tier ceiling.
+REM  ForjeGames nightly RAG ingest — runs unattended via Task Scheduler.
 REM
-REM  Schedule via PowerShell (one-time setup):
-REM    schtasks /Create /TN "ForjeGames RAG Ingest" /TR "C:\dev\roblox-map-building\scripts\daily-ingest.cmd" /SC DAILY /ST 03:00 /F
+REM  Path B: LOCAL embeddings (BGE via @huggingface/transformers). No quota
+REM  limits. Can ingest 200+ videos per run.
 REM
-REM  Logs: C:\dev\roblox-map-building\.transcripts\daily.log
+REM  Runs VERIFIED curated channels only (no CrashCourse geology, no Kevin
+REM  Stratvert Excel). Channels are in scripts/curated-channels.ts.
+REM
+REM  Schedule: 1AM-10AM daily (single run, takes 1-3 hours depending on
+REM  channel count × per-channel limit).
+REM
+REM  Logs: .transcripts\daily.log
 REM ───────────────────────────────────────────────────────────────────────────
 
 cd /d C:\dev\roblox-map-building
 
-REM Load DATABASE_URL from .env.production.local (strip quotes + leading var name)
+REM Load DATABASE_URL from .env.production.local
 for /f "tokens=2 delims==" %%A in ('findstr /b "DATABASE_URL=" .env.production.local') do set DATABASE_URL=%%~A
 
 if "%DATABASE_URL%"=="" (
-  echo [%DATE% %TIME%] ERROR: DATABASE_URL not loaded from .env.production.local >> .transcripts\daily.log
+  echo [%DATE% %TIME%] ERROR: DATABASE_URL not loaded >> .transcripts\daily.log
   exit /b 1
 )
 
 echo. >> .transcripts\daily.log
-echo === Daily ingest %DATE% %TIME% === >> .transcripts\daily.log
+echo === Nightly ingest %DATE% %TIME% === >> .transcripts\daily.log
 
-REM 1. Refresh Roblox API dump (UPSERT, only 5-10 changed/day typically).
-REM    Skip if quota tight — videos are higher signal.
-REM call npx tsx scripts/ingest-roblox-api.ts >> .transcripts\daily.log 2>&1
-
-REM 2. Ingest top 8 discovered channels, 10 videos each = ~80 videos = ~960 chunks.
-REM    Stays under daily 1000 RPD cap with headroom for prod query traffic.
-call npx tsx scripts/ingest-discovered.ts --top=8 --per=10 >> .transcripts\daily.log 2>&1
+REM Ingest verified curated channels, 20 videos each = ~440 videos.
+REM Local embedding = no rate limits. Takes ~1-2 hours on CPU.
+call npx tsx scripts/ingest-curated.ts --per-channel=20 >> .transcripts\daily.log 2>&1
 
 echo === Finished %DATE% %TIME% === >> .transcripts\daily.log
