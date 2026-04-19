@@ -129,6 +129,16 @@ const nextConfig: NextConfig = {
     // `npm run lint` in CI/dev. See COMMIT-NOTES for full reasoning.
     ignoreDuringBuilds: true,
   },
+  // @huggingface/transformers + ONNX runtime must NOT be bundled by webpack —
+  // they contain WASM binaries and native-ish modules that break Next.js
+  // bundling. Marking them as external means the lambda loads them from
+  // node_modules at runtime instead.
+  serverExternalPackages: [
+    '@huggingface/transformers',
+    'onnxruntime-node',
+    'onnxruntime-web',
+    'sharp',
+  ],
   experimental: {
     optimizePackageImports: [
       'lucide-react',
