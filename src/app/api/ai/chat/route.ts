@@ -31,6 +31,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, formatAsExamples, recordExperience } from '@/lib/ai/experience-memory'
+import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 
 // ─── Experience Memory: enrich system prompt with past successes ─────────────
 async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string): Promise<string> {
@@ -7653,7 +7654,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext }] },
+            system_instruction: { parts: [{ text: await buildRAGSystemPrompt(FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext, message) }] },
             contents: [
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
@@ -7707,7 +7708,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           model: 'gpt-4o',
           max_tokens: 1024,
           messages: [
-            { role: 'system', content: FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) },
+            { role: 'system', content: await buildRAGSystemPrompt(FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
             ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
@@ -7750,9 +7751,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const isBuildIntent = ['building', 'terrain', 'fullgame', 'lighting', 'modify', 'npc', 'mesh'].includes(intent)
       const customMaxTokens = isBuildIntent ? 4096 : 1024
       const customGameKnowledge = buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' '))
-      const customSystemPrompt = isBuildIntent
-        ? FORJEAI_SYSTEM_PROMPT + customGameKnowledge + cameraContext + multiStepContext
-        : FORJEAI_CORE_PROMPT + customGameKnowledge + cameraContext
+      const customSystemPrompt = await buildRAGSystemPrompt(
+        isBuildIntent
+          ? FORJEAI_SYSTEM_PROMPT + customGameKnowledge + cameraContext + multiStepContext
+          : FORJEAI_CORE_PROMPT + customGameKnowledge + cameraContext,
+        message,
+      )
       const aiResponse = await customAnthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: customMaxTokens,
@@ -7827,9 +7831,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const recentCtxGroq = [...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')
     const gameKnowledgeGroq = buildGameKnowledgePrompt(recentCtxGroq)
     const sysPromptGroq = await enrichWithExperienceMemory(
-      (isBuildIntentGroq
-        ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
-        : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
+      await buildRAGSystemPrompt(
+        (isBuildIntentGroq
+          ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
+          : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
+        message,
+      ),
       message,
     )
 
@@ -7920,9 +7927,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       }
 
       const systemPrompt = await enrichWithExperienceMemory(
-        (isBuildingIntent
-          ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
-          : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+        await buildRAGSystemPrompt(
+          (isBuildingIntent
+            ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+          message,
+        ),
         message,
       )
 
@@ -8132,9 +8142,12 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       }
 
       const systemPrompt = await enrichWithExperienceMemory(
-        (isBuildingIntent
-          ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
-          : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+        await buildRAGSystemPrompt(
+          (isBuildingIntent
+            ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
+          message,
+        ),
         message,
       )
 
