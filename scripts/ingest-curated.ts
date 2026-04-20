@@ -9,7 +9,7 @@
  * Run overnight. Progress is appended to .transcripts/ingest.log.
  */
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 

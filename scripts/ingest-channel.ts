@@ -13,7 +13,7 @@
  * Spawns ingest-video.ts as a child process per video so failures isolate.
  */
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 

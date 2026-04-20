@@ -28,7 +28,7 @@ import { execFileSync } from 'child_process'
 
 // Load prod first so it wins — we want to ingest into Neon (where pgvector
 // lives), not the local Postgres. Local .env is a dev fallback only.
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 

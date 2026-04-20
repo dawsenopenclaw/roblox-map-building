@@ -12,6 +12,7 @@
 
 import 'server-only'
 import { buildRAGSystemPrompt } from './rag'
+import { findSpecialist, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -30,6 +31,13 @@ export interface AICallOptions {
   /** Filter RAG retrieval to specific doc categories */
   ragCategories?: string[]
 }
+
+// ── Retry helper for 429 rate limits ─────────────────────────────────────────
+
+async function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
+
+const MAX_RETRIES = 3
+const RETRY_DELAYS = [2000, 5000, 10000] // 2s, 5s, 10s backoff
 
 // ── Gemini REST call ──────────────────────────────────────────────────────────
 
@@ -61,32 +69,42 @@ async function callGemini(
     },
   }
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60_000),
-      },
-    )
-    if (!res.ok) {
-      console.error('[ai-provider/gemini] HTTP', res.status, await res.text().catch(() => ''))
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(60_000),
+        },
+      )
+      if (res.status === 429 && attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAYS[attempt] ?? 10000
+        console.warn(`[ai-provider/gemini] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`)
+        await sleep(delay)
+        continue
+      }
+      if (!res.ok) {
+        console.error('[ai-provider/gemini] HTTP', res.status, await res.text().catch(() => ''))
+        return null
+      }
+      type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+      const data = await res.json() as GeminiRes
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+      if (!text) {
+        console.error('[ai-provider/gemini] Empty response')
+        return null
+      }
+      return text
+    } catch (e) {
+      console.error('[ai-provider/gemini] Error:', (e as Error).message)
       return null
     }
-    type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const data = await res.json() as GeminiRes
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
-    if (!text) {
-      console.error('[ai-provider/gemini] Empty response')
-      return null
-    }
-    return text
-  } catch (e) {
-    console.error('[ai-provider/gemini] Error:', (e as Error).message)
-    return null
   }
+  console.error('[ai-provider/gemini] Exhausted retries on 429')
+  return null
 }
 
 // ── Groq REST call (OpenAI-compatible) ───────────────────────────────────────
@@ -109,37 +127,47 @@ async function callGroq(
     })),
   ]
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: groqMessages,
-        max_tokens: maxTokens,
-        temperature,
-      }),
-      signal: AbortSignal.timeout(60_000),
-    })
-    if (!res.ok) {
-      console.error('[ai-provider/groq] HTTP', res.status, await res.text().catch(() => ''))
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: groqMessages,
+          max_tokens: maxTokens,
+          temperature,
+        }),
+        signal: AbortSignal.timeout(60_000),
+      })
+      if (res.status === 429 && attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAYS[attempt] ?? 10000
+        console.warn(`[ai-provider/groq] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`)
+        await sleep(delay)
+        continue
+      }
+      if (!res.ok) {
+        console.error('[ai-provider/groq] HTTP', res.status, await res.text().catch(() => ''))
+        return null
+      }
+      type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
+      const data = await res.json() as GroqRes
+      const text = data.choices?.[0]?.message?.content ?? null
+      if (!text) {
+        console.error('[ai-provider/groq] Empty response')
+        return null
+      }
+      return text
+    } catch (e) {
+      console.error('[ai-provider/groq] Error:', (e as Error).message)
       return null
     }
-    type GroqRes = { choices?: Array<{ message?: { content?: string } }> }
-    const data = await res.json() as GroqRes
-    const text = data.choices?.[0]?.message?.content ?? null
-    if (!text) {
-      console.error('[ai-provider/groq] Empty response')
-      return null
-    }
-    return text
-  } catch (e) {
-    console.error('[ai-provider/groq] Error:', (e as Error).message)
-    return null
   }
+  console.error('[ai-provider/groq] Exhausted retries on 429')
+  return null
 }
 
 // ── Public: callAI — Gemini primary, Groq fallback ───────────────────────────
@@ -157,13 +185,24 @@ export async function callAI(
   messages: AIMessage[],
   opts: AICallOptions = {},
 ): Promise<string> {
-  // RAG enrichment: retrieve relevant Roblox docs and inject into system prompt
+  // Specialist selection: find the best domain expert for this request
   let enrichedPrompt = systemPrompt
+  const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
+
   if (opts.useRAG) {
-    // Extract user prompt from messages for embedding
-    const userMessage = messages.filter(m => m.role === 'user').pop()?.content ?? ''
+    // Auto-select specialist based on user message
+    const specialist = findSpecialist(userMessage)
+    if (specialist) {
+      enrichedPrompt = applySpecialist(enrichedPrompt, specialist)
+      // Merge specialist's preferred RAG categories with any provided ones
+      const specialistCategories = getSpecialistRAGCategories(specialist)
+      opts = { ...opts, ragCategories: [...new Set([...(opts.ragCategories ?? []), ...specialistCategories])] }
+      console.log(`[ai-provider] Specialist selected: ${specialist.name}`)
+    }
+
+    // RAG enrichment: retrieve relevant docs and inject into system prompt
     try {
-      enrichedPrompt = await buildRAGSystemPrompt(systemPrompt, userMessage, opts.ragCategories)
+      enrichedPrompt = await buildRAGSystemPrompt(enrichedPrompt, userMessage, opts.ragCategories)
     } catch (e) {
       console.error('[ai-provider] RAG enrichment failed, using base prompt:', (e as Error).message)
     }

@@ -13,7 +13,7 @@
  *   npx tsx scripts/ingest-roblox-api.ts --filter=Service # only Services
  */
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 

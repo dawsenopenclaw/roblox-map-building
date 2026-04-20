@@ -9,7 +9,7 @@
  * At ~100ms/embed this takes ~2min for 1000 chunks.
  */
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 dotenv.config({ path: '.env.local' })
 dotenv.config({ path: '.env' })
 

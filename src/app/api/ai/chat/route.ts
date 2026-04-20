@@ -32,6 +32,8 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, formatAsExamples, recordExperience } from '@/lib/ai/experience-memory'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
+import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
+import { validateBuild } from '@/lib/ai/build-validator'
 
 // ─── Experience Memory: enrich system prompt with past successes ─────────────
 async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string): Promise<string> {
@@ -755,6 +757,31 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
     console.log('[sendCodeToStudio] Skipped: sessionId=' + (sessionId ?? 'null') + ' codeLen=' + (code?.length ?? 0))
     return false
   }
+
+  // ── Build Validator — catch bad materials/placement before Studio ──
+  try {
+    const validation = validateBuild(code)
+    if (validation.issues.length > 0) {
+      const errors = validation.issues.filter(i => i.severity === 'error')
+      const warnings = validation.issues.filter(i => i.severity === 'warning')
+      const autoFixed = validation.issues.filter(i => i.autoFixed)
+      console.log(`[build-validator] Score: ${validation.score}/100 | ${validation.parts.length} parts | ${errors.length} errors, ${warnings.length} warnings, ${autoFixed.length} auto-fixed`)
+      for (const issue of validation.issues) {
+        console.log(`  [${issue.severity}${issue.autoFixed ? ' FIXED' : ''}] ${issue.type}: ${issue.message}`)
+      }
+      // Apply auto-fixes (e.g. SmoothPlastic → Concrete)
+      if (validation.fixedCode) {
+        code = validation.fixedCode
+        console.log('[build-validator] Auto-fixes applied')
+      }
+    } else {
+      console.log(`[build-validator] Clean build — ${validation.parts.length} parts, score ${validation.score}/100`)
+    }
+  } catch (e) {
+    // Validator should never block sending — log and continue
+    console.warn('[build-validator] Validation failed (non-fatal):', (e as Error).message)
+  }
+
   try {
     console.log('[sendCodeToStudio] Attempting for session:', sessionId, 'codeLen:', code.length)
 
@@ -1290,6 +1317,15 @@ CAFE: Counter with espresso machine(Parts Metal+Neon indicator), display case(Gl
 OFFICE: Reception desk(L-shape+computer monitor Part), waiting area(sofa+coffee table+magazines), 3 desk cubicles(desk+chair+monitor+keyboard+mouse pad), water cooler, filing cabinet, whiteboard(SurfaceGui), ceiling tiles pattern, carpet floor.
 BEDROOM: Bed(frame+mattress+pillow+blanket layers), nightstand(+lamp+book+alarm clock), wardrobe(double door), desk(+chair+monitor), rug(under bed), curtains(2 Parts flanking window), wall shelf(+trophies/photos), ceiling fan.
 
+CRITICAL BUILD RULES — PART LIMITS:
+- MAXIMUM 80 PARTS per build. No exceptions.
+- Simple builds (house, shop): 25-40 parts
+- Medium builds (castle, school): 40-60 parts
+- Complex builds (city block, mansion): 60-80 parts
+- If you hit the limit, remove decorative/hidden parts first
+- NEVER create parts inside other parts that aren't visible
+- Quality over quantity — a detailed 30-part house beats a hollow 100-part shell
+
 QUALITY RULES:
 1. MINIMUM 15 parts per object. More parts = more detail.
 2. Use vc() for 2-3 color shades — never uniform color.
@@ -1356,38 +1392,50 @@ async function callGemini(
 ): Promise<string | null> {
   const geminiKey = process.env.GEMINI_API_KEY
   if (!geminiKey) return null
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [
-            ...history.map((h) => ({
-              role: h.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: h.content }],
-            })),
-            { role: 'user', parts: [{ text: userMessage }] },
-          ],
-          generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 },
-        }),
-      },
-    )
-    if (!res.ok) {
-      console.error('[callGemini] HTTP', res.status, await res.text().catch(() => ''))
+
+  const RETRY_DELAYS = [2000, 5000, 10000]
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [
+              ...history.map((h) => ({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }],
+              })),
+              { role: 'user', parts: [{ text: userMessage }] },
+            ],
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.15 },
+          }),
+        },
+      )
+      if (res.status === 429 && attempt < 3) {
+        const delay = RETRY_DELAYS[attempt] ?? 10000
+        console.warn(`[callGemini] 429 rate limited — retrying in ${delay / 1000}s (attempt ${attempt + 1}/3)`)
+        await new Promise(r => setTimeout(r, delay))
+        continue
+      }
+      if (!res.ok) {
+        console.error('[callGemini] HTTP', res.status, await res.text().catch(() => ''))
+        return null
+      }
+      type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+      const data = await res.json() as GeminiRes
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
+      if (!text) console.error('[callGemini] Empty response:', JSON.stringify(data).slice(0, 200))
+      return text
+    } catch (e) {
+      console.error('[callGemini] Error:', (e as Error).message)
       return null
     }
-    type GeminiRes = { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
-    const data = await res.json() as GeminiRes
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? null
-    if (!text) console.error('[callGemini] Empty response:', JSON.stringify(data).slice(0, 200))
-    return text
-  } catch (e) {
-    console.error('[callGemini] Error:', (e as Error).message)
-    return null
   }
+  console.error('[callGemini] Exhausted retries on 429')
+  return null
 }
 
 // Groq API call helper (free tier)
@@ -1535,7 +1583,20 @@ async function callOpenAI(
     })
 
     if (res.status === 429) {
-      console.warn(`[callOpenAI] ${model} rate limited`)
+      console.warn(`[callOpenAI] ${model} rate limited — retrying in 3s`)
+      await new Promise(r => setTimeout(r, 3000))
+      const retry = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify(bodyPayload),
+      })
+      if (!retry.ok) {
+        console.warn(`[callOpenAI] ${model} retry also failed (${retry.status})`)
+        return null
+      }
+      const retryData = await retry.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: { total_tokens?: number } }
+      const retryText = retryData.choices?.[0]?.message?.content ?? null
+      if (retryText) return { text: retryText, tokensUsed: retryData.usage?.total_tokens ?? Math.ceil(retryText.length / 4) }
       return null
     }
 
@@ -1706,6 +1767,16 @@ function isCodeQualityOk(code: string): boolean {
   // Must not contain common AI mistakes that indicate bad output
   if (code.includes('game.Players.LocalPlayer')) return false
   if (code.includes('script.Parent')) return false
+  // Reject deprecated BrickColor — use Color3.fromRGB() instead
+  if (code.includes('BrickColor.new(')) return false
+  // Reject bare wait() — must use task.wait()
+  if (/(?<!task\.)wait\s*\(/.test(code)) return false
+  // Reject deprecated SetPrimaryPartCFrame — use PivotTo()
+  if (code.includes('SetPrimaryPartCFrame')) return false
+  // Reject parent-in-constructor anti-pattern: Instance.new("Part", parent)
+  if (/Instance\.new\(\s*["'][^"']+["']\s*,/.test(code)) return false
+  // Reject client-side APIs — generated code runs server-side only
+  if (code.includes('game.Players') || code.includes('LocalPlayer') || code.includes('script.Parent')) return false
   return true
 }
 
@@ -1747,7 +1818,14 @@ async function freeModelTwoPass(
   let luauCode: string | null = null
   let executedInStudio: boolean | string = false
 
-  const codePrompt = MARKETPLACE_ASSET_RULES + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
+  // Auto-select specialist based on what the user is building
+  const specialist = findSpecialist(message)
+  const specialistPrefix = specialist
+    ? `[SPECIALIST: ${specialist.name}]\n${specialist.prompt}\n\n`
+    : ''
+  if (specialist) console.log(`[freeModelTwoPass] Specialist: ${specialist.name}`)
+
+  const codePrompt = specialistPrefix + MARKETPLACE_ASSET_RULES + `\n\nYou are Forje — an expert Roblox game builder. You generate BOTH a short description AND working Luau code.
 
 RESPONSE FORMAT (follow EXACTLY):
 1. First, write 4-6 sentences describing what you're creating. Paint the experience — what a player walking through would see and feel. Mention ONE specific detail you're proud of. End with a suggestion for what to do next.
@@ -2073,7 +2151,14 @@ MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for prop
           else if (verification.score < 65 && verification.errors.length > 0) {
             console.log(`[Verify] Score ${verification.score} is mediocre, attempting re-generation with error feedback`)
             const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
-            const retryInstruction = `The previous code had these quality issues:\n${errorFeedback}\n\nFix ALL of the above issues in your new version.\n\n${buildInstruction}`
+            const retryInstruction = `ORIGINAL USER REQUEST: "${message}"
+
+The previous code attempted to build the above but had these quality issues:
+${errorFeedback}
+
+Fix ALL of the above issues in your new version. Remember: you are building "${message}" — keep the original intent and detail level.
+
+${buildInstruction}`
             const retryRace = await raceNonNull(
               callGemini(codePrompt, retryInstruction, [], 8192),
               callGroq(codePrompt, retryInstruction, [], 8192),
@@ -2190,6 +2275,19 @@ Keep each suggestion under 50 characters. Never repeat the thing just built.)
 
 ` + MARKETPLACE_ASSET_RULES
 
+/**
+ * Get the system prompt with specialist expertise applied if relevant.
+ * Call this instead of using FORJEAI_SYSTEM_PROMPT directly for build intents.
+ */
+function getSpecializedPrompt(userMessage: string): string {
+  const spec = findSpecialist(userMessage)
+  if (spec) {
+    console.log(`[chat] Specialist activated: ${spec.name}`)
+    return `[SPECIALIST: ${spec.name}]\n${spec.prompt}\n\n` + FORJEAI_SYSTEM_PROMPT
+  }
+  return FORJEAI_SYSTEM_PROMPT
+}
+
 const FORJEAI_SYSTEM_PROMPT = `You are Forje — a genius-level Roblox game architect and the user's creative partner. You're the friend who's insanely good at building games, sitting right next to them, getting genuinely excited about every idea. You think fast, build faster, and always make things better than what was asked for. On first message, introduce yourself as: "Hey! I'm Forje. I build Roblox games with AI — describe anything and I'll make it real. What are we creating?"
 
 SECURITY — ABSOLUTE RULES (never break these):
@@ -2276,6 +2374,9 @@ MATERIAL VARIETY:
 === OBJECT LIBRARY — USE THIS FOR EVERY BUILD ===
 When the user asks for ANY object listed below, build it with EXACTLY the multi-part detail shown. NEVER simplify to a single Part. A Chair is seat+backrest+4 legs. A Tree is trunk+branches+canopy. A House is walls+roof+door+windows+chimney.
 If the user asks for something NOT in this list, extrapolate: what would a real one look like? How many parts? What materials? What colors? Build it like the objects below — multi-part, textured, lit.
+
+=== BUILD TEMPLATES (from RAG knowledge base) ===
+If the RELEVANT ROBLOX DOCUMENTATION section at the end of this prompt contains a BUILD TEMPLATE with WORKING CODE, that is your PRIMARY reference. These templates have been hand-verified — every coordinate is mathematically correct, parts connect at corners, furniture sits on floors, roofs cover footprints. COPY the coordinate patterns and adapt dimensions/colors to fit the request. Do NOT ignore templates and guess your own coordinates.
 Cylinder axis: X=height, Y+Z=diameter. Rotate Z=90deg for horizontal. Parent set LAST. 2-3 color shades per object. ALWAYS add a PointLight to anything that should glow.
 
 === ART STYLE — IMAGINATIVE, DETAILED, ALIVE ===
@@ -7654,7 +7755,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: await buildRAGSystemPrompt(FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext, message) }] },
+            system_instruction: { parts: [{ text: await buildRAGSystemPrompt(getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext, message) }] },
             contents: [
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
@@ -7708,7 +7809,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           model: 'gpt-4o',
           max_tokens: 1024,
           messages: [
-            { role: 'system', content: await buildRAGSystemPrompt(FORJEAI_SYSTEM_PROMPT + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
+            { role: 'system', content: await buildRAGSystemPrompt(getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
             ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
@@ -7753,7 +7854,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const customGameKnowledge = buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' '))
       const customSystemPrompt = await buildRAGSystemPrompt(
         isBuildIntent
-          ? FORJEAI_SYSTEM_PROMPT + customGameKnowledge + cameraContext + multiStepContext
+          ? getSpecializedPrompt(message) + customGameKnowledge + cameraContext + multiStepContext
           : FORJEAI_CORE_PROMPT + customGameKnowledge + cameraContext,
         message,
       )
@@ -7833,7 +7934,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const sysPromptGroq = await enrichWithExperienceMemory(
       await buildRAGSystemPrompt(
         (isBuildIntentGroq
-          ? FORJEAI_SYSTEM_PROMPT + gameKnowledgeGroq + cameraContext
+          ? getSpecializedPrompt(message) + gameKnowledgeGroq + cameraContext
           : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
         message,
       ),
@@ -7929,7 +8030,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),
@@ -8144,7 +8245,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? FORJEAI_SYSTEM_PROMPT + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),
@@ -8514,7 +8615,28 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     }
   }
 
-  const tokensUsed = intent === 'conversation' || intent === 'chat' ? 0 : estimateTokens(message)
+  // ── ALL PROVIDERS EXHAUSTED ── Anthropic, Gemini, and Groq all failed.
+  // Return a clear user-facing error instead of falling through to demo responses.
+  console.error('[chat] All AI providers exhausted — no response generated for:', message.slice(0, 100))
+  const allFailedMsg = 'All AI providers are busy — please wait 60 seconds and try again.'
+  if (wantsStream) {
+    return toStreamResponse(allFailedMsg, {
+      suggestions: ['Try again in a minute', 'Simplify your request'],
+      intent,
+      hasCode: false,
+      luauCode: null,
+      tokensUsed: 0,
+      executedInStudio: false,
+      model: 'none',
+    }) as unknown as NextResponse
+  }
+  return NextResponse.json({
+    message: allFailedMsg,
+    tokensUsed: 0,
+    intent,
+    hasCode: false,
+    suggestions: ['Try again in a minute', 'Simplify your request'],
+  }, { status: 503 })
 
   // ── Community asset search (runs for all build-related intents) ───────────
   // Preferred over generating from scratch: finds relevant pre-built 3D meshes

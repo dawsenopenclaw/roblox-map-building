@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 
 import { PrismaClient } from '@prisma/client'
 const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL ?? '' } } })

@@ -1,30 +1,14 @@
 /**
  * Quick smoke test: query the RAG to verify ingested content can be retrieved.
+ * Uses local BGE embeddings — no API calls, no quota limits.
  */
 import * as dotenv from 'dotenv'
-dotenv.config({ path: '.env.production.local' })
+dotenv.config({ path: '.env.production.local', override: true })
 
 import { PrismaClient } from '@prisma/client'
-const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL ?? '' } } })
+import { embedLocal } from './lib/embed-local'
 
-async function embedText(text: string): Promise<number[]> {
-  const key = process.env.GEMINI_API_KEY!
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'models/gemini-embedding-001',
-        content: { parts: [{ text: text.slice(0, 2048) }] },
-        outputDimensionality: 768,
-      }),
-    },
-  )
-  if (!res.ok) throw new Error(`embed: ${res.status}`)
-  const data = (await res.json()) as { embedding?: { values?: number[] } }
-  return data.embedding?.values ?? []
-}
+const db = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL ?? '' } } })
 
 const queries = [
   'how do I make a tycoon game in roblox',
@@ -35,7 +19,7 @@ const queries = [
 
 for (const q of queries) {
   console.log(`\n🔍 "${q}"`)
-  const emb = await embedText(q)
+  const emb = await embedLocal(q)
   const vectorStr = `[${emb.join(',')}]`
   const rows = await db.$queryRawUnsafe<
     Array<{ category: string; title: string; similarity: number; preview: string }>
