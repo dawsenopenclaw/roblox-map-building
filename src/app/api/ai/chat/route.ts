@@ -229,68 +229,46 @@ const ASSET_REFERENCE_TABLE: string = (() => {
 // Injected into CODE_GENERATION_PROMPT and FORJEAI_SYSTEM_PROMPT.
 // Tells the AI to use marketplace assets for common props instead of primitives.
 const MARKETPLACE_ASSET_RULES = `
-=== MARKETPLACE ASSETS - USE INSTEAD OF BUILDING FROM PARTS ===
+=== BUILD EVERYTHING FROM PARTS — P() HELPER ONLY ===
 
-For ALL common props (trees, lamps, benches, vehicles, furniture, NPCs,
-signs, fences, barrels, rocks) use InsertService:LoadAsset() with the IDs
-in the reference table below.
+BUILD ALL OBJECTS using the P() helper function. This includes:
+- Light poles, benches, trees, signs, furniture — ALL built from multiple Parts
+- Buildings, roads, terrain, structures — ALL built from Parts
+- DO NOT use InsertService or placeAsset() — asset IDs are unreliable and fail silently
 
-NEVER build a tree from green spheres + cylinder trunk.
-NEVER build a street lamp from stacked cylinders.
-NEVER build a parked car from box primitives.
-NEVER build a bench from planks and legs when an asset ID exists.
+HOW TO BUILD COMMON OBJECTS (use P() for each component):
 
-Use Part primitives ONLY for: custom buildings, roads, terrain, bespoke arches,
-unique structural elements. Everything else = marketplace first.
+LIGHT POLE (12+ parts):
+  - Concrete base plate (2x0.5x2, Concrete, grey)
+  - Main pole (cylinder Shape=Enum.PartType.Cylinder, 0.6x10x0.6, Metal, dark grey)
+  - Decorative ring near top (1x0.3x1, Metal)
+  - Arm extending outward (0.3x0.3x2.5, Metal)
+  - Lamp housing (1.2x0.8x1.2, Metal, dark)
+  - Glass cover (1x0.6x1, Glass, Transparency=0.4, warm color)
+  - PointLight inside glass cover (Brightness=3, Range=30, warm color)
+  - Cap on top (0.5x0.2x0.5, Metal)
+  - Base trim ring (1.5x0.2x1.5, Concrete)
 
-REQUIRED placeAsset() HELPER - include near top of every build script that uses
-marketplace assets:
+TREE (8+ parts):
+  - Trunk (cylinder 1.5x8x1.5, Wood, brown)
+  - 3-5 foliage spheres at different heights (Shape=Enum.PartType.Ball, 4-7 diameter, Grass, green with vc() variation)
+  - Root bumps at base (small wedges)
 
-local IS = game:GetService("InsertService")
-local function placeAsset(assetId, position, scale, folder)
-  local ok, result = pcall(function()
-    local a = IS:LoadAsset(assetId)
-    local model = a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1]
-    if not model then a:Destroy() return end
-    if model:IsA("Model") then
-      model:PivotTo(CFrame.new(position))
-    elseif model:IsA("BasePart") then
-      model.Position = position
-    end
-    if scale and scale ~= 1 then model:ScaleTo(scale) end
-    model.Parent = folder
-    a:Destroy()
-  end)
-  if not ok then warn("[ForjeAI] Asset load failed id="..tostring(assetId).." "..tostring(result)) end
-end
+BENCH (10+ parts):
+  - 2 side supports (Metal or Wood, L-shaped from 2 parts each)
+  - 4-5 seat slats (WoodPlanks, 0.3x0.5x4)
+  - 2-3 back slats (WoodPlanks)
+  - 2 armrests
 
-EXAMPLE CALLS:
-  placeAsset(5763950,    sp+Vector3.new(5,0,0),   1.0, getFolder("Nature"))    -- Oak Tree
-  placeAsset(5763974,    sp+Vector3.new(-5,0,0),  1.0, getFolder("Nature"))    -- Pine Tree
-  placeAsset(2768898073, sp+Vector3.new(8,0,3),   1.0, getFolder("Nature"))    -- Palm Tree
-  placeAsset(5902690736, sp+Vector3.new(0,0,10),  1.0, getFolder("Props"))     -- Bench
-  placeAsset(6660038993, sp+Vector3.new(-2,0,8),  1.0, getFolder("Props"))     -- Fire Hydrant
-  placeAsset(131961978,  sp+Vector3.new(-8,0,0),  1.0, getFolder("Props"))     -- Trash Can
-  placeAsset(6284583030, sp+Vector3.new(10,0,0),  1.0, getFolder("Lights"))    -- Iron Street Lamp
-  placeAsset(3583066088, sp+Vector3.new(-10,0,0), 1.0, getFolder("Lights"))    -- Modern Street Lamp
-  placeAsset(2823778520, sp+Vector3.new(3,0,-3),  1.0, getFolder("Props"))     -- Wood Barrel
-  placeAsset(4934138742, sp+Vector3.new(0,0,-15), 1.0, getFolder("Buildings")) -- Medieval Tower
+FENCE (per section, 6+ parts):
+  - 2 posts (Wood, 0.3x4x0.3)
+  - 3 horizontal rails (Wood, 0.2x0.2x6)
+  - Post caps (0.4x0.2x0.4)
 
-HYBRID RULE — MARKETPLACE FIRST, ALWAYS:
-  Trees, bushes, rocks, flowers               --> placeAsset() MANDATORY
-  Street lamps, benches, trash cans           --> placeAsset() MANDATORY
-  Fire hydrants, mailboxes, bollards          --> placeAsset() MANDATORY
-  Vehicles (parked cars, boats, carts)        --> placeAsset() MANDATORY
-  Furniture (chairs, tables, beds, shelves)   --> placeAsset() MANDATORY
-  NPCs, dummies                               --> placeAsset() MANDATORY
-  Decorations, signs, fences, barrels         --> placeAsset() MANDATORY
-  Custom buildings, roads, terrain            --> build from Parts (P() helper)
-  Castle keep, unique architectural features  --> build from Parts (P() helper)
-
-  ⚠️ CRITICAL: A scene with 20 marketplace assets looks 100x better than one with
-  200 Part primitives. ALWAYS prefer fewer, higher-quality marketplace models over
-  many primitive Parts. Use Parts ONLY for walls, floors, roofs, roads, and custom
-  structural elements that no marketplace asset can replace.
+⚠️ CRITICAL: Every object must be DETAILED and MULTI-PART.
+A light pole is NOT one cylinder. A tree is NOT one sphere on a stick.
+Decompose every object into its real-world components.
+MINIMUM parts: small props=8, medium objects=12, buildings=25, scenes=40.
 
 GAME SYSTEM GENERATION — WHEN USER ASKS FOR MECHANICS:
   When the user asks for game SYSTEMS (not visual builds), generate PRODUCTION-READY
@@ -1881,26 +1859,34 @@ local function vc(base, v)
   return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
 end
 
--- MARKETPLACE ASSET helper — use for trees, rocks, lamps, benches, fences, vehicles, furniture
-local IS = game:GetService("InsertService")
-local function placeAsset(assetId, position, scale, folder)
-  local ok, result = pcall(function()
-    local a = IS:LoadAsset(assetId)
-    local model = a:FindFirstChildWhichIsA("Model") or a:GetChildren()[1]
-    if not model then a:Destroy() return end
-    if model:IsA("Model") then
-      model:PivotTo(CFrame.new(position))
-    elseif model:IsA("BasePart") then
-      model.Position = position
-    end
-    if scale and scale ~= 1 then model:ScaleTo(scale) end
-    model.Parent = folder or m
-    a:Destroy()
-  end)
-  if not ok then warn("[ForjeAI] Asset load failed id="..tostring(assetId).." "..tostring(result)) end
+-- CYLINDER/SPHERE helper — creates shaped parts
+local function Cyl(name, cf, size, mat, col, parent)
+  local p = Instance.new("Part")
+  p.Name = name
+  p.Shape = Enum.PartType.Cylinder
+  p.Anchored = true
+  p.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
+  p.Size = size -- For cylinders: Vector3.new(height, diameter, diameter)
+  p.Material = mat
+  p.Color = col
+  p.Parent = parent or m
+  return p
 end
 
--- BUILD HERE using P() for structures, placeAsset() for props/nature/furniture
+local function Ball(name, cf, diameter, mat, col, parent)
+  local p = Instance.new("Part")
+  p.Name = name
+  p.Shape = Enum.PartType.Ball
+  p.Anchored = true
+  p.CFrame = cf
+  p.Size = Vector3.new(diameter, diameter, diameter)
+  p.Material = mat
+  p.Color = col
+  p.Parent = parent or m
+  return p
+end
+
+-- BUILD HERE using P() for boxes, Cyl() for cylinders/poles, Ball() for spheres/foliage
 
 m.PrimaryPart = --[[ set to the largest/base part ]]
 m.Parent = workspace
@@ -1913,7 +1899,7 @@ local light = Instance.new("PointLight")
 light.Brightness = 2  light.Range = 25  light.Color = Color3.fromRGB(255, 200, 140)
 light.Parent = somePart  -- parent to a Part, NEVER set CFrame/Position on a light
 
-MATERIALS: SmoothPlastic(modern painted), Brick(buildings), Cobblestone(old stone), Concrete(foundations), Glass(windows 0.3-0.5 transp), Granite(polished stone), Grass(foliage), Metal(metal), Marble(luxury), Neon(glowing ONLY), Slate(roofs), Wood(trunks), WoodPlanks(floors/furniture)
+MATERIALS: Concrete(modern/foundations), Brick(buildings), Cobblestone(old stone paths), Glass(windows 0.3-0.5 transp), Granite(polished stone), Grass(foliage/leaves), Metal(poles/frames/industrial), Marble(luxury), Neon(glowing accents ONLY), Slate(roofs), Wood(trunks/natural), WoodPlanks(floors/furniture/slats)
 COLORS: MUTED realistic tones ONLY. Walls=220,215,205 Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 RoofDark=75,60,50 DoorWood=100,65,30 Glass=180,215,240 Warm light=255,200,140
 SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.5-1.0 thick. Ceiling=11 from floor. Rooms=16×12 minimum.
 
@@ -2047,33 +2033,37 @@ USE THIS DATA:
     const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}
 
 First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
-Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN (P() helper, vc(), sp placement).
+Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN with these helpers:
+- P(name, CFrame, Size, Material, Color) — for box-shaped parts (walls, floors, plates, beams)
+- Cyl(name, CFrame, Size, Material, Color) — for cylindrical parts (poles, pipes, columns, trunks)
+- Ball(name, CFrame, diameter, Material, Color) — for spherical parts (foliage, decorative balls, lights)
+- vc(baseColor, variance) — for natural color variation
 
-Decompose "${message}" into physical components:
-1. What is the BASE/FOUNDATION? (floor slab, ground plate, platform) → build from Parts
-2. What are the WALLS/STRUCTURE? (exterior walls, interior dividers, columns) → build from Parts
-3. What are the OPENINGS? (door frames, window frames, glass panes with transparency) → build from Parts
-4. What is the ROOF/TOP? (WedgeParts for slopes, flat roof slab, overhangs) → build from Parts
-5. What are the DETAILS? (trim strips along edges, baseboards, sills, railings, steps, handles) → build from Parts
-6. What are the PROPS/NATURE? (trees, bushes, rocks, benches, lamps, barrels, fences, mailboxes) → placeAsset() MANDATORY
-7. What is the FURNITURE? (chairs, tables, beds, shelves, sofas) → placeAsset() MANDATORY
-8. What is the LIGHTING? (street lamps, lanterns → placeAsset(); interior PointLights → parent to a Part)
-9. What is the ATMOSPHERE? (ambient lights, color temperature, shadow-casting)
+Decompose "${message}" into physical components — ALWAYS build with P() helper:
 
-HYBRID RULE — ALWAYS COMBINE BOTH APPROACHES:
-- Custom buildings, roads, terrain, unique structures → P() helper (Parts)
-- Trees, rocks, lamps, benches, fences, vehicles, furniture → placeAsset() MANDATORY
-- A house scene = P() for walls/roof/floors + placeAsset() for surrounding trees, path lamps, benches
+FOR PROPS/SMALL OBJECTS (light poles, benches, mailboxes, signs, furniture, trees, etc.):
+- A LIGHT POLE needs: concrete base (2x0.5x2), main pole (cylinder 0.8x12x0.8), decorative band at top (1.2x0.3x1.2), lamp arm extending outward (0.4x0.4x3), lamp housing (1.5x1x1.5 Metal), glass cover (1.2x0.8x1.2 Glass Transparency=0.4), PointLight inside, decorative cap on top. MINIMUM 10 parts.
+- A BENCH needs: 2 side supports (Wood), 4+ seat slats, 2+ back slats, armrests, feet. MINIMUM 10 parts.
+- A TREE needs: trunk (cylinder, Wood), 3-5 foliage clusters (spheres at different heights, Grass), roots. MINIMUM 8 parts.
+- A MAILBOX needs: post, box body, door, flag, cap. MINIMUM 8 parts.
+- A SIGN needs: posts, board, frame, text surface. MINIMUM 6 parts.
 
-EVERY structural component is a separate Part with unique Name, Size, Material, Color.
-A "wall" is NOT one big box — it's a wall panel + window cutout frame + glass pane + sill + header trim.
-A "door" is NOT one box — it's a frame + door panel + handle + threshold + header.
-A "street lamp" is NOT built from cylinders — use placeAsset() with the lamp ID from the reference table.
-A "tree" is NOT built from spheres + cylinder — use placeAsset() with the tree ID from the reference table.
+FOR BUILDINGS:
+1. BASE/FOUNDATION (floor slab, platform)
+2. WALLS/STRUCTURE (panels, columns — NOT solid boxes. Walls are thin: 0.5-1 stud thick)
+3. OPENINGS (door frames, window frames + glass with Transparency)
+4. ROOF (WedgeParts for slopes, overhangs)
+5. DETAILS (trim, baseboards, sills, railings, handles)
+6. INTERIOR (furniture, counters, shelves — all built from P())
+7. LIGHTING (PointLights INSIDE Parts for warm glow)
 
-USE VARIED SHAPES for structures: Part (boxes), WedgePart (slopes), cylinders (Shape=Enum.PartType.Cylinder), spheres (Shape=Enum.PartType.Ball).
-USE VARIED SIZES: Mix thick structural parts (walls 0.5-1 stud) with thin detail parts (trim 0.2-0.3 stud).
-MINIMUM 25 parts for structural work. Always add 3-8 placeAsset() calls for props/nature.`
+RULES:
+- BUILD EVERYTHING with P() helper. Do NOT use placeAsset() unless you have a verified asset ID.
+- EVERY component is a separate Part with unique Name, Size, Material, Color.
+- A "wall" is wall panel + trim + baseboard (3 parts minimum per wall).
+- USE VARIED SHAPES: Part (boxes), WedgePart (slopes), cylinders (Shape=Enum.PartType.Cylinder), spheres (Shape=Enum.PartType.Ball).
+- USE VARIED SIZES: structural = 0.5-2 stud thick, details = 0.1-0.3 stud.
+- MINIMUM: Props=10 parts, Buildings=25 parts, Scenes=40 parts.`
 
     // Enrich code prompt with experience memory (past successful builds)
     let enrichedCodePrompt = codePrompt
