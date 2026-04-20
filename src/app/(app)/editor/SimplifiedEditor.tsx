@@ -177,6 +177,7 @@ function EditorInner() {
       <EditorTopBar
         onOpenDrawer={() => setDrawerOpen(true)}
         onOpenApiKeys={() => setApiKeysOpen(true)}
+        onNewChat={() => chat.newChat()}
         studioConnected={studio.isConnected}
         studioPlaceName={studio.placeName}
         onConnectStudio={() => {
@@ -284,42 +285,7 @@ function EditorInner() {
           }}
         >
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
-            {/* AI mode icons — quick-switch between features */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-              {[
-                { mode: 'build' as const, icon: '🏗️', label: 'Build', color: '#D4AF37' },
-                { mode: 'plan' as const, icon: '📋', label: 'Plan', color: '#60A5FA' },
-                { mode: 'script' as const, icon: '📝', label: 'Script', color: '#7C3AED' },
-                { mode: 'image' as const, icon: '🎨', label: 'Image', color: '#10B981' },
-                { mode: 'mesh' as const, icon: '🧊', label: '3D Model', color: '#F59E0B' },
-                { mode: 'think' as const, icon: '🧠', label: 'Think', color: '#EC4899' },
-              ].map(({ mode, icon, label, color }) => (
-                <button
-                  key={mode}
-                  onClick={() => chat.setAIMode(mode)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '5px 10px',
-                    borderRadius: 8,
-                    border: `1px solid ${chat.aiMode === mode ? `${color}55` : 'rgba(255,255,255,0.06)'}`,
-                    background: chat.aiMode === mode ? `${color}15` : 'rgba(255,255,255,0.02)',
-                    color: chat.aiMode === mode ? color : '#71717A',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  <span style={{ fontSize: 13 }}>{icon}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Input row */}
+            {/* Input row — clean, no clutter */}
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <textarea
                 ref={chat.textareaRef}
@@ -331,15 +297,7 @@ function EditorInner() {
                     if (chat.input.trim()) chat.sendMessage(chat.input)
                   }
                 }}
-                placeholder={
-                  chat.aiMode === 'build' ? 'Describe what you want to build...' :
-                  chat.aiMode === 'plan' ? 'Describe the game you want to plan...' :
-                  chat.aiMode === 'script' ? 'Describe the script you need...' :
-                  chat.aiMode === 'image' ? 'Describe the image to generate...' :
-                  chat.aiMode === 'mesh' ? 'Describe the 3D model to generate...' :
-                  chat.aiMode === 'think' ? 'Ask me anything — I\'ll think deep...' :
-                  'Type what you want to build...'
-                }
+                placeholder="Describe anything — a pirate ship, a tycoon game, a medieval castle..."
                 rows={1}
                 style={{
                   flex: 1,
@@ -381,6 +339,9 @@ function EditorInner() {
                 </svg>
               </button>
             </div>
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#3F3F46', marginTop: 8 }}>
+              Press <kbd style={{ padding: '1px 4px', borderRadius: 3, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Enter</kbd> to send
+            </p>
           </div>
         </div>
       )}

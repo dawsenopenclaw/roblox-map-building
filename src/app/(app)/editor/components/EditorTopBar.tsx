@@ -7,6 +7,7 @@ import { TokenBalanceWidget } from '@/components/TokenBalanceWidget'
 interface EditorTopBarProps {
   onOpenDrawer: () => void
   onOpenApiKeys: () => void
+  onNewChat?: () => void
   studioConnected: boolean
   studioPlaceName?: string | null
   onConnectStudio: () => void
@@ -17,6 +18,7 @@ interface EditorTopBarProps {
 export function EditorTopBar({
   onOpenDrawer,
   onOpenApiKeys,
+  onNewChat,
   studioConnected,
   studioPlaceName,
   onConnectStudio,
@@ -77,6 +79,34 @@ export function EditorTopBar({
         <span style={{ color: '#D4AF37' }}>Forje</span>
         <span style={{ color: '#FAFAFA' }}>Games</span>
       </Link>
+
+      {/* New Chat button */}
+      {onNewChat && (
+        <button
+          onClick={onNewChat}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '5px 10px',
+            borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(255,255,255,0.03)',
+            color: '#A1A1AA',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            fontFamily: 'Inter, sans-serif',
+          }}
+          title="Start a new chat"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          New
+        </button>
+      )}
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
