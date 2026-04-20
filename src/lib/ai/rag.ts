@@ -34,27 +34,16 @@ export interface RAGContext {
   totalTokensEstimate: number
 }
 
-// ── Embedding via local BGE model (no API, no quota) ─────────────────────
+// ── Embedding — Gemini API on Vercel, local BGE for scripts ──────────────
 
 const EMBED_CACHE_TTL = 60 * 60 * 24 // 24h — same prompt = same vector
 
-let embeddingPipeline: any = null
-
-async function getEmbeddingPipeline() {
-  if (embeddingPipeline) return embeddingPipeline
-  const { pipeline } = await import('@huggingface/transformers')
-  console.log('[rag] Loading local embedding model (Xenova/bge-base-en-v1.5)...')
-  embeddingPipeline = await pipeline('feature-extraction', 'Xenova/bge-base-en-v1.5', {
-    device: 'cpu',
-  })
-  console.log('[rag] Embedding model loaded.')
-  return embeddingPipeline
-}
-
 /**
  * Generate a 768-dim vector embedding for a text string.
- * Uses local BGE model — no API calls, no quotas, no cost.
- * Redis cache still used to skip re-embedding identical prompts.
+ *
+ * On Vercel: uses Gemini embedding API (lightweight, no 640MB ONNX runtime).
+ * Locally: also uses Gemini API for consistency (scripts use local BGE directly).
+ * Redis cache skips re-embedding identical prompts.
  */
 export async function embedText(text: string): Promise<number[]> {
   // Check cache first
@@ -64,12 +53,10 @@ export async function embedText(text: string): Promise<number[]> {
     if (cached) return JSON.parse(cached) as number[]
   } catch { /* Redis unavailable — continue without cache */ }
 
-  const pipe = await getEmbeddingPipeline()
-  const output = await pipe(text.slice(0, 512), { pooling: 'cls', normalize: true })
-  const values = Array.from(output.data as Float32Array)
+  const values = await embedViaGemini(text)
 
   if (!values || values.length === 0) {
-    throw new Error('[rag] Empty embedding from local model')
+    throw new Error('[rag] Empty embedding')
   }
 
   // Cache the result
@@ -78,6 +65,54 @@ export async function embedText(text: string): Promise<number[]> {
   } catch { /* Redis unavailable — skip cache write */ }
 
   return values
+}
+
+/**
+ * Embed via Gemini API — lightweight, no heavy dependencies.
+ * Uses text-embedding-004 with 768 dimensions to match BGE vectors in the DB.
+ */
+async function embedViaGemini(text: string): Promise<number[]> {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) throw new Error('[rag] No GEMINI_API_KEY for embedding')
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'models/text-embedding-004',
+        content: { parts: [{ text: text.slice(0, 2048) }] },
+        outputDimensionality: 768,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    },
+  )
+
+  if (res.status === 429) {
+    // Rate limited — wait and retry once
+    await new Promise(r => setTimeout(r, 3000))
+    const retry = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${key}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'models/text-embedding-004',
+          content: { parts: [{ text: text.slice(0, 2048) }] },
+          outputDimensionality: 768,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      },
+    )
+    if (!retry.ok) throw new Error(`[rag] Gemini embed retry failed: ${retry.status}`)
+    const retryData = await retry.json() as { embedding?: { values?: number[] } }
+    return retryData.embedding?.values ?? []
+  }
+
+  if (!res.ok) throw new Error(`[rag] Gemini embed failed: ${res.status}`)
+  const data = await res.json() as { embedding?: { values?: number[] } }
+  return data.embedding?.values ?? []
 }
 
 // ── Retrieval — pgvector cosine similarity search ──────────────────────────

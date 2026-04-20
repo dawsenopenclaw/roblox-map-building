@@ -134,9 +134,6 @@ const nextConfig: NextConfig = {
   // bundling. Marking them as external means the lambda loads them from
   // node_modules at runtime instead.
   serverExternalPackages: [
-    '@huggingface/transformers',
-    'onnxruntime-node',
-    'onnxruntime-web',
     'sharp',
   ],
   experimental: {
