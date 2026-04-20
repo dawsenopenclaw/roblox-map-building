@@ -685,26 +685,6 @@ function AgentShowcaseGrid() {
         </div>
       )}
 
-      {/* Competitor flex */}
-      <div className="mt-12 rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-center mb-5" style={{ color: '#3F3F46' }}>
-          How we compare
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
-          {[
-            { name: 'ForjeGames', agents: '144+', color: '#D4AF37', bold: true },
-            { name: 'Ropilot', agents: '3', color: '#52525B', bold: false },
-            { name: 'Rebirth', agents: '5', color: '#52525B', bold: false },
-            { name: 'Lemonade', agents: '2', color: '#52525B', bold: false },
-            { name: 'ForgeGUI', agents: '1', color: '#52525B', bold: false },
-          ].map(({ name, agents, color, bold }) => (
-            <div key={name}>
-              <p className={`text-2xl ${bold ? 'font-black' : 'font-semibold'} tabular-nums mb-1`} style={{ color }}>{agents}</p>
-              <p className="text-[11px]" style={{ color: bold ? '#A1A1AA' : '#3F3F46' }}>{name}</p>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
@@ -1300,60 +1280,203 @@ export default function HomeClient() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            TRUST BAR — animated stats (quick credibility after hero)
+            AGENT ARSENAL — 2nd section, the flex
+        ══════════════════════════════════════════════════════════════════ */}
+
+        <section
+          className="relative py-28 px-6 overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #050810, #0A0F1E)' }}
+        >
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: [
+                'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 60%)',
+                'radial-gradient(ellipse 40% 60% at 20% 50%, rgba(99,102,241,0.05) 0%, transparent 60%)',
+                'radial-gradient(ellipse 40% 60% at 80% 50%, rgba(239,68,68,0.04) 0%, transparent 60%)',
+                'radial-gradient(ellipse 80% 30% at 50% 100%, rgba(16,185,129,0.06) 0%, transparent 60%)',
+              ].join(', '),
+            }} />
+          </div>
+
+          <style>{`
+            @keyframes arsenal-pulse {
+              0%, 100% { transform: scale(1); opacity: 0.15; }
+              50% { transform: scale(1.3); opacity: 0; }
+            }
+            .arsenal-ring { animation: arsenal-pulse 3s ease-in-out infinite; }
+            .arsenal-ring-2 { animation: arsenal-pulse 3s ease-in-out infinite; animation-delay: 1s; }
+            .arsenal-ring-3 { animation: arsenal-pulse 3s ease-in-out infinite; animation-delay: 2s; }
+          `}</style>
+
+          <div className="relative max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <motion.div className="mb-6 relative inline-block"
+                initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+                  <div className="arsenal-ring absolute w-40 h-40 rounded-full border-2" style={{ borderColor: 'rgba(212,175,55,0.2)' }} />
+                  <div className="arsenal-ring-2 absolute w-56 h-56 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.1)' }} />
+                  <div className="arsenal-ring-3 absolute w-72 h-72 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.05)' }} />
+                </div>
+                <span className="font-black tabular-nums" style={{
+                  fontSize: 'clamp(5rem, 15vw, 10rem)', lineHeight: 1, letterSpacing: '-0.04em',
+                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 40%, #D4AF37 60%, #B8860B 100%)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
+                }}>
+                  <AnimatedCounter target={144} />
+                </span>
+              </motion.div>
+
+              <motion.p className="text-[12px] font-bold uppercase tracking-[0.2em] mb-6"
+                initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }} style={{ color: '#D4AF37' }}>
+                AI Agents &amp; Counting
+              </motion.p>
+
+              <motion.h2 className="font-bold tracking-tight mb-6"
+                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', lineHeight: 1.15, letterSpacing: '-0.02em', color: '#FAFAFA' }}>
+                The largest AI agent army<br />
+                <span className="gradient-text">ever built for Roblox.</span>
+              </motion.h2>
+
+              <motion.p className="max-w-2xl mx-auto mb-4"
+                initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.55 }}
+                style={{ color: '#71717A', fontSize: '1.05rem', lineHeight: 1.7 }}>
+                Every agent is a specialist. Chain them together and they build entire games —
+                terrain, scripts, UI, lighting, NPCs, combat, economy — all from one prompt.
+              </motion.p>
+
+              <motion.div className="flex flex-wrap justify-center gap-3 text-[13px] font-semibold mb-2"
+                initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.7 }}>
+                {[
+                  { label: 'Build', count: 80, color: '#D4AF37' },
+                  { label: 'Analyze', count: 20, color: '#818CF8' },
+                  { label: 'Optimize', count: 16, color: '#10B981' },
+                  { label: 'Growth', count: 28, color: '#F59E0B' },
+                ].map(({ label, count, color }) => (
+                  <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
+                    background: `${color}10`, border: `1px solid ${color}25`, color,
+                  }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+                    {count} {label}
+                  </span>
+                ))}
+              </motion.div>
+            </div>
+
+            <AgentShowcaseGrid />
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            COMPETITORS — 3rd section, we destroy them
         ══════════════════════════════════════════════════════════════════ */}
 
         <section
           className="relative py-24 px-6 overflow-hidden"
-          style={{
-            background: 'linear-gradient(to bottom, #050810, #070B1A)',
-          }}
+          style={{ background: 'linear-gradient(to bottom, #0A0F1E, #050810)' }}
         >
-          {/* Ambient glow */}
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
-            background: 'radial-gradient(ellipse 80% 100% at 50% 50%, rgba(212,175,55,0.025) 0%, transparent 70%)',
-          }} />
-
-          <div className="relative max-w-5xl mx-auto">
-            <p className="reveal text-center text-[12px] font-semibold uppercase tracking-[0.12em] mb-10" style={{ color: '#3F3F46' }}>
-              Trusted by Roblox creators worldwide
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-8 sm:gap-x-16 gap-y-8 text-center">
-              {[
-                // Only list numbers we can defend to a skeptical user at
-                // launch. "Agents", "asset types", "models" are inherent
-                // product facts. Avoid fabricating usage counts ("50k users",
-                // "12k maps") until /api/dashboard/stats can bind to real
-                // values — competitor analysis recommended the pattern but
-                // honest stats are a stronger long-term trust signal.
-                { value: 144, suffix: '+',   label: 'Specialized AI agents',    color: '#D4AF37'  },
-                { value: 55,  suffix: '+',   label: 'Roblox asset types',       color: '#60A5FA'  },
-                { value: 6,   suffix: '',    label: 'Frontier AI models',       color: '#7C3AED'  },
-                { value: 1000, suffix: '',   label: 'Free tokens on sign-up',   color: '#10B981'  },
-              ].map(({ value, suffix, label, color }, i) => (
-                <div key={label} className={`reveal reveal-delay-${i + 1} trust-stat`} style={{ borderColor: `${color}22` }}>
-                  <p
-                    className="text-4xl sm:text-5xl font-bold mb-1 tabular-nums"
-                    style={{ color, letterSpacing: '-0.02em' }}
-                  >
-                    <AnimatedCounter target={value} suffix={suffix} />
-                  </p>
-                  <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#52525B' }}>{label}</p>
-                </div>
-              ))}
+          <div className="relative max-w-4xl mx-auto">
+            <div className="text-center mb-12">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                No contest
+              </p>
+              <h2 className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}>
+                Built different.{' '}
+                <span className="gradient-text">Not even close.</span>
+              </h2>
             </div>
 
-            {/* Real-time Studio sync callout */}
-            <div className="reveal flex items-center justify-center gap-2 mt-8">
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0" style={{ background: '#10B981' }} />
-              <span className="text-[12px]" style={{ color: '#3F3F46' }}>Real-time Studio sync — every generation pushes live to Roblox Studio</span>
+            <ComparisonSection />
+
+            {/* Quick stat flex */}
+            <div className="reveal mt-10 rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                {[
+                  { name: 'ForjeGames', agents: '144+', color: '#D4AF37', bold: true },
+                  { name: 'Ropilot', agents: '3', color: '#52525B', bold: false },
+                  { name: 'Rebirth', agents: '5', color: '#52525B', bold: false },
+                  { name: 'Lemonade', agents: '2', color: '#52525B', bold: false },
+                  { name: 'ForgeGUI', agents: '1', color: '#52525B', bold: false },
+                ].map(({ name, agents, color, bold }) => (
+                  <div key={name}>
+                    <p className={`text-2xl ${bold ? 'font-black' : 'font-semibold'} tabular-nums mb-1`} style={{ color }}>{agents}</p>
+                    <p className="text-[11px]" style={{ color: bold ? '#A1A1AA' : '#3F3F46' }}>{name}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            HOW IT WORKS — horizontal timeline
+            AI LIVE DEMO — 4th, proof it works
+        ══════════════════════════════════════════════════════════════════ */}
+
+        <section
+          className="relative py-28 px-6 overflow-hidden"
+          style={{ background: 'linear-gradient(to bottom, #050810, #0A0F1E)' }}
+        >
+          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
+            background: [
+              'radial-gradient(ellipse 60% 50% at 30% 50%, rgba(99,102,241,0.06) 0%, transparent 70%)',
+              'radial-gradient(ellipse 60% 50% at 70% 50%, rgba(212,175,55,0.05) 0%, transparent 70%)',
+            ].join(', '),
+          }} />
+
+          <div className="relative max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
+                See it in action
+              </p>
+              <h2 className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
+                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}>
+                You talk.{' '}
+                <span className="gradient-text">AI builds.</span>
+              </h2>
+            </div>
+
+            <div className="reveal reveal-delay-2 grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <div className="rounded-2xl p-1" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(212,175,55,0.3))' }}>
+                <div className="rounded-[14px] p-6 h-full" style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(20px)' }}>
+                  <div className="flex items-center gap-3 mb-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #D4AF37, #B8860B)' }}>
+                      <span className="text-xs font-bold" style={{ color: '#050810' }}>F</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>ForjeGames AI</p>
+                      <p className="text-[11px]" style={{ color: '#10B981' }}>Online — 144 agents available</p>
+                    </div>
+                  </div>
+                  <AIDemoChatBubbles />
+                </div>
+              </div>
+              <div className="rounded-2xl p-1" style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.3), rgba(16,185,129,0.3))' }}>
+                <div className="rounded-[14px] p-6 h-full flex flex-col" style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(20px)' }}>
+                  <div className="flex items-center gap-3 mb-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="flex gap-1.5">
+                      <span className="w-3 h-3 rounded-full" style={{ background: '#EF4444' }} />
+                      <span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} />
+                      <span className="w-3 h-3 rounded-full" style={{ background: '#10B981' }} />
+                    </div>
+                    <p className="text-xs font-medium ml-2" style={{ color: '#52525B' }}>Roblox Studio — Live Preview</p>
+                  </div>
+                  <AIBuildPreview />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            HOW IT WORKS — 5th, 3 steps friction removal
         ══════════════════════════════════════════════════════════════════ */}
 
         <section
@@ -1464,195 +1587,7 @@ export default function HomeClient() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            AI LIVE DEMO — iMessage-style chat showcase (the wow moment)
-        ══════════════════════════════════════════════════════════════════ */}
-
-        <section
-          className="relative py-28 px-6 overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, #050810, #0A0F1E)' }}
-        >
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{
-            background: [
-              'radial-gradient(ellipse 60% 50% at 30% 50%, rgba(99,102,241,0.06) 0%, transparent 70%)',
-              'radial-gradient(ellipse 60% 50% at 70% 50%, rgba(212,175,55,0.05) 0%, transparent 70%)',
-            ].join(', '),
-          }} />
-
-          <div className="relative max-w-5xl mx-auto">
-            <div className="text-center mb-16">
-              <p className="reveal text-[12px] font-semibold uppercase tracking-[0.12em] mb-4" style={{ color: 'rgba(212,175,55,0.6)' }}>
-                See it in action
-              </p>
-              <h2
-                className="reveal reveal-delay-1 font-bold tracking-tight mb-5"
-                style={{ fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', color: '#FAFAFA' }}
-              >
-                You talk.{' '}
-                <span className="gradient-text">AI builds.</span>
-              </h2>
-              <p className="reveal reveal-delay-2 max-w-lg mx-auto" style={{ color: '#71717A', fontSize: '1rem' }}>
-                Every conversation becomes a game. Watch how ForjeGames turns your ideas into playable Roblox experiences.
-              </p>
-            </div>
-
-            <div className="reveal reveal-delay-2 grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              {/* Left: iMessage-style chat */}
-              <div className="rounded-2xl p-1" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(212,175,55,0.3))' }}>
-                <div className="rounded-[14px] p-6 h-full" style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(20px)' }}>
-                  <div className="flex items-center gap-3 mb-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #D4AF37, #B8860B)' }}>
-                      <span className="text-xs font-bold" style={{ color: '#050810' }}>F</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>ForjeGames AI</p>
-                      <p className="text-[11px]" style={{ color: '#10B981' }}>Online — 144 agents available</p>
-                    </div>
-                  </div>
-                  <AIDemoChatBubbles />
-                </div>
-              </div>
-
-              {/* Right: Build preview card */}
-              <div className="rounded-2xl p-1" style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.3), rgba(16,185,129,0.3))' }}>
-                <div className="rounded-[14px] p-6 h-full flex flex-col" style={{ background: 'rgba(10,15,30,0.95)', backdropFilter: 'blur(20px)' }}>
-                  <div className="flex items-center gap-3 mb-6 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div className="flex gap-1.5">
-                      <span className="w-3 h-3 rounded-full" style={{ background: '#EF4444' }} />
-                      <span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} />
-                      <span className="w-3 h-3 rounded-full" style={{ background: '#10B981' }} />
-                    </div>
-                    <p className="text-xs font-medium ml-2" style={{ color: '#52525B' }}>Roblox Studio — Live Preview</p>
-                  </div>
-                  <AIBuildPreview />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            AGENT ARSENAL — the depth reveal (now they're hooked, show scale)
-        ══════════════════════════════════════════════════════════════════ */}
-
-        <section
-          className="relative py-28 px-6 overflow-hidden"
-          style={{ background: 'linear-gradient(to bottom, #0A0F1E, #050810)' }}
-        >
-          <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: [
-                'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 60%)',
-                'radial-gradient(ellipse 40% 60% at 20% 50%, rgba(99,102,241,0.05) 0%, transparent 60%)',
-                'radial-gradient(ellipse 40% 60% at 80% 50%, rgba(239,68,68,0.04) 0%, transparent 60%)',
-                'radial-gradient(ellipse 80% 30% at 50% 100%, rgba(16,185,129,0.06) 0%, transparent 60%)',
-              ].join(', '),
-            }} />
-          </div>
-
-          <style>{`
-            @keyframes arsenal-pulse {
-              0%, 100% { transform: scale(1); opacity: 0.15; }
-              50% { transform: scale(1.3); opacity: 0; }
-            }
-            .arsenal-ring { animation: arsenal-pulse 3s ease-in-out infinite; }
-            .arsenal-ring-2 { animation: arsenal-pulse 3s ease-in-out infinite; animation-delay: 1s; }
-            .arsenal-ring-3 { animation: arsenal-pulse 3s ease-in-out infinite; animation-delay: 2s; }
-          `}</style>
-
-          <div className="relative max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-              <motion.div
-                className="mb-6 relative inline-block"
-                initial={{ opacity: 0, scale: 0.8 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-                  <div className="arsenal-ring absolute w-40 h-40 rounded-full border-2" style={{ borderColor: 'rgba(212,175,55,0.2)' }} />
-                  <div className="arsenal-ring-2 absolute w-56 h-56 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.1)' }} />
-                  <div className="arsenal-ring-3 absolute w-72 h-72 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.05)' }} />
-                </div>
-                <span className="font-black tabular-nums" style={{
-                  fontSize: 'clamp(5rem, 15vw, 10rem)', lineHeight: 1, letterSpacing: '-0.04em',
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 40%, #D4AF37 60%, #B8860B 100%)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                  filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
-                }}>
-                  <AnimatedCounter target={144} />
-                </span>
-              </motion.div>
-
-              <motion.p className="text-[12px] font-bold uppercase tracking-[0.2em] mb-6"
-                initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.3 }} style={{ color: '#D4AF37' }}>
-                AI Agents &amp; Counting
-              </motion.p>
-
-              <motion.h2 className="font-bold tracking-tight mb-6"
-                initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', lineHeight: 1.15, letterSpacing: '-0.02em', color: '#FAFAFA' }}>
-                The largest AI agent army<br />
-                <span className="gradient-text">ever built for Roblox.</span>
-              </motion.h2>
-
-              <motion.p className="max-w-2xl mx-auto mb-4"
-                initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.55 }}
-                style={{ color: '#71717A', fontSize: '1.05rem', lineHeight: 1.7 }}>
-                Every agent is a specialist. Chain them together and they build entire games —
-                terrain, scripts, UI, lighting, NPCs, combat, economy — all from one prompt.
-              </motion.p>
-
-              <motion.div className="flex flex-wrap justify-center gap-3 text-[13px] font-semibold mb-2"
-                initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.7 }}>
-                {[
-                  { label: 'Build', count: 80, color: '#D4AF37' },
-                  { label: 'Analyze', count: 20, color: '#818CF8' },
-                  { label: 'Optimize', count: 16, color: '#10B981' },
-                  { label: 'Growth', count: 28, color: '#F59E0B' },
-                ].map(({ label, count, color }) => (
-                  <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
-                    background: `${color}10`, border: `1px solid ${color}25`, color,
-                  }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-                    {count} {label}
-                  </span>
-                ))}
-              </motion.div>
-            </div>
-
-            <AgentShowcaseGrid />
-
-            <motion.div className="text-center mt-14"
-              initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}>
-              <Link href="/editor"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:scale-105 hover:brightness-110 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]"
-                style={{
-                  background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)', color: '#09090b',
-                  boxShadow: '0 0 24px rgba(212,175,55,0.35), 0 4px 16px rgba(0,0,0,0.4)',
-                }}>
-                Unleash all 144 agents
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </Link>
-              <p className="text-[12px] mt-3" style={{ color: '#3F3F46' }}>
-                New agents ship every week. Your games get smarter automatically.
-              </p>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ══════════════════════════════════════════════════════════════════
-            PRODUCT PREVIEW — real product screenshots (editor, dashboard, pricing)
-        ══════════════════════════════════════════════════════════════════ */}
-        <ProductPreviewGallery />
-
-        {/* ══════════════════════════════════════════════════════════════════
-            BENTO GRID FEATURES
+            BENTO GRID FEATURES — 6th, the detail
         ══════════════════════════════════════════════════════════════════ */}
 
         <section
@@ -1876,22 +1811,7 @@ export default function HomeClient() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            COMPARISON — ForjeGames vs Competitors ranking table
-        ══════════════════════════════════════════════════════════════════ */}
-        <ComparisonSection />
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SHOWCASE
-        ══════════════════════════════════════════════════════════════════ */}
-        <ShowcasePreview />
-
-        {/* ══════════════════════════════════════════════════════════════════
-            TESTIMONIALS
-        ══════════════════════════════════════════════════════════════════ */}
-        <TestimonialsSection />
-
-        {/* ══════════════════════════════════════════════════════════════════
-            PRICING
+            PRICING — 7th, money time
         ══════════════════════════════════════════════════════════════════ */}
         <section
           id="pricing"
