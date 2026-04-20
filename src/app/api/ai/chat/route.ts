@@ -5135,41 +5135,43 @@ type IntentKey =
   | 'default'
 
 // Token costs per intent — cheap for conversation, expensive for generation
+// Beta: all costs set to 0 so testers can use everything freely.
+// Restore original costs before paid launch.
 const INTENT_TOKEN_COST: Record<IntentKey, number> = {
-  conversation: 0,  // Free — chatting, questions, learning
-  chat: 1,          // Chat/conversation
-  undo: 0,          // Free — informational only
-  help: 0,          // Free — capability explanation
-  publish: 0,       // Free — publishing guidance
-  education: 0,     // Free — explain/teach, no code generation
-  debug: 2,         // Diagnose error and suggest fix
-  performance: 2,   // Performance analysis and suggestions
-  modify: 2,        // Modify selection (color/size/position)
-  cleanup: 2,       // Delete/remove/clear operations
-  animate: 2,       // Animation scripts (TweenService/AnimationTrack)
-  datasave: 2,      // DataStore/ProfileStore save/load scripts
-  networking: 2,    // RemoteEvent/RemoteFunction/server-client scripts
-  multiscript: 10,  // Multi-file system generation
-  gamesystem: 10,   // Pre-built game system template (currency/shop/pets/etc.)
-  default: 2,       // General build request
-  analysis: 2,      // Analyzing existing work
-  script: 2,        // Script help
-  ui: 2,            // UI advice
-  audio: 2,         // Audio advice
-  lighting: 2,      // Lighting advice
-  economy: 2,       // Economy design
-  quest: 2,         // Quest design
-  combat: 2,        // Combat design
-  npc: 5,           // NPC generation
-  vehicle: 5,       // Vehicle generation
-  particle: 5,      // Particle effects
-  weather: 5,       // Weather effects (rain/snow/fog/sandstorm)
-  building: 5,      // Building generation (Luau code)
-  terrain: 5,       // Terrain generation
-  marketplace: 1,   // Asset search
-  fullgame: 15,     // Full game generation
-  mesh: 10,         // 3D mesh generation (Meshy API)
-  texture: 10,      // Texture generation (Fal.ai)
+  conversation: 0,
+  chat: 0,
+  undo: 0,
+  help: 0,
+  publish: 0,
+  education: 0,
+  debug: 0,
+  performance: 0,
+  modify: 0,
+  cleanup: 0,
+  animate: 0,
+  datasave: 0,
+  networking: 0,
+  multiscript: 0,
+  gamesystem: 0,
+  default: 0,
+  analysis: 0,
+  script: 0,
+  ui: 0,
+  audio: 0,
+  lighting: 0,
+  economy: 0,
+  quest: 0,
+  combat: 0,
+  npc: 0,
+  vehicle: 0,
+  particle: 0,
+  weather: 0,
+  building: 0,
+  terrain: 0,
+  marketplace: 0,
+  fullgame: 0,
+  mesh: 0,
+  texture: 0,
 }
 
 const KEYWORD_INTENT_MAP: Array<{ patterns: RegExp[]; intent: IntentKey }> = [
@@ -8175,15 +8177,15 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
   if (anthropicAvailable && anthropic) {
     // Check balance BEFORE calling the AI (read-only — no deduction yet).
     // Tokens are only spent after a successful response is confirmed.
+    let skipAnthropic = false
     if (!isDemo && !isAdmin && authedUserId && tokenCost > 0) {
       try {
         const bal = await getTokenBalance(authedUserId)
         const currentBalance = bal?.balance ?? 0
         if (currentBalance < tokenCost) {
-          return NextResponse.json(
-            { error: 'insufficient_tokens', balance: currentBalance, required: tokenCost },
-            { status: 402 },
-          )
+          // Beta: fall through to free models (Gemini/Groq) instead of blocking
+          console.log(`[chat] Insufficient tokens (${currentBalance}/${tokenCost}) — skipping Anthropic, falling through to free models`)
+          skipAnthropic = true
         }
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : 'Token error'
@@ -8191,6 +8193,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         // Fall through: chat proceeds, deduction will also be skipped on success
       }
     }
+    if (skipAnthropic) {
+      // Skip Anthropic block entirely — free models below will handle it
+    } else {
 
     try {
       // Chat/conversation intents get shorter responses; code-heavy builds get max tokens
@@ -8556,7 +8561,8 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       console.error('[chat] Anthropic API error:', err instanceof Error ? err.message : String(err))
       console.warn('[chat] Actionable hint:', buildErrorResponse(err, intent))
     }
-  }
+  } // end else (skipAnthropic)
+  } // end if (anthropicAvailable && anthropic)
 
   // ── Two-pass free model pipeline (Gemini Flash + Groq Llama — both free) ──
   // Instead of cramming conversation + code into one prompt (which free models
