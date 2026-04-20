@@ -1,6 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
   <!-- ForjeGames Studio Plugin v1.0.0 -->
-  <!-- Built by build-plugin.js on 2026-04-15T04:17:31.398Z -->
+  <!-- Built by build-plugin.js on 2026-04-20T00:03:59.582Z -->
   <Item class="Script" referent="RBX0001">
     <Properties>
       <string name="Name">ForjeGames</string>
@@ -712,7 +712,11 @@ function Auth.exchangeCode(code, pluginRef, callback)
 
     local encoded
     local encOk = pcall(function()
-      encoded = HttpService:JSONEncode({ code = trimmed })
+      encoded = HttpService:JSONEncode({
+        code      = trimmed,
+        placeId   = tostring(game.PlaceId),
+        placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+      })
     end)
     if not encOk then
       callback(nil, nil, "Failed to encode request")
@@ -1112,7 +1116,7 @@ function UI.build(widget, state, COLORS, pluginRef)
 
   local versionLabel = Instance.new("TextLabel")
   versionLabel.Name                  = "Version"
-  versionLabel.Text                  = "v4.6.0"
+  versionLabel.Text                  = "v4.7.0"
   versionLabel.Font                  = Enum.Font.Gotham
   versionLabel.TextSize              = 11
   versionLabel.TextColor3            = C.textDim
@@ -2099,7 +2103,7 @@ Sync.PLUGIN_VERSION = "4.7.0"
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.6.0"
+local PLUGIN_VERSION     = "4.7.0"
 local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs

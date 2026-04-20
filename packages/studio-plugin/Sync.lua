@@ -50,7 +50,7 @@ Sync.PLUGIN_VERSION = "4.7.0"
 -- Config
 -- ============================================================
 local BASE_URL           = "https://forjegames.com"
-local PLUGIN_VERSION     = "4.6.0"
+local PLUGIN_VERSION     = "4.7.0"
 local MIN_INTERVAL       = 5    -- seconds (was 2 — burned through Upstash free tier)
 local MAX_INTERVAL       = 30   -- seconds (backoff ceiling)
 local HEARTBEAT_INTERVAL = 30   -- seconds between keepalive POSTs

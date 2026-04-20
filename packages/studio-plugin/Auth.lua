@@ -124,7 +124,11 @@ function Auth.exchangeCode(code, pluginRef, callback)
 
     local encoded
     local encOk = pcall(function()
-      encoded = HttpService:JSONEncode({ code = trimmed })
+      encoded = HttpService:JSONEncode({
+        code      = trimmed,
+        placeId   = tostring(game.PlaceId),
+        placeName = game.Name ~= "" and game.Name or tostring(game.PlaceId),
+      })
     end)
     if not encOk then
       callback(nil, nil, "Failed to encode request")
