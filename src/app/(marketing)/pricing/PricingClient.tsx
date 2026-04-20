@@ -455,14 +455,22 @@ function TokenPacksSection({
       if (result.ok) {
         window.location.href = result.url
       } else {
-        // Explicit nested else so TS narrows `result` to the error variant.
-        // The previous `else if (result.redirect)` chain confused narrowing
-        // in strict mode — TS saw `CheckoutResult` instead of the error arm.
         if (result.redirect) {
           window.location.href = result.redirect
         } else {
+          console.error('[buy-pack] Error:', result.error)
           onError(result.error)
+          if (typeof window !== 'undefined') {
+            window.alert(`Checkout error: ${result.error}`)
+          }
         }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error'
+      console.error('[buy-pack] Unhandled:', msg)
+      onError(msg)
+      if (typeof window !== 'undefined') {
+        window.alert(`Checkout error: ${msg}`)
       }
     } finally {
       setLoadingPack(null)
