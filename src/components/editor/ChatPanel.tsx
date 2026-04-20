@@ -3757,7 +3757,41 @@ export function ChatPanel({
         {/* Tip of the day — hidden in simplified mode */}
         {!simplified && <TipOfTheDay />}
 
-        {/* AI Mode Selector — hidden in simplified mode (icons are in the editor shell) */}
+        {/* AI Mode Selector — compact version in simplified mode, full version otherwise */}
+        {simplified && onAIModeChange && hasMessages && (
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {([
+              { mode: 'build' as AIMode, icon: '🏗️', label: 'Build', color: '#D4AF37' },
+              { mode: 'plan' as AIMode, icon: '📋', label: 'Plan', color: '#60A5FA' },
+              { mode: 'script' as AIMode, icon: '📝', label: 'Script', color: '#7C3AED' },
+              { mode: 'image' as AIMode, icon: '🎨', label: 'Image', color: '#10B981' },
+              { mode: 'mesh' as AIMode, icon: '🧊', label: '3D', color: '#F59E0B' },
+            ]).map(({ mode, icon, label, color }) => (
+              <button
+                key={mode}
+                onClick={() => onAIModeChange(mode)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  border: `1px solid ${aiMode === mode ? `${color}55` : 'rgba(255,255,255,0.06)'}`,
+                  background: aiMode === mode ? `${color}12` : 'transparent',
+                  color: aiMode === mode ? color : '#52525B',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                <span style={{ fontSize: 11 }}>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         {!simplified && onAIModeChange && (
           <AIModeSelector
             activeMode={aiMode}
@@ -4221,7 +4255,16 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder={imageFile ? `Describe what to build from "${imageFile.name}"...` : modeConfig.placeholder}
+            placeholder={imageFile
+              ? `Describe what to build from "${imageFile.name}"...`
+              : simplified
+                ? aiMode === 'build' ? 'Add a tree, make it bigger, change the color...'
+                : aiMode === 'script' ? 'Add a leaderboard, make doors open, currency system...'
+                : aiMode === 'image' ? 'Game thumbnail, icon, texture...'
+                : aiMode === 'mesh' ? 'Sword, helmet, potion bottle...'
+                : aiMode === 'plan' ? 'Plan a tycoon game, RPG, simulator...'
+                : 'Type anything...'
+              : modeConfig.placeholder}
             rows={1}
             disabled={loading}
             data-no-palette="true"
