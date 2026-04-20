@@ -595,12 +595,12 @@ function AgentShowcaseGrid() {
   return (
     <div>
       {/* Filter tabs */}
-      <div className="reveal reveal-delay-2 flex flex-wrap justify-center gap-2 mb-10">
+      <div className="reveal reveal-delay-2 flex overflow-x-auto sm:flex-wrap sm:justify-center gap-2 mb-10 pb-2 -mx-2 px-2 scrollbar-hide">
         {AGENT_CATEGORIES.map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => { setFilter(key); setShowAll(false) }}
-            className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] cursor-pointer"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all duration-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] cursor-pointer flex-shrink-0 whitespace-nowrap"
             style={filter === key ? {
               background: 'linear-gradient(135deg, rgba(212,175,55,0.2), rgba(212,175,55,0.1))',
               border: '1px solid rgba(212,175,55,0.3)',
@@ -1315,12 +1315,12 @@ export default function HomeClient() {
                 initial={{ opacity: 0, scale: 0.8 }} whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-                  <div className="arsenal-ring absolute w-40 h-40 rounded-full border-2" style={{ borderColor: 'rgba(212,175,55,0.2)' }} />
-                  <div className="arsenal-ring-2 absolute w-56 h-56 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.1)' }} />
-                  <div className="arsenal-ring-3 absolute w-72 h-72 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.05)' }} />
+                  <div className="arsenal-ring absolute w-28 h-28 sm:w-40 sm:h-40 rounded-full border-2" style={{ borderColor: 'rgba(212,175,55,0.2)' }} />
+                  <div className="arsenal-ring-2 absolute w-40 h-40 sm:w-56 sm:h-56 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.1)' }} />
+                  <div className="arsenal-ring-3 absolute w-52 h-52 sm:w-72 sm:h-72 rounded-full border" style={{ borderColor: 'rgba(212,175,55,0.05)' }} />
                 </div>
                 <span className="font-black tabular-nums" style={{
-                  fontSize: 'clamp(5rem, 15vw, 10rem)', lineHeight: 1, letterSpacing: '-0.04em',
+                  fontSize: 'clamp(4rem, 12vw, 10rem)', lineHeight: 1, letterSpacing: '-0.04em',
                   background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 40%, #D4AF37 60%, #B8860B 100%)',
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                   filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
@@ -1397,8 +1397,8 @@ export default function HomeClient() {
             <ComparisonSection />
 
             {/* Quick stat flex */}
-            <div className="reveal mt-10 rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+            <div className="reveal mt-10 rounded-xl p-5 sm:p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center justify-between gap-2 text-center">
                 {[
                   { name: 'ForjeGames', agents: '144+', color: '#D4AF37', bold: true },
                   { name: 'Ropilot', agents: '3', color: '#52525B', bold: false },
@@ -1406,9 +1406,9 @@ export default function HomeClient() {
                   { name: 'Lemonade', agents: '2', color: '#52525B', bold: false },
                   { name: 'ForgeGUI', agents: '1', color: '#52525B', bold: false },
                 ].map(({ name, agents, color, bold }) => (
-                  <div key={name}>
-                    <p className={`text-2xl ${bold ? 'font-black' : 'font-semibold'} tabular-nums mb-1`} style={{ color }}>{agents}</p>
-                    <p className="text-[11px]" style={{ color: bold ? '#A1A1AA' : '#3F3F46' }}>{name}</p>
+                  <div key={name} className="flex-1 min-w-0">
+                    <p className={`text-lg sm:text-2xl ${bold ? 'font-black' : 'font-semibold'} tabular-nums mb-1`} style={{ color }}>{agents}</p>
+                    <p className="text-[10px] sm:text-[11px] truncate" style={{ color: bold ? '#A1A1AA' : '#3F3F46' }}>{name}</p>
                   </div>
                 ))}
               </div>
