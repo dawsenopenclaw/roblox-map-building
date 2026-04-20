@@ -78,7 +78,7 @@ export default function AuthLayoutClient({ children }: { children: React.ReactNo
 
           <div className="space-y-4">
             {[
-              '9 AI agents working together on every build',
+              '144+ AI agents working together on every build',
               '3D mesh generation from text',
               '13 image styles for any art direction',
               'Live sync to Roblox Studio',
