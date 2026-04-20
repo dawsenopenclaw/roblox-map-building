@@ -1686,7 +1686,7 @@ label, select, .transition-all {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: Inter, sans-serif;
+  font-family: var(--font-geist-sans), Inter, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
@@ -2205,8 +2205,8 @@ body {
 
 /* 1. Horizontal scan line sweeps top → bottom */
 @keyframes scan-reveal {
-  from { transform: translateY(-100vh); }
-  to   { transform: translateY(100vh);  }
+  from { transform: translateY(-100dvh); }
+  to   { transform: translateY(100dvh);  }
 }
 
 /* 2. Letter appears with white flash then settles to gradient-transparent */
@@ -2708,6 +2708,26 @@ body {
   will-change: clip-path, text-shadow;
   backface-visibility: hidden;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Design system upgrades ──────────────────────────────────────────────── */
+
+/* Text-wrap balance on all headings for cleaner line breaks */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+/* Global noise overlay for premium texture — breaks digital flatness */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9000;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  opacity: 0.4;
 }
 
 /* ─── Mobile utilities ────────────────────────────────────────────────────── */

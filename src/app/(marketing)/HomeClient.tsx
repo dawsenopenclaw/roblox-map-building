@@ -1106,7 +1106,7 @@ export default function HomeClient() {
       <div
         ref={pageRef}
         className="min-h-screen"
-        style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-inter, Inter, sans-serif)' }}
+        style={{ background: '#050810', color: '#FAFAFA', fontFamily: 'var(--font-geist-sans, Inter, sans-serif)' }}
       >
 
         {/* ══════════════════════════════════════════════════════════════════

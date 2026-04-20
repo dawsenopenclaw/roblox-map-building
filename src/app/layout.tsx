@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { JetBrains_Mono } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import './globals.css'
@@ -21,12 +22,8 @@ import { GlobalShortcuts } from '@/components/GlobalShortcuts'
 import { GlobalScrollReveal } from '@/components/GlobalScrollReveal'
 import { ProfileButton } from '@/components/ProfileButton'
 
-const inter = Inter({
-  subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  variable: '--font-inter',
-  display: 'swap',
-})
+// Geist Sans replaces Inter — sharper, more character, modern feel
+const inter = GeistSans // keep variable name for compat
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],

@@ -36,7 +36,7 @@ const config: Config = {
         'accent-hover':    '#E4C04A',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['var(--font-geist-sans)', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       backgroundImage: {
