@@ -191,7 +191,7 @@ export async function callAI(
 
   if (opts.useRAG) {
     // Auto-select specialist based on user message
-    const specialist = findSpecialist(userMessage)
+    const specialist = await findSpecialist(userMessage)
     if (specialist) {
       enrichedPrompt = applySpecialist(enrichedPrompt, specialist)
       // Merge specialist's preferred RAG categories with any provided ones

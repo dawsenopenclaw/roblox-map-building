@@ -1790,7 +1790,7 @@ async function freeModelTwoPass(
   let executedInStudio: boolean | string = false
 
   // Auto-select specialist based on what the user is building
-  const specialist = findSpecialist(message)
+  const specialist = await findSpecialist(message)
   const specialistPrefix = specialist
     ? `[SPECIALIST: ${specialist.name}]\n${specialist.prompt}\n\n`
     : ''
@@ -2250,8 +2250,8 @@ Keep each suggestion under 50 characters. Never repeat the thing just built.)
  * Get the system prompt with specialist expertise applied if relevant.
  * Call this instead of using FORJEAI_SYSTEM_PROMPT directly for build intents.
  */
-function getSpecializedPrompt(userMessage: string): string {
-  const spec = findSpecialist(userMessage)
+async function getSpecializedPrompt(userMessage: string): Promise<string> {
+  const spec = await findSpecialist(userMessage)
   if (spec) {
     console.log(`[chat] Specialist activated: ${spec.name}`)
     return `[SPECIALIST: ${spec.name}]\n${spec.prompt}\n\n` + FORJEAI_SYSTEM_PROMPT
@@ -7726,7 +7726,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: await buildRAGSystemPrompt(getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext, message) }] },
+            system_instruction: { parts: [{ text: await buildRAGSystemPrompt(await getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')) + cameraContext + multiStepContext, message) }] },
             contents: [
               ...history.map((h: HistoryMessage) => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
               { role: 'user', parts: [{ text: message }] },
@@ -7780,7 +7780,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
           model: 'gpt-4o',
           max_tokens: 1024,
           messages: [
-            { role: 'system', content: await buildRAGSystemPrompt(getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
+            { role: 'system', content: await buildRAGSystemPrompt(await getSpecializedPrompt(message) + buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' ')), message) },
             ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
             { role: 'user',   content: message },
           ],
@@ -7825,7 +7825,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const customGameKnowledge = buildGameKnowledgePrompt([...history.slice(-5).map((h: HistoryMessage) => h.content), message].join(' '))
       const customSystemPrompt = await buildRAGSystemPrompt(
         isBuildIntent
-          ? getSpecializedPrompt(message) + customGameKnowledge + cameraContext + multiStepContext
+          ? await getSpecializedPrompt(message) + customGameKnowledge + cameraContext + multiStepContext
           : FORJEAI_CORE_PROMPT + customGameKnowledge + cameraContext,
         message,
       )
@@ -7905,7 +7905,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const sysPromptGroq = await enrichWithExperienceMemory(
       await buildRAGSystemPrompt(
         (isBuildIntentGroq
-          ? getSpecializedPrompt(message) + gameKnowledgeGroq + cameraContext
+          ? await getSpecializedPrompt(message) + gameKnowledgeGroq + cameraContext
           : FORJEAI_CORE_PROMPT + gameKnowledgeGroq + cameraContext) + modePrefix,
         message,
       ),
@@ -8001,7 +8001,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? await getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),
@@ -8216,7 +8216,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
       const systemPrompt = await enrichWithExperienceMemory(
         await buildRAGSystemPrompt(
           (isBuildingIntent
-            ? getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
+            ? await getSpecializedPrompt(message) + gameKnowledge + cameraContext + multiStepContext + enhancedPlanContext
             : FORJEAI_CORE_PROMPT + gameKnowledge + cameraContext) + modePrefix,
           message,
         ),
