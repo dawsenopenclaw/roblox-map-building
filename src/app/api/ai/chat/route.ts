@@ -142,36 +142,8 @@ const CURATED_ASSETS: CuratedAsset[] = [
   { id: 4134200596,      name: 'Refrigerator',     category: 'furniture', tags: ['fridge','refrigerator','kitchen'],         scale: 1.0, description: 'Retro refrigerator' },
   // Characters and NPCs
   { id: 2823778520, name: 'Merchant NPC',        category: 'character', tags: ['merchant','vendor','shop','npc'],          scale: 1.0, description: 'Village merchant NPC with bag' },
-  // Modern Buildings
-  { id: 0, name: 'Apartment Building',   category: 'building', tags: ['apartment','building','modern','residential','city','urban'],      scale: 1.0, description: 'Multi-story modern apartment block' },                   // TODO: find real asset ID
-  { id: 0, name: 'Skyscraper',           category: 'building', tags: ['skyscraper','tower','highrise','city','glass','office'],           scale: 1.0, description: 'Tall glass-facade office skyscraper' },                   // TODO: find real asset ID
-  { id: 0, name: 'Shopping Mall',        category: 'building', tags: ['mall','shopping','center','retail','modern'],                      scale: 1.0, description: 'Modern shopping mall exterior' },                         // TODO: find real asset ID
-  { id: 0, name: 'Office Building',      category: 'building', tags: ['office','building','corporate','modern','urban'],                  scale: 1.0, description: 'Mid-rise corporate office building' },                    // TODO: find real asset ID
-  { id: 0, name: 'Gas Station',          category: 'building', tags: ['gas','station','petrol','fuel','pump','modern'],                   scale: 1.0, description: 'Modern gas station with canopy' },                        // TODO: find real asset ID
-  // Sci-fi / Space
-  { id: 0, name: 'Space Station Module', category: 'scifi',    tags: ['space','station','module','sci-fi','scifi','futuristic'],          scale: 1.0, description: 'Cylindrical space station habitat module' },             // TODO: find real asset ID
-  { id: 0, name: 'Sci-fi Laser Emitter', category: 'scifi',    tags: ['laser','scifi','sci-fi','beam','emitter','weapon'],                scale: 1.0, description: 'Wall-mounted sci-fi laser cannon' },                      // TODO: find real asset ID
-  { id: 0, name: 'Hologram Projector',   category: 'scifi',    tags: ['hologram','projector','scifi','sci-fi','futuristic','tech'],       scale: 1.0, description: 'Floor-standing holographic display projector' },         // TODO: find real asset ID
-  { id: 0, name: 'Sci-fi Blast Door',    category: 'scifi',    tags: ['door','scifi','sci-fi','sliding','futuristic','metal'],            scale: 1.0, description: 'Sliding sci-fi blast door' },                            // TODO: find real asset ID
-  { id: 0, name: 'Alien Pod',            category: 'scifi',    tags: ['alien','pod','scifi','sci-fi','capsule','space'],                  scale: 1.0, description: 'Organic alien pod / egg structure' },                    // TODO: find real asset ID
-  // Fantasy
-  { id: 0, name: 'Crystal Formation',    category: 'fantasy',  tags: ['crystal','gem','formation','magic','fantasy','glowing'],           scale: 1.0, description: 'Cluster of glowing magical crystals' },                  // TODO: find real asset ID
-  { id: 0, name: 'Magic Portal',         category: 'fantasy',  tags: ['portal','magic','fantasy','teleport','swirling','gate'],           scale: 1.0, description: 'Swirling arcane teleportation portal' },                  // TODO: find real asset ID
-  { id: 0, name: 'Magic Circle',         category: 'fantasy',  tags: ['magic','circle','rune','ritual','glow','fantasy'],                 scale: 1.0, description: 'Glowing runic magic circle on ground' },                 // TODO: find real asset ID
-  { id: 0, name: 'Dragon Skull',         category: 'fantasy',  tags: ['dragon','skull','bones','fantasy','large','decoration'],           scale: 1.5, description: 'Massive decorative dragon skull prop' },                  // TODO: find real asset ID
-  { id: 0, name: 'Enchanted Tree',       category: 'fantasy',  tags: ['tree','enchanted','magic','glowing','fantasy','nature'],           scale: 1.0, description: 'Glowing magical fantasy tree' },                         // TODO: find real asset ID
-  // Horror
-  { id: 0, name: 'Coffin',               category: 'horror',   tags: ['coffin','casket','horror','spooky','cemetery','vampire'],          scale: 1.0, description: 'Wooden vampire coffin prop' },                           // TODO: find real asset ID
-  { id: 0, name: 'Skull Pile',           category: 'horror',   tags: ['skull','bones','pile','horror','spooky','death'],                  scale: 0.8, description: 'Pile of decorative skulls' },                           // TODO: find real asset ID
-  { id: 0, name: 'Cobweb Decoration',    category: 'horror',   tags: ['cobweb','spider','web','horror','spooky','halloween'],             scale: 1.0, description: 'Corner cobweb decoration' },                             // TODO: find real asset ID
-  { id: 0, name: 'Tombstone',            category: 'horror',   tags: ['tombstone','grave','cemetery','horror','spooky','stone'],          scale: 1.0, description: 'Chipped stone graveyard tombstone' },                    // TODO: find real asset ID
-  { id: 0, name: 'Haunted Lantern',      category: 'horror',   tags: ['lantern','haunted','horror','spooky','ghost','glow'],              scale: 0.9, description: 'Flickering haunted lantern with eerie glow' },          // TODO: find real asset ID
-  // Sports Equipment
-  { id: 0, name: 'Basketball Hoop',      category: 'sports',   tags: ['basketball','hoop','net','court','sports','outdoor'],              scale: 1.0, description: 'Regulation basketball hoop on pole' },                   // TODO: find real asset ID
-  { id: 0, name: 'Soccer Goal',          category: 'sports',   tags: ['soccer','goal','net','football','field','sports'],                 scale: 1.0, description: 'Full-size soccer goal with net' },                       // TODO: find real asset ID
-  { id: 0, name: 'Bleacher Stand',       category: 'sports',   tags: ['bleacher','stand','seats','stadium','sports','audience'],          scale: 1.0, description: 'Metal bleacher seating section' },                       // TODO: find real asset ID
-  { id: 0, name: 'Tennis Net',           category: 'sports',   tags: ['tennis','net','court','sports','white'],                           scale: 1.0, description: 'Tennis court net on posts' },                             // TODO: find real asset ID
-  { id: 0, name: 'Scoreboard',           category: 'sports',   tags: ['scoreboard','score','board','stadium','display','sports'],         scale: 1.0, description: 'Electronic stadium scoreboard' },                        // TODO: find real asset ID
+  // NOTE: Sci-fi, Fantasy, Horror, Sports categories removed — placeholder id:0 entries caused silent failures.
+  // Re-add with real Roblox Creator Store asset IDs when available.
 ]
 
 /** Find the best-matching curated asset for a keyword/phrase. Returns null when nothing matches. */
@@ -180,7 +152,6 @@ function findCuratedAsset(query: string): CuratedAsset | null {
   let best: CuratedAsset | null = null
   let bestScore = 0
   for (const asset of CURATED_ASSETS) {
-    if (asset.id === 0) continue // placeholder — real catalog ID not yet assigned
     let score = 0
     const haystack = [asset.name, asset.category, ...asset.tags].join(' ').toLowerCase()
     for (const word of words) {
