@@ -203,12 +203,12 @@ function checkPlacement(parts: ParsedPart[]): ValidationIssue[] {
 function checkQuality(parts: ParsedPart[]): ValidationIssue[] {
   const issues: ValidationIssue[] = []
 
-  // Minimum part count
-  if (parts.length < 3) {
+  // Minimum part count — any real build needs 10+ parts
+  if (parts.length < 10) {
     issues.push({
       severity: 'error',
       type: 'too_few_parts',
-      message: `Only ${parts.length} parts detected — builds need at least 5 parts to look good`,
+      message: `Only ${parts.length} parts detected — builds need at least 10 parts. A light pole alone needs: base, pole sections, lamp housing, glass cover, light source, and decorative details.`,
       autoFixed: false,
     })
   }

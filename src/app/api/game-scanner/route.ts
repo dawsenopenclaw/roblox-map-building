@@ -40,8 +40,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Game DNA scanner requires CREATOR tier or above
-  const tierDenied = await requireTier(userId, 'CREATOR')
+  // Beta: all testers get full access
+  const tierDenied = await requireTier(userId, 'FREE')
   if (tierDenied) return tierDenied
 
   const internalId = await resolveInternalUserId(userId)

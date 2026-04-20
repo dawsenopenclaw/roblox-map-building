@@ -16,9 +16,9 @@ import { z } from 'zod'
 import { parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
-import { startMeshPipeline } from '@/lib/pipeline/mesh-pipeline'
+import { createMeshyTask, pollMeshyTask } from '@/lib/ai/meshy'
 
-export const maxDuration = 60
+export const maxDuration = 120
 
 // ── Request schema ────────────────────────────────────────────────────────────
 
@@ -647,7 +647,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const tierDenied = await requireTier(userId, 'HOBBY')
+    const tierDenied = await requireTier(userId, 'FREE') // Beta: all testers get full access
     if (tierDenied) return tierDenied
 
     try {
@@ -680,34 +680,46 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const qualityRpt  = buildQualityReport(input, dims)
   const enhanced    = enhancePromptForPro(input.prompt, input.type, input.style)
 
+  // ── Inline generation (serverless-compatible, no BullMQ worker needed) ──
+  // Creates Meshy task and polls until complete within this lambda invocation.
   try {
-    // Enqueue async pipeline — returns immediately.
-    // Pass input.prompt (raw user intent) rather than the fully-enhanced string:
-    // mesh-pipeline.ts's enrichPrompt() already appends type/style/technical suffixes
-    // and enforces Meshy's 500-char limit. Feeding the pre-enhanced prompt would
-    // double-stack enrichments and reliably overflow the char limit.
-    const { assetId, jobId } = await startMeshPipeline({
-      userId,
-      prompt:     input.prompt,
-      type:       input.type,
-      style:      input.style,
+    const artStyleMap: Record<string, string> = {
+      realistic: 'pbr', stylized: 'cartoon', lowpoly: 'low-poly', roblox: 'low-poly',
+    }
+    const artStyle = artStyleMap[input.style] ?? 'low-poly'
+
+    // Truncate enhanced prompt to Meshy's 500-char limit
+    const meshyPrompt = enhanced.length > 500
+      ? enhanced.slice(0, 500).replace(/[,\s]+$/, '')
+      : enhanced
+
+    const taskId = await createMeshyTask({
+      prompt:     meshyPrompt,
       polyTarget: input.polyTarget,
-      textured:   input.textured,
-      tokensCost: costBreak.totalTokens,
+      artStyle,
     })
 
-    // Return queued status — client polls /api/ai/generation-status?assetId=xxx
+    // Poll inline — Meshy typically completes in 30-90s
+    const task = await pollMeshyTask({
+      taskId,
+      maxAttempts: 25,   // 25 × 4s = ~100s max
+      intervalMs:  4000,
+    })
+
+    const meshUrl = task.model_urls?.glb ?? task.model_urls?.fbx ?? task.model_urls?.obj ?? null
+    const succeeded = task.status === 'SUCCEEDED' && meshUrl
+
     return NextResponse.json({
-      status:  'queued',
-      assetId,
-      jobId,
+      status:  succeeded ? 'ready' : 'generating',
+      assetId: taskId,
+      jobId:   taskId,
 
       asset: {
-        meshUrl:      null,
+        meshUrl,
         textureUrls:  { albedo: null, normal: null, roughness: null, metallic: null },
-        thumbnailUrl: null,
-        polyCount:    input.polyTarget,
-        fileSize:     estimateFileSizeLabel(input.polyTarget, input.textured),
+        thumbnailUrl: task.thumbnail_url ?? null,
+        polyCount:    task.polygon_count ?? input.polyTarget,
+        fileSize:     estimateFileSizeLabel(task.polygon_count ?? input.polyTarget, input.textured),
         dimensions:   dims,
       },
 
@@ -718,8 +730,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       luauCode: generateInsertServiceLuau({
         prompt:    input.prompt,
         type:      input.type,
-        taskId:    assetId,
-        polyCount: input.polyTarget,
+        taskId,
+        polyCount: task.polygon_count ?? input.polyTarget,
         dims,
       }),
 
@@ -730,11 +742,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       estimatedTime: estimateTime(input),
 
-      message: `Generation queued. Poll GET /api/ai/generation-status?assetId=${assetId}`,
+      message: succeeded
+        ? 'Generation complete! Download your 3D model from the asset panel.'
+        : 'Generation is still processing. Check back in a moment.',
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
-    console.error('[3d-generate POST] Failed to queue:', message)
-    return NextResponse.json({ error: '3D generation failed to queue' }, { status: 502 })
+    console.error('[3d-generate POST] Inline generation failed:', message)
+    return NextResponse.json(
+      { error: `3D generation failed: ${message}` },
+      { status: 502 },
+    )
   }
 }

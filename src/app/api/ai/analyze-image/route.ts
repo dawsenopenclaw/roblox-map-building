@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
   if (process.env.DEMO_MODE !== 'true') {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const tierDenied = await requireTier(userId, 'HOBBY')
+    const tierDenied = await requireTier(userId, 'FREE') // Beta: all testers get full access
     if (tierDenied) return tierDenied
 
     // Rate limit: 20 AI requests per minute per user

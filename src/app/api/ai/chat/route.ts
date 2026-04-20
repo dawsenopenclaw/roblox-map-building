@@ -35,6 +35,25 @@ import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
 import { validateBuild } from '@/lib/ai/build-validator'
 
+// ─── Auto-log conversation to DB (fire-and-forget) ──────────────────────────
+// Persists every user→assistant exchange so admin can review beta tester chats.
+function logConversationAsync(userId: string, sessionId: string | null, userMsg: string, assistantMsg: string, metadata?: Record<string, unknown>) {
+  if (!userId) return
+  const sid = sessionId || `auto_${userId}_${Date.now()}`
+  db.chatSession.upsert({
+    where: { id: sid },
+    update: { updatedAt: new Date() },
+    create: { id: sid, userId, title: userMsg.slice(0, 80) || 'Chat' },
+  }).then(() =>
+    db.chatMessage.createMany({
+      data: [
+        { sessionId: sid, role: 'user', content: userMsg.slice(0, 10000), timestamp: new Date() },
+        { sessionId: sid, role: 'assistant', content: assistantMsg.slice(0, 10000), metadata: metadata ?? null, timestamp: new Date() },
+      ],
+    })
+  ).catch((err) => console.warn('[auto-log] Failed to persist conversation:', err instanceof Error ? err.message : err))
+}
+
 // ─── Experience Memory: enrich system prompt with past successes ─────────────
 async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string): Promise<string> {
   try {
@@ -740,6 +759,15 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
       for (const issue of validation.issues) {
         console.log(`  [${issue.severity}${issue.autoFixed ? ' FIXED' : ''}] ${issue.type}: ${issue.message}`)
       }
+
+      // REJECT builds with too few parts — don't send garbage to Studio
+      const tooFew = errors.find(i => i.type === 'too_few_parts')
+      if (tooFew && validation.parts.length < 5) {
+        console.warn('[build-validator] REJECTED — too few parts, not sending to Studio')
+        // Return false so caller knows code wasn't executed
+        return false
+      }
+
       // Apply auto-fixes (e.g. SmoothPlastic → Concrete)
       if (validation.fixedCode) {
         code = validation.fixedCode
@@ -1890,6 +1918,7 @@ COLORS: MUTED realistic tones ONLY. Walls=220,215,205 Brick=180,150,100 Concrete
 SCALE: Character=5.5 tall. Doors=4W×7.5H. Windows=3-4W×3-4H. Walls=0.5-1.0 thick. Ceiling=11 from floor. Rooms=16×12 minimum.
 
 CRITICAL QUALITY RULES:
+0. ALL PARTS MUST GO INTO THE SINGLE MODEL 'm'. NEVER parent anything directly to workspace. The ONLY line that should reference workspace is 'm.Parent = workspace' at the end. If you create sub-folders or sub-models, parent them to 'm'. The final result MUST be ONE grouped Model, not scattered parts.
 1. MINIMUM 25 parts per build. Houses need 35+. Scenes need 50+. NEVER under 20.
 2. NEVER build a single cube. Decompose into real-world components. A wall is wall+trim+baseboard. A door is frame+panel+handle+threshold.
 3. Always use 2-3 color shades via vc() for natural variation. NO flat uniform colors.
@@ -8550,6 +8579,9 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     const twoPassResult = await freeModelTwoPass(message, intent, historyForFree, cameraContext, sessionId)
 
     if (twoPassResult) {
+      // Auto-log for beta review
+      if (userId) logConversationAsync(userId, sessionId, message, twoPassResult.conversationText, { model: twoPassResult.model, intent, hasCode: twoPassResult.luauCode !== null })
+
       const freeModelBuildPlan: BuildPlan | undefined = (() => {
         if (multiStepTemplate) return computeBuildPlan(multiStepTemplate, 1)
         if (continuationMeta && activeContinuationTemplate) {

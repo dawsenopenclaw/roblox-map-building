@@ -220,7 +220,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const { user, clerkId: userId } = authResult
     dbUserId = user.id
 
-    const tierDenied = await requireTier(userId, 'HOBBY')
+    const tierDenied = await requireTier(userId, 'FREE') // Beta: all testers get full access
     if (tierDenied) return tierDenied
 
     try {

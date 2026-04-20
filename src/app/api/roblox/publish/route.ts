@@ -38,8 +38,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Publishing requires HOBBY tier or above
-  const tierDenied = await requireTier(userId, 'HOBBY')
+  // Beta: all testers get full access
+  const tierDenied = await requireTier(userId, 'FREE')
   if (tierDenied) return tierDenied
 
   const parsed = await parseBody(req, publishSchema)

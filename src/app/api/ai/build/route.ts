@@ -45,7 +45,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // HOBBY+ required to use full build orchestration
-  const tierBlock = await requireTier(userId, 'HOBBY')
+  const tierBlock = await requireTier(userId, 'FREE') // Beta: all testers get full access
   if (tierBlock) return tierBlock
 
   // Rate limit: shared AI bucket — 20 req/min
