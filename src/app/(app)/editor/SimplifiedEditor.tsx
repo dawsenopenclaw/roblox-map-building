@@ -23,7 +23,9 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { EditorTopBar } from './components/EditorTopBar'
 import { WelcomeHero } from './components/WelcomeHero'
 import { LeftDrawer } from './components/LeftDrawer'
+import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
 import ApiKeysModal from './panels/ApiKeysModal'
+import { BuildProgressDashboard } from '@/components/editor/BuildProgressDashboard'
 
 // ─── Inner component (needs toast + theme providers above) ────────────────
 
@@ -73,15 +75,29 @@ function EditorInner() {
     ),
   })
 
-  // ── Auto-clear chat on ?new=1 URL param ──
+  // ── Onboarding overlay — auto-show on first visit ──
+  const { shouldShow: showOnboarding, dismiss: dismissOnboarding } = useOnboardingOverlay({
+    hasMessages: chat.messages.length > 0,
+  })
+
+  // ── Auto-clear chat on ?new=1 and auto-send ?prompt= from onboarding ──
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search)
       if (params.has('new')) {
         chat.newChat()
-        // Clean the param so refresh doesn't re-clear
+      }
+      // Auto-send the prompt passed from the onboarding wizard
+      const promptParam = params.get('prompt')
+      if (promptParam && promptParam.trim()) {
+        // Small delay so the chat hook is fully initialised
+        setTimeout(() => chat.sendMessage(promptParam.trim()), 300)
+      }
+      // Clean URL params so refresh doesn't re-trigger
+      if (params.has('new') || params.has('prompt')) {
         const url = new URL(window.location.href)
         url.searchParams.delete('new')
+        url.searchParams.delete('prompt')
         window.history.replaceState({}, '', url.toString())
       }
     } catch { /* ignore */ }
@@ -182,10 +198,9 @@ function EditorInner() {
             if (studio.isConnected && studio.sessionId) {
               chat.triggerStepByStepBuild(prompt, studio.sessionId)
             } else {
-              // Pre-flight: prompt user to connect Studio for full builds
-              toast('Connect Studio first for direct deployment', 'warning')
-              setPublishOpen(true)
-              // Still send as chat so the AI generates the code
+              // No Studio connected — send as normal chat so the AI still
+              // generates the full game code. No toast / publish panel needed;
+              // users can connect Studio later from the top bar.
               chat.sendMessage(prompt)
             }
           }}
@@ -241,6 +256,21 @@ function EditorInner() {
             }}
           />
         </div>
+      )}
+
+      {/* Build progress dashboard — shows real-time agent progress during builds */}
+      {activeBuildId && (
+        <BuildProgressDashboard
+          buildId={activeBuildId}
+          onComplete={(summary) => {
+            setActiveBuildId(null)
+            toast(summary ?? 'Build complete', 'success')
+          }}
+          onCancel={() => {
+            setActiveBuildId(null)
+            toast('Build cancelled', 'warning')
+          }}
+        />
       )}
 
       {/* Floating chat input when in welcome state (no messages yet) */}
@@ -404,6 +434,17 @@ function EditorInner() {
         }}
         sessionId={studio.sessionId}
       />
+
+      {/* Onboarding tour — auto-fires on first editor visit */}
+      {showOnboarding && (
+        <OnboardingOverlay
+          onDone={dismissOnboarding}
+          inputRef={chat.textareaRef}
+          onPrefill={(prompt) => chat.setInput(prompt)}
+          hasMessages={chat.messages.length > 0}
+          studioConnected={studio.isConnected}
+        />
+      )}
     </div>
   )
 }
