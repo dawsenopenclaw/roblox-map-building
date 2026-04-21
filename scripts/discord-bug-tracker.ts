@@ -9,6 +9,9 @@
  *   --post  Post leaderboard to Discord
  */
 
+import { config as loadEnv } from 'dotenv';
+loadEnv();
+
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN!;
 const GUILD_ID = "1495863063423746068";
 
@@ -157,25 +160,110 @@ function buildLeaderboard(bugs: BugReport[]): LeaderboardEntry[] {
 }
 
 function formatLeaderboard(leaderboard: LeaderboardEntry[]): string {
-  const medals = ["🥇", "🥈", "🥉"];
-  const lines = [
-    "# Bug Hunter Leaderboard",
-    "",
-    "| Rank | Tester | Bugs | CRIT | HIGH | MED | LOW |",
-    "|------|--------|------|------|------|-----|-----|",
-  ];
-
+  // Plain text version for console output
+  const medals = ["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"];
+  const lines = ["Bug Hunter Leaderboard", ""];
   for (let i = 0; i < leaderboard.length; i++) {
     const e = leaderboard[i];
     const rank = medals[i] || `#${i + 1}`;
-    lines.push(
-      `| ${rank} | **${e.username}** | ${e.total} | ${e.critical || "-"} | ${e.high || "-"} | ${e.medium || "-"} | ${e.low || "-"} |`
-    );
+    const score = e.critical * 4 + e.high * 3 + e.medium * 2 + e.low;
+    lines.push(`${rank} ${e.username} — ${e.total} bugs (${score} pts)`);
+  }
+  lines.push("");
+  lines.push(`Updated: ${new Date().toISOString().slice(0, 16)} UTC`);
+  return lines.join("\n");
+}
+
+function buildLeaderboardEmbed(leaderboard: LeaderboardEntry[], totalBugs: number): object {
+  const medals = ["\uD83E\uDD47", "\uD83E\uDD48", "\uD83E\uDD49"];
+  const rankLines: string[] = [];
+  const statLines: string[] = [];
+
+  for (let i = 0; i < leaderboard.length; i++) {
+    const e = leaderboard[i];
+    const rank = medals[i] || `\`#${i + 1}\``;
+    const score = e.critical * 4 + e.high * 3 + e.medium * 2 + e.low;
+
+    // Progress bar based on score relative to top scorer
+    const maxScore = leaderboard[0] ? leaderboard[0].critical * 4 + leaderboard[0].high * 3 + leaderboard[0].medium * 2 + leaderboard[0].low : 1;
+    const barLen = Math.max(1, Math.round((score / Math.max(maxScore, 1)) * 10));
+    const bar = "\u2588".repeat(barLen) + "\u2591".repeat(10 - barLen);
+
+    rankLines.push(`${rank} **${e.username}**`);
+    statLines.push(`\`${bar}\` **${score}** pts \u2014 ${e.total} bugs`);
   }
 
-  lines.push("");
-  lines.push(`*Updated: ${new Date().toISOString().slice(0, 16)} UTC*`);
-  return lines.join("\n");
+  // Severity breakdown for each person
+  const breakdownLines: string[] = [];
+  for (const e of leaderboard) {
+    const parts: string[] = [];
+    if (e.critical) parts.push(`\uD83D\uDFE5 ${e.critical}`);
+    if (e.high) parts.push(`\uD83D\uDFE7 ${e.high}`);
+    if (e.medium) parts.push(`\uD83D\uDFE8 ${e.medium}`);
+    if (e.low) parts.push(`\u2B1C ${e.low}`);
+    breakdownLines.push(parts.join("  ") || "\u2014");
+  }
+
+  return {
+    embeds: [{
+      title: "\uD83D\uDC1B  Bug Hunter Leaderboard",
+      color: 0xD4AF37,
+      fields: [
+        {
+          name: "Hunter",
+          value: rankLines.join("\n") || "No bugs yet",
+          inline: true,
+        },
+        {
+          name: "Score",
+          value: statLines.join("\n") || "\u2014",
+          inline: true,
+        },
+        {
+          name: "Breakdown",
+          value: breakdownLines.join("\n") || "\u2014",
+          inline: true,
+        },
+        {
+          name: "\u200B",
+          value: `\uD83D\uDFE5 Critical = 4pts  \u2022  \uD83D\uDFE7 High = 3pts  \u2022  \uD83D\uDFE8 Medium = 2pts  \u2022  \u2B1C Low = 1pt\n**${totalBugs}** total bugs reported`,
+          inline: false,
+        },
+      ],
+      footer: { text: `Updated ${new Date().toISOString().slice(0, 16)} UTC  \u2022  ForjeGames Beta` },
+      timestamp: new Date().toISOString(),
+    }],
+  };
+}
+
+function buildNewBugEmbed(bug: BugReport): object {
+  const severityColors: Record<string, number> = {
+    CRITICAL: 0xEF4444,
+    HIGH: 0xF97316,
+    MEDIUM: 0xEAB308,
+    LOW: 0x9CA3AF,
+  };
+  const severityEmoji: Record<string, string> = {
+    CRITICAL: "\uD83D\uDFE5",
+    HIGH: "\uD83D\uDFE7",
+    MEDIUM: "\uD83D\uDFE8",
+    LOW: "\u2B1C",
+  };
+
+  return {
+    embeds: [{
+      title: `${severityEmoji[bug.severity] || "\uD83D\uDC1B"} ${bug.title}`,
+      description: bug.content.slice(0, 500),
+      color: severityColors[bug.severity] || 0x6B7280,
+      fields: [
+        { name: "Severity", value: `\`${bug.severity}\``, inline: true },
+        { name: "Reporter", value: `**${bug.author}**`, inline: true },
+        { name: "Channel", value: `<#${bug.channel}>`, inline: true },
+      ],
+      footer: { text: `Bug ID: ${bug.id.slice(-6)}  \u2022  ${bug.timestamp.slice(0, 10)}` },
+      timestamp: bug.timestamp,
+    }],
+  };
 }
 
 function formatBugList(bugs: BugReport[]): string {
@@ -262,14 +350,25 @@ async function run(postToDiscord: boolean) {
   console.log(formatBugList(bugs));
 
   // Post to Discord if requested
-  if (postToDiscord && newBugs.length > 0) {
-    console.log("\nPosting leaderboard to Discord...");
-    await postMessage(LEADERBOARD_CHANNEL, formatLeaderboard(leaderboard));
+  if (postToDiscord) {
+    // Always update leaderboard (even if no new bugs — scores may have changed)
+    console.log("\nPosting leaderboard embed to Discord...");
+    const leaderboardPayload = buildLeaderboardEmbed(leaderboard, bugs.length);
+    await discordFetch(`/channels/${LEADERBOARD_CHANNEL}/messages`, {
+      method: "POST",
+      body: JSON.stringify(leaderboardPayload),
+    });
 
-    // Post new bugs to bug log
-    for (const bug of newBugs) {
-      const msg = `**[${bug.severity}]** ${bug.title}\nReported by: **${bug.author}** in <#${bug.channel}>\n${bug.content.slice(0, 500)}`;
-      await postMessage(BUG_LOG_CHANNEL, msg);
+    // Post new bugs as individual embeds
+    if (newBugs.length > 0) {
+      console.log(`Posting ${newBugs.length} new bug embeds...`);
+      for (const bug of newBugs) {
+        const bugPayload = buildNewBugEmbed(bug);
+        await discordFetch(`/channels/${BUG_LOG_CHANNEL}/messages`, {
+          method: "POST",
+          body: JSON.stringify(bugPayload),
+        });
+      }
     }
     console.log("Posted!");
   }
