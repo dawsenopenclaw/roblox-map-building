@@ -304,13 +304,31 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     warnings.push({ type: 'boilerplate', message: 'Missing ChangeHistoryService — undo won\'t work', suggestion: 'Add CH:TryBeginRecording/CH:FinishRecording' })
   }
 
-  // Check part count for builds
-  const partCount = (code.match(/Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart)/g) || []).length
+  // Check part count for builds (count all part creation patterns)
+  const partCount = (code.match(/Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart|SpawnLocation|Seat|VehicleSeat)/g) || []).length
   const pHelperCount = (code.match(/\bP\s*\(/g) || []).length
-  const totalParts = partCount + pHelperCount
-  if (totalParts < 5 && code.includes('Instance.new')) {
-    score -= 20
-    warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds should have 15-40+ parts for quality` })
+  const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
+  const ballCount = (code.match(/\bBall\s*\(/g) || []).length
+  const wedgeCount = (code.match(/Instance\.new\(\s*["']WedgePart/g) || []).length
+  const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
+  // Script-only code doesn't need parts — detect by service usage, event handling, or module patterns
+  const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
+    code.includes('RemoteFunction') || code.includes('Players.PlayerAdded') ||
+    code.includes('ModuleScript') || code.includes('BindableEvent') ||
+    code.includes('UserInputService') || code.includes('MarketplaceService') ||
+    code.includes('TextChatService') || code.includes('PathfindingService') ||
+    code.includes('TeleportService') || code.includes('BadgeService') ||
+    code.includes('game:GetService("Players")') ||
+    // Pure GUI/menu scripts
+    (code.includes('ScreenGui') && !code.includes('Instance.new("Part")')) ||
+    // Leaderstats / progression scripts
+    code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue')
+  if (!isScriptCode && totalParts < 5 && code.includes('Instance.new')) {
+    score -= 40
+    warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds MUST have 10+ parts. Rejecting single-brick output.` })
+  } else if (!isScriptCode && totalParts < 15 && totalParts >= 5 && code.includes('Instance.new')) {
+    score -= 15
+    warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds should have 25+ parts for quality` })
   }
 
   // Check for anchored parts
@@ -330,9 +348,97 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
   if (code.includes('workspace.CurrentCamera')) score += 5 // Camera-relative placement
   if (code.includes('Raycast')) score += 5 // Ground detection
   if (code.includes('PrimaryPart')) score += 3 // Proper model setup
-  if (code.includes('PointLight') || code.includes('SpotLight')) score += 5 // Lighting
+
+  // Lighting — real light sources are much better than Neon material
+  if (code.includes('PointLight') || code.includes('SpotLight') || code.includes('SurfaceLight')) score += 8
+  // Penalize heavy Neon usage (more than 3 Neon parts = lazy lighting)
+  const neonCount = (code.match(/Enum\.Material\.Neon/g) || []).length
+  if (neonCount > 3) {
+    score -= 5
+    warnings.push({ type: 'visual', message: `${neonCount} Neon parts — use Glass/Metal + PointLight instead for better lighting` })
+  }
+
+  // Interactivity bonuses — scripted elements make builds come alive
+  if (code.includes('ProximityPrompt')) score += 5 // Interactive elements
+  if (code.includes('ClickDetector')) score += 3 // Clickable elements
+  if (code.includes('TweenService')) score += 5 // Animations (doors, drawbridges, etc.)
+  if (code.includes('SurfaceGui') || code.includes('BillboardGui')) score += 3 // UI elements
+  if (code.includes('Sound')) score += 2 // Ambient audio
+  if (code.includes('Fire') || code.includes('ParticleEmitter') || code.includes('Smoke')) score += 3 // Visual effects
+  if (code.includes('Humanoid')) score += 3 // NPCs
+
+  // Script quality bonuses
+  if (code.includes('pcall') || code.includes('xpcall')) score += 2 // Error handling
+  if (code.includes('task.wait') && !code.includes('wait(')) score += 2 // Modern API
 
   return { score: Math.max(0, Math.min(100, score)), warnings }
+}
+
+// ── Context-Aware Material Picker ───────────────────────────────────────────
+// Instead of blanket Concrete, pick the material that fits what's being built.
+// Reads part names, variable names, and comments near the SmoothPlastic usage.
+
+function pickMaterialFromContext(ctx: string): string {
+  // Roof / ceiling
+  if (/roof|shingle|eave|gable|chimney|ceiling/i.test(ctx)) return 'Slate'
+  // Floor / ground / base / path
+  if (/floor|ground|base|foundation|path|sidewalk|patio|deck/i.test(ctx)) return 'WoodPlanks'
+  // Road / street / parking / driveway
+  if (/road|street|asphalt|parking|driveway|highway/i.test(ctx)) return 'Asphalt'
+  // Window / glass / transparent
+  if (/window|glass|pane|transparent|skylight/i.test(ctx)) return 'Glass'
+  // Door / furniture / wood items
+  if (/door|table|chair|desk|shelf|cabinet|bench|bookcase|stool|counter|crate|barrel|plank|fence|log/i.test(ctx)) return 'Wood'
+  // Brick / wall with brick context
+  if (/brick|fireplace|hearth|oven/i.test(ctx)) return 'Brick'
+  // Mountain / cliff / low-poly terrain — Rock is the go-to
+  if (/mountain|cliff|hill|ridge|peak|terrain|low.?poly|landscape/i.test(ctx)) return 'Rock'
+  // Stone / cave / castle / dungeon — Granite for carved/structural stone
+  if (/stone|rock|cave|boulder|pillar|column|castle|dungeon|tomb/i.test(ctx)) return 'Granite'
+  // Metal / industrial / machine
+  if (/metal|steel|iron|pipe|rail|vent|machine|grate|beam|girder|tank|engine|robot|mech/i.test(ctx)) return 'Metal'
+  // Grass / nature / garden
+  if (/grass|garden|lawn|field|meadow|park|nature|terrain/i.test(ctx)) return 'Grass'
+  // Sand / beach / desert
+  if (/sand|beach|desert|dune|shore/i.test(ctx)) return 'Sand'
+  // Snow / snowy terrain / winter ground
+  if (/snow|snowy|winter.*ground|blizzard/i.test(ctx)) return 'Snow'
+  // Ice / frozen / arctic / glacier
+  if (/ice|frozen|arctic|glacier|icicle/i.test(ctx)) return 'Ice'
+  // Fabric / soft / cushion
+  if (/fabric|cloth|cushion|pillow|couch|sofa|bed|mattress|curtain|carpet|rug|tent|flag|banner/i.test(ctx)) return 'Fabric'
+  // Cobblestone / old / medieval paths
+  if (/cobble|medieval|old|ancient|village|market/i.test(ctx)) return 'Cobblestone'
+  // Marble / fancy / palace / luxury
+  if (/marble|palace|luxury|temple|museum|statue|monument|fountain/i.test(ctx)) return 'Marble'
+  // Neon — ONLY for literal neon signs or hologram display surfaces.
+  // For glowing/lighting, the AI should use Glass/Metal + PointLight/SpotLight instances instead.
+  if (/\bneon\s*sign\b|hologram\s*display/i.test(ctx)) return 'Neon'
+  // Glowing / light / lamp / lantern — use Glass (the AI should add PointLight children, not Neon material)
+  if (/glow|light|lamp|lantern|torch|candle|bulb|chandelier|sconce|streetlight/i.test(ctx)) return 'Glass'
+  // Lava / volcano / fire
+  if (/lava|volcano|magma|inferno/i.test(ctx)) return 'CrackedLava'
+  // Diamond plate / industrial floor
+  if (/diamond|plate|factory|warehouse|industrial/i.test(ctx)) return 'DiamondPlate'
+  // Pebble / gravel / trail
+  if (/pebble|gravel|trail/i.test(ctx)) return 'Pebble'
+  // Leafy grass / forest / jungle / bush / tree
+  if (/leaf|forest|jungle|bush|tree|hedge|vine/i.test(ctx)) return 'LeafyGrass'
+  // Limestone / sandstone / warm stone / adobe
+  if (/limestone|adobe|stucco|plaster/i.test(ctx)) return 'Limestone'
+  if (/sandstone|pyramid|sphinx|desert.*wall|mesa/i.test(ctx)) return 'Sandstone'
+  // Pavement / sidewalk / curb / urban
+  if (/pavement|sidewalk|curb|urban|city/i.test(ctx)) return 'Pavement'
+  // Mud / swamp / dirt
+  if (/mud|swamp|dirt|marsh|bog/i.test(ctx)) return 'Mud'
+  // Corroded / rusty / abandoned / old metal
+  if (/rust|corrode|abandon|decay|wreck|junk/i.test(ctx)) return 'CorrodedMetal'
+  // Wall (generic) — concrete is the right call for walls
+  if (/wall|exterior|facade|barrier|divider/i.test(ctx)) return 'Concrete'
+  // Stair / step
+  if (/stair|step|ramp/i.test(ctx)) return 'Concrete'
+  // Default — Concrete is a safe neutral, but only as last resort
+  return 'Concrete'
 }
 
 // ── Auto-Fix Engine ─────────────────────────────────────────────────────────
@@ -354,6 +460,15 @@ function autoFix(code: string, errors: VerificationError[]): string {
     // Fix deprecated wait()
     if (err.message.includes('wait()')) {
       fixed = fixed.replace(/\bwait\s*\(/g, 'task.wait(')
+    }
+
+    // Replace SmoothPlastic with contextual material based on surrounding code
+    if (fixed.includes('Enum.Material.SmoothPlastic')) {
+      fixed = fixed.replace(/Enum\.Material\.SmoothPlastic/g, (match, offset) => {
+        // Look at surrounding ~200 chars for context clues (part name, comments, variable names)
+        const ctx = fixed.slice(Math.max(0, offset - 200), offset + 200).toLowerCase()
+        return `Enum.Material.${pickMaterialFromContext(ctx)}`
+      })
     }
 
     // Fix hallucinated materials

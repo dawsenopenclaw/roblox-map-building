@@ -25,7 +25,7 @@ function validate(code: string) {
   const issues: string[] = []
   // Materials
   for (const p of parts) {
-    if (BANNED_MATERIALS.includes(p.material)) issues.push(`❌ "${p.name}" uses SmoothPlastic → auto-fixed to Concrete`)
+    if (BANNED_MATERIALS.includes(p.material)) issues.push(`❌ "${p.name}" uses SmoothPlastic → auto-fixed to contextual material`)
   }
   // Flat build
   const uniqueY = new Set(parts.map((p: any) => Math.round(p.y * 2) / 2))

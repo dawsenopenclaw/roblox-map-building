@@ -278,14 +278,29 @@ function CodeFeedbackButtons({ code }: { code: string }) {
     if (feedbackState !== 'idle') return
     setFeedbackState('submitting')
     try {
-      await fetch('/api/ai/feedback', {
+      // Send to prompt optimizer (in-memory)
+      fetch('/api/ai/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messageId: `code-${simpleHash(code)}`,
           thumbsUp: worked,
         }),
-      })
+      }).catch(() => {})
+
+      // ALSO persist to BuildFeedback DB for the learning system
+      fetch('/api/ai/build-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promptHash: simpleHash(code),
+          code,
+          worked,
+          score: worked ? 75 : 25, // User signal — override verifier score
+          model: 'user-vote',
+          errorMessage: worked ? undefined : 'User reported: build did not work',
+        }),
+      }).catch(() => {})
     } catch {
       // Swallow — feedback is best-effort
     }
@@ -865,6 +880,7 @@ function MessageBubbleImpl({
   onEditAndResend,
   onSendToStudio,
   studioConnected,
+  onSelectBuildOption,
 }: {
   msg: ChatMessage
   userPrompt?: string
@@ -875,6 +891,7 @@ function MessageBubbleImpl({
   onEditAndResend?: (id: string, newContent: string) => void
   onSendToStudio?: (luauCode: string) => void
   studioConnected?: boolean
+  onSelectBuildOption?: (optionPrompt: string) => void
 }) {
   const [hovered, setHovered] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -910,6 +927,111 @@ function MessageBubbleImpl({
   const isUpgrade = msg.role === 'upgrade'
   const isSignup = msg.role === 'signup'
   const isBuildError = msg.role === 'build-error'
+  const isBuildPreview = msg.role === 'build-preview'
+
+  // ── Build Preview Cards ─────────────────────────────────────────────────
+  if (isBuildPreview && msg.buildOptions && msg.buildOptions.length > 0) {
+    return (
+      <div style={{ margin: '12px 0' }}>
+        <p style={{
+          color: 'rgba(255,255,255,0.6)',
+          fontSize: 13,
+          fontFamily: 'Inter, sans-serif',
+          margin: '0 0 10px 0',
+        }}>
+          Pick a direction for your build:
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {msg.buildOptions.map((opt, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                if (onSelectBuildOption) {
+                  const blueprint = `Build "${opt.name}": ${opt.description}\n\nKey features: ${opt.features.join(', ')}\nMaterials: ${opt.materials.join(', ')}\nStyle: ${opt.style}, approximately ${opt.estimatedParts} parts`
+                  onSelectBuildOption(blueprint)
+                }
+              }}
+              style={{
+                flex: '1 1 140px',
+                maxWidth: 220,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 12,
+                padding: '14px 16px',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.2s',
+                fontFamily: 'Inter, sans-serif',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(212,175,55,0.08)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 8,
+              }}>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#D4AF37',
+                  background: 'rgba(212,175,55,0.12)',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  letterSpacing: 0.5,
+                }}>
+                  {opt.style.toUpperCase()}
+                </span>
+                <span style={{
+                  fontSize: 10,
+                  color: 'rgba(255,255,255,0.35)',
+                }}>
+                  ~{opt.estimatedParts} parts
+                </span>
+              </div>
+              <p style={{
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: 13,
+                fontWeight: 600,
+                margin: '0 0 6px 0',
+                lineHeight: 1.3,
+              }}>
+                {opt.name}
+              </p>
+              <p style={{
+                color: 'rgba(255,255,255,0.45)',
+                fontSize: 11,
+                lineHeight: 1.5,
+                margin: '0 0 8px 0',
+              }}>
+                {opt.description}
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {opt.materials.slice(0, 4).map((m, j) => (
+                  <span key={j} style={{
+                    fontSize: 9,
+                    color: 'rgba(255,255,255,0.3)',
+                    background: 'rgba(255,255,255,0.05)',
+                    padding: '1px 5px',
+                    borderRadius: 3,
+                  }}>
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (isBuildError) {
     return (
@@ -1399,15 +1521,16 @@ function MessageBubbleImpl({
             /* ── Normal display mode ──────────────────────────────── */
             <div
               style={{
-                padding: '14px 18px',
-                borderRadius: '18px 18px 4px 18px',
-                background: 'rgba(212,175,55,0.06)',
-                border: '1px solid rgba(212,175,55,0.12)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                padding: '14px 20px',
+                borderRadius: '20px 20px 6px 20px',
+                background: 'linear-gradient(135deg, rgba(212,175,55,0.12) 0%, rgba(212,175,55,0.06) 100%)',
+                border: '1px solid rgba(212,175,55,0.18)',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                boxShadow: '0 2px 12px rgba(212,175,55,0.08), inset 0 1px 0 rgba(255,230,160,0.06)',
               }}
             >
-              <p style={{ margin: 0, fontSize: 14, color: 'var(--text-primary, rgba(255,255,255,0.9))', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.95)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontWeight: 500 }}>
                 {displayContent}
               </p>
             </div>
@@ -1422,7 +1545,7 @@ function MessageBubbleImpl({
     <div
       style={{
         display: 'flex',
-        gap: 10,
+        gap: 12,
         alignItems: 'flex-start',
         animation: 'msgFadeUp 0.3s ease-out forwards',
       }}
@@ -1432,29 +1555,30 @@ function MessageBubbleImpl({
       {/* Avatar with pulsing glow */}
       <div
         style={{
-          width: 28,
-          height: 28,
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #D4AF37 0%, #FF6B35 100%)',
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          background: 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
           marginTop: 2,
+          boxShadow: msg.streaming ? '0 0 12px rgba(212,175,55,0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
         }}
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="#030712">
+        <svg width="14" height="14" viewBox="0 0 12 12" fill="#030712">
           <path d="M6 1L7.5 4.5H11L8 6.5l1 3.5L6 8l-3 2 1-3.5-3-2h3.5L6 1z"/>
         </svg>
       </div>
       <div
         style={{
           maxWidth: '85%',
-          padding: '14px 18px',
-          borderRadius: '18px 18px 18px 4px',
+          padding: '16px 20px',
+          borderRadius: '20px 20px 20px 6px',
           background: msg.streaming
-            ? 'rgba(255,255,255,0.03)'
-            : 'rgba(255,255,255,0.025)',
+            ? 'rgba(255,255,255,0.035)'
+            : 'rgba(255,255,255,0.03)',
           border: newFlash
             ? '1px solid rgba(212,175,55,0.35)'
             : msg.streaming
@@ -1502,7 +1626,10 @@ function MessageBubbleImpl({
         )}
         <div style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif', lineHeight: 1.6 }}>
           {msg.streaming
-            ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
+            ? (msg.content
+                ? <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{stripCodeBlocksForDisplay(msg.content)}</span>
+                : <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Generating code — this may take a moment for complex builds<TypingDots /></span>
+              )
             : <RenderMessageContent content={msg.content} onSendToStudio={onSendToStudio} studioConnected={studioConnected} />
           }
         </div>
@@ -3220,6 +3347,9 @@ interface ChatPanelProps {
   onBuildDirectionChange?: (dir: 'continue' | 'pivot' | 'start-over') => void
   /** Step-by-step game builder — triggers /api/ai/build-game with a full preset */
   onBuildGame?: (prompt: string) => void
+  /** Pre-build preview mode — shows 3 concept options before generating code */
+  previewMode?: boolean
+  onPreviewModeToggle?: (enabled: boolean) => void
 }
 
 export function ChatPanel({
@@ -3270,6 +3400,8 @@ export function ChatPanel({
   buildDirection = 'continue',
   onBuildDirectionChange,
   onBuildGame,
+  previewMode = false,
+  onPreviewModeToggle,
   /** When true, hides mode tabs, checkpoints, enhance, build direction —
    *  used by SimplifiedEditor for a clean chat-first experience. */
   simplified = false,
@@ -3435,6 +3567,7 @@ export function ChatPanel({
           onEditAndResend={onEditAndResend}
           onSendToStudio={onSendToStudio}
           studioConnected={studioConnected}
+          onSelectBuildOption={onSend}
         />,
       )
       // Advance trailing state AFTER rendering so the current message sees
@@ -3451,6 +3584,7 @@ export function ChatPanel({
     onEditAndResend,
     onSendToStudio,
     studioConnected,
+    onSend,
   ])
 
   // Once messages appear, keep extras accessible
@@ -3520,8 +3654,8 @@ export function ChatPanel({
 
   return (
     <Wrapper {...wrapperProps}>
-      {/* MCP Toolbar — always visible at the top */}
-      {/* McpToolbar hidden — keep UI clean */}
+      {/* MCP Toolbar — quick-action buttons for terrain, city, 3D */}
+      {!compact && <McpToolbar onToolClick={(prompt) => onSend(prompt)} />}
 
       {/* Messages area — hidden in compact mode */}
       <div
@@ -3534,7 +3668,7 @@ export function ChatPanel({
           display: compact ? 'none' : 'block',
           scrollbarWidth: 'thin',
           scrollbarColor: 'rgba(255,255,255,0.06) transparent',
-          background: 'linear-gradient(180deg, rgba(12,16,36,0.15) 0%, rgba(8,12,28,0.35) 100%)',
+          background: 'linear-gradient(180deg, rgba(8,10,22,0.4) 0%, rgba(5,8,16,0.6) 50%, rgba(8,10,22,0.4) 100%)',
           position: 'relative',
         }}
       >
@@ -3543,8 +3677,11 @@ export function ChatPanel({
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
-          padding: compact ? '0' : hasMessages ? '20px 16px' : '0',
+          gap: 20,
+          padding: compact ? '0' : hasMessages ? '28px 20px' : '0',
+          maxWidth: 720,
+          margin: '0 auto',
+          width: '100%',
           minHeight: '100%',
         }}>
         {!hasMessages ? (
@@ -3730,12 +3867,16 @@ export function ChatPanel({
       <div
         style={{
           flexShrink: 0,
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-          padding: '12px 16px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          padding: '14px 20px 18px',
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 10,
           position: 'relative',
+          maxWidth: 720,
+          margin: '0 auto',
+          width: '100%',
+          background: 'linear-gradient(180deg, rgba(5,8,16,0.0) 0%, rgba(5,8,16,0.4) 100%)',
         }}
       >
         {/* MCP quick-action buttons — hidden for clean UI */}
@@ -3906,6 +4047,35 @@ export function ChatPanel({
               onToggle={onAutoEnhanceToggle}
             />
           )}
+          {!simplified && onPreviewModeToggle && aiMode === 'build' && (
+            <button
+              onClick={() => onPreviewModeToggle(!previewMode)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 10,
+                padding: '3px 8px',
+                borderRadius: 6,
+                border: `1px solid ${previewMode ? 'rgba(168,85,247,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                background: previewMode ? 'rgba(168,85,247,0.1)' : 'rgba(255,255,255,0.03)',
+                color: previewMode ? 'rgba(168,85,247,0.9)' : 'rgba(255,255,255,0.35)',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
+                transition: 'all 0.15s',
+              }}
+              title="Show 3 concept options before building"
+            >
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="1" y="1" width="4" height="6" rx="1" />
+                <rect x="6" y="1" width="4" height="6" rx="1" />
+                <rect x="11" y="1" width="4" height="6" rx="1" />
+                <line x1="1" y1="10" x2="15" y2="10" />
+                <line x1="1" y1="13" x2="10" y2="13" />
+              </svg>
+              Preview
+            </button>
+          )}
         </div>
 
         {/* BUG 2: Build direction chips — hidden in simplified mode */}
@@ -3960,24 +4130,23 @@ export function ChatPanel({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: 6,
-            background: 'rgba(0,0,0,0.55)',
-            border: `1px solid ${modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.18') : 'rgba(255,255,255,0.10)'}`,
-            borderRadius: 14,
-            padding: '10px 14px',
+            gap: 8,
+            background: 'rgba(8,10,22,0.7)',
+            border: `1px solid ${modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.18') : 'rgba(255,255,255,0.08)'}`,
+            borderRadius: 16,
+            padding: '12px 16px',
             transition: 'border-color 0.2s ease-out, box-shadow 0.2s ease-out',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03), 0 -4px 24px rgba(0,0,0,0.2)',
           }}
           onFocusCapture={(e) => {
-            // Use modeConfig.borderColor directly — it's already an rgba
-            // string. The previous string-munging only worked for colours
-            // already in rgb(...) form and produced garbage output for hex
-            // values, so non-build modes never got their focus tint.
             e.currentTarget.style.borderColor = modeConfig.borderColor
-            e.currentTarget.style.boxShadow = `0 0 0 1px ${modeConfig.bgColor}, 0 0 16px ${modeConfig.bgColor}`
+            e.currentTarget.style.boxShadow = `inset 0 1px 0 rgba(255,255,255,0.04), 0 0 0 1px ${modeConfig.bgColor}, 0 0 20px ${modeConfig.bgColor}`
           }}
           onBlurCapture={(e) => {
             e.currentTarget.style.borderColor = modeConfig.id !== 'build' ? modeConfig.borderColor.replace('0.25', '0.12') : 'rgba(255,255,255,0.06)'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.03), 0 -4px 24px rgba(0,0,0,0.2)'
           }}
         >
           {/* Pasted image preview thumbnail */}
@@ -4298,25 +4467,25 @@ export function ChatPanel({
             disabled={(!input.trim() && !imageFile) || loading}
             aria-label="Send message"
             style={{
-              width: isMobile ? 44 : 32,
-              height: isMobile ? 44 : 32,
-              minWidth: isMobile ? 44 : 32,
-              minHeight: isMobile ? 44 : 32,
-              borderRadius: isMobile ? 12 : 9,
+              width: isMobile ? 44 : 36,
+              height: isMobile ? 44 : 36,
+              minWidth: isMobile ? 44 : 36,
+              minHeight: isMobile ? 44 : 36,
+              borderRadius: isMobile ? 12 : 10,
               border: 'none',
               background:
                 (!input.trim() && !imageFile) || loading
-                  ? 'rgba(255,255,255,0.05)'
+                  ? 'rgba(255,255,255,0.04)'
                   : `linear-gradient(135deg, ${modeConfig.color} 0%, ${modeConfig.color} 100%)`,
-              color: (!input.trim() && !imageFile) || loading ? 'rgba(255,255,255,0.2)' : '#030712',
+              color: (!input.trim() && !imageFile) || loading ? 'rgba(255,255,255,0.15)' : '#030712',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: (!input.trim() && !imageFile) || loading ? 'not-allowed' : 'pointer',
               flexShrink: 0,
-              boxShadow: (!input.trim() && !imageFile) || loading ? 'none' : `0 0 12px ${modeConfig.bgColor.replace('0.08', '0.3')}`,
-              transition: 'all 0.12s ease-out',
-              transform: sendPressed ? 'scale(0.92)' : 'scale(1)',
+              boxShadow: (!input.trim() && !imageFile) || loading ? 'none' : `0 0 16px ${modeConfig.bgColor.replace('0.08', '0.35')}, inset 0 1px 0 rgba(255,230,160,0.25)`,
+              transition: 'all 0.15s ease-out',
+              transform: sendPressed ? 'scale(0.9)' : 'scale(1)',
             }}
           >
             {loading ? (

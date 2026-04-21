@@ -44,6 +44,7 @@
 import { callAI, type AIMessage } from './provider'
 import { analyzePlaytestScene } from './playtest-vision'
 import { getSession } from '@/lib/studio-session'
+import { recordBuildOutcome } from './experience-memory'
 
 const API_BASE = process.env.FORJE_API_BASE ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -321,6 +322,15 @@ export async function runAgenticPlaytest(
         'complete',
         `Playtest passed on iteration ${iteration}.${partCount !== undefined ? ` partCount=${partCount}` : ''}`,
       )
+
+      // Learning system: record playtest-verified success
+      if (userPrompt) {
+        void recordBuildOutcome(userPrompt, currentCode, 85, 'playtest-verified', {
+          partCount: partCount ?? null,
+          playtestPass: true,
+        }).catch(() => {})
+      }
+
       return {
         success: true,
         steps,
@@ -383,6 +393,14 @@ export async function runAgenticPlaytest(
     }
 
     addStep('failed', `Playtest failed after ${iteration} iteration(s). ${allErrors.length} issue(s) remain.`)
+
+    // Learning system: record playtest failure as anti-pattern
+    if (userPrompt) {
+      void recordBuildOutcome(userPrompt, currentCode, 20, 'playtest-failed', {
+        playtestPass: false,
+      }).catch(() => {})
+    }
+
     return {
       success: false,
       steps,

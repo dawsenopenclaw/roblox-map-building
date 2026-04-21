@@ -1351,13 +1351,22 @@ model Newsletter {
 model BuildFeedback {
   id           String   @id @default(cuid())
   promptHash   String
+  prompt       String?  @db.Text    // Original user prompt (for few-shot retrieval)
   code         String   @db.Text
   worked       Boolean
   errorMessage String?
   score        Int
   model        String
+  category     String?              // Detected genre/theme (medieval, sci-fi, etc.)
+  partCount    Int?                 // Number of parts in the build
+  userVote     Boolean?             // null=no vote, true=user said "worked", false=user said "broke"
+  playtestPass Boolean?             // null=not tested, true=playtest passed, false=playtest found errors
+  buildType    String?  @default("build") // build, script, terrain, image, mesh
+  // embedding vector(768) — managed via raw SQL, not in Prisma schema (same as RobloxDocChunk)
   createdAt    DateTime @default(now())
 
   @@index([promptHash])
   @@index([worked, score])
+  @@index([category, score])
+  @@index([userVote])
 }

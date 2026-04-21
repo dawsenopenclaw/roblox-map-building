@@ -106,7 +106,7 @@ function persistSession(sessionId: string, messages: ChatMessage[]): void {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error'
+export type MessageRole = 'user' | 'assistant' | 'system' | 'status' | 'upgrade' | 'signup' | 'build-error' | 'build-preview'
 
 export type ModelId =
   | 'auto'
@@ -176,6 +176,17 @@ export interface ChatMessage {
   tokenRequired?: number
   /** Whether this message's code was successfully sent to and executed in Roblox Studio */
   executedInStudio?: boolean
+  /** Pre-build preview options — 3 concepts for the user to pick from */
+  buildOptions?: BuildPreviewOption[]
+}
+
+export interface BuildPreviewOption {
+  name: string
+  description: string
+  features: string[]
+  materials: string[]
+  estimatedParts: number
+  style: string  // e.g. "detailed", "low-poly", "realistic"
 }
 
 /** Primary user-facing model options shown in the model selector dropdown. */
@@ -431,6 +442,8 @@ export function useChat(options: UseChatOptions = {}) {
   const [aiMode, setAIMode] = useState<AIMode>('build')
   // Auto-playtest: when true, agentic playtest runs automatically after code is sent to Studio
   const [autoPlaytest, setAutoPlaytest] = useState(true)
+  // Pre-build preview: when true, shows 3 concept options before generating code
+  const [previewMode, setPreviewMode] = useState(false)
   const autoPlaytestAbortRef = useRef<AbortController | null>(null)
   // Thinking/reasoning display state
   const [isThinking, setIsThinking] = useState(false)
@@ -957,6 +970,62 @@ export function useChat(options: UseChatOptions = {}) {
 
       setMessagesSync((prev) => [...prev, userMsg, statusMsg])
 
+      // ── Pre-Build Preview: show 3 concept options before full generation ──
+      // Triggers when: user enabled preview mode OR confidence scoring says to
+      // Only for build/script/terrain modes, not for selected blueprints
+      const isBuildMode = aiMode === 'build' || aiMode === 'script' || aiMode === 'terrain'
+      const isBlueprint = trimmed.startsWith('Build "')
+      let shouldPreview = previewMode && isBuildMode && !isBlueprint
+
+      // Confidence-based auto-preview: check if similar builds historically fail
+      if (!shouldPreview && isBuildMode && !isBlueprint) {
+        try {
+          const confRes = await fetch('/api/ai/build-confidence', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: trimmed, buildType: aiMode }),
+          })
+          if (confRes.ok) {
+            const conf = await confRes.json()
+            if (conf.suggestion === 'preview') {
+              shouldPreview = true
+            }
+          }
+        } catch { /* non-blocking */ }
+      }
+
+      if (shouldPreview) {
+        try {
+          const previewRes = await fetch('/api/ai/build-preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: trimmed }),
+          })
+          if (previewRes.ok) {
+            const { options } = await previewRes.json()
+            if (options && options.length > 0) {
+              const previewMsg: ChatMessage = {
+                id: uid(),
+                role: 'build-preview' as MessageRole,
+                content: previewMode
+                  ? `Pick a direction for "${trimmed}":`
+                  : `Similar builds can be tricky — pick a direction to get the best result:`,
+                timestamp: new Date(),
+                buildOptions: options,
+              }
+              setMessagesSync((prev) => [
+                ...prev.filter((m) => m.id !== statusMsgId),
+                previewMsg,
+              ])
+              setLoading(false)
+              return
+            }
+          }
+        } catch {
+          // Preview failed — fall through to normal generation
+        }
+      }
+
       // Guest token limit — 100 free tokens before signup required
       if (!user) {
         const usedTokens = Number(typeof window !== 'undefined' ? localStorage.getItem('fg_guest_tokens') ?? '0' : '0')
@@ -1388,6 +1457,10 @@ export function useChat(options: UseChatOptions = {}) {
               hasCode: meta.hasCode,
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
             }
+            // Plan mode: if AI returned a plan (no code), show plan approval UI
+            if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
+              setPlanText(finalContent)
+            }
             const result: ChatMessage[] = [...updated]
             if (meshData) {
               result.push({
@@ -1408,7 +1481,7 @@ export function useChat(options: UseChatOptions = {}) {
             if (meta.hasCode || meta.executedInStudio) {
               let statusContent: string
               if (meta.executedInStudio) {
-                statusContent = 'Sent to Studio — building now ✓'
+                statusContent = 'Built in Studio ✓ — Try: "add more detail" / "change the colors" / "make it bigger"'
               } else {
                 statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
               }
@@ -1716,6 +1789,10 @@ export function useChat(options: UseChatOptions = {}) {
               hasCode: meta.hasCode,
               ...(meta.meshResult ? { meshResult: meta.meshResult } : {}),
             }
+            // Plan mode: if AI returned a plan (no code), show plan approval UI
+            if (aiMode === 'plan' && !meta.hasCode && finalContent.length > 50) {
+              setPlanText(finalContent)
+            }
             // Append mesh result message if present
             const result: ChatMessage[] = [...updated]
             if (meshData) {
@@ -1735,7 +1812,7 @@ export function useChat(options: UseChatOptions = {}) {
             if (meta.hasCode || meta.executedInStudio) {
               let statusContent: string
               if (meta.executedInStudio) {
-                statusContent = 'Sent to Studio — building now ✓'
+                statusContent = 'Built in Studio ✓ — Try: "add more detail" / "change the colors" / "make it bigger"'
               } else {
                 statusContent = 'Code ready — use "Send to Studio" or copy the code below.'
               }
@@ -2379,5 +2456,8 @@ export function useChat(options: UseChatOptions = {}) {
     setImageOptions,
     // Step-by-step game builder
     triggerStepByStepBuild,
+    // Pre-build preview mode
+    previewMode,
+    setPreviewMode,
   }
 }

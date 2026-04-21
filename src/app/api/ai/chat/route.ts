@@ -4,7 +4,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 // Vercel serverless: allow up to 60s for streaming AI responses.
 // Without this, the default 10-15s timeout kills the stream mid-response,
 // crashing the client-side stream reader and the entire editor page.
-export const maxDuration = 60
+export const maxDuration = 120
 import { requireTier } from '@/lib/tier-guard'
 import { chatMessageSchema, parseBody } from '@/lib/validations'
 import {
@@ -22,6 +22,7 @@ import { callTool, detectMcpIntent, type McpCallResult } from '@/lib/mcp-client'
 import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
 import { db } from '@/lib/db'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { checkSpendingGuard } from '@/lib/spending-guard'
 import { queueCommand, getSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
@@ -30,7 +31,9 @@ import { tycoonGame, obbyGame, simulatorGame } from '@/lib/ai/luau-templates'
 import Anthropic from '@anthropic-ai/sdk'
 import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/lib/ai/game-knowledge'
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
-import { findSimilarSuccesses, formatAsExamples, recordExperience } from '@/lib/ai/experience-memory'
+import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
+import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
+import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
 import { validateBuild } from '@/lib/ai/build-validator'
@@ -54,13 +57,30 @@ function logConversationAsync(userId: string, sessionId: string | null, userMsg:
   ).catch((err) => console.warn('[auto-log] Failed to persist conversation:', err instanceof Error ? err.message : err))
 }
 
-// ─── Experience Memory: enrich system prompt with past successes ─────────────
-async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string): Promise<string> {
+// ��── Experience Memory: enrich system prompt with past successes + anti-patterns
+async function enrichWithExperienceMemory(systemPrompt: string, userMessage: string, buildType?: string): Promise<string> {
   try {
-    const successes = await findSimilarSuccesses(userMessage)
-    if (successes.length > 0) {
-      return systemPrompt + formatAsExamples(successes)
+    const bt = (buildType as import('@/lib/ai/experience-memory').BuildType) || detectBuildType(userMessage)
+    const category = detectCategory(userMessage)
+
+    const [successes, antiPatterns, patterns, recommendations] = await Promise.all([
+      findSimilarSuccesses(userMessage, 3, bt),
+      findAntiPatterns(userMessage, 2, bt),
+      getAggregatePatterns(category || undefined, bt),
+      getTopRecommendations(category, 5),
+    ])
+
+    let enriched = systemPrompt
+    // Aggregate patterns first — data-driven rules from all past builds
+    if (patterns.length > 0) {
+      const { experienceMemory } = await import('@/lib/ai/experience-memory')
+      enriched += experienceMemory.formatAggregatePatterns(patterns)
     }
+    // User recommendations — what real users keep asking for
+    if (recommendations.length > 0) enriched += formatRecommendations(recommendations)
+    if (successes.length > 0) enriched += formatAsExamples(successes)
+    if (antiPatterns.length > 0) enriched += formatAntiPatterns(antiPatterns)
+    return enriched
   } catch (err) {
     console.warn('[ExperienceMemory] Failed to retrieve experiences (non-blocking):', err instanceof Error ? err.message : err)
   }
@@ -605,12 +625,12 @@ P("Floor", CFrame.new(sp + Vector3.new(0, 0.75, 0)), Vector3.new(20, 0.5, 14), E
 
 -- Walls (with window cutouts — separate panels)
 local wallColor = Color3.fromRGB(220, 215, 205)
-P("FrontWallLeft", CFrame.new(sp + Vector3.new(-7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
-P("FrontWallRight", CFrame.new(sp + Vector3.new(7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
-P("FrontWallTop", CFrame.new(sp + Vector3.new(0, 10, -7)), Vector3.new(8, 2, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
-P("BackWall", CFrame.new(sp + Vector3.new(0, 6, 7)), Vector3.new(20, 10, 0.8), Enum.Material.SmoothPlastic, vc(wallColor, 0.03))
-P("LeftWall", CFrame.new(sp + Vector3.new(-10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.SmoothPlastic, vc(wallColor, 0.04))
-P("RightWall", CFrame.new(sp + Vector3.new(10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.SmoothPlastic, vc(wallColor, 0.04))
+P("FrontWallLeft", CFrame.new(sp + Vector3.new(-7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.Concrete, vc(wallColor, 0.03))
+P("FrontWallRight", CFrame.new(sp + Vector3.new(7, 6, -7)), Vector3.new(6, 10, 0.8), Enum.Material.Concrete, vc(wallColor, 0.03))
+P("FrontWallTop", CFrame.new(sp + Vector3.new(0, 10, -7)), Vector3.new(8, 2, 0.8), Enum.Material.Concrete, vc(wallColor, 0.03))
+P("BackWall", CFrame.new(sp + Vector3.new(0, 6, 7)), Vector3.new(20, 10, 0.8), Enum.Material.Concrete, vc(wallColor, 0.03))
+P("LeftWall", CFrame.new(sp + Vector3.new(-10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.Concrete, vc(wallColor, 0.04))
+P("RightWall", CFrame.new(sp + Vector3.new(10, 6, 0)), Vector3.new(0.8, 10, 14), Enum.Material.Concrete, vc(wallColor, 0.04))
 
 -- Windows with frames
 local glassColor = Color3.fromRGB(180, 215, 240)
@@ -656,13 +676,13 @@ P("ChimneyTop", CFrame.new(sp + Vector3.new(6, 17.75, 3)), Vector3.new(2.5, 0.5,
 -- Porch
 P("PorchFloor", CFrame.new(sp + Vector3.new(0, 0.5, -9)), Vector3.new(10, 0.3, 4), Enum.Material.WoodPlanks, Color3.fromRGB(140, 100, 60))
 P("PorchRoof", CFrame.new(sp + Vector3.new(0, 8.5, -9)), Vector3.new(10.5, 0.3, 4.5), Enum.Material.WoodPlanks, Color3.fromRGB(130, 95, 55))
-P("PorchPillarL", CFrame.new(sp + Vector3.new(-4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.SmoothPlastic, Color3.fromRGB(230, 225, 220))
-P("PorchPillarR", CFrame.new(sp + Vector3.new(4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.SmoothPlastic, Color3.fromRGB(230, 225, 220))
+P("PorchPillarL", CFrame.new(sp + Vector3.new(-4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.Concrete, Color3.fromRGB(230, 225, 220))
+P("PorchPillarR", CFrame.new(sp + Vector3.new(4, 4.5, -10.5)), Vector3.new(0.6, 8, 0.6), Enum.Material.Concrete, Color3.fromRGB(230, 225, 220))
 
 -- Porch railing
-P("PorchRailL", CFrame.new(sp + Vector3.new(-4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
-P("PorchRailR", CFrame.new(sp + Vector3.new(4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
-P("PorchRailFront", CFrame.new(sp + Vector3.new(0, 2.5, -11)), Vector3.new(8, 0.3, 0.3), Enum.Material.SmoothPlastic, Color3.fromRGB(235, 230, 225))
+P("PorchRailL", CFrame.new(sp + Vector3.new(-4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.Concrete, Color3.fromRGB(235, 230, 225))
+P("PorchRailR", CFrame.new(sp + Vector3.new(4, 2.5, -9)), Vector3.new(0.3, 2, 4), Enum.Material.Concrete, Color3.fromRGB(235, 230, 225))
+P("PorchRailFront", CFrame.new(sp + Vector3.new(0, 2.5, -11)), Vector3.new(8, 0.3, 0.3), Enum.Material.Concrete, Color3.fromRGB(235, 230, 225))
 
 -- Steps
 P("Step1", CFrame.new(sp + Vector3.new(0, 0.15, -11.5)), Vector3.new(4, 0.3, 1), Enum.Material.Concrete, Color3.fromRGB(165, 160, 155))
@@ -856,15 +876,39 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
         if (s.z > 80) { s.z = Math.min(s.z, 60); qualityFixes++ }
       }
 
-      // Fix SmoothPlastic — replace with contextual material
+      // Fix SmoothPlastic — pick the material that fits the part's purpose
       if (cmd.material === 'SmoothPlastic' || cmd.material === 'Plastic') {
-        const name = (cmd.name || '').toLowerCase()
-        if (name.includes('wall') || name.includes('exterior')) cmd.material = 'Concrete'
-        else if (name.includes('floor') || name.includes('base')) cmd.material = 'WoodPlanks'
-        else if (name.includes('roof')) cmd.material = 'Slate'
-        else if (name.includes('door') || name.includes('table') || name.includes('chair') || name.includes('counter') || name.includes('shelf')) cmd.material = 'Wood'
-        else if (name.includes('window') || name.includes('glass')) cmd.material = 'Glass'
-        else cmd.material = 'Concrete'
+        const n = (cmd.name || '').toLowerCase()
+        if (/roof|shingle|eave|gable|chimney|ceiling/.test(n)) cmd.material = 'Slate'
+        else if (/floor|ground|deck|patio/.test(n)) cmd.material = 'WoodPlanks'
+        else if (/road|street|asphalt|parking|driveway/.test(n)) cmd.material = 'Asphalt'
+        else if (/window|glass|pane|skylight/.test(n)) cmd.material = 'Glass'
+        else if (/door|table|chair|desk|shelf|cabinet|bench|stool|counter|crate|barrel|fence|log/.test(n)) cmd.material = 'Wood'
+        else if (/brick|fireplace|hearth/.test(n)) cmd.material = 'Brick'
+        else if (/mountain|cliff|hill|ridge|peak|terrain|low.?poly|landscape/.test(n)) cmd.material = 'Rock'
+        else if (/stone|rock|cave|boulder|pillar|column|castle/.test(n)) cmd.material = 'Granite'
+        else if (/metal|steel|iron|pipe|rail|vent|machine|grate|beam|tank/.test(n)) cmd.material = 'Metal'
+        else if (/grass|garden|lawn|field|terrain/.test(n)) cmd.material = 'Grass'
+        else if (/sand|beach|desert|dune/.test(n)) cmd.material = 'Sand'
+        else if (/snow|snowy|blizzard/.test(n)) cmd.material = 'Snow'
+        else if (/ice|frozen|arctic|glacier|icicle/.test(n)) cmd.material = 'Ice'
+        else if (/fabric|cloth|cushion|pillow|couch|sofa|bed|curtain|carpet|tent|flag/.test(n)) cmd.material = 'Fabric'
+        else if (/cobble|medieval|village/.test(n)) cmd.material = 'Cobblestone'
+        else if (/marble|palace|temple|museum|statue|fountain/.test(n)) cmd.material = 'Marble'
+        else if (/\bneon\s*sign\b|hologram\s*display/.test(n)) cmd.material = 'Neon'
+        else if (/glow|light|lamp|lantern|torch|candle|bulb|chandelier|sconce|streetlight/.test(n)) cmd.material = 'Glass'
+        else if (/lava|volcano|magma/.test(n)) cmd.material = 'CrackedLava'
+        else if (/diamond|factory|warehouse|industrial/.test(n)) cmd.material = 'DiamondPlate'
+        else if (/pebble|gravel|trail/.test(n)) cmd.material = 'Pebble'
+        else if (/leaf|forest|jungle|bush|tree|hedge|vine/.test(n)) cmd.material = 'LeafyGrass'
+        else if (/limestone|adobe|stucco|plaster/.test(n)) cmd.material = 'Limestone'
+        else if (/sandstone|pyramid|mesa/.test(n)) cmd.material = 'Sandstone'
+        else if (/pavement|sidewalk|curb/.test(n)) cmd.material = 'Pavement'
+        else if (/mud|swamp|dirt|marsh/.test(n)) cmd.material = 'Mud'
+        else if (/rust|corrode|abandon|decay|wreck|junk/.test(n)) cmd.material = 'CorrodedMetal'
+        else if (/wall|exterior|facade|barrier|divider|base|foundation/.test(n)) cmd.material = 'Concrete'
+        else if (/stair|step|ramp/.test(n)) cmd.material = 'Concrete'
+        else cmd.material = 'Concrete' // last resort fallback
         qualityFixes++
       }
 
@@ -1022,10 +1066,23 @@ RULE #2 — BE SPECIFIC AND REAL.
 - Use real Roblox materials: Wood, Brick, Cobblestone, Marble, Granite, Metal, DiamondPlate, Grass, Sand, Slate, Fabric, Neon. Pick materials that MAKE SENSE for the object.
 - A wooden light pole uses Wood material, brown colors. Not SmoothPlastic, not royal blue.
 - A stone wall uses Cobblestone or Brick, gray/brown tones. Not Neon, not emerald.
-- NEVER use SmoothPlastic unless building something futuristic/sci-fi. For EVERYTHING else use textured materials: Wood, Brick, Cobblestone, Concrete, Metal, Slate, Granite, Grass, Sand, Fabric, WoodPlanks, DiamondPlate.
-- SmoothPlastic looks flat and cheap. Real materials have TEXTURE. A pole = Wood. A wall = Brick. A floor = Concrete. A roof = Slate. ALWAYS pick the material the real object would be made of.
-- NEVER default to SmoothPlastic for everything. Choose the material that the real object would be made of.
+- BANNED MATERIAL: SmoothPlastic. NEVER use Enum.Material.SmoothPlastic. Pick the material the REAL object would be made of. Full palette: Slate (roofs, shingles), WoodPlanks (floors, decks), Wood (furniture, doors, fences, crates), Brick (brick walls, fireplaces), Concrete (walls, foundations, stairs), Granite (stone, castles, pillars, boulders), Metal (pipes, rails, machines, beams), Glass (windows, skylights, light covers), Grass (terrain, lawns, fields), LeafyGrass (forests, bushes, hedges), Sand (beaches, deserts), Sandstone (pyramids, mesa, desert walls), Limestone (stucco, adobe, plaster), Fabric (cushions, curtains, beds, tents, flags), Cobblestone (medieval paths, villages), Marble (temples, palaces, fountains), Asphalt (roads, driveways), Pavement (sidewalks, curbs), DiamondPlate (factories, industrial floors), Pebble (gravel, trails), Ice (frozen, arctic), Snow (winter, snowy terrain), Mud (swamps, dirt), Rock (mountains, cliffs, low-poly terrain), CorrodedMetal (rusty, abandoned, wrecks), CrackedLava (volcanic), Glacier (icy mountains). THINK about what the part IS, then pick the right material.
+- LIGHTING: Do NOT use Neon material for lighting. Neon looks flat and cheap. For ANY light source (lamps, torches, lanterns, streetlights, glowing orbs, candles, chandeliers), use Glass or Metal material on the fixture part, then parent a PointLight or SpotLight inside it. Example: local lamp = Instance.new("Part") lamp.Material = Enum.Material.Glass lamp.Color = Color3.fromRGB(255,230,180) local light = Instance.new("PointLight") light.Parent = lamp light.Brightness = 2 light.Range = 30 light.Color = Color3.fromRGB(255,200,130). Use Neon ONLY for literal neon signs or hologram display surfaces — never for general lighting.
 - NEVER use the same "royal blue, emerald, gold" palette. Use colors that match what you're building.
+
+RULE #2.5 — SCRIPT THINGS TOGETHER.
+- Real Roblox games aren't just static parts. Users expect INTERACTIVITY. Always think about what code makes the build come alive:
+  * Doors: ClickDetector or ProximityPrompt + TweenService to open/close
+  * Lights: PointLight/SpotLight children on lamp parts, optionally scripted to flicker or toggle
+  * NPCs: Use Humanoid + pathfinding or simple idle animations
+  * Shops/signs: SurfaceGui with TextLabel on the face
+  * Buttons/switches: ProximityPrompt + connected logic
+  * Water: Use blue transparent parts with ParticleEmitter for foam
+  * Fire/torches: Fire or ParticleEmitter instance parented to the torch part
+  * Ambient: Sound instances for background audio, Smoke/Sparkles for atmosphere
+  * Chests/collectibles: ProximityPrompt + script to give items/currency
+- When building a scene, ADD these interactive elements. Don't just place static geometry. A tavern needs a door that opens, candles with PointLights, maybe a barkeeper NPC. A castle needs torches with Fire+PointLight, a drawbridge with TweenService, guards with simple patrol scripts.
+- For script-mode requests: write COMPLETE, RUNNABLE Luau scripts. Include error handling with pcall, use task.wait() not wait(), use modern API patterns. Scripts should be self-contained — they should work when pasted into Studio's command bar or a Script instance.
 
 RULE #3 — NARRATE LIKE A GAME DESIGNER, NOT A ROBOT.
 - NEVER say "I built", "I've built", "I created", "I've created" — you don't know if it landed in Studio yet. Say "Here's what I'm generating", "Setting up", "Putting together", "Sending to your Studio".
@@ -1101,7 +1158,7 @@ MATERIAL GUIDE — use what the REAL object is made of:
 - Ground → Grass (#4A7023), Sand (#C2B280), Concrete (#909090)
 - Glass → Glass + Transparency 0.4, light blue (#A8D8EA)
 - Lights → Neon, warm white (#FFF5E1)
-- NEVER use SmoothPlastic as default. Pick the real material.
+- BANNED: SmoothPlastic. Pick the material that matches what the part IS (roof→Slate, floor→WoodPlanks, furniture→Wood, wall→Concrete, window→Glass, lamp→Glass+PointLight child). For lighting use Glass/Metal material + PointLight/SpotLight instances, NOT Neon.
 - NEVER use royal blue/emerald/gold unless asked. Use natural realistic colors.
 
 VOICE: Friendly, brief, helpful.
@@ -1221,8 +1278,9 @@ BUILD RULES:
 - NEVER use game.Workspace — use the workspace global directly
 - Set Parent LAST always — never Instance.new("Part", parent)
 - Use realistic scale: DOOR=7.5 tall, CEILING=11, STREET=27 wide, CHARACTER=6
-- Materials: Brick/Concrete/Granite for buildings, Metal/DiamondPlate for metal, Glass(0.3-0.6 transparency), WoodPlanks for wood, Neon ONLY for lights/signs
-- Add PointLight to light sources (Brightness=4, Range=40, Color=255,200,130)
+- Materials: Brick/Concrete/Granite for buildings, Metal/DiamondPlate for metal, Glass(0.3-0.6 transparency), WoodPlanks for wood. NEVER use Neon for lighting — use Glass/Metal + PointLight child instead.
+- ALWAYS add PointLight/SpotLight to any light source (lamp, torch, lantern, candle, streetlight). Settings: Brightness=2-4, Range=25-40, Color=Color3.fromRGB(255,200,130) for warm, Color3.fromRGB(200,220,255) for cool.
+- Add interactivity: ProximityPrompt on doors/chests/NPCs, ClickDetector on buttons, TweenService for animations, SurfaceGui for signs, Sound for ambience, Fire/ParticleEmitter for effects.
 - Name every part descriptively
 - Vary colors slightly with vc() for natural look
 - Position relative to sp (camera front)
@@ -1754,6 +1812,23 @@ function isCodeQualityOk(code: string): boolean {
   if (/Instance\.new\(\s*["'][^"']+["']\s*,/.test(code)) return false
   // Reject client-side APIs — generated code runs server-side only
   if (code.includes('game.Players') || code.includes('LocalPlayer') || code.includes('script.Parent')) return false
+  // Reject single-brick builds — must have at least 5 parts (P() helpers or Instance.new("Part"))
+  // BUT: scripts (DataStoreService, RemoteEvent, ModuleScript) don't need parts
+  const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
+    code.includes('RemoteFunction') || code.includes('ModuleScript') ||
+    code.includes('RunService') || code.includes('Players.PlayerAdded') ||
+    code.includes('game:GetService')
+  if (!isScriptCode) {
+    const partCount = (code.match(/Instance\.new\(\s*["'](?:Part|WedgePart|MeshPart)/g) || []).length
+    const pHelperCount = (code.match(/\bP\s*\(/g) || []).length
+    const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
+    const ballCount = (code.match(/\bBall\s*\(/g) || []).length
+    const totalParts = partCount + pHelperCount + cylCount + ballCount
+    if (totalParts < 5 && !code.includes('placeAsset') && !code.includes('InsertService')) {
+      console.warn(`[QualityGate] Only ${totalParts} parts — rejecting single-brick build`)
+      return false
+    }
+  }
   return true
 }
 
@@ -2079,8 +2154,8 @@ RULES:
     // Single-pass: race both models — first valid result wins
     console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
     const buildRace = await raceNonNull(
-      callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 8192),
-      callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 8192),
+      callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 16384),
+      callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 16384),
     )
 
     // Extract conversation text (everything before the ```lua block) and code
@@ -2179,12 +2254,74 @@ ${buildInstruction}`
         }
       }
 
-      // ── EXPERIENCE MEMORY: record successful generations ──
-      if (luauCode && finalVerificationScore >= 70) {
+      // ── COMPLETENESS AUDIT: verify AI actually built what it described ──
+      if (luauCode && conversationText) {
+        try {
+          const audit = auditBuild(luauCode, conversationText, message)
+          console.log(`[Audit] Detail score: ${audit.detailScore}/100, parts: ${audit.partCount}, claims: ${audit.claimedFeatures.length}, missing: ${audit.missingFeatures.length}`)
+
+          if (!audit.passed && finalVerificationScore >= 40) {
+            // Build passed syntax checks but is INCOMPLETE — auto-retry with specifics
+            console.warn(`[Audit] Build INCOMPLETE: ${audit.suggestions.slice(0, 3).join('; ')}`)
+            const auditRetryPrompt = formatAuditRetryPrompt(audit, message)
+            try {
+              const auditRetryRace = await raceNonNull(
+                callGemini(codePrompt, auditRetryPrompt, [], 8192),
+                callGroq(codePrompt, auditRetryPrompt, [], 8192),
+              )
+              if (auditRetryRace) {
+                let auditRetryCode = extractLuauCode(auditRetryRace.result)
+                if (!auditRetryCode && auditRetryRace.result.includes('Instance.new')) {
+                  auditRetryCode = auditRetryRace.result.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
+                }
+                if (auditRetryCode && auditRetryCode.length > luauCode.length * 0.8) {
+                  const reAudit = auditBuild(auditRetryCode, conversationText, message)
+                  if (reAudit.detailScore > audit.detailScore) {
+                    console.log(`[Audit-Retry] Improved: ${audit.detailScore} → ${reAudit.detailScore}`)
+                    luauCode = auditRetryCode
+                    // Re-verify the new code
+                    const reVerify = await verifyLuauCode(luauCode)
+                    if (reVerify.fixedCode) luauCode = reVerify.fixedCode
+                    finalVerificationScore = Math.max(finalVerificationScore, reVerify.score)
+                  }
+                }
+              }
+            } catch (auditRetryErr) {
+              console.warn('[Audit-Retry] Failed:', auditRetryErr instanceof Error ? auditRetryErr.message : auditRetryErr)
+            }
+          }
+        } catch (auditErr) {
+          // Audit is non-blocking — don't fail the build
+          console.warn('[Audit] Error (non-blocking):', auditErr instanceof Error ? auditErr.message : auditErr)
+        }
+      }
+
+      // ── LEARNING SYSTEM: record ALL build outcomes (pass AND fail) ──
+      if (luauCode) {
+        const category = detectCategory(message)
+        const partCount = countPartsInCode(luauCode)
+        const buildType = detectBuildType(message, intent)
         // Fire-and-forget — do NOT block the response
-        void recordExperience(message, luauCode, finalVerificationScore, model).catch((err) => {
-          console.warn('[ExperienceMemory] Failed to record experience:', err instanceof Error ? err.message : err)
+        void recordBuildOutcome(message, luauCode, finalVerificationScore, model, {
+          category,
+          partCount,
+          buildType,
+        }).catch((err) => {
+          console.warn('[LearningSystem] Failed to record build outcome:', err instanceof Error ? err.message : err)
         })
+      }
+    }
+
+    // If both models failed to produce code, try the template fallback before giving up
+    if (!luauCode) {
+      console.warn('[SinglePass] Both models failed or code rejected — trying template fallback')
+      const templateCode = generateFallbackBuild(message)
+      if (templateCode) {
+        luauCode = templateCode
+        model = 'template'
+        conversationText = `Here's a template build for "${message}". The AI models were busy, so I used a pre-built template. Let me know what you'd like to change!`
+      } else {
+        conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
       }
     }
 
@@ -2195,9 +2332,6 @@ ${buildInstruction}`
       } catch (studioErr) {
         console.error('[SinglePass] sendCodeToStudio error:', studioErr instanceof Error ? studioErr.message : studioErr)
       }
-    } else {
-      // Both models failed — return a generic message
-      conversationText = `I'm having trouble generating that build right now. Try again in a moment, or try describing it differently.`
     }
 
     // Fallback conversation text if still empty
@@ -3157,7 +3291,7 @@ WHAT TO USE INSTEAD OF SMOOTHPLASTIC:
   Colored surfaces → Brick(warm) or Concrete(cool) with the desired color
   Shiny/glossy → Metal with a light color
   Matte/flat → Concrete or Slate
-  High-tech panels → Metal dark + Neon accent strips
+  High-tech panels → Metal dark + Glass accent strips with PointLight children for glow effect
 
 MATERIAL ASSIGNMENTS (use these EVERY TIME):
   EXTERIOR WALLS:     Brick(warm), Concrete(neutral), Cobblestone(rustic), Granite(modern dark)
@@ -3184,7 +3318,9 @@ MATERIAL ASSIGNMENTS (use these EVERY TIME):
   STONE ANCIENT:      Slate — ruins, temples, weathered surfaces, old roofs
   FABRIC/CLOTH:       Fabric — cushions, curtains, awnings, flags, clothing, rugs
   TERRAIN:            Grass, Sand, Mud, Snow, Ice, LeafyGrass — terrain-only materials
-  GLOW/LIGHT:         Neon — ONLY for things that actually emit light: signs, screens, fire, crystals, magic
+  GLOW/LIGHT:         Do NOT use Neon material for lighting. Use Glass or Metal material on the fixture, then add PointLight/SpotLight/SurfaceLight as children. Neon only for literal neon sign tubes.
+  LIGHTING RECIPE:    Glass fixture (Transparency 0-0.3) + PointLight(Brightness=2-4, Range=25-40, warm Color3.fromRGB(255,200,130)) + optional Fire/ParticleEmitter for torches/candles.
+  INTERACTIVE:        ProximityPrompt on doors/chests, ClickDetector on buttons, TweenService for animations, SurfaceGui+TextLabel for signs, Sound for ambience.
   CORROSION:          CorrodedMetal — rusty pipes, old gates, weathered machinery, abandoned props
 
 === ADVANCED VISUAL TECHNIQUES — WHAT MAKES BUILDS LOOK AMAZING ===
@@ -7075,6 +7211,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       } catch {
         // Redis unavailable — allow through
       }
+
+      // Global + per-user spending cap — hard stop to prevent runaway API bills
+      try {
+        const guard = await checkSpendingGuard(userId)
+        if (!guard.allowed) {
+          return NextResponse.json(
+            { error: guard.reason || 'Generation limit reached. Please try again later.' },
+            { status: 429 },
+          )
+        }
+      } catch {
+        // Guard check failed — allow through (fail open for availability)
+      }
     } else {
       // Guest (unauthenticated) — enforce server-side IP rate limit so the
       // client-side GUEST_MESSAGE_LIMIT=3 cap cannot be bypassed via direct API calls.
@@ -7134,6 +7283,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 })
   }
   const wantsStream = parsed.data.stream === true
+
+  // ── Learning: detect and record user recommendations (fire-and-forget) ──
+  const recs = detectRecommendations(message)
+  if (recs.length > 0) {
+    for (const rec of recs) {
+      void recordRecommendation(rec.feature, message).catch(() => {})
+    }
+  }
 
   // ── Optional auto-delegate to the 9-agent orchestrator ────────────────
   // Clients that want the "Think → Ideas → Plan → Build/Terrain/Script/..."
@@ -7195,7 +7352,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const AI_MODE_PREFIXES: Record<string, string> = {
     think: '\n\n[THINKING_MODE] Think step-by-step. Show your reasoning process in detail before giving the final answer. Consider multiple approaches, evaluate trade-offs, and pick the best one. Wrap your reasoning in <thinking>...</thinking> tags, then provide the final answer.',
     plan: '\n\n[PLAN_MODE] Before writing ANY code, create a detailed numbered build plan. List every Part, Model, Script, and Service that will be needed. Include sizes, positions, and colors. Present this as a clear checklist. DO NOT write code yet — wait for the user to approve the plan first.',
-    script: '\n\n[SCRIPT_MODE] Focus ONLY on generating clean, optimized, production-ready Luau code. Use proper Roblox API patterns, type annotations where helpful, and modular architecture. Include brief comments explaining complex logic. No map building — pure scripting.',
+    script: `\n\n[SCRIPT_MODE] You are a Luau scripting expert. Generate ONLY executable Luau code in a \`\`\`lua code block.
+
+RULES:
+- Output MUST be a complete, runnable Luau script — NOT a description or architecture plan
+- Use proper Roblox services: DataStoreService, Players, ReplicatedStorage, RunService, etc.
+- Use task.wait() not wait(), task.spawn() not spawn()
+- Use ModuleScript patterns where appropriate
+- Add brief inline comments for complex logic
+- NO Part creation, NO building, NO P() helpers — pure scripting only
+- The script should be ready to paste into ServerScriptService or appropriate container
+- Wrap in ChangeHistoryService recording so the user can undo
+- ALWAYS output code, never just describe what the code would do`,
     image: '\n\n[IMAGE_MODE] The user wants to generate a visual asset (icon, thumbnail, GFX). Describe what the image should look like in detail, including art style, color palette, composition, and Roblox-appropriate aesthetics.',
     terrain: '\n\n[TERRAIN_MODE] Focus on terrain generation. Use Terrain:FillRegion(), Terrain:FillBall(), Terrain:FillCylinder(), and related APIs. Paint materials (Grass, Sand, Rock, Snow, Water, etc.), sculpt heights, and create natural biomes.',
     debug: '\n\n[DEBUG_MODE] The user needs help debugging. First, analyze the code or error description thoroughly. Identify the root cause. Then provide a fixed version with clear explanations of what was wrong and why the fix works. Use <thinking>...</thinking> tags to show your analysis.',
@@ -8033,10 +8201,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         intent === 'chat' || intent === 'conversation'
           ? 512
           : intent === 'fullgame'
-            ? 8192
+            ? 16384
             : intent === 'building' || intent === 'terrain'
-              ? 4096
-              : 2048
+              ? 8192
+              : 4096
 
       const oaiHistory = history.map((h: HistoryMessage) => ({ role: h.role, content: h.content }))
 
@@ -8203,10 +8371,10 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
         intent === 'chat' || intent === 'conversation'
           ? 512
           : intent === 'fullgame'
-            ? 8192
+            ? 16384
             : intent === 'building' || intent === 'terrain'
-              ? 4096
-              : 2048
+              ? 8192
+              : 4096
 
       const claudeMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [
         ...history.map((h: HistoryMessage) => ({ role: h.role, content: h.content })),
