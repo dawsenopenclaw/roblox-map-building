@@ -50,10 +50,10 @@ export default function ShowcasePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(showcaseJsonLd) }}
       />
-      <main style={{ background: '#050810' }}>
+      <div style={{ background: '#050810' }}>
         <ShowcaseHero />
         <ShowcaseClient />
-      </main>
+      </div>
     </>
   )
 }

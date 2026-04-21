@@ -32,7 +32,7 @@ export default function ShowcaseCard({ game, variant = 'compact' }: ShowcaseCard
   return (
     <Link
       href={href}
-      className="group rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
+      className="group rounded-xl overflow-hidden flex flex-col h-full transition-all duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
       style={{
         background: 'rgba(10, 14, 32, 0.6)',
         backdropFilter: 'blur(14px)',
@@ -55,9 +55,10 @@ export default function ShowcaseCard({ game, variant = 'compact' }: ShowcaseCard
     >
       {/* Thumbnail — styled to look like a real Roblox in-game screenshot */}
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden flex-shrink-0"
         style={{
-          height: isDetailed ? 192 : 176,
+          height: isDetailed ? '192px' : '176px',
+          minHeight: isDetailed ? '192px' : '176px',
           background: `linear-gradient(180deg, ${accent}30 0%, ${accent}15 35%, #0A0E20 75%, #050810 100%)`,
         }}
       >

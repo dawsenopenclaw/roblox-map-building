@@ -32,7 +32,7 @@ export default function SignInClient() {
   const redirectUrl = searchParams?.get('redirect_url') ?? undefined
 
   return (
-    <div className="w-full">
+    <div className="w-full flex flex-col items-center">
       <SignIn
         routing="path"
         path="/sign-in"
@@ -54,7 +54,7 @@ export default function SignInClient() {
           },
           elements: {
             rootBox: 'w-full',
-            card: 'shadow-none border-0 bg-transparent p-0 gap-6',
+            card: 'shadow-none border-0 bg-transparent p-0 gap-6 w-full',
             headerTitle: 'text-2xl sm:text-3xl font-bold text-white mb-1',
             headerSubtitle: 'text-base text-zinc-400',
             socialButtonsBlockButton:
@@ -67,8 +67,8 @@ export default function SignInClient() {
               'bg-white/[0.04] border border-white/[0.1] text-white text-base placeholder:text-zinc-600 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/20 py-3 px-4 rounded-xl',
             formButtonPrimary:
               'bg-[#D4AF37] hover:bg-[#E6A619] text-black text-base font-bold transition-colors py-3.5 rounded-xl',
-            footer: 'hidden',
-            footerAction: 'text-zinc-400 text-base mt-4',
+            footer: 'justify-center mt-4',
+            footerAction: 'text-zinc-400 text-base',
             footerActionLink: 'text-[#D4AF37] hover:text-[#E6A619] font-semibold text-base',
             identityPreviewText: 'text-zinc-300 text-base',
             identityPreviewEditButton: 'text-[#D4AF37] hover:text-[#E6A619] text-sm',

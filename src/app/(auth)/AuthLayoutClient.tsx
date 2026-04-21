@@ -128,7 +128,7 @@ export default function AuthLayoutClient({ children }: { children: React.ReactNo
         <div
           className="relative z-10 w-full rounded-2xl p-8 sm:p-10"
           style={{
-            maxWidth: '28rem',
+            maxWidth: '32rem',
             background: 'rgba(255,255,255,0.025)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',

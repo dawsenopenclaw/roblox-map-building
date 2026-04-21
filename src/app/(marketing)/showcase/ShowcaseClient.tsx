@@ -109,7 +109,7 @@ export default function ShowcaseClient() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
           >
             {filtered.map((game) => (
-              <div key={game.id} id={game.id}>
+              <div key={game.id} id={game.id} className="h-full">
                 <ShowcaseCard game={game} variant="detailed" />
               </div>
             ))}
