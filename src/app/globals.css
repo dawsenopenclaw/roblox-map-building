@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Force Clerk auth forms to fill container width ─────────────────────── */
+.auth-card-wrapper div[class] {
+  max-width: 100% !important;
+}
+.auth-card-wrapper > div,
+.auth-card-wrapper > div > div,
+.auth-card-wrapper > div > div > div,
+.auth-card-wrapper > div > div > div > div,
+.auth-card-wrapper > div > div > div > div > div {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* ─── Rename "ForjeGames" OAuth button to "Roblox" ───────────────────────── */
+/* Clerk renders custom OAuth provider name. Target the second social button */
+/* (first is Google, second is the custom Roblox/ForjeGames one).           */
+/* Also works via partial text match on any element containing "ForjeGames" */
+.auth-card-wrapper button:nth-child(2) span[data-text],
+.auth-card-wrapper button:nth-child(2) .cl-socialButtonsBlockButtonText {
+  font-size: 0 !important;
+  visibility: hidden !important;
+  position: relative !important;
+}
+.auth-card-wrapper button:nth-child(2) span[data-text]::after,
+.auth-card-wrapper button:nth-child(2) .cl-socialButtonsBlockButtonText::after {
+  content: "Roblox" !important;
+  font-size: 0.95rem !important;
+  visibility: visible !important;
+  position: absolute !important;
+  left: 0 !important;
+}
+
 /* ForgeGames glitch text is inlined at the END of this file. It used to
  * live in src/styles/forgegames-glitch-text.css and get @import-ed here,
  * but postcss-import is not in postcss.config.mjs so the @import was

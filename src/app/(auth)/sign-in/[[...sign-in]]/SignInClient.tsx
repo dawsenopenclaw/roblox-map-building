@@ -8,7 +8,7 @@ export default function SignInClient() {
   const redirectUrl = searchParams?.get('redirect_url') ?? undefined
 
   return (
-    <div className="w-full flex flex-col items-center">
+    <div className="w-full flex justify-center">
       <SignIn
         routing="path"
         path="/sign-in"
