@@ -594,6 +594,36 @@ function DemoSection() {
   )
 }
 
+/* ─── Final CTA — repeat the prompt input at bottom ──────────────────────── */
+
+function FinalCTA() {
+  return (
+    <section className="relative py-20 sm:py-28 px-6 text-center" style={{ background: '#050810' }}>
+      <div className="max-w-2xl mx-auto">
+        <h2
+          className="reveal font-bold tracking-tight mb-4"
+          style={{
+            fontSize: 'clamp(1.8rem, 5vw, 3rem)',
+            lineHeight: 1.15,
+            color: '#FAFAFA',
+          }}
+        >
+          Your game is one prompt away.
+        </h2>
+        <p className="reveal text-sm mb-8" style={{ color: '#71717A' }}>
+          Start free with 1,000 tokens — no credit card needed.
+        </p>
+        <div className="reveal max-w-xl mx-auto mb-6">
+          <HeroPromptInput />
+        </div>
+        <p className="reveal text-[12px]" style={{ color: '#3F3F46' }}>
+          No account needed &middot; Free forever &middot; Works with Roblox Studio
+        </p>
+      </div>
+    </section>
+  )
+}
+
 /* ─── Main page ──────────────────────────────────────────────────────────── */
 
 export default function HomeClient() {
@@ -746,8 +776,9 @@ export default function HomeClient() {
         <ComparisonSection />
 
         {/* ═══════════════════════════════════════════════════════════════
-            SECTION 6 — FAQ
-        ═══════════════════════════════════════════════════════════════ */}
+            SECTION 6 — FINAL CTA + FAQ
+        ══════════════════════��══════════════════════════════���═════════ */}
+        <FinalCTA />
         <FaqSection />
 
       </div>

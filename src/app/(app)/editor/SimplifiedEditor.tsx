@@ -16,7 +16,7 @@ import { useUser } from '@clerk/nextjs'
 import { ChatPanel } from '@/components/editor/ChatPanel'
 import { CommandPalette } from '@/components/editor/CommandPalette'
 import { PublishPanel } from '@/components/editor/PublishPanel'
-import { useChat, loadSessions, type ChatSession } from './hooks/useChat'
+import { useChat, loadSessions, type ChatSession, type ChatSessionMeta } from './hooks/useChat'
 import { useStudioConnection } from './hooks/useStudioConnection'
 import { useEditorKeyboard } from './hooks/useEditorKeyboard'
 import { ToastProvider, useToast } from '@/components/editor/EditorToasts'
@@ -44,7 +44,7 @@ function EditorInner() {
   const [cmdPaletteOpen, setCmdPaletteOpen] = useState(false)
   const [publishOpen, setPublishOpen] = useState(false)
   const [activeBuildId, setActiveBuildId] = useState<string | null>(null)
-  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [sessions, setSessions] = useState<ChatSession[] | ChatSessionMeta[]>([])
   const [buildJustSucceeded, setBuildJustSucceeded] = useState(false)
   const [showShareBar, setShowShareBar] = useState(false)
   const [lastBuildPrompt, setLastBuildPrompt] = useState('')
@@ -129,8 +129,14 @@ function EditorInner() {
 
   // ── Load session list for drawer ──
   useEffect(() => {
-    setSessions(loadSessions())
-  }, [chat.currentSessionId])
+    // Use the merged cloud + local session list so history syncs across devices
+    const merged = chat.listSessions()
+    if (merged.length > 0) {
+      setSessions(merged)
+    } else {
+      setSessions(loadSessions())
+    }
+  }, [chat.currentSessionId, chat.cloudSessions])
 
   // ── Keyboard shortcuts ──
   useEditorKeyboard({

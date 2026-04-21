@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import type { ChatSession } from '../hooks/useChat'
+import type { ChatSession, ChatSessionMeta } from '../hooks/useChat'
 
 interface LeftDrawerProps {
   open: boolean
   onClose: () => void
-  // Chat history
-  sessions: ChatSession[]
+  // Chat history — accepts either full sessions or lightweight metadata
+  sessions: ChatSession[] | ChatSessionMeta[]
   currentSessionId: string | null
   onLoadSession: (id: string) => void
   onDeleteSession: (id: string) => void
@@ -181,7 +181,7 @@ export function LeftDrawer({
                       {s.title || 'Untitled chat'}
                     </p>
                     <p style={{ fontSize: 10, color: '#52525B', margin: '2px 0 0' }}>
-                      {s.messages?.length ?? 0} messages
+                      {'messages' in s ? (s.messages?.length ?? 0) : ('messageCount' in s ? (s as ChatSessionMeta).messageCount : 0)} messages
                     </p>
                   </div>
                   <button
