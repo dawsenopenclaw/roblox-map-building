@@ -575,11 +575,11 @@ const SHOWCASE_AGENTS = [
 ] as const
 
 const AGENT_CATEGORIES = [
-  { key: 'all', label: 'All Agents', count: 144 },
-  { key: 'build', label: 'Build', count: 80 },
-  { key: 'analyze', label: 'Analyze', count: 20 },
-  { key: 'optimize', label: 'Optimize', count: 16 },
-  { key: 'growth', label: 'Growth', count: 28 },
+  { key: 'all', label: 'All Agents', count: SHOWCASE_AGENTS.length },
+  { key: 'build', label: 'Build', count: SHOWCASE_AGENTS.filter(a => a.cat === 'build').length },
+  { key: 'analyze', label: 'Analyze', count: SHOWCASE_AGENTS.filter(a => a.cat === 'analyze').length },
+  { key: 'optimize', label: 'Optimize', count: SHOWCASE_AGENTS.filter(a => a.cat === 'optimize').length },
+  { key: 'growth', label: 'Growth', count: SHOWCASE_AGENTS.filter(a => a.cat === 'growth').length },
 ] as const
 
 function AgentShowcaseGrid() {
@@ -1325,7 +1325,7 @@ export default function HomeClient() {
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                   filter: 'drop-shadow(0 0 40px rgba(212,175,55,0.3))',
                 }}>
-                  <AnimatedCounter target={144} />
+                  <AnimatedCounter target={SHOWCASE_AGENTS.length} />
                 </span>
               </motion.div>
 
@@ -1355,10 +1355,10 @@ export default function HomeClient() {
                 initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: 0.7 }}>
                 {[
-                  { label: 'Build', count: 80, color: '#D4AF37' },
-                  { label: 'Analyze', count: 20, color: '#818CF8' },
-                  { label: 'Optimize', count: 16, color: '#10B981' },
-                  { label: 'Growth', count: 28, color: '#F59E0B' },
+                  { label: 'Build', count: SHOWCASE_AGENTS.filter(a => a.cat === 'build').length, color: '#D4AF37' },
+                  { label: 'Analyze', count: SHOWCASE_AGENTS.filter(a => a.cat === 'analyze').length, color: '#818CF8' },
+                  { label: 'Optimize', count: SHOWCASE_AGENTS.filter(a => a.cat === 'optimize').length, color: '#10B981' },
+                  { label: 'Growth', count: SHOWCASE_AGENTS.filter(a => a.cat === 'growth').length, color: '#F59E0B' },
                 ].map(({ label, count, color }) => (
                   <span key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
                     background: `${color}10`, border: `1px solid ${color}25`, color,
@@ -1400,7 +1400,7 @@ export default function HomeClient() {
             <div className="reveal mt-10 rounded-xl p-5 sm:p-6" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex items-center justify-between gap-2 text-center">
                 {[
-                  { name: 'ForjeGames', agents: '144+', color: '#D4AF37', bold: true },
+                  { name: 'ForjeGames', agents: `${SHOWCASE_AGENTS.length}+`, color: '#D4AF37', bold: true },
                   { name: 'Ropilot', agents: '3', color: '#52525B', bold: false },
                   { name: 'Rebirth', agents: '5', color: '#52525B', bold: false },
                   { name: 'Lemonade', agents: '2', color: '#52525B', bold: false },
@@ -1452,7 +1452,7 @@ export default function HomeClient() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: '#FAFAFA' }}>ForjeGames AI</p>
-                      <p className="text-[11px]" style={{ color: '#10B981' }}>Online — 144 agents available</p>
+                      <p className="text-[11px]" style={{ color: '#10B981' }}>Online — {SHOWCASE_AGENTS.length} agents available</p>
                     </div>
                   </div>
                   <AIDemoChatBubbles />
