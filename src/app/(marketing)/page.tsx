@@ -77,19 +77,27 @@ const softwareApplicationJsonLd = {
     },
     {
       '@type': 'Offer',
-      name: 'Creator',
-      price: '24.99',
+      name: 'Starter',
+      price: '10',
       priceCurrency: 'USD',
       billingDuration: 'P1M',
-      description: '7,000 tokens per month. Voice-to-game, image-to-map, and marketplace access.',
+      description: '5,000 tokens per month. Voice-to-game, image-to-map, and 3D asset generation.',
+    },
+    {
+      '@type': 'Offer',
+      name: 'Creator',
+      price: '50',
+      priceCurrency: 'USD',
+      billingDuration: 'P1M',
+      description: '30,000 tokens per month. Marketplace access, team collaboration, and Game DNA scanner.',
     },
     {
       '@type': 'Offer',
       name: 'Studio',
-      price: '49.99',
+      price: '200',
       priceCurrency: 'USD',
       billingDuration: 'P1M',
-      description: '20,000 tokens per month. Full API access, team collaboration, and dedicated support.',
+      description: '150,000 tokens per month. Full API access, white-label exports, and dedicated support.',
     },
   ],
   author: {
@@ -125,7 +133,7 @@ const faqJsonLd = {
       name: 'Is ForjeGames free to use?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Yes. The free plan includes 1,000 tokens per month with no credit card required. Paid plans start at $24.99/month for 7,000 tokens per month.',
+        text: 'Yes. The free plan includes 1,000 tokens per month with no credit card required. Paid plans start at $10/month for 5,000 tokens.',
       },
     },
     {

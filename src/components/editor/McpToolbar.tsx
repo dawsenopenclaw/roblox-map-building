@@ -7,7 +7,8 @@ import React, { useState, useRef, useEffect } from 'react'
 interface McpTool {
   id: string
   label: string
-  envKey: string
+  /** Prompt sent to chat when clicked */
+  prompt: string
 }
 
 interface McpToolGroup {
@@ -32,10 +33,10 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'text-to-3d',        label: 'Text to 3D',        envKey: 'MESHY_API_KEY' },
-      { id: 'generate-texture',  label: 'Generate Texture',  envKey: 'MESHY_API_KEY' },
-      { id: 'optimize-mesh',     label: 'Optimize Mesh',     envKey: 'MESHY_API_KEY' },
-      { id: 'image-to-3d',       label: 'Image to 3D',       envKey: 'MESHY_API_KEY' },
+      { id: 'text-to-3d',        label: 'Text to 3D',        prompt: '/mesh a detailed game prop' },
+      { id: 'generate-texture',  label: 'Generate Texture',  prompt: '/mesh texture a realistic surface' },
+      { id: 'optimize-mesh',     label: 'Optimize Mesh',     prompt: '/mesh optimize the last model' },
+      { id: 'image-to-3d',       label: 'Image to 3D',       prompt: '/mesh from image' },
     ],
   },
   {
@@ -50,9 +51,9 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'plan-city',          label: 'Plan City',          envKey: 'ROBLOX_API_KEY' },
-      { id: 'generate-building',  label: 'Generate Building',  envKey: 'ROBLOX_API_KEY' },
-      { id: 'layout-district',    label: 'Layout District',    envKey: 'ROBLOX_API_KEY' },
+      { id: 'plan-city',          label: 'Plan City',          prompt: 'Build a full city block with roads, buildings, street lights, and sidewalks' },
+      { id: 'generate-building',  label: 'Generate Building',  prompt: 'Build a detailed building with windows, doors, roof, and interior' },
+      { id: 'layout-district',    label: 'Layout District',    prompt: 'Build a district layout with multiple buildings, park, and roads' },
     ],
   },
   {
@@ -65,43 +66,23 @@ const TOOL_GROUPS: McpToolGroup[] = [
       </svg>
     ),
     tools: [
-      { id: 'generate-terrain', label: 'Generate Terrain', envKey: 'ROBLOX_API_KEY' },
-      { id: 'paint-terrain',    label: 'Paint Terrain',    envKey: 'ROBLOX_API_KEY' },
-      { id: 'create-water',     label: 'Create Water',     envKey: 'ROBLOX_API_KEY' },
+      { id: 'generate-terrain', label: 'Generate Terrain', prompt: 'Generate terrain with mountains, valleys, rivers, and grass using Roblox Terrain API' },
+      { id: 'paint-terrain',    label: 'Paint Terrain',    prompt: 'Paint the terrain with grass, sand near water, rock on steep slopes, and snow on peaks' },
+      { id: 'create-water',     label: 'Create Water',     prompt: 'Create a water body with realistic shoreline, waves, and underwater terrain' },
     ],
   },
 ]
-
-// ─── Per-group status (green = all ready, grey = missing key) ─────────────────
-
-type GroupStatus = 'ready' | 'partial' | 'unavailable'
-
-function getGroupStatus(group: McpToolGroup): GroupStatus {
-  if (typeof window === 'undefined') return 'unavailable'
-  // In a real app, check if the env key exists via /api/mcp/status.
-  // Here we check localStorage for a user-supplied key as a client-side proxy.
-  const lsKeyMap: Record<string, string> = {
-    MESHY_API_KEY:  'fg_meshy_key',
-    ROBLOX_API_KEY: 'fg_roblox_key',
-  }
-  const envKeys = [...new Set(group.tools.map((t) => t.envKey))]
-  const ready = envKeys.filter((k) => {
-    const lsKey = lsKeyMap[k]
-    return lsKey ? !!localStorage.getItem(lsKey) : true
-  })
-  if (ready.length === envKeys.length) return 'ready'
-  if (ready.length > 0)               return 'partial'
-  return 'unavailable'
-}
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
 function ToolGroupTooltip({
   group,
   onClose,
+  onToolClick,
 }: {
   group: McpToolGroup
   onClose: () => void
+  onToolClick: (prompt: string) => void
 }) {
   return (
     <div
@@ -153,10 +134,14 @@ function ToolGroupTooltip({
       >
         {group.label}
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
         {group.tools.map((tool) => (
-          <div
+          <button
             key={tool.id}
+            onClick={() => {
+              onToolClick(tool.prompt)
+              onClose()
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -164,7 +149,17 @@ function ToolGroupTooltip({
               fontSize: 11,
               color: 'rgba(255,255,255,0.65)',
               fontFamily: 'Inter, sans-serif',
+              background: 'transparent',
+              border: 'none',
+              padding: '4px 6px',
+              borderRadius: 5,
+              cursor: 'pointer',
+              transition: 'background 0.12s',
+              width: '100%',
+              textAlign: 'left',
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
             <div
               style={{
@@ -177,7 +172,7 @@ function ToolGroupTooltip({
               }}
             />
             {tool.label}
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -195,19 +190,9 @@ const TOOLBAR_STYLES = `
 
 // ─── McpToolbar ───────────────────────────────────────────────────────────────
 
-export function McpToolbar() {
+export function McpToolbar({ onToolClick }: { onToolClick?: (prompt: string) => void }) {
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
-  const [statuses, setStatuses] = useState<Record<string, GroupStatus>>({})
   const hoverTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // Compute statuses once on mount (client-side only)
-  useEffect(() => {
-    const result: Record<string, GroupStatus> = {}
-    for (const g of TOOL_GROUPS) {
-      result[g.id] = getGroupStatus(g)
-    }
-    setStatuses(result)
-  }, [])
 
   const handleMouseEnter = (groupId: string) => {
     if (hoverTimeout.current) clearTimeout(hoverTimeout.current)
@@ -215,7 +200,11 @@ export function McpToolbar() {
   }
 
   const handleMouseLeave = () => {
-    hoverTimeout.current = setTimeout(() => setActiveGroup(null), 120)
+    hoverTimeout.current = setTimeout(() => setActiveGroup(null), 200)
+  }
+
+  const handleToolClick = (prompt: string) => {
+    onToolClick?.(prompt)
   }
 
   return (
@@ -244,21 +233,11 @@ export function McpToolbar() {
             userSelect: 'none',
           }}
         >
-          MCP
+          Tools
         </span>
 
         {/* Group buttons */}
         {TOOL_GROUPS.map((group) => {
-          const status = statuses[group.id] ?? 'unavailable'
-          const dotColor =
-            status === 'ready'       ? '#4ADE80' :
-            status === 'partial'     ? '#D4AF37' :
-                                       'rgba(255,255,255,0.18)'
-          const dotShadow =
-            status === 'ready'   ? '0 0 5px rgba(74,222,128,0.7)' :
-            status === 'partial' ? '0 0 5px rgba(212,175,55,0.6)' :
-                                   'none'
-
           const isActive = activeGroup === group.id
 
           return (
@@ -269,6 +248,10 @@ export function McpToolbar() {
               onMouseLeave={handleMouseLeave}
             >
               <button
+                onClick={() => {
+                  // Click the group button → send the first tool's prompt
+                  handleToolClick(group.tools[0].prompt)
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -280,7 +263,7 @@ export function McpToolbar() {
                     ? '1px solid rgba(255,255,255,0.1)'
                     : '1px solid transparent',
                   color: isActive ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.35)',
-                  cursor: 'default',
+                  cursor: 'pointer',
                   fontSize: 11,
                   fontFamily: 'Inter, sans-serif',
                   fontWeight: 500,
@@ -297,8 +280,8 @@ export function McpToolbar() {
                     width: 5,
                     height: 5,
                     borderRadius: '50%',
-                    background: dotColor,
-                    boxShadow: dotShadow,
+                    background: '#4ADE80',
+                    boxShadow: '0 0 5px rgba(74,222,128,0.7)',
                     flexShrink: 0,
                     transition: 'background 0.2s, box-shadow 0.2s',
                   }}
@@ -309,6 +292,7 @@ export function McpToolbar() {
                 <ToolGroupTooltip
                   group={group}
                   onClose={() => setActiveGroup(null)}
+                  onToolClick={handleToolClick}
                 />
               )}
             </div>

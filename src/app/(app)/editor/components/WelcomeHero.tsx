@@ -8,7 +8,6 @@ const WORDS = ['Game', 'Tycoon', 'Obby', 'Simulator', 'RPG', 'Map', 'World']
 const INTERVAL_MS = 2200
 
 // ─── Suggested builds — these map directly to our 200 RAG templates ────────
-// Users click one and it auto-sends. No guessing, no blank input.
 const SUGGESTED_BUILDS = [
   { label: 'Pirate Ship', prompt: 'Build me a pirate ship with mast, sails, cannons, and a captain cabin', icon: '🏴‍☠️' },
   { label: 'Medieval Castle', prompt: 'Build a medieval castle with towers, battlements, a gatehouse, and a throne room', icon: '🏰' },
@@ -24,7 +23,7 @@ const SUGGESTED_BUILDS = [
   { label: 'Zen Garden', prompt: 'Create a zen garden with raked sand, stepping stones, bonsai tree, and water feature', icon: '🎋' },
 ]
 
-// ─── Quick action categories (below the suggested builds) ──────────────────
+// ─── Quick action categories ──────────────────────────────────────────────
 const QUICK_MODES = [
   { label: 'Build', description: 'Describe any object or scene', prompt: 'Build me a ', icon: '🏗️', color: '#D4AF37' },
   { label: 'Full Game', description: 'Complete game with gameplay', prompt: '/plan ', icon: '🎮', color: '#60A5FA' },
@@ -55,7 +54,16 @@ function RotatingWord() {
     return () => clearInterval(timer)
   }, [])
   return (
-    <span className="forge-word forge-word-active" style={{ display: 'inline-block', minWidth: '5ch' }}>
+    <span
+      style={{
+        display: 'inline-block',
+        minWidth: '5ch',
+        background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+      }}
+    >
       {WORDS[index]}
     </span>
   )
@@ -71,51 +79,71 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '1.5rem 1rem',
-        gap: '1.5rem',
+        padding: '2rem 1rem',
+        gap: '2rem',
         overflow: 'auto',
+        position: 'relative',
       }}
     >
-      {/* Headline — compact */}
-      <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+      {/* Subtle ambient glow behind headline */}
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 600,
+          height: 300,
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(212,175,55,0.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Headline */}
+      <div style={{ textAlign: 'center', marginTop: '1.5rem', position: 'relative', zIndex: 1 }}>
         <h1 style={{
-          fontSize: 'clamp(2rem, 6vw, 3.5rem)',
+          fontSize: 'clamp(2.2rem, 7vw, 3.8rem)',
           fontWeight: 800,
-          lineHeight: 1.1,
-          letterSpacing: '-0.03em',
+          lineHeight: 1.08,
+          letterSpacing: '-0.04em',
           color: '#FAFAFA',
           margin: 0,
         }}>
           Forge your <RotatingWord />
         </h1>
         <p style={{
-          marginTop: 8,
-          fontSize: 'clamp(0.85rem, 1.8vw, 1rem)',
-          color: '#71717A',
-          maxWidth: 400,
-          margin: '8px auto 0',
+          marginTop: 12,
+          fontSize: 'clamp(0.85rem, 1.8vw, 1.05rem)',
+          color: '#52525B',
+          maxWidth: 380,
+          margin: '12px auto 0',
           lineHeight: 1.5,
         }}>
           Click a build below, or type your own idea
         </p>
       </div>
 
-      {/* ═══ SUGGESTED BUILDS — the main thing users should click ═══ */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
+      {/* ═══ SUGGESTED BUILDS ═══ */}
+      <div style={{ width: '100%', maxWidth: 680, position: 'relative', zIndex: 1 }}>
         <p style={{
           fontSize: 11,
           fontWeight: 700,
           textTransform: 'uppercase',
-          letterSpacing: '0.08em',
+          letterSpacing: '0.1em',
           color: '#D4AF37',
-          marginBottom: 8,
+          marginBottom: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
+          <span style={{ width: 16, height: 1, background: '#D4AF37', opacity: 0.4 }} />
           Click to build instantly
         </p>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-          gap: 8,
+          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+          gap: 10,
         }}>
           {SUGGESTED_BUILDS.map((build) => (
             <button
@@ -124,29 +152,33 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 10,
-                border: '1px solid rgba(212,175,55,0.15)',
-                background: 'rgba(212,175,55,0.04)',
+                gap: 10,
+                padding: '12px 14px',
+                borderRadius: 12,
+                border: '1px solid rgba(212,175,55,0.12)',
+                background: 'rgba(212,175,55,0.03)',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'all 0.2s ease-out',
                 textAlign: 'left',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'inherit',
+                position: 'relative',
+                overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(212,175,55,0.12)'
+                e.currentTarget.style.background = 'rgba(212,175,55,0.10)'
                 e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
-                e.currentTarget.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3), 0 0 20px rgba(212,175,55,0.08)'
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(212,175,55,0.04)'
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.15)'
+                e.currentTarget.style.background = 'rgba(212,175,55,0.03)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.12)'
                 e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = 'none'
               }}
             >
-              <span style={{ fontSize: 18, flexShrink: 0 }}>{build.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7' }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{build.icon}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7', letterSpacing: '-0.01em' }}>
                 {build.label}
               </span>
             </button>
@@ -154,21 +186,25 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         </div>
       </div>
 
-      {/* ═══ QUICK MODES — what else you can do ═══ */}
-      <div style={{ width: '100%', maxWidth: 640 }}>
+      {/* ═══ QUICK MODES ═══ */}
+      <div style={{ width: '100%', maxWidth: 680 }}>
         <p style={{
           fontSize: 11,
           fontWeight: 700,
           textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: '#71717A',
-          marginBottom: 8,
+          letterSpacing: '0.1em',
+          color: '#52525B',
+          marginBottom: 10,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
+          <span style={{ width: 16, height: 1, background: '#52525B', opacity: 0.4 }} />
           Or try a different mode
         </p>
         <div style={{
           display: 'flex',
-          gap: 8,
+          gap: 10,
           flexWrap: 'wrap',
         }}>
           {QUICK_MODES.map((mode) => {
@@ -180,28 +216,32 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 14px',
-                  borderRadius: 8,
-                  border: `1px solid ${mode.color}22`,
-                  background: `${mode.color}08`,
+                  gap: 8,
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  border: `1px solid ${mode.color}20`,
+                  background: `${mode.color}06`,
                   cursor: 'pointer',
-                  transition: 'all 0.15s',
-                  fontFamily: 'Inter, sans-serif',
+                  transition: 'all 0.2s ease-out',
+                  fontFamily: 'inherit',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${mode.color}18`
-                  e.currentTarget.style.borderColor = `${mode.color}44`
+                  e.currentTarget.style.background = `${mode.color}15`
+                  e.currentTarget.style.borderColor = `${mode.color}40`
+                  e.currentTarget.style.transform = 'translateY(-1px)'
+                  e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,0.2), 0 0 12px ${mode.color}10`
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${mode.color}08`
-                  e.currentTarget.style.borderColor = `${mode.color}22`
+                  e.currentTarget.style.background = `${mode.color}06`
+                  e.currentTarget.style.borderColor = `${mode.color}20`
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = 'none'
                 }}
               >
-                <span style={{ fontSize: 15 }}>{mode.icon}</span>
+                <span style={{ fontSize: 17 }}>{mode.icon}</span>
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: mode.color }}>{mode.label}</div>
-                  <div style={{ fontSize: 10, color: '#52525B' }}>{mode.description}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: mode.color, letterSpacing: '-0.01em' }}>{mode.label}</div>
+                  <div style={{ fontSize: 11, color: '#52525B', lineHeight: 1.3 }}>{mode.description}</div>
                 </div>
               </button>
             )
@@ -211,20 +251,24 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
 
       {/* ═══ FULL GAME PRESETS ═══ */}
       {onBuildGame && GENRE_CARDS.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 640 }}>
+        <div style={{ width: '100%', maxWidth: 680 }}>
           <p style={{
             fontSize: 11,
             fontWeight: 700,
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: '#71717A',
-            marginBottom: 8,
+            letterSpacing: '0.1em',
+            color: '#52525B',
+            marginBottom: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
           }}>
+            <span style={{ width: 16, height: 1, background: '#52525B', opacity: 0.4 }} />
             Build a complete game
           </p>
           <div style={{
             display: 'flex',
-            gap: 6,
+            gap: 8,
             flexWrap: 'wrap',
           }}>
             {GENRE_CARDS.map((g) => (
@@ -235,24 +279,26 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 4,
-                  padding: '6px 10px',
-                  borderRadius: 6,
+                  gap: 5,
+                  padding: '7px 12px',
+                  borderRadius: 8,
                   border: '1px solid rgba(255,255,255,0.06)',
                   background: 'rgba(255,255,255,0.02)',
                   color: '#A1A1AA',
                   fontSize: 12,
                   fontWeight: 500,
                   cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  transition: 'all 0.15s ease-out',
                   fontFamily: 'inherit',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
                   e.currentTarget.style.color = '#E4E4E7'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
                   e.currentTarget.style.color = '#A1A1AA'
                 }}
               >
@@ -266,7 +312,14 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
 
       {/* Keyboard shortcut hint */}
       <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center' }}>
-        <kbd style={{ padding: '2px 5px', borderRadius: 4, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Ctrl+K</kbd>{' '}
+        <kbd style={{
+          padding: '2px 6px',
+          borderRadius: 5,
+          border: '1px solid #27272A',
+          background: '#18181B',
+          fontSize: 10,
+          fontFamily: 'inherit',
+        }}>Ctrl+K</kbd>{' '}
         command palette &middot;{' '}
         <span style={{ color: '#52525B' }}>Type anything below to get started</span>
       </p>

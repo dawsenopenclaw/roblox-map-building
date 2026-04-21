@@ -24,6 +24,7 @@ import { auth } from '@clerk/nextjs/server'
 import { requireTier } from '@/lib/tier-guard'
 import { textureGenerateSchema, parseBody } from '@/lib/validations'
 import { aiTextureRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { checkSpendingGuard } from '@/lib/spending-guard'
 
 export const maxDuration = 60
 
@@ -186,6 +187,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {
       // Redis unavailable — allow through rather than hard-fail
     }
+
+      // Global + per-user spending cap
+      try {
+        const guard = await checkSpendingGuard(userId)
+        if (!guard.allowed) {
+          return NextResponse.json({ error: guard.reason || 'Generation limit reached.' }, { status: 429 })
+        }
+      } catch { /* fail open */ }
   }
 
   // Parse + validate body

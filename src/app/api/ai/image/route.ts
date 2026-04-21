@@ -32,6 +32,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDbUserOrUnauthorized } from '@/lib/auth/get-db-user'
 import { requireTier } from '@/lib/tier-guard'
 import { aiImageRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { checkSpendingGuard } from '@/lib/spending-guard'
 import { IMAGE_STYLE_KEYS, getImageStyle } from '@/lib/image-styles'
 import { enhancePrompt } from '@/lib/ai/prompt-enhancer'
 import { spendTokens, earnTokens } from '@/lib/tokens-server'
@@ -234,6 +235,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {
       // Redis unavailable -- allow through
     }
+
+      // Global + per-user spending cap
+      try {
+        const guard = await checkSpendingGuard(userId)
+        if (!guard.allowed) {
+          return NextResponse.json({ error: guard.reason || 'Generation limit reached.' }, { status: 429 })
+        }
+      } catch { /* fail open */ }
   }
 
   // ── Parse body ──────────────────────────────────────────────────────────

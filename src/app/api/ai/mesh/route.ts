@@ -32,6 +32,7 @@ import { z } from 'zod'
 import { meshGenerateSchema, parseBody } from '@/lib/validations'
 import { requireTier } from '@/lib/tier-guard'
 import { aiMeshRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
+import { checkSpendingGuard } from '@/lib/spending-guard'
 import {
   downloadAndUpload,
   downloadAndUploadTexture,
@@ -954,6 +955,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     } catch {
       // Redis unavailable — allow through rather than hard-fail
     }
+
+      // Global + per-user spending cap
+      try {
+        const guard = await checkSpendingGuard(userId)
+        if (!guard.allowed) {
+          return NextResponse.json({ error: guard.reason || 'Generation limit reached.' }, { status: 429 })
+        }
+      } catch { /* fail open */ }
   }
 
   // Parse + validate body

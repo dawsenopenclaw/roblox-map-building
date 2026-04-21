@@ -148,32 +148,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Testimonial quote */}
-        <div
-          className="rounded-xl px-5 sm:px-7 py-5 mb-10"
-          style={{
-            background: 'rgba(212,175,55,0.04)',
-            border: '1px solid rgba(212,175,55,0.12)',
-          }}
-        >
-          <p className="text-sm leading-relaxed mb-3" style={{ color: '#8B95B0' }}>
-            &ldquo;Finally, an AI that builds the WHOLE game, not just scripts&rdquo;
-          </p>
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0"
-              style={{
-                background: 'hsl(30, 45%, 20%)',
-                border: '1px solid rgba(212,175,55,0.25)',
-                color: '#D4AF37',
-              }}
-            >
-              RK
-            </div>
-            <span className="text-[12px]" style={{ color: '#52525B' }}>RK &mdash; Roblox creator</span>
-          </div>
-        </div>
-
         {/* 4-column link grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8 mb-10 sm:mb-12">
           <FooterColumn id="footer-product"   title="Product"   links={PRODUCT_LINKS} />

@@ -278,15 +278,36 @@ function EditorInner() {
       {!hasMessages && (
         <div
           style={{
-            padding: '12px 16px 24px',
-            borderTop: '1px solid rgba(255,255,255,0.04)',
-            background: 'rgba(5,8,16,0.9)',
-            backdropFilter: 'blur(12px)',
+            padding: '16px 20px 28px',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            background: 'linear-gradient(180deg, rgba(5,8,16,0.85) 0%, rgba(5,8,16,0.95) 100%)',
+            backdropFilter: 'blur(16px)',
           }}
         >
           <div style={{ maxWidth: 640, margin: '0 auto' }}>
             {/* Input row — clean, no clutter */}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-end',
+                background: 'rgba(8,10,22,0.7)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 16,
+                padding: '8px 10px 8px 16px',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                backdropFilter: 'blur(16px)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+              }}
+              onFocusCapture={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,230,160,0.06), 0 0 0 1px rgba(212,175,55,0.1), 0 0 20px rgba(212,175,55,0.08)'
+              }}
+              onBlurCapture={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.03)'
+              }}
+            >
               <textarea
                 ref={chat.textareaRef}
                 value={chat.input}
@@ -301,46 +322,47 @@ function EditorInner() {
                 rows={1}
                 style={{
                   flex: 1,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 12,
-                  padding: '12px 16px',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: '8px 0',
                   color: '#FAFAFA',
-                  fontSize: 14,
+                  fontSize: 15,
                   fontFamily: 'Inter, sans-serif',
                   resize: 'none',
                   outline: 'none',
                   lineHeight: 1.5,
+                  fontWeight: 500,
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(212,175,55,0.3)' }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
               />
               <button
                 onClick={() => { if (chat.input.trim()) chat.sendMessage(chat.input) }}
                 disabled={chat.loading || !chat.input.trim()}
                 style={{
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   borderRadius: 12,
                   border: 'none',
-                  background: chat.input.trim() ? '#D4AF37' : 'rgba(255,255,255,0.06)',
-                  color: chat.input.trim() ? '#09090b' : '#52525B',
+                  background: chat.input.trim()
+                    ? 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)'
+                    : 'rgba(255,255,255,0.04)',
+                  color: chat.input.trim() ? '#09090b' : '#3F3F46',
                   cursor: chat.input.trim() ? 'pointer' : 'default',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
                   transition: 'all 0.15s',
+                  boxShadow: chat.input.trim() ? '0 0 16px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,230,160,0.25)' : 'none',
                 }}
                 aria-label="Send message"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                  <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
               </button>
             </div>
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#3F3F46', marginTop: 8 }}>
-              Press <kbd style={{ padding: '1px 4px', borderRadius: 3, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Enter</kbd> to send
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#3F3F46', marginTop: 10 }}>
+              Press <kbd style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Enter</kbd> to send &middot; <kbd style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Shift+Enter</kbd> for new line
             </p>
           </div>
         </div>

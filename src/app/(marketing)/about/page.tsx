@@ -26,7 +26,7 @@ export const metadata: Metadata = createMetadata({
 const STATS = [
   { value: '55', label: 'AI Agents', sub: 'Specialized for every game system' },
   { value: '500K+', label: 'Marketplace Assets', sub: 'Verified Roblox-ready assets' },
-  { value: '5', label: 'AI Models', sub: 'Claude, Meshy, Fal, Flux, Depth Pro' },
+  { value: '5+', label: 'AI Models', sub: 'Best model for each task, automatically' },
   { value: '10 min', label: 'Time to First Map', sub: 'From sign-up to published game' },
 ]
 
@@ -335,12 +335,12 @@ export default function AboutPage() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              { role: 'Terrain Architect',  model: 'Claude Sonnet', specialty: 'Procedural world & map generation',  initials: 'TA', color: '#10B981', bg: 'rgba(16,185,129,0.15)'   },
-              { role: 'Script Engineer',    model: 'Claude Sonnet', specialty: 'Luau scripting & game systems',       initials: 'SE', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)'  },
-              { role: 'Economy Designer',   model: 'Claude Sonnet', specialty: 'Monetization & balance tuning',       initials: 'ED', color: '#D4AF37', bg: 'rgba(212,175,55,0.15)'  },
-              { role: 'UI Builder',         model: 'Claude Sonnet', specialty: 'ScreenGuis, menus & HUD design',      initials: 'UB', color: '#F472B6', bg: 'rgba(244,114,182,0.15)' },
-              { role: '3D Generator',       model: 'Meshy AI',      specialty: 'Text & image to 3D mesh creation',   initials: '3D', color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
-              { role: 'Texture Artist',     model: 'Fal.ai Flux',   specialty: 'PBR texture & material synthesis',   initials: 'TX', color: '#FB923C', bg: 'rgba(251,146,60,0.15)'  },
+              { role: 'Terrain Architect',  model: 'ForjeAI',  specialty: 'Procedural world & map generation',  initials: 'TA', color: '#10B981', bg: 'rgba(16,185,129,0.15)'   },
+              { role: 'Script Engineer',    model: 'ForjeAI',  specialty: 'Luau scripting & game systems',       initials: 'SE', color: '#60A5FA', bg: 'rgba(96,165,250,0.15)'  },
+              { role: 'Economy Designer',   model: 'ForjeAI',  specialty: 'Monetization & balance tuning',       initials: 'ED', color: '#D4AF37', bg: 'rgba(212,175,55,0.15)'  },
+              { role: 'UI Builder',         model: 'ForjeAI',  specialty: 'ScreenGuis, menus & HUD design',      initials: 'UB', color: '#F472B6', bg: 'rgba(244,114,182,0.15)' },
+              { role: '3D Generator',       model: 'ForjeAI',  specialty: 'Text & image to 3D mesh creation',   initials: '3D', color: '#A78BFA', bg: 'rgba(167,139,250,0.15)' },
+              { role: 'Texture Artist',     model: 'ForjeAI',  specialty: 'PBR texture & material synthesis',   initials: 'TX', color: '#FB923C', bg: 'rgba(251,146,60,0.15)'  },
             ].map((member) => (
               <div
                 key={member.role}

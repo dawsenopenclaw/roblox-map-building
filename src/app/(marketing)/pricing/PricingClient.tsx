@@ -68,9 +68,9 @@ const TIERS = [
     priceMonthly: 0,
     priceYearly: 0,
     yearlyTotal: 0,
-    tagline: 'Try before you commit',
+    tagline: '1,000 tokens — no credit card',
     highlight: false,
-    badge: null,
+    badge: '$0 Free Trial',
     cta: 'Start Free',
     ctaHref: '/editor',
     features: [
@@ -203,7 +203,7 @@ const FAQ = [
   },
   {
     q: 'How does annual billing work?',
-    a: 'Annual billing charges you once per year at a 20% discount vs. monthly. Hobby is billed at $95.90/yr ($7.99/mo), Creator at $239.90/yr ($19.99/mo), Studio at $479.90/yr ($39.99/mo). Switch billing cycles anytime from account settings.',
+    a: 'Annual billing charges you once per year at a 20% discount vs. monthly. Starter is billed at $96/yr ($8/mo), Creator at $480/yr ($40/mo), Studio at $1,920/yr ($160/mo). Switch billing cycles anytime from account settings.',
   },
   {
     q: 'Can I buy extra tokens without upgrading my plan?',
@@ -870,7 +870,7 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
           </h1>
 
           <p className="text-lg text-[#6B7699] mb-6 max-w-lg mx-auto leading-relaxed">
-            Buy tokens. Build games. No subscriptions.
+            Pick a plan. Build games. Scale when you&apos;re ready.
           </p>
 
           {/* Competitor differentiation */}
@@ -892,16 +892,47 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
 
         </div>
 
-        {/* Token Packs — main pricing content */}
-        <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
+        {/* ------------------------------------------------------------------ */}
+        {/* Monthly / Annual toggle                                            */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="flex justify-center mb-12">
+          <div
+            className="inline-flex items-center rounded-full p-1"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <button
+              onClick={() => setAnnual(false)}
+              className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200"
+              style={{
+                background: !annual ? 'rgba(212,175,55,0.15)' : 'transparent',
+                color: !annual ? '#D4AF37' : '#6B7699',
+                border: !annual ? '1px solid rgba(212,175,55,0.3)' : '1px solid transparent',
+              }}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setAnnual(true)}
+              className="px-5 py-2 rounded-full text-sm font-semibold transition-all duration-200 flex items-center gap-2"
+              style={{
+                background: annual ? 'rgba(212,175,55,0.15)' : 'transparent',
+                color: annual ? '#D4AF37' : '#6B7699',
+                border: annual ? '1px solid rgba(212,175,55,0.3)' : '1px solid transparent',
+              }}
+            >
+              Annual
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
+                Save 20%
+              </span>
+            </button>
+          </div>
+        </div>
 
-        {/* Hidden: subscription tier cards removed — tokens only */}
-        {false && (() => {
-          const visibleTiers = TIERS
-          return (
-        <>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6 items-start transition-all duration-300">
-          {visibleTiers.map((tier) => {
+        {/* ------------------------------------------------------------------ */}
+        {/* Subscription tier cards                                            */}
+        {/* ------------------------------------------------------------------ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-20 items-start transition-all duration-300">
+          {TIERS.map((tier) => {
             const price = annual ? tier.priceYearly : tier.priceMonthly
             const Icon  = tier.icon
 
@@ -943,14 +974,22 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
                       : { zIndex: 1 }
                   }
                 >
-                  {/* Most Popular badge */}
+                  {/* Tier badge */}
                   {tier.badge && (
                     <div className="absolute -top-5 left-1/2 -translate-x-1/2">
                       <span
-                        className="inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full text-[#0A0810] whitespace-nowrap shadow-[0_4px_20px_rgba(212,175,55,0.6)]"
-                        style={{ background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)' }}
+                        className={`inline-flex items-center gap-1.5 text-sm font-extrabold px-5 py-2 rounded-full whitespace-nowrap ${
+                          tier.key === 'FREE'
+                            ? 'text-[#0A0810] shadow-[0_4px_20px_rgba(16,185,129,0.5)]'
+                            : 'text-[#0A0810] shadow-[0_4px_20px_rgba(212,175,55,0.6)]'
+                        }`}
+                        style={{
+                          background: tier.key === 'FREE'
+                            ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
+                            : 'linear-gradient(135deg, #D4AF37 0%, #FFD966 100%)',
+                        }}
                       >
-                        <Crown className="w-3.5 h-3.5" />
+                        {tier.highlight ? <Crown className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
                         {tier.badge}
                       </span>
                     </div>
@@ -1087,12 +1126,12 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         {/* ------------------------------------------------------------------ */}
         {/* Custom Pricing Calculator — the 5th tier ("build your own plan")   */}
         {/* ------------------------------------------------------------------ */}
-        <div>
+        <div className="mb-24">
           <CustomPricingCalculator />
         </div>
-        </>
-          )
-        })()}
+
+        {/* Token Packs — supplementary */}
+        <TokenPacksSection onError={showError} packConfig={config.tokenPacks} />
 
         {/* ------------------------------------------------------------------ */}
         {/* Pay with Robux                                                      */}

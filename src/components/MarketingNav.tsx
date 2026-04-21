@@ -128,12 +128,14 @@ function MarketingNav() {
           className="hidden md:flex flex-1 items-center justify-center gap-0.5 lg:gap-1 min-w-0"
           aria-label="Site navigation"
         >
-          {NAV_LINKS.map((link) => (
+          {NAV_LINKS.map((link) => {
+            const isActive = !link.href.startsWith('#') && pathname === link.href
+            return (
             <Link
               key={link.href}
               href={link.href}
               onClick={link.scroll ? (e) => handleAnchorClick(e, link.href) : undefined}
-              className={`relative inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-2 text-[13px] lg:text-sm text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] whitespace-nowrap${link.lgOnly ? ' hidden lg:inline-flex' : ''}`}
+              className={`relative inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-2 text-[13px] lg:text-sm rounded-lg transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#D4AF37] whitespace-nowrap${link.lgOnly ? ' hidden lg:inline-flex' : ''} ${isActive ? 'text-[#D4AF37] bg-[#D4AF37]/[0.08]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
             >
               <link.Icon size={14} aria-hidden="true" />
               {link.label}
@@ -150,7 +152,8 @@ function MarketingNav() {
                 </span>
               )}
             </Link>
-          ))}
+            )
+          })}
         </nav>
 
         {/* Desktop CTA — right. Language switcher + auth controls.

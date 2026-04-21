@@ -173,6 +173,15 @@ export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase
           partCount: data.partCount ?? prev.studioContext.partCount,
           nearbyParts: data.nearbyParts ?? prev.studioContext.nearbyParts,
         }
+        // Server says disconnected — immediately reflect that in state
+        if (data.connected === false && prev.isConnected) {
+          return {
+            ...prev,
+            isConnected: false,
+            connectionError: 'Studio disconnected — reconnect to continue building',
+            studioContext: ctx,
+          }
+        }
         if (prev.isConnected) {
           return {
             ...prev,
@@ -391,6 +400,17 @@ export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase
 
   // Cleanup on unmount
   useEffect(() => () => stopAllPolling(), [stopAllPolling])
+
+  // When page regains focus (tab switch, refresh), immediately re-poll to catch disconnects
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && state.sessionId && state.isConnected) {
+        void pollStatus(state.sessionId)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [state.sessionId, state.isConnected, pollStatus])
 
   // Clear stale localStorage on mount
   useEffect(() => {

@@ -75,3 +75,6 @@ Thumbs.db
 /.stash-backups/
 .env*.local
 .transcripts/
+
+# Local Netlify folder
+.netlify

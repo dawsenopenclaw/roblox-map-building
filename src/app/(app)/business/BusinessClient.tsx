@@ -347,7 +347,7 @@ function OverviewTab({
           <h3 className="text-sm font-semibold text-white">Quick Actions</h3>
           <div className="space-y-2">
             <QuickAction icon={Mail}        label="Invite team member"     onClick={() => onTabChange('team')}       />
-            <QuickAction icon={FolderOpen}  label="Create new project"     />
+            <QuickAction icon={FolderOpen}  label="Create new project"     onClick={() => window.location.href = '/editor?new=1'} />
             <QuickAction icon={BarChart3}   label="View analytics"         onClick={() => onTabChange('analytics')}  />
             <QuickAction icon={Paintbrush}  label="Configure white-label"  onClick={() => onTabChange('white-label')}/>
             <QuickAction icon={Globe}       label="Set up custom domain"   onClick={() => onTabChange('white-label')}/>
@@ -377,6 +377,28 @@ function TeamTab({ team }: { team: TeamData }) {
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+
+  const handleRemoveMember = async (memberId: string) => {
+    setRemovingId(memberId)
+    try {
+      const res = await fetch('/api/business/team', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setInviteError(data.error ?? 'Failed to remove member')
+      }
+    } catch {
+      setInviteError('Network error — please try again.')
+    } finally {
+      setRemovingId(null)
+      setMenuOpenFor(null)
+    }
+  }
 
   const handleInvite = async () => {
     if (!inviteEmail.includes('@')) {
@@ -521,12 +543,32 @@ function TeamTab({ team }: { team: TeamData }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center justify-between sm:justify-start gap-2 relative">
               <StatusBadge status={member.status} />
               {member.role !== 'OWNER' && (
-                <button className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-gray-500 hover:text-white" aria-label={`More options for ${member.displayName ?? 'member'}`}>
-                  <MoreHorizontal size={14} aria-hidden="true" />
-                </button>
+                <>
+                  <button
+                    onClick={() => setMenuOpenFor(menuOpenFor === member.id ? null : member.id)}
+                    className="p-1.5 rounded-lg hover:bg-white/8 transition-colors text-gray-500 hover:text-white"
+                    aria-label={`More options for ${member.displayName ?? 'member'}`}
+                  >
+                    <MoreHorizontal size={14} aria-hidden="true" />
+                  </button>
+                  {menuOpenFor === member.id && (
+                    <div
+                      className="absolute right-0 top-full mt-1 z-20 bg-[#141414] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-[140px]"
+                      onMouseLeave={() => setMenuOpenFor(null)}
+                    >
+                      <button
+                        onClick={() => handleRemoveMember(member.id)}
+                        disabled={removingId === member.id}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {removingId === member.id ? 'Removing...' : 'Remove Member'}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

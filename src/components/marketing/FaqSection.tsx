@@ -5,11 +5,11 @@ import { useState } from 'react'
 const FAQS = [
   {
     q: 'Is ForjeGames free?',
-    a: 'Yes. You get 1,000 free tokens every month — no credit card required. That\'s enough to prototype a full game concept, generate scripts, and test the Studio sync before you commit to anything.',
+    a: 'Yes. You get 1,000 free tokens every month — no credit card required. Paid plans start at $10/month for 5,000 tokens. That\'s enough to prototype a full game concept, generate scripts, and test the Studio sync before you commit.',
   },
   {
     q: 'How is this different from Lemonade?',
-    a: 'Lemonade generates scripts. ForjeGames builds complete games. That means terrain shaping, 3D asset generation, UI design, economy balancing, and Luau scripting — all from a single platform. We also support multiple AI models (Claude 4, GPT-4o, Gemini 2.0, Grok 3) and let you switch mid-session.',
+    a: 'Lemonade generates scripts. ForjeGames builds complete games. That means terrain shaping, 3D asset generation, UI design, economy balancing, and Luau scripting — all from a single platform. We run multiple AI models behind the scenes and automatically pick the best one for each task.',
   },
   {
     q: 'Do I need to know how to code?',
@@ -18,18 +18,6 @@ const FAQS = [
   {
     q: 'Does it work with my existing Roblox game?',
     a: 'Yes. Install our Studio plugin, connect it to your place, and ForjeGames builds on top of your existing game. It reads your current structure and generates additions that fit — it doesn\'t start from scratch.',
-  },
-  {
-    q: 'What AI models do you use?',
-    a: 'Claude 4, GPT-4o, Gemini 2.0, and Grok 3. You pick the one you prefer from the model switcher in the editor. Each has different strengths — Claude 4 excels at complex systems, GPT-4o is fast for iteration, Gemini handles large context well.',
-  },
-  {
-    q: 'Is my game data safe?',
-    a: 'Yes. ForjeGames never stores your game files. All assets and scripts stay in YOUR Roblox Studio — we only send generated code through a secure WebSocket connection that closes when you disconnect. Nothing is persisted on our servers.',
-  },
-  {
-    q: 'Can I use it with a team?',
-    a: 'Yes. The Creator plan supports up to 3 team members. The Studio plan supports up to 50 members with shared workspaces, role permissions, and collaborative build history.',
   },
   {
     q: 'How do I get the Studio plugin?',
