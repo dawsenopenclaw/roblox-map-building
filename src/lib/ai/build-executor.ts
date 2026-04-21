@@ -32,6 +32,12 @@ import {
   obbyCheckpoints,
   petFollowSystem,
   professionalBuilding,
+  vehicleSystem,
+  tradingSystem,
+  dailyRewardsSystem,
+  particleEffectSystem,
+  weatherSystem,
+  animationSystem,
 } from './luau-templates'
 
 // ── Lazy Anthropic client (kept for optional custom-key path only) ────────────
@@ -401,6 +407,59 @@ async function generateLuauForTask(task: BuildTask): Promise<string> {
         withVegetation: (params['withVegetation'] as boolean) ?? true,
         roomsPerFloor: (params['roomsPerFloor'] as number) ?? 0,
         withWallDetail: (params['withWallDetail'] as boolean) ?? true,
+      })
+    }
+    if (templateName === 'vehicle_system') {
+      return vehicleSystem({
+        vehicleName: (params['vehicleName'] as string) ?? 'Car',
+        speed: (params['speed'] as number) ?? 50,
+        turnSpeed: (params['turnSpeed'] as number) ?? 2,
+        seatCount: (params['seatCount'] as number) ?? 1,
+      })
+    }
+    if (templateName === 'trading_system') {
+      return tradingSystem({
+        tradingEnabled: (params['tradingEnabled'] as boolean) ?? true,
+        maxTradeSlots: (params['maxTradeSlots'] as number) ?? 6,
+        tradeRange: (params['tradeRange'] as number) ?? 15,
+      })
+    }
+    if (templateName === 'daily_rewards') {
+      return dailyRewardsSystem({
+        rewards: (params['rewards'] as Array<{ day: number; currency: string; amount: number }>) ?? [
+          { day: 1, currency: 'Cash', amount: 100 },
+          { day: 2, currency: 'Cash', amount: 200 },
+          { day: 3, currency: 'Cash', amount: 350 },
+          { day: 4, currency: 'Cash', amount: 500 },
+          { day: 5, currency: 'Cash', amount: 750 },
+          { day: 6, currency: 'Cash', amount: 1000 },
+          { day: 7, currency: 'Cash', amount: 2000 },
+        ],
+        resetHours: (params['resetHours'] as number) ?? 24,
+      })
+    }
+    if (templateName === 'particle_effect') {
+      return particleEffectSystem({
+        effectName: (params['effectName'] as string) ?? 'Effect',
+        type: (params['type'] as 'fire' | 'smoke' | 'sparkle' | 'rain' | 'snow' | 'magic') ?? 'magic',
+        duration: (params['duration'] as number) ?? 10,
+        attachTo: (params['attachTo'] as string) ?? 'Workspace',
+      })
+    }
+    if (templateName === 'weather_system') {
+      return weatherSystem({
+        weatherType: (params['weatherType'] as 'rain' | 'snow' | 'fog' | 'storm' | 'clear') ?? 'rain',
+        transitionTime: (params['transitionTime'] as number) ?? 5,
+        intensity: (params['intensity'] as number) ?? 0.7,
+      })
+    }
+    if (templateName === 'animation_system') {
+      return animationSystem({
+        animationName: (params['animationName'] as string) ?? 'Dance',
+        animId: (params['animId'] as string) ?? 'rbxassetid://507771019',
+        speed: (params['speed'] as number) ?? 1,
+        looping: (params['looping'] as boolean) ?? true,
+        priority: (params['priority'] as 'Idle' | 'Movement' | 'Action') ?? 'Action',
       })
     }
   }
