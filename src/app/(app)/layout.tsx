@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { AnalyticsProvider } from '@/components/AnalyticsProvider'
 import { AppLoadingFallback } from '@/components/AppLoadingFallback'
+import { AchievementToastContainer } from '@/components/gamification/AchievementToast'
 
 // Routes inside the (app) group that are publicly accessible without auth.
 // The middleware already marks these public — the layout must not override that.
@@ -125,6 +126,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     >
       <AppShell>
         <Suspense fallback={<AppLoadingFallback />}>{children}</Suspense>
+        <AchievementToastContainer />
       </AppShell>
     </AnalyticsProvider>
   )

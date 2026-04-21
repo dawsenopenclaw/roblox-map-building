@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useToast } from '@/components/ui/toast-notification'
+import { StreakBanner } from '@/components/gamification/StreakBanner'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1328,16 +1329,19 @@ export function DashboardHomeClient({ firstName, subscription, tokenBalance, lif
           {/* Right 1/3 */}
           <div className="space-y-6">
             <div className="fj-animate" style={staggerStyle(2, 450)}>
+              <StreakBanner />
+            </div>
+            <div className="fj-animate" style={staggerStyle(3, 450)}>
               <QuickActions />
             </div>
 
-            <div className="fj-animate" style={staggerStyle(3, 450)}>
+            <div className="fj-animate" style={staggerStyle(4, 450)}>
               <RecentProjects builds={recentBuilds} />
             </div>
 
             {/* Token CTA for FREE users */}
             {activeTier === 'FREE' && (
-              <div className="fj-animate" style={staggerStyle(4, 450)}>
+              <div className="fj-animate" style={staggerStyle(5, 450)}>
                 <section>
                   <div
                     className="rounded-xl border p-6 transition-colors duration-200 hover:border-[#D4AF37]/50"

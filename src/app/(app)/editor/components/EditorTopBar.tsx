@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useUser } from '@clerk/nextjs'
 import { TokenBalanceWidget } from '@/components/TokenBalanceWidget'
+import { UsageMeter } from '@/components/editor/UsageMeter'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 interface EditorTopBarProps {
@@ -229,6 +230,9 @@ export function EditorTopBar({
         </svg>
         {!isMobile && 'API Keys'}
       </button>
+
+      {/* Daily build usage */}
+      <UsageMeter />
 
       {/* Token balance */}
       <TokenBalanceWidget />

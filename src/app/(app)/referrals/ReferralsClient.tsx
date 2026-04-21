@@ -153,7 +153,7 @@ export default function ReferralsClient() {
   const shareTwitter = () => {
     if (!referralLink) return
     const text = encodeURIComponent(
-      `Building Roblox maps with AI on @ForjeGames — sign up free!\n\nUse my link and we both get 500 bonus tokens: ${referralLink}`
+      `I've been building Roblox games with AI on @ForjeGames — type what you want and it builds it in Studio. Try it free: ${referralLink}`
     )
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer')
   }
@@ -161,7 +161,7 @@ export default function ReferralsClient() {
   const shareDiscord = async () => {
     if (!referralLink) return
     const msg =
-      `Hey! I've been using ForjeGames to build Roblox maps with AI.\n` +
+      `I've been building Roblox games with AI on ForjeGames — type what you want and it builds it in Studio.\n` +
       `Sign up free with my link and we BOTH get 500 bonus tokens: ${referralLink}`
     try {
       await navigator.clipboard.writeText(msg)
@@ -230,7 +230,7 @@ export default function ReferralsClient() {
           <IconGift className="w-4 h-4 text-green-400" />
         </div>
         <div>
-          <p className="text-green-400 text-sm font-semibold">Both you and your friend get 50 bonus credits</p>
+          <p className="text-green-400 text-sm font-semibold">Both you and your friend get 500 bonus tokens</p>
           <p className="text-gray-400 text-xs mt-0.5">Credits are awarded instantly when your friend signs up using your referral link or code.</p>
         </div>
       </div>

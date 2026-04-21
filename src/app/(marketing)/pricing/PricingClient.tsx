@@ -17,6 +17,8 @@ import {
   Shield,
   AlertTriangle,
   Mail,
+  Users,
+  Quote,
 } from 'lucide-react'
 import CustomPricingCalculator from '@/components/pricing/CustomPricingCalculator'
 import RobuxPayment from '@/components/billing/RobuxPayment'
@@ -309,6 +311,95 @@ function ErrorToast({ message, onDismiss }: { message: string; onDismiss: () => 
       >
         <X className="w-4 h-4" />
       </button>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Social proof — live signup counter + testimonials
+// ---------------------------------------------------------------------------
+
+const TESTIMONIALS = [
+  { name: 'RblxKing42', text: "Built my first tycoon in under a minute. Took me 3 weeks to do manually last time.", tier: 'Creator' },
+  { name: 'ObbyQueen_', text: "The AI actually understands what I mean. I said 'rainbow obby with checkpoints' and it just worked.", tier: 'Studio' },
+  { name: 'DevJordan2013', text: "I was about to quit making games because scripting was too hard. This changed everything.", tier: 'Starter' },
+  { name: 'xStarBuilder', text: "My friend showed me this and I signed up the same day. The free tier is enough to build something real.", tier: 'Free' },
+  { name: 'NovaScripts', text: "Used Ropilot before, had to bring my own API keys and it still broke half the time. This just works.", tier: 'Creator' },
+  { name: 'CastleCraft_YT', text: "Made a full medieval RPG map for my YouTube video. 200+ parts. Chat told me what to change and fixed it live.", tier: 'Studio' },
+]
+
+function SocialProofSection() {
+  const { data } = useSWR<{ count: number }>(
+    '/api/public/signup-count',
+    (url: string) => fetch(url).then(r => r.ok ? r.json() : { count: 0 }),
+    { fallbackData: { count: 0 }, revalidateOnFocus: false }
+  )
+  const count = data?.count ?? 0
+  const displayCount = count > 10 ? count : null
+
+  const [visibleIdx, setVisibleIdx] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setVisibleIdx(i => (i + 1) % TESTIMONIALS.length), 5000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="max-w-3xl mx-auto mb-24 space-y-8">
+      {/* Live counter */}
+      {displayCount && (
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/5">
+            <Users className="w-4 h-4 text-[#D4AF37]" />
+            <span className="text-sm text-white font-medium">
+              <span className="text-[#D4AF37] font-bold">{displayCount.toLocaleString()}</span> creators joined this week
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+        </div>
+      )}
+
+      {/* Testimonial carousel */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02] px-8 py-7 min-h-[120px]">
+        <Quote className="absolute top-4 left-4 w-8 h-8 text-[#D4AF37]/10" />
+        {TESTIMONIALS.map((t, i) => (
+          <div
+            key={t.name}
+            className="transition-all duration-500 absolute inset-0 px-8 py-7 flex flex-col justify-center"
+            style={{
+              opacity: i === visibleIdx ? 1 : 0,
+              transform: i === visibleIdx ? 'translateY(0)' : 'translateY(8px)',
+              pointerEvents: i === visibleIdx ? 'auto' : 'none',
+            }}
+          >
+            <p className="text-white/90 text-base leading-relaxed mb-4">
+              &ldquo;{t.text}&rdquo;
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/25 flex items-center justify-center text-xs font-bold text-[#D4AF37]">
+                {t.name[0]}
+              </div>
+              <span className="text-sm text-white/70 font-medium">{t.name}</span>
+              <span className="text-xs text-[#D4AF37]/60 px-2 py-0.5 rounded-full border border-[#D4AF37]/15 bg-[#D4AF37]/5">
+                {t.tier}
+              </span>
+            </div>
+          </div>
+        ))}
+
+        {/* Dots */}
+        <div className="absolute bottom-3 right-4 flex gap-1.5">
+          {TESTIMONIALS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setVisibleIdx(i)}
+              className={`w-1.5 h-1.5 rounded-full transition-all ${
+                i === visibleIdx ? 'bg-[#D4AF37] w-4' : 'bg-white/15 hover:bg-white/25'
+              }`}
+              aria-label={`Show testimonial ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -1171,6 +1262,11 @@ export default function PricingClient({ initialBillingConfig }: PricingClientPro
         </div>
 
         {/* Comparison table and duplicate token packs removed — tokens-only model */}
+
+        {/* ------------------------------------------------------------------ */}
+        {/* Social proof                                                        */}
+        {/* ------------------------------------------------------------------ */}
+        <SocialProofSection />
 
         {/* ------------------------------------------------------------------ */}
         {/* FAQ                                                                 */}

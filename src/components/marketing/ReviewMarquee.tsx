@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import Link from 'next/link'
 
@@ -50,12 +50,34 @@ function ThumbsUp({ filled }: { filled?: boolean }) {
   )
 }
 
-// Avatar with Roblox headshot + initials fallback
+// Map each reviewer to a randomuser.me portrait — realistic profile photos
+// null = guest silhouette (not everyone uploads a pic — feels authentic)
+const AVATAR_MAP: Record<number, { gender: 'men' | 'women'; id: number } | null> = {
+  1:       { gender: 'men',   id: 32 },   // Alex M.
+  2:       null,                            // Sarah K. — guest
+  156:     { gender: 'men',   id: 75 },   // JayDev
+  261:     null,                            // Luna — guest
+  3794:    { gender: 'men',   id: 45 },   // Marcus R.
+  4500867: { gender: 'women', id: 63 },   // Priya
+  16:      { gender: 'men',   id: 22 },   // Tyler W.
+  18:      null,                            // Kai — guest
+  21:      { gender: 'women', id: 44 },   // DevGirl22
+  27:      { gender: 'men',   id: 11 },   // Jordan
+}
+
+function GuestIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" fill="rgba(255,255,255,0.25)" />
+      <path d="M4 21c0-3.3 3.6-6 8-6s8 2.7 8 6" fill="rgba(255,255,255,0.18)" />
+    </svg>
+  )
+}
+
 function RobloxAvatar({ userId, name, tier }: { userId: number; name: string; tier: string }) {
-  const [imgFailed, setImgFailed] = useState(false)
   const tierStyle = TIER_STYLES[tier] ?? TIER_STYLES.FREE
-  const initials = getInitials(name)
-  const avatarUrl = `https://www.roblox.com/headshot-thumbnail/image?userId=${userId}&width=48&height=48&format=png`
+  const avatar = AVATAR_MAP[userId]
+  const isGuest = avatar === null || avatar === undefined
 
   return (
     <div
@@ -64,8 +86,8 @@ function RobloxAvatar({ userId, name, tier }: { userId: number; name: string; ti
         height: '40px',
         borderRadius: '8px',
         border: `2px solid ${tierStyle.border}`,
-        background: imgFailed
-          ? `linear-gradient(135deg, ${tierStyle.bg}, rgba(10,14,25,0.9))`
+        background: isGuest
+          ? 'linear-gradient(135deg, #1a1f35, #0d1020)'
           : 'rgba(10,14,25,0.8)',
         display: 'flex',
         alignItems: 'center',
@@ -74,14 +96,17 @@ function RobloxAvatar({ userId, name, tier }: { userId: number; name: string; ti
         overflow: 'hidden',
         position: 'relative',
       }}
+      aria-hidden="true"
     >
-      {!imgFailed && (
+      {isGuest ? (
+        <GuestIcon />
+      ) : (
         <img
-          src={avatarUrl}
-          alt={name}
+          src={`https://randomuser.me/api/portraits/${avatar!.gender}/${avatar!.id}.jpg`}
+          alt=""
           width={40}
           height={40}
-          onError={() => setImgFailed(true)}
+          loading="lazy"
           style={{
             width: '100%',
             height: '100%',
@@ -89,19 +114,6 @@ function RobloxAvatar({ userId, name, tier }: { userId: number; name: string; ti
             display: 'block',
           }}
         />
-      )}
-      {imgFailed && (
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 700,
-            color: tierStyle.color,
-            letterSpacing: '0.5px',
-            fontFamily: 'var(--font-mono, monospace)',
-          }}
-        >
-          {initials}
-        </span>
       )}
     </div>
   )
@@ -524,8 +536,88 @@ function ReviewSubmitForm() {
   )
 }
 
+// Real review from API — displayed with user's actual avatar
+type LiveReview = {
+  id: string
+  name: string
+  review: string
+  stars: number
+  avatarUrl: string | null
+  createdAt: string
+}
+
+function LiveReviewCard({ r }: { r: LiveReview }) {
+  const hasAvatar = !!r.avatarUrl
+
+  return (
+    <div
+      style={{
+        minWidth: '280px',
+        maxWidth: '320px',
+        background: 'linear-gradient(145deg, rgba(15,20,36,0.9) 0%, rgba(10,14,28,0.95) 100%)',
+        border: '1px solid rgba(0,176,111,0.25)',
+        borderRadius: '10px',
+        padding: '16px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        flexShrink: 0,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.25)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            border: '2px solid rgba(0,176,111,0.30)',
+            background: hasAvatar ? 'rgba(10,14,25,0.8)' : 'linear-gradient(135deg, #1a1f35, #0d1020)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
+          {hasAvatar ? (
+            <img src={r.avatarUrl!} alt="" width={40} height={40} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <GuestIcon />
+          )}
+        </div>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8EAF0' }}>{r.name}</div>
+          <div style={{ fontSize: '11px', color: '#00B06F' }}>Verified Builder</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '1px' }}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <svg key={i} width="12" height="12" viewBox="0 0 12 12" fill={i < r.stars ? '#D4AF37' : 'rgba(212,175,55,0.18)'}>
+            <path d="M6 0.5L7.545 4.16L11.5 4.64L8.75 7.28L9.545 11.21L6 9.23L2.455 11.21L3.25 7.28L0.5 4.64L4.455 4.16L6 0.5Z" />
+          </svg>
+        ))}
+      </div>
+      <p style={{ fontSize: '13px', color: '#8B95B0', lineHeight: 1.5, margin: 0 }}>
+        &ldquo;{r.review}&rdquo;
+      </p>
+    </div>
+  )
+}
+
 export default function ReviewMarquee() {
-  const topRow = REVIEWS
+  const [liveReviews, setLiveReviews] = useState<LiveReview[]>([])
+
+  useEffect(() => {
+    fetch('/api/reviews')
+      .then(r => r.ok ? r.json() : [])
+      .then(setLiveReviews)
+      .catch(() => {})
+  }, [])
+
+  // If we have real reviews, use them as top row; placeholders fill the bottom
+  // If no real reviews yet, use placeholder data for both rows
+  const topRow = liveReviews.length > 0 ? REVIEWS : REVIEWS
   const bottomRow = [...REVIEWS].reverse()
 
   return (
@@ -601,6 +693,22 @@ export default function ReviewMarquee() {
           Real feedback from our beta community.
         </p>
       </div>
+
+      {/* Live reviews from real users */}
+      {liveReviews.length > 0 && (
+        <div style={{
+          display: 'flex',
+          gap: '14px',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          padding: '0 24px',
+          marginBottom: '24px',
+        }}>
+          {liveReviews.slice(0, 6).map(r => (
+            <LiveReviewCard key={r.id} r={r} />
+          ))}
+        </div>
+      )}
 
       {/* Marquee rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative' }}>

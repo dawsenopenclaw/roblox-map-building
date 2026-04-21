@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react'
+import { useSWRConfig } from 'swr'
 import { useUser } from '@clerk/nextjs'
 import { ChatPanel } from '@/components/editor/ChatPanel'
 import { CommandPalette } from '@/components/editor/CommandPalette'
@@ -26,12 +27,16 @@ import { LeftDrawer } from './components/LeftDrawer'
 import { OnboardingOverlay, useOnboardingOverlay } from './components/OnboardingOverlay'
 import ApiKeysModal from './panels/ApiKeysModal'
 import { BuildProgressDashboard } from '@/components/editor/BuildProgressDashboard'
+import { FirstBuildModal } from '@/components/editor/FirstBuildModal'
+import { PostBuildShare } from '@/components/editor/PostBuildShare'
+import { UpgradeNudge } from '@/components/editor/UpgradeNudge'
 
 // ─── Inner component (needs toast + theme providers above) ────────────────
 
 function EditorInner() {
   const { isSignedIn } = useUser()
   const { toast } = useToast()
+  const { mutate } = useSWRConfig()
 
   // ── State ──
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -40,6 +45,9 @@ function EditorInner() {
   const [publishOpen, setPublishOpen] = useState(false)
   const [activeBuildId, setActiveBuildId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [buildJustSucceeded, setBuildJustSucceeded] = useState(false)
+  const [showShareBar, setShowShareBar] = useState(false)
+  const [lastBuildPrompt, setLastBuildPrompt] = useState('')
 
   // ── Studio connection — auto-generate pairing code on mount ──
   const studio = useStudioConnection()
@@ -67,11 +75,26 @@ function EditorInner() {
             body: JSON.stringify({ code: luauCode, prompt, sessionId }),
           })
           studio.addActivity(`Build sent: ${prompt.slice(0, 60)}`)
+          // Refresh the usage meter so the count updates immediately
+          mutate('/api/usage/daily')
+          // Signal that a build just succeeded -- FirstBuildModal picks this up
+          setBuildJustSucceeded(true)
+          // Show post-build share bar
+          setLastBuildPrompt(prompt)
+          setShowShareBar(true)
+          // Check for newly earned achievements (fire-and-forget)
+          fetch('/api/gamification/achievements/check', { method: 'POST' }).catch(() => {})
+          // Bump build streak (fire-and-forget)
+          fetch('/api/gamification/streak', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'build' }),
+          }).catch(() => {})
         } catch {
           // Non-fatal — chat already shows the code
         }
       },
-      [studio],
+      [studio, mutate],
     ),
   })
 
@@ -173,6 +196,9 @@ function EditorInner() {
         fontFamily: 'var(--font-inter, Inter, sans-serif)',
       }}
     >
+      {/* Upgrade nudge — shows when free user is at 80%+ daily limit */}
+      <UpgradeNudge />
+
       {/* Top bar */}
       <EditorTopBar
         onOpenDrawer={() => setDrawerOpen(true)}
@@ -428,6 +454,19 @@ function EditorInner() {
           studioConnected={studio.isConnected}
         />
       )}
+
+      {/* Post-build share bar — shows after every successful build */}
+      <PostBuildShare
+        visible={showShareBar}
+        prompt={lastBuildPrompt}
+        onDismiss={() => setShowShareBar(false)}
+      />
+
+      {/* First-build upgrade modal — shows once for free-tier users */}
+      <FirstBuildModal
+        buildJustSucceeded={buildJustSucceeded}
+        onDismiss={() => setBuildJustSucceeded(false)}
+      />
     </div>
   )
 }

@@ -17,9 +17,9 @@ export function generateReferralCode(): string {
 }
 
 /** Bonus credits granted to both referrer and referee on a successful referral. */
-export const REFERRAL_BONUS_CREDITS = 50
+export const REFERRAL_BONUS_CREDITS = 500
 
 /** Build the full referral link from a code. */
 export function buildReferralUrl(code: string): string {
-  return `https://forjegames.com/?ref=${code}`
+  return `https://forjegames.com/sign-up?ref=${code}`
 }

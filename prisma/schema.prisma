@@ -109,6 +109,9 @@ model User {
   builds   Build[]
   projects Project[]
 
+  // Site Reviews (homepage testimonials)
+  siteReviews SiteReview[]
+
   // Token Grant Jobs
   tokenGrantJobs TokenGrantJob[]
 
@@ -1369,4 +1372,18 @@ model BuildFeedback {
   @@index([worked, score])
   @@index([category, score])
   @@index([userVote])
+}
+
+// ─── Site Reviews (homepage testimonials) ─────────────────────────────────────
+model SiteReview {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review    String   @db.VarChar(200)
+  stars     Int      // 1-5
+  approved  Boolean  @default(false) // manual approval before showing on homepage
+  createdAt DateTime @default(now())
+
+  @@index([approved, createdAt])
+  @@index([userId])
 }

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ForjeGames — Build History</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #09090b;
+      color: #fafafa;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header */
+    .header {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      padding: 32px 0 24px;
+    }
+    .header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .header .sub {
+      color: #71717a;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    /* Filter pills */
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      border: none;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .pill:hover { filter: brightness(1.2); }
+    .pill.active { color: #000 !important; }
+    .pill-clear {
+      background: rgba(255,255,255,0.06);
+      color: #a1a1aa;
+      border: none;
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      display: none;
+    }
+
+    /* Search */
+    .search-wrap { margin-top: 14px; }
+    .search-wrap input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: #fafafa;
+      font-size: 14px;
+      width: 100%;
+      max-width: 360px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .search-wrap input:focus {
+      border-color: rgba(59,130,246,0.5);
+    }
+    .search-wrap input::placeholder { color: #52525b; }
+
+    /* Timeline */
+    .day { margin-top: 32px; }
+    .day-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .day-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #3b82f6;
+      flex-shrink: 0;
+    }
+    .day-date {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .milestone {
+      margin-left: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #3b82f6;
+      background: rgba(59,130,246,0.1);
+      padding: 2px 10px;
+      border-radius: 999px;
+    }
+    .day-entries {
+      margin-left: 4px;
+      border-left: 2px solid rgba(255,255,255,0.06);
+      padding-left: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      transition: background 0.15s;
+    }
+    .entry:hover { background: rgba(255,255,255,0.05); }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      margin-top: 1px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .entry-msg {
+      font-size: 14px;
+      color: #d4d4d8;
+      line-height: 1.5;
+    }
+    .entry-hash {
+      font-size: 11px;
+      color: #52525b;
+      margin-left: auto;
+      flex-shrink: 0;
+      font-family: 'Consolas', 'Courier New', monospace;
+    }
+    .empty {
+      color: #52525b;
+      font-size: 14px;
+      padding: 40px 0;
+      text-align: center;
+    }
+    .footer {
+      border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 24px 0;
+      margin-top: 48px;
+      color: #3f3f46;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Build History</h1>
+    <p class="sub" id="stats"></p>
+    <div class="filters" id="filters"></div>
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="Search builds..." />
+    </div>
+  </div>
+  <div id="timeline"></div>
+  <div class="footer">ForjeGames &mdash; every update, tracked</div>
+</div>
+
+<script>
+const TYPES = {
+  feat:     { label: 'Feature',  color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+  fix:      { label: 'Fix',      color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+  refactor: { label: 'Refactor', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+  redesign: { label: 'Redesign', color: '#ec4899', bg: 'rgba(236,72,153,0.1)' },
+  chore:    { label: 'Chore',    color: '#6b7280', bg: 'rgba(107,114,128,0.1)' },
+  remove:   { label: 'Remove',   color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+};
+
+const MILESTONES = {
+  '2026-04-20': 'Beta Launch \u2014 200 Agents Live',
+  '2026-04-19': 'RAG Knowledge Base + Arsenal',
+  '2026-04-16': 'Video \u2192 RAG Pipeline',
+  '2026-04-14': 'The Big Fix \u2014 AI Quality + Stripe',
+  '2026-04-13': 'AI Personality + Competitive Intel',
+  '2026-04-12': 'Editor Redesign + Plugin Store',
+  '2026-04-11': 'Orchestrator + Game Builder',
+  '2026-04-10': 'Mega Build Session \u2014 35 Features',
+  '2026-04-09': 'Major Stack Upgrade',
+};
+
+const BUILDS = [
+  // Apr 20
+  { h:'e89fbb4', d:'2026-04-20', m:'Discord leaderboard uses rich embeds instead of broken markdown tables', t:'fix' },
+  { h:'2086b6d', d:'2026-04-20', m:'10 beta bugs \u2014 AI generation, connection, UI, plan mode', t:'fix' },
+  { h:'0cd5441', d:'2026-04-20', m:'Sign-in/sign-up responsive layout \u2014 prevent overlap on small devices', t:'fix' },
+  { h:'4aa35f9', d:'2026-04-20', m:'Build blueprint planner + complexity estimator + additive retry', t:'feat' },
+  { h:'552cbd1', d:'2026-04-20', m:'Run prisma migrate deploy during Vercel build', t:'fix' },
+  { h:'8ad6c40', d:'2026-04-20', m:'Beta fixes + marketing overhaul + spending guard + Discord tracker', t:'feat' },
+  { h:'58e7e0c', d:'2026-04-20', m:'AI learning system + completeness auditor + smart materials', t:'feat' },
+  { h:'c786646', d:'2026-04-20', m:'6 new game mechanic templates + mobile-responsive editor top bar', t:'feat' },
+  { h:'6393a43', d:'2026-04-20', m:'Agent counts now derived from actual array, not hardcoded', t:'fix' },
+  { h:'4389d5c', d:'2026-04-20', m:'Sign-up page layout stretch + showcase card positioning', t:'fix' },
+  { h:'d34be89', d:'2026-04-20', m:'Zero token costs for beta + skip Anthropic when balance is 0', t:'fix' },
+  { h:'47c3265', d:'2026-04-20', m:'Overhaul build system \u2014 P() parts only, remove unreliable marketplace assets', t:'fix' },
+  { h:'605c6dd', d:'2026-04-20', m:'Beta launch prep \u2014 drop tier gates, inline 3D gen, conversation logging', t:'feat' },
+  { h:'ca24f38', d:'2026-04-20', m:'Compact mode selector + better placeholders to in-chat editor', t:'feat' },
+  { h:'37986f5', d:'2026-04-20', m:'Redesign editor welcome screen \u2014 clickable build suggestions, cleaner input', t:'feat' },
+  { h:'87027e9', d:'2026-04-20', m:'Error alert fallback to Buy Pack button so failures are visible', t:'fix' },
+  { h:'8021847', d:'2026-04-20', m:'Switch Vercel RAG embeddings from local ONNX (640MB) to Gemini API', t:'fix' },
+  { h:'eb1f9dc', d:'2026-04-20', m:'Lazy-load specialist registry to stay under Vercel 250MB lambda limit', t:'fix' },
+  { h:'aef8b42', d:'2026-04-20', m:'Remove 30 placeholder asset IDs (id: 0) that caused silent build failures', t:'fix' },
+  { h:'e344ee9', d:'2026-04-20', m:'Build progress dashboard, onboarding tour, and template quick-load', t:'feat' },
+  { h:'049649a', d:'2026-04-20', m:'200 specialist agents, 200 build templates, build validator, auto-retry', t:'feat' },
+  { h:'c660856', d:'2026-04-20', m:'Design audit \u2014 Geist font, noise overlay, text-wrap balance', t:'feat' },
+  { h:'b9f65fd', d:'2026-04-20', m:'Mobile responsiveness for agent arsenal + competitors', t:'fix' },
+
+  // Apr 19
+  { h:'a762939', d:'2026-04-19', m:'Custom section order + remove filler sections', t:'feat' },
+  { h:'4037ff4', d:'2026-04-19', m:'Restructure page flow for better narrative + remove friction', t:'fix' },
+  { h:'c0cd74e', d:'2026-04-19', m:'144-agent arsenal showcase, AI live demo, button polish', t:'feat' },
+  { h:'3799fe4', d:'2026-04-19', m:'Studio connector \u2014 version unified to 4.7.0, Auth sends placeId, real HMAC-SHA256', t:'fix' },
+  { h:'b37de15', d:'2026-04-19', m:'Wire RAG knowledge base into all 5 chat paths \u2014 every user gets tutorial-powered builds', t:'feat' },
+  { h:'3865376', d:'2026-04-19', m:'serverExternalPackages for HuggingFace/ONNX so local BGE embeddings work in Vercel lambdas', t:'fix' },
+  { h:'41f2e8e', d:'2026-04-19', m:'Path B \u2014 local embeddings via BGE, unlimited ingest, zero quota', t:'feat' },
+
+  // Apr 16
+  { h:'3d04b96', d:'2026-04-16', m:'daily-ingest.cmd + Windows scheduled task \u2014 hands-off RAG growth', t:'feat' },
+  { h:'e5c9d29', d:'2026-04-16', m:'Throttled embed helper + Roblox API dump ingest + discovery runner', t:'feat' },
+  { h:'39dd076', d:'2026-04-16', m:'2x retrieval depth + cross-category RAG + channel discovery', t:'feat' },
+  { h:'e4e4a8a', d:'2026-04-16', m:'Bulk channel + curated-set ingest for video \u2192 RAG pipeline', t:'feat' },
+  { h:'85306ef', d:'2026-04-16', m:'Video \u2192 RAG + vault ingestion pipeline (yt-dlp + gemini embeddings)', t:'feat' },
+  { h:'b5d93c2', d:'2026-04-16', m:'Switch RAG to gemini-embedding-001 \u2014 text-embedding-004 deprecated', t:'fix' },
+  { h:'4167dbe', d:'2026-04-16', m:'Ship verifier, experience memory, error-fix map, metrics, publish panel', t:'feat' },
+
+  // Apr 14
+  { h:'13ba5af', d:'2026-04-14', m:'Massively improve AI build quality: templates, prompts, static analysis', t:'feat' },
+  { h:'d7b7bbf', d:'2026-04-14', m:'Verify JWT signature in studio/connect route', t:'fix' },
+  { h:'fdbbe76', d:'2026-04-14', m:'buildInstruction conflicted with single-pass prompt', t:'fix' },
+  { h:'45d7d6f', d:'2026-04-14', m:'Split-panel auth page with branding + features on left', t:'redesign' },
+  { h:'b210559', d:'2026-04-14', m:'Live SSE connection \u2014 instant command delivery, no polling needed', t:'feat' },
+  { h:'5e047a9', d:'2026-04-14', m:'Remove monthly subscriptions, tokens-only pricing model', t:'refactor' },
+  { h:'42914dd', d:'2026-04-14', m:'Postgres fallback for entire Studio pipeline \u2014 works when Redis is down', t:'feat' },
+  { h:'4eddf8b', d:'2026-04-14', m:'Slash Redis usage 97% to stay within Upstash free tier', t:'fix' },
+  { h:'c4c8a38', d:'2026-04-14', m:'Merge two-pass into single-pass \u2014 description matches code now', t:'feat' },
+  { h:'ba98cbc', d:'2026-04-14', m:'luauCode transmission, env corruption fix, slogan update, Meshy logging', t:'fix' },
+  { h:'9659b90', d:'2026-04-14', m:'Expand translator to support GUI, VFX, environment, and marketplace assets', t:'feat' },
+
+  // Apr 13
+  { h:'1cc6d42', d:'2026-04-13', m:'20 detailed build recipes for maps, games, and environments', t:'feat' },
+  { h:'494fc20', d:'2026-04-13', m:'Wire ThreeD agent to actually call Meshy API', t:'feat' },
+  { h:'cff39fb', d:'2026-04-13', m:'Competitive enhancements \u2014 model selector, idea gen, playtest sim, prompt guide', t:'feat' },
+  { h:'94cfd80', d:'2026-04-13', m:'Imagination-first \u2014 build ANYTHING, not just game clones', t:'feat' },
+  { h:'9a3fd67', d:'2026-04-13', m:'Roblox art style guide \u2014 brick walls, wood planks, fun colors for kids', t:'feat' },
+  { h:'e43292e', d:'2026-04-13', m:'High-detail multi-part models \u2014 no more single-Part builds', t:'feat' },
+  { h:'7a7b709', d:'2026-04-13', m:'Genre cards visible + SmoothPlastic killed + onBuildGame fallback', t:'fix' },
+
+  // Apr 12
+  { h:'3665409', d:'2026-04-12', m:'Conversational not robotic \u2014 the AI talks like a friend now', t:'fix' },
+  { h:'a3e5241', d:'2026-04-12', m:'Personality overhaul \u2014 Forje is now your genius best friend', t:'feat' },
+  { h:'91b37ab', d:'2026-04-12', m:'Chat-first simplified editor redesign', t:'feat' },
+  { h:'cf60147', d:'2026-04-12', m:'4 simulator + 4 tycoon variant blueprints with editor UI', t:'feat' },
+  { h:'8453449', d:'2026-04-12', m:'Plugin Creator Store edition v4.7.0-store', t:'feat' },
+  { h:'1074706', d:'2026-04-12', m:'Scoped undo + HttpService auto-enable + PlacementPanel + /place command', t:'feat' },
+  { h:'89ae69c', d:'2026-04-12', m:'Replace Redis with database for auth codes \u2014 fixes exhausted quota', t:'fix' },
+  { h:'0b2e582', d:'2026-04-12', m:'Kill corporate language + enforce minimum 30 parts per build', t:'fix' },
+
+  // Apr 11
+  { h:'fa30ca3', d:'2026-04-11', m:'Day 3 + Day 7 drip campaign with daily cron', t:'feat' },
+  { h:'414b26c', d:'2026-04-11', m:'/game slash command triggers step-by-step builder', t:'feat' },
+  { h:'03848f1', d:'2026-04-11', m:'PointLight, SpotLight, Sound, Fire + 9 more instance types in translator', t:'feat' },
+  { h:'ebd4e10', d:'2026-04-11', m:'Step-by-step game builder \u2014 5 phases instead of 1 giant block', t:'feat' },
+  { h:'0a87c54', d:'2026-04-11', m:'Always send structured commands alongside raw Luau', t:'fix' },
+
+  // Apr 10
+  { h:'aedff04', d:'2026-04-10', m:'Scene-manifest vision replaces pixel vision for Studio awareness', t:'feat' },
+  { h:'6abacbb', d:'2026-04-10', m:'Plugin handles all 12 command types + Stripe reconcile cron + COPPA hardening', t:'feat' },
+
+  // Apr 9
+  { h:'0000000', d:'2026-04-09', m:'13-agent parallel upgrade \u2014 Next.js 15, React 19, Clerk, full stack modernization', t:'feat' },
+];
+
+let activeFilter = 'all';
+let searchQuery = '';
+
+function render() {
+  let filtered = BUILDS;
+  if (activeFilter !== 'all') filtered = filtered.filter(b => b.t === activeFilter);
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(b => b.m.toLowerCase().includes(q) || b.h.includes(q));
+  }
+
+  // Stats
+  const feats = BUILDS.filter(b => b.t === 'feat').length;
+  const fixes = BUILDS.filter(b => b.t === 'fix').length;
+  const dates = [...new Set(BUILDS.map(b => b.d))];
+  document.getElementById('stats').textContent =
+    `${BUILDS.length} updates across ${dates.length} days \u2014 ${feats} features, ${fixes} fixes`;
+
+  // Filters
+  const filtersEl = document.getElementById('filters');
+  filtersEl.innerHTML = '';
+  for (const [key, cfg] of Object.entries(TYPES)) {
+    const count = BUILDS.filter(b => b.t === key).length;
+    if (!count) continue;
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (activeFilter === key ? ' active' : '');
+    btn.style.background = activeFilter === key ? cfg.color : cfg.bg;
+    btn.style.color = activeFilter === key ? '#000' : cfg.color;
+    btn.textContent = `${cfg.label} (${count})`;
+    btn.onclick = () => { activeFilter = activeFilter === key ? 'all' : key; render(); };
+    filtersEl.appendChild(btn);
+  }
+  if (activeFilter !== 'all') {
+    const clear = document.createElement('button');
+    clear.className = 'pill-clear';
+    clear.style.display = 'inline-block';
+    clear.textContent = 'Clear filter';
+    clear.onclick = () => { activeFilter = 'all'; render(); };
+    filtersEl.appendChild(clear);
+  }
+
+  // Group by date
+  const grouped = {};
+  for (const b of filtered) { (grouped[b.d] ??= []).push(b); }
+  const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
+
+  const timeline = document.getElementById('timeline');
+  if (!sortedDates.length) {
+    timeline.innerHTML = '<div class="empty">No builds match your search.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const date of sortedDates) {
+    const dateObj = new Date(date + 'T12:00:00');
+    const formatted = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const ms = MILESTONES[date];
+
+    html += '<div class="day">';
+    html += '<div class="day-header">';
+    html += '<div class="day-dot"></div>';
+    html += `<span class="day-date">${formatted}</span>`;
+    if (ms) html += `<span class="milestone">${ms}</span>`;
+    html += '</div>';
+    html += '<div class="day-entries">';
+
+    for (const entry of grouped[date]) {
+      const cfg = TYPES[entry.t];
+      html += '<div class="entry">';
+      html += `<span class="badge" style="color:${cfg.color};background:${cfg.bg}">${cfg.label}</span>`;
+      html += `<span class="entry-msg">${esc(entry.m)}</span>`;
+      html += `<span class="entry-hash">${entry.h}</span>`;
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+  }
+  timeline.innerHTML = html;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+document.getElementById('search').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

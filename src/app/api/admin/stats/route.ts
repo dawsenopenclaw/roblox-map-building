@@ -169,17 +169,64 @@ export async function GET() {
       {} as Record<string, number>
     )
 
+    // Total revenue all-time from snapshots
+    const totalRevenueCents = revenueChart.reduce((s, d) => s + d.revenueCents, 0)
+
+    // ARPU = MRR / paying subs
+    const arpuCents = activeSubscriptions > 0 ? Math.round(mrrCents / activeSubscriptions) : 0
+
+    // Active builds — sessions with activity in the last hour
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+    const [activeBuilds, pendingReviews] = await Promise.all([
+      db.apiUsageRecord.count({ where: { createdAt: { gte: oneHourAgo } } }),
+      db.template.count({ where: { status: 'PENDING_REVIEW' } }).catch(() => 0),
+    ])
+
+    // Pull recent Stripe charges for the billing page
+    let recentTransactions: {
+      id: string
+      amount: number
+      currency: string
+      status: string
+      description: string | null
+      created: number
+      customerEmail: string | null
+    }[] = []
+    try {
+      const { getStripe } = await import('@/lib/stripe')
+      const stripeClient = getStripe()
+      if (stripeClient) {
+        const charges = await stripeClient.charges.list({ limit: 10 })
+        recentTransactions = charges.data.map((c) => ({
+          id: c.id,
+          amount: c.amount,
+          currency: c.currency,
+          status: c.status,
+          description: c.description,
+          created: c.created,
+          customerEmail: c.billing_details?.email ?? null,
+        }))
+      }
+    } catch {
+      // Stripe not configured or unreachable — leave empty
+    }
+
     return NextResponse.json({
       totalUsers,
       mrrCents,
       totalBuilds,
+      activeBuilds,
+      pendingReviews,
       activeSubscriptions,
+      totalRevenueCents,
+      arpuCents,
       revenueChart,
       signupsChart,
       recentActivity: recentActivity.map((a) => ({
         ...a,
         createdAt: a.createdAt.toISOString(),
       })),
+      recentTransactions,
       health: {
         api: 'ok' as const,
         db: dbStatus,

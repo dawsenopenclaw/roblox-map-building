@@ -331,6 +331,23 @@ export default function OnboardingWizardPage() {
       })
       track('onboarding_step_completed', { step: 'first_build', stepIndex: 5 })
       track('onboarding_completed', { firstPrompt: prompt, gameTypeId: pickedGameTypeId })
+
+      // Auto-redeem referral code if the user arrived via a referral link.
+      // The code was persisted in localStorage by the sign-up page.
+      try {
+        const refCode = localStorage.getItem('fg_referral_code')
+        if (refCode) {
+          localStorage.removeItem('fg_referral_code')
+          await fetch('/api/referrals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ referralCode: refCode }),
+          })
+          track('referral_auto_redeemed', { referralCode: refCode })
+        }
+      } catch {
+        // Non-fatal — referral redemption failure should never block onboarding.
+      }
     } catch {
       // Non-fatal — proceed to editor regardless so the user is never stuck.
     } finally {

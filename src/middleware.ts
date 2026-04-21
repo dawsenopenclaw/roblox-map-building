@@ -77,6 +77,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/ai/chat',
   // AI feedback — anonymous thumbs up/down (POST only, GET requires auth)
   '/api/ai/feedback',
+  // Site reviews — public GET for homepage marquee, POST is auth-gated in the route handler
+  '/api/reviews',
   // Waitlist — must be public so visitors can sign up from the landing page
   '/api/waitlist',
   // Contact form — must be public so pricing page visitors can submit
@@ -508,6 +510,6 @@ export const config = {
      * the middleware so the CORS preflight handler runs, but isPublicRoute() exempts
      * them from Clerk auth so Stripe/Clerk can always fire.
      */
-    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3|json|webmanifest)$).*)',
+    '/((?!_next/static|_next/image|.*\\.(?:ico|png|jpe?g|webp|svg|gif|woff2?|ttf|otf|mp4|mp3|json|html|webmanifest)$).*)',
   ],
 }

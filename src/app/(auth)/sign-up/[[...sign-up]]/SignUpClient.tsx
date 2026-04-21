@@ -2,17 +2,21 @@
 
 import { SignUp } from '@clerk/nextjs'
 import { useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
 
-/**
- * ForjeGames sign-up page. See SignInClient for rationale — we use
- * Clerk's prebuilt <SignUp /> so email, phone, password, Roblox OAuth
- * (custom), Google, Apple, and any other enabled strategies all render
- * automatically, with proper inline error handling instead of the
- * swallowed console.error behavior the old hand-rolled form had.
- */
 export default function SignUpClient() {
   const searchParams = useSearchParams()
   const redirectUrl = searchParams?.get('redirect_url') ?? undefined
+
+  // Capture referral code from ?ref= query param
+  useEffect(() => {
+    const ref = searchParams?.get('ref')
+    if (ref && ref.trim().length > 0) {
+      try {
+        localStorage.setItem('fg_referral_code', ref.trim())
+      } catch { /* localStorage unavailable */ }
+    }
+  }, [searchParams])
 
   return (
     <div className="w-full flex flex-col items-center">
@@ -22,53 +26,6 @@ export default function SignUpClient() {
         signInUrl="/sign-in"
         forceRedirectUrl={redirectUrl}
         fallbackRedirectUrl={redirectUrl ?? '/onboarding/age-gate'}
-        appearance={{
-          variables: {
-            colorPrimary: '#D4AF37',
-            colorBackground: 'transparent',
-            colorText: '#FAFAFA',
-            colorTextSecondary: '#A1A1AA',
-            colorInputBackground: 'rgba(255,255,255,0.04)',
-            colorInputText: '#FAFAFA',
-            borderRadius: '0.75rem',
-            fontFamily: 'var(--font-inter, Inter, sans-serif)',
-            fontSize: '1rem',
-            spacingUnit: '1.1rem',
-          },
-          elements: {
-            rootBox: 'w-full max-w-full overflow-hidden box-border',
-            card: 'shadow-none border-0 bg-transparent p-0 gap-4 sm:gap-6 w-full max-w-full box-border',
-            headerTitle: 'text-xl sm:text-2xl md:text-3xl font-bold text-white mb-1',
-            headerSubtitle: 'text-sm sm:text-base text-zinc-400',
-            socialButtonsBlockButton:
-              'border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.07] text-white text-sm sm:text-base font-medium transition-colors py-3 sm:py-3.5 rounded-xl w-full',
-            socialButtonsBlockButtonText: 'text-white font-medium text-sm sm:text-base',
-            dividerLine: 'bg-white/[0.08]',
-            dividerText: 'text-zinc-500 text-xs sm:text-sm',
-            formFieldLabel: 'text-zinc-300 text-xs sm:text-sm font-medium mb-1 sm:mb-1.5',
-            formFieldInput:
-              'bg-white/[0.04] border border-white/[0.1] text-white text-sm sm:text-base placeholder:text-zinc-600 focus:border-[#D4AF37]/50 focus:ring-[#D4AF37]/20 py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl w-full box-border',
-            formButtonPrimary:
-              'bg-[#D4AF37] hover:bg-[#E6A619] text-black text-sm sm:text-base font-bold transition-colors py-3 sm:py-3.5 rounded-xl w-full',
-            footer: 'justify-center mt-3 sm:mt-4',
-            footerAction: 'text-zinc-400 text-sm sm:text-base',
-            footerActionLink: 'text-[#D4AF37] hover:text-[#E6A619] font-semibold text-sm sm:text-base',
-            identityPreviewText: 'text-zinc-300 text-sm sm:text-base',
-            identityPreviewEditButton: 'text-[#D4AF37] hover:text-[#E6A619] text-xs sm:text-sm',
-            formResendCodeLink: 'text-[#D4AF37] hover:text-[#E6A619] text-xs sm:text-sm',
-            alertText: 'text-red-400 text-xs sm:text-sm',
-            alert: 'bg-red-500/10 border border-red-500/30 rounded-xl p-3 sm:p-4',
-            otpCodeFieldInput:
-              'bg-white/[0.04] border border-white/[0.1] text-white text-base sm:text-lg focus:border-[#D4AF37]/50 w-10 h-10 sm:w-12 sm:h-12',
-            form: 'w-full',
-            socialButtons: 'w-full',
-          },
-          layout: {
-            socialButtonsPlacement: 'top',
-            socialButtonsVariant: 'blockButton',
-            showOptionalFields: true,
-          },
-        }}
       />
     </div>
   )

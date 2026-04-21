@@ -108,7 +108,7 @@ export default function ReferralCard({ referralCode: codeProp, stats: statsProp,
     }
   }, [statsProp])
 
-  const referralLink = code ? `https://forjegames.com/r/${code}` : null
+  const referralLink = code ? `https://forjegames.com/sign-up?ref=${code}` : null
   const linkDisplay = loading ? 'Generating your link…' : (referralLink ?? 'Not available yet')
 
   const copyLink = async () => {
@@ -132,7 +132,7 @@ export default function ReferralCard({ referralCode: codeProp, stats: statsProp,
   const shareTwitter = () => {
     if (!referralLink) return
     const text = encodeURIComponent(
-      `Building Roblox maps with AI on @ForjeGames — sign up free!\n\nUse my link and we both get 500 bonus tokens: ${referralLink}`,
+      `I've been building Roblox games with AI on @ForjeGames — type what you want and it builds it in Studio. Try it free: ${referralLink}`,
     )
     window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank', 'noopener,noreferrer')
   }
@@ -140,7 +140,7 @@ export default function ReferralCard({ referralCode: codeProp, stats: statsProp,
   const shareDiscord = async () => {
     if (!referralLink) return
     const msg =
-      `Hey! I've been using ForjeGames to build Roblox maps with AI.\n` +
+      `I've been building Roblox games with AI on ForjeGames — type what you want and it builds it in Studio.\n` +
       `Sign up free with my link and we BOTH get 500 bonus tokens: ${referralLink}`
     try {
       await navigator.clipboard.writeText(msg)
