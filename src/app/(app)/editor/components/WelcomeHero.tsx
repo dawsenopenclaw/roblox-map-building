@@ -8,68 +8,49 @@ const ROTATE_INTERVAL = 2200
 
 function RotatingWord3D() {
   const [index, setIndex] = useState(0)
+  const [animClass, setAnimClass] = useState('word-enter')
 
   useEffect(() => {
-    const timer = setInterval(() => setIndex(i => (i + 1) % ROTATING_WORDS.length), ROTATE_INTERVAL)
+    const timer = setInterval(() => {
+      // Slide out
+      setAnimClass('word-exit')
+      setTimeout(() => {
+        setIndex(i => (i + 1) % ROTATING_WORDS.length)
+        setAnimClass('word-enter')
+      }, 400)
+    }, ROTATE_INTERVAL)
     return () => clearInterval(timer)
   }, [])
 
-  const stepDeg = 360 / ROTATING_WORDS.length
-  const current = ROTATING_WORDS[index]
-
   return (
-    <span
-      style={{
-        display: 'inline-block',
-        position: 'relative',
-        height: '1.1em',
-        width: '4.5em',
-        perspective: '800px',
-        perspectiveOrigin: '50% 50%',
-        overflow: 'hidden',
-      }}
-    >
+    <>
+      <style>{`
+        .word-enter {
+          opacity: 1;
+          transform: translateY(0) rotateX(0deg);
+          transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+        }
+        .word-exit {
+          opacity: 0;
+          transform: translateY(-20px) rotateX(40deg);
+          transition: opacity 0.3s ease-in, transform 0.3s ease-in;
+        }
+      `}</style>
       <span
+        className={animClass}
         style={{
-          position: 'absolute',
-          inset: 0,
-          transformStyle: 'preserve-3d',
-          transform: `rotateX(${index * stepDeg}deg)`,
-          transition: 'transform 0.8s cubic-bezier(0.32, 0.72, 0.24, 1)',
-          willChange: 'transform',
+          display: 'inline-block',
+          background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          willChange: 'transform, opacity',
+          perspective: '600px',
         }}
       >
-        {ROTATING_WORDS.map((word, i) => {
-          const angle = -i * stepDeg
-          const isActive = i === index
-          return (
-            <span
-              key={word}
-              aria-hidden={!isActive}
-              style={{
-                position: 'absolute',
-                left: 0, top: 0, width: '100%', height: '100%',
-                display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-                whiteSpace: 'nowrap',
-                transform: `rotateX(${angle}deg) translateZ(1em)`,
-                transformOrigin: '50% 50%',
-                backfaceVisibility: 'hidden',
-                opacity: isActive ? 1 : 0,
-                transition: 'opacity 0.5s ease-out',
-                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                fontWeight: 700,
-                letterSpacing: '-0.03em',
-              }}
-            >
-              {word}
-            </span>
-          )
-        })}
+        {ROTATING_WORDS[index]}
       </span>
-    </span>
+    </>
   )
 }
 
@@ -313,33 +294,34 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         position: 'relative',
       }}
     >
-      {/* ─── Greeting with 3D rotating words ─── */}
-      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
+      {/* ─── Greeting with animated rotating words ─── */}
+      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1, marginTop: '0.5rem' }}>
+        {/* Ambient glow */}
+        <div aria-hidden style={{
+          position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
+          width: 400, height: 120,
+          background: 'radial-gradient(ellipse, rgba(212,175,55,0.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
         <h1 style={{
-          fontSize: 'clamp(1.8rem, 5vw, 2.8rem)',
+          fontSize: 'clamp(2rem, 6vw, 3.2rem)',
           fontWeight: 700,
-          lineHeight: 1.15,
+          lineHeight: 1.2,
           letterSpacing: '-0.03em',
           color: '#FAFAFA',
           margin: 0,
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'baseline',
-          justifyContent: 'center',
-          gap: '0.2em',
         }}>
-          <span>Forge your</span>
-          <RotatingWord3D />
+          Forge your <RotatingWord3D />
         </h1>
         <p style={{
-          marginTop: 8,
+          marginTop: 12,
           fontSize: 15,
           color: '#52525B',
-          maxWidth: 400,
-          margin: '8px auto 0',
-          lineHeight: 1.5,
+          maxWidth: 420,
+          margin: '12px auto 0',
+          lineHeight: 1.6,
         }}>
-          Describe anything. Forje will build it and sync to Studio.
+          Describe anything. Forje builds it and syncs to Studio.
         </p>
       </div>
 
