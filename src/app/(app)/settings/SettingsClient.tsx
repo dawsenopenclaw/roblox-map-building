@@ -433,6 +433,17 @@ function ProfileTab() {
       if (res.ok) {
         // Reset baseline so the save button becomes inactive again
         initialRef.current = { displayName, username, bio, twitter, discord, github }
+        // Sync display name to Clerk so the nav/profile button updates immediately
+        try {
+          if (displayName) {
+            const parts = displayName.trim().split(/\s+/)
+            await user?.update({
+              firstName: parts[0] ?? '',
+              lastName: parts.slice(1).join(' ') || undefined,
+              username: username || undefined,
+            })
+          }
+        } catch { /* non-fatal — DB is the source of truth */ }
         show({ variant: 'success', title: 'Profile saved' })
       } else {
         const err = await res.json() as { error?: string }
@@ -1049,7 +1060,7 @@ function AppearanceTab() {
     void persistPreferences({ accentColor: value ?? null })
   }
 
-  const catThemes = themes.filter((t) => t.category === activeCategory)
+  const catThemes = themes.filter((t) => t.category === activeCategory && !t.hidden)
   const isLight = currentTheme.id === 'light' || currentTheme.id === 'paper'
 
   return (
@@ -1180,7 +1191,7 @@ function AppearanceTab() {
         <div className="flex gap-1.5 flex-wrap mb-3">
           {CATEGORY_META.map((cat) => {
             const isSelected = activeCategory === cat.key
-            const count = themes.filter((t) => t.category === cat.key).length
+            const count = themes.filter((t) => t.category === cat.key && !t.hidden).length
             return (
               <button
                 key={cat.key}

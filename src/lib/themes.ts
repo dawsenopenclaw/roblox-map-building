@@ -9,6 +9,8 @@ export interface Theme {
   name: string
   description: string
   category: 'minimal' | 'vibrant' | 'aesthetic' | 'luxury'
+  /** Hidden themes are defined but not shown in the theme picker (e.g. light mode not ready) */
+  hidden?: boolean
   preview: {
     bg: string
     accent: string
@@ -50,6 +52,7 @@ export const THEMES: Theme[] = [
     name: 'Daylight',
     description: 'Clean light mode — bright, airy, and easy to read',
     category: 'minimal',
+    hidden: true,
     preview: { bg: '#F8F9FA', accent: '#D4AF37', surface: '#FFFFFF' },
     vars: {
       '--background': '#F0F1F3',
@@ -236,6 +239,7 @@ export const THEMES: Theme[] = [
     name: 'Paper',
     description: 'Clean white and light gray — newspaper simplicity',
     category: 'minimal',
+    hidden: true,
     preview: { bg: '#F5F5F0', accent: '#1A1A1A', surface: '#FFFFFF' },
     vars: {
       '--background': '#F5F5F0',
