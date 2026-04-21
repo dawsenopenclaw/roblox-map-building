@@ -33,6 +33,7 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
+import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
 import { findSpecialist, applySpecialist } from '@/lib/ai/specialists/router'
@@ -2105,7 +2106,24 @@ USE THIS DATA:
       ? `\n\nIMPORTANT: Output ONE single executable Luau script that builds the game WORLD in Studio (terrain, spawn area, key buildings, atmosphere). Do NOT output multiple files or game system code — just the buildable environment that sets the scene. Keep it to 40-80 Parts so it executes instantly.${gameTypeGuidance}${templateReference}`
       : ''
 
-    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}
+    // ── Build Blueprint: estimate complexity + plan for medium/complex builds ──
+    let blueprintContext = ''
+    try {
+      const { estimateComplexity, classifyDifficulty } = await import('@/lib/ai/build-blueprint')
+      const estimate = await estimateComplexity(message, intent === 'script' ? 'script' : 'build')
+      const diff = classifyDifficulty(message)
+      console.log(`[Planner] ${estimate.reasoning}`)
+      // Inject complexity targets into the build instruction
+      blueprintContext = `\n\nCOMPLEXITY: ${diff.toUpperCase()} build. TARGET: ${estimate.targetParts} parts minimum, ${estimate.targetLights} light sources, ${estimate.targetInteractive} interactive elements.`
+      if (estimate.targetFeatures.length > 0) {
+        blueprintContext += `\nREQUIRED FEATURES: ${estimate.targetFeatures.join('. ')}.`
+      }
+      blueprintContext += `\nDo NOT deliver fewer parts than the target. Every feature you describe in your response MUST exist in the code.`
+    } catch (planErr) {
+      console.warn('[Planner] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
+    }
+
+    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}
 
 First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
 Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN with these helpers:
@@ -2261,9 +2279,15 @@ ${buildInstruction}`
           console.log(`[Audit] Detail score: ${audit.detailScore}/100, parts: ${audit.partCount}, claims: ${audit.claimedFeatures.length}, missing: ${audit.missingFeatures.length}`)
 
           if (!audit.passed && finalVerificationScore >= 40) {
-            // Build passed syntax checks but is INCOMPLETE — auto-retry with specifics
+            // Build passed syntax checks but is INCOMPLETE — additive retry (build on existing code)
             console.warn(`[Audit] Build INCOMPLETE: ${audit.suggestions.slice(0, 3).join('; ')}`)
-            const auditRetryPrompt = formatAuditRetryPrompt(audit, message)
+            // Use additive retry — keeps existing code, adds what's missing
+            const auditRetryPrompt = formatAdditiveRetryPrompt(
+              luauCode!,
+              audit.missingFeatures,
+              audit.suggestions.slice(0, 5),
+              message,
+            )
             try {
               const auditRetryRace = await raceNonNull(
                 callGemini(codePrompt, auditRetryPrompt, [], 8192),
