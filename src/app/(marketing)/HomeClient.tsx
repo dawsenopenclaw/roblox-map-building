@@ -391,31 +391,204 @@ function HowItWorks() {
   )
 }
 
-/* ─── Final CTA — repeat the prompt input at bottom ──────────────────────── */
+/* ─── Demo Section — animated build flow preview ──────────────────────────── */
 
-function FinalCTA() {
+const DEMO_STEPS = [
+  {
+    step: 1,
+    label: 'Type your prompt',
+    detail: '"Build a medieval castle with a throne room and dungeon"',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+    color: '#D4AF37',
+  },
+  {
+    step: 2,
+    label: 'AI agents generate',
+    detail: 'Terrain, walls, towers, scripts, lighting — all at once',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 1v4M12 19v4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M1 12h4M19 12h4M4.2 19.8l2.8-2.8M17 7l2.8-2.8" />
+      </svg>
+    ),
+    color: '#FFD966',
+  },
+  {
+    step: 3,
+    label: 'Appears in Studio',
+    detail: 'Hit play. Walk around your creation. Done.',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+        <line x1="8" y1="21" x2="16" y2="21" />
+        <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+    color: '#A3E635',
+  },
+]
+
+function DemoSection() {
+  const [activeStep, setActiveStep] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % DEMO_STEPS.length)
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <section className="relative py-20 sm:py-28 px-6 text-center" style={{ background: '#050810' }}>
-      <div className="max-w-2xl mx-auto">
-        <h2
-          className="reveal font-bold tracking-tight mb-4"
-          style={{
-            fontSize: 'clamp(1.8rem, 5vw, 3rem)',
-            lineHeight: 1.15,
-            color: '#FAFAFA',
-          }}
-        >
-          Your game is one prompt away.
-        </h2>
-        <p className="reveal text-sm mb-8" style={{ color: '#71717A' }}>
-          Start free with 1,000 tokens — no credit card needed.
-        </p>
-        <div className="reveal max-w-xl mx-auto mb-6">
-          <HeroPromptInput />
+    <section className="reveal relative py-20 sm:py-28 px-6" style={{ background: '#050810' }}>
+      {/* Top divider */}
+      <div aria-hidden style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', maxWidth: 500, height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.15), transparent)' }} />
+
+      <div className="max-w-5xl mx-auto">
+        {/* Heading */}
+        <div className="text-center mb-12">
+          <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: '#D4AF37', textTransform: 'uppercase', marginBottom: 12, fontFamily: 'var(--font-mono, monospace)' }}>
+            Watch it build
+          </p>
+          <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#f0f0f0', lineHeight: 1.2, letterSpacing: '-0.03em', marginBottom: 8 }}>
+            From idea to playable game in seconds
+          </h2>
+          <p style={{ fontSize: 15, color: '#71717A', maxWidth: 460, margin: '0 auto' }}>
+            No video editing tricks. This is what the AI actually builds.
+          </p>
         </div>
-        <p className="reveal text-[12px]" style={{ color: '#3F3F46' }}>
-          No account needed &middot; Free forever &middot; Works with Roblox Studio
-        </p>
+
+        {/* Main demo card */}
+        <div style={{
+          background: 'linear-gradient(180deg, rgba(10,14,26,0.95) 0%, rgba(5,8,16,0.98) 100%)',
+          border: '1px solid rgba(212,175,55,0.12)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          maxWidth: 800,
+          margin: '0 auto',
+        }}>
+          {/* Fake video player area */}
+          <div style={{
+            position: 'relative',
+            aspectRatio: '16/9',
+            background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(212,175,55,0.04) 0%, rgba(5,8,16,1) 70%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+            padding: 32,
+          }}>
+            {/* Animated grid background */}
+            <div aria-hidden style={{
+              position: 'absolute', inset: 0, opacity: 0.15,
+              backgroundImage: 'linear-gradient(rgba(212,175,55,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(212,175,55,0.1) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+            }} />
+
+            {/* Active step display */}
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+              {/* Step icon in animated ring */}
+              <div style={{
+                width: 80, height: 80, borderRadius: '50%',
+                background: `rgba(${DEMO_STEPS[activeStep].color === '#D4AF37' ? '212,175,55' : DEMO_STEPS[activeStep].color === '#FFD966' ? '255,217,102' : '163,230,53'},0.08)`,
+                border: `2px solid ${DEMO_STEPS[activeStep].color}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px auto',
+                color: DEMO_STEPS[activeStep].color,
+                transition: 'all 0.5s ease-out',
+                boxShadow: `0 0 32px -4px ${DEMO_STEPS[activeStep].color}40`,
+              }}>
+                {DEMO_STEPS[activeStep].icon}
+              </div>
+
+              <p style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+                color: DEMO_STEPS[activeStep].color,
+                textTransform: 'uppercase', marginBottom: 8,
+                transition: 'color 0.5s ease-out',
+              }}>
+                Step {DEMO_STEPS[activeStep].step} of 3
+              </p>
+              <h3 style={{ fontSize: 22, fontWeight: 700, color: '#FAFAFA', marginBottom: 8, transition: 'all 0.3s ease' }}>
+                {DEMO_STEPS[activeStep].label}
+              </h3>
+              <p style={{ fontSize: 14, color: '#A1A1AA', maxWidth: 360, margin: '0 auto', fontStyle: DEMO_STEPS[activeStep].step === 1 ? 'italic' : 'normal' }}>
+                {DEMO_STEPS[activeStep].detail}
+              </p>
+            </div>
+
+            {/* Video coming soon badge */}
+            <div style={{
+              position: 'absolute', bottom: 16, right: 16,
+              background: 'rgba(212,175,55,0.1)',
+              border: '1px solid rgba(212,175,55,0.2)',
+              borderRadius: 8,
+              padding: '6px 12px',
+              fontSize: 11, fontWeight: 600,
+              color: '#D4AF37',
+              letterSpacing: '0.04em',
+            }}>
+              Full demo video coming soon
+            </div>
+          </div>
+
+          {/* Step indicators bar */}
+          <div style={{
+            display: 'flex', gap: 0,
+            borderTop: '1px solid rgba(255,255,255,0.04)',
+          }}>
+            {DEMO_STEPS.map((step, i) => (
+              <button
+                key={step.step}
+                onClick={() => setActiveStep(i)}
+                style={{
+                  flex: 1,
+                  padding: '14px 12px',
+                  background: i === activeStep ? 'rgba(212,175,55,0.06)' : 'transparent',
+                  border: 'none',
+                  borderBottom: i === activeStep ? '2px solid #D4AF37' : '2px solid transparent',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.3s ease',
+                  color: i === activeStep ? '#D4AF37' : '#52525B',
+                  fontSize: 12, fontWeight: 600,
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                <span style={{
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: i === activeStep ? '#D4AF37' : 'rgba(255,255,255,0.06)',
+                  color: i === activeStep ? '#09090b' : '#52525B',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 800,
+                  transition: 'all 0.3s ease',
+                }}>
+                  {step.step}
+                </span>
+                <span className="hidden sm:inline">{step.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Progress bar below card */}
+        <div style={{ maxWidth: 800, margin: '12px auto 0 auto' }}>
+          <div style={{ height: 2, background: 'rgba(255,255,255,0.04)', borderRadius: 1, overflow: 'hidden' }}>
+            <div
+              key={activeStep}
+              style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #D4AF37, #FFD966)',
+                borderRadius: 1,
+                animation: 'demoProgress 3s linear',
+              }}
+            />
+          </div>
+        </div>
       </div>
     </section>
   )
@@ -558,6 +731,11 @@ export default function HomeClient() {
         <HowItWorks />
 
         {/* ═══════════════════════════════════════════════════════════════
+            SECTION 3.75 — DEMO / WATCH IT BUILD
+        ═══════════════════════════════════════════════════════════════ */}
+        <DemoSection />
+
+        {/* ═══════════════════════════════════════════════════════════════
             SECTION 4 — PLAYER REVIEWS
         ═══════════════════════════════════════════════════════════════ */}
         <ReviewMarquee />
@@ -568,9 +746,8 @@ export default function HomeClient() {
         <ComparisonSection />
 
         {/* ═══════════════════════════════════════════════════════════════
-            SECTION 6 — FINAL CTA + FAQ
+            SECTION 6 — FAQ
         ═══════════════════════════════════════════════════════════════ */}
-        <FinalCTA />
         <FaqSection />
 
       </div>

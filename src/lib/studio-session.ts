@@ -256,7 +256,7 @@ async function redisLoad(sessionId: string): Promise<StudioSession | null> {
 }
 
 /** Delete a session and its indexes from Redis. */
-function redisDelete(session: StudioSession): void {
+export function redisDelete(session: StudioSession): void {
   const r = getRedis()
   if (!r) return
   Promise.all([
@@ -360,6 +360,19 @@ export async function getSession(
 export function getSessionSync(sessionId: string): StudioSession | undefined {
   pruneStale()
   return sessions.get(sessionId)
+}
+
+/**
+ * Delete a session from both L1 memory and Redis (including all indexes).
+ * Called when the user explicitly disconnects from the editor UI.
+ * Returns true if a session was found and deleted.
+ */
+export async function deleteSession(sessionId: string): Promise<boolean> {
+  const session = sessions.get(sessionId) ?? await redisLoad(sessionId)
+  if (!session) return false
+  sessions.delete(sessionId)
+  redisDelete(session)
+  return true
 }
 
 /**

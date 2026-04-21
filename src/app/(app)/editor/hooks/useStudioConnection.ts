@@ -362,9 +362,13 @@ export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase
   }, [addActivity, pollStatus, pollScreenshot])
 
   const disconnect = useCallback(() => {
+    // Grab sessionId before we clear state so we can tell the server
+    const currentSessionId = state.sessionId
     stopAllPolling()
     pendingCodeRef.current = ''
     pendingTokenRef.current = ''
+
+    // Immediately clear client state so UI updates right away
     setState({
       isConnected: false,
       sessionId: null,
@@ -385,7 +389,19 @@ export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase
       sseReconnectAttempt: 0,
       latencyMs: null,
     })
-  }, [stopAllPolling])
+
+    // Clear localStorage so auto-reconnect doesn't revive the dead session
+    try { localStorage.removeItem('fg_studio_session') } catch { /* noop */ }
+
+    // Tell the server to destroy the session (fire-and-forget — UI is already updated)
+    if (currentSessionId) {
+      fetch('/api/studio/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: currentSessionId }),
+      }).catch(() => { /* best-effort — server TTL will clean up eventually */ })
+    }
+  }, [stopAllPolling, state.sessionId])
 
   const recordCommand = useCallback((message: string) => {
     setState((prev) => ({
