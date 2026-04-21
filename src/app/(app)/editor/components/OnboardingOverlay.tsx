@@ -96,24 +96,25 @@ interface SpotRect {
 }
 
 function getSpotRect(zone: OnboardingStep['zone']): SpotRect {
+  // Updated for single-column chat-first layout (SimplifiedEditor)
   switch (zone) {
     case 'welcome':
-      // Full left panel — centred welcome card
-      return { top: '56px', left: '12px', width: 'calc(45% - 18px)', height: 'calc(100dvh - 80px)' }
+      // Full content area below top bar
+      return { top: '56px', left: '5%', width: '90%', height: 'calc(100dvh - 140px)' }
     case 'input':
     case 'slash':
     case 'voice':
-      // Chat textarea at the very bottom of the left panel
-      return { top: 'calc(100dvh - 128px)', left: '12px', width: 'calc(45% - 18px)', height: '104px' }
+      // Chat input bar at the bottom, centered
+      return { top: 'calc(100dvh - 110px)', left: '10%', width: '80%', height: '72px' }
     case 'templates':
-      // SuggestedPrompts row sits just above the chat input
-      return { top: 'calc(100dvh - 220px)', left: '12px', width: 'calc(45% - 18px)', height: '84px' }
+      // Suggestion chips in the middle of the welcome screen
+      return { top: 'calc(50% + 40px)', left: '15%', width: '70%', height: '80px' }
     case 'generating':
-      // Left panel chat area — mid-height where AI response appears
-      return { top: '56px', left: '12px', width: 'calc(45% - 18px)', height: 'calc(100dvh - 200px)' }
+      // Chat message area
+      return { top: '56px', left: '5%', width: '90%', height: 'calc(100dvh - 140px)' }
     case 'connect':
-      // Top portion of right studio panel (Connect Studio button lives there)
-      return { top: '68px', left: 'calc(45% + 6px)', width: 'calc(55% - 18px)', height: '200px' }
+      // Top-right area where Studio connect button is in the top bar
+      return { top: '4px', left: '50%', width: '48%', height: '48px' }
   }
 }
 
@@ -128,24 +129,20 @@ interface TooltipPos {
 }
 
 function getTooltipPos(zone: OnboardingStep['zone']): TooltipPos {
+  // Updated for single-column chat-first layout
   switch (zone) {
     case 'welcome':
-      // Centred over the left panel
-      return { top: '50%', left: 'calc(22.5% - 150px)', transform: 'translateY(-50%)' }
+      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
     case 'input':
     case 'slash':
     case 'voice':
-      // Above the highlighted input bar, anchored left
-      return { bottom: '144px', left: '12px' }
+      return { bottom: '130px', left: '50%', transform: 'translateX(-50%)' }
     case 'templates':
-      // Above the highlighted templates row, anchored left
-      return { bottom: '236px', left: '12px' }
+      return { top: 'calc(50% - 60px)', left: '50%', transform: 'translateX(-50%)' }
     case 'generating':
-      // Centred in the left panel
-      return { top: '50%', left: 'calc(22.5% - 150px)', transform: 'translateY(-50%)' }
+      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
     case 'connect':
-      // Left of the right panel, vertically centred with the highlight
-      return { top: '88px', right: 'calc(55% + 20px)' }
+      return { top: '60px', right: '20px' }
   }
 }
 

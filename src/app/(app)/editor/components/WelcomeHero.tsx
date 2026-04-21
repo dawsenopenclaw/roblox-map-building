@@ -2,6 +2,78 @@
 
 import { useState, useEffect, useRef } from 'react'
 
+// ─── 3D Rotating word ring (matches homepage) ──────────────────────────────
+const ROTATING_WORDS = ['Game', 'Map', 'World', 'Obby', 'Tycoon', 'RPG', 'UI']
+const ROTATE_INTERVAL = 2200
+
+function RotatingWord3D() {
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => setIndex(i => (i + 1) % ROTATING_WORDS.length), ROTATE_INTERVAL)
+    return () => clearInterval(timer)
+  }, [])
+
+  const longest = ROTATING_WORDS.reduce((a, b) => a.length > b.length ? a : b)
+  const stepDeg = 360 / ROTATING_WORDS.length
+
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        position: 'relative',
+        height: '1.15em',
+        minWidth: `${longest.length + 0.5}ch`,
+        verticalAlign: 'bottom',
+        perspective: '1200px',
+        perspectiveOrigin: '50% 50%',
+      }}
+    >
+      <span aria-hidden style={{ visibility: 'hidden', display: 'inline-block', whiteSpace: 'nowrap' }}>
+        {longest}
+      </span>
+      <span
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transformStyle: 'preserve-3d',
+          transform: `rotateX(${index * stepDeg}deg)`,
+          transition: 'transform 0.9s cubic-bezier(0.32, 0.72, 0.24, 1)',
+          willChange: 'transform',
+        }}
+      >
+        {ROTATING_WORDS.map((word, i) => {
+          const angle = -i * stepDeg
+          const isActive = i === index
+          return (
+            <span
+              key={word}
+              aria-hidden={!isActive}
+              style={{
+                position: 'absolute',
+                left: 0, top: 0, width: '100%', height: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                textAlign: 'center', whiteSpace: 'nowrap',
+                transform: `rotateX(${angle}deg) translateZ(1.2em)`,
+                transformOrigin: '50% 50%',
+                backfaceVisibility: 'hidden',
+                opacity: isActive ? 1 : 0,
+                transition: 'opacity 0.6s ease-out',
+                background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              {word}
+            </span>
+          )
+        })}
+      </span>
+    </span>
+  )
+}
+
 // ─── Animated demo — simulates a real AI build conversation ─────────────────
 const DEMO_STEPS = [
   { type: 'user' as const, text: 'Build me a pirate ship with cannons and sails' },
@@ -225,7 +297,7 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         position: 'relative',
       }}
     >
-      {/* ─── Greeting ─── */}
+      {/* ─── Greeting with 3D rotating words ─── */}
       <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <h1 style={{
           fontSize: 'clamp(1.8rem, 5vw, 2.8rem)',
@@ -234,8 +306,14 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
           letterSpacing: '-0.03em',
           color: '#FAFAFA',
           margin: 0,
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'baseline',
+          justifyContent: 'center',
+          gap: '0.2em',
         }}>
-          What do you want to build?
+          <span>Forge your</span>
+          <RotatingWord3D />
         </h1>
         <p style={{
           marginTop: 8,
