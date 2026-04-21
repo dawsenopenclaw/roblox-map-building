@@ -14,31 +14,28 @@ function RotatingWord3D() {
     return () => clearInterval(timer)
   }, [])
 
-  const longest = ROTATING_WORDS.reduce((a, b) => a.length > b.length ? a : b)
   const stepDeg = 360 / ROTATING_WORDS.length
+  const current = ROTATING_WORDS[index]
 
   return (
     <span
       style={{
         display: 'inline-block',
         position: 'relative',
-        height: '1.15em',
-        minWidth: `${longest.length + 0.5}ch`,
-        verticalAlign: 'bottom',
-        perspective: '1200px',
+        height: '1.1em',
+        width: '4.5em',
+        perspective: '800px',
         perspectiveOrigin: '50% 50%',
+        overflow: 'hidden',
       }}
     >
-      <span aria-hidden style={{ visibility: 'hidden', display: 'inline-block', whiteSpace: 'nowrap' }}>
-        {longest}
-      </span>
       <span
         style={{
           position: 'absolute',
           inset: 0,
           transformStyle: 'preserve-3d',
           transform: `rotateX(${index * stepDeg}deg)`,
-          transition: 'transform 0.9s cubic-bezier(0.32, 0.72, 0.24, 1)',
+          transition: 'transform 0.8s cubic-bezier(0.32, 0.72, 0.24, 1)',
           willChange: 'transform',
         }}
       >
@@ -52,17 +49,19 @@ function RotatingWord3D() {
               style={{
                 position: 'absolute',
                 left: 0, top: 0, width: '100%', height: '100%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', whiteSpace: 'nowrap',
-                transform: `rotateX(${angle}deg) translateZ(1.2em)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                whiteSpace: 'nowrap',
+                transform: `rotateX(${angle}deg) translateZ(1em)`,
                 transformOrigin: '50% 50%',
                 backfaceVisibility: 'hidden',
                 opacity: isActive ? 1 : 0,
-                transition: 'opacity 0.6s ease-out',
+                transition: 'opacity 0.5s ease-out',
                 background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
+                fontWeight: 700,
+                letterSpacing: '-0.03em',
               }}
             >
               {word}
@@ -149,11 +148,24 @@ function AnimatedDemo() {
 
       {/* Demo header */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16,
-        fontSize: 11, color: '#52525B', fontWeight: 600, letterSpacing: '0.05em',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14,
       }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-        LIVE PREVIEW
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 11, color: '#52525B', fontWeight: 600, letterSpacing: '0.05em',
+        }}>
+          <span style={{
+            width: 7, height: 7, borderRadius: '50%', background: '#22c55e',
+            display: 'inline-block', boxShadow: '0 0 6px rgba(34,197,94,0.5)',
+            animation: 'pulse-dot 2s ease-in-out infinite',
+          }} />
+          LIVE PREVIEW
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', opacity: 0.6 }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', opacity: 0.6 }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', opacity: 0.6 }} />
+        </div>
       </div>
 
       {/* Messages */}
@@ -247,6 +259,10 @@ function AnimatedDemo() {
         @keyframes pulse {
           0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
           40% { opacity: 1; transform: scale(1.1); }
+        }
+        @keyframes pulse-dot {
+          0%, 100% { box-shadow: 0 0 4px rgba(34,197,94,0.3); }
+          50% { box-shadow: 0 0 10px rgba(34,197,94,0.6); }
         }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }

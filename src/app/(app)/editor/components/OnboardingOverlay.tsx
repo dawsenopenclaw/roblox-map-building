@@ -97,24 +97,21 @@ interface SpotRect {
 
 function getSpotRect(zone: OnboardingStep['zone']): SpotRect {
   // Updated for single-column chat-first layout (SimplifiedEditor)
+  // Max chat input width is 680px, centered
   switch (zone) {
     case 'welcome':
-      // Full content area below top bar
-      return { top: '56px', left: '5%', width: '90%', height: 'calc(100dvh - 140px)' }
+      return { top: '56px', left: '10%', width: '80%', height: 'calc(100dvh - 140px)' }
     case 'input':
     case 'slash':
     case 'voice':
-      // Chat input bar at the bottom, centered
-      return { top: 'calc(100dvh - 110px)', left: '10%', width: '80%', height: '72px' }
+      // Matches the max-width:680px centered input bar
+      return { top: 'calc(100dvh - 90px)', left: 'calc(50% - 350px)', width: '700px', height: '56px' }
     case 'templates':
-      // Suggestion chips in the middle of the welcome screen
-      return { top: 'calc(50% + 40px)', left: '15%', width: '70%', height: '80px' }
+      return { top: 'calc(50% + 60px)', left: 'calc(50% - 290px)', width: '580px', height: '60px' }
     case 'generating':
-      // Chat message area
-      return { top: '56px', left: '5%', width: '90%', height: 'calc(100dvh - 140px)' }
+      return { top: '56px', left: '10%', width: '80%', height: 'calc(100dvh - 140px)' }
     case 'connect':
-      // Top-right area where Studio connect button is in the top bar
-      return { top: '4px', left: '50%', width: '48%', height: '48px' }
+      return { top: '4px', left: '55%', width: '44%', height: '48px' }
   }
 }
 
