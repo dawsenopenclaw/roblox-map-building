@@ -132,15 +132,15 @@ function getTooltipPos(zone: OnboardingStep['zone']): TooltipPos {
   // Updated for single-column chat-first layout
   switch (zone) {
     case 'welcome':
-      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+      return { top: '35%', left: '50%', transform: 'translate(-50%, -50%)' }
     case 'input':
     case 'slash':
     case 'voice':
-      return { bottom: '130px', left: '50%', transform: 'translateX(-50%)' }
+      return { bottom: '140px', left: '50%', transform: 'translateX(-50%)' }
     case 'templates':
       return { top: 'calc(50% - 60px)', left: '50%', transform: 'translateX(-50%)' }
     case 'generating':
-      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
+      return { top: '35%', left: '50%', transform: 'translate(-50%, -50%)' }
     case 'connect':
       return { top: '60px', right: '20px' }
   }
