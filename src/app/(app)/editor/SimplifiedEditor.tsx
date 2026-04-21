@@ -300,40 +300,65 @@ function EditorInner() {
         />
       )}
 
-      {/* Floating chat input when in welcome state (no messages yet) */}
+      {/* Floating chat input — ChatGPT-style centered bar */}
       {!hasMessages && (
         <div
           style={{
-            padding: '16px 20px 28px',
-            borderTop: '1px solid rgba(255,255,255,0.05)',
-            background: 'linear-gradient(180deg, rgba(5,8,16,0.85) 0%, rgba(5,8,16,0.95) 100%)',
-            backdropFilter: 'blur(16px)',
+            padding: '0 20px 24px',
+            background: 'transparent',
           }}
         >
-          <div style={{ maxWidth: 640, margin: '0 auto' }}>
-            {/* Input row — clean, no clutter */}
+          <div style={{ maxWidth: 680, margin: '0 auto' }}>
             <div
               style={{
                 display: 'flex',
                 gap: 8,
                 alignItems: 'flex-end',
-                background: 'rgba(8,10,22,0.7)',
+                background: 'rgba(15,18,30,0.8)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 16,
-                padding: '8px 10px 8px 16px',
+                borderRadius: 20,
+                padding: '10px 12px 10px 18px',
                 transition: 'border-color 0.2s, box-shadow 0.2s',
-                backdropFilter: 'blur(16px)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                backdropFilter: 'blur(20px)',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
               }}
               onFocusCapture={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,230,160,0.06), 0 0 0 1px rgba(212,175,55,0.1), 0 0 20px rgba(212,175,55,0.08)'
+                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
+                e.currentTarget.style.boxShadow = '0 4px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,175,55,0.08), 0 0 40px rgba(212,175,55,0.06), inset 0 1px 0 rgba(255,230,160,0.06)'
               }}
               onBlurCapture={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
-                e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.03)'
+                e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)'
               }}
             >
+              {/* Attach button */}
+              <button
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = 'image/*'
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0]
+                    if (file) chat.setImageFile(file)
+                  }
+                  input.click()
+                }}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  border: 'none', background: 'rgba(255,255,255,0.04)',
+                  color: '#52525B', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#A1A1AA' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#52525B' }}
+                aria-label="Attach image"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
+
               <textarea
                 ref={chat.textareaRef}
                 value={chat.input}
@@ -344,7 +369,7 @@ function EditorInner() {
                     if (chat.input.trim()) chat.sendMessage(chat.input)
                   }
                 }}
-                placeholder="Describe anything — a pirate ship, a tycoon game, a medieval castle..."
+                placeholder="Message Forje..."
                 rows={1}
                 style={{
                   flex: 1,
@@ -353,42 +378,40 @@ function EditorInner() {
                   padding: '8px 0',
                   color: '#FAFAFA',
                   fontSize: 15,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'inherit',
                   resize: 'none',
                   outline: 'none',
                   lineHeight: 1.5,
-                  fontWeight: 500,
+                  fontWeight: 400,
                 }}
               />
+
+              {/* Send button */}
               <button
                 onClick={() => { if (chat.input.trim()) chat.sendMessage(chat.input) }}
                 disabled={chat.loading || !chat.input.trim()}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
+                  width: 36, height: 36, borderRadius: 10,
                   border: 'none',
                   background: chat.input.trim()
-                    ? 'linear-gradient(135deg, #D4AF37 0%, #B8962E 100%)'
+                    ? '#D4AF37'
                     : 'rgba(255,255,255,0.04)',
                   color: chat.input.trim() ? '#09090b' : '#3F3F46',
                   cursor: chat.input.trim() ? 'pointer' : 'default',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  transition: 'all 0.15s',
-                  boxShadow: chat.input.trim() ? '0 0 16px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,230,160,0.25)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, transition: 'all 0.15s',
                 }}
                 aria-label="Send message"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
                 </svg>
               </button>
             </div>
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#3F3F46', marginTop: 10 }}>
-              Press <kbd style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Enter</kbd> to send &middot; <kbd style={{ padding: '2px 6px', borderRadius: 4, border: '1px solid #27272A', background: '#18181B', fontSize: 10 }}>Shift+Enter</kbd> for new line
+
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#27272A', marginTop: 8 }}>
+              Forje can make mistakes. Verify builds in Studio.
             </p>
           </div>
         </div>

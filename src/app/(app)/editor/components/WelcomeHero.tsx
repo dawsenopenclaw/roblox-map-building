@@ -1,72 +1,211 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { PRIMARY_PRESETS } from '@/lib/game-presets'
+import { useState, useEffect, useRef } from 'react'
 
-// ─── Rotating words ─────────────────────────────────────────────────────────
-const WORDS = ['Game', 'Tycoon', 'Obby', 'Simulator', 'RPG', 'Map', 'World']
-const INTERVAL_MS = 2200
-
-// ─── Suggested builds — these map directly to our 200 RAG templates ────────
-const SUGGESTED_BUILDS = [
-  { label: 'Pirate Ship', prompt: 'Build me a pirate ship with mast, sails, cannons, and a captain cabin', icon: '🏴‍☠️' },
-  { label: 'Medieval Castle', prompt: 'Build a medieval castle with towers, battlements, a gatehouse, and a throne room', icon: '🏰' },
-  { label: 'Low-Poly Island', prompt: 'Create a low poly floating island with a cottage, palm trees, dock, and rowboat', icon: '🏝️' },
-  { label: 'Spaceship', prompt: 'Build a small spaceship with cockpit, wings, engines, and landing gear', icon: '🚀' },
-  { label: 'Cozy Cafe', prompt: 'Build a cafe interior with counter, tables, chairs, menu board, and pendant lights', icon: '☕' },
-  { label: 'PvP Arena', prompt: 'Create a symmetrical PvP arena with cover walls, team spawns, and a center platform', icon: '⚔️' },
-  { label: 'Haunted Graveyard', prompt: 'Build a haunted graveyard with tombstones, iron fence, dead trees, and fog', icon: '👻' },
-  { label: 'Farm Scene', prompt: 'Build a farm with a red barn, fenced crop field, silo, tractor, and farmhouse', icon: '🌾' },
-  { label: 'Treehouse', prompt: 'Build a treehouse with a big tree, platform, ladder, walls, and rope bridge', icon: '🌳' },
-  { label: 'Race Track', prompt: 'Create a race track with starting gate, banked curves, barriers, and finish line', icon: '🏎️' },
-  { label: 'Underwater Ruins', prompt: 'Build underwater ruins with broken columns, coral, treasure, and kelp', icon: '🐠' },
-  { label: 'Zen Garden', prompt: 'Create a zen garden with raked sand, stepping stones, bonsai tree, and water feature', icon: '🎋' },
+// ─── Animated demo — simulates a real AI build conversation ─────────────────
+const DEMO_STEPS = [
+  { type: 'user' as const, text: 'Build me a pirate ship with cannons and sails' },
+  { type: 'thinking' as const, text: 'Planning build: hull, deck, mast, sails, cannons, cabin...' },
+  { type: 'ai' as const, text: "I'll build your pirate ship with a wooden hull, tall mast with cloth sails, 6 cannons, and a captain's cabin on the stern." },
+  { type: 'building' as const, text: 'Building... 47 parts placed', parts: 47 },
+  { type: 'done' as const, text: 'Pirate ship deployed to Studio' },
 ]
 
-// ─── Quick action categories ──────────────────────────────────────────────
-const QUICK_MODES = [
-  { label: 'Build', description: 'Describe any object or scene', prompt: 'Build me a ', icon: '🏗️', color: '#D4AF37' },
-  { label: 'Full Game', description: 'Complete game with gameplay', prompt: '/plan ', icon: '🎮', color: '#60A5FA' },
-  { label: 'Script', description: 'Luau code for game mechanics', prompt: 'Write a script that ', icon: '📝', color: '#7C3AED' },
-  { label: 'Image', description: 'Game art and thumbnails', prompt: '/image ', icon: '🎨', color: '#10B981' },
-  { label: '3D Model', description: 'Generate 3D mesh assets', prompt: '/mesh ', icon: '🧊', color: '#F59E0B' },
+function AnimatedDemo() {
+  const [step, setStep] = useState(0)
+  const [typing, setTyping] = useState('')
+  const [showCursor, setShowCursor] = useState(true)
+
+  useEffect(() => {
+    const cursor = setInterval(() => setShowCursor(v => !v), 530)
+    return () => clearInterval(cursor)
+  }, [])
+
+  // Type out user message, then reveal AI steps one by one
+  useEffect(() => {
+    if (step === 0) {
+      // Type user message character by character
+      const msg = DEMO_STEPS[0].text
+      let i = 0
+      const timer = setInterval(() => {
+        if (i <= msg.length) {
+          setTyping(msg.slice(0, i))
+          i++
+        } else {
+          clearInterval(timer)
+          setTimeout(() => setStep(1), 600)
+        }
+      }, 40)
+      return () => clearInterval(timer)
+    }
+    if (step > 0 && step < DEMO_STEPS.length) {
+      const delay = step === 1 ? 1200 : step === 3 ? 2000 : 1500
+      const timer = setTimeout(() => setStep(s => s + 1), delay)
+      return () => clearTimeout(timer)
+    }
+    if (step >= DEMO_STEPS.length) {
+      // Restart loop after pause
+      const timer = setTimeout(() => {
+        setStep(0)
+        setTyping('')
+      }, 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [step])
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        maxWidth: 520,
+        background: 'rgba(8,10,22,0.6)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 16,
+        padding: '20px 20px 16px',
+        backdropFilter: 'blur(12px)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Ambient glow */}
+      <div aria-hidden style={{
+        position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)',
+        width: 300, height: 120,
+        background: 'radial-gradient(ellipse, rgba(212,175,55,0.08) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Demo header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16,
+        fontSize: 11, color: '#52525B', fontWeight: 600, letterSpacing: '0.05em',
+      }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+        LIVE PREVIEW
+      </div>
+
+      {/* Messages */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 160 }}>
+        {/* User message — always visible while typing or after */}
+        <div style={{
+          alignSelf: 'flex-end',
+          background: 'rgba(212,175,55,0.12)',
+          border: '1px solid rgba(212,175,55,0.18)',
+          borderRadius: '14px 14px 4px 14px',
+          padding: '10px 14px',
+          maxWidth: '85%',
+          fontSize: 13,
+          color: '#E4E4E7',
+          lineHeight: 1.5,
+          opacity: step >= 0 ? 1 : 0,
+          transition: 'opacity 0.3s',
+        }}>
+          {step === 0 ? (
+            <>{typing}<span style={{ opacity: showCursor ? 1 : 0, color: '#D4AF37' }}>|</span></>
+          ) : DEMO_STEPS[0].text}
+        </div>
+
+        {/* AI thinking */}
+        {step >= 1 && (
+          <div style={{
+            alignSelf: 'flex-start',
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 12px',
+            borderRadius: '14px 14px 14px 4px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            fontSize: 12,
+            color: step >= 2 ? '#52525B' : '#A1A1AA',
+            lineHeight: 1.5,
+            maxWidth: '90%',
+            opacity: 1,
+            transition: 'all 0.4s',
+          }}>
+            {step === 1 && (
+              <span style={{ display: 'flex', gap: 3 }}>
+                {[0,1,2].map(i => (
+                  <span key={i} style={{
+                    width: 5, height: 5, borderRadius: '50%', background: '#D4AF37',
+                    animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                  }} />
+                ))}
+              </span>
+            )}
+            {step >= 2 && <span style={{ color: '#D4AF37', flexShrink: 0 }}>F</span>}
+            <span>{step === 1 ? DEMO_STEPS[1].text : step >= 2 ? DEMO_STEPS[2].text : ''}</span>
+          </div>
+        )}
+
+        {/* Building progress */}
+        {step >= 3 && (
+          <div style={{
+            alignSelf: 'flex-start',
+            padding: '10px 14px',
+            borderRadius: '14px 14px 14px 4px',
+            background: 'rgba(34,197,94,0.06)',
+            border: '1px solid rgba(34,197,94,0.15)',
+            fontSize: 12,
+            color: '#22c55e',
+            display: 'flex', alignItems: 'center', gap: 8,
+            maxWidth: '85%',
+          }}>
+            {step === 3 ? (
+              <>
+                <span className="spin" style={{ display: 'inline-block' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 11-6.219-8.56" />
+                  </svg>
+                </span>
+                Building... 47 parts placed
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Pirate ship deployed to Studio
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* CSS animations */}
+      <style>{`
+        @keyframes pulse {
+          0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+          40% { opacity: 1; transform: scale(1.1); }
+        }
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  )
+}
+
+// ─── Suggestion chips — quick-start prompts ────────────────────────────────
+const SUGGESTIONS = [
+  { label: 'Pirate ship', prompt: 'Build me a pirate ship with mast, sails, cannons, and a captain cabin', icon: '🏴‍☠️' },
+  { label: 'Medieval castle', prompt: 'Build a medieval castle with towers, battlements, a gatehouse, and a throne room', icon: '🏰' },
+  { label: 'Tycoon factory', prompt: 'Build a tycoon factory with conveyor belts, machines, and a cash register', icon: '🏭' },
+  { label: 'Floating island', prompt: 'Create a low poly floating island with a cottage, palm trees, dock, and rowboat', icon: '🏝️' },
+  { label: 'PvP arena', prompt: 'Create a symmetrical PvP arena with cover walls, team spawns, and a center platform', icon: '⚔️' },
+  { label: 'Race track', prompt: 'Create a race track with starting gate, banked curves, barriers, and finish line', icon: '🏎️' },
 ]
 
-// ─── Full game genre cards ─────────────────────────────────────────────────
-const GENRE_CARDS = PRIMARY_PRESETS.map((p) => ({
-  id: p.id,
-  icon: p.icon,
-  label: p.label,
-  tagline: p.tagline,
-  prompt: p.prompt,
-}))
+// ─── Mode pills ───────────────────────────────────────────────────────────
+const MODES = [
+  { label: 'Build', prompt: 'Build me a ', color: '#D4AF37' },
+  { label: 'Full Game', prompt: '/plan ', color: '#60A5FA' },
+  { label: 'Script', prompt: 'Write a script that ', color: '#7C3AED' },
+  { label: 'Image', prompt: '/image ', color: '#10B981' },
+  { label: '3D Model', prompt: '/mesh ', color: '#F59E0B' },
+]
 
 interface WelcomeHeroProps {
   visible: boolean
   onQuickAction: (prompt: string, autoSend: boolean) => void
   onBuildGame?: (prompt: string) => void
-}
-
-function RotatingWord() {
-  const [index, setIndex] = useState(0)
-  useEffect(() => {
-    const timer = setInterval(() => setIndex(prev => (prev + 1) % WORDS.length), INTERVAL_MS)
-    return () => clearInterval(timer)
-  }, [])
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        minWidth: '5ch',
-        background: 'linear-gradient(135deg, #D4AF37 0%, #FFD966 50%, #D4AF37 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text',
-      }}
-    >
-      {WORDS[index]}
-    </span>
-  )
 }
 
 export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHeroProps) {
@@ -79,249 +218,133 @@ export function WelcomeHero({ visible, onQuickAction, onBuildGame }: WelcomeHero
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: '2rem 1rem',
-        gap: '2rem',
+        justifyContent: 'center',
+        padding: '1.5rem 1rem',
+        gap: '1.5rem',
         overflow: 'auto',
         position: 'relative',
       }}
     >
-      {/* Subtle ambient glow behind headline */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 600,
-          height: 300,
-          background: 'radial-gradient(ellipse at 50% 20%, rgba(212,175,55,0.06) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Headline */}
-      <div style={{ textAlign: 'center', marginTop: '1.5rem', position: 'relative', zIndex: 1 }}>
+      {/* ─── Greeting ─── */}
+      <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <h1 style={{
-          fontSize: 'clamp(2.2rem, 7vw, 3.8rem)',
-          fontWeight: 800,
-          lineHeight: 1.08,
-          letterSpacing: '-0.04em',
+          fontSize: 'clamp(1.8rem, 5vw, 2.8rem)',
+          fontWeight: 700,
+          lineHeight: 1.15,
+          letterSpacing: '-0.03em',
           color: '#FAFAFA',
           margin: 0,
         }}>
-          Forge your <RotatingWord />
+          What do you want to build?
         </h1>
         <p style={{
-          marginTop: 12,
-          fontSize: 'clamp(0.85rem, 1.8vw, 1.05rem)',
+          marginTop: 8,
+          fontSize: 15,
           color: '#52525B',
-          maxWidth: 380,
-          margin: '12px auto 0',
+          maxWidth: 400,
+          margin: '8px auto 0',
           lineHeight: 1.5,
         }}>
-          Click a build below, or type your own idea
+          Describe anything. Forje will build it and sync to Studio.
         </p>
       </div>
 
-      {/* ═══ SUGGESTED BUILDS ═══ */}
-      <div style={{ width: '100%', maxWidth: 680, position: 'relative', zIndex: 1 }}>
-        <p style={{
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          color: '#D4AF37',
-          marginBottom: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <span style={{ width: 16, height: 1, background: '#D4AF37', opacity: 0.4 }} />
-          Click to build instantly
-        </p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          gap: 10,
-        }}>
-          {SUGGESTED_BUILDS.map((build) => (
+      {/* ─── Live demo ─── */}
+      <AnimatedDemo />
+
+      {/* ─── Suggestion chips ─── */}
+      <div style={{
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        maxWidth: 560,
+      }}>
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s.label}
+            onClick={() => onQuickAction(s.prompt, true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.03)',
+              color: '#A1A1AA',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-out',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(212,175,55,0.10)'
+              e.currentTarget.style.borderColor = 'rgba(212,175,55,0.30)'
+              e.currentTarget.style.color = '#E4E4E7'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+              e.currentTarget.style.color = '#A1A1AA'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
+          >
+            <span style={{ fontSize: 15 }}>{s.icon}</span>
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Mode pills ─── */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+      }}>
+        {MODES.map((m) => {
+          const autoSend = !m.prompt.endsWith(' ')
+          return (
             <button
-              key={build.label}
-              onClick={() => onQuickAction(build.prompt, true)}
+              key={m.label}
+              onClick={() => onQuickAction(m.prompt, autoSend)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '12px 14px',
-                borderRadius: 12,
-                border: '1px solid rgba(212,175,55,0.12)',
-                background: 'rgba(212,175,55,0.03)',
+                padding: '5px 12px',
+                borderRadius: 999,
+                border: `1px solid ${m.color}25`,
+                background: `${m.color}08`,
+                color: m.color,
+                fontSize: 12,
+                fontWeight: 600,
                 cursor: 'pointer',
-                transition: 'all 0.2s ease-out',
-                textAlign: 'left',
+                transition: 'all 0.15s',
                 fontFamily: 'inherit',
-                position: 'relative',
-                overflow: 'hidden',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(212,175,55,0.10)'
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.35)'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3), 0 0 20px rgba(212,175,55,0.08)'
+                e.currentTarget.style.background = `${m.color}18`
+                e.currentTarget.style.borderColor = `${m.color}40`
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(212,175,55,0.03)'
-                e.currentTarget.style.borderColor = 'rgba(212,175,55,0.12)'
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = 'none'
+                e.currentTarget.style.background = `${m.color}08`
+                e.currentTarget.style.borderColor = `${m.color}25`
               }}
             >
-              <span style={{ fontSize: 20, flexShrink: 0 }}>{build.icon}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#E4E4E7', letterSpacing: '-0.01em' }}>
-                {build.label}
-              </span>
+              {m.label}
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
-      {/* ═══ QUICK MODES ═══ */}
-      <div style={{ width: '100%', maxWidth: 680 }}>
-        <p style={{
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.1em',
-          color: '#52525B',
-          marginBottom: 10,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <span style={{ width: 16, height: 1, background: '#52525B', opacity: 0.4 }} />
-          Or try a different mode
-        </p>
-        <div style={{
-          display: 'flex',
-          gap: 10,
-          flexWrap: 'wrap',
-        }}>
-          {QUICK_MODES.map((mode) => {
-            const autoSend = !mode.prompt.endsWith(' ')
-            return (
-              <button
-                key={mode.label}
-                onClick={() => onQuickAction(mode.prompt, autoSend)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '10px 16px',
-                  borderRadius: 10,
-                  border: `1px solid ${mode.color}20`,
-                  background: `${mode.color}06`,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease-out',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = `${mode.color}15`
-                  e.currentTarget.style.borderColor = `${mode.color}40`
-                  e.currentTarget.style.transform = 'translateY(-1px)'
-                  e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,0.2), 0 0 12px ${mode.color}10`
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = `${mode.color}06`
-                  e.currentTarget.style.borderColor = `${mode.color}20`
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <span style={{ fontSize: 17 }}>{mode.icon}</span>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: mode.color, letterSpacing: '-0.01em' }}>{mode.label}</div>
-                  <div style={{ fontSize: 11, color: '#52525B', lineHeight: 1.3 }}>{mode.description}</div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ═══ FULL GAME PRESETS ═══ */}
-      {onBuildGame && GENRE_CARDS.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 680 }}>
-          <p style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            color: '#52525B',
-            marginBottom: 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-          }}>
-            <span style={{ width: 16, height: 1, background: '#52525B', opacity: 0.4 }} />
-            Build a complete game
-          </p>
-          <div style={{
-            display: 'flex',
-            gap: 8,
-            flexWrap: 'wrap',
-          }}>
-            {GENRE_CARDS.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => onBuildGame(g.prompt)}
-                title={g.tagline}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '7px 12px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(255,255,255,0.06)',
-                  background: 'rgba(255,255,255,0.02)',
-                  color: '#A1A1AA',
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease-out',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
-                  e.currentTarget.style.color = '#E4E4E7'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'
-                  e.currentTarget.style.color = '#A1A1AA'
-                }}
-              >
-                <span style={{ fontSize: 14 }}>{g.icon}</span>
-                {g.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Keyboard shortcut hint */}
+      {/* ─── Hint ─── */}
       <p style={{ fontSize: 11, color: '#3F3F46', textAlign: 'center' }}>
+        Type below to start &middot;{' '}
         <kbd style={{
-          padding: '2px 6px',
-          borderRadius: 5,
-          border: '1px solid #27272A',
-          background: '#18181B',
-          fontSize: 10,
-          fontFamily: 'inherit',
-        }}>Ctrl+K</kbd>{' '}
-        command palette &middot;{' '}
-        <span style={{ color: '#52525B' }}>Type anything below to get started</span>
+          padding: '1px 5px', borderRadius: 4,
+          border: '1px solid #27272A', background: '#18181B', fontSize: 10,
+        }}>Ctrl+K</kbd> for commands
       </p>
     </div>
   )
