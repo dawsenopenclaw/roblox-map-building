@@ -50,6 +50,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .join('; ')
 
     root.setAttribute('style', [...(preserved ? [preserved] : []), ...entries].join('; '))
+
+    // Also set body background for full-page theming
+    document.body.style.backgroundColor = theme.vars['--background'] || ''
+    document.body.style.color = theme.vars['--text-primary'] || ''
   }, [settings.theme, settings.accentColor, settings.fontSize])
 
   return <>{children}</>

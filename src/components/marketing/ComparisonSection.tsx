@@ -67,7 +67,7 @@ export default function ComparisonSection() {
   return (
     <section
       id="compare"
-      className="py-20 sm:py-28 px-6 relative scroll-mt-16"
+      className="py-20 sm:py-28 px-4 sm:px-6 lg:px-10 relative scroll-mt-16 overflow-hidden"
       style={{ background: '#050810' }}
     >
       {/* Ambient glow */}
@@ -86,7 +86,7 @@ export default function ComparisonSection() {
         />
       </div>
 
-      <div className="relative max-w-6xl mx-auto">
+      <div className="relative max-w-7xl mx-auto">
         {/* ── Section Header ── */}
         <div className="text-center mb-14 reveal">
           <p

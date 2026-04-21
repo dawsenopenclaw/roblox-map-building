@@ -7,7 +7,8 @@ import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
 import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, Settings, LayoutDashboard } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-import { LanguageSwitcher } from './LanguageSwitcher'
+// Language switcher removed until translations are complete
+// import { LanguageSwitcher } from './LanguageSwitcher'
 
 interface NavLink {
   href: string
@@ -166,7 +167,7 @@ function MarketingNav() {
              which is the right tradeoff since the vast majority of
              home-page traffic is logged out. */}
         <div className="hidden md:flex items-center flex-shrink-0 gap-3 justify-end">
-          <LanguageSwitcher compact />
+          {/* Language switcher removed until translations complete */}
           {!(isLoaded && isSignedIn) && (
             <>
               <SignInButton mode="modal">
@@ -294,7 +295,7 @@ function MarketingNav() {
               </Link>
             ))}
             <div className="border-t border-white/[0.06] mt-2 pt-3 flex flex-col gap-3">
-              <LanguageSwitcher />
+              {/* Language switcher removed until translations complete */}
               {!(isLoaded && isSignedIn) && (
                 <>
                   <SignInButton mode="modal">

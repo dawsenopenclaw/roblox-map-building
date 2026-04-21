@@ -694,13 +694,13 @@ P("BaseboardF", CFrame.new(sp + Vector3.new(0, 1.15, -7.3)), Vector3.new(20, 0.3
 P("CrownTrimF", CFrame.new(sp + Vector3.new(0, 10.85, -7.3)), Vector3.new(20, 0.3, 0.3), Enum.Material.Wood, Color3.fromRGB(90, 70, 50))
 
 -- Interior ceiling light
-local lp = P("CeilingLight", CFrame.new(sp + Vector3.new(0, 10.5, 0)), Vector3.new(1, 0.3, 1), Enum.Material.Neon, Color3.fromRGB(255, 220, 160))
+local lp = P("CeilingLight", CFrame.new(sp + Vector3.new(0, 10.5, 0)), Vector3.new(1, 0.3, 1), Enum.Material.Glass, Color3.fromRGB(255, 220, 160))
 lp.Transparency = 0.2
 local pl = Instance.new("PointLight")
 pl.Color = Color3.fromRGB(255, 200, 140)  pl.Brightness = 2  pl.Range = 25  pl.Parent = lp
 
 -- Porch light
-local pp = P("PorchLight", CFrame.new(sp + Vector3.new(0, 7.8, -8)), Vector3.new(0.5, 0.5, 0.5), Enum.Material.Neon, Color3.fromRGB(255, 210, 140))
+local pp = P("PorchLight", CFrame.new(sp + Vector3.new(0, 7.8, -8)), Vector3.new(0.5, 0.5, 0.5), Enum.Material.Glass, Color3.fromRGB(255, 210, 140))
 pp.Transparency = 0.3
 local pl2 = Instance.new("PointLight")
 pl2.Color = Color3.fromRGB(255, 190, 120)  pl2.Brightness = 1.5  pl2.Range = 15  pl2.Parent = pp
@@ -2336,16 +2336,44 @@ ${buildInstruction}`
       }
     }
 
-    // If both models failed to produce code, try the template fallback before giving up
+    // If both models failed to produce code, try lightweight retry then template fallback
     if (!luauCode) {
-      console.warn('[SinglePass] Both models failed or code rejected — trying template fallback')
-      const templateCode = generateFallbackBuild(message)
-      if (templateCode) {
-        luauCode = templateCode
-        model = 'template'
-        conversationText = `Here's a template build for "${message}". The AI models were busy, so I used a pre-built template. Let me know what you'd like to change!`
-      } else {
-        conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
+      console.warn('[SinglePass] Both models failed or code rejected — trying lightweight retry')
+
+      // Retry with a MUCH shorter system prompt (no RAG, no patterns, no examples)
+      // This uses fewer tokens and is less likely to hit rate limits
+      const lightPrompt = `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera.`
+      const lightInstruction = `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`
+      try {
+        const lightRetry = await raceNonNull(
+          callGemini(lightPrompt, lightInstruction, [], 8192),
+          callGroq(lightPrompt, lightInstruction, [], 8192),
+        )
+        if (lightRetry) {
+          const lightCode = extractLuauCode(lightRetry.result)
+          if (lightCode && lightCode.includes('Instance.new')) {
+            luauCode = lightCode
+            model = modelNames[lightRetry.index] + '-light'
+            const codeStart = lightRetry.result.indexOf('```lua')
+            conversationText = codeStart > 20 ? lightRetry.result.slice(0, codeStart).trim() : `Here's "${message}" — let me know what to change!`
+            console.log(`[LightRetry] Success with ${model} (${luauCode.length} chars)`)
+          }
+        }
+      } catch (lightErr) {
+        console.warn('[LightRetry] Failed:', lightErr instanceof Error ? lightErr.message : lightErr)
+      }
+
+      // Still no code — try template fallback
+      if (!luauCode) {
+        console.warn('[SinglePass] Lightweight retry also failed — trying template fallback')
+        const templateCode = generateFallbackBuild(message)
+        if (templateCode) {
+          luauCode = templateCode
+          model = 'template'
+          conversationText = `Here's a template build for "${message}". The AI models are experiencing high demand right now, so I used a pre-built template as a starting point. Let me know what you'd like to change!`
+        } else {
+          conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
+        }
       }
     }
 

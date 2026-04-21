@@ -401,20 +401,48 @@ export function useStudioConnection(onReconnectToast?: (phase: SSEReconnectPhase
   // Cleanup on unmount
   useEffect(() => () => stopAllPolling(), [stopAllPolling])
 
-  // When page regains focus (tab switch, refresh), immediately re-poll to catch disconnects
+  // When page regains focus (tab switch, alt-tab), immediately re-poll to catch disconnects
   useEffect(() => {
     function handleVisibilityChange() {
-      if (document.visibilityState === 'visible' && state.sessionId && state.isConnected) {
-        void pollStatus(state.sessionId)
+      if (document.visibilityState !== 'visible') return
+      // If we have a session, re-poll it
+      const sid = state.sessionId || (typeof localStorage !== 'undefined' ? localStorage.getItem('fg_studio_session') : null)
+      if (sid) {
+        void pollStatus(sid)
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [state.sessionId, state.isConnected, pollStatus])
+  }, [state.sessionId, pollStatus])
 
-  // Clear stale localStorage on mount
+  // Persist sessionId to localStorage so refreshes can auto-reconnect
   useEffect(() => {
+    if (state.sessionId && state.isConnected) {
+      try { localStorage.setItem('fg_studio_session', state.sessionId) } catch { /* noop */ }
+    }
+    if (!state.isConnected && !state.sessionId) {
+      try { localStorage.removeItem('fg_studio_session') } catch { /* noop */ }
+    }
+  }, [state.sessionId, state.isConnected])
+
+  // On mount: check if there's a previous session to reconnect to
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem('fg_studio_session')
+      if (savedSession) {
+        // Poll the saved session to see if Studio is still connected
+        void pollStatus(savedSession).then(() => {
+          // If pollStatus updated state.isConnected, we're reconnected
+          console.log('[StudioConnection] Attempted auto-reconnect to session:', savedSession)
+        }).catch(() => {
+          // Session is dead — clean up
+          localStorage.removeItem('fg_studio_session')
+        })
+      }
+    } catch { /* noop */ }
+    // Also clean up the old key
     try { localStorage.removeItem('fg_studio_connection') } catch { /* noop */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const requestScreenshot = useCallback(() => {
