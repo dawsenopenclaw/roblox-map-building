@@ -1,13 +1,15 @@
 {
-  "name": "ForjeGames",
+  "name": "ForjeGames — AI Roblox Builder",
   "short_name": "ForjeGames",
-  "description": "AI-powered Roblox game development platform",
+  "description": "Build Roblox games with AI. Editor, marketplace, and Studio sync — all in one app.",
   "theme_color": "#D4AF37",
   "background_color": "#050810",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
   "start_url": "/editor",
   "scope": "/",
+  "id": "/",
   "icons": [
     {
       "src": "/icons/icon-192.svg",
@@ -34,6 +36,43 @@
       "purpose": "maskable"
     }
   ],
-  "categories": ["developer tools", "utilities"],
-  "lang": "en-US"
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "ForjeGames AI Editor"
+    }
+  ],
+  "categories": ["developer tools", "games", "utilities"],
+  "lang": "en-US",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "New Build",
+      "short_name": "New",
+      "description": "Start a new AI build",
+      "url": "/editor?new=1",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Marketplace",
+      "short_name": "Market",
+      "description": "Browse game templates",
+      "url": "/marketplace",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dash",
+      "description": "View your projects",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-192.svg", "sizes": "192x192" }]
+    }
+  ],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
 }
