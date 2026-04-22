@@ -1745,7 +1745,7 @@ async function freeModelTwoPass(
   const qualityTier: QualityTier = 'pro'
   const tierModifier = isScriptIntent ? '' : '\n\n' + getTierPromptModifier(qualityTier)
   let luauCode: string | null = null
-  let executedInStudio: boolean | string = false
+  let executedInStudio: boolean = false
 
   // Auto-select specialist based on what the user is building
   const specialist = await findSpecialist(message)
@@ -1888,6 +1888,49 @@ CRITICAL QUALITY RULES:
 9. SCALE CORRECTLY: A building should be 30-60 studs wide, NOT 200. A baseplate under a building should be 5-10 studs larger than the building, NOT 200x200. Character is 5.5 studs tall — use that as reference.
 10. INTERIORS ARE MANDATORY for any building. A coffee shop needs: counter, shelves, chairs, tables, menu board, cash register, display case. NEVER leave buildings empty inside.
 11. Every building needs: foundation slightly larger than walls, walls with OPENINGS (not solid boxes), roof with overhang, door with frame+handle, at least 2 windows with glass+frames, interior furniture, interior lighting.
+
+=== ADVANCED TECHNIQUES — USE THESE TO MAKE BUILDS PRO-QUALITY ===
+
+TERRAIN GENERATION (use for outdoor builds):
+  local terrain = workspace.Terrain
+  terrain:FillBlock(CFrame.new(sp.X, sp.Y-2, sp.Z), Vector3.new(200,4,200), Enum.Material.Grass) -- ground plane
+  terrain:FillBall(Vector3.new(sp.X+30, sp.Y+5, sp.Z+20), 15, Enum.Material.Grass) -- hill
+  terrain:FillBlock(CFrame.new(sp.X, sp.Y-1, sp.Z+50), Vector3.new(40,2,40), Enum.Material.Water) -- pond
+  terrain:FillBlock(CFrame.new(sp.X, sp.Y-1.5, sp.Z+30), Vector3.new(50,1,6), Enum.Material.Sand) -- beach edge
+  USE TERRAIN for ground in ALL outdoor builds. Parts for ground look amateur. Terrain is free and looks 10x better.
+
+AAA LIGHTING STACK (add to EVERY build):
+  local L = game:GetService("Lighting")
+  L.Technology = Enum.Technology.Future
+  L.EnvironmentDiffuseScale = 1  -- CRITICAL: enables skybox ambient light
+  L.EnvironmentSpecularScale = 1 -- CRITICAL: enables reflections
+  L.GlobalShadows = true
+  local atm = Instance.new("Atmosphere") atm.Density=0.3 atm.Offset=0.25 atm.Color=Color3.fromRGB(200,210,230) atm.Decay=Color3.fromRGB(120,140,180) atm.Glare=0.5 atm.Haze=1.5 atm.Parent=L
+  local bloom = Instance.new("BloomEffect") bloom.Intensity=0.4 bloom.Size=24 bloom.Threshold=0.95 bloom.Parent=L
+  local cc = Instance.new("ColorCorrectionEffect") cc.Brightness=0.05 cc.Contrast=0.15 cc.Saturation=-0.1 cc.TintColor=Color3.fromRGB(255,248,240) cc.Parent=L
+  local sr = Instance.new("SunRaysEffect") sr.Intensity=0.08 sr.Spread=0.3 sr.Parent=L
+  NOTE: Saturation should be NEGATIVE (-0.1 to -0.2) for cinematic feel. Positive saturation looks gamey.
+  NOTE: EnvironmentDiffuseScale=1 and EnvironmentSpecularScale=1 are THE BIGGEST visual quality difference.
+  NOTE: Atmosphere.Offset (0.2-0.4) controls where fog starts. Atmosphere.Decay controls distant fog color.
+
+PARTICLE EFFECT RECIPES (add atmosphere to every build):
+  DUST MOTES: Rate=3, Size=NumberSequence.new(0.1,0.3), Speed=NumberRange.new(0.5,2), Lifetime=NumberRange.new(8,15), Transparency=NumberSequence.new({NumberSequenceKeypoint.new(0,0.6),NumberSequenceKeypoint.new(1,1)})
+  EMBERS: Rate=5, Size=NumberSequence.new(0.1,0.05), Speed=NumberRange.new(2,5), Lifetime=NumberRange.new(2,4), Color=ColorSequence.new(Color3.fromRGB(255,150,50),Color3.fromRGB(255,50,0))
+  FOG WISPS: Rate=1, Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0),NumberSequenceKeypoint.new(0.3,10),NumberSequenceKeypoint.new(1,0)}), Speed=NumberRange.new(0.2,0.5), Lifetime=NumberRange.new(10,15)
+
+BEAM + TRAIL EFFECTS (cheap to render, huge visual impact):
+  -- Light beam / laser / magical connection:
+  local a1=Instance.new("Attachment") a1.Parent=part1 local a2=Instance.new("Attachment") a2.Parent=part2
+  local beam=Instance.new("Beam") beam.Attachment0=a1 beam.Attachment1=a2 beam.Width0=2 beam.Width1=0.5 beam.Color=ColorSequence.new(Color3.fromRGB(255,200,100)) beam.LightEmission=1 beam.Parent=part1
+
+HIGHLIGHT (hover effects, magical auras, selection indicators):
+  local hl = Instance.new("Highlight") hl.FillColor=Color3.fromRGB(255,215,0) hl.FillTransparency=0.7 hl.OutlineColor=Color3.fromRGB(255,255,255) hl.OutlineTransparency=0.3 hl.Parent=targetPart
+
+NEGATIVE SPACE AND SILHOUETTE DESIGN:
+  Pro builds are NOT symmetric boxes. Add: roof overhangs (extend W() 2-3 studs past walls), balconies (small platform + railing extending from 2nd floor), porches (covered walkway with columns), bay windows (3-part angled window extension), chimneys, antennas, awnings. These break the box silhouette and catch shadows under Future lighting.
+
+ORGANIC VARIATION:
+  Not every window should be the same size. Vary dimensions by 0.5-1 stud. Offset some parts by 0.1-0.2 studs for natural imperfection. Use vc() on EVERY material, not just a few. Real buildings aren't perfectly uniform.
 
 === STUDIO AWARENESS — USE THE CONTEXT ===
 You receive real-time data from the user's Roblox Studio:
@@ -8751,7 +8794,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
             // client disconnects mid-stream (which would cause writer.write
             // to throw and skip everything after it).
             const luau = extractLuauCode(fullText)
-            let executedInStudio: boolean | string = false
+            let executedInStudio: boolean = false
             if (luau && sessionId) {
               try {
                 executedInStudio = await sendCodeToStudio(sessionId, luau)

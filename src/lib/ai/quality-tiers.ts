@@ -93,13 +93,17 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
 - 35-65 parts. This should look like a real Roblox game environment.
 - FULL INTERIORS: multiple rooms, each with purpose-specific furniture.
 - 5+ PointLights/SpotLights with varied warmth — kitchen lights brighter, bedroom dimmer.
-- 3+ interactive elements: doors that could open (ProximityPrompt), clickable buttons, SurfaceGui signs with text.
+- 3+ interactive elements: doors (ProximityPrompt), clickable buttons, SurfaceGui signs with text.
 - Fire/Smoke/ParticleEmitter on at least one element (chimney smoke, torch fire, fountain spray).
-- CINEMATIC LIGHTING: Atmosphere + BloomEffect + ColorCorrectionEffect in Lighting service.
-- 8+ colors with vc() variation on every surface.
-- Landscaping around buildings: paths, fences, planters, trees (Cyl+Ball).
-- Edge detail: window frames, door trim, roof overhangs, gutters, awnings.
-- USE ALL HELPERS: P(), W(), Cyl(), Ball(). Flat-box builds are unacceptable.`,
+- AAA LIGHTING: Atmosphere(Density=0.3,Offset=0.25) + Bloom(0.4) + CC(Saturation=-0.1) + SunRays. SET EnvironmentDiffuseScale=1 AND EnvironmentSpecularScale=1 — this is the #1 quality difference.
+- TERRAIN: Use workspace.Terrain:FillBlock for ground planes on ALL outdoor builds. Part-based ground looks amateur.
+- 8+ colors with vc() variation on EVERY surface — no flat uniform colors anywhere.
+- SILHOUETTE: Break the box outline — roof overhangs, chimneys, balconies, porches, awnings, bay windows.
+- NEGATIVE SPACE: Covered walkways, recessed doorways, overhanging eaves that catch shadows.
+- Landscaping: paths, fences, planters, trees (Cyl+Ball), terrain hills.
+- Edge detail: window frames with sills, door trim with threshold, baseboards, crown molding.
+- USE ALL HELPERS: P(), W(), Cyl(), Ball(). Flat-box builds are unacceptable.
+- ORGANIC VARIATION: vary window sizes by 0.5 studs, offset parts by 0.1-0.2 studs for natural imperfection.`,
   },
 
   master: {
@@ -117,15 +121,19 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresCinematicLighting: true,
     promptModifier: `QUALITY TIER: MASTER — Showcase, award-winning quality.
 - 50-75 parts. Every single part is intentional and detailed.
-- SCRIPTED ELEMENTS: doors that TweenService open/close, lights that flicker, NPCs with ProximityPrompt dialogue.
+- SCRIPTED ELEMENTS: doors that TweenService open/close with sound, lights that flicker (randomized Brightness/Range in loop), NPCs with ProximityPrompt dialogue.
 - RICH INTERIORS: every room furnished with 5+ props. Kitchen has appliances, bedroom has bedside tables + lamps + books.
-- 8+ light sources with purposeful placement — accent lights, task lights, ambient lights.
-- Particle effects: Smoke on chimneys, Fire on torches, Sparkles on treasure, ParticleEmitter for dust/atmosphere.
-- FULL CINEMATIC LIGHTING: Atmosphere(Density=0.3) + Bloom(0.3) + CC(warm tint) + SunRays.
+- 8+ light sources with purposeful placement — accent PointLights, task SpotLights, warm ambient bounce lights (Brightness 0.3, Range 50+ behind walls).
+- ADVANCED PARTICLES: Smoke on chimneys with NumberSequence transparency curves, Fire on torches, ParticleEmitter dust motes in light beams (Rate=3, slow speed, long lifetime).
+- AAA LIGHTING: EnvironmentDiffuseScale=1, EnvironmentSpecularScale=1, Atmosphere with Offset=0.25 and Decay color. CC Saturation=-0.15 for cinematic look.
+- TERRAIN: FillBlock for ground, FillBall for hills, Water for ponds. Never use Parts for terrain.
+- BEAM EFFECTS: Use Beam between Attachments for light rays through windows, magical connections, rope bridges.
+- HIGHLIGHT: Add Highlight instances on key objects for magical auras or interactive indicators.
 - Sound instances for ambience (crackling fire, wind, water).
 - 10+ colors, every material intentional. No two walls the exact same shade.
-- Outdoor landscaping: varied trees, rock formations, flower beds, paths with different materials.
-- Architectural detail: crown molding, chair rail, wainscoting, decorative arches.`,
+- SILHOUETTE MASTERY: dormers, bay windows, covered porches, pergolas, terraces, varying roof heights.
+- Outdoor landscaping: varied trees with multiple Ball() canopy clusters at different heights, rock formations (2-3 Balls different sizes), flower beds, paths with different materials.
+- Architectural detail: crown molding, chair rail, wainscoting, decorative arches, corbels.`,
   },
 
   legendary: {
@@ -143,14 +151,19 @@ const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     requiresCinematicLighting: true,
     promptModifier: `QUALITY TIER: LEGENDARY — This is the ceiling. Museum-quality, fully alive.
 - 60-80 parts, every one of them justified and detailed.
-- FULLY SCRIPTED: doors open with TweenService + sound. Lights flicker realistically. NPCs wander with PathfindingService. Buttons trigger events. Signs display dynamic text.
-- IMMERSIVE AUDIO: ambient sounds everywhere — wind, birds, water, fire crackling, footstep echoes.
-- PARTICLE MASTERY: Smoke(chimneys), Fire(torches), ParticleEmitter(dust motes in light beams, leaves falling, rain, snow, embers).
-- CINEMATIC: Atmosphere + Bloom + CC + SunRays + DepthOfField for camera focus.
-- INTERIORS that tell stories: books on shelves, food on tables, clothes in wardrobes, paintings on walls, rugs under furniture, clocks on mantels.
-- MATERIALS: 12+ colors, every surface unique. Weathering on metal (CorrodedMetal patches). Moss on old stone (green tint on Granite). Wood grain variation.
-- LANDSCAPING: mature trees (multiple Cyl+Ball clusters), garden beds, stone walls, gravel paths, water features, benches, lampposts with SpotLights.
-- ARCHITECTURAL PERFECTION: columns, arches, cornices, balustrades, dormers, bay windows, covered porches, decorative brackets.
+- FULLY SCRIPTED: doors open with TweenService + Sound. Lights flicker (Brightness oscillation in task.spawn loop). NPCs wander with PathfindingService. Buttons trigger events. Signs display dynamic text via SurfaceGui.
+- IMMERSIVE AUDIO: ambient Sound instances everywhere — wind, birds, water, fire crackling.
+- PARTICLE MASTERY: Smoke with NumberSequence transparency curves, Fire with size variation, ParticleEmitter for dust motes (Rate=3, lifetime=12, transparency 0.6→1), embers (Rate=5, upward velocity, orange→red ColorSequence), fog wisps (Rate=1, Size=10+, slow).
+- CINEMATIC STACK: EnvironmentDiffuseScale=1, EnvironmentSpecularScale=1, Atmosphere(Density=0.3,Offset=0.25,Decay), Bloom(0.4,24,0.95), CC(Saturation=-0.15,Contrast=0.15), SunRays(0.08), DepthOfFieldEffect(FarIntensity=0.1,FocusDistance=100).
+- TERRAIN EVERYWHERE: FillBlock ground, FillBall hills, Water ponds, Sand beaches. NO Part-based terrain.
+- BEAM + TRAIL: light rays through stained glass (Beam with LightEmission=1), rope bridges, magical effects, Trail on moving elements.
+- HIGHLIGHT: auras on magical items, hover indicators on interactive objects.
+- INTERIORS that tell stories: books on shelves, food on tables, paintings on walls, rugs under furniture, clocks on mantels.
+- MATERIALS: 12+ colors. Weathering: CorrodedMetal patches on old metal, green-tinted Granite for mossy stone. Wood grain variation with vc(baseColor, 0.15).
+- SILHOUETTE: every angle has visual interest. Dormers, bay windows, covered porches, pergolas, varying roof heights, chimneys with caps, antennas, weathervanes.
+- NEGATIVE SPACE: arcaded walkways, covered terraces, recessed balconies, deep window reveals (0.5 stud inset).
+- LANDSCAPING: mature trees (2-3 Cyl trunks + 4-5 Ball canopy clusters at varying heights), garden beds with colored Parts, stone walls, gravel paths (Pebble material), water features (Glass + ParticleEmitter spray), benches, lampposts with SpotLights.
+- BOUNCE LIGHTING: place warm PointLights (Brightness=0.3, Range=50) behind walls and under terrain to simulate indirect light.
 - This build should make someone stop and say "wait, an AI made this?"`,
   },
 }
