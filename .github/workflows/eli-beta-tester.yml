@@ -2,8 +2,8 @@ name: ELI Beta Tester Sweep
 
 on:
   schedule:
-    # Every 30 minutes — full visual sweep
-    - cron: '*/30 * * * *'
+    # Every 2 hours (conserve GitHub Actions minutes + Upstash quota)
+    - cron: '0 */2 * * *'
   workflow_dispatch:
     inputs:
       mode:

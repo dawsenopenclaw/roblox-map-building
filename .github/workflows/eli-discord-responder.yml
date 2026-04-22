@@ -2,8 +2,8 @@ name: ELI Discord Responder
 
 on:
   schedule:
-    # Every 5 minutes
-    - cron: '*/5 * * * *'
+    # Every 15 minutes (conserve Upstash Redis quota)
+    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 
 jobs:
