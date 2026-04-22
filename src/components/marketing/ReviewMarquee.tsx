@@ -101,19 +101,13 @@ function RobloxAvatar({ userId, name, tier }: { userId: number; name: string; ti
       {isGuest ? (
         <GuestIcon />
       ) : (
-        <img
-          src={`https://randomuser.me/api/portraits/${avatar!.gender}/${avatar!.id}.jpg`}
-          alt=""
-          width={40}
-          height={40}
-          loading="lazy"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-          }}
-        />
+        <span style={{
+          fontSize: 14, fontWeight: 700,
+          color: tierStyle.color,
+          letterSpacing: '0.02em',
+        }}>
+          {getInitials(name)}
+        </span>
       )}
     </div>
   )
