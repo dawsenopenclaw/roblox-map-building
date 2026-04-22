@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/nextjs'
-import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, Settings, LayoutDashboard } from 'lucide-react'
+import { useAuth, SignInButton, SignUpButton } from '@clerk/nextjs'
+import { Sparkles, Layout, CreditCard, Download as DownloadIcon, LifeBuoy, BookOpen, Activity, Rocket, LayoutDashboard } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 // Language switcher removed until translations are complete
@@ -196,7 +196,7 @@ function MarketingNav() {
             <>
               <Link
                 href="/editor"
-                className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97]"
+                className="text-sm font-semibold px-5 py-2 rounded-lg transition-all duration-150 text-black hover:brightness-110 active:scale-[0.97] whitespace-nowrap"
                 style={{
                   background: 'linear-gradient(135deg, #D4AF37 0%, #C8962A 100%)',
                   boxShadow: '0 0 20px rgba(212,175,55,0.35)',
@@ -204,33 +204,7 @@ function MarketingNav() {
               >
                 Open Editor
               </Link>
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-9 h-9 ring-1 ring-white/10 hover:ring-[#D4AF37]/40 transition-all',
-                  },
-                }}
-                userProfileMode="navigation"
-                userProfileUrl="/settings"
-                afterSignOutUrl="/"
-              >
-                {/* Clerk lets us add extra menu items. These are the two
-                    routes regular users actually need; the admin dashboard
-                    is intentionally NOT listed here and is only reachable
-                    via a direct URL + middleware admin check. */}
-                <UserButton.MenuItems>
-                  <UserButton.Link
-                    label="Dashboard"
-                    labelIcon={<LayoutDashboard size={14} />}
-                    href="/dashboard"
-                  />
-                  <UserButton.Link
-                    label="Settings"
-                    labelIcon={<Settings size={14} />}
-                    href="/settings"
-                  />
-                </UserButton.MenuItems>
-              </UserButton>
+              {/* Profile button handled by global ProfileButton in root layout */}
             </>
           )}
         </div>
