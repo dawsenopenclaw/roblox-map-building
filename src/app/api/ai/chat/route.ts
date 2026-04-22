@@ -1137,6 +1137,13 @@ Always add these as children of game:GetService("Lighting"):
 - These values are SUBTLE — the scene should look like a real place with real light, not a filter demo.
 - Adjust Lighting.ClockTime to match the mood: 7=sunrise, 12=noon, 16=golden hour, 20=sunset, 0=night.
 
+LIGHTING PRESETS — pick the one that matches the build mood:
+  DAYTIME OUTDOOR: ClockTime=14, Brightness=2.5, Atmosphere(Density=0.25,Color=200/215/240,Decay=120/130/150,Haze=1.2), Bloom(0.2,24,0.9), CC(Brightness=0.02,Contrast=0.05,Sat=0.15,Tint=255/250/245), SunRays(0.05,0.7)
+  SPOOKY NIGHT: ClockTime=0.5, Brightness=0.5, Ambient=30/25/40, Atmosphere(Density=0.45,Color=40/30/60,Haze=3), Bloom(0.15,30,0.85), CC(Brightness=-0.08,Contrast=0.15,Sat=-0.3,Tint=180/170/220), ExposureCompensation=-0.5
+  SUNSET GOLDEN: ClockTime=17.5, Brightness=2, Ambient=160/120/80, Atmosphere(Density=0.35,Color=255/180/100,Decay=200/100/50,Glare=0.3,Haze=2), Bloom(0.4,32,0.85), CC(Brightness=0.05,Contrast=0.1,Sat=0.2,Tint=255/230/200), SunRays(0.15,1)
+  NEON CITY: ClockTime=22, Brightness=0.3, Ambient=15/10/25, Atmosphere(Density=0.4,Color=30/15/50,Haze=4), Bloom(0.6,40,0.75), CC(Contrast=0.2,Sat=0.3,Tint=220/200/255), ExposureCompensation=-0.2
+  COZY INTERIOR: ClockTime=20, Brightness=0.5, Ambient=80/60/40, Atmosphere(Density=0.2,Color=180/150/120,Haze=0.5), Bloom(0.35,30,0.82), CC(Brightness=0.03,Contrast=0.06,Sat=0.05,Tint=255/235/210) — pair with warm PointLights (255/220/170) on every fixture
+
 RULE #7 — WHEN THEY SAY "NO" OR CORRECT YOU:
 - Don't repeat the same mistake. Actually change what they asked you to change.
 - If they say "no smooth plastic" → use Wood, Brick, Cobblestone, or another textured material.
@@ -1161,6 +1168,18 @@ MATERIAL GUIDE — use what the REAL object is made of:
 - Lights → Neon, warm white (#FFF5E1)
 - BANNED: SmoothPlastic. Pick the material that matches what the part IS (roof→Slate, floor→WoodPlanks, furniture→Wood, wall→Concrete, window→Glass, lamp→Glass+PointLight child). For lighting use Glass/Metal material + PointLight/SpotLight instances, NOT Neon.
 - NEVER use royal blue/emerald/gold unless asked. Use natural realistic colors.
+
+PART PROPERTY REMINDERS:
+1. Set Part.Anchored=true on ALL static parts — unanchored parts fall through the world.
+2. Set Parent LAST — never Instance.new("Part", parent). Set all properties first, then p.Parent=folder.
+3. Part shapes: Enum.PartType.Block (default), Enum.PartType.Ball (sphere), Enum.PartType.Cylinder. For wedge, use WedgePart class. For corner wedge, use CornerWedgePart class.
+4. CastShadow=false on parts smaller than 2 studs (performance optimization).
+5. CollisionFidelity=Enum.CollisionFidelity.Box for simple parts (best performance).
+6. Use Transparency 0.3-0.5 for windows, 0.6 for water surfaces, 1.0 for invisible trigger zones.
+7. Child lights: PointLight(Brightness 2-4, Range 25-40) for omnidirectional. SpotLight(+Angle 30-60, Face=Bottom) for downward cones. SurfaceLight for panels.
+8. Child effects: Fire(Size 3-8, Heat 10) for torches, Smoke(Size 3, Opacity 0.3, RiseVelocity 2) for chimneys, Sparkles for treasure/magic, ParticleEmitter for custom effects.
+9. Child interaction: ProximityPrompt(MaxActivationDistance 10, ActionText="Open") for doors/chests, ClickDetector for buttons, SurfaceGui for signs/displays.
+10. Always use Color3.fromRGB(r,g,b) — NEVER BrickColor.new(). Use vc() helper to add 2-3 shades of variation.
 
 VOICE: Friendly, brief, helpful.
 - Under 80 words. Say what you built plainly.
@@ -2078,7 +2097,20 @@ USE THIS DATA:
 - At least 1 upgrader machine between dropper and collector
 - Factory/machine building housing the dropper (detailed, 15+ parts)
 - Plot boundary walls with expandable gates
-- Rebirth portal (ornate, glowing, with cost display)`
+- Rebirth portal (ornate, glowing, with cost display)
+
+TYCOON CODE PATTERN — dropper + conveyor + collector:
+  -- Dropper: spawn ball every N seconds, set Value attribute
+  task.spawn(function() while true do task.wait(dropInterval)
+    local drop=Instance.new("Part") drop.Shape=Enum.PartType.Ball drop.Size=Vector3.new(1.5,1.5,1.5) drop.Material=Enum.Material.Neon drop.Color=Color3.fromRGB(255,200,50)
+    drop.CFrame=dropperPart.CFrame-Vector3.new(0,3,0) drop.Anchored=false drop:SetAttribute("Value",baseValue) drop:SetAttribute("Owner",player.UserId)
+    local bv=Instance.new("BodyVelocity") bv.Velocity=(collectorPos-dropperPos).Unit*15 bv.MaxForce=Vector3.new(1e4,0,1e4) bv.Parent=drop
+    drop.Parent=workspace task.delay(15,function() if drop.Parent then drop:Destroy() end end) end end)
+  -- Collector: touched event adds cash and destroys drop
+  collectorPart.Touched:Connect(function(hit) if hit.Name~="TycoonDrop" then return end
+    local val=hit:GetAttribute("Value") or 0 local oid=hit:GetAttribute("Owner") or 0
+    local p=Players:GetPlayerByUserId(oid) if p then addCash(p,val) end hit:Destroy() end)
+  -- Upgrade: buy buttons with ProximityPrompt, exponential pricing (baseCost * 2.5^level)`
     } else if (/obby/i.test(lowerMsg)) {
       gameTypeGuidance = `\n\nOBBY STRUCTURE — build these components:
 - Start platform with spawn point and clear "GO" indicator
@@ -2089,7 +2121,21 @@ USE THIS DATA:
 - Wall jumps or tightrope sections for variety
 - Win platform at the end with celebration effects (particles, confetti)
 - Themed decoration along the course (lava, clouds, space, etc.)
-- Safety rails or visual guides for the path`
+- Safety rails or visual guides for the path
+
+OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
+  -- Checkpoint: SpawnLocation with Touched that updates RespawnLocation
+  checkpoint.Touched:Connect(function(hit) local char=hit.Parent local h=char:FindFirstChildOfClass("Humanoid")
+    if not h then return end local p=Players:GetPlayerFromCharacter(char) if not p then return end
+    if (playerStages[p.UserId] or 0) >= stageNum then return end
+    playerStages[p.UserId]=stageNum p.RespawnLocation=checkpoint end)
+  -- Kill brick: Touched->Health=0
+  killBrick.Touched:Connect(function(hit) local h=hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
+    if h and h.Health>0 then h.Health=0 end end)
+  -- Moving platform: TweenService ping-pong
+  local ti=TweenInfo.new(duration,Enum.EasingStyle.Sine,Enum.EasingDirection.InOut,-1,true)
+  TweenService:Create(platform,ti,{CFrame=CFrame.new(pointB)}):Play()
+  -- Timer: start=os.clock() on stage 1, elapsed=os.clock()-start on win, save best with DataStore`
     } else if (/simulator/i.test(lowerMsg)) {
       gameTypeGuidance = `\n\nSIMULATOR STRUCTURE — build these components:
 - Hub/spawn island with clear paths to each zone
@@ -7417,7 +7463,48 @@ RULES:
 - NO Part creation, NO building, NO P() helpers — pure scripting only
 - The script should be ready to paste into ServerScriptService or appropriate container
 - Wrap in ChangeHistoryService recording so the user can undo
-- ALWAYS output code, never just describe what the code would do`,
+- ALWAYS output code, never just describe what the code would do
+- Always start with --!strict, type-annotate function params and returns
+- Use generalized iteration (for k,v in t do) — NEVER pairs/ipairs
+- Use table.freeze() on all config tables
+- Validate ALL client input on server — never trust RemoteEvent args
+
+SCRIPT TEMPLATES — use these patterns as starting points:
+
+LEADERBOARD + DATA SAVE:
+  local Players=game:GetService("Players") local DSS=game:GetService("DataStoreService")
+  local store=DSS:GetDataStore("PlayerData_v1")
+  Players.PlayerAdded:Connect(function(p) local ls=Instance.new("Folder") ls.Name="leaderstats" ls.Parent=p
+    local coins=Instance.new("IntValue") coins.Name="Coins" coins.Parent=ls
+    local ok,v=pcall(function() return store:GetAsync("p_"..p.UserId) end)
+    if ok and type(v)=="number" then coins.Value=v end end)
+  Players.PlayerRemoving:Connect(function(p) local c=p:FindFirstChild("leaderstats") and p.leaderstats:FindFirstChild("Coins")
+    if c then pcall(function() store:SetAsync("p_"..p.UserId,c.Value) end) end end)
+
+SHOP WITH REMOTEVENT:
+  local buyEvent=Instance.new("RemoteEvent") buyEvent.Name="Buy" buyEvent.Parent=RS
+  local PRICES={SpeedBoost=100,DoubleJump=250,Shield=500}
+  buyEvent.OnServerEvent:Connect(function(p,item) if type(item)~="string" then return end
+    local price=PRICES[item] if not price then return end
+    local coins=p.leaderstats and p.leaderstats:FindFirstChild("Coins")
+    if not coins or coins.Value<price then return end coins.Value-=price end)
+
+NPC PATROL:
+  local humanoid=npc:FindFirstChildOfClass("Humanoid") local points={Vector3.new(0,0,0),Vector3.new(20,0,0),Vector3.new(20,0,20)}
+  task.spawn(function() local idx=1 while humanoid and humanoid.Health>0 do
+    humanoid:MoveTo(points[idx]) humanoid.MoveToFinished:Wait() task.wait(2)
+    idx=idx%#points+1 end end)
+
+DAILY REWARDS:
+  local REWARDS={50,75,100,150,200,300,500} local DAY=86400
+  -- On join: check os.time()-lastClaim>=DAY, increment streak (reset if >2*DAY), grant REWARDS[streak], save
+
+DAMAGE MODULE:
+  local function applyDamage(target:Model,amount:number,knockback:Vector3?)
+    local h=target:FindFirstChildOfClass("Humanoid") if not h or h.Health<=0 then return false end
+    h:TakeDamage(amount) if knockback then local rp=target:FindFirstChild("HumanoidRootPart")
+    if rp then local bv=Instance.new("BodyVelocity") bv.Velocity=knockback bv.MaxForce=Vector3.one*1e5 bv.Parent=rp
+    task.delay(0.15,function() bv:Destroy() end) end end return true end`,
     image: '\n\n[IMAGE_MODE] The user wants to generate a visual asset (icon, thumbnail, GFX). Describe what the image should look like in detail, including art style, color palette, composition, and Roblox-appropriate aesthetics.',
     terrain: '\n\n[TERRAIN_MODE] Focus on terrain generation. Use Terrain:FillRegion(), Terrain:FillBall(), Terrain:FillCylinder(), and related APIs. Paint materials (Grass, Sand, Rock, Snow, Water, etc.), sculpt heights, and create natural biomes.',
     debug: '\n\n[DEBUG_MODE] The user needs help debugging. First, analyze the code or error description thoroughly. Identify the root cause. Then provide a fixed version with clear explanations of what was wrong and why the fix works. Use <thinking>...</thinking> tags to show your analysis.',
