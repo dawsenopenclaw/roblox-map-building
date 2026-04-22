@@ -361,6 +361,631 @@ portal.Touched:Connect(function(hit)
   task.delay(3, function() cooldown[player.UserId] = nil end)
 end)`
   },
+
+  // ─── SCRIPTED LIGHTING EFFECTS ──────────────────────────────────────────
+
+  {
+    keywords: ['neon sign', 'neon flicker', 'neon light', 'sign flicker', 'buzzing sign'],
+    category: 'lighting',
+    name: 'Neon Sign Flicker',
+    description: 'Neon sign that flickers on/off with buzzing randomness',
+    code: `-- Neon Sign Flicker: realistic buzzing neon effect
+local neonPart = --NEON_PART_REF (Material = Neon)
+local light = neonPart:FindFirstChildOfClass("PointLight") or Instance.new("PointLight")
+light.Brightness = 3 light.Range = 20 light.Color = neonPart.Color light.Parent = neonPart
+local onTransparency = 0
+local offTransparency = 0.9
+task.spawn(function()
+  while neonPart and neonPart.Parent do
+    -- Random flicker pattern
+    if math.random() < 0.15 then
+      -- Quick double-flicker
+      neonPart.Transparency = offTransparency light.Enabled = false
+      task.wait(0.05 + math.random() * 0.05)
+      neonPart.Transparency = onTransparency light.Enabled = true
+      task.wait(0.03)
+      neonPart.Transparency = offTransparency light.Enabled = false
+      task.wait(0.05 + math.random() * 0.08)
+      neonPart.Transparency = onTransparency light.Enabled = true
+    elseif math.random() < 0.05 then
+      -- Long off period (dying bulb feel)
+      neonPart.Transparency = offTransparency light.Enabled = false
+      task.wait(0.3 + math.random() * 0.5)
+      neonPart.Transparency = onTransparency light.Enabled = true
+    end
+    task.wait(0.5 + math.random() * 2)
+  end
+end)`
+  },
+  {
+    keywords: ['color pulse', 'color change', 'rgb light', 'rainbow light', 'color cycle'],
+    category: 'lighting',
+    name: 'Color Pulse Light',
+    description: 'PointLight that smoothly cycles through colors',
+    code: `-- Color Pulse: smooth color cycling on a PointLight
+local TweenService = game:GetService("TweenService")
+local light = --POINTLIGHT_REF
+local colors = {
+  Color3.fromRGB(255, 100, 100), -- red
+  Color3.fromRGB(100, 255, 100), -- green
+  Color3.fromRGB(100, 100, 255), -- blue
+  Color3.fromRGB(255, 255, 100), -- yellow
+  Color3.fromRGB(255, 100, 255), -- magenta
+  Color3.fromRGB(100, 255, 255), -- cyan
+}
+local tweenInfo = TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+task.spawn(function()
+  local idx = 1
+  while light and light.Parent do
+    local nextIdx = idx % #colors + 1
+    TweenService:Create(light, tweenInfo, {Color = colors[nextIdx]}):Play()
+    -- Also tween the parent part color if it's Neon
+    local parent = light.Parent
+    if parent and parent:IsA("BasePart") and parent.Material == Enum.Material.Neon then
+      TweenService:Create(parent, tweenInfo, {Color = colors[nextIdx]}):Play()
+    end
+    task.wait(1.5)
+    idx = nextIdx
+  end
+end)`
+  },
+  {
+    keywords: ['lightning', 'thunder', 'storm', 'lightning flash', 'thunderstorm'],
+    category: 'lighting',
+    name: 'Lightning Storm',
+    description: 'Lightning flashes with thunder sound and atmosphere changes',
+    code: `-- Lightning Storm: flashes + thunder + rain atmosphere
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+-- Set storm atmosphere
+local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+if atm then atm.Density = 0.5 atm.Color = Color3.fromRGB(80, 85, 100) atm.Haze = 4 end
+Lighting.Brightness = 0.5 Lighting.ClockTime = 21
+local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+if cc then cc.Saturation = -0.3 cc.Contrast = 0.2 end
+
+task.spawn(function()
+  while true do
+    task.wait(5 + math.random() * 15) -- random delay between strikes
+    -- Flash sequence
+    local origBright = Lighting.Brightness
+    Lighting.Brightness = 5
+    task.wait(0.05)
+    Lighting.Brightness = origBright
+    task.wait(0.1)
+    Lighting.Brightness = 3
+    task.wait(0.05)
+    Lighting.Brightness = origBright
+    -- Thunder sound (delayed by distance)
+    task.wait(0.5 + math.random() * 2)
+    local thunder = Instance.new("Sound")
+    thunder.SoundId = "rbxassetid://12222058" -- thunder rumble
+    thunder.Volume = 0.5 + math.random() * 0.5
+    thunder.Parent = workspace
+    thunder:Play()
+    thunder.Ended:Once(function() thunder:Destroy() end)
+  end
+end)`
+  },
+  {
+    keywords: ['streetlight auto', 'auto light', 'light sensor', 'light on at night', 'smart light'],
+    category: 'lighting',
+    name: 'Auto Streetlights',
+    description: 'Streetlights that turn on at dusk and off at dawn',
+    code: `-- Auto Streetlights: enable at night, disable during day
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local streetlights = {} -- collect all streetlight PointLights/SpotLights
+for _, desc in workspace:GetDescendants() do
+  if (desc:IsA("PointLight") or desc:IsA("SpotLight")) and desc.Parent and desc.Parent.Name:lower():find("lamp") then
+    table.insert(streetlights, desc)
+  end
+end
+local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Sine)
+task.spawn(function()
+  while true do
+    local hour = Lighting.ClockTime
+    local shouldBeOn = hour < 6 or hour > 18.5
+    for _, light in streetlights do
+      if shouldBeOn and not light.Enabled then
+        light.Enabled = true
+        TweenService:Create(light, tweenInfo, {Brightness = 3}):Play()
+      elseif not shouldBeOn and light.Enabled then
+        local fadeOut = TweenService:Create(light, tweenInfo, {Brightness = 0})
+        fadeOut:Play()
+        fadeOut.Completed:Once(function() light.Enabled = false end)
+      end
+    end
+    task.wait(1)
+  end
+end)`
+  },
+  {
+    keywords: ['campfire', 'bonfire', 'fire pit', 'camp fire'],
+    category: 'lighting',
+    name: 'Campfire Effect',
+    description: 'Campfire with flickering light, fire particles, smoke, crackling sound',
+    code: `-- Campfire: light + fire + smoke + embers + sound
+local firePart = --FIRE_PART_REF (the base/pit part)
+-- Warm flickering light
+local light = Instance.new("PointLight")
+light.Color = Color3.fromRGB(255, 160, 80) light.Brightness = 3 light.Range = 30 light.Parent = firePart
+-- Fire effect
+local fire = Instance.new("Fire")
+fire.Size = 6 fire.Heat = 12 fire.Color = Color3.fromRGB(255, 150, 50) fire.SecondaryColor = Color3.fromRGB(255, 80, 20) fire.Parent = firePart
+-- Smoke
+local smoke = Instance.new("Smoke")
+smoke.Size = 4 smoke.Opacity = 0.15 smoke.RiseVelocity = 5 smoke.Color = Color3.fromRGB(80, 80, 85) smoke.Parent = firePart
+-- Embers (particle emitter)
+local embers = Instance.new("ParticleEmitter")
+embers.Rate = 8
+embers.Speed = NumberRange.new(3, 8)
+embers.Lifetime = NumberRange.new(1.5, 3)
+embers.SpreadAngle = Vector2.new(15, 15)
+embers.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.5, 0.1), NumberSequenceKeypoint.new(1, 0)})
+embers.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 200, 80)), ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 50, 10))})
+embers.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.8, 0.3), NumberSequenceKeypoint.new(1, 1)})
+embers.LightEmission = 1
+embers.Parent = firePart
+-- Crackling sound
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://5765826065" sound.Volume = 0.4 sound.Looped = true sound.Parent = firePart sound:Play()
+-- Flicker loop
+task.spawn(function()
+  while light and light.Parent do
+    light.Brightness = 2.5 + math.random() * 1.5
+    light.Range = 25 + math.random() * 10
+    fire.Size = 5 + math.random() * 3
+    task.wait(0.06 + math.random() * 0.1)
+  end
+end)`
+  },
+  {
+    keywords: ['disco', 'party light', 'dance floor', 'club light', 'rave'],
+    category: 'lighting',
+    name: 'Disco Party Lights',
+    description: 'Multiple colored SpotLights rotating through colors with offset timing',
+    code: `-- Disco Party Lights: colored SpotLights cycling on offset timers
+local TweenService = game:GetService("TweenService")
+local discoColors = {
+  Color3.fromRGB(255, 50, 80), Color3.fromRGB(50, 100, 255),
+  Color3.fromRGB(50, 255, 100), Color3.fromRGB(255, 200, 50),
+  Color3.fromRGB(200, 50, 255), Color3.fromRGB(255, 100, 200),
+}
+local lights = {} -- Create 4 SpotLights on ceiling
+local ceilingY = --CEILING_Y_POSITION
+for i = 1, 4 do
+  local att = Instance.new("Part")
+  att.Name = "DiscoMount_"..i
+  att.Size = Vector3.new(0.5, 0.2, 0.5) att.Anchored = true att.CanCollide = false
+  att.Material = Enum.Material.Metal att.Color = Color3.fromRGB(30, 30, 35)
+  att.CFrame = CFrame.new(sp.X + (i-2.5)*6, ceilingY, sp.Z) att.Parent = m
+  local spot = Instance.new("SpotLight")
+  spot.Face = Enum.NormalId.Bottom spot.Brightness = 4 spot.Range = 40 spot.Angle = 45
+  spot.Color = discoColors[i] spot.Parent = att
+  table.insert(lights, spot)
+end
+-- Cycle colors with offset
+local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+task.spawn(function()
+  local offset = 0
+  while #lights > 0 and lights[1].Parent do
+    for i, light in lights do
+      local colorIdx = ((offset + i) % #discoColors) + 1
+      TweenService:Create(light, tweenInfo, {Color = discoColors[colorIdx]}):Play()
+    end
+    offset += 1
+    task.wait(0.8)
+  end
+end)`
+  },
+  {
+    keywords: ['emergency light', 'police light', 'siren', 'alarm light', 'red blue'],
+    category: 'lighting',
+    name: 'Emergency Lights',
+    description: 'Alternating red/blue PointLights like police sirens',
+    code: `-- Emergency Lights: alternating red/blue
+local redLight = --RED_POINTLIGHT_REF
+local blueLight = --BLUE_POINTLIGHT_REF
+redLight.Color = Color3.fromRGB(255, 0, 0) redLight.Brightness = 5 redLight.Range = 30
+blueLight.Color = Color3.fromRGB(0, 50, 255) blueLight.Brightness = 5 blueLight.Range = 30
+task.spawn(function()
+  while redLight and redLight.Parent do
+    redLight.Enabled = true blueLight.Enabled = false
+    task.wait(0.3)
+    redLight.Enabled = false blueLight.Enabled = true
+    task.wait(0.3)
+    redLight.Enabled = false blueLight.Enabled = false
+    task.wait(0.1)
+  end
+end)`
+  },
+  {
+    keywords: ['sunrise', 'sunset', 'golden hour', 'time lapse', 'sky color'],
+    category: 'lighting',
+    name: 'Sunrise/Sunset Tint System',
+    description: 'ColorCorrection tint that changes with time of day',
+    code: `-- Sunrise/Sunset Tint: CC tint matches time of day
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect") or Instance.new("ColorCorrectionEffect")
+cc.Parent = Lighting
+local tints = {
+  {time = 5, color = Color3.fromRGB(255, 180, 140), sat = 0.1, bright = -0.05},  -- dawn
+  {time = 8, color = Color3.fromRGB(255, 250, 240), sat = 0, bright = 0.02},       -- morning
+  {time = 12, color = Color3.fromRGB(255, 255, 255), sat = 0.05, bright = 0.05},   -- noon
+  {time = 17, color = Color3.fromRGB(255, 220, 180), sat = 0.15, bright = 0.03},   -- golden hour
+  {time = 19, color = Color3.fromRGB(255, 150, 100), sat = 0.2, bright = -0.02},   -- sunset
+  {time = 21, color = Color3.fromRGB(150, 140, 200), sat = -0.2, bright = -0.1},   -- twilight
+  {time = 0, color = Color3.fromRGB(120, 130, 180), sat = -0.3, bright = -0.15},   -- night
+}
+local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Sine)
+task.spawn(function()
+  while true do
+    local hour = Lighting.ClockTime
+    -- Find closest tint
+    local best = tints[1]
+    local bestDist = 24
+    for _, t in tints do
+      local dist = math.abs(t.time - hour)
+      if dist > 12 then dist = 24 - dist end
+      if dist < bestDist then bestDist = dist best = t end
+    end
+    TweenService:Create(cc, tweenInfo, {
+      TintColor = best.color,
+      Saturation = best.sat,
+      Brightness = best.bright,
+    }):Play()
+    task.wait(2)
+  end
+end)`
+  },
+
+  // ─── SPECIAL EFFECTS ────────────────────────────────────────────────────
+
+  {
+    keywords: ['rain', 'raining', 'rainfall', 'rainy'],
+    category: 'weather',
+    name: 'Rain Effect',
+    description: 'ParticleEmitter rain with splash effects and atmosphere',
+    code: `-- Rain System: particles + atmosphere + splash sound
+local Lighting = game:GetService("Lighting")
+-- Darken atmosphere
+local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+if atm then atm.Density = 0.45 atm.Color = Color3.fromRGB(140, 145, 155) atm.Haze = 3 end
+Lighting.Brightness = 1 Lighting.ClockTime = 15
+local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+if cc then cc.Saturation = -0.2 cc.Contrast = 0.1 cc.Brightness = -0.05 end
+-- Rain emitter (attach to a large invisible part above the scene)
+local rainPart = Instance.new("Part")
+rainPart.Name = "RainEmitter" rainPart.Size = Vector3.new(200, 1, 200) rainPart.Anchored = true
+rainPart.Transparency = 1 rainPart.CanCollide = false
+rainPart.CFrame = CFrame.new(sp.X, sp.Y + 80, sp.Z) rainPart.Parent = workspace
+local rain = Instance.new("ParticleEmitter")
+rain.Rate = 300 rain.Speed = NumberRange.new(50, 70) rain.Lifetime = NumberRange.new(1.5, 2.5)
+rain.SpreadAngle = Vector2.new(5, 5)
+rain.Size = NumberSequence.new(0.05)
+rain.Color = ColorSequence.new(Color3.fromRGB(180, 190, 210))
+rain.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 0.8)})
+rain.EmissionDirection = Enum.NormalId.Bottom
+rain.Acceleration = Vector3.new(0, -20, 0)
+rain.Parent = rainPart
+-- Rain ambient sound
+local sound = Instance.new("Sound")
+sound.SoundId = "rbxassetid://6677463" sound.Volume = 0.3 sound.Looped = true
+sound.Parent = workspace sound:Play()`
+  },
+  {
+    keywords: ['snow', 'snowing', 'snowfall', 'winter', 'blizzard'],
+    category: 'weather',
+    name: 'Snow Effect',
+    description: 'Gentle snowfall with particle emitter and cold atmosphere',
+    code: `-- Snow System: particles + cold atmosphere
+local Lighting = game:GetService("Lighting")
+local atm = Lighting:FindFirstChildOfClass("Atmosphere")
+if atm then atm.Density = 0.35 atm.Color = Color3.fromRGB(210, 220, 240) atm.Haze = 2.5 end
+local cc = Lighting:FindFirstChildOfClass("ColorCorrectionEffect")
+if cc then cc.TintColor = Color3.fromRGB(220, 230, 255) cc.Saturation = -0.15 end
+local snowPart = Instance.new("Part")
+snowPart.Name = "SnowEmitter" snowPart.Size = Vector3.new(200, 1, 200) snowPart.Anchored = true
+snowPart.Transparency = 1 snowPart.CanCollide = false
+snowPart.CFrame = CFrame.new(sp.X, sp.Y + 60, sp.Z) snowPart.Parent = workspace
+local snow = Instance.new("ParticleEmitter")
+snow.Rate = 80 snow.Speed = NumberRange.new(2, 6) snow.Lifetime = NumberRange.new(8, 15)
+snow.SpreadAngle = Vector2.new(30, 30)
+snow.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 0.15)})
+snow.Color = ColorSequence.new(Color3.fromRGB(240, 245, 255))
+snow.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.8, 0.2), NumberSequenceKeypoint.new(1, 1)})
+snow.EmissionDirection = Enum.NormalId.Bottom
+snow.RotSpeed = NumberRange.new(-30, 30)
+snow.Rotation = NumberRange.new(0, 360)
+snow.Acceleration = Vector3.new(math.random(-2,2), -1, math.random(-2,2)) -- slight drift
+snow.Parent = snowPart
+-- Wind ambient
+local wind = Instance.new("Sound")
+wind.SoundId = "rbxassetid://5982176858" wind.Volume = 0.15 wind.Looped = true wind.Parent = workspace wind:Play()`
+  },
+  {
+    keywords: ['fog', 'mist', 'foggy', 'misty', 'haze'],
+    category: 'weather',
+    name: 'Ground Fog',
+    description: 'Low-lying fog using Atmosphere + transparent Parts',
+    code: `-- Ground Fog: thick Atmosphere + transparent fog layers
+local Lighting = game:GetService("Lighting")
+local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+atm.Density = 0.6 atm.Offset = 0 -- fog starts at feet
+atm.Color = Color3.fromRGB(180, 185, 195) atm.Decay = Color3.fromRGB(140, 145, 155)
+atm.Glare = 0 atm.Haze = 6 atm.Parent = Lighting
+-- Low fog layers (Glass parts at ground level)
+for i = 1, 5 do
+  local fogLayer = Instance.new("Part")
+  fogLayer.Name = "FogLayer_"..i
+  fogLayer.Size = Vector3.new(100 + i*20, 0.5, 100 + i*20)
+  fogLayer.CFrame = CFrame.new(sp.X, sp.Y + i*1.5, sp.Z)
+  fogLayer.Material = Enum.Material.Glass
+  fogLayer.Color = Color3.fromRGB(200, 205, 215)
+  fogLayer.Transparency = 0.85 + i*0.02
+  fogLayer.Anchored = true fogLayer.CanCollide = false fogLayer.CastShadow = false
+  fogLayer.Parent = workspace
+end
+Lighting.Brightness = 1.2 Lighting.ClockTime = 7 -- early morning`
+  },
+  {
+    keywords: ['beam', 'light beam', 'light ray', 'god ray', 'light shaft', 'sunbeam'],
+    category: 'effects',
+    name: 'Light Beam / God Ray',
+    description: 'Beam effect between two points for dramatic light shafts',
+    code: `-- Light Beam: dramatic light shaft through window/opening
+local topPart = --TOP_PART_REF (where light enters)
+local bottomPart = --BOTTOM_PART_REF (where light hits floor)
+local att0 = Instance.new("Attachment") att0.Parent = topPart
+local att1 = Instance.new("Attachment") att1.Parent = bottomPart
+local beam = Instance.new("Beam")
+beam.Attachment0 = att0 beam.Attachment1 = att1
+beam.Width0 = 3 beam.Width1 = 6 -- spreads as it descends
+beam.Color = ColorSequence.new(Color3.fromRGB(255, 240, 200))
+beam.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.5, 0.7), NumberSequenceKeypoint.new(1, 0.95)})
+beam.LightEmission = 0.8 beam.LightInfluence = 0.3
+beam.Segments = 20 beam.Parent = topPart
+-- Dust motes in the beam
+local dustEmitter = Instance.new("ParticleEmitter")
+dustEmitter.Rate = 5 dustEmitter.Speed = NumberRange.new(0.3, 1) dustEmitter.Lifetime = NumberRange.new(5, 12)
+dustEmitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.5, 0.15), NumberSequenceKeypoint.new(1, 0.05)})
+dustEmitter.Color = ColorSequence.new(Color3.fromRGB(255, 245, 220))
+dustEmitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.5, 0.2), NumberSequenceKeypoint.new(1, 1)})
+dustEmitter.LightEmission = 1 dustEmitter.SpreadAngle = Vector2.new(20, 20)
+dustEmitter.Parent = topPart`
+  },
+  {
+    keywords: ['waterfall', 'water fall', 'cascade', 'water stream'],
+    category: 'effects',
+    name: 'Waterfall Effect',
+    description: 'ParticleEmitter waterfall with mist and splash',
+    code: `-- Waterfall: cascading particles + mist at base + splash sound
+local topPart = --TOP_OF_WATERFALL (Part at the top edge)
+local basePart = --BASE_OF_WATERFALL (Part at the bottom)
+-- Main water flow
+local water = Instance.new("ParticleEmitter")
+water.Rate = 150 water.Speed = NumberRange.new(15, 25) water.Lifetime = NumberRange.new(1, 2)
+water.EmissionDirection = Enum.NormalId.Bottom
+water.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 1.5), NumberSequenceKeypoint.new(1, 0.5)})
+water.Color = ColorSequence.new(Color3.fromRGB(160, 200, 230), Color3.fromRGB(200, 225, 245))
+water.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.7, 0.4), NumberSequenceKeypoint.new(1, 1)})
+water.Acceleration = Vector3.new(0, -30, 0)
+water.SpreadAngle = Vector2.new(8, 8)
+water.Parent = topPart
+-- Mist at base
+local mist = Instance.new("ParticleEmitter")
+mist.Rate = 15 mist.Speed = NumberRange.new(1, 4) mist.Lifetime = NumberRange.new(3, 6)
+mist.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(0.5, 6), NumberSequenceKeypoint.new(1, 0)})
+mist.Color = ColorSequence.new(Color3.fromRGB(220, 230, 240))
+mist.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.3, 0.4), NumberSequenceKeypoint.new(1, 1)})
+mist.SpreadAngle = Vector2.new(60, 60)
+mist.Parent = basePart
+-- Water sound
+local snd = Instance.new("Sound") snd.SoundId = "rbxassetid://6677463" snd.Volume = 0.5 snd.Looped = true snd.Parent = basePart snd:Play()`
+  },
+  {
+    keywords: ['fountain', 'water fountain', 'spray', 'water jet'],
+    category: 'effects',
+    name: 'Water Fountain',
+    description: 'Upward water spray with ParticleEmitter and mist',
+    code: `-- Water Fountain: upward spray + falling droplets + mist ring
+local nozzle = --NOZZLE_PART_REF (center of fountain)
+local spray = Instance.new("ParticleEmitter")
+spray.Rate = 60 spray.Speed = NumberRange.new(15, 22) spray.Lifetime = NumberRange.new(1, 2)
+spray.EmissionDirection = Enum.NormalId.Top
+spray.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.3, 0.5), NumberSequenceKeypoint.new(1, 0.1)})
+spray.Color = ColorSequence.new(Color3.fromRGB(180, 210, 240))
+spray.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 1)})
+spray.Acceleration = Vector3.new(0, -40, 0) -- gravity pulls water down
+spray.SpreadAngle = Vector2.new(8, 8)
+spray.LightEmission = 0.3
+spray.Parent = nozzle
+-- Mist ring at base
+local mist = Instance.new("ParticleEmitter")
+mist.Rate = 10 mist.Speed = NumberRange.new(2, 5) mist.Lifetime = NumberRange.new(2, 4)
+mist.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 4), NumberSequenceKeypoint.new(1, 0)})
+mist.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(0.3, 0.5), NumberSequenceKeypoint.new(1, 1)})
+mist.SpreadAngle = Vector2.new(180, 180) mist.Color = ColorSequence.new(Color3.fromRGB(210, 225, 240))
+mist.Parent = nozzle
+-- Splash sound
+local snd = Instance.new("Sound") snd.SoundId = "rbxassetid://6677463" snd.Volume = 0.3 snd.Looped = true snd.Parent = nozzle snd:Play()`
+  },
+  {
+    keywords: ['magic', 'spell', 'enchant', 'aura', 'glow effect', 'magical'],
+    category: 'effects',
+    name: 'Magic Aura Effect',
+    description: 'Glowing particles + Highlight + Beam orbit for magical objects',
+    code: `-- Magic Aura: orbiting particles + glow highlight + sparkles
+local magicPart = --MAGIC_PART_REF
+-- Highlight glow
+local hl = Instance.new("Highlight")
+hl.FillColor = Color3.fromRGB(100, 50, 255) hl.FillTransparency = 0.7
+hl.OutlineColor = Color3.fromRGB(180, 120, 255) hl.OutlineTransparency = 0.3
+hl.Parent = magicPart
+-- Sparkle particles
+local sparkles = Instance.new("ParticleEmitter")
+sparkles.Rate = 12 sparkles.Speed = NumberRange.new(1, 3) sparkles.Lifetime = NumberRange.new(1, 2.5)
+sparkles.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.3), NumberSequenceKeypoint.new(1, 0)})
+sparkles.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 140, 255)), ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255))})
+sparkles.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.7, 0.5), NumberSequenceKeypoint.new(1, 1)})
+sparkles.LightEmission = 1 sparkles.SpreadAngle = Vector2.new(180, 180)
+sparkles.RotSpeed = NumberRange.new(-180, 180)
+sparkles.Parent = magicPart
+-- Soft PointLight
+local glow = Instance.new("PointLight")
+glow.Color = Color3.fromRGB(140, 100, 255) glow.Brightness = 2 glow.Range = 15
+glow.Parent = magicPart
+-- Pulse the glow
+task.spawn(function()
+  while glow and glow.Parent do
+    glow.Brightness = 1.5 + math.sin(tick() * 2) * 1
+    glow.Range = 12 + math.sin(tick() * 1.5) * 5
+    hl.FillTransparency = 0.6 + math.sin(tick() * 3) * 0.15
+    task.wait(1/30)
+  end
+end)`
+  },
+
+  // ─── INTERACTIVE SYSTEMS ────────────────────────────────────────────────
+
+  {
+    keywords: ['conveyor', 'conveyor belt', 'treadmill', 'moving floor'],
+    category: 'gameplay',
+    name: 'Conveyor Belt',
+    description: 'Part that pushes objects/players in a direction',
+    code: `-- Conveyor Belt: pushes anything touching in a direction
+local belt = --BELT_PART_REF
+local SPEED = 20 -- studs per second
+local DIRECTION = belt.CFrame.LookVector -- forward direction of the belt part
+belt.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0, 0, 0, 0) -- low friction
+-- Surface velocity approach (most reliable)
+belt.AssemblyLinearVelocity = DIRECTION * SPEED -- this only works on unanchored parts
+-- For anchored belt, use Touched + BodyVelocity on touching parts:
+belt.Touched:Connect(function(hit)
+  if hit.Anchored then return end
+  local existing = hit:FindFirstChild("ConveyorForce")
+  if existing then return end
+  local bv = Instance.new("BodyVelocity")
+  bv.Name = "ConveyorForce" bv.Velocity = DIRECTION * SPEED
+  bv.MaxForce = Vector3.new(1e4, 0, 1e4) bv.P = 1250
+  bv.Parent = hit
+end)
+belt.TouchEnded:Connect(function(hit)
+  local bv = hit:FindFirstChild("ConveyorForce")
+  if bv then bv:Destroy() end
+end)`
+  },
+  {
+    keywords: ['elevator', 'lift', 'platform lift', 'moving platform'],
+    category: 'gameplay',
+    name: 'Elevator / Moving Platform',
+    description: 'Platform that moves between two positions with TweenService',
+    code: `-- Elevator: moves between bottom and top positions
+local TweenService = game:GetService("TweenService")
+local platform = --PLATFORM_PART_REF
+local bottomPos = platform.Position
+local topPos = bottomPos + Vector3.new(0, 20, 0) -- 20 studs up
+local moving = false
+local atTop = false
+local tweenInfo = TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local prompt = Instance.new("ProximityPrompt")
+prompt.ActionText = "Go Up" prompt.MaxActivationDistance = 10 prompt.Parent = platform
+prompt.Triggered:Connect(function()
+  if moving then return end
+  moving = true
+  local target = atTop and bottomPos or topPos
+  prompt.Enabled = false
+  TweenService:Create(platform, tweenInfo, {Position = target}):Play()
+  task.wait(3)
+  atTop = not atTop
+  prompt.ActionText = atTop and "Go Down" or "Go Up"
+  prompt.Enabled = true
+  moving = false
+end)`
+  },
+  {
+    keywords: ['trap', 'spike trap', 'hidden trap', 'trap door', 'trapdoor'],
+    category: 'gameplay',
+    name: 'Spike Trap',
+    description: 'Spikes that pop up on a timer or proximity trigger',
+    code: `-- Spike Trap: spikes emerge from floor on timer
+local TweenService = game:GetService("TweenService")
+local trapBase = --TRAP_BASE_PART_REF
+local spikeParts = {} -- create spike parts
+for i = 1, 4 do
+  local spike = Instance.new("WedgePart")
+  spike.Name = "Spike_"..i spike.Size = Vector3.new(0.4, 2, 0.4)
+  spike.Material = Enum.Material.Metal spike.Color = Color3.fromRGB(120, 120, 125)
+  spike.Anchored = true spike.CanCollide = true
+  local offset = Vector3.new((i-2.5)*0.8, -2, 0) -- hidden below floor
+  spike.CFrame = trapBase.CFrame * CFrame.new(offset) * CFrame.Angles(0, 0, math.rad(180))
+  spike.Parent = trapBase.Parent
+  table.insert(spikeParts, {part = spike, hiddenCF = spike.CFrame, raisedCF = spike.CFrame + Vector3.new(0, 2.5, 0)})
+end
+local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+local retractInfo = TweenInfo.new(0.5, Enum.EasingStyle.Sine)
+-- Trigger loop
+task.spawn(function()
+  while trapBase and trapBase.Parent do
+    task.wait(3 + math.random() * 2)
+    -- Raise spikes
+    for _, s in spikeParts do TweenService:Create(s.part, tweenInfo, {CFrame = s.raisedCF}):Play() end
+    -- Damage anyone on the trap
+    for _, s in spikeParts do
+      s.part.Touched:Once(function(hit)
+        local h = hit.Parent and hit.Parent:FindFirstChildOfClass("Humanoid")
+        if h and h.Health > 0 then h:TakeDamage(30) end
+      end)
+    end
+    task.wait(1.5)
+    -- Retract
+    for _, s in spikeParts do TweenService:Create(s.part, retractInfo, {CFrame = s.hiddenCF}):Play() end
+  end
+end)`
+  },
+  {
+    keywords: ['treasure', 'chest', 'loot box', 'reward box', 'collectible chest'],
+    category: 'interactive',
+    name: 'Treasure Chest',
+    description: 'Openable chest with ProximityPrompt, lid animation, and reward',
+    code: `-- Treasure Chest: open lid + sparkles + coin reward
+local TweenService = game:GetService("TweenService")
+local chest = --CHEST_MODEL_REF (Model with Base and Lid parts)
+local lid = chest:FindFirstChild("Lid")
+local base = chest:FindFirstChild("Base") or chest.PrimaryPart
+local closedCF = lid.CFrame
+local openCF = closedCF * CFrame.Angles(math.rad(-110), 0, 0)
+local isOpen = false
+local prompt = Instance.new("ProximityPrompt")
+prompt.ActionText = "Open Chest" prompt.MaxActivationDistance = 8 prompt.Parent = base
+-- Sparkle effect (visible when closed)
+local sparkles = Instance.new("Sparkles")
+sparkles.SparkleColor = Color3.fromRGB(255, 215, 0)
+sparkles.Parent = base
+-- Gold glow
+local glow = Instance.new("PointLight")
+glow.Color = Color3.fromRGB(255, 200, 80) glow.Brightness = 1 glow.Range = 10
+glow.Enabled = false glow.Parent = base
+prompt.Triggered:Connect(function(player)
+  if isOpen then return end
+  isOpen = true prompt.Enabled = false
+  -- Open lid
+  TweenService:Create(lid, TweenInfo.new(0.6, Enum.EasingStyle.Back), {CFrame = openCF}):Play()
+  sparkles:Destroy() glow.Enabled = true
+  -- Reward
+  local coins = player:FindFirstChild("leaderstats") and player.leaderstats:FindFirstChild("Coins")
+  if coins then coins.Value += 50 end
+  -- Re-close after delay
+  task.wait(5)
+  TweenService:Create(lid, TweenInfo.new(0.4, Enum.EasingStyle.Sine), {CFrame = closedCF}):Play()
+  glow.Enabled = false
+  task.wait(30) -- respawn timer
+  isOpen = false prompt.Enabled = true
+  local newSparkles = Instance.new("Sparkles") newSparkles.SparkleColor = Color3.fromRGB(255, 215, 0) newSparkles.Parent = base
+end)`
+  },
 ]
 
 // ─── Lookup Functions ──────────────────────────────────────────────────────
