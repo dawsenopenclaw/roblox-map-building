@@ -49,7 +49,7 @@ async function callGemini(
   const key = process.env.GEMINI_API_KEY
   if (!key) return null
 
-  const { maxTokens = 4096, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
+  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7, jsonMode = false } = opts
 
   // Gemini uses a separate system_instruction + contents format
   const contents = messages
@@ -117,7 +117,7 @@ async function callGroq(
   const key = process.env.GROQ_API_KEY
   if (!key) return null
 
-  const { maxTokens = 4096, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
+  const { maxTokens = 8192, temperature = opts.codeMode ? 0.2 : 0.7 } = opts
 
   const groqMessages = [
     { role: 'system', content: systemPrompt },

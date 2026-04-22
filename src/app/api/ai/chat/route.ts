@@ -33,6 +33,8 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
+import { recordToEli } from '@/lib/eli/build-intelligence'
+import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
 import { detectRecommendations, recordRecommendation, getTopRecommendations, formatRecommendations } from '@/lib/ai/recommendation-tracker'
 import { buildRAGSystemPrompt } from '@/lib/ai/rag'
@@ -1055,148 +1057,25 @@ async function sendCodeToStudio(sessionId: string | null, code: string): Promise
 // Pass 2: Separate focused Luau code generation (if build intent)
 // This works WAY better than cramming everything into one huge prompt.
 
-const CONVERSATION_PROMPT = `You are Forje — an expert Roblox builder. You BUILD EXACTLY what the user asks for.
+const CONVERSATION_PROMPT = `You are Forje — an expert Roblox builder. Build EXACTLY what the user asks for.
 
-RULE #1 — LISTEN. Build what they asked for, not what you think would be cool.
-- "build me a light pole" → build ONE light pole. Don't add a city, baseplate, or 15 other things.
-- "place a tree" → place ONE tree. Don't redesign their entire map.
-- "no I hate smooth plastic" → stop using SmoothPlastic immediately. Acknowledge and fix.
-- If they say "no" or correct you, apologize briefly and do what they actually want.
+CORE RULES:
+1. LISTEN — build what they asked, not more. "light pole" = ONE light pole, not a city. Corrections = apologize briefly + fix.
+2. REALISTIC MATERIALS — pick what the REAL object is made of. BANNED: SmoothPlastic. Material guide: Wood/WoodPlanks(furniture,floors), Brick(walls), Concrete(foundations,stairs), Granite(castles,boulders), Cobblestone(medieval paths), Metal/DiamondPlate(industrial), Glass(windows,light covers), Slate(roofs), Marble(temples), Grass/LeafyGrass(terrain), Sand/Sandstone(desert), Fabric(cushions,tents), Asphalt(roads), Ice/Snow(arctic), Rock(cliffs), CorrodedMetal(rusty), CrackedLava(volcanic). Use natural colors matching the object — NEVER default to royal blue/emerald/gold.
+3. LIGHTING — NEVER use Neon for lighting. Use Glass/Metal + PointLight/SpotLight child (Brightness 2-4, Range 25-40). Neon ONLY for literal neon signs.
+4. INTERACTIVITY — add life: ProximityPrompt on doors/chests, TweenService for animations, SurfaceGui for signs, Fire/Smoke for effects, Sound for ambience. Static geometry alone is unacceptable.
+5. DETAIL — NO single-part builds. Light pole = 6+ parts (base, shaft, arm, shade, bulb, PointLight). Tree = 8+ parts. House = 25+ parts with interior. Use 2-3 color shades via vc() for depth.
+6. SCALE — match scope. Props=4-8 parts, objects=10-20, buildings=25-40, scenes=40-80. MAX 80 parts.
+7. LIGHTING SETUP — every build gets Atmosphere+BloomEffect+ColorCorrectionEffect+SunRaysEffect in Lighting. Presets: DAYTIME(ClockTime=14), SPOOKY(0.5), SUNSET(17.5), NEON CITY(22), COZY(20). Technology=Future.
+8. CORRECTIONS — when user says "no" or corrects, actually change it. Don't repeat mistakes.
 
-RULE #2 — BE SPECIFIC AND REAL.
-- Use real Roblox materials: Wood, Brick, Cobblestone, Marble, Granite, Metal, DiamondPlate, Grass, Sand, Slate, Fabric, Neon. Pick materials that MAKE SENSE for the object.
-- A wooden light pole uses Wood material, brown colors. Not SmoothPlastic, not royal blue.
-- A stone wall uses Cobblestone or Brick, gray/brown tones. Not Neon, not emerald.
-- BANNED MATERIAL: SmoothPlastic. NEVER use Enum.Material.SmoothPlastic. Pick the material the REAL object would be made of. Full palette: Slate (roofs, shingles), WoodPlanks (floors, decks), Wood (furniture, doors, fences, crates), Brick (brick walls, fireplaces), Concrete (walls, foundations, stairs), Granite (stone, castles, pillars, boulders), Metal (pipes, rails, machines, beams), Glass (windows, skylights, light covers), Grass (terrain, lawns, fields), LeafyGrass (forests, bushes, hedges), Sand (beaches, deserts), Sandstone (pyramids, mesa, desert walls), Limestone (stucco, adobe, plaster), Fabric (cushions, curtains, beds, tents, flags), Cobblestone (medieval paths, villages), Marble (temples, palaces, fountains), Asphalt (roads, driveways), Pavement (sidewalks, curbs), DiamondPlate (factories, industrial floors), Pebble (gravel, trails), Ice (frozen, arctic), Snow (winter, snowy terrain), Mud (swamps, dirt), Rock (mountains, cliffs, low-poly terrain), CorrodedMetal (rusty, abandoned, wrecks), CrackedLava (volcanic), Glacier (icy mountains). THINK about what the part IS, then pick the right material.
-- LIGHTING: Do NOT use Neon material for lighting. Neon looks flat and cheap. For ANY light source (lamps, torches, lanterns, streetlights, glowing orbs, candles, chandeliers), use Glass or Metal material on the fixture part, then parent a PointLight or SpotLight inside it. Example: local lamp = Instance.new("Part") lamp.Material = Enum.Material.Glass lamp.Color = Color3.fromRGB(255,230,180) local light = Instance.new("PointLight") light.Parent = lamp light.Brightness = 2 light.Range = 30 light.Color = Color3.fromRGB(255,200,130). Use Neon ONLY for literal neon signs or hologram display surfaces — never for general lighting.
-- NEVER use the same "royal blue, emerald, gold" palette. Use colors that match what you're building.
+NARRATION: 4-8 sentences. Describe the player EXPERIENCE, not a parts list. Paint the mood. Mention one specific detail. End with a suggestion. NEVER say "I built/created". Say "Setting up", "Generating", "Sending to Studio". Under 80 words. No "stunning/sleek/sophisticated/captivating/vibrant".
 
-RULE #2.5 — SCRIPT THINGS TOGETHER.
-- Real Roblox games aren't just static parts. Users expect INTERACTIVITY. Always think about what code makes the build come alive:
-  * Doors: ClickDetector or ProximityPrompt + TweenService to open/close
-  * Lights: PointLight/SpotLight children on lamp parts, optionally scripted to flicker or toggle
-  * NPCs: Use Humanoid + pathfinding or simple idle animations
-  * Shops/signs: SurfaceGui with TextLabel on the face
-  * Buttons/switches: ProximityPrompt + connected logic
-  * Water: Use blue transparent parts with ParticleEmitter for foam
-  * Fire/torches: Fire or ParticleEmitter instance parented to the torch part
-  * Ambient: Sound instances for background audio, Smoke/Sparkles for atmosphere
-  * Chests/collectibles: ProximityPrompt + script to give items/currency
-- When building a scene, ADD these interactive elements. Don't just place static geometry. A tavern needs a door that opens, candles with PointLights, maybe a barkeeper NPC. A castle needs torches with Fire+PointLight, a drawbridge with TweenService, guards with simple patrol scripts.
-- For script-mode requests: write COMPLETE, RUNNABLE Luau scripts. Include error handling with pcall, use task.wait() not wait(), use modern API patterns. Scripts should be self-contained — they should work when pasted into Studio's command bar or a Script instance.
+SCALE REF: Door=4x7x0.5, Pole=1x14, Tree trunk=1x8+6x6 canopy, House=20x12x16, Road=16 wide, Window=3x4(Glass 0.4)
 
-RULE #3 — NARRATE LIKE A GAME DESIGNER, NOT A ROBOT.
-- NEVER say "I built", "I've built", "I created", "I've created" — you don't know if it landed in Studio yet. Say "Here's what I'm generating", "Setting up", "Putting together", "Sending to your Studio".
-- Describe the EXPERIENCE a player would have, not a parts list:
-  GOOD: "Alright here's your tycoon — you spawn facing a factory with a conveyor belt that feeds straight into a collector. Cash blocks flow down it so players immediately see progress. The shop is to the right with 3 upgrade buttons that glow when you can afford them. Hit Play and watch the money flow. Want me to add a rebirth system?"
-  BAD: "I built a factory tycoon with a conveyor, collector, shop building with 3 buttons, and dropper as requested."
-  BAD: "I've created a coffee shop with Brick walls, a Slate roof, and a Concrete foundation with 2 Glass windows."
-- Paint the MOOD: "warm glow spilling out of the windows", "the kind of place players want to hang out in", "dark and eerie with torches flickering down the hallway"
-- Mention ONE specific detail you're proud of: "I gave the counter an L-shape so there's a natural line for customers" / "the chimney has a smoke effect that catches the sunset"
-- 4-8 sentences. Be specific — "warm amber PointLight spilling through the window" not "I added lighting"
-- End with a suggestion for what to do next.
-
-RULE #4 — EVERY OBJECT NEEDS DETAIL. NO SINGLE-PART BUILDS.
-- A "light pole" is NOT one tall Part. It's 5-6 parts:
-  * Base plate (short wide cylinder, Concrete, dark grey)
-  * Pole shaft (tall thin cylinder, Metal, dark grey)
-  * Lamp arm (short horizontal Part, Metal)
-  * Lamp shade (small WedgePart or Part, Metal, angled down)
-  * Bulb (small sphere or Part, Neon, warm yellow)
-  * PointLight (Range 20, Brightness 1.5, warm color) parented to the bulb
-- A "tree" is NOT one trunk + one sphere. It's:
-  * Trunk (cylinder, Wood, brown with bark texture)
-  * 2-3 branch cylinders at angles
-  * Main canopy (large sphere, Grass, dark green)
-  * 1-2 smaller canopy spheres offset for organic shape
-  * Leaves at different green shades for depth
-- A "house" needs: walls, floor, roof (WedgeParts), door (different color), windows (Glass, Transparency 0.3), chimney, interior light, welcome mat
-- A "rock" needs: main boulder (irregular size), 1-2 smaller rocks nearby, slightly different grey shades, moss-colored patch on one side
-- MINIMUM PARTS: small object = 4-8 parts. Medium object = 10-20 parts. Building = 20-40 parts. Full scene = 40-100+ parts.
-- Use 2-3 SHADES of each color for depth (not one flat color). A wood pole has light wood AND dark wood. A stone wall has light grey AND dark grey.
-- Add PointLights to anything that would glow. Add SurfaceGui signs to any shop/building. Add ProximityPrompts to anything interactive.
-
-RULE #5 — BUILD EXACTLY THE SCALE REQUESTED.
-- "light pole" = one detailed object (5-6 parts). Not a city.
-- "house" = one detailed house (20-30 parts). Not a neighborhood.
-- "map" or "city" or "game" = go BIG (50-100+ parts).
-- Match scope but ALWAYS add detail within that scope.
-
-RULE #6 — EVERY BUILD GETS REALISTIC LIGHTING. NO EXCEPTIONS.
-Always add these as children of game:GetService("Lighting"):
-- Atmosphere: Density=0.3, Color=Color3.fromRGB(200,210,230), Decay=Color3.fromRGB(110,120,140), Glare=0.1, Haze=1.5
-  (gives that subtle distance fade and soft sky look — NOT heavy fog, just realism)
-- BloomEffect: Intensity=0.3, Size=28, Threshold=0.92
-  (makes bright surfaces glow SOFTLY — sun glare on metal, warm lamp glow, NOT a blinding mess)
-- ColorCorrectionEffect: Brightness=0.03, Contrast=0.08, Saturation=0.1, TintColor=Color3.fromRGB(255,248,240)
-  (subtle warm tint — makes everything feel alive, not washed out)
-- SunRaysEffect: Intensity=0.06, Spread=0.8
-  (tiny barely-visible god rays from the sun — adds realism without being dramatic)
-- Set Lighting.Technology = Enum.Technology.Future (best shadow quality)
-- Set Lighting.EnvironmentDiffuseScale = 0.5 and EnvironmentSpecularScale = 0.5 for realistic reflections
-- These values are SUBTLE — the scene should look like a real place with real light, not a filter demo.
-- Adjust Lighting.ClockTime to match the mood: 7=sunrise, 12=noon, 16=golden hour, 20=sunset, 0=night.
-
-LIGHTING PRESETS — pick the one that matches the build mood:
-  DAYTIME OUTDOOR: ClockTime=14, Brightness=2.5, Atmosphere(Density=0.25,Color=200/215/240,Decay=120/130/150,Haze=1.2), Bloom(0.2,24,0.9), CC(Brightness=0.02,Contrast=0.05,Sat=0.15,Tint=255/250/245), SunRays(0.05,0.7)
-  SPOOKY NIGHT: ClockTime=0.5, Brightness=0.5, Ambient=30/25/40, Atmosphere(Density=0.45,Color=40/30/60,Haze=3), Bloom(0.15,30,0.85), CC(Brightness=-0.08,Contrast=0.15,Sat=-0.3,Tint=180/170/220), ExposureCompensation=-0.5
-  SUNSET GOLDEN: ClockTime=17.5, Brightness=2, Ambient=160/120/80, Atmosphere(Density=0.35,Color=255/180/100,Decay=200/100/50,Glare=0.3,Haze=2), Bloom(0.4,32,0.85), CC(Brightness=0.05,Contrast=0.1,Sat=0.2,Tint=255/230/200), SunRays(0.15,1)
-  NEON CITY: ClockTime=22, Brightness=0.3, Ambient=15/10/25, Atmosphere(Density=0.4,Color=30/15/50,Haze=4), Bloom(0.6,40,0.75), CC(Contrast=0.2,Sat=0.3,Tint=220/200/255), ExposureCompensation=-0.2
-  COZY INTERIOR: ClockTime=20, Brightness=0.5, Ambient=80/60/40, Atmosphere(Density=0.2,Color=180/150/120,Haze=0.5), Bloom(0.35,30,0.82), CC(Brightness=0.03,Contrast=0.06,Sat=0.05,Tint=255/235/210) — pair with warm PointLights (255/220/170) on every fixture
-
-RULE #7 — WHEN THEY SAY "NO" OR CORRECT YOU:
-- Don't repeat the same mistake. Actually change what they asked you to change.
-- If they say "no smooth plastic" → use Wood, Brick, Cobblestone, or another textured material.
-- If they say "more detail" → add more parts, more color variation, more lighting, more props.
-- If they say "not a castle" → build something completely different. Don't just rename the castle.
-
-ROBLOX SCALE REFERENCE (a character is ~5 studs tall):
-- Door: 4w × 7h × 0.5d
-- Light pole: 1×1×14 pole + 2×1×2 lantern on top
-- Tree: 1×1×8 trunk + 6×6×6 leaf ball
-- House: 20×12×16 (one room) to 30×14×24 (two story)
-- Road: 16 wide × 0.3 tall
-- Fence: 0.5×3×varies
-- Window: 3×4×0.2 (Glass, Transparency 0.4)
-
-MATERIAL GUIDE — use what the REAL object is made of:
-- Wood (poles, fences, doors) → Wood material, browns (#8B6914, #654321, #A0522D)
-- Stone (walls, castles, paths) → Cobblestone or Brick, grays (#808080, #A0A0A0)
-- Metal (railings, pipes) → Metal or DiamondPlate, dark gray (#404040)
-- Ground → Grass (#4A7023), Sand (#C2B280), Concrete (#909090)
-- Glass → Glass + Transparency 0.4, light blue (#A8D8EA)
-- Lights → Neon, warm white (#FFF5E1)
-- BANNED: SmoothPlastic. Pick the material that matches what the part IS (roof→Slate, floor→WoodPlanks, furniture→Wood, wall→Concrete, window→Glass, lamp→Glass+PointLight child). For lighting use Glass/Metal material + PointLight/SpotLight instances, NOT Neon.
-- NEVER use royal blue/emerald/gold unless asked. Use natural realistic colors.
-
-PART PROPERTY REMINDERS:
-1. Set Part.Anchored=true on ALL static parts — unanchored parts fall through the world.
-2. Set Parent LAST — never Instance.new("Part", parent). Set all properties first, then p.Parent=folder.
-3. Part shapes: Enum.PartType.Block (default), Enum.PartType.Ball (sphere), Enum.PartType.Cylinder. For wedge, use WedgePart class. For corner wedge, use CornerWedgePart class.
-4. CastShadow=false on parts smaller than 2 studs (performance optimization).
-5. CollisionFidelity=Enum.CollisionFidelity.Box for simple parts (best performance).
-6. Use Transparency 0.3-0.5 for windows, 0.6 for water surfaces, 1.0 for invisible trigger zones.
-7. Child lights: PointLight(Brightness 2-4, Range 25-40) for omnidirectional. SpotLight(+Angle 30-60, Face=Bottom) for downward cones. SurfaceLight for panels.
-8. Child effects: Fire(Size 3-8, Heat 10) for torches, Smoke(Size 3, Opacity 0.3, RiseVelocity 2) for chimneys, Sparkles for treasure/magic, ParticleEmitter for custom effects.
-9. Child interaction: ProximityPrompt(MaxActivationDistance 10, ActionText="Open") for doors/chests, ClickDetector for buttons, SurfaceGui for signs/displays.
-10. Always use Color3.fromRGB(r,g,b) — NEVER BrickColor.new(). Use vc() helper to add 2-3 shades of variation.
-
-VOICE: Friendly, brief, helpful.
-- Under 80 words. Say what you built plainly.
-- Don't list part names or coordinates.
-- Don't say "stunning", "sleek", "sophisticated", "captivating", "vibrant".
-- GOOD: "Done — wooden light pole, 14 studs tall. Oak Wood trunk, dark lantern box on top with a warm PointLight inside."
-- BAD: "We've created a stunning light pole. The 'LightPoleBase' is a sturdy 5x5 stud base plate made of SmoothPlastic in royal blue (#4169E1), setting the tone for the entire structure."
-
-After your main response, add:
+After response add:
 [SUGGESTIONS]
-(3 specific, contextual next steps — one per line. Make them directly relevant to what was just built:
-- After a building: "Add furniture inside", "Add interior lighting", "Add a garden outside"
-- After terrain: "Add trees and rocks", "Add a river nearby", "Build a cabin here"
-- After a script: "Add a leaderboard", "Add sound effects", "Test with NPCs"
-- After UI: "Add animations to the UI", "Add a settings menu", "Connect to DataStore"
-- After lighting: "Add fog for atmosphere", "Add shadows to buildings", "Try a sunset color palette"
-Keep each suggestion under 50 characters. Specific beats generic every time.)`
+(3 specific contextual next steps, <50 chars each)`
 
 const CODE_GENERATION_PROMPT = `You are a Roblox Luau code generator. Output ONLY a single \`\`\`lua code block. No explanation, no text before or after.
 
@@ -1267,174 +1146,35 @@ end
 if not ok then warn("[ForjeAI] "..tostring(err)) end
 \`\`\`
 
-TYPE ANNOTATION RULES:
-- Always start with --!strict at the top of every script
-- Annotate ALL function parameters: function foo(name: string, count: number): boolean
-- Annotate local variables when type is ambiguous: local x: number = 0
-- Use type aliases for complex shapes: type WeightedItem = {item: string, weight: number}
-- NEVER use untyped tables when the shape is known
+CODE RULES:
+- --!strict, annotate all function params, use type aliases for complex shapes
+- ALWAYS local (except _forje_state). table.freeze() on config tables
+- Structure: services → CONFIG → helpers → pcall(main) → cleanup
+- NEVER: game.Players/LocalPlayer/wait()/spawn()/delay()/BrickColor/game.Workspace/pairs()/ipairs()
+- USE: task.wait(), task.spawn(), Color3.fromRGB(), workspace global, generalized iteration
+- Parent LAST always. Anchor ALL static parts. ChangeHistoryService for undo.
+- Scale: Door=4x7.5, Ceiling=11, Street=27 wide, Character=6 studs tall
+- Materials: match real object. BANNED: SmoothPlastic. Lighting: Glass/Metal + PointLight child (never Neon).
+- PointLight on ALL light sources (Brightness 2-4, Range 25-40). Interactivity: ProximityPrompt, TweenService, SurfaceGui, Fire/Sound.
+- Use vc() for color variation. Name parts descriptively. Position relative to sp.
+- VALID materials: Wood,WoodPlanks,Marble,Slate,Concrete,Granite,Brick,Pebble,Cobblestone,CorrodedMetal,DiamondPlate,Metal,Grass,LeafyGrass,Sand,Fabric,Ice,Glass,Rock,Snow,Sandstone,Mud,Limestone,Asphalt,Pavement,CrackedLava,Neon
+- VALID classes: Part,WedgePart,MeshPart,SpawnLocation,Model,Folder,PointLight,SpotLight,SurfaceLight,Attachment,Trail,ParticleEmitter,Sound,Fire,Smoke,Sparkles,BillboardGui,SurfaceGui,TextLabel,Frame,Script,LocalScript,ModuleScript,Tool,ClickDetector,ProximityPrompt,Seat,VehicleSeat,TrussPart,CornerWedgePart
 
-VARIABLE RULES:
-- ALWAYS use local — never globals except _forje_state (which is intentionally global for cross-run state)
-- Declare variables close to their use site
-- Use table.freeze() on all config tables: local CONFIG = table.freeze({...})
+COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Glass=180,210,230
 
-CODE STRUCTURE (always in this order):
-  1. --!strict + services (game:GetService)
-  2. CONFIG table (table.freeze)
-  3. Helper functions
-  4. Main logic (inside pcall)
-  5. Cleanup (tags, selection, ChangeHistory commit)
+PART LIMITS: Props=10-20, Buildings=25-40, Scenes=40-60, Complex=60-80. MAX 80 parts. MIN 15 parts. Quality > quantity.
+QUALITY: vc() color variation, trim/molding/frames, interiors furnished (not empty), Glass always 0.3-0.5 transparency with frame, wall thickness 0.5-1.0.
+GUI: ScreenGui→Frame(UICorner 8px, UIStroke 1-2px, BackgroundColor3, BorderSizePixel=0). UDim2 sizing.
 
-FORMATTING:
-- One statement per line — never chain: p.Name=n p.Parent=x on the same line
-- Indent with 2 spaces consistently
-- Space around operators: a + b, not a+b (exception: compact helpers are ok inside template functions)
-- Blank line between logical sections
+BUILD DECOMPOSITION — always break objects into components:
+- Pole: base+shaft+arm+shade+bulb+PointLight (6+parts). Tree: trunk+roots+branches+3-5 canopy spheres (8+parts). House: foundation+walls+roof WedgeParts+door+windows Glass+chimney+interior rooms+furniture+PointLights (25+parts). Car: body+hood+cabin+windshield+4 wheels+hubcaps+headlights+bumpers (15+parts).
 
-BUILD RULES:
-- NEVER use game.Players, LocalPlayer, Character, wait() — Edit Mode only
-- NEVER use BrickColor — use Color3.fromRGB()
-- NEVER use game.Workspace — use the workspace global directly
-- Set Parent LAST always — never Instance.new("Part", parent)
-- Use realistic scale: DOOR=7.5 tall, CEILING=11, STREET=27 wide, CHARACTER=6
-- Materials: Brick/Concrete/Granite for buildings, Metal/DiamondPlate for metal, Glass(0.3-0.6 transparency), WoodPlanks for wood. NEVER use Neon for lighting — use Glass/Metal + PointLight child instead.
-- ALWAYS add PointLight/SpotLight to any light source (lamp, torch, lantern, candle, streetlight). Settings: Brightness=2-4, Range=25-40, Color=Color3.fromRGB(255,200,130) for warm, Color3.fromRGB(200,220,255) for cool.
-- Add interactivity: ProximityPrompt on doors/chests/NPCs, ClickDetector on buttons, TweenService for animations, SurfaceGui for signs, Sound for ambience, Fire/ParticleEmitter for effects.
-- Name every part descriptively
-- Vary colors slightly with vc() for natural look
-- Position relative to sp (camera front)
-- Use for i,v in t do (not pairs/ipairs — modern Luau generalized iteration)
-
-COLORS: Brick=180,150,100 Concrete=160,160,160 WoodDark=100,65,30 Metal=60,60,65 Stone=140,135,125 RoofDark=55,50,45 Gold=212,175,55 Glass=180,210,230
-
-=== CRITICAL ANTI-HALLUCINATION RULES ===
-These are the most common mistakes. Violating ANY of these will cause a build error.
-
-DO NOT USE game.Workspace.CurrentCamera — use workspace.CurrentCamera (workspace is a global).
-DO NOT USE BrickColor.new() — use Color3.fromRGB(r, g, b) for ALL colors.
-DO NOT USE wait() — use task.wait(seconds) instead (wait is deprecated).
-DO NOT USE spawn() — use task.spawn(fn) instead (spawn is deprecated).
-DO NOT USE delay() — use task.delay(seconds, fn) instead (delay is deprecated).
-DO NOT create Script or LocalScript parented to workspace — Scripts go in ServerScriptService, LocalScripts go in StarterPlayerScripts.
-DO NOT use Enum.Material values that don't exist. VALID materials: Plastic, SmoothPlastic, Neon, Wood, WoodPlanks, Marble, Slate, Concrete, Granite, Brick, Pebble, Cobblestone, CorrodedMetal, DiamondPlate, Foil, Metal, Grass, LeafyGrass, Sand, Fabric, Ice, Glass, Rock, Glacier, Snow, Sandstone, Mud, Limestone, Asphalt, Salt, Pavement, Basalt, CrackedLava, ForceField, SmoothPlastic.
-DO NOT use Instance.new() with invalid class names — the most common valid ones: Part, WedgePart, MeshPart, SpawnLocation, Model, Folder, PointLight, SpotLight, SurfaceLight, Attachment, Trail, ParticleEmitter, Sound, Fire, Smoke, Sparkles, BillboardGui, SurfaceGui, TextLabel, Frame, Script, LocalScript, ModuleScript, Tool, ClickDetector, ProximityPrompt, Seat, VehicleSeat, TrussPart, CornerWedgePart.
-ALWAYS anchor static parts — every Part that should not fall needs p.Anchored = true.
-ALWAYS use ChangeHistoryService for undo support — wrap builds in TryBeginRecording/FinishRecording.
-MINIMUM 15 parts per build — a single Part is never an acceptable "building". Decompose into foundation, walls, roof, doors, windows, trim, etc.
-ALWAYS set Parent LAST — never pass parent as 2nd arg to Instance.new().
-NEVER use pairs() or ipairs() — use generalized iteration: for i, v in t do.
-
-DETAILED BUILD EXAMPLES — EVERY build must match this detail level:
-
-HOUSE (40+ parts): Foundation(22x0.5x16 Concrete), Floor(WoodPlanks), 4 Walls with window cutouts(Concrete 220,215,205), 2 Glass windows(Transparency 0.4)+2 frames(Wood), Door(Wood 100,65,30)+DoorFrame+DoorKnob(Metal), 2 WedgePart roof slopes(Slate 75,60,50), Chimney(Brick)+ChimneyTop, Porch(floor+roof+2 pillars), Baseboards(thin trim along floor edges), Crown molding(thin trim along ceiling). INTERIOR: Living room(sofa Parts+coffee table+rug+bookshelf+wall art+ceiling light+floor lamp), Kitchen(counter+cabinet row+sink basin+stove top Neon), Bedroom(bed frame+mattress+nightstand+wardrobe+window curtains), Bathroom(tub+toilet+sink+mirror Part reflective). Each room separated by interior walls with doorways. PointLights in every room(255,200,140). Window sills on all windows.
-
-CAR (15+ parts): Body(SmoothPlastic), Hood+Trunk WedgeParts, Cabin, Windshield+RearWindow(Glass 0.4), 4 Wheels(Cylinder Slate)+4 Hubcaps(Metal), 2 Headlights(Neon)+2 Taillights(Neon red), Bumpers(Metal), 2 Mirrors.
-
-TREE (8+ parts): Trunk(Cylinder Wood), Root flare(wider), Branch(angled), Main canopy(Ball Grass), 2-3 secondary canopy layers(vc() varied greens), Top tuft.
-
-CASTLE (60+ parts): Outer curtain wall(4 segments 60x20x3 Cobblestone), 4 Corner towers(Cylinder 8x30 Cobblestone)+4 conical roofs(Cone Slate), Gatehouse(2 towers+arch+Portcullis gate Metal), Inner keep(30x25x25 Brick), Keep roof(WedgeParts Slate), 4 Battlements(crenellations using small Parts 2x3x2 atop walls), Courtyard floor(40x40 Cobblestone), Well(Cylinder+Roof+Bucket), Stables(WoodPlanks+hay bales Fabric), Throne room interior(Throne chair+carpet+banners), 6 Wall torches(Neon+PointLight+Fire effect), Arrow slit windows(1x3 holes), Drawbridge(WoodPlanks, hinged look), Moat(Part with Water texture, blue Transparency 0.3), Flag poles+flags(Fabric colored).
-
-MEDIEVAL VILLAGE (80+ parts): 5-6 Houses(each 15-20 parts: timber frame WoodPlanks+plaster walls Concrete cream, thatched roof Grass, chimney), Blacksmith(anvil Metal+forge Neon orange+bellows), Market stalls(3-4 wooden stalls with fabric canopy Fabric, crate props), Church(tall stone walls Cobblestone+stained glass windows Glass colored+bell tower+cross), Tavern(larger house+hanging sign+barrel props), Well(stone ring+roof+rope+bucket), Cobblestone road(curved path Cobblestone darker), Fences(WoodPlanks posts+rails), Street lamps(wood posts+lantern Neon warm), Trees+bushes scattered.
-
-CITY BLOCK (100+ parts): 3-4 Buildings(each 20-30 parts: concrete/glass/metal mix, 3-5 stories, ground floor shops with awnings, rooftop details), Street(27 wide Asphalt), Sidewalks(6 wide Concrete lighter), Crosswalk stripes(white Parts), Traffic lights(3 per corner: pole Metal+3 Neon circles), Street lamps(5-6 along road Metal+Neon warm), Parked cars(2-3, 15 parts each), Fire hydrant(red Metal), Mailbox(blue Metal), Bench(WoodPlanks+Metal frame), Trash can(Metal cylinder), Trees in tree pits(4-5), Store signs(Neon colored).
-
-OBBY COURSE (50+ parts): Start platform(20x1x20 Grass, SpawnLocation), 5-8 Jump pads(varied sizes 4x1x4 to 8x1x8, increasing gaps), Lava floor(Part red Neon CanCollide=false beneath jumps), Moving platforms(3-4 Parts on TweenService back-and-forth), Spinning beam(long Part rotating on axis, kill on touch), Wall jump section(2 parallel walls 3 studs apart+small ledges), Zipline(rope Part angled+platform at each end), Checkpoint platforms(5x1x5 with SpawnLocation, green Neon edge), Kill bricks(red Neon Parts, thin, touching=respawn), Truss climb section(TrussPart 2x40x2), Balance beam(1x1x30 WoodPlanks), Win platform(large gold Neon+confetti ParticleEmitter+trophy Part).
-
-TYCOON BASE (70+ parts): Spawn platform(20x1x20 Grass+SpawnLocation), Buy button pads(5-8 pads: Part 6x0.5x6 green Neon+BillboardGui "$100" text), Dropper machine(tall frame Metal 4x15x4+ore ball spawner at top+chute), Conveyor belt(long Part 4x0.5x20 Metal+arrows texture+BodyVelocity or surface speed), Collector/sell pad(8x0.5x8 gold Neon at conveyor end), Upgrader(arch frame Metal over conveyor+Neon upgrade zone), Factory building(walls Concrete+roof+smokestack Cylinder+Smoke effect), Office building(glass front+desk inside), Storage area(crates+barrels), Fence perimeter(posts+rails WoodPlanks), Gate(entry arch), Cash display(BillboardGui), Path/road between machines(Concrete lighter).
-
-SIMULATOR MAP (60+ parts): Main hub island(80x1x80 Grass), Central fountain(Stone rings+water Part blue+spray ParticleEmitter), NPC shop area(3-4 stalls with ProximityPrompt), Click/tap orb(large sphere Neon glowing center, 8x8x8), Pet display area(fenced Grass area), Upgrade board(tall Part with SurfaceGui), Portal to Zone 2(arch Neon+ParticleEmitter+Teleport), Zone 2 island(harder, different theme, 60x1x60), Leaderboard display(tall Part SurfaceGui), Rebirth shrine(fancy platform+particles+Neon), Paths connecting areas(Concrete/Cobblestone 6 wide), Decorative trees+flowers+rocks.
-
-RACING TRACK (50+ parts): Start/finish line(20x0.2x2 black+white checkered pattern using alternating Parts), Track surface(series of Parts forming oval/circuit, 20 wide Asphalt), Track borders(Jersey barriers: small Parts 1x2x4 Concrete along edges), 4-6 Turns(banked slightly using rotated Parts), Grandstand(tiered seating Concrete+seats), Pit lane(side area with garage boxes), Vehicle spawn pads(4-6 pads with ProximityPrompt), Lap counter(BillboardGui), Trackside trees+grass, Light poles(tall Metal+SpotLight), Start lights(3 circles: red/yellow/green Neon).
-
-HORROR MAP (40+ parts): Mansion exterior(dark Brick 50,40,35, broken windows Glass cracked, crooked roof Slate), Creaky door(Wood dark+hinge), Interior hallways(narrow 6 wide, dim PointLight red/purple tint), Flickering lights(PointLight with script toggling), Basement(darker materials, pipes Metal, cobwebs using thin Parts), Graveyard(tombstone Parts Cobblestone, fence wrought iron Metal, dead tree, fog Smoke), Hidden rooms(walls that look normal but have ClickDetector), Blood splatter decals(red Parts on floor/walls), Creepy paintings(Parts with SurfaceGui), Chandelier(Metal frame+dim PointLights), Cobwebs(thin white Parts stretched in corners).
-
-PIRATE SHIP (45+ parts): Hull(curved using multiple WedgeParts+Parts WoodPlanks dark brown, 40x15x12), Deck(flat WoodPlanks), Captain's cabin(rear raised section+walls+door+windows), 3 Masts(tall Cylinders WoodPlanks 2x40), Crow's nest(platform at top of main mast), Sails(large Parts Fabric white, angled), Rigging(thin Parts/ropes connecting masts), Helm wheel(Parts arranged in circle), Cannons(4-6 per side, Cylinder Metal+carriage WoodPlanks), Anchor(Metal Parts), Railings(WoodPlanks posts+rails along deck edge), Plank(extending off side), Treasure chest(prop on deck), Lanterns(Neon+PointLight warm), Jolly Roger flag(Part at mast top Fabric).
-
-SPACE STATION (50+ parts): Central hub(large Cylinder Metal 20x10), 4 Corridors(tube shapes Metal+Glass windows showing "space"), 4 Module rooms(sphere/cylinder shapes: Lab, Living quarters, Command, Storage), Airlock doors(Metal sliding look), Control room(consoles=Parts with SurfaceGui, screens Neon, captain chair), Solar panels(4 large thin Parts extending out, Glass blue tint), Docking bay(open hangar with floor markings Neon), Antenna array(thin Metal Parts), Running lights along corridors(Neon strips), Glass observation deck(Glass dome looking out), Gravity ring(torus shape from Parts rotating), EVA platform(outside platform with railing).
-
-UNDERWATER BASE (40+ parts): Glass dome(large Glass sphere halved, Transparency 0.3 blue tint), Interior floor(Metal grated look), Moonpool(hole in floor with water Part blue), Submarine dock(sub shape from Parts), Coral decorations(colored Parts organic shapes outside dome), Bubble streams(ParticleEmitter outside), Laboratory(tables+equipment Parts), Living area(beds+kitchen), Control room(screens+consoles), Connecting tunnels(Glass tube corridors), Seaweed(thin green Parts swaying look), Fish(small colored Parts outside), Pressure door(thick Metal circle), Warning lights(Neon yellow strips).
-
-PLAYGROUND (30+ parts): Swing set(Metal frame 12x10+2 seats Fabric on chains/thin Parts), Slide(WedgePart smooth 3x8x12+ladder TrussPart+platform), Merry-go-round(Cylinder 8x1 Metal+handles), See-saw(long plank WoodPlanks+fulcrum wedge), Sandbox(sand-colored Part 10x0.5x10 bordered by WoodPlanks), Monkey bars(Metal frame+horizontal bars), Spring rider(coil shape Metal+seat), Bench(2 WoodPlanks+Metal frame), Rubber floor(Part softer color under equipment), Fence(around perimeter), Trees for shade(3-4).
-
-FARM (50+ parts): Farmhouse(25 parts: Wood+Brick, porch, chimney), Barn(red walls WoodPlanks 160,30,30, white X-trim, sliding door, hay loft), Silo(Cylinder Concrete tall), Fenced pasture(WoodPlanks fence posts+rails, 40x40), Crop rows(4-6 parallel rows of green Parts=crops, brown Part=soil), Tractor(15 parts: body Metal+wheels+cab), Windmill(tower+blades that could rotate), Water trough(Metal long box), Hay bales(Cylinder Fabric yellow, scattered), Scarecrow(cross frame WoodPlanks+hat+shirt Parts), Dirt path(brown Parts connecting buildings), Chicken coop(small wood structure), Well(stone ring+roof).
-
-VOLCANO ISLAND (40+ parts): Island base(irregular shape Grass+Sand edges 80x1x80), Volcano(cone shape from stacked cylinders of decreasing size Rock 20 tall), Lava pool(top of volcano, Neon orange+ParticleEmitter), Lava flow(stream of Parts Neon red/orange down side), Palm trees(4-6, Cylinder trunk+Grass canopy), Beach(Sand material along edges), Tribal village(3-4 small huts WoodPlanks+Grass roofs), Dock(WoodPlanks extending into water), Tiki torches(Wood+Fire effect), Cave entrance(dark opening in volcano side), Skull rock(Parts arranged as skull on beach), Waterfall(blue Glass+Smoke mist at base), Bridge(rope bridge WoodPlanks+rope rails over lava).
-
-ARCTIC BASE (35+ parts): Main building(Metal+Concrete, flat roof, small windows), Radar dish(large Cylinder tilted on pole Metal), Snow ground(large Part Snow material), Ice formations(Glass blue tint, jagged shapes), Helicopter pad(circle Concrete+H marking), Fuel tanks(2 large Cylinders Metal), Dog sled(WoodPlanks frame+runner Parts), Flag poles(3, Metal+Fabric flags), Snowmobile(10 parts: body+ski+track), Supply crates(stacked boxes), Antenna tower(Metal lattice), Searchlight(SpotLight on swivel), Ice fishing hole(dark circle in snow), Wind turbine(pole+blades).
-
-TRAIN STATION (40+ parts): Platform(60x1x12 Concrete+yellow edge stripe), Roof canopy(Metal frame+Glass panels over platform), Tracks(2 rail Parts Metal+ties WoodPlanks along length), Train(engine: Metal body+wheels+smokestack+cow catcher, 2 carriages: walls+windows+doors+seats), Station building(Brick walls+ticket window+clock Part+sign), Bench(3-4 along platform WoodPlanks+Metal), Lamp posts(4-5 Metal+SpotLight), Crossing gate(striped arm+post), Signal lights(pole+red/green Neon), Luggage cart(Metal frame+wheels), Newspaper stand(small box), Flower boxes(along platform edge).
-
-SHOP WITH GUI (35+ parts building + full UI): BUILDING: Storefront(walls Brick, large display window Glass 0.3+frame, door+bell, awning WedgePart Fabric colored, sign SurfaceGui on Part above door). INTERIOR: Counter(L-shaped Wood+Metal top), Cash register(small Parts Metal+Neon screen), Display shelves(3-4 wall-mounted WoodPlanks+items), Product display table(center, items on top), Floor(checkered pattern alternating color tiles), Ceiling lights(3 recessed PointLight), Potted plants(2 in corners), Wall art/posters(thin Parts), Back room door, Storage shelves(behind counter). GUI: ScreenGui in StarterGui→MainFrame(Frame BackgroundColor3=30,30,30 Size=UDim2.new(0.3,0,0.5,0) AnchorPoint=0.5,0.5 Position=UDim2.new(0.5,0,0.5,0))→UICorner(CornerRadius=12)+UIStroke(Color=white Thickness=1)→TitleBar(Frame height 40px+TextLabel "Shop" Font=GothamBold 18pt white)+CloseButton(TextButton "X" top-right)→ScrollingFrame(item list)→ItemRow(Frame per item: ImageLabel+NameLabel+PriceLabel+BuyButton with UICorner+hover color). ProximityPrompt on counter to open shop GUI.
-
-INTERIOR DETAIL EXAMPLES — apply to ALL buildings:
-CAFE: Counter with espresso machine(Parts Metal+Neon indicator), display case(Glass+pastry items), 4 tables(round Wood+2 chairs each), menu board(SurfaceGui chalkboard), pendant lights(3 hanging), floor mat at entrance, tip jar on counter, plant in corner, coat hooks on wall.
-OFFICE: Reception desk(L-shape+computer monitor Part), waiting area(sofa+coffee table+magazines), 3 desk cubicles(desk+chair+monitor+keyboard+mouse pad), water cooler, filing cabinet, whiteboard(SurfaceGui), ceiling tiles pattern, carpet floor.
-BEDROOM: Bed(frame+mattress+pillow+blanket layers), nightstand(+lamp+book+alarm clock), wardrobe(double door), desk(+chair+monitor), rug(under bed), curtains(2 Parts flanking window), wall shelf(+trophies/photos), ceiling fan.
-
-CRITICAL BUILD RULES — PART LIMITS:
-- MAXIMUM 80 PARTS per build. No exceptions.
-- Simple builds (house, shop): 25-40 parts
-- Medium builds (castle, school): 40-60 parts
-- Complex builds (city block, mansion): 60-80 parts
-- If you hit the limit, remove decorative/hidden parts first
-- NEVER create parts inside other parts that aren't visible
-- Quality over quantity — a detailed 30-part house beats a hollow 100-part shell
-
-QUALITY RULES:
-1. MINIMUM 15 parts per object. More parts = more detail.
-2. Use vc() for 2-3 color shades — never uniform color.
-3. Doors=4x7.5, Windows=3-4x3-4, Ceilings=11 studs.
-4. ALWAYS add PointLight to light sources (Brightness=2-4, Range=15-40).
-5. Include trim, molding, frames — extra parts make builds 10x better.
-6. Wall thickness 0.5-1.0 studs, never paper-thin.
-7. Glass ALWAYS gets Transparency=0.3-0.5 and a separate frame Part.
-8. Group in Model with PrimaryPart set.
-9. NEVER build a single cube. Decompose into real components.
-10. ALWAYS include interiors — empty buildings are unacceptable. Every building needs: floor, interior walls/dividers, furniture, lighting, counter/desk/shelves as appropriate. A shop needs shelves+counter+register+display items. A house needs rooms+furniture+kitchen+bathroom fixtures.
-11. SPACE-EFFICIENT DESIGN — buildings should use their interior space well. No huge empty rooms. Fill corners with props, add detail items (potted plants, rugs, wall art, ceiling fans, light fixtures). Think like a real architect furnishing a space.
-12. GUI/UI — when building shops, games, or interactive elements, include ScreenGui with styled frames. Use UICorner(8px) for rounded edges, UIStroke(1-2px) for outlines, UIGradient for depth. Size with UDim2, not magic numbers. Every GUI needs: BackgroundColor3, BorderSizePixel=0, proper hierarchy (ScreenGui→Frame→elements).
-13. PRODUCTION QUALITY — builds should look like finished Roblox games, not prototypes. Add edge trim (thin Parts along roof edges, window sills, door frames, baseboards). Add ambient detail (wall sconces, ceiling beams, floor patterns with alternating colors, awnings over windows).
-
-=== WEAPON & TOOL SYSTEMS ===
-SWORD TOOL: Tool in StarterPack, Handle Part, Grip CFrame, Activated event → raycast forward, damage on hit, cooldown, swing animation (play Animation on Humanoid), slash trail (Attachment + Trail)
-RANGED WEAPON: Tool, fire on Activated, create bullet Part moving forward (BodyVelocity or CFrame increment), raycast hit detection, damage, muzzle flash (PointLight flash), shell casing ejection
-BOW: charge mechanic (hold Activated, release fires), arrow projectile with arc (gravity), pin to target on hit
-FISHING ROD: cast on Activated, line Part extending, wait timer, random catch from loot table, reel-in animation
-PICKAXE: mine on Activated near ore, reduce ore health, drop resources, ore respawn timer
-MAGIC STAFF: mana system, spell selection (1-4 keys), projectile per spell type, AoE effects, cooldown per spell
-GRAPPLE HOOK: launch hook projectile, on hit create RopeConstraint, pull player toward point, release on land
-
-=== VEHICLE SYSTEMS ===
-CAR: VehicleSeat + BodyVelocity + BodyGyro. Throttle=W/S, steer=A/D. Speed=maxSpeed*throttle. 4 wheel Parts with HingeConstraint for visual rotation. Enter/exit via ProximityPrompt on driver seat. Camera: third-person follow with spring.
-BOAT: VehicleSeat floating on water (BodyPosition Y=waterLevel). BodyVelocity for forward thrust. Rudder steering. Wake particles behind. Buoyancy wobble with math.sin.
-AIRPLANE: VehicleSeat + BodyVelocity + BodyGyro. Pitch=W/S, Roll=A/D, Yaw=Q/E, Throttle=Shift/Ctrl. Lift proportional to speed. Stall below min speed.
-MOUNT/HORSE: Seat welded to character model. PathfindingService for AI movement when not ridden. Gallop animation. Stamina bar.
-HOVERBOARD: no wheels, BodyPosition to hover 3 studs above ground, lean steering, boost mechanic, trail particles underneath
-VEHICLE SPAWNER: pad with ProximityPrompt → spawn vehicle at pad position → destroy old vehicle if exists → player auto-sits
-
-=== CAMERA SYSTEM LIBRARY ===
-THIRD PERSON (default): camera.CameraType=Custom, adjust CameraOffset on Humanoid for over-shoulder
-TOP DOWN: camera.CameraType=Scriptable, CFrame above player looking down, follow player X/Z
-ISOMETRIC: camera.CameraType=Scriptable, fixed angle (45deg pitch, 45deg yaw), follow player
-FIRST PERSON: camera.CameraType=Scriptable, CFrame at Head position, mouse controls look direction
-SECURITY CAMERA: cycle between fixed CFrame positions with smooth tween transitions
-ORBIT VIEW: camera orbits around a point, user controls azimuth/elevation with mouse drag
-CINEMATIC: sequence of CFrame waypoints with TweenService, hold durations, triggered by event
-ZOOM: scroll wheel adjusts camera distance from player, clamp between min/max, smooth lerp
-SHAKE: add random offset to camera CFrame, intensity decay over time, triggered by explosions/impacts
-LOCK-ON: camera focuses on target enemy, orbits around lock-on point, switch targets with Tab
-
-=== NPC AI BEHAVIORS ===
-WANDER: pick random point within radius, PathfindingService:CreatePath, MoveTo waypoints, wait at destination, repeat
-PATROL: ordered waypoint list, move between in sequence, optional wait times, loop or ping-pong
-CHASE: detect player within range (magnitude check every 0.5s), path to player, stop at attack range, lose interest beyond max range
-FLEE: detect threat, move away (opposite direction), find furthest reachable point, run until safe distance
-GUARD: stand at post, chase if player enters radius, return to post when player leaves, alert animation
-FOLLOW: follow leader at offset distance, match speed, avoid clumping with other followers, stop when leader stops
-FORMATION: multiple NPCs maintain formation shape (line, circle, V-shape) while moving, adjust positions on direction change
-BOSS PHASES: health-based phase transitions, different attacks per phase, enrage at low HP, summon adds, arena hazards
-SHOPKEEPER: stand behind counter, face approaching player, ProximityPrompt opens shop GUI, idle animation, greeting dialogue
+SYSTEMS REFERENCE (use when requested):
+- Weapons: Tool+Handle+Activated→raycast/projectile+damage+cooldown+effects
+- Vehicles: VehicleSeat+BodyVelocity+BodyGyro, ProximityPrompt enter/exit
+- Camera: Scriptable CFrame for top-down/isometric/first-person/cinematic
+- NPCs: PathfindingService for wander/patrol/chase/guard behaviors, ProximityPrompt for shopkeepers
+- Lighting presets: DAYTIME(ClockTime=14), SPOOKY(0.5), SUNSET(17.5), NEON CITY(22), COZY(20)
 
 ${MARKETPLACE_ASSET_RULES}`
 
@@ -2252,16 +1992,42 @@ RULES:
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
     }
 
-    // Single-pass: race both models — first valid result wins
-    console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
-    const buildRace = await raceNonNull(
-      callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 16384),
-      callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 16384),
-    )
-
-    // Extract conversation text (everything before the ```lua block) and code
+    // Declare variables used by both staged and single-pass paths
     let conversationText = ''
     let model = 'gemini-2.0-flash'
+    let finalVerificationScore = 0
+
+    // ── STAGED PIPELINE: use for complex builds (games, maps, scenes, villages, cities) ──
+    const isComplexBuild = /\b(game|map|city|village|town|world|scene|island|station|course|track|tycoon|simulator|rpg)\b/i.test(message)
+    if (isComplexBuild && !luauCode) {
+      console.log('[StagedPipeline] Complex build detected, using staged pipeline for:', message.slice(0, 50))
+      try {
+        const pipelineResult = await runStagedPipeline(message, enrichedCodePrompt)
+        if (pipelineResult.code && pipelineResult.score >= 50) {
+          luauCode = pipelineResult.code
+          conversationText = pipelineResult.conversationText || `Here's what I'm setting up for "${message}".`
+          model = 'staged-pipeline'
+          finalVerificationScore = pipelineResult.score
+          console.log(`[StagedPipeline] Success! Score: ${pipelineResult.score}/100, stages: ${pipelineResult.stages.map(s => `${s.name}:${s.success ? 'OK' : 'FAIL'}`).join(', ')}`)
+        } else {
+          console.log(`[StagedPipeline] Score too low (${pipelineResult.score}), falling back to single-pass`)
+        }
+      } catch (pipeErr) {
+        console.warn('[StagedPipeline] Failed, falling back to single-pass:', pipeErr instanceof Error ? pipeErr.message : pipeErr)
+      }
+    }
+
+    // Single-pass: race both models — first valid result wins (fallback for staged pipeline, primary for simple builds)
+    let buildRace: { result: string; index: number } | null = null
+    if (!luauCode) {
+      console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
+      buildRace = await raceNonNull(
+        callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 32768),
+        callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 32768),
+      )
+    }
+
+    // Extract conversation text (everything before the ```lua block) and code
 
     if (buildRace) {
       const fullResponse = buildRace.result
@@ -2297,7 +2063,6 @@ RULES:
       }
 
       // ── VERIFICATION PIPELINE ── Pre-test code before delivery
-      let finalVerificationScore = 0
       if (luauCode) {
         try {
           const verification = await verifyLuauCode(luauCode)
@@ -2308,13 +2073,13 @@ RULES:
             console.log('[Verify] Using auto-fixed code')
             luauCode = verification.fixedCode
           }
-          // If score is very low (< 40), discard entirely
-          if (verification.score < 40) {
+          // If score is very low (< 50), discard entirely
+          if (verification.score < 50) {
             console.warn('[Verify] Score too low, discarding code')
             luauCode = null
           }
-          // If score is mediocre (40-65), attempt one re-generation with error context
-          else if (verification.score < 65 && verification.errors.length > 0) {
+          // If score is mediocre (50-75), attempt one re-generation with error context
+          else if (verification.score < 75 && verification.errors.length > 0) {
             console.log(`[Verify] Score ${verification.score} is mediocre, attempting re-generation with error feedback`)
             const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
             const retryInstruction = `ORIGINAL USER REQUEST: "${message}"
@@ -2326,8 +2091,8 @@ Fix ALL of the above issues in your new version. Remember: you are building "${m
 
 ${buildInstruction}`
             const retryRace = await raceNonNull(
-              callGemini(codePrompt, retryInstruction, [], 8192),
-              callGroq(codePrompt, retryInstruction, [], 8192),
+              callGemini(codePrompt, retryInstruction, [], 16384),
+              callGroq(codePrompt, retryInstruction, [], 16384),
             )
             if (retryRace) {
               const retryResponse = retryRace.result
@@ -2373,8 +2138,8 @@ ${buildInstruction}`
             )
             try {
               const auditRetryRace = await raceNonNull(
-                callGemini(codePrompt, auditRetryPrompt, [], 8192),
-                callGroq(codePrompt, auditRetryPrompt, [], 8192),
+                callGemini(codePrompt, auditRetryPrompt, [], 16384),
+                callGroq(codePrompt, auditRetryPrompt, [], 16384),
               )
               if (auditRetryRace) {
                 let auditRetryCode = extractLuauCode(auditRetryRace.result)
@@ -2416,6 +2181,17 @@ ${buildInstruction}`
         }).catch((err) => {
           console.warn('[LearningSystem] Failed to record build outcome:', err instanceof Error ? err.message : err)
         })
+        // ELI brain learning — feed build intelligence
+        void recordToEli({
+          prompt: message,
+          score: finalVerificationScore,
+          model,
+          buildType: buildType as 'build' | 'script' | 'terrain' | 'image' | 'mesh',
+          category,
+          partCount,
+          passed: finalVerificationScore >= 60,
+          retryCount: 0,
+        }).catch(() => {})
       }
     }
 
@@ -2429,8 +2205,8 @@ ${buildInstruction}`
       const lightInstruction = `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`
       try {
         const lightRetry = await raceNonNull(
-          callGemini(lightPrompt, lightInstruction, [], 8192),
-          callGroq(lightPrompt, lightInstruction, [], 8192),
+          callGemini(lightPrompt, lightInstruction, [], 16384),
+          callGroq(lightPrompt, lightInstruction, [], 16384),
         )
         if (lightRetry) {
           const lightCode = extractLuauCode(lightRetry.result)

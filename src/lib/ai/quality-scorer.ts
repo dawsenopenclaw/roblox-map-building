@@ -241,7 +241,7 @@ function heuristicFallback(input: ScoreOutputInput, latencyMs: number): QualityS
     suggestions: h.flags.includes('low_specificity')
       ? ['Add concrete numbers (studs, counts, rates).']
       : [],
-    shouldRetry: total < 60,
+    shouldRetry: total < 65,
     source: 'heuristic-fallback',
     latencyMs,
   }
@@ -315,7 +315,7 @@ export async function scoreOutput(input: ScoreOutputInput): Promise<QualityScore
     axes,
     reasoning,
     suggestions,
-    shouldRetry: total < 60,
+    shouldRetry: total < 65,
     source: 'llm',
     latencyMs: Date.now() - start,
   }

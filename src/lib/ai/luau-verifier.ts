@@ -569,7 +569,7 @@ export async function verifyLuauCode(code: string): Promise<VerificationResult> 
 
   // Step 3: Quality scoring
   const { score, warnings } = scoreQuality(code, errors)
-  const qualityCheckPassed = score >= 50
+  const qualityCheckPassed = score >= 60
 
   // Step 4: Auto-fix what we can
   let fixedCode: string | null = null
