@@ -310,7 +310,8 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
   const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
   const ballCount = (code.match(/\bBall\s*\(/g) || []).length
   const wedgeCount = (code.match(/Instance\.new\(\s*["']WedgePart/g) || []).length
-  const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
+  const wHelperCount = (code.match(/\bW\s*\(/g) || []).length
+  const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount + wHelperCount
   // Script-only code doesn't need parts — detect by service usage, event handling, or module patterns
   const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
     code.includes('RemoteFunction') || code.includes('Players.PlayerAdded') ||
@@ -323,12 +324,15 @@ function scoreQuality(code: string, errors: VerificationError[]): { score: numbe
     (code.includes('ScreenGui') && !code.includes('Instance.new("Part")')) ||
     // Leaderstats / progression scripts
     code.includes('leaderstats') || code.includes('IntValue') || code.includes('NumberValue')
-  if (!isScriptCode && totalParts < 5 && code.includes('Instance.new')) {
-    score -= 40
-    warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds MUST have 10+ parts. Rejecting single-brick output.` })
-  } else if (!isScriptCode && totalParts < 15 && totalParts >= 5 && code.includes('Instance.new')) {
-    score -= 15
+  if (!isScriptCode && totalParts < 8 && code.includes('Instance.new')) {
+    score -= 50
+    warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds MUST have 15+ parts. Single-brick output.` })
+  } else if (!isScriptCode && totalParts < 15 && totalParts >= 8 && code.includes('Instance.new')) {
+    score -= 30
     warnings.push({ type: 'complexity', message: `Only ${totalParts} parts — builds should have 25+ parts for quality` })
+  } else if (!isScriptCode && totalParts < 25 && totalParts >= 15 && code.includes('Instance.new')) {
+    score -= 10
+    warnings.push({ type: 'complexity', message: `${totalParts} parts — good but 25+ would be better` })
   }
 
   // Check for anchored parts

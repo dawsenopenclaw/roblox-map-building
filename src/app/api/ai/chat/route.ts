@@ -33,6 +33,8 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
+import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
+import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
@@ -1697,9 +1699,10 @@ function isCodeQualityOk(code: string): boolean {
     const pHelperCount = (code.match(/\bP\s*\(/g) || []).length
     const cylCount = (code.match(/\bCyl\s*\(/g) || []).length
     const ballCount = (code.match(/\bBall\s*\(/g) || []).length
-    const totalParts = partCount + pHelperCount + cylCount + ballCount
-    if (totalParts < 5 && !code.includes('placeAsset') && !code.includes('InsertService')) {
-      console.warn(`[QualityGate] Only ${totalParts} parts — rejecting single-brick build`)
+    const wedgeCount = (code.match(/\bW\s*\(/g) || []).length
+    const totalParts = partCount + pHelperCount + cylCount + ballCount + wedgeCount
+    if (totalParts < 12 && !code.includes('placeAsset') && !code.includes('InsertService')) {
+      console.warn(`[QualityGate] Only ${totalParts} parts — rejecting low-detail build (min 12)`)
       return false
     }
   }
@@ -1738,6 +1741,9 @@ async function freeModelTwoPass(
 
   // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
   const isScriptIntent = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
+  // Quality tier — default to 'pro' for meaningful output, accept override from frontend
+  const qualityTier: QualityTier = 'pro'
+  const tierModifier = isScriptIntent ? '' : '\n\n' + getTierPromptModifier(qualityTier)
   let luauCode: string | null = null
   let executedInStudio: boolean | string = false
 
@@ -1795,6 +1801,22 @@ local function P(name, cf, size, mat, col, parent)
   p.Size = size
   p.Material = mat
   p.Color = col
+  p.CastShadow = (size.X > 2 and size.Y > 2)
+  p.CollisionFidelity = Enum.CollisionFidelity.Box
+  p.Parent = parent or m
+  return p
+end
+
+-- WEDGE helper — for roofs, ramps, angled surfaces
+local function W(name, cf, size, mat, col, parent)
+  local p = Instance.new("WedgePart")
+  p.Name = name
+  p.Anchored = true
+  p.CFrame = cf
+  p.Size = size
+  p.Material = mat
+  p.Color = col
+  p.CastShadow = true
   p.Parent = parent or m
   return p
 end
@@ -1805,20 +1827,23 @@ local function vc(base, v)
   return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
 end
 
--- CYLINDER/SPHERE helper — creates shaped parts
+-- CYLINDER helper — poles, trunks, columns, pipes
 local function Cyl(name, cf, size, mat, col, parent)
   local p = Instance.new("Part")
   p.Name = name
   p.Shape = Enum.PartType.Cylinder
   p.Anchored = true
   p.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
-  p.Size = size -- For cylinders: Vector3.new(height, diameter, diameter)
+  p.Size = size -- Vector3.new(height, diameter, diameter)
   p.Material = mat
   p.Color = col
+  p.CastShadow = true
+  p.CollisionFidelity = Enum.CollisionFidelity.Box
   p.Parent = parent or m
   return p
 end
 
+-- SPHERE helper — foliage, decorative balls, domes
 local function Ball(name, cf, diameter, mat, col, parent)
   local p = Instance.new("Part")
   p.Name = name
@@ -1828,11 +1853,12 @@ local function Ball(name, cf, diameter, mat, col, parent)
   p.Size = Vector3.new(diameter, diameter, diameter)
   p.Material = mat
   p.Color = col
+  p.CastShadow = true
   p.Parent = parent or m
   return p
 end
 
--- BUILD HERE using P() for boxes, Cyl() for cylinders/poles, Ball() for spheres/foliage
+-- BUILD using P() for boxes, W() for wedge/roof slopes, Cyl() for cylinders, Ball() for spheres
 
 m.PrimaryPart = --[[ set to the largest/base part ]]
 m.Parent = workspace
@@ -2057,14 +2083,16 @@ OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
       console.warn('[Planner] Non-blocking error:', planErr instanceof Error ? planErr.message : planErr)
     }
 
-    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}
+    const buildInstruction = `Build: ${message}${continuationContext}${fullgameOverride}${blueprintContext}${tierModifier}
 
 First write 4-6 sentences describing what you're creating (the mood, one cool detail, what to do next).
 Then output the Luau code in a \`\`\`lua block. Use the REQUIRED PATTERN with these helpers:
-- P(name, CFrame, Size, Material, Color) — for box-shaped parts (walls, floors, plates, beams)
-- Cyl(name, CFrame, Size, Material, Color) — for cylindrical parts (poles, pipes, columns, trunks)
-- Ball(name, CFrame, diameter, Material, Color) — for spherical parts (foliage, decorative balls, lights)
-- vc(baseColor, variance) — for natural color variation
+- P(name, CFrame, Size, Material, Color) — boxes (walls, floors, beams, frames, trim)
+- W(name, CFrame, Size, Material, Color) — wedges (roofs, ramps, angled surfaces) — USE FOR ALL ROOFS
+- Cyl(name, CFrame, Size, Material, Color) — cylinders (poles, trunks, columns, pipes)
+- Ball(name, CFrame, diameter, Material, Color) — spheres (foliage canopy, decorative, domes)
+- vc(baseColor, variance) — color variation for natural look
+USE ALL 4 SHAPE HELPERS. A build using only P() looks flat and amateur. Roofs MUST use W(). Trees MUST use Cyl()+Ball(). Poles MUST use Cyl().
 
 Decompose "${message}" into physical components — ALWAYS build with P() helper:
 
@@ -2250,6 +2278,29 @@ ${effectiveInstruction}`
         } catch (verifyErr) {
           // Verification failed — don't block, send code as-is
           console.warn('[Verify] Verification error (non-blocking):', verifyErr)
+        }
+      }
+
+      // ── LLM QUALITY SCORING: judge the output with a separate AI call ──
+      if (luauCode && !isScriptIntent && !isObviouslyBroken(luauCode)) {
+        try {
+          const qualityResult = await scoreOutput({
+            prompt: message,
+            response: luauCode,
+            mode: 'build',
+          })
+          console.log(`[QualityScore] ${qualityResult.total}/100 (${qualityResult.source}) — ${qualityResult.reasoning.slice(0, 80)}`)
+          // Use quality score to boost or override verification score
+          if (qualityResult.source === 'llm') {
+            finalVerificationScore = Math.max(finalVerificationScore, qualityResult.total)
+          }
+          // If quality is terrible and we haven't retried too much, discard
+          if (qualityResult.total < 40 && qualityResult.source === 'llm') {
+            console.warn(`[QualityScore] Score ${qualityResult.total} too low — discarding`)
+            luauCode = null
+          }
+        } catch (qErr) {
+          console.warn('[QualityScore] Non-blocking error:', qErr instanceof Error ? qErr.message : qErr)
         }
       }
 
