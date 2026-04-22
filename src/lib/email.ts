@@ -13,6 +13,8 @@ import {
   DunningEmail,
   TrialEndingEmail,
   PaymentActionRequiredEmail,
+  DripDay3Email,
+  DripDay7Email,
 } from './email-templates'
 
 // ─── Email configuration guard ────────────────────────────────────────────────

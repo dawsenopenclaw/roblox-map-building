@@ -9,44 +9,53 @@
 
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { db } from '@/lib/db'
-import { getUserDailySpend } from '@/lib/cost-tracker'
-import { checkGenerationLimit } from '@/lib/generation-limits'
 
 export async function GET(): Promise<NextResponse> {
-  const { userId: clerkId } = await auth()
-  if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  // Resolve internal userId from clerkId
-  const user = await db.user.findUnique({
-    where:  { clerkId },
-    select: {
-      id: true,
-      subscription: { select: { tier: true, status: true } },
-    },
-  })
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const { db } = await import('@/lib/db')
+    const { getUserDailySpend } = await import('@/lib/cost-tracker')
+    const { checkGenerationLimit } = await import('@/lib/generation-limits')
 
-  const isActive =
-    user.subscription?.status === 'ACTIVE' ||
-    user.subscription?.status === 'TRIALING'
-  const tier = (isActive ? (user.subscription?.tier ?? 'FREE') : 'FREE') as string
+    // Resolve internal userId from clerkId
+    const user = await db.user.findUnique({
+      where:  { clerkId },
+      select: {
+        id: true,
+        subscription: { select: { tier: true, status: true } },
+      },
+    })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const [spend, meshLimit, buildLimit, textureLimit] = await Promise.all([
-    getUserDailySpend(user.id),
-    checkGenerationLimit(user.id, 'mesh'),
-    checkGenerationLimit(user.id, 'build'),
-    checkGenerationLimit(user.id, 'texture'),
-  ])
+    const isActive =
+      user.subscription?.status === 'ACTIVE' ||
+      user.subscription?.status === 'TRIALING'
+    const tier = (isActive ? (user.subscription?.tier ?? 'FREE') : 'FREE') as string
 
-  return NextResponse.json({
-    spend,
-    limits: {
-      mesh:    meshLimit,
-      build:   buildLimit,
-      texture: textureLimit,
-    },
-    tier,
-    isStudio: tier === 'STUDIO',
-  })
+    const [spend, meshLimit, buildLimit, textureLimit] = await Promise.all([
+      getUserDailySpend(user.id),
+      checkGenerationLimit(user.id, 'mesh'),
+      checkGenerationLimit(user.id, 'build'),
+      checkGenerationLimit(user.id, 'texture'),
+    ])
+
+    return NextResponse.json({
+      spend,
+      limits: {
+        mesh:    meshLimit,
+        build:   buildLimit,
+        texture: textureLimit,
+      },
+      tier,
+      isStudio: tier === 'STUDIO',
+    })
+  } catch (err) {
+    console.error('[dashboard/usage] Error:', err instanceof Error ? err.message : err)
+    return NextResponse.json(
+      { error: 'Failed to load usage data' },
+      { status: 500 },
+    )
+  }
 }

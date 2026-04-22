@@ -23,7 +23,7 @@ import { spendTokens, getTokenBalance } from '@/lib/tokens-server'
 import { db } from '@/lib/db'
 import { aiRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { checkSpendingGuard } from '@/lib/spending-guard'
-import { queueCommand, getSession } from '@/lib/studio-session'
+import { queueCommand, getSession, createSession } from '@/lib/studio-session'
 import { validateAndFixLuau } from '@/lib/luau-validator'
 import { luauToStructuredCommands } from '@/lib/ai/structured-commands'
 import { verifyLuauCode } from '@/lib/ai/luau-verifier'
@@ -52,7 +52,7 @@ function logConversationAsync(userId: string, sessionId: string | null, userMsg:
     db.chatMessage.createMany({
       data: [
         { sessionId: sid, role: 'user', content: userMsg.slice(0, 10000), timestamp: new Date() },
-        { sessionId: sid, role: 'assistant', content: assistantMsg.slice(0, 10000), metadata: metadata ?? null, timestamp: new Date() },
+        { sessionId: sid, role: 'assistant', content: assistantMsg.slice(0, 10000), metadata: (metadata as Record<string, string | number | boolean | null>) ?? null, timestamp: new Date() },
       ],
     })
   ).catch((err) => console.warn('[auto-log] Failed to persist conversation:', err instanceof Error ? err.message : err))
@@ -6900,6 +6900,8 @@ interface ChatResponsePayload {
   intent: IntentKey
   /** Whether the AI response contained a Luau code block */
   hasCode?: boolean
+  /** Top-level Luau code extracted from the AI response (for custom-key & free-model paths) */
+  luauCode?: string | null
   /** Clickable next-action suggestions parsed from [SUGGESTIONS] block */
   suggestions?: string[]
   /** Multi-step build orchestration metadata */
@@ -7325,7 +7327,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const parsed = await parseBody(req, chatMessageSchema)
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: parsed.status })
+    return NextResponse.json({ error: (parsed as { ok: false; error: string; status: number }).error }, { status: (parsed as { ok: false; error: string; status: number }).status })
   }
 
   // Strip the internal [AUTO-RETRY attempt N/M] prefix that the client injects —
@@ -8796,7 +8798,7 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
 
     if (twoPassResult) {
       // Auto-log for beta review
-      if (userId) logConversationAsync(userId, sessionId, message, twoPassResult.conversationText, { model: twoPassResult.model, intent, hasCode: twoPassResult.luauCode !== null })
+      if (authedUserId) logConversationAsync(authedUserId, sessionId, message, twoPassResult.conversationText, { model: twoPassResult.model, intent, hasCode: twoPassResult.luauCode !== null })
 
       const freeModelBuildPlan: BuildPlan | undefined = (() => {
         if (multiStepTemplate) return computeBuildPlan(multiStepTemplate, 1)
@@ -8834,28 +8836,36 @@ ${currentStep === totalSteps ? '\nThis is the FINAL STEP — make it perfect and
     }
   }
 
-  // ── ALL PROVIDERS EXHAUSTED ── Anthropic, Gemini, and Groq all failed.
-  // Return a clear user-facing error instead of falling through to demo responses.
-  console.error('[chat] All AI providers exhausted — no response generated for:', message.slice(0, 100))
-  const allFailedMsg = 'All AI providers are busy — please wait 60 seconds and try again.'
-  if (wantsStream) {
-    return toStreamResponse(allFailedMsg, {
-      suggestions: ['Try again in a minute', 'Simplify your request'],
+  // ── ALL PROVIDERS EXHAUSTED for non-specialized intents ──
+  // Mesh, texture, building, terrain, and fullgame intents have dedicated
+  // fallback handlers below (Groq last-chance, template generator, demo
+  // response, etc.), so we only short-circuit for generic conversation intents.
+  const hasSpecializedFallback = ['mesh', 'texture', 'building', 'terrain', 'fullgame'].includes(intent)
+  if (!hasSpecializedFallback) {
+    console.error('[chat] All AI providers exhausted — no response generated for:', message.slice(0, 100))
+    const allFailedMsg = 'All AI providers are busy — please wait 60 seconds and try again.'
+    if (wantsStream) {
+      return toStreamResponse(allFailedMsg, {
+        suggestions: ['Try again in a minute', 'Simplify your request'],
+        intent,
+        hasCode: false,
+        luauCode: null,
+        tokensUsed: 0,
+        executedInStudio: false,
+        model: 'none',
+      }) as unknown as NextResponse
+    }
+    return NextResponse.json({
+      message: allFailedMsg,
+      tokensUsed: 0,
       intent,
       hasCode: false,
-      luauCode: null,
-      tokensUsed: 0,
-      executedInStudio: false,
-      model: 'none',
-    }) as unknown as NextResponse
+      suggestions: ['Try again in a minute', 'Simplify your request'],
+    }, { status: 503 })
   }
-  return NextResponse.json({
-    message: allFailedMsg,
-    tokensUsed: 0,
-    intent,
-    hasCode: false,
-    suggestions: ['Try again in a minute', 'Simplify your request'],
-  }, { status: 503 })
+
+  // ���─ Fallback token cost for specialized intents when all AI providers failed ──
+  const tokensUsed = INTENT_TOKEN_COST[intent] ?? INTENT_TOKEN_COST.default
 
   // ── Community asset search (runs for all build-related intents) ───────────
   // Preferred over generating from scratch: finds relevant pre-built 3D meshes
