@@ -1,0 +1,73 @@
+name: ELI Beta Tester Sweep
+
+on:
+  schedule:
+    # Every 30 minutes — full visual sweep
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Test mode'
+        type: choice
+        options:
+          - full
+          - journey-only
+        default: full
+
+jobs:
+  beta-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright
+        run: npx playwright install chromium
+
+      - name: Restore beta tester state
+        uses: actions/cache@v4
+        with:
+          path: |
+            scripts/.eli-beta-issues.json
+            scripts/.eli-screenshots/
+          key: eli-beta-${{ github.run_id }}
+          restore-keys: eli-beta-
+
+      - name: Run Beta Tester
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SITE_URL: https://forjegames.com
+        run: |
+          if [ "${{ github.event.inputs.mode }}" = "journey-only" ]; then
+            npx tsx scripts/eli-beta-tester.ts --journey
+          else
+            npx tsx scripts/eli-beta-tester.ts
+          fi
+
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/.eli-beta-issues.json
+            scripts/.eli-screenshots/
+          key: eli-beta-${{ github.run_id }}
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-screenshots-${{ github.run_number }}
+          path: scripts/.eli-screenshots/
+          retention-days: 3
+          if-no-files-found: ignore
