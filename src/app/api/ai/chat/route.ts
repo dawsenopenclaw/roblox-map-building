@@ -2231,6 +2231,7 @@ ${buildInstruction}`
           model = 'template'
           conversationText = `Here's a template build for "${message}". The AI models are experiencing high demand right now, so I used a pre-built template as a starting point. Let me know what you'd like to change!`
         } else {
+          model = 'failed'
           conversationText = `I'm having trouble generating that build right now. The AI is experiencing high demand — please try again in a moment, or try a simpler prompt first.`
         }
       }

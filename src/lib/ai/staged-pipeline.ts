@@ -91,7 +91,14 @@ async function stagePlan(prompt: string): Promise<{ plan: StagedBuildPlan | null
       temperature: 0.3,
     })
 
-    const parsed = JSON.parse(raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim())
+    // Robust JSON extraction: find first { and last } to handle prose-wrapped responses
+    let jsonStr = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim()
+    const firstBrace = jsonStr.indexOf('{')
+    const lastBrace = jsonStr.lastIndexOf('}')
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.slice(firstBrace, lastBrace + 1)
+    }
+    const parsed = JSON.parse(jsonStr)
     return {
       plan: {
         summary: parsed.summary || prompt,
@@ -183,10 +190,16 @@ async function stageEnhance(
 ): Promise<{ code: string | null; durationMs: number }> {
   const start = Date.now()
 
-  // Check which planned components are missing from the code
-  const missingComponents = plan.components.filter(c =>
-    !code.toLowerCase().includes(c.name.toLowerCase().replace(/\s+/g, ''))
-  )
+  // Check which planned components are missing from the code (word-boundary matching)
+  const codeLower = code.toLowerCase()
+  const missingComponents = plan.components.filter(c => {
+    // Split component name into individual words and check if ANY word appears
+    const words = c.name.toLowerCase().split(/[\s_-]+/).filter(w => w.length >= 3)
+    if (words.length === 0) return false
+    // Component is "found" if at least half its significant words appear in the code
+    const found = words.filter(w => codeLower.includes(w)).length
+    return found < Math.ceil(words.length / 2)
+  })
 
   if (errors.length === 0 && missingComponents.length === 0) {
     return { code, durationMs: Date.now() - start } // Already good
@@ -273,7 +286,7 @@ export async function runStagedPipeline(
     details: plan ? `${plan.components.length} components, ${plan.estimatedParts} est. parts` : 'Failed',
   })
 
-  if (!plan || plan.components.length < 3) {
+  if (!plan || plan.components.length < 5) {
     return {
       code: null,
       plan: null,

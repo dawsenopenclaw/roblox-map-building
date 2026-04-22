@@ -256,6 +256,9 @@ export function EliClient() {
     suggestions: string[]
     categoryInsights: Array<{ category: string; confidence: string; avgScore: number | null; tips: string[] }>
     recurringFailures: Array<{ content: string; confidence: number }>
+    highScorePatterns: Array<{ content: string; confidence: number; tags: string[]; timestamp: string }>
+    lowScorePatterns: Array<{ content: string; confidence: number; tags: string[]; timestamp: string }>
+    metrics: Array<{ content: string; tags: string[]; timestamp: string }>
   } | null>(null)
 
   const loadInsights = useCallback(async () => {
