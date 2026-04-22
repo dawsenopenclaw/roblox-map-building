@@ -35,6 +35,7 @@ import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPat
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
+import { findObjectBlueprints, findScriptPatterns, formatBlueprintsForPrompt, formatScriptPatternsForPrompt } from '@/lib/ai/object-library'
 import { recordToEli } from '@/lib/eli/build-intelligence'
 import { runStagedPipeline } from '@/lib/ai/staged-pipeline'
 import { formatAdditiveRetryPrompt } from '@/lib/ai/build-blueprint'
@@ -2185,12 +2186,27 @@ Then output the code in a \`\`\`lua block.`
       console.log(`[ScriptMode] Detected script intent "${intent}" — using script generation path`)
     }
 
-    // Enrich code prompt with experience memory (past successful builds)
+    // Enrich with object blueprints (for builds) or script patterns (for scripts)
     let enrichedCodePrompt = effectivePrompt
+    if (isScriptIntent) {
+      const scriptRefs = findScriptPatterns(message, 2)
+      if (scriptRefs.length > 0) {
+        enrichedCodePrompt += formatScriptPatternsForPrompt(scriptRefs)
+        console.log(`[ObjectLibrary] Injected ${scriptRefs.length} script patterns: ${scriptRefs.map(s => s.name).join(', ')}`)
+      }
+    } else {
+      const blueprints = findObjectBlueprints(message, 2)
+      if (blueprints.length > 0) {
+        enrichedCodePrompt += formatBlueprintsForPrompt(blueprints)
+        console.log(`[ObjectLibrary] Injected ${blueprints.length} blueprints: ${blueprints.map(b => b.category).join(', ')}`)
+      }
+    }
+
+    // Enrich with experience memory (past successful builds)
     try {
       const pastSuccesses = await findSimilarSuccesses(message)
       if (pastSuccesses.length > 0) {
-        enrichedCodePrompt = effectivePrompt + formatAsExamples(pastSuccesses)
+        enrichedCodePrompt += formatAsExamples(pastSuccesses)
       }
     } catch (expErr) {
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
@@ -2325,12 +2341,12 @@ ${effectiveInstruction}`
       }
 
       // ── LLM QUALITY SCORING: judge the output with a separate AI call ──
-      if (luauCode && !isScriptIntent && !isObviouslyBroken(luauCode)) {
+      if (luauCode && !isObviouslyBroken(luauCode)) {
         try {
           const qualityResult = await scoreOutput({
             prompt: message,
             response: luauCode,
-            mode: 'build',
+            mode: isScriptIntent ? 'script' : 'build',
           })
           console.log(`[QualityScore] ${qualityResult.total}/100 (${qualityResult.source}) — ${qualityResult.reasoning.slice(0, 80)}`)
           // Use quality score to boost or override verification score
