@@ -78,3 +78,12 @@ Thumbs.db
 
 # Local Netlify folder
 .netlify
+
+# Bot state files
+scripts/.forje-eli-state.json
+scripts/.forje-fixes-overrides.json
+scripts/.discord-bug-state.json
+scripts/.eli-memory.json
+scripts/.eli-responder-state.json
+scripts/.eli-audit-report.json
+scripts/.eli-screenshots/

@@ -52,14 +52,32 @@ interface MemoryStats {
 
 // ─── Quick Prompts ───────────────────────────────────────────────────────────
 const QUICK_PROMPTS = [
+  { icon: Zap, label: '/GSD Mode', prompt: `ACTIVATE GSD MODE. You are now in Get Shit Done mode. Do ALL of this in order:
+
+1. Run health_check — report any service that's down
+2. Run user_stats — how many users, who's active
+3. Check the home page, pricing page, and sign-in page with check_page
+4. Read the latest Discord messages from bug-reports and suggestions with discord_read
+5. Look at all tracked bugs — prioritize by severity
+6. For the top 3 bugs: search_symbol and read_file to find the code, then edit_file to fix them
+7. Run git_diff to show what you changed
+8. Post a summary to Discord general channel
+9. Save everything you learned to memory
+
+DO NOT ASK PERMISSION. Just execute everything. Report results as you go.` },
   { icon: Bug, label: 'Fix Top Bug', prompt: 'Find the highest severity unfixed bug, read the relevant code using codegraph and read_file, then actually fix it with edit_file. Show me the diff when done.' },
+  { icon: Shield, label: 'Full Site Audit', prompt: `Audit the entire site right now:
+1. health_check all services
+2. check_page for /, /pricing, /sign-in, /sign-up, /download, /docs
+3. discord_read from bug-reports and suggestions
+4. Read the AI chat route and provider.ts — look for bugs
+5. Run git_status
+6. Report everything you find. Be brutal. Miss nothing.` },
   { icon: TrendingUp, label: 'What to Fix Next', prompt: 'Based on bug severity, user impact, and what areas are getting the most reports — what should we fix next and why? Cross-reference with the actual code.' },
   { icon: Terminal, label: 'Git Status', prompt: 'Run git status and git log --oneline -10 to show me what state the repo is in. Any uncommitted changes?' },
-  { icon: BarChart3, label: 'Weekly Digest', prompt: 'Generate a full weekly digest for Noah to compile. Include all bugs, suggestions, action items, contributor highlights, and code areas that need attention.' },
-  { icon: Shield, label: 'Audit Code', prompt: 'Pick the most critical file in the codebase (like the main chat route or AI provider), read it, and give me a real audit — bugs, performance issues, security concerns. Be brutally honest.' },
+  { icon: BarChart3, label: 'Noah Digest', prompt: 'Generate a full weekly digest for Noah to compile. Include all bugs, suggestions, action items, contributor highlights, and code areas that need attention. Post it to Discord.' },
   { icon: Sparkles, label: 'Self-Improve', prompt: 'Review your memory graph. What patterns have you learned? What gaps do you have? Search the code for things you should know but dont. Save new insights.' },
-  { icon: Lightbulb, label: 'Review Suggestions', prompt: 'Review all user suggestions. For each one, check the actual code to see how hard it would be to implement. Rate effort vs impact.' },
-  { icon: Activity, label: 'Full Status Report', prompt: 'Run git status, check all bugs, check contributor stats, and give me a complete status report of where ForjeGames stands right now. Include code health.' },
+  { icon: Activity, label: 'Discord Patrol', prompt: 'Read the latest messages from ALL Discord channels — bug-reports, suggestions, feature-requests, general. Respond to anything that needs a response. Acknowledge new bugs. Thank good suggestions. Answer questions.' },
 ]
 
 // ─── Message Bubble ──────────────────────────────────────────────────────────

@@ -163,6 +163,22 @@ const nextConfig: NextConfig = {
       './public/plugin/ForjeGames.rbxmx',
       './public/plugin/ForjeGames-store.rbxmx',
     ],
+    '/api/admin/fixes': [
+      './scripts/.forje-eli-state.json',
+      './scripts/.forje-fixes-overrides.json',
+    ],
+    '/api/admin/eli/chat': [
+      './scripts/.forje-eli-state.json',
+      './scripts/.forje-fixes-overrides.json',
+      './scripts/.eli-memory.json',
+      './.codegraph/codegraph.db',
+    ],
+    '/api/admin/eli/memory': [
+      './scripts/.eli-memory.json',
+    ],
+    '/api/admin/eli/insights': [
+      './scripts/.eli-memory.json',
+    ],
   },
   images: {
     formats: ['image/avif', 'image/webp'],

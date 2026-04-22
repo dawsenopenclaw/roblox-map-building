@@ -2168,7 +2168,7 @@ Then output the code in a \`\`\`lua block.`
       console.log('[SinglePass]', model, `returned ${fullResponse.length} chars`)
       luauCode = extractLuauCode(fullResponse)
       // Fallback: if no ```lua block found but response contains Luau code, use it raw
-      if (!luauCode && fullResponse.includes('Instance.new') && fullResponse.includes('workspace')) {
+      if (!luauCode && fullResponse.includes('Instance.new') && (fullResponse.includes('workspace') || fullResponse.includes('game:GetService'))) {
         luauCode = fullResponse
           .replace(/^```\w*\s*/gm, '')
           .replace(/^```\s*$/gm, '')
@@ -2217,21 +2217,21 @@ Then output the code in a \`\`\`lua block.`
             const errorFeedback = verification.errors.map(e => `- ${e}`).join('\n')
             const retryInstruction = `ORIGINAL USER REQUEST: "${message}"
 
-The previous code attempted to build the above but had these quality issues:
+The previous code attempted to ${isScriptIntent ? 'script' : 'build'} the above but had these quality issues:
 ${errorFeedback}
 
-Fix ALL of the above issues in your new version. Remember: you are building "${message}" — keep the original intent and detail level.
+Fix ALL of the above issues in your new version. Remember: you are ${isScriptIntent ? 'scripting' : 'building'} "${message}" — keep the original intent and detail level.
 
-${buildInstruction}`
+${effectiveInstruction}`
             const retryRace = await raceNonNull(
-              callGemini(codePrompt, retryInstruction, [], 16384),
-              callGroq(codePrompt, retryInstruction, [], 16384),
+              callGemini(enrichedCodePrompt, retryInstruction, [], 16384),
+              callGroq(enrichedCodePrompt, retryInstruction, [], 16384),
             )
             if (retryRace) {
               const retryResponse = retryRace.result
               console.log('[Verify-Retry]', modelNames[retryRace.index], `returned ${retryResponse.length} chars`)
               let retryCode = extractLuauCode(retryResponse)
-              if (!retryCode && retryResponse.includes('Instance.new') && retryResponse.includes('workspace')) {
+              if (!retryCode && retryResponse.includes('Instance.new') && (retryResponse.includes('workspace') || retryResponse.includes('game:GetService'))) {
                 retryCode = retryResponse.replace(/^```\w*\s*/gm, '').replace(/^```\s*$/gm, '').trim()
               }
               if (retryCode && isCodeQualityOk(retryCode)) {
@@ -2271,8 +2271,8 @@ ${buildInstruction}`
             )
             try {
               const auditRetryRace = await raceNonNull(
-                callGemini(codePrompt, auditRetryPrompt, [], 16384),
-                callGroq(codePrompt, auditRetryPrompt, [], 16384),
+                callGemini(enrichedCodePrompt, auditRetryPrompt, [], 16384),
+                callGroq(enrichedCodePrompt, auditRetryPrompt, [], 16384),
               )
               if (auditRetryRace) {
                 let auditRetryCode = extractLuauCode(auditRetryRace.result)
@@ -2334,8 +2334,12 @@ ${buildInstruction}`
 
       // Retry with a MUCH shorter system prompt (no RAG, no patterns, no examples)
       // This uses fewer tokens and is less likely to hit rate limits
-      const lightPrompt = `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera.`
-      const lightInstruction = `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`
+      const lightPrompt = isScriptIntent
+        ? `You are a Roblox Luau script generator. Output ONLY a \`\`\`lua code block. Create Script/LocalScript instances with .Source containing game logic. Use pcall for DataStore, task.wait() not wait(). Wrap in ChangeHistoryService recording.`
+        : `You are a Roblox Luau code generator. Output ONLY a \`\`\`lua code block. Use Instance.new("Part") for every object. Set Anchored=true, Material, Color3.fromRGB(), Size, Position on every part. Never use SmoothPlastic. Wrap in ChangeHistoryService recording. Place relative to workspace.CurrentCamera.`
+      const lightInstruction = isScriptIntent
+        ? `Script "${message}" in Roblox. Output a complete runnable Luau script. Create Script instances with .Source property containing the game logic. Parent to ServerScriptService. First write 2 sentences explaining what it does, then the code.`
+        : `Build "${message}" in Roblox Studio. Output working Luau code with 15+ parts. Use varied materials (Concrete, Wood, Brick, Slate, Metal, Glass). Add PointLight to any light sources. First write 2 sentences describing the build, then the code.`
       try {
         const lightRetry = await raceNonNull(
           callGemini(lightPrompt, lightInstruction, [], 16384),

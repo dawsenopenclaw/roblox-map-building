@@ -23,6 +23,8 @@ import {
   ArrowLeft,
   Server,
   KeyRound,
+  Wrench,
+  Bot,
 } from 'lucide-react'
 // Profile handled by global ProfileButton in root layout
 
@@ -45,6 +47,7 @@ const NAV_ITEMS = [
   { href: '/admin/charity', label: 'Charity', icon: Heart },
   { href: '/admin/links', label: 'All Links', icon: Link2 },
   { href: '/admin/studio', label: 'Studio', icon: Radio },
+  { href: '/admin/fixes', label: 'Bug Fixes', icon: Wrench },
   { href: '/admin/beta', label: 'Beta Invites', icon: KeyRound },
 ]
 
@@ -105,6 +108,23 @@ export function AdminShell({
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {/* ELI — pinned at top */}
+          <Link
+            href="/admin/eli"
+            onClick={() => setSidebarOpen(false)}
+            className={`
+              flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors group mb-3
+              ${pathname.startsWith('/admin/eli')
+                ? 'bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40 shadow-[0_0_12px_rgba(212,175,55,0.15)]'
+                : 'bg-[#D4AF37]/5 text-[#D4AF37] border border-[#D4AF37]/10 hover:bg-[#D4AF37]/15 hover:border-[#D4AF37]/30'
+              }
+            `}
+          >
+            <Bot className="w-4 h-4 flex-shrink-0 text-[#D4AF37]" />
+            ELI Agent
+            <span className="ml-auto w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          </Link>
+
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.href, item.exact)
             return (

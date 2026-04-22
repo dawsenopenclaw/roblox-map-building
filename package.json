@@ -68,6 +68,7 @@
     "next": "^15.0.0",
     "next-intl": "^3.26.0",
     "pixelmatch": "^7.1.0",
+    "playwright": "^1.59.1",
     "pngjs": "^7.0.0",
     "posthog-js": "^1.157.0",
     "posthog-node": "^5.28.8",
