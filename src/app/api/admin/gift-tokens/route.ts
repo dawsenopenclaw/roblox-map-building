@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         data: {
           balanceId: balance.id,
           type: 'BONUS',
-          amount,
+          amount: effectiveAmount,
           description: unlimited ? `Admin unlimited tokens: ${reason}` : `Admin ${type.toLowerCase()}: ${reason}`,
           metadata: {
             adminId: adminResult.user?.id ?? null,

@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const { db } = await import('@/lib/db')
     const user = await db.user.findUnique({
       where: { clerkId },
-      select: { id: true, xp: true },
+      select: { id: true, userXp: { select: { totalXp: true } } },
     })
     if (!user) return NextResponse.json(DEMO_RESULT)
 
@@ -132,11 +132,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Award XP for sharing.
-    const grant = grantXp(user.xp ?? 0, 'SHARE_CREATED')
+    const currentXp = user.userXp?.totalXp ?? 0
+    const grant = grantXp(currentXp, 'SHARE_CREATED')
     try {
-      await db.user.update({
-        where: { id: user.id },
-        data: { xp: grant.totalXpAfter, level: grant.levelAfter },
+      await db.userXP.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, totalXp: grant.totalXpAfter },
+        update: { totalXp: grant.totalXpAfter },
       })
     } catch {
       /* ignore */

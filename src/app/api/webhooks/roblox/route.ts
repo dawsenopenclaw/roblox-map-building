@@ -31,12 +31,13 @@ import { Prisma } from '@prisma/client'
 
 // ── Robux credit amounts (must match billing/robux route) ───────────────────
 
+// Must match the credits in /api/billing/robux ROBUX_PRICES
 const ROBUX_CREDITS: Record<string, number> = {
-  starter: 500,
-  pro: 1200,
-  studio: 3500,
-  credits_100: 100,
-  credits_500: 500,
+  starter: 5000,
+  pro: 30000,
+  studio: 150000,
+  credits_100: 2500,
+  credits_500: 15000,
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────

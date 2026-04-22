@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import { SUBSCRIPTION_TIERS, TOKEN_PACKS } from '@/lib/subscription-tiers'
 
 const schema = z.discriminatedUnion('type', [
@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
     })
     if (!sender) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const stripe = getStripe()
+    if (!stripe) {
+      return NextResponse.json(
+        { error: 'Stripe not configured yet', setup: 'Add STRIPE_SECRET_KEY to environment variables' },
+        { status: 503 },
+      )
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'

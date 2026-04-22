@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
           email,
           displayName,
           avatarUrl: clerkUser.imageUrl,
-          ageVerified: true,
           subscription: {
             create: { tier: 'FREE', status: 'ACTIVE', stripeCustomerId: `pending_${clerkId}` },
           },

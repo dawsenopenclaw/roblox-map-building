@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { db } from '@/lib/db'
-import { stripe } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe'
 import Stripe from 'stripe'
 import { marketplaceWriteRateLimit, rateLimitHeaders } from '@/lib/rate-limit'
 import { PLATFORM_FEE_PERCENT } from '@/lib/constants'
@@ -143,6 +143,14 @@ export async function POST(
 
   // Paid template — create Stripe Checkout session
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://forjegames.com'
+
+  const stripe = getStripe()
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Payment service not configured' },
+      { status: 503 },
+    )
+  }
 
   try {
     // Get or create Stripe customer for buyer

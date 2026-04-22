@@ -46,6 +46,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You cannot redeem your own gift' }, { status: 400 })
     }
 
+    // Atomic claim: only update status from 'pending' to 'redeemed' if still pending.
+    // This prevents two concurrent redeems from both succeeding.
+    const claimed = await db.gift.updateMany({
+      where: { id: gift.id, status: 'pending' },
+      data: { status: 'redeemed', redeemedById: recipient.id, redeemedAt: now },
+    })
+    if (claimed.count === 0) {
+      return NextResponse.json({ error: 'Gift has already been redeemed' }, { status: 409 })
+    }
+
     if (gift.giftType === 'subscription') {
       if (!gift.tier) {
         return NextResponse.json({ error: 'Gift data corrupted: missing tier' }, { status: 500 })
@@ -76,16 +86,6 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // Mark gift as redeemed
-      await db.gift.update({
-        where: { id: gift.id },
-        data: {
-          status: 'redeemed',
-          redeemedById: recipient.id,
-          redeemedAt: now,
-        },
-      })
-
       return NextResponse.json({
         success: true,
         giftType: 'subscription',
@@ -109,15 +109,6 @@ export async function POST(req: NextRequest) {
         `Gift from sender — ${gift.tokenAmount} tokens`,
         { giftId: gift.id, senderId: gift.senderId },
       )
-
-      await db.gift.update({
-        where: { id: gift.id },
-        data: {
-          status: 'redeemed',
-          redeemedById: recipient.id,
-          redeemedAt: now,
-        },
-      })
 
       return NextResponse.json({
         success: true,
