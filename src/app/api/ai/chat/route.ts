@@ -2658,6 +2658,42 @@ MATERIAL VARIETY:
 When the user asks for ANY object listed below, build it with EXACTLY the multi-part detail shown. NEVER simplify to a single Part. A Chair is seat+backrest+4 legs. A Tree is trunk+branches+canopy. A House is walls+roof+door+windows+chimney.
 If the user asks for something NOT in this list, extrapolate: what would a real one look like? How many parts? What materials? What colors? Build it like the objects below — multi-part, textured, lit.
 
+=== CRITICAL: CODE GENERATION RULES (follow these EXACTLY or the build will fail) ===
+
+STRUCTURE YOUR CODE LIKE THIS — every single time:
+1. Create a Model container first: local model = Instance.new("Model") model.Name = "BuildName" model.Parent = workspace
+2. Create EVERY part with: local p = Instance.new("Part") p.Name = "descriptive_name" p.Size = Vector3.new(X,Y,Z) p.CFrame = CFrame.new(X,Y,Z) p.Anchored = true p.Material = Enum.Material.XXX p.Color = Color3.fromRGB(R,G,B) p.Parent = model
+3. Set Parent LAST — always after all properties
+4. Use MATH for coordinates — walls connect at corners: if floor is at (0,0.5,0) size (20,1,20), left wall is at (-10, wallHeight/2 + 1, 0) size (1, wallHeight, 20)
+
+COORDINATE MATH RULES:
+- Floor Y = thickness/2 (sits on ground): Size(20,1,20) → CFrame(0, 0.5, 0)
+- Wall Y = wallHeight/2 + floorThickness: 10-tall wall on 1-thick floor → Y = 6
+- Wall X/Z = flush with floor edge: floor Size.X=20 → left wall X = -20/2 = -10
+- Roof Y = wallHeight + floorThickness + roofHeight/2
+- Door Y = doorHeight/2 + floorThickness: 7-tall door → Y = 4.5
+- Window Y = sillHeight + windowHeight/2 + floorThickness: sill=3, window=3 → Y = 5.5
+- Furniture sits ON floor: chair seat Y = floorY + floorThickness/2 + legHeight + seatThickness/2
+
+NEVER DO THIS:
+- NEVER put all parts at (0,0,0) — every part needs unique coordinates
+- NEVER use Size(1,1,1) for everything — size should match the real object
+- NEVER forget Anchored = true — parts will fall through the floor
+- NEVER make walls paper-thin (0.01) — minimum 0.5 studs thick
+- NEVER skip the Model container — loose parts in workspace are messy
+- NEVER generate less than 30 parts for a building (houses need 40+, castles need 60+)
+- NEVER use the same Color3 on every part — minimum 5 different colors per build
+
+HELPER FUNCTION — put this at the TOP of every build script:
+local function P(name, sx,sy,sz, px,py,pz, mat, r,g,b, parent, transparency)
+  local p = Instance.new("Part") p.Name = name p.Anchored = true
+  p.Size = Vector3.new(sx,sy,sz) p.CFrame = CFrame.new(px,py,pz)
+  p.Material = Enum.Material[mat] p.Color = Color3.fromRGB(r,g,b)
+  if transparency then p.Transparency = transparency end
+  p.Parent = parent return p
+end
+Then use it: P("Wall_Front", 20,10,1, 0,6,10, "Brick", 180,120,80, model)
+
 === BUILD TEMPLATES (from RAG knowledge base) ===
 If the RELEVANT ROBLOX DOCUMENTATION section at the end of this prompt contains a BUILD TEMPLATE with WORKING CODE, that is your PRIMARY reference. These templates have been hand-verified — every coordinate is mathematically correct, parts connect at corners, furniture sits on floors, roofs cover footprints. COPY the coordinate patterns and adapt dimensions/colors to fit the request. Do NOT ignore templates and guess your own coordinates.
 Cylinder axis: X=height, Y+Z=diameter. Rotate Z=90deg for horizontal. Parent set LAST. 2-3 color shades per object. ALWAYS add a PointLight to anything that should glow.
