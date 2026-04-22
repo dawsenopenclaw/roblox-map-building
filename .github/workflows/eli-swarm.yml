@@ -1,0 +1,57 @@
+name: ELI 15-Agent Swarm
+
+on:
+  schedule:
+    # Every 12 hours — full swarm sweep
+    - cron: '0 */12 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Swarm mode'
+        type: choice
+        options:
+          - full
+          - critical-only
+        default: full
+
+jobs:
+  swarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright
+        run: npx playwright install chromium
+
+      - name: Run 15-Agent Swarm
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SITE_URL: https://forjegames.com
+        run: |
+          if [ "${{ github.event.inputs.mode }}" = "critical-only" ]; then
+            npx tsx scripts/eli-15-agents.ts --critical
+          else
+            npx tsx scripts/eli-15-agents.ts
+          fi
+
+      - name: Upload screenshots + report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarm-report-${{ github.run_number }}
+          path: |
+            scripts/.eli-swarm-report.json
+            scripts/.eli-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
