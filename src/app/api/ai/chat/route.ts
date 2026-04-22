@@ -1077,6 +1077,114 @@ After response add:
 [SUGGESTIONS]
 (3 specific contextual next steps, <50 chars each)`
 
+// ─── Script-like intents that should use script generation, not part building ──
+const SCRIPT_INTENTS = new Set(['script', 'combat', 'economy', 'quest', 'npc', 'datasave', 'networking', 'multiscript', 'ui', 'debug'])
+
+// ─── Keywords that force script mode even if intent classifier says 'building' ──
+const SCRIPT_KEYWORDS = /\b(script|leaderboard|datastore|save data|currency|coins?|cash|shop system|buy system|purchase|remote ?event|remote ?function|day.?night cycle|flicker|door.?open|pathfind|health ?bar|damage system|respawn|teleport|badge|gamepass|game ?pass|admin|kick|ban|chat|command|round system|timer|countdown|inventory|loot|drop|spawn system|wave system|kill ?brick|checkpoint|npc.*ai|pet system|trading|auction)\b/i
+
+const SCRIPT_GENERATION_PROMPT = `You are Forje — an expert Roblox Luau scripting engine. You generate RUNNABLE game scripts, NOT visual part builds.
+
+RESPONSE FORMAT:
+1. First write 3-5 sentences explaining what the script does, how players interact with it, and what to test.
+2. Then output the COMPLETE Luau code in a \`\`\`lua block.
+
+CRITICAL: You are generating SCRIPTS (game logic, systems, mechanics) — NOT building visual Parts.
+- "make combat" = damage system + hit detection + health bars, NOT sword models from cylinders
+- "add a shop" = ScreenGui + RemoteEvents + currency deduction, NOT a building made of Parts
+- "make doors open" = ProximityPrompt + TweenService script, NOT just a Part named "Door"
+- "add lighting effects" = scripted PointLight flickering/color changing, NOT just placing static lights
+- "NPC system" = PathfindingService + Humanoid AI + dialogue, NOT mannequin from Parts
+
+ENVIRONMENT: Roblox Studio Edit Mode plugin. Code runs in the command bar.
+- For GAME SCRIPTS (run at play-time): create Script/LocalScript/ModuleScript instances and parent them to appropriate services
+- For EDIT MODE tools: use ChangeHistoryService, Selection, no Players service
+
+SCRIPT ARCHITECTURE:
+- Server scripts → ServerScriptService
+- Client scripts → StarterPlayerScripts or StarterGui
+- Shared modules → ReplicatedStorage
+- Use RemoteEvent/RemoteFunction for client-server communication
+- ALWAYS validate client input on server — never trust RemoteEvent args
+
+REQUIRED BOILERPLATE:
+\`\`\`lua
+--!strict
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI Script")
+
+-- Create the script(s) and parent to correct service
+local script1 = Instance.new("Script")
+script1.Name = "ForjeAI_YourSystemName"
+script1.Source = [=[
+--!strict
+-- YOUR ACTUAL GAME CODE HERE
+-- Use proper services, pcall for DataStore, task.wait not wait()
+]=]
+script1.Parent = game:GetService("ServerScriptService")
+
+-- For client scripts:
+-- local localScript = Instance.new("LocalScript")
+-- localScript.Source = [=[ ... ]=]
+-- localScript.Parent = game:GetService("StarterPlayer"):FindFirstChild("StarterPlayerScripts")
+
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
+\`\`\`
+
+SCRIPT PATTERNS — use these for common systems:
+
+LEADERBOARD + DATA PERSISTENCE:
+  Script in SSS: Players.PlayerAdded → create leaderstats Folder + IntValue children, pcall DataStoreService:GetAsync to load, PlayerRemoving → pcall SetAsync to save. Use UpdateAsync for atomic operations.
+
+SHOP/PURCHASE SYSTEM:
+  Server Script: RemoteEvent "PurchaseItem", validate item exists in PRICES table, check player has enough currency, deduct and grant. Client LocalScript: ScreenGui with shop UI, fire RemoteEvent on buy button click.
+
+COMBAT/DAMAGE SYSTEM:
+  Server Script: RemoteEvent "DealDamage", validate target is Humanoid, check distance (anti-exploit), apply TakeDamage(), handle death (ragdoll or respawn). Tool Activated → fire RemoteEvent with target.
+
+DOOR/INTERACTIVE SYSTEM:
+  Edit Mode: ProximityPrompt on door Part, Script child with Triggered → TweenService rotate door 90 degrees, toggle open/closed state, cooldown timer.
+
+NPC AI SYSTEM:
+  Server Script: PathfindingService:CreatePath(), waypoint loop, detect players in range (magnitude check), chase/flee/patrol states, Humanoid:MoveTo().
+
+CURRENCY/ECONOMY:
+  Server Script: ModuleScript "Economy" in ReplicatedStorage with functions: addCoins(player, amount), removeCoins(player, amount), getBalance(player). DataStore persistence. RemoteFunction for client balance queries.
+
+SCRIPTED LIGHTING EFFECTS:
+  Edit Mode or Server Script: Dynamic lighting via TweenService on PointLight properties. Patterns:
+  - FLICKERING TORCH: loop TweenService Brightness between 1-3, Range 15-25, random delay 0.05-0.2s
+  - DAY/NIGHT CYCLE: TweenService on Lighting.ClockTime 0→24 over configurable duration, adjust Ambient/OutdoorAmbient
+  - NEON SIGN FLICKER: toggle Neon part Transparency 0↔1 with random timing
+  - COLOR PULSE: TweenService on PointLight.Color cycling through Color3 values
+  - LIGHTNING FLASH: spike Lighting.Brightness to 5 for 0.1s, play thunder Sound, PointLight flash
+  - STREETLIGHT AUTO: RunService.Heartbeat check ClockTime, enable/disable PointLights based on time of day
+  - CAMPFIRE GLOW: oscillate PointLight Brightness+Range with math.sin, ParticleEmitter rate changes
+  - DISCO/PARTY: cycle multiple PointLights through rainbow Color3 values on offset timers
+  - EMERGENCY LIGHTS: alternate red/blue PointLights with 0.5s toggle
+  - SUNRISE/SUNSET TINT: TweenService on ColorCorrectionEffect.TintColor matching time of day
+
+GUI/UI SYSTEM:
+  LocalScript in StarterGui: ScreenGui → Frame hierarchy with UICorner, UIStroke, UIListLayout. Use TextButton.Activated for clicks. Fire RemoteEvents for server actions. Use TweenService for smooth transitions.
+
+RULES:
+- --!strict at top of every script Source
+- Type-annotate ALL function params and returns
+- pcall ALL DataStore operations with retry logic
+- task.wait() not wait(), task.spawn() not spawn(), task.delay() not delay()
+- Generalized iteration (for k,v in t do) — NEVER pairs/ipairs
+- table.freeze() on config tables
+- NEVER use loadstring or require(assetId)
+- Validate ALL RemoteEvent args on server (type checks, range checks, cooldowns)
+- Use Debris:AddItem() for temporary instances
+- ALWAYS output complete, runnable code — never "-- implement here" placeholders
+
+VOICE: Friendly, brief. Explain what the script does and how to test it. Don't list function names. Under 60 words.
+
+After response add:
+[SUGGESTIONS]
+(3 specific next steps for extending the system)`
+
 const CODE_GENERATION_PROMPT = `You are a Roblox Luau code generator. Output ONLY a single \`\`\`lua code block. No explanation, no text before or after.
 
 TEMPLATE (adapt for each build):
@@ -1555,13 +1663,15 @@ async function raceNonNull<T>(...promises: Promise<T | null>[]): Promise<{ resul
 
 // Validate that generated code meets minimum quality bar
 function isCodeQualityOk(code: string): boolean {
+  // Detect if this is a script (game logic) vs a build (Part creation)
+  const isScript = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
+    code.includes('RemoteFunction') || code.includes('ModuleScript') ||
+    code.includes('Players.PlayerAdded') || code.includes('.Source') ||
+    code.includes('ServerScriptService') || code.includes('StarterPlayerScripts')
   // Must have basic Roblox API calls
-  if (!code.includes('Instance.new') && !code.includes('workspace') && !code.includes('placeAsset')) return false
+  if (!code.includes('Instance.new') && !code.includes('workspace') && !code.includes('placeAsset') && !code.includes('game:GetService')) return false
   // Must be at least 200 chars (not a trivial/empty response)
   if (code.length < 200) return false
-  // Must not contain common AI mistakes that indicate bad output
-  if (code.includes('game.Players.LocalPlayer')) return false
-  if (code.includes('script.Parent')) return false
   // Reject deprecated BrickColor — use Color3.fromRGB() instead
   if (code.includes('BrickColor.new(')) return false
   // Reject bare wait() — must use task.wait()
@@ -1570,8 +1680,12 @@ function isCodeQualityOk(code: string): boolean {
   if (code.includes('SetPrimaryPartCFrame')) return false
   // Reject parent-in-constructor anti-pattern: Instance.new("Part", parent)
   if (/Instance\.new\(\s*["'][^"']+["']\s*,/.test(code)) return false
-  // Reject client-side APIs — generated code runs server-side only
-  if (code.includes('game.Players') || code.includes('LocalPlayer') || code.includes('script.Parent')) return false
+  // Build-only checks — scripts legitimately use Players, script.Parent, LocalPlayer
+  if (!isScript) {
+    if (code.includes('game.Players.LocalPlayer')) return false
+    if (code.includes('script.Parent')) return false
+    if (code.includes('game.Players') || code.includes('LocalPlayer')) return false
+  }
   // Reject single-brick builds — must have at least 5 parts (P() helpers or Instance.new("Part"))
   // BUT: scripts (DataStoreService, RemoteEvent, ModuleScript) don't need parts
   const isScriptCode = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
@@ -1622,11 +1736,8 @@ async function freeModelTwoPass(
     return { conversationText: cleanConv, luauCode: null, executedInStudio: false, suggestions, model: modelNames[convRace.index] }
   }
 
-  // ── BUILD INTENTS: Single-pass — generate description + code in ONE call ──
-  // The old two-pass system was fundamentally broken: Pass 1 described "oak
-  // counters with warm PointLights" while Pass 2 independently generated
-  // SmoothPlastic boxes. The description and code were guaranteed to diverge.
-  // Now: one prompt, one model call, one coherent response.
+  // ── BUILD/SCRIPT INTENTS: Single-pass — generate description + code in ONE call ──
+  const isScriptIntent = SCRIPT_INTENTS.has(intent) || SCRIPT_KEYWORDS.test(message)
   let luauCode: string | null = null
   let executedInStudio: boolean | string = false
 
@@ -1981,12 +2092,34 @@ RULES:
 - USE VARIED SIZES: structural = 0.5-2 stud thick, details = 0.1-0.3 stud.
 - MINIMUM: Props=10 parts, Buildings=25 parts, Scenes=40 parts.`
 
+    // ── SCRIPT INTENT: use script generation prompt instead of build prompt ──
+    const scriptInstruction = `Script/System: ${message}${continuationContext}
+
+Generate a COMPLETE, RUNNABLE Luau script for this request. This is a SCRIPTING task, NOT a visual build.
+- Create Script/LocalScript/ModuleScript instances with actual game logic in their .Source property
+- Parent scripts to the correct services (ServerScriptService, StarterPlayerScripts, ReplicatedStorage)
+- Include RemoteEvents/RemoteFunctions for client-server communication if needed
+- Wrap everything in ChangeHistoryService recording
+- Use pcall for DataStore operations, task.wait() not wait(), --!strict
+- Output COMPLETE code — no placeholders, no "implement here" comments
+- The code must be paste-ready for Studio's command bar
+
+First write 3-5 sentences explaining what this script does and how to test it.
+Then output the code in a \`\`\`lua block.`
+
+    // Select the right prompt and instruction based on intent type
+    const effectivePrompt = isScriptIntent ? SCRIPT_GENERATION_PROMPT : codePrompt
+    const effectiveInstruction = isScriptIntent ? scriptInstruction : buildInstruction
+    if (isScriptIntent) {
+      console.log(`[ScriptMode] Detected script intent "${intent}" — using script generation path`)
+    }
+
     // Enrich code prompt with experience memory (past successful builds)
-    let enrichedCodePrompt = codePrompt
+    let enrichedCodePrompt = effectivePrompt
     try {
       const pastSuccesses = await findSimilarSuccesses(message)
       if (pastSuccesses.length > 0) {
-        enrichedCodePrompt = codePrompt + formatAsExamples(pastSuccesses)
+        enrichedCodePrompt = effectivePrompt + formatAsExamples(pastSuccesses)
       }
     } catch (expErr) {
       console.warn('[ExperienceMemory] Failed in freeModelTwoPass (non-blocking):', expErr instanceof Error ? expErr.message : expErr)
@@ -2022,8 +2155,8 @@ RULES:
     if (!luauCode) {
       console.log('[SinglePass] Racing build gen for:', message.slice(0, 50))
       buildRace = await raceNonNull(
-        callGemini(enrichedCodePrompt, buildInstruction, history.slice(-4), 32768),
-        callGroq(enrichedCodePrompt, buildInstruction, history.slice(-4), 32768),
+        callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
+        callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
       )
     }
 
