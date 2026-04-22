@@ -1,0 +1,52 @@
+name: ELI Discord Responder
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  eli-respond:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Restore responder state
+        uses: actions/cache@v4
+        with:
+          path: |
+            scripts/.eli-responder-state.json
+            scripts/.eli-memory.json
+            scripts/.forje-eli-state.json
+          key: eli-responder-${{ github.run_id }}
+          restore-keys: |
+            eli-responder-
+            eli-state-
+
+      - name: Run ELI Responder
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: npx tsx scripts/eli-discord-responder.ts --once
+
+      - name: Save responder state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/.eli-responder-state.json
+            scripts/.eli-memory.json
+          key: eli-responder-${{ github.run_id }}

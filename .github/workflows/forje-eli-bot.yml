@@ -1,0 +1,61 @@
+name: ForjeEli Bot
+
+on:
+  schedule:
+    # Every 3 hours
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # Manual runs
+    inputs:
+      digest:
+        description: 'Force post staff digest'
+        type: boolean
+        default: false
+      leaderboard:
+        description: 'Force post leaderboard'
+        type: boolean
+        default: false
+
+jobs:
+  forje-eli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Restore Eli state
+        uses: actions/cache@v4
+        with:
+          path: scripts/.forje-eli-state.json
+          key: eli-state-${{ github.run_id }}
+          restore-keys: |
+            eli-state-
+
+      - name: Run ForjeEli
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+        run: |
+          ARGS="--once"
+          if [ "${{ github.event.inputs.digest }}" = "true" ]; then
+            ARGS="$ARGS --digest"
+          fi
+          if [ "${{ github.event.inputs.leaderboard }}" = "true" ]; then
+            ARGS="$ARGS --leaderboard"
+          fi
+          npx tsx scripts/forje-eli-bot.ts $ARGS
+
+      - name: Save Eli state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: scripts/.forje-eli-state.json
+          key: eli-state-${{ github.run_id }}

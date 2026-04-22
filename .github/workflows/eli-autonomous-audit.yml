@@ -1,0 +1,84 @@
+name: ELI Autonomous Audit (Visual + Full)
+
+on:
+  schedule:
+    # Every 6 hours — full visual + API + code audit
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Audit mode'
+        type: choice
+        options:
+          - full
+          - visual-only
+          - api-only
+        default: full
+
+jobs:
+  eli-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium
+
+      - name: Install codegraph
+        run: npm install -g @colbymchenry/codegraph
+
+      - name: Restore ELI state
+        uses: actions/cache@v4
+        with:
+          path: |
+            scripts/.forje-eli-state.json
+            scripts/.eli-memory.json
+            scripts/.eli-audit-report.json
+            .codegraph/codegraph.db
+          key: eli-autonomous-${{ github.run_id }}
+          restore-keys: |
+            eli-autonomous-
+            eli-state-
+
+      - name: Run ELI Autonomous Audit
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SITE_URL: https://forjegames.com
+        run: |
+          MODE="${{ github.event.inputs.mode || 'full' }}"
+          FLAGS=""
+          if [ "$MODE" = "visual-only" ]; then FLAGS="--visual-only"; fi
+          if [ "$MODE" = "api-only" ]; then FLAGS="--api-only"; fi
+          npx tsx scripts/eli-autonomous.ts $FLAGS
+
+      - name: Save ELI state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            scripts/.forje-eli-state.json
+            scripts/.eli-memory.json
+            scripts/.eli-audit-report.json
+          key: eli-autonomous-${{ github.run_id }}
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eli-screenshots-${{ github.run_number }}
+          path: scripts/.eli-screenshots/
+          retention-days: 7
+          if-no-files-found: ignore
