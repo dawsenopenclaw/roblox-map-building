@@ -2147,6 +2147,43 @@ OBBY CODE PATTERN — checkpoints + kill bricks + moving platforms:
 - Rebirth area with multiplier display
 - Pet egg pedestals with rarity indicators (glow, particles)
 - Each zone should have distinct terrain, colors, and props`
+    } else if (/\b(rpg|role\s*playing|quest|adventure|dungeon|dragon|knight|mage|warrior)\b/.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nRPG STRUCTURE — build these components:
+- Town/village hub with inn (heal), shop (buy gear), quest board, blacksmith
+- NPC quest givers with yellow "!" indicator above head (bobbing Neon Part)
+- At least 2 quest areas: forest/cave with enemies, boss arena at the end
+- Enemy spawns: goblin camp, skeleton cave, boss room with clear arena
+- Dialogue system: ProximityPrompt "Talk" on NPCs, branching dialogue
+- Loot drops: enemies drop items on death (glowing pickup Parts with ProximityPrompt)
+- XP/Level display: BillboardGui or leaderstats showing level and XP bar
+- Equipment: at least a sword (Tool in StarterPack) with combo damage
+- Safe zone in town: disable PvP, healing area
+- Boss room: enclosed arena, health bar, phase transitions at HP thresholds`
+    } else if (/\b(horror|scary|monster|jumpscare|haunted|creepy|dark|spooky|fnaf|doors)\b/.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nHORROR STRUCTURE — build these components:
+- Entrance (dim but safe) → Hallways (flickering lights) → Rooms (puzzles) → Basement (monster)
+- Lighting: Brightness=0.15, ClockTime=0, Atmosphere(Density=0.6, purple), desaturated ColorCorrection
+- Flickering lights in hallways (script: random brightness 60-100%, 10% blackout chance)
+- Key/lock puzzle: find colored keys to unlock matching doors
+- At least 3 hiding spots (closets, under beds): ProximityPrompt "Hide", character becomes invisible
+- Monster AI: patrol → detect (line of sight 40 studs + hearing 20 studs) → chase (speed 22) → kill (4 studs)
+- Jumpscare triggers: invisible Part zones that fire camera shake + sound + flash to client
+- Flashlight tool with battery drain (2/sec) and recharge (0.5/sec when off), flicker below 20%
+- Progressive intensity: each room darker, denser fog, more threats
+- Sound layers: ambient drone + wind + random events (whispers, thuds, chains every 8-25 sec)
+- Heartbeat sound: volume/speed scales with distance to monster`
+    } else if (/\b(tower\s*defense|td|towers?.*place|defend.*base|waves?.*enemies?|enemies?.*waves?)\b/.test(lowerMsg)) {
+      gameTypeGuidance = `\n\nTOWER DEFENSE STRUCTURE — build these components:
+- Path: ordered waypoints (Parts named 1,2,3) forming an S-curve or L-shape, visible road
+- Placement zones: clearly marked areas beside the path where towers can be placed
+- Tower types: Archer (single target), Cannon (splash), Ice (slow), Commander (buff nearby)
+- Grid snap: 4-stud grid for tower placement, validation (not on path, not overlapping)
+- Wave system: 10+ waves, scaling HP (+15%/wave), introducing new enemy types progressively
+- Enemy types: Basic (balanced), Fast (low HP/high speed), Tank (high HP/slow), Boss (massive HP)
+- Economy: start 500 gold, earn gold per kill, wave clear bonus, 5% interest between waves
+- Tower upgrades: 3 tiers per tower, ProximityPrompt on tower to upgrade
+- Lives display: enemies reaching the end deal 1 damage, game over at 0 lives
+- Wave indicator: current wave number, enemy count remaining, next wave countdown`
     }
     const fullgameOverride = intent === 'fullgame'
       ? `\n\nIMPORTANT: Output ONE single executable Luau script that builds the game WORLD in Studio (terrain, spawn area, key buildings, atmosphere). Do NOT output multiple files or game system code — just the buildable environment that sets the scene. Keep it to 40-80 Parts so it executes instantly.${gameTypeGuidance}${templateReference}`
@@ -3367,13 +3404,31 @@ STREET ATMOSPHERE:
 
 DRAMATIC LIGHTING RULE: Never just ambient. Every build = key light (main directional) + fill (secondary, softer) + rim (edge definition, opposite side). Use SpotLights creatively.
 
-=== SCALE CONSTANTS (use these for every build — character is 6 studs) ===
-CHARACTER=6, DOOR_H=7, DOOR_W=4, CEILING=12, FLOOR_THICK=1, WALL_EXT=2, WALL_INT=1
-WINDOW_H=4, WINDOW_W=3, WINDOW_SILL=3, CHAIR=2.5, TABLE=3, TREE_SM=8-10, TREE_LG=15-20
-HOUSE_SM=15-20, COMMERCIAL=30-50, SKYSCRAPER=80-120, STREET_W=27, SIDEWALK=6
+=== SCALE CONSTANTS (use these for every build — character is 5 studs) ===
+1 stud = ~0.28 meters = ~1 foot. Character = 5 studs tall.
+CHARACTER=5, DOOR_H=7, DOOR_W=4, CEILING=12, FLOOR_THICK=1, WALL_EXT=2, WALL_INT=1
+WINDOW_H=4, WINDOW_W=3, WINDOW_SILL=3, CHAIR_SEAT=2.5, TABLE_H=3.5, TREE_SM=8-10, TREE_LG=15-20
+HOUSE_SM=15-20, COMMERCIAL=30-50, SKYSCRAPER=80-120, STREET_W=24, SIDEWALK=6-8
 FLOOR_SPACING=12-14, STAIR_RISE=0.7, STAIR_DEPTH=1, RAILING_H=3.5
-STREET_LAMP_H=14, LAMP_SPACING=35, ROAD_LANE_W=14-16
-HUB_MIN=200x200, CORRIDOR=10, LANDMARK=40-80 (visible 300+ studs)
+STREET_LAMP_H=14, LAMP_SPACING=35, ROAD_LANE_W=12-14
+HUB_MIN=200x200, CORRIDOR=5-6, LANDMARK=40-80 (visible 300+ studs)
+
+=== DETAILED DIMENSION REFERENCE — real-world proportions for all objects ===
+DOORS: Standard=4Wx7Hx0.5D, Double=8Wx7H, Sliding=6Wx7H, Garage=10Wx8H, Castle=8Wx10Hx2D, Vault=5Wx7Hx2D
+WINDOWS: Standard=3Wx4Hx0.3D, Large=6Wx5H, Small=2Wx2H, Bay=8Wx4Hx3D, Arched=3Wx5H, Shopfront=8Wx6H, Sill_height=3_from_floor
+WALLS: Exterior=1-2thick, Interior=0.5-1, Castle=3-5thick, Fence=0.3thick, Railing=0.3thick x 3.5H
+ROOMS: Small=12x12, Medium=16x16, Large=20x20, Hallway=5-6wide, Bathroom=8x10, Kitchen=14x12, Living=20x16, Bedroom=16x14
+SEATING: DiningChair=2Wx4Hx2D(seat@2.5), OfficeChair=2.5W, Armchair=3Wx3.5Hx3D, Sofa3=7Wx3.5Hx3D, BarStool=1.5W(seat@3.5), Throne=3Wx6Hx3D
+TABLES: Dining4=6Wx3.5Hx4D, Dining6=8W, Coffee=4Wx1.5Hx2.5D, Desk=5Wx3.5Hx2.5D, Counter=3.5H, Nightstand=2Wx2.5Hx1.5D, Conference=12Wx3.5Hx5D
+BEDS: Single=3.5Wx2.5Hx7L, Double=5W, Queen=6W, King=7W, Bunk=3.5Wx7Hx7L, Mattress=1thick, Headboard=4-5H
+STORAGE: Bookshelf=3Wx6Hx1D, Wardrobe=4Wx7Hx2D, Dresser=4Wx3.5Hx2D, FilingCab=1.5Wx5Hx2D, Locker=1.5Wx6Hx1.5D
+APPLIANCES: Fridge=3Wx6Hx2.5D, Stove=3Wx3.5Hx2.5D, Microwave=2Wx1Hx1.5D, TV=5Wx3Hx0.2D, VendingMachine=3Wx6Hx2.5D, ATM=2Wx5Hx1.5D
+VEHICLES: Sedan=6Wx5Hx14L, SUV=7Wx6Hx15L, Pickup=7Wx6Hx17L, Bus=8Wx9Hx30L, Motorcycle=3Wx4Hx7L, Bicycle=2Wx4Hx6L, Tank=10Wx7Hx18L
+NATURE: OakTrunk=2dia x8H, OakCanopy=10Wx8Hx10D, PineTrunk=1.5dia x10H, PineTotal=6Wx15H, PalmTrunk=1dia x12H, Bush=2Wx1.5H, Boulder=6Wx4Hx5D
+STREET: Road2lane=24W, Lane=12-14W, Sidewalk=6-8Wx0.3H, Curb=0.5Wx0.3H, Lamppost=1dia x14H, TrafficLight=2Wx14H(pole), FireHydrant=1Wx2H
+INFRASTRUCTURE: ParkingSpace=8Wx16L, Billboard=20Wx10H, BusShelter=8Wx8Hx4D, Guardrail=3H, PowerPole=1dia x25H
+BUILDINGS: Story=12-14H, Foundation=0.5-1above_ground, RoofOverhang=1.5-2past_walls, StairsPerFloor=~17steps
+WEAPONS: SwordBlade=0.3Wx4L, Greatsword=0.5Wx6L, Shield=2dia, Axe=1.5head+4handle, Staff=0.3dia x5.5L, Wand=0.15dia x1.5L
 
 === MATERIAL BIBLE — PREMIUM QUALITY ===
 
@@ -3513,6 +3568,50 @@ BRICK: 180,150,100  CONCRETE: 160,160,160  WOOD_DARK: 100,65,30  WOOD_LIGHT: 170
 METAL_DARK: 60,60,65  STONE: 140,135,125  ROOF_DARK: 55,50,45  GOLD_ACCENT: 212,175,55
 GLASS_TINT: 180,210,230  GRASS: 70,120,50  SAND: 210,190,140  WATER: 65,130,180
 TRIM_LIGHT: 200,195,185  FOUNDATION_DARK: 90,85,80  WEATHERED_BASE: 120,110,95
+
+=== THEMED COLOR PALETTES — pick the right palette for the game genre ===
+
+MEDIEVAL PALETTE:
+  Walls: Cobblestone(140,130,115) or Granite(90,85,75)
+  Wood: WoodPlanks(100,65,30 dark beams / 130,85,45 planks)
+  Iron: Metal(70,72,78)  Rust: CorrodedMetal(120,75,50)
+  Banners: Fabric red(160,30,30) blue(30,50,140) gold(212,175,55)
+  Torch: Neon(255,160,50)  Trim: Marble(170,160,140)
+  Floors: Sand(120,100,70) dirt / WoodPlanks(110,75,40) interior
+  Roof: Grass(160,140,90) thatch / Slate(55,50,45) stone
+
+MODERN/URBAN PALETTE:
+  Walls: Concrete(180,178,175) light / Concrete(80,78,75) dark
+  Glass: Glass(180,210,230) tinted  Steel: Metal(170,172,178)
+  Trim: Marble(230,228,225) white  Road: Concrete(55,55,55)
+  Sidewalk: Concrete(165,160,155)  Brick accent: Brick(160,80,60)
+  Wood interior: WoodPlanks(170,130,80)  Neon sign: Neon(255,50,100)
+  Grass: Grass(70,130,50)  Roof: Slate(60,58,55)
+
+SCI-FI/FUTURISTIC PALETTE:
+  Hull dark: Metal(45,48,55)  Hull light: Metal(160,165,175)
+  Glow blue: Neon(80,180,255)  Energy: Neon(120,50,255)
+  Floor grating: Metal(60,62,68)  Viewport: Glass(150,200,240)
+  Warning: Neon(255,180,30)  Error: Neon(255,50,50)
+  Hologram: Neon(100,200,255)  Console: Neon(30,200,120)
+  Corridor: Granite(140,142,148)  Airlock: Metal(90,92,100)
+
+NATURE/FOREST PALETTE:
+  Bark oak: Wood(100,70,40)  Bark birch: Wood(200,195,180)
+  Leaves summer: Grass(55,110,40)  Leaves autumn: Grass(200,120,30)
+  Leaves dark: LeafyGrass(35,75,25)  Dirt: Sand(130,110,75)
+  Rock: Rock(130,125,120)  Moss: Grass(60,100,45)
+  Flowers: Neon red(200,50,50) yellow(240,210,50) purple(180,60,220)
+  Water: Glass(65,130,180)  Sand: Sand(210,190,140)  Snow: Snow(235,240,245)
+
+HORROR/DARK PALETTE:
+  Decay walls: Concrete(80,75,65)  Blood: Concrete(100,20,15)
+  Rust: CorrodedMetal(90,55,35)  Rot wood: WoodPlanks(60,45,30)
+  Fog green: Glass(40,80,40)  Ghost: Glass(200,200,210) Transp=0.6
+  Eerie green: Neon(80,200,80)  Eerie purple: Neon(140,60,200)
+  Dark floor: Slate(30,28,25)  Cobweb: Fabric(220,215,210)
+  Pumpkin: Concrete(220,120,30)  Tombstone: Rock(120,115,110)
+  Candle: Neon(255,180,80)  Dried blood: Concrete(60,15,10)
 
 === FOLDER STRUCTURE (create first in every build) ===
 Map (Model) > Terrain, Buildings, Props, Lighting, Nature, Roads
@@ -5289,6 +5388,89 @@ BATTLE_ROYALE: Shrinking zone+weapon spawns+storm damage+100 spawn points+kill f
 FARMING_GAME: Plot grid+seed planting+growth timer+harvesting+crops sell+barn storage+tool upgrades+seasons+weather+shop. ~300 lines, 4 scripts.
 
 For each: generate ALL scripts in one response. Server/Client/Module separation. DataStore saving. Basic GUI. PLAYABLE immediately.
+
+=== GAME MECHANIC CODE PATTERNS — PRODUCTION-READY SNIPPETS ===
+
+SIMULATOR PET/EGG SYSTEM (use when user asks for simulator, pet, egg, gacha, hatch):
+\`\`\`lua
+-- Weighted rarity egg hatching
+local EGGS = {
+  StarterEgg = {cost=500, currency="Coins", pets={
+    {name="Dog", rarity="Common", weight=300, mult=1.0},
+    {name="Cat", rarity="Common", weight=300, mult=1.0},
+    {name="Fox", rarity="Uncommon", weight=150, mult=1.5},
+    {name="Dragon", rarity="Rare", weight=80, mult=2.5},
+    {name="Phoenix", rarity="Epic", weight=40, mult=5.0},
+    {name="Unicorn", rarity="Legendary", weight=9, mult=12.0},
+    {name="Void Cat", rarity="Mythic", weight=1, mult=30.0},
+  }},
+}
+local function rollPet(eggName)
+  local egg = EGGS[eggName]; if not egg then return nil end
+  local total = 0; for _,p in egg.pets do total += p.weight end
+  local roll = math.random() * total
+  for _,p in egg.pets do roll -= p.weight; if roll <= 0 then return p end end
+  return egg.pets[#egg.pets]
+end
+-- Pet follow: orbit player at offset, smooth lerp, bob animation
+-- Rebirth: reset coins, increment rebirth counter, multiply all earnings by 1+(rebirths*0.5)
+\`\`\`
+
+RPG NPC DIALOGUE SYSTEM (use when user asks for RPG, NPC, quest, dialogue):
+\`\`\`lua
+-- Dialogue tree pattern
+local DIALOGUES = {
+  ["Elder Magnus"] = {
+    greeting = {text="Welcome, adventurer.", options={
+      {text="Tell me about the quest.", next="quest_info"},
+      {text="Goodbye.", next=nil},
+    }},
+    quest_info = {text="Collect 10 Shadow Crystals from the caves.", options={
+      {text="I'll do it.", next=nil, action="accept_quest", questId="shadow_crystals"},
+    }},
+  },
+}
+-- Quest tracking: active={questId={progress=0}}, completed={questId=true}
+-- On kill/collect: updateQuestProgress(player, "kill", "Goblin", 1)
+-- Loot drops: weighted random table per enemy type, ProximityPrompt pickup, auto-despawn 60s
+-- XP curve: xpForLevel(lvl) = math.floor(100 * (lvl^1.5)), grant 3 stat points per level
+\`\`\`
+
+HORROR CHASE MECHANIC (use when user asks for horror, monster, chase, jumpscare):
+\`\`\`lua
+-- Monster AI state machine: patrol→chase→kill
+-- Detection: line-of-sight raycast (40 stud range) + hearing (20 studs, through walls if player running)
+-- Chase: speed 22 (faster than player walk 16, slower than sprint with stamina)
+-- Kill: instant death at 4 studs distance, fires jumpscare to client
+-- Hiding: player enters hiding spot (closet/locker), sets Hiding attribute, monster ignores
+-- Lose aggro: 5 seconds without line of sight returns to patrol
+-- Lighting: Brightness=0.15, ClockTime=0, Atmosphere.Density=0.6, purple fog, desaturated ColorCorrection
+-- Heartbeat sound: volume and speed increase as monster gets closer (0=far, 1=close)
+-- Flickering lights: random brightness 60-100% with 10% chance of full blackout for 0.3-1.8s
+-- Progressive intensity: each zone darker, denser fog, more threats
+\`\`\`
+
+TOWER DEFENSE WAVE SYSTEM (use when user asks for tower defense, TD, waves, towers):
+\`\`\`lua
+-- Enemies follow waypoints via TweenService (ordered Parts named 1,2,3...)
+local ENEMY_TYPES = {
+  Basic  = {hp=50,  speed=10, reward=10},
+  Fast   = {hp=25,  speed=20, reward=15},
+  Tank   = {hp=200, speed=6,  reward=30},
+  Boss   = {hp=1000,speed=5,  reward=100},
+}
+local WAVES = {
+  {enemies={{type="Basic",count=5,delay=1.5}}, reward=50},
+  {enemies={{type="Basic",count=8,delay=1.2}}, reward=75},
+  {enemies={{type="Basic",count=6,delay=1},{type="Fast",count=4,delay=0.8}}, reward=100},
+  -- Boss wave 10: {type="Boss",count=1,delay=5}
+}
+-- HP scales: 1+(waveNum-1)*0.15 per wave
+-- Tower placement: grid snap (4 stud), validate not on path, not overlapping
+-- Tower types: Archer(single,range=25), Cannon(splash,radius=8), Ice(slow 30%), Commander(buff 20%)
+-- 3 upgrade tiers per tower, sell for 70% refund
+-- Economy: start 500 gold, earn per kill, 5% interest between waves
+\`\`\`
 
 === ADMIN COMMAND SYSTEM ===
 When user asks for admin commands: TextChatService command parser.
