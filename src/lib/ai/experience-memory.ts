@@ -326,10 +326,10 @@ function extractMaterials(code: string): string[] {
 // ExperienceMemory class
 // ---------------------------------------------------------------------------
 
-const MAX_CACHE = 300
+const MAX_CACHE = 1000 // In-memory fast lookup (DB stores EVERYTHING forever)
 const MIN_SCORE_POSITIVE = 65
 const MAX_SCORE_NEGATIVE = 45
-const SEMANTIC_THRESHOLD = 0.35  // Minimum cosine similarity for a match
+const SEMANTIC_THRESHOLD = 0.30  // Lowered for broader matching — more memories recalled
 
 export class ExperienceMemory {
   private positiveCache = new LRUCache<ExperienceEntry>(MAX_CACHE)
@@ -546,7 +546,7 @@ export class ExperienceMemory {
           COUNT(*) FILTER (WHERE bf."score" >= 65 OR bf."userVote" = true)::int as "successCount",
           AVG(bf."partCount")::int as "avgPartCount"
         FROM "BuildFeedback" bf
-        WHERE bf."createdAt" > NOW() - INTERVAL '30 days'
+        WHERE bf."createdAt" > NOW() - INTERVAL '365 days'
         GROUP BY COALESCE(bf."category", 'general'), COALESCE(bf."buildType", 'build')
         HAVING COUNT(*) >= 3
         ORDER BY "avgScore" DESC
@@ -559,7 +559,7 @@ export class ExperienceMemory {
       }>>(Prisma.sql`
         SELECT COALESCE(bf."category", 'general') as category, bf."code"
         FROM "BuildFeedback" bf
-        WHERE bf."score" >= 70 AND bf."createdAt" > NOW() - INTERVAL '30 days'
+        WHERE bf."score" >= 70 AND bf."createdAt" > NOW() - INTERVAL '365 days'
         ORDER BY bf."score" DESC
         LIMIT 100
       `)
@@ -572,7 +572,7 @@ export class ExperienceMemory {
         SELECT COALESCE(bf."category", 'general') as category, bf."errorMessage"
         FROM "BuildFeedback" bf
         WHERE bf."score" < 40 AND bf."errorMessage" IS NOT NULL
-          AND bf."createdAt" > NOW() - INTERVAL '30 days'
+          AND bf."createdAt" > NOW() - INTERVAL '365 days'
         LIMIT 50
       `)
 
