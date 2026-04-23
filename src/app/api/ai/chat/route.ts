@@ -2225,7 +2225,7 @@ USE THIS DATA:
           return petFollowSystem({ petName: 'Pet', followDistance: 5, followSpeed: 20 })
         if (/\b(vehicle|car|drive|racing|boat)\b/.test(lower))
           return vehicleSystem({ vehicleName: 'Car', speed: 80, turnSpeed: 5, seatCount: 1 })
-        if (/\b(daily reward|login reward|streak|daily bonus)\b/.test(lower))
+        if (/\b(daily rewards?|login rewards?|streak|daily bonus|login bonus)\b/.test(lower))
           return dailyRewardsSystem({ rewards: [{ day: 1, currency: 'Coins', amount: 100 }, { day: 2, currency: 'Coins', amount: 200 }, { day: 3, currency: 'Coins', amount: 300 }, { day: 7, currency: 'Coins', amount: 1000 }], resetHours: 24 })
         if (/\b(npc|dialog|dialogue|talk|conversation|shopkeeper)\b/.test(lower))
           return npcDialogSystem({ npcName: 'Shopkeeper', dialogLines: ['Welcome!', 'What would you like to buy?', 'Come back soon!'] })
