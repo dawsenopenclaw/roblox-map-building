@@ -2748,6 +2748,61 @@ async function callGroq(
   return null
 }
 
+// OpenRouter API call helper — routes through OpenRouter for model diversity
+// Uses the same signature as callGemini/callGroq so it slots into raceNonNull()
+async function callOpenRouterChat(
+  systemPrompt: string,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  maxTokens: number = 1024,
+  model: string = 'google/gemini-2.5-flash-preview',
+): Promise<string | null> {
+  const key = process.env.OPENROUTER_API_KEY
+  if (!key) return null
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...history.map((h) => ({ role: h.role, content: h.content })),
+    { role: 'user', content: userMessage },
+  ]
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`,
+        'HTTP-Referer': 'https://forjegames.com',
+        'X-Title': 'ForjeGames',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: maxTokens,
+        temperature: 0.2,
+      }),
+      signal: AbortSignal.timeout(90_000),
+    })
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '')
+      console.error(`[callOpenRouterChat] ${model} HTTP ${res.status}:`, errText.slice(0, 200))
+      return null
+    }
+
+    type ORRes = { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_cost?: number } }
+    const data = await res.json() as ORRes
+    const text = data.choices?.[0]?.message?.content ?? null
+    if (text) {
+      console.log(`[callOpenRouterChat] ${model} responded (${text.length} chars, cost: $${data.usage?.total_cost?.toFixed(4) ?? '?'})`)
+    }
+    return text
+  } catch (e) {
+    console.error(`[callOpenRouterChat] ${model} error:`, (e as Error).message)
+    return null
+  }
+}
+
 // OpenAI API call helper (server-side, reads OPENAI_API_KEY from env)
 // BUG 11: 'gpt-4o-codex' is routed through the same OpenAI endpoint but maps
 // to an underlying model optimised for code review + generation. We add a
@@ -3176,7 +3231,7 @@ async function freeModelTwoPass(
   buildPartCount?: number
 } | null> {
   const isBuildIntent = !['conversation', 'chat', 'help', 'undo', 'publish', 'analysis', 'marketplace'].includes(intent)
-  const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b']
+  const modelNames = ['gemini-2.0-flash', 'llama-3.3-70b', 'openrouter/gemini-2.5-flash']
 
   // Non-build intents: conversation only (no code generation)
   if (!isBuildIntent) {
@@ -3184,6 +3239,7 @@ async function freeModelTwoPass(
     const convRace = await raceNonNull(
       callGemini(convPrompt, message, history, 1024),
       callGroq(convPrompt, message, history, 1024),
+      callOpenRouterChat(convPrompt, message, history, 1024),
     )
     if (!convRace) return null
     const { message: cleanConv, suggestions } = extractSuggestions(convRace.result)
@@ -3947,6 +4003,7 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
       buildRace = await raceNonNull(
         callGemini(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
         callGroq(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
+        callOpenRouterChat(enrichedCodePrompt, effectiveInstruction, history.slice(-4), 32768),
       )
     }
 
@@ -4039,6 +4096,7 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
             const retryResult = await raceNonNull(
               callGemini(SCRIPT_GENERATION_PROMPT + '\n\nCRITICAL: The previous attempt INCORRECTLY generated Parts on the ground. DO NOT create any Instance.new("Part"). Create ONLY Scripts, LocalScripts, ScreenGui, Frame, TextButton, TextLabel. This is a SCRIPT request, not a BUILD request.', scriptInstruction, history.slice(-2), 32768),
               callGroq(SCRIPT_GENERATION_PROMPT + '\n\nCRITICAL: The previous attempt INCORRECTLY generated Parts on the ground. DO NOT create any Instance.new("Part"). Create ONLY Scripts, LocalScripts, ScreenGui, Frame, TextButton, TextLabel. This is a SCRIPT request, not a BUILD request.', scriptInstruction, history.slice(-2), 32768),
+              callOpenRouterChat(SCRIPT_GENERATION_PROMPT + '\n\nCRITICAL: The previous attempt INCORRECTLY generated Parts on the ground. DO NOT create any Instance.new("Part"). Create ONLY Scripts, LocalScripts, ScreenGui, Frame, TextButton, TextLabel. This is a SCRIPT request, not a BUILD request.', scriptInstruction, history.slice(-2), 32768, 'anthropic/claude-sonnet-4'),
             )
             if (retryResult) {
               const retryCode = extractLuauCode(retryResult.result)
@@ -4112,6 +4170,7 @@ ${effectiveInstruction}`
             const retryRace = await raceNonNull(
               callGemini(enrichedCodePrompt, retryInstruction, [], 16384),
               callGroq(enrichedCodePrompt, retryInstruction, [], 16384),
+              callOpenRouterChat(enrichedCodePrompt, retryInstruction, [], 16384),
             )
             if (retryRace) {
               const retryResponse = retryRace.result
@@ -4182,6 +4241,7 @@ ${effectiveInstruction}`
               const auditRetryRace = await raceNonNull(
                 callGemini(enrichedCodePrompt, auditRetryPrompt, [], 16384),
                 callGroq(enrichedCodePrompt, auditRetryPrompt, [], 16384),
+                callOpenRouterChat(enrichedCodePrompt, auditRetryPrompt, [], 16384),
               )
               if (auditRetryRace) {
                 let auditRetryCode = extractLuauCode(auditRetryRace.result)
@@ -4258,6 +4318,7 @@ ${effectiveInstruction}`
         const lightRetry = await raceNonNull(
           callGemini(lightPrompt, lightInstruction, [], 16384),
           callGroq(lightPrompt, lightInstruction, [], 16384),
+          callOpenRouterChat(lightPrompt, lightInstruction, [], 16384),
         )
         if (lightRetry) {
           const lightCode = extractLuauCode(lightRetry.result)
