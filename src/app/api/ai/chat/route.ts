@@ -609,10 +609,91 @@ function extractSuggestions(text: string | null | undefined): { message: string;
 // Generate a template-based Luau build when AI APIs are unavailable
 function generateFallbackBuild(message: string): string {
   const msg = message.toLowerCase()
-  // Detect what to build from keywords
   const name = msg.replace(/build\s*(me\s*)?|create\s*|make\s*|add\s*(a\s*)?|place\s*(a\s*)?/gi, '').trim() || 'Structure'
   const label = name.charAt(0).toUpperCase() + name.slice(1)
 
+  // Detect if the user wants something SIMPLE (flat land, baseplate, platform, floor)
+  const wantsFlat = /flat\s*(land|terrain|ground|plate|floor|surface|area|space)|baseplate|platform|ground\s*plane|empty\s*(land|map|world)|start(ing)?\s*(area|zone|place)/i.test(msg)
+  const wantsTerrain = /terrain|landscape|hill|mountain|island|valley|forest|ocean|river|lake|biome/i.test(msg)
+
+  if (wantsFlat) {
+    return `-- ForjeAI: ${label}
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI: ${label}")
+local cam = workspace.CurrentCamera
+local sp = cam.CFrame.Position + cam.CFrame.LookVector * 30
+local groundRay = workspace:Raycast(sp + Vector3.new(0, 50, 0), Vector3.new(0, -200, 0))
+local groundY = groundRay and groundRay.Position.Y or 0
+sp = Vector3.new(sp.X, groundY, sp.Z)
+
+local m = Instance.new("Model")
+m.Name = "${label}"
+
+local function P(name, cf, size, mat, col)
+  local p = Instance.new("Part")
+  p.Name = name  p.Anchored = true  p.CFrame = cf  p.Size = size
+  p.Material = mat  p.Color = col  p.Parent = m
+  return p
+end
+
+-- Large flat ground
+P("Ground", CFrame.new(sp + Vector3.new(0, -0.25, 0)), Vector3.new(200, 0.5, 200), Enum.Material.Grass, Color3.fromRGB(85, 140, 65))
+-- Concrete path down the center
+P("Path", CFrame.new(sp + Vector3.new(0, -0.05, 0)), Vector3.new(8, 0.1, 200), Enum.Material.Concrete, Color3.fromRGB(170, 165, 160))
+-- Spawn point
+local spawn = Instance.new("SpawnLocation")
+spawn.Name = "SpawnPoint" spawn.Anchored = true spawn.Size = Vector3.new(6, 1, 6)
+spawn.CFrame = CFrame.new(sp + Vector3.new(0, 0.5, -20))
+spawn.Material = Enum.Material.Metal spawn.Color = Color3.fromRGB(212, 175, 55)
+spawn.Parent = m
+-- Ambient light
+local light = Instance.new("PointLight")
+light.Brightness = 0.5 light.Range = 60 light.Color = Color3.fromRGB(255, 244, 230)
+light.Parent = spawn
+-- Edge markers
+for i = -1, 1, 2 do
+  for j = -1, 1, 2 do
+    P("Marker_"..i.."_"..j, CFrame.new(sp + Vector3.new(i*95, 1, j*95)), Vector3.new(2, 2, 2), Enum.Material.Neon, Color3.fromRGB(212, 175, 55))
+  end
+end
+m.Parent = workspace
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
+  end
+
+  if (wantsTerrain) {
+    return `-- ForjeAI Terrain: ${label}
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI: ${label}")
+local terrain = workspace.Terrain
+local region = Region3.new(Vector3.new(-128, -20, -128), Vector3.new(128, 40, 128))
+region = region:ExpandToGrid(4)
+local size = region.Size / 4
+local mats = {}
+local occs = {}
+for x = 1, size.X do mats[x] = {} occs[x] = {}
+  for y = 1, size.Y do mats[x][y] = {} occs[x][y] = {}
+    for z = 1, size.Z do
+      local wx = (x - size.X/2) * 4
+      local wz = (z - size.Z/2) * 4
+      local height = math.sin(wx*0.02)*8 + math.cos(wz*0.03)*6 + math.sin((wx+wz)*0.01)*4
+      local wy = (y - 1) * 4 - 20
+      if wy < height then
+        if wy < -5 then mats[x][y][z] = Enum.Material.Sand
+        elseif wy < height - 2 then mats[x][y][z] = Enum.Material.Rock
+        else mats[x][y][z] = Enum.Material.Grass end
+        occs[x][y][z] = 1
+      else
+        mats[x][y][z] = Enum.Material.Air
+        occs[x][y][z] = 0
+      end
+    end
+  end
+end
+terrain:WriteVoxels(region, 4, mats, occs)
+if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end`
+  end
+
+  // Default fallback — match the request, not always a house
   return `-- ForjeAI Build: ${label}
 local CH = game:GetService("ChangeHistoryService")
 local CS = game:GetService("CollectionService")
@@ -627,7 +708,6 @@ sp = Vector3.new(sp.X, groundY, sp.Z)
 local m = Instance.new("Model")
 m.Name = "${label}"
 
--- Helper: create a Part with all properties in one call
 local function P(name, cf, size, mat, col)
   local p = Instance.new("Part")
   p.Name = name  p.Anchored = true  p.CFrame = cf  p.Size = size
@@ -635,7 +715,6 @@ local function P(name, cf, size, mat, col)
   return p
 end
 
--- Color variation for natural look
 local function vc(base, v)
   local h, s, val = Color3.toHSV(base)
   return Color3.fromHSV(h, s, math.clamp(val + (math.random() - 0.5) * (v or 0.1), 0, 1))
