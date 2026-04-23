@@ -14,6 +14,7 @@ import 'server-only'
 import { buildRAGSystemPrompt } from './rag'
 import { findSpecialist, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
 import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './openrouter'
+import { isPaidModelsEnabled } from '@/lib/spending-guard'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -213,8 +214,9 @@ export async function callAI(
   const geminiResult = await callGemini(enrichedPrompt, messages, opts)
   if (geminiResult) return geminiResult
 
-  // Try OpenRouter (15+ models, cost-optimized routing)
-  if (process.env.OPENROUTER_API_KEY) {
+  // Try OpenRouter (9+ models, cost-optimized routing)
+  // Only active when ENABLE_PAID_MODELS=true AND OPENROUTER_API_KEY is set
+  if (process.env.OPENROUTER_API_KEY && isPaidModelsEnabled()) {
     const complexity = estimateBuildComplexity(userMessage)
     const bestModel = selectBestModel('build', complexity, opts.codeMode ?? false, 'creator')
     console.log(`[ai-provider] OpenRouter fallback: ${bestModel} (complexity: ${complexity})`)

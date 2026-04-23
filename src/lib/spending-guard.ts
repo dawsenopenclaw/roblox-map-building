@@ -142,3 +142,121 @@ export async function checkSpendingGuard(userId: string): Promise<SpendingGuardR
 
   return { allowed: true, globalCount, userDayCount, userHourCount }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// OPENROUTER COST GUARD — $30/day per user, master toggle
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Master toggle for paid AI models.
+ *
+ * Set ENABLE_PAID_MODELS=true in .env to activate OpenRouter.
+ * When false (default), the system uses ONLY free models (Gemini + Groq).
+ *
+ * This is your safety switch — don't turn it on until you have revenue.
+ */
+export function isPaidModelsEnabled(): boolean {
+  return process.env.ENABLE_PAID_MODELS === 'true'
+}
+
+/** Per-user daily cost cap in USD. Default $30/day. */
+const USER_DAILY_COST_CAP = Number(process.env.USER_DAILY_COST_CAP ?? '30')
+
+/** Global daily cost cap in USD. Default $200/day. */
+const GLOBAL_DAILY_COST_CAP = Number(process.env.GLOBAL_DAILY_COST_CAP ?? '200')
+
+/**
+ * Track and check cost for a request.
+ * Returns false if the user or global cap would be exceeded.
+ *
+ * @param userId     Clerk user ID
+ * @param costUsd    Estimated cost for this request in USD
+ */
+export async function checkCostGuard(
+  userId: string,
+  costUsd: number,
+): Promise<{ allowed: boolean; reason?: string; userDayCost: number; globalDayCost: number }> {
+  // If paid models are disabled, no cost tracking needed
+  if (!isPaidModelsEnabled()) {
+    return { allowed: true, userDayCost: 0, globalDayCost: 0 }
+  }
+
+  const redis = getRedis()
+  const dayKey = utcDate()
+  const userCostKey = `cost:user:${userId}:${dayKey}`
+  const globalCostKey = `cost:global:${dayKey}`
+
+  // Cost is stored in cents (integer) to avoid floating point issues
+  const costCents = Math.ceil(costUsd * 100)
+
+  let userDayCents = 0
+  let globalDayCents = 0
+
+  if (redis) {
+    try {
+      const pipe = redis.pipeline()
+      pipe.incrby(userCostKey, costCents)
+      pipe.expire(userCostKey, REDIS_DAY_TTL)
+      pipe.incrby(globalCostKey, costCents)
+      pipe.expire(globalCostKey, REDIS_DAY_TTL)
+      const results = await pipe.exec()
+      userDayCents = (results?.[0]?.[1] as number) ?? 0
+      globalDayCents = (results?.[2]?.[1] as number) ?? 0
+    } catch {
+      // Redis unavailable — use memory fallback
+      userDayCents = memIncr(userCostKey, 86_400_000) * costCents
+      globalDayCents = memIncr(globalCostKey, 86_400_000) * costCents
+    }
+  } else {
+    userDayCents = memIncr(userCostKey, 86_400_000) * costCents
+    globalDayCents = memIncr(globalCostKey, 86_400_000) * costCents
+  }
+
+  const userDayCost = userDayCents / 100
+  const globalDayCost = globalDayCents / 100
+
+  if (userDayCost > USER_DAILY_COST_CAP) {
+    console.error(`[COST GUARD] USER CAP: ${userId} spent $${userDayCost.toFixed(2)}/$${USER_DAILY_COST_CAP} today`)
+    return {
+      allowed: false,
+      reason: `You've reached the $${USER_DAILY_COST_CAP}/day AI spending limit. Switching to free models.`,
+      userDayCost,
+      globalDayCost,
+    }
+  }
+
+  if (globalDayCost > GLOBAL_DAILY_COST_CAP) {
+    console.error(`[COST GUARD] GLOBAL CAP: $${globalDayCost.toFixed(2)}/$${GLOBAL_DAILY_COST_CAP} today`)
+    return {
+      allowed: false,
+      reason: 'AI systems at capacity. Switching to free models.',
+      userDayCost,
+      globalDayCost,
+    }
+  }
+
+  return { allowed: true, userDayCost, globalDayCost }
+}
+
+/**
+ * Estimate cost for a model + token count.
+ * Returns cost in USD.
+ */
+export function estimateRequestCost(modelId: string, inputTokens: number, outputTokens: number): number {
+  // Cost per million tokens (approximate)
+  const costs: Record<string, [number, number]> = {
+    // [inputPer1M, outputPer1M]
+    'google/gemini-2.0-flash-exp:free': [0, 0],
+    'meta-llama/llama-3.3-70b-instruct': [0, 0],
+    'google/gemini-2.5-flash-preview': [0.15, 0.60],
+    'deepseek/deepseek-chat-v3-0324': [0.14, 0.28],
+    'anthropic/claude-sonnet-4': [3, 15],
+    'openai/gpt-4o': [2.5, 10],
+    'google/gemini-2.5-pro-preview': [1.25, 10],
+    'anthropic/claude-opus-4': [15, 75],
+    'openai/gpt-4.1': [2, 8],
+  }
+
+  const [inputCost, outputCost] = costs[modelId] ?? [0, 0]
+  return (inputTokens * inputCost + outputTokens * outputCost) / 1_000_000
+}
