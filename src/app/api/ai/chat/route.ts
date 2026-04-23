@@ -42,6 +42,7 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { getLearnedRules, learnFromFailure } from '@/lib/ai/self-improve'
+import { findRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -87,7 +88,14 @@ async function enrichWithExperienceMemory(systemPrompt: string, userMessage: str
     ])
 
     let enriched = systemPrompt
-    // Aggregate patterns first — data-driven rules from all past builds
+
+    // Game systems knowledge — inject relevant how-to blueprints
+    const relevantSystems = findRelevantSystems(userMessage, 10)
+    if (relevantSystems.length > 0) {
+      enriched += formatSystemKnowledge(relevantSystems)
+    }
+
+    // Aggregate patterns — data-driven rules from all past builds
     if (patterns.length > 0) {
       const { experienceMemory } = await import('@/lib/ai/experience-memory')
       enriched += experienceMemory.formatAggregatePatterns(patterns)
