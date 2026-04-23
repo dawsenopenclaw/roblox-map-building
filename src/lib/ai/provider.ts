@@ -13,6 +13,7 @@
 import 'server-only'
 import { buildRAGSystemPrompt } from './rag'
 import { findSpecialist, applySpecialist, getSpecialistRAGCategories } from './specialists/router'
+import { callOpenRouter, selectBestModel, estimateBuildComplexity } from './openrouter'
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system'
@@ -208,11 +209,22 @@ export async function callAI(
     }
   }
 
+  // Try Gemini direct first (fastest, free tier)
   const geminiResult = await callGemini(enrichedPrompt, messages, opts)
   if (geminiResult) return geminiResult
 
+  // Try OpenRouter (15+ models, cost-optimized routing)
+  if (process.env.OPENROUTER_API_KEY) {
+    const complexity = estimateBuildComplexity(userMessage)
+    const bestModel = selectBestModel('build', complexity, opts.codeMode ?? false, 'creator')
+    console.log(`[ai-provider] OpenRouter fallback: ${bestModel} (complexity: ${complexity})`)
+    const orResult = await callOpenRouter(bestModel, enrichedPrompt, userMessage, [], opts.maxTokens ?? 8192, opts.temperature ?? (opts.codeMode ? 0.2 : 0.7))
+    if (orResult) return orResult
+  }
+
+  // Try Groq last (free, fast, but less capable)
   const groqResult = await callGroq(enrichedPrompt, messages, opts)
   if (groqResult) return groqResult
 
-  throw new Error('[ai-provider] All AI providers failed. Check GEMINI_API_KEY and GROQ_API_KEY env vars.')
+  throw new Error('[ai-provider] All AI providers failed. Check GEMINI_API_KEY, OPENROUTER_API_KEY, and GROQ_API_KEY env vars.')
 }

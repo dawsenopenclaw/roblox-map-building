@@ -350,3 +350,102 @@ export function getSystemCount(): number {
 export function getCategories(): string[] {
   return GAME_SYSTEMS.map(c => c.name)
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Dynamic Learning — add new systems discovered from user builds
+// ═══════════════════════════════════════════════════════════════════════
+
+const dynamicSystems: GameSystem[] = []
+
+/** Learn a new system from a successful build the AI hasn't seen before */
+export function learnNewSystem(
+  name: string,
+  how: string,
+  keywords: string[],
+  category?: string,
+): void {
+  // Don't add duplicates
+  if (dynamicSystems.find(s => s.name === name)) return
+  if (GAME_SYSTEMS.some(c => c.systems.some(s => s.name === name))) return
+
+  dynamicSystems.push({ name, how, keywords })
+  console.log(`[GameSystems] Learned new system: "${name}" (${keywords.join(', ')})`)
+}
+
+/** Extract system patterns from successful build code */
+export function extractNewSystemFromCode(prompt: string, code: string, score: number): void {
+  if (score < 70) return // Only learn from good builds
+  if (code.length < 200) return // Too short to be a real system
+
+  const lower = prompt.toLowerCase()
+
+  // Check if this build uses patterns we don't have a system for
+  const hasDataStore = code.includes('DataStoreService')
+  const hasRemoteEvent = code.includes('RemoteEvent')
+  const hasScreenGui = code.includes('ScreenGui')
+  const hasHumanoid = code.includes('Humanoid')
+  const hasTween = code.includes('TweenService')
+  const hasParticle = code.includes('ParticleEmitter')
+  const hasProximity = code.includes('ProximityPrompt')
+
+  // Build a compact description of what this code does
+  const techniques: string[] = []
+  if (hasDataStore) techniques.push('DataStore persistence')
+  if (hasRemoteEvent) techniques.push('client-server RemoteEvent')
+  if (hasScreenGui) techniques.push('ScreenGui UI')
+  if (hasHumanoid) techniques.push('Humanoid interaction')
+  if (hasTween) techniques.push('TweenService animations')
+  if (hasParticle) techniques.push('ParticleEmitter effects')
+  if (hasProximity) techniques.push('ProximityPrompt interaction')
+
+  if (techniques.length < 2) return // Too simple to learn from
+
+  // Extract keywords from the prompt
+  const words = lower.replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 3)
+  const uniqueWords = [...new Set(words)].slice(0, 5)
+
+  // Check if we already have a matching system
+  const existing = findRelevantSystems(prompt, 1)
+  if (existing.length > 0 && existing[0].name.toLowerCase().includes(uniqueWords[0])) return
+
+  const systemName = prompt.slice(0, 50).replace(/^(build|create|make|add)\s*/i, '').trim()
+  const how = `Uses: ${techniques.join(', ')}. Pattern from successful build (score ${score}/100).`
+
+  learnNewSystem(systemName, how, uniqueWords)
+}
+
+/** Get all systems including dynamically learned ones */
+export function getAllSystems(): GameSystem[] {
+  const all: GameSystem[] = []
+  for (const cat of GAME_SYSTEMS) {
+    all.push(...cat.systems)
+  }
+  all.push(...dynamicSystems)
+  return all
+}
+
+/** Enhanced findRelevantSystems that includes dynamic systems */
+export function findAllRelevantSystems(prompt: string, maxSystems = 12): GameSystem[] {
+  const lower = prompt.toLowerCase()
+  const allSystems = getAllSystems()
+  const scored: { system: GameSystem; score: number }[] = []
+
+  for (const system of allSystems) {
+    let score = 0
+    for (const kw of system.keywords) {
+      if (lower.includes(kw)) score += 2
+    }
+    if (score === 0) {
+      for (const kw of system.keywords) {
+        const words = kw.split(' ')
+        for (const word of words) {
+          if (word.length > 3 && lower.includes(word)) score += 1
+        }
+      }
+    }
+    if (score > 0) scored.push({ system, score })
+  }
+
+  scored.sort((a, b) => b.score - a.score)
+  return scored.slice(0, maxSystems).map(s => s.system)
+}

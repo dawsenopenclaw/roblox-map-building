@@ -42,7 +42,7 @@ import { buildGameKnowledgePrompt, enhanceMeshPromptWithGameKnowledge } from '@/
 import { enhancePrompt, formatEnhancedPlanContext } from '@/lib/ai/prompt-enhancer'
 import { findSimilarSuccesses, findAntiPatterns, formatAsExamples, formatAntiPatterns, recordBuildOutcome, detectCategory, detectBuildType, countPartsInCode, getAggregatePatterns, getConfidence } from '@/lib/ai/experience-memory'
 import { getLearnedRules, learnFromFailure, learnFromStudioError, learnFromPromptPopularity } from '@/lib/ai/self-improve'
-import { findRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
+import { findAllRelevantSystems, formatSystemKnowledge } from '@/lib/ai/game-systems-knowledge'
 import { auditBuild, formatAuditRetryPrompt } from '@/lib/ai/build-auditor'
 import { scoreOutput, isObviouslyBroken } from '@/lib/ai/quality-scorer'
 import { getTierPromptModifier, getTierFromSubscription, type QualityTier } from '@/lib/ai/quality-tiers'
@@ -90,7 +90,7 @@ async function enrichWithExperienceMemory(systemPrompt: string, userMessage: str
     let enriched = systemPrompt
 
     // Game systems knowledge — inject relevant how-to blueprints
-    const relevantSystems = findRelevantSystems(userMessage, 10)
+    const relevantSystems = findAllRelevantSystems(userMessage, 10)
     if (relevantSystems.length > 0) {
       enriched += formatSystemKnowledge(relevantSystems)
     }
@@ -2529,17 +2529,27 @@ CODE RULES:
 - VALID materials: Wood,WoodPlanks,Marble,Slate,Concrete,Granite,Brick,Pebble,Cobblestone,CorrodedMetal,DiamondPlate,Metal,Grass,LeafyGrass,Sand,Fabric,Ice,Glass,Rock,Snow,Sandstone,Mud,Limestone,Asphalt,Pavement,CrackedLava,Neon
 - VALID classes: Part,WedgePart,MeshPart,SpawnLocation,Model,Folder,PointLight,SpotLight,SurfaceLight,Attachment,Trail,ParticleEmitter,Sound,Fire,Smoke,Sparkles,BillboardGui,SurfaceGui,TextLabel,Frame,Script,LocalScript,ModuleScript,Tool,ClickDetector,ProximityPrompt,Seat,VehicleSeat,TrussPart,CornerWedgePart
 
-SELF-CHECK (validate before outputting):
-1. Every GetService uses a real service name
-2. Every Instance.new uses a class from VALID classes above
-3. Every property = correct type (Vector3/CFrame/Color3/Enum)
-4. All Parts: Anchored=true
-5. DataStore: pcall all operations
-6. No deprecated: wait()/spawn()/delay()/pairs()/ipairs()/BrickColor
-7. RemoteEvents created before connected
-8. Server scripts: no LocalPlayer/PlayerGui
-9. Client scripts: no ServerStorage/ServerScriptService
-10. ChangeHistoryService wraps entire build
+SELF-CHECK (validate EVERY line before outputting):
+1. Every GetService uses a real service name (Players, DataStoreService, ReplicatedStorage, ServerStorage, ServerScriptService, StarterGui, Lighting, SoundService, RunService, TweenService, Debris, CollectionService, MarketplaceService, BadgeService, Teams, Chat, TextService, HttpService)
+2. Every Instance.new uses a class from VALID classes above — NEVER invent classes
+3. Every property = correct type: Position/Size=Vector3, CFrame=CFrame, Color=Color3, Material=Enum.Material, Transparency=number(0-1)
+4. All static Parts: Anchored=true (only moving parts can be unanchored)
+5. DataStore: pcall ALL Get/Set/Update operations, check ok before using value
+6. No deprecated: wait()→task.wait(), spawn()→task.spawn(), delay()→task.delay(), pairs()→generalized iteration, ipairs()→generalized iteration, BrickColor→Color3
+7. RemoteEvents/Functions: Instance.new BEFORE :Connect or :InvokeServer
+8. Server scripts: NEVER access LocalPlayer, PlayerGui, UserInputService, Mouse
+9. Client scripts: NEVER access ServerStorage, ServerScriptService, DataStoreService
+10. ChangeHistoryService wraps entire build with TryBeginRecording/FinishRecording
+11. All Sounds need SoundId set (rbxassetid://NUMBER) — never leave empty
+12. All Decals/Textures need valid TextureId — never leave empty
+13. WedgeParts: orientation matters — use CFrame.Angles for correct rotation
+14. UICorner/UIStroke/UIGradient: parent to the Frame/Button THEY style, not to ScreenGui
+15. ScrollingFrame: set CanvasSize, add UIListLayout for auto-sizing
+16. ProximityPrompt: set ActionText, ObjectText, MaxActivationDistance, HoldDuration
+17. BodyVelocity/BodyForce: ALWAYS Debris:AddItem() to auto-cleanup (0.1-0.5s)
+18. HumanoidRootPart: NEVER destroy or reparent — only modify CFrame/Velocity
+19. Module organization: ServerScriptService for server, StarterPlayerScripts for client, ReplicatedStorage for shared
+20. NEVER output placeholder comments like "-- add logic here" or "-- TODO". Output REAL working code.
 
 COMPLEXITY RULES:
 - FULL GAME request (tycoon/simulator/RPG/obby) = decompose:
@@ -4213,6 +4223,11 @@ ${effectiveInstruction}`
         }).catch((err) => {
           console.warn('[LearningSystem] Failed to record build outcome:', err instanceof Error ? err.message : err)
         })
+        // Dynamic system learning — discover new game patterns from successful builds
+        try {
+          const { extractNewSystemFromCode } = await import('@/lib/ai/game-systems-knowledge')
+          extractNewSystemFromCode(message, luauCode, finalVerificationScore)
+        } catch { /* non-blocking */ }
         // ELI brain learning — feed build intelligence
         void recordToEli({
           prompt: message,
