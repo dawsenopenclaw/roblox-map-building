@@ -12,9 +12,13 @@
 export type BillingConfig = {
   stripeConfigured: boolean
   subscriptions: {
-    HOBBY:   { monthly: boolean; yearly: boolean }
+    STARTER: { monthly: boolean; yearly: boolean }
+    BUILDER: { monthly: boolean; yearly: boolean }
     CREATOR: { monthly: boolean; yearly: boolean }
+    PRO:     { monthly: boolean; yearly: boolean }
     STUDIO:  { monthly: boolean; yearly: boolean }
+    // Backward compat — old tier name
+    HOBBY:   { monthly: boolean; yearly: boolean }
   }
   tokenPacks: {
     starter: boolean
@@ -26,9 +30,12 @@ export type BillingConfig = {
 export const EMPTY_BILLING_CONFIG: BillingConfig = {
   stripeConfigured: false,
   subscriptions: {
-    HOBBY:   { monthly: false, yearly: false },
+    STARTER: { monthly: false, yearly: false },
+    BUILDER: { monthly: false, yearly: false },
     CREATOR: { monthly: false, yearly: false },
+    PRO:     { monthly: false, yearly: false },
     STUDIO:  { monthly: false, yearly: false },
+    HOBBY:   { monthly: false, yearly: false },
   },
   tokenPacks: { starter: false, creator: false, pro: false },
 }
@@ -43,12 +50,20 @@ function has(key: string): boolean {
 }
 
 export function getBillingConfig(): BillingConfig {
+  const hobbyMonthly = has('STRIPE_HOBBY_PRICE_ID')
+  const hobbyYearly = has('STRIPE_HOBBY_YEARLY_PRICE_ID')
+
   return {
     stripeConfigured: has('STRIPE_SECRET_KEY'),
     subscriptions: {
-      HOBBY:   { monthly: has('STRIPE_HOBBY_PRICE_ID'),   yearly: has('STRIPE_HOBBY_YEARLY_PRICE_ID') },
+      // STARTER uses the old HOBBY price IDs (same $10 tier, renamed)
+      STARTER: { monthly: has('STRIPE_STARTER_PRICE_ID') || hobbyMonthly, yearly: has('STRIPE_STARTER_YEARLY_PRICE_ID') || hobbyYearly },
+      BUILDER: { monthly: has('STRIPE_BUILDER_PRICE_ID'), yearly: has('STRIPE_BUILDER_YEARLY_PRICE_ID') },
       CREATOR: { monthly: has('STRIPE_CREATOR_PRICE_ID'), yearly: has('STRIPE_CREATOR_YEARLY_PRICE_ID') },
+      PRO:     { monthly: has('STRIPE_PRO_PRICE_ID'),     yearly: has('STRIPE_PRO_YEARLY_PRICE_ID') },
       STUDIO:  { monthly: has('STRIPE_STUDIO_PRICE_ID'),  yearly: has('STRIPE_STUDIO_YEARLY_PRICE_ID') },
+      // Backward compat — maps to STARTER
+      HOBBY:   { monthly: hobbyMonthly, yearly: hobbyYearly },
     },
     tokenPacks: {
       starter: has('STRIPE_TOKEN_STARTER_PRICE_ID'),
