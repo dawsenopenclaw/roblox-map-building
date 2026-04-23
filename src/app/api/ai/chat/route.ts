@@ -2878,6 +2878,120 @@ async function raceNonNull<T>(...promises: Promise<T | null>[]): Promise<{ resul
 }
 
 // Validate that generated code meets minimum quality bar
+/**
+ * Detect inline play-time code (Players.PlayerAdded, DataStore, while-true loops)
+ * and wrap it in Instance.new("Script") with .Source so it actually works in Studio.
+ *
+ * This fixes the #1 reason scripts "don't work" — the code runs inline in Edit Mode
+ * where Players, DataStore, etc. don't function. Wrapping in a Script instance means
+ * the code runs at play-time instead.
+ */
+function wrapInlinePlaytimeCode(code: string): string {
+  // If it already creates Script instances with .Source, it's already wrapped
+  if (/Instance\.new\s*\(\s*["'](?:Script|LocalScript)["']\s*\)/.test(code) && code.includes('.Source')) {
+    return code
+  }
+
+  // Detect inline play-time patterns that need wrapping
+  const hasPlaytimeCode = (
+    code.includes('Players.PlayerAdded') ||
+    code.includes('PlayerAdded:Connect') ||
+    code.includes('PlayerRemoving:Connect') ||
+    code.includes('DataStoreService') ||
+    code.includes('GetDataStore') ||
+    /while\s+true\s+do/.test(code) ||
+    code.includes('RunService.Heartbeat') ||
+    code.includes('Heartbeat:Connect') ||
+    code.includes('.Touched:Connect') ||
+    code.includes('RemoteEvent') ||
+    code.includes('RemoteFunction')
+  )
+
+  if (!hasPlaytimeCode) return code
+
+  // Check if code has ScreenGui/UI elements (needs LocalScript wrapping)
+  const hasClientCode = code.includes('ScreenGui') || code.includes('PlayerGui') ||
+    code.includes('TextButton') || code.includes('UserInputService')
+  // Check if code has server logic
+  const hasServerCode = code.includes('DataStoreService') || code.includes('Players.PlayerAdded') ||
+    code.includes('ServerScriptService') || code.includes('RemoteEvent')
+
+  // Extract the ChangeHistoryService wrapper if present
+  const hasCH = code.includes('ChangeHistoryService')
+  // Strip existing CH wrapper — we'll add our own
+  let innerCode = code
+    .replace(/local\s+CH\s*=\s*game:GetService\s*\(\s*["']ChangeHistoryService["']\s*\).*?\n/g, '')
+    .replace(/local\s+rid\s*=\s*CH:TryBeginRecording\s*\([^)]*\).*?\n/g, '')
+    .replace(/if\s+rid\s+then\s+CH:FinishRecording\s*\([^)]*\)\s*end/g, '')
+    .replace(/ChangeHistoryService:SetWaypoint\s*\([^)]*\)/g, '')
+    .replace(/ChangeHistoryService:TryBeginRecording\s*\([^)]*\)/g, '')
+    .replace(/ChangeHistoryService:FinishRecording\s*\([^)]*\)/g, '')
+    .trim()
+
+  // Escape for long string bracket ([=[ ... ]=])
+  // Use higher level brackets if code contains ]=]
+  let openBracket = '[=['
+  let closeBracket = ']=]'
+  if (innerCode.includes(']=]')) {
+    openBracket = '[===['
+    closeBracket = ']===]'
+  }
+
+  // Build the wrapped code
+  const systemName = 'ForjeAI_GameSystem'
+  let wrapped = `-- ForjeAI Script System — auto-wrapped for Studio compatibility
+local CH = game:GetService("ChangeHistoryService")
+local rid = CH:TryBeginRecording("ForjeAI Script Install")
+
+`
+
+  if (hasServerCode) {
+    wrapped += `-- Server Script (runs at play-time in ServerScriptService)
+local serverScript = Instance.new("Script")
+serverScript.Name = "${systemName}_Server"
+serverScript.Source = ${openBracket}
+${innerCode}
+${closeBracket}
+serverScript.Parent = game:GetService("ServerScriptService")
+print("[ForjeAI] Server script installed → ServerScriptService/${systemName}_Server")
+
+`
+  }
+
+  if (hasClientCode && !hasServerCode) {
+    // Pure client code — wrap in LocalScript
+    wrapped += `-- Client Script (runs at play-time in StarterGui)
+local clientScript = Instance.new("LocalScript")
+clientScript.Name = "${systemName}_Client"
+clientScript.Source = ${openBracket}
+${innerCode}
+${closeBracket}
+clientScript.Parent = game:GetService("StarterGui")
+print("[ForjeAI] Client script installed → StarterGui/${systemName}_Client")
+
+`
+  }
+
+  if (!hasServerCode && !hasClientCode) {
+    // Generic — wrap in server script
+    wrapped += `local gameScript = Instance.new("Script")
+gameScript.Name = "${systemName}"
+gameScript.Source = ${openBracket}
+${innerCode}
+${closeBracket}
+gameScript.Parent = game:GetService("ServerScriptService")
+print("[ForjeAI] Script installed → ServerScriptService/${systemName}")
+
+`
+  }
+
+  wrapped += `if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
+print("[ForjeAI] Script system ready — press Play to test!")`
+
+  console.log(`[ScriptWrapper] Wrapped ${innerCode.length} chars of inline play-time code into Script instance`)
+  return wrapped
+}
+
 function isCodeQualityOk(code: string): boolean {
   // Detect if this is a script (game logic) vs a build (Part creation)
   const isScript = code.includes('DataStoreService') || code.includes('RemoteEvent') ||
@@ -3808,6 +3922,17 @@ Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE
         luauCode = luauCode.replace(/\bBrickColor\.new\s*\(/g, 'Color3.fromRGB(')
         // Fix wait() → task.wait()
         luauCode = luauCode.replace(/\bwait\s*\(/g, 'task.wait(')
+        // Fix SetWaypoint → TryBeginRecording
+        luauCode = luauCode.replace(/ChangeHistoryService:SetWaypoint\s*\([^)]*\)/g, 'ChangeHistoryService:TryBeginRecording("ForjeAI")')
+        luauCode = luauCode.replace(/StartRecording\s*\(/g, 'TryBeginRecording(')
+
+        // ── CRITICAL FIX: Wrap inline play-time code in Script instances ──
+        // Templates and AI sometimes dump Players.PlayerAdded, DataStore calls,
+        // and while-true loops as inline code. This silently fails in Edit Mode.
+        // Detect and wrap in Instance.new("Script") with .Source.
+        if (isScriptIntent) {
+          luauCode = wrapInlinePlaytimeCode(luauCode)
+        }
       }
 
       // Quality gate — reject low-quality code and tell user
