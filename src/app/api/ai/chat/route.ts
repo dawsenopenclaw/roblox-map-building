@@ -3893,9 +3893,81 @@ local rid = CH:TryBeginRecording("ForjeAI ${message.slice(0, 40)}")
 -- ... all your code here ...
 if rid then CH:FinishRecording(rid, Enum.FinishRecordingOperation.Commit) end
 
+═══════════════════════════════════════════════════════════════
+BEFORE WRITING CODE — READ THE GAME STATE:
+═══════════════════════════════════════════════════════════════
+
+1. Check EXISTING SCRIPTS in the Studio Context above
+2. If the user already has a currency system, DON'T create a new one — use the existing one
+3. If they have an existing ScreenGui, MODIFY it instead of creating a new overlapping one
+4. Reference existing objects: game:GetService("ServerScriptService"):FindFirstChild("ExistingName")
+5. When modifying: read the script, understand it, then output a REPLACEMENT with improvements
+6. NEVER create duplicate RemoteEvents — check if one exists first with FindFirstChild
+
+═══════════════════════════════════════════════════════════════
+PREMIUM UI PATTERNS (match or exceed Lemonade.gg quality):
+═══════════════════════════════════════════════════════════════
+
+OPEN ANIMATION (add to every panel):
+  main.Size = UDim2.new(0, 0, 0, 0)
+  main.Position = UDim2.new(0.5, 0, 0.5, 0)
+  main.AnchorPoint = Vector2.new(0.5, 0.5)
+  TweenService:Create(main, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+    {Size = UDim2.new(0.85, 0, 0.8, 0)}):Play()
+
+CLOSE ANIMATION (add to every close button):
+  closeBtn.MouseButton1Click:Connect(function()
+    TweenService:Create(main, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+      {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    task.wait(0.2)
+    gui:Destroy()
+  end)
+
+BUTTON HOVER (add to EVERY button):
+  local originalColor = btn.BackgroundColor3
+  btn.MouseEnter:Connect(function()
+    TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(255, 215, 80)}):Play()
+  end)
+  btn.MouseLeave:Connect(function()
+    TweenService:Create(btn, TweenInfo.new(0.15), {BackgroundColor3 = originalColor}):Play()
+  end)
+
+CARD HOVER (for item/product cards):
+  card.MouseEnter:Connect(function()
+    TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(35, 38, 55)}):Play()
+    TweenService:Create(cardStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(212, 175, 55)}):Play()
+  end)
+  card.MouseLeave:Connect(function()
+    TweenService:Create(card, TweenInfo.new(0.15), {BackgroundColor3 = Color3.fromRGB(25, 28, 40)}):Play()
+    TweenService:Create(cardStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(60, 60, 70)}):Play()
+  end)
+
+NOTIFICATION TOAST (add success/error feedback):
+  local function showToast(text, color)
+    local toast = Instance.new("Frame")
+    toast.Size = UDim2.new(0, 300, 0, 40)
+    toast.Position = UDim2.new(0.5, 0, 0, -50)
+    toast.AnchorPoint = Vector2.new(0.5, 0)
+    toast.BackgroundColor3 = color or Color3.fromRGB(34, 197, 94)
+    toast.Parent = gui
+    Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 8)
+    local lbl = Instance.new("TextLabel")
+    lbl.Text = text lbl.Size = UDim2.new(1,0,1,0)
+    lbl.BackgroundTransparency = 1 lbl.TextColor3 = Color3.new(1,1,1)
+    lbl.Font = Enum.Font.GothamBold lbl.TextSize = 14 lbl.Parent = toast
+    TweenService:Create(toast, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Position = UDim2.new(0.5,0,0,20)}):Play()
+    task.delay(2.5, function()
+      TweenService:Create(toast, TweenInfo.new(0.2), {Position = UDim2.new(0.5,0,0,-50)}):Play()
+      task.wait(0.2) toast:Destroy()
+    end)
+  end
+
+═══════════════════════════════════════════════════════════════
+
 First write 3-5 sentences explaining what this system does, how players interact with it, and what to test.
 Then output the COMPLETE code in a \`\`\`lua block. The code must work when pasted into Studio's command bar.
-Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE implementation only.`
+Generate EVERY LINE of code — do not use "..." or "-- add more here". COMPLETE implementation only.
+Include [FOLLOWUP] with 2-3 next steps based on the game dev roadmap.`
 
     // Select the right prompt and instruction based on intent type
     const effectivePrompt = isScriptIntent ? SCRIPT_GENERATION_PROMPT : codePrompt
